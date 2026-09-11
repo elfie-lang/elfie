@@ -1,0 +1,4521 @@
+{
+  "version": 1,
+  "compiler": "elfie lexer compile (Claude Fable 5.1)",
+  "description": "Maps generated Rust in src/lexer back to the Elfie source in def/lexer. A mapping applies from its generated line until the next mapping in the same generated file. Lines are 1-indexed; positions are 0-indexed character columns.",
+  "generated": [
+    "src/lexer/data.rs",
+    "src/lexer/mod.rs",
+    "src/lexer/tokens/comment.rs",
+    "src/lexer/tokens/identifier.rs",
+    "src/lexer/tokens/keyword.rs",
+    "src/lexer/tokens/literal.rs",
+    "src/lexer/tokens/mod.rs",
+    "src/lexer/tokens/operator.rs",
+    "src/lexer/tokens/separator.rs",
+    "src/lexer/tokens/traits.rs",
+    "src/lexer/tokens/whitespace.rs",
+    "src/lib.rs"
+  ],
+  "sources": [
+    "def/lexer/data.lfy",
+    "def/lexer/main.lfy",
+    "def/lexer/tokens/comment.lfy",
+    "def/lexer/tokens/identifier.lfy",
+    "def/lexer/tokens/keyword.lfy",
+    "def/lexer/tokens/literal.lfy",
+    "def/lexer/tokens/operator.lfy",
+    "def/lexer/tokens/separator.lfy",
+    "def/lexer/tokens/traits.lfy",
+    "def/lexer/tokens/whitespace.lfy"
+  ],
+  "mappings": [
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "const StringLiteralMode = `mode::literal::string`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "const TemplateLiteralMode = `mode::literal::template`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "alias CommentMode = `mode::comment`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "alias DocumentationMode = `mode::documentation`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "const ListMode = `mode::list`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "const BlockMode = `mode::block`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "const GroupMode = `mode::group`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "const StringLiteralMode = `mode::literal::string`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "const TemplateLiteralMode = `mode::literal::template`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 36
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 37
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "alias CommentMode = `mode::comment`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "alias DocumentationMode = `mode::documentation`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "const ListMode = `mode::list`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 40
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "const BlockMode = `mode::block`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "const GroupMode = `mode::group`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 62
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 1,
+        "position": 0
+      },
+      "text": "d LexerModeStack: `Stack of the current mode the lexer should be in based on tokens` {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 75
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 3,
+        "position": 4
+      },
+      "text": ".add({ situation: `Entering lexing mode`, behavior: `Pushes the mode to the top of the stack`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 82
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "position": 4
+      },
+      "text": ".add({ situation: `Exiting lexing mode that is at the top of the stack`, behavior: `Pops a single mo"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 87
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 5,
+        "position": 4
+      },
+      "text": ".add({ situation: `Exiting lexing mode that is not at the top of the stack`, behavior: `Throws an er"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 95
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 6,
+        "position": 4
+      },
+      "text": ".add({ situation: `Lexing any token requires knowledge about the mode or context the lexer is in`, b"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 123
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 31,
+        "position": 4
+      },
+      "text": "where (`Characters match {{token}} from [[key]]`) and !(inComment) and !(inDocumentation) -> `A new "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 124
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "where (`Characters match {{TemplateBlock.TB_EXECUTION_OPEN}} from [[TemplateBlock.TB_EXECUTION_OPEN]"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 125
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 45,
+        "position": 6
+      },
+      "text": "-> `Those characters become a number [[Token]] with _ characters stripped out of the [[Token.value]]"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 126
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 51,
+        "position": 2
+      },
+      "text": "where ((inTemplate) or (inString)) and !(`Matched with a sequence or block that is valid in this mod"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 127
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 66,
+        "position": 8
+      },
+      "text": "-> `A new [[Token]] is pushed to the results as {{key@definition}}`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 128
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 69,
+        "position": 2
+      },
+      "text": "where (inComment) and !(`Matched with a sequence or block that is valid inside {{CommentMode}}`) -> "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 129
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 70,
+        "position": 2
+      },
+      "text": "where (inDocumentation) and !(`Matched with a sequence or block that is valid inside {{Documentation"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 130
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 74,
+        "position": 4
+      },
+      "text": "where (`Characters match {{token}} from [[key]]`) and !(inString) and !(inTemplate) and !(inComment)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 131
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 79,
+        "position": 4
+      },
+      "text": "where (`Characters match {{token}} from [[key]]`) and !(inString) and !(inTemplate) and !(inComment)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 132
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 84,
+        "position": 4
+      },
+      "text": "where (`Characters match {{token}} from [[key]]`) and !(inString) and !(inTemplate) and !(inComment)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 133
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 89,
+        "position": 4
+      },
+      "text": "where (`Characters match {{token}} from [[key]]`) and !(inString) and !(inTemplate) and !(inComment)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 134
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 99,
+        "position": 6
+      },
+      "text": "-> `Those characters become an identifier [[Token]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 138
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "d Token: `Representation of a lexed token` {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 143
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 10,
+        "position": 2
+      },
+      "text": "$value: `Normalized and processed token value as derived from the raw source text` = string;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 145
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "$raw: `Raw source text content that created this token` = string;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 147
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 14,
+        "position": 6
+      },
+      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 149
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 14,
+        "position": 6
+      },
+      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 151
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 14,
+        "position": 6
+      },
+      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 156
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 16,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 166
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 101,
+        "position": 2
+      },
+      "text": "where (`Character does not match any rule`) -> `Raise an unexpected token error`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 174
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": ".add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 183
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 5,
+        "position": 4
+      },
+      "text": ".add({ situation: `Exiting lexing mode that is not at the top of the stack`, behavior: `Throws an er"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 236
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 3,
+        "position": 4
+      },
+      "text": ".add({ situation: `Entering lexing mode`, behavior: `Pushes the mode to the top of the stack`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 246
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "position": 4
+      },
+      "text": ".add({ situation: `Exiting lexing mode that is at the top of the stack`, behavior: `Pops a single mo"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 257
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 5,
+        "position": 4
+      },
+      "text": ".add({ situation: `Exiting lexing mode that is not at the top of the stack`, behavior: `Throws an er"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 280
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 6,
+        "position": 4
+      },
+      "text": ".add({ situation: `Lexing any token requires knowledge about the mode or context the lexer is in`, b"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 290
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 14,
+        "position": 6
+      },
+      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 305
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 16,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 17,
+        "position": 4
+      },
+      "text": ".add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to \"anonymous\"`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "fn lexString(str: string, file?: string): `Turn a given string into a set of lexigraphical tokens` ="
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 16,
+        "position": 4
+      },
+      "text": ".add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[str]] that this starts "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 20,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.position]] is set to the 0-indexed position in the line that this token s"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 22,
+        "position": 4
+      },
+      "text": ".add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects: [`[[LexerModeSt"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 124
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 14,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[str]] is tokenized by processing the string start to finish`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 129
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "const onToken = `Next \\n or \\r\\n or EOF is encountered after {{mode}} is created for {{@definition}}"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 135
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 48,
+        "position": 4
+      },
+      "text": "where (`Characters match {{token}} from [[key]]`) and ((inString) or (inTemplate)) -> `Sequence is r"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 142
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 51,
+        "position": 2
+      },
+      "text": "where ((inTemplate) or (inString)) and !(`Matched with a sequence or block that is valid in this mod"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 144
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 69,
+        "position": 2
+      },
+      "text": "where (inComment) and !(`Matched with a sequence or block that is valid inside {{CommentMode}}`) -> "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 146
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 70,
+        "position": 2
+      },
+      "text": "where (inDocumentation) and !(`Matched with a sequence or block that is valid inside {{Documentation"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 148
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 101,
+        "position": 2
+      },
+      "text": "where (`Character does not match any rule`) -> `Raise an unexpected token error`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 161
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "const onToken = `Next \\n or \\r\\n or EOF is encountered after {{mode}} is created for {{@definition}}"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 165
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": ".add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 178
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 24,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 197
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "for (const key, token from Literal) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 201
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 52,
+        "position": 2
+      },
+      "text": "where ((inTemplate) or (inString))"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 213
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "where (`Characters match {{TemplateBlock.TB_EXECUTION_OPEN}} from [[TemplateBlock.TB_EXECUTION_OPEN]"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 214
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "where (`Characters match {{TemplateBlock.TB_EXECUTION_CLOSE}} from [[TemplateBlock.TB_EXECUTION_CLOS"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 215
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "where (`Characters match {{TemplateBlock.TB_REFERENCE_OPEN}} from [[TemplateBlock.TB_REFERENCE_OPEN]"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 216
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "where (`Characters match {{TemplateBlock.TB_REFERENCE_CLOSE}} from [[TemplateBlock.TB_REFERENCE_CLOS"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 224
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "where"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 235
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "for (const key, token from Sequence) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 243
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 58,
+        "position": 2
+      },
+      "text": "for(const key, token from Comment) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 250
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 64,
+        "position": 6
+      },
+      "text": "and !(key.includes('INLINE') ? inBlockComment : false)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 266
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 73,
+        "position": 2
+      },
+      "text": "for(const key, token from Keyword) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 272
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 78,
+        "position": 2
+      },
+      "text": "for(const key, token from Operator) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 282
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 83,
+        "position": 2
+      },
+      "text": "for(const key, token from Separator) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 288
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 88,
+        "position": 2
+      },
+      "text": "for(const key, token from Space) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 298
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 93,
+        "position": 2
+      },
+      "text": "where"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 315
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 21,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 325
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 22,
+        "position": 4
+      },
+      "text": ".add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects: [`[[LexerModeSt"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 361
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 376
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 40,
+        "position": 4
+      },
+      "text": "(`Lexing encounters a digit (0-9) followed by zero or more digits (0-9) or . or _ characters`)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 432
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 13,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[str]] is read as a UTF-8 string`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 452
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 14,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[str]] is tokenized by processing the string start to finish`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 461
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 15,
+        "position": 4
+      },
+      "text": ".add({ situation = `[[str]] is empty`, expect: [], })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 467
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 16,
+        "position": 4
+      },
+      "text": ".add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 474
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 17,
+        "position": 4
+      },
+      "text": ".add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to \"anonymous\"`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 480
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 503
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[str]] that this starts "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 514
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 20,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.position]] is set to the 0-indexed position in the line that this token s"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 525
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 21,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 537
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 22,
+        "position": 4
+      },
+      "text": ".add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects: [`[[LexerModeSt"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 545
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": ".add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 569
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 24,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 593
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 26,
+        "position": 6
+      },
+      "text": "behavior = `Applies context and [[LexerModeStack]] mode to determine which follow characters are all"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 634
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "for (const key, token from Literal) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 685
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "where (`Characters match {{TemplateBlock.TB_EXECUTION_OPEN}} from [[TemplateBlock.TB_EXECUTION_OPEN]"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 723
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "where"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 748
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "for (const key, token from Sequence) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 794
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 51,
+        "position": 2
+      },
+      "text": "where ((inTemplate) or (inString)) and !(`Matched with a sequence or block that is valid in this mod"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 805
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 52,
+        "position": 2
+      },
+      "text": "where ((inTemplate) or (inString))"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 813
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 58,
+        "position": 2
+      },
+      "text": "for(const key, token from Comment) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 884
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 69,
+        "position": 2
+      },
+      "text": "where (inComment) and !(`Matched with a sequence or block that is valid inside {{CommentMode}}`) -> "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 899
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 73,
+        "position": 2
+      },
+      "text": "for(const key, token from Keyword) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 926
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 78,
+        "position": 2
+      },
+      "text": "for(const key, token from Operator) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 957
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 83,
+        "position": 2
+      },
+      "text": "for(const key, token from Separator) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 979
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 88,
+        "position": 2
+      },
+      "text": "for(const key, token from Space) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 994
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 93,
+        "position": 2
+      },
+      "text": "where"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 1016
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 101,
+        "position": 2
+      },
+      "text": "where (`Character does not match any rule`) -> `Raise an unexpected token error`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "const inComment = `{{CommentMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "const inInlineComment = `{{CommentMode}} is the top mode on the [[LexerModeStack]] and {{CommentMode"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "const inBlockComment = `{{CommentMode}} is the top mode on the [[LexerModeStack]] and {{CommentMode}"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "const inDocumentation = `{{DocumentationMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "const inInlineDocumentation = `{{DocumentationMode}} is the top mode on the [[LexerModeStack]] and {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 13,
+        "position": 0
+      },
+      "text": "const inBlockDocumentation = `{{DocumentationMode}} is the top mode on the [[LexerModeStack]] and {{"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 15,
+        "position": 0
+      },
+      "text": "enum Comment {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "CM_BLOCK_OPEN is modeCreator(CommentMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 54
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 19,
+        "position": 2
+      },
+      "text": "CM_BLOCK_CLOSE is modeDestroyer(CommentMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 55
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "CM_INLINE_START is modeCreator(CommentMode), clearModeAtNewLine(CommentMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 56
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_OPEN is modeCreator(DocumentationMode), cantBeFollowedBy(['/'])"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 28,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_CLOSE is modeDestroyer(DocumentationMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 58
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "CM_DOC_INLINE_START is modeCreator(DocumentationMode), clearModeAtNewLine(DocumentationMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 65
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "CM_BLOCK_OPEN is modeCreator(CommentMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 69
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 19,
+        "position": 2
+      },
+      "text": "CM_BLOCK_CLOSE is modeDestroyer(CommentMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 71
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "CM_INLINE_START is modeCreator(CommentMode), clearModeAtNewLine(CommentMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 83
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_OPEN is modeCreator(DocumentationMode), cantBeFollowedBy(['/'])"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 84
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_OPEN is modeCreator(DocumentationMode), cantBeFollowedBy(['/'])"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 88
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 28,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_CLOSE is modeDestroyer(DocumentationMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 90
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "CM_DOC_INLINE_START is modeCreator(DocumentationMode), clearModeAtNewLine(DocumentationMode)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 116
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_OPEN is modeCreator(DocumentationMode), cantBeFollowedBy(['/'])"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 122
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 64,
+        "position": 6
+      },
+      "text": "and !(key.includes('INLINE') ? inBlockComment : false)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 132
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "const inComment = `{{CommentMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/comment.rs",
+        "line": 159
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 15,
+        "position": 0
+      },
+      "text": "enum Comment {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/identifier.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/lexer/tokens/identifier.lfy",
+        "line": 6,
+        "position": 2
+      },
+      "text": "where"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/identifier.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/lexer/tokens/identifier.lfy",
+        "line": 6,
+        "position": 2
+      },
+      "text": "where"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/identifier.rs",
+        "line": 46
+      },
+      "source": {
+        "file": "def/lexer/tokens/identifier.lfy",
+        "line": 7,
+        "position": 4
+      },
+      "text": "(`Lexing encounters an Unicode XID_Start or _ character followed by any number of Unicode XID_Contin"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "enum Keyword {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 6,
+        "position": 2
+      },
+      "text": "KW_AGENT_DATA: `Agentically defined data structure` = `d`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 7,
+        "position": 2
+      },
+      "text": "KW_AGENT_FN: `Agentically defined function` = `fn`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 12
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 8,
+        "position": 2
+      },
+      "text": "KW_ALIAS: `Alias for identifier` = `alias`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 9,
+        "position": 2
+      },
+      "text": "KW_AND: `Combine conditions in contexts like the \"where\" syntax sugar keyword` = `and`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 10,
+        "position": 2
+      },
+      "text": "KW_AS: `Casting or aliasing` = `as`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "KW_ASYNC: `Indicating an asynchronous block wrapped in a Promise` = `async`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 16
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 12,
+        "position": 2
+      },
+      "text": "KW_AWAIT: `Awaiting the completion of a Promise` = `await`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "KW_BREAK: `Breaking out of loops` = `break`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "KW_COMPILE_TIME_EXECUTION: `Marking a statement or block to be executed at compile time` = `ace`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 15,
+        "position": 2
+      },
+      "text": "KW_CONST: `Defining constant variables` = `const`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "KW_CONTINUE: `Completing the block, but not breaking out of it` = `continue`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 17,
+        "position": 2
+      },
+      "text": "KW_DEFAULT: `The default action, value, or block` = `default`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "KW_ELSE: `An else statement or block` = `else`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 19,
+        "position": 2
+      },
+      "text": "KW_ENUM: `Defining a variable with enumerated keys and values` = `enum`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 20,
+        "position": 2
+      },
+      "text": "KW_EXTERNAL: `Referencing something external to the code` = `external`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 21,
+        "position": 2
+      },
+      "text": "KW_FOR: `A loop over iterators when combined with from, of, and in keywords` = `for`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "KW_FROM: `Referencing a type, variable, or data structures' keys and values` = `from`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 23,
+        "position": 2
+      },
+      "text": "KW_FUNCTION: `An explicitly defined function` = `function`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 28
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 24,
+        "position": 2
+      },
+      "text": "KW_IF: `An if conditional block or statement` = `if`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "KW_IN: `Referencing a type, variable, or data structures' values` = `in`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 26,
+        "position": 2
+      },
+      "text": "KW_LET: `Defining a mutable variable` = `let`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 27,
+        "position": 2
+      },
+      "text": "KW_LOOP: `A basic loop that runs until it encounters a break` = `loop`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 28,
+        "position": 2
+      },
+      "text": "KW_MATCH: `A match expression or block that branches based on condition statements` = `match`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 29,
+        "position": 2
+      },
+      "text": "KW_MATCHALL: `A matchall expression or block that applies the results of all condition statements th"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "KW_OF: `Referencing a type, variable, or data structures' keys` = `of`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "KW_OR: `Branch conditions in contexts like the \"where\" syntax sugar keyword` = `or`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 36
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "KW_RETURN: `Return expression that ends execution of a function and returns a value or set of values"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 37
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "KW_TRAIT: `Group of shared definitions, properties, configuration, and other information that can be"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "KW_TYPE: `Defining a type map` = `type`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "KW_USE: `Add the scoped contents of a file, folder, or library to the current scope` = `use`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 40
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "KW_WHILE: `A while loop` = `while`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "KW_WHERE: `Syntax sugar for @acceptanceCriteria.add` = `where`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 43
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_BOOLEAN: `Primitive boolean type` = `boolean`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 40,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_BOOLEAN_FALSE: `Primitive boolean value false` = `false`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 45
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 41,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_BOOLEAN_TRUE: `Primitive boolean value true` = `true`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 46
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 42,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_NULL: `Primitive null` = `null`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 43,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_NUMBER: `Primitive number type` = `number`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 48
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 44,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_OBJECT: `Primitive object type` = `object`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 49
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 45,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_STRING: `Primitive string type` = `string`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 50
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 46,
+        "position": 2
+      },
+      "text": "KW_PRIMITIVE_UNDEFINED: `Primitive undefined` = `undefined`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 52
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 48,
+        "position": 2
+      },
+      "text": "KW_ABSTRACT: `Reserved for future use` = `abstract`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 49,
+        "position": 2
+      },
+      "text": "KW_CASE: `Reserved for future use` = `case`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 54
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 50,
+        "position": 2
+      },
+      "text": "KW_CLASS: `Reserved for future use` = `class`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 55
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 51,
+        "position": 2
+      },
+      "text": "KW_IMPL: `Reserved for future use` = `impl`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 56
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 52,
+        "position": 2
+      },
+      "text": "KW_INTERFACE: `Reserved for future use` = `interface`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 53,
+        "position": 2
+      },
+      "text": "KW_NEW: `Reserved for future use` = `new`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 58
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 54,
+        "position": 2
+      },
+      "text": "KW_PRIVATE: `Reserved for future use` = `private`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 55,
+        "position": 2
+      },
+      "text": "KW_PUBLIC: `Reserved for future use` = `public`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 60
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 56,
+        "position": 2
+      },
+      "text": "KW_SELF: `Reserved for future use` = `self`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 61
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 57,
+        "position": 2
+      },
+      "text": "KW_STATIC: `Reserved for future use` = `static`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 62
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 58,
+        "position": 2
+      },
+      "text": "KW_SUPER: `Reserved for future use` = `super`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 63
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 59,
+        "position": 2
+      },
+      "text": "KW_SWITCH: `Reserved for future use` = `switch`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 64
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 60,
+        "position": 2
+      },
+      "text": "KW_THEN: `Reserved for future use` = `then`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 65
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 61,
+        "position": 2
+      },
+      "text": "KW_TYPEOF: `Reserved for future use` = `typeof`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 66
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 62,
+        "position": 2
+      },
+      "text": "KW_WITH: `Reserved for future use` = `with`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 67
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 63,
+        "position": 2
+      },
+      "text": "KW_YIELD: `Reserved for future use` = `yield`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/keyword.rs",
+        "line": 75
+      },
+      "source": {
+        "file": "def/lexer/tokens/keyword.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "enum Keyword {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "const inString = `{{StringLiteralMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "const inTemplate = `{{TemplateLiteralMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "const inTemplateReference = `{{TemplateReferenceMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "const inTemplateExecution = `{{TemplateExecutionMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "LT_STRING_SINGLE_BOUNDARY is modeBoundary(StringLiteralMode, `Top of [[LexerModeStack]] is not {{Tem"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 50
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "LT_STRING_TEMPLATE_BOUNDARY is modeBoundary(TemplateLiteralMode, `Top of [[LexerModeStack]] is not {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 13,
+        "position": 0
+      },
+      "text": "enum Literal {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "LT_STRING_SINGLE_BOUNDARY is modeBoundary(StringLiteralMode, `Top of [[LexerModeStack]] is not {{Tem"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 60
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 15,
+        "position": 2
+      },
+      "text": "LT_STRING_DOUBLE_BOUNDARY is modeBoundary(StringLiteralMode, `Top of [[LexerModeStack]] is not {{Tem"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 61
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "LT_STRING_TEMPLATE_BOUNDARY is modeBoundary(TemplateLiteralMode, `Top of [[LexerModeStack]] is not {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 66
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "LT_STRING_SINGLE_BOUNDARY is modeBoundary(StringLiteralMode, `Top of [[LexerModeStack]] is not {{Tem"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 71
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "LT_STRING_TEMPLATE_BOUNDARY is modeBoundary(TemplateLiteralMode, `Top of [[LexerModeStack]] is not {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 88
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "enum TemplateBlock {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 90
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 20,
+        "position": 2
+      },
+      "text": "TB_EXECUTION_OPEN is modeCreator(TemplateExecutionMode, inTemplate): `an open token for an execution"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 91
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 21,
+        "position": 2
+      },
+      "text": "TB_EXECUTION_CLOSE is modeDestroyer(TemplateExecutionMode): `a close token for an execution block wi"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 92
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "TB_REFERENCE_OPEN is modeCreator(TemplateReferenceMode, inTemplate): `an open token for a reference "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 93
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 23,
+        "position": 2
+      },
+      "text": "TB_REFERENCE_CLOSE is modeDestroyer(TemplateReferenceMode): `a close token for a reference within a "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 100
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 20,
+        "position": 2
+      },
+      "text": "TB_EXECUTION_OPEN is modeCreator(TemplateExecutionMode, inTemplate): `an open token for an execution"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 104
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 21,
+        "position": 2
+      },
+      "text": "TB_EXECUTION_CLOSE is modeDestroyer(TemplateExecutionMode): `a close token for an execution block wi"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 108
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "TB_REFERENCE_OPEN is modeCreator(TemplateReferenceMode, inTemplate): `an open token for a reference "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 112
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 23,
+        "position": 2
+      },
+      "text": "TB_REFERENCE_CLOSE is modeDestroyer(TemplateReferenceMode): `a close token for a reference within a "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 129
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 26,
+        "position": 0
+      },
+      "text": "enum Sequence {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 131
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 27,
+        "position": 2
+      },
+      "text": "SQ_BACKSLASH: `literal backslash character` = `\\\\\\\\`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 132
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 28,
+        "position": 2
+      },
+      "text": "SQ_CARRIAGE_RETURN: `literal carriage return character` = `\\\\r`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 133
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 29,
+        "position": 2
+      },
+      "text": "SQ_CONTINUATION_NEWLINE: `sequence to continue string through a newline character` = `\\\\\\n`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 134
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "SQ_CONTINUATION_CRLF: `sequence to continue a string through a newline` = `\\\\\\r\\n`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 135
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "SQ_ENCODING_START: `character code encoding marker that is followed by exactly two hex digits for th"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 136
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "SQ_UNICODE_ENCODING_START: `character code encoding marker that is followed by either four (with an "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 137
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_EXECUTION_START: `literal opening execution curly braces to escape an execution start sequ"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 138
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_EXECUTION_END: `literal closing execution curly braces to escape an execution end sequence"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 139
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_REFERENCE_START: `literal opening reference brackets to escape a reference start sequence`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 140
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_REFERENCE_END: `literal closing reference brackets to escape a reference end sequence` = `"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 141
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "SQ_NEWLINE: `literal newline character` = `\\\\n`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 142
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 38,
+        "position": 2
+      },
+      "text": "SQ_NULL: `literal null character` = `\\\\0`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 143
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "SQ_TAB: `literal tab character` = `\\\\t`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 145
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 41,
+        "position": 2
+      },
+      "text": "SQ_SINGLE_QUOTE: `literal single quote character` = `\\\\'`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 146
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 42,
+        "position": 2
+      },
+      "text": "SQ_DOUBLE_QUOTE: `literal double quote character` = `\\\\\"`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 147
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 43,
+        "position": 2
+      },
+      "text": "SQ_BACKTICK: `literal backtick character` = \"\\\\`\","
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 169
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 27,
+        "position": 2
+      },
+      "text": "SQ_BACKSLASH: `literal backslash character` = `\\\\\\\\`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 170
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 28,
+        "position": 2
+      },
+      "text": "SQ_CARRIAGE_RETURN: `literal carriage return character` = `\\\\r`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 171
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 29,
+        "position": 2
+      },
+      "text": "SQ_CONTINUATION_NEWLINE: `sequence to continue string through a newline character` = `\\\\\\n`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 172
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "SQ_ENCODING_START: `character code encoding marker that is followed by exactly two hex digits for th"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 182
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "SQ_UNICODE_ENCODING_START: `character code encoding marker that is followed by either four (with an "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 191
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar va"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 195
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_EXECUTION_START: `literal opening execution curly braces to escape an execution start sequ"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 196
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_EXECUTION_END: `literal closing execution curly braces to escape an execution end sequence"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 197
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_REFERENCE_START: `literal opening reference brackets to escape a reference start sequence`"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 198
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "SQ_ESCAPE_REFERENCE_END: `literal closing reference brackets to escape a reference end sequence` = `"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 199
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "SQ_NEWLINE: `literal newline character` = `\\\\n`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 200
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 38,
+        "position": 2
+      },
+      "text": "SQ_NULL: `literal null character` = `\\\\0`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 201
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "SQ_TAB: `literal tab character` = `\\\\t`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 202
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 41,
+        "position": 2
+      },
+      "text": "SQ_SINGLE_QUOTE: `literal single quote character` = `\\\\'`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 203
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 42,
+        "position": 2
+      },
+      "text": "SQ_DOUBLE_QUOTE: `literal double quote character` = `\\\\\"`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 204
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 43,
+        "position": 2
+      },
+      "text": "SQ_BACKTICK: `literal backtick character` = \"\\\\`\","
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 212
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "for (const key, token from Sequence) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 235
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 250
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "const inString = `{{StringLiteralMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 277
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 26,
+        "position": 0
+      },
+      "text": "enum Sequence {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 308
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "SQ_ENCODING_START: `character code encoding marker that is followed by exactly two hex digits for th"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 323
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "SQ_UNICODE_ENCODING_START: `character code encoding marker that is followed by either four (with an "
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/literal.rs",
+        "line": 353
+      },
+      "source": {
+        "file": "def/lexer/tokens/literal.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar va"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 1,
+        "position": 0
+      },
+      "text": "enum Operator {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 2,
+        "position": 2
+      },
+      "text": "OP_ACCESSOR_VALUE: `` = `.`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 3,
+        "position": 2
+      },
+      "text": "OP_ACCESSOR_CONTEXT: `` = `@`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 12
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 4,
+        "position": 2
+      },
+      "text": "OP_ACCESSOR_SCOPE: `` = `$`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 6,
+        "position": 2
+      },
+      "text": "OP_ARROW_SINGLE_LEFT: `Single arrow left` = `<-`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 7,
+        "position": 2
+      },
+      "text": "OP_ARROW_SINGLE_LEFT_SINGLE_CHAR: `Single arrow left single character` = `←`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 16
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 8,
+        "position": 2
+      },
+      "text": "OP_ARROW_SINGLE_RIGHT: `Single arrow right` = `->`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 9,
+        "position": 2
+      },
+      "text": "OP_ARROW_SINGLE_RIGHT_SINGLE_CHAR: `Single arrow right single character` = `→`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 10,
+        "position": 2
+      },
+      "text": "OP_ARROW_DOUBLE_RIGHT: `Double arrow right` = `=>`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "OP_BITWISE_AND: `Bitwise AND` = `&`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 12,
+        "position": 2
+      },
+      "text": "OP_BITWISE_OR: `Bitwise OR` = `|`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "OP_BITWISE_NOT: `Bitwise NOT` = `~`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "OP_BITWISE_XOR is cantBeFollowedBy([`a non-numeric character`]): `Bitwise XOR (when followed by a nu"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 15,
+        "position": 2
+      },
+      "text": "OP_COALESCENCE_NULL: `Null coalescence` = `??`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "OP_DEFINITION: `Definition` = `:`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 17,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_LESS_THAN: `Less than` = `<`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_LESS_THAN_OR_EQUAL: `Less than or equal to` = `<=`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 19,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_GREATER_THAN: `Greater than` = `>`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 28
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 20,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_GREATER_THAN_OR_EQUAL: `Greater than or equal to` = `>=`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 21,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_STRICT: `Equality (Are these two values equal, no auto-casting)` = `==`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_UNEQUAL: `Inequality` = `!=`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 23,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_REFERENCE: `Reference equality (do these refer to the same point in memory)` = `&=`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 24,
+        "position": 2
+      },
+      "text": "OP_EQUALITY_WITH_CASTING: `About equal (equality + auto-casting)` = `~=`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "OP_LOGICAL_NOT: `Logical Not` = `!`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 26,
+        "position": 2
+      },
+      "text": "OP_LOGICAL_ADD: `And` = `&&`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 27,
+        "position": 2
+      },
+      "text": "OP_LOGICAL_OR: `Or` = `||`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 36
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 28,
+        "position": 2
+      },
+      "text": "OP_QUESTION_MARK: `optional (chaining, type, etc.) or Inline conditional` = `?`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 37
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 29,
+        "position": 2
+      },
+      "text": "OP_REF_LAST: `Previous statement reference` = `^^`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "OP_REF_DEFINE_LAST: `Apply a definition to the previous statement` = `^^:`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "OP_SETTER: `Setter` = `=`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 40
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "OP_SETTER_BOOLEAN_TOGGLE: `For boolean, set variable to NOT value` = `=!`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "OP_SETTER_ADDITIVE: `Add or append and re-set variable` = `=+`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 42
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "OP_SETTER_INCREMENT: `Add 1 to a numeric value and re-set variable` = `=++`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 43
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "OP_SETTER_SUBTRACTIVE: `Subtract and re-set variable` = `=-`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "OP_SETTER_DECREMENT: `Subtract 1 fom a numeric value and re-set variable` = `=--`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 45
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "OP_SETTER_MULTIPLICATIVE: `Multiply and re-set variable` = `=*`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 46
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 38,
+        "position": 2
+      },
+      "text": "OP_SETTER_POWER: `To power of and re-set variable` = `=**`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "OP_SETTER_BITWISE_AND: `Bitwise AND and re-set variable` = `=&`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 48
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 40,
+        "position": 2
+      },
+      "text": "OP_SETTER_BITWISSE_OR: `Bitwise OR and re-set variable` = `=|`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 49
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 41,
+        "position": 2
+      },
+      "text": "OP_SETTER_COALESCENCE_NULL: `Set if undefined` = `=??`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 50
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 42,
+        "position": 2
+      },
+      "text": "OP_SETTER_COALESCENCE_FALSEY: `Set if falsey` = `=||`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 43,
+        "position": 2
+      },
+      "text": "OP_SETTER_COALESCENCE_TRUTHY: `Set if truthy` = `=&&`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 45,
+        "position": 2
+      },
+      "text": "OP_ADD: `Addition, concatenation` = `+`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 54
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 46,
+        "position": 2
+      },
+      "text": "OP_SUBTRACT: `Subtraction` = `-`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 55
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "OP_MULTIPLY: `Multiplication` = `*`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 56
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 48,
+        "position": 2
+      },
+      "text": "OP_POWER: `Power` = `**`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 49,
+        "position": 2
+      },
+      "text": "OP_MODULUS: `Modulus` = `%`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 58
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 50,
+        "position": 2
+      },
+      "text": "OP_DIVIDE: `Division` = `/`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 51,
+        "position": 2
+      },
+      "text": "OP_SPREAD: `Spread` = `...`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 64
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "OP_BITWISE_XOR is cantBeFollowedBy([`a non-numeric character`]): `Bitwise XOR (when followed by a nu"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 71
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "OP_BITWISE_XOR is cantBeFollowedBy([`a non-numeric character`]): `Bitwise XOR (when followed by a nu"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 81
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 1,
+        "position": 0
+      },
+      "text": "enum Operator {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/operator.rs",
+        "line": 90
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "OP_BITWISE_XOR is cantBeFollowedBy([`a non-numeric character`]): `Bitwise XOR (when followed by a nu"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 7,
+        "position": 0
+      },
+      "text": "const inList = `{{ListMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "const inBlock = `{{BlockMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "const inGroup = `{{GroupMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "enum Separator {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 12,
+        "position": 2
+      },
+      "text": "SR_BLOCK_OPEN is modeCreator(BlockMode): `an open token for a block` = `{`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "SR_BLOCK_CLOSE is modeDestroyer(BlockMode): `a close token for a block` = `}`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "SR_GROUP_OPEN is modeCreator(GroupMode): `an open token for a group` = `(`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 15,
+        "position": 2
+      },
+      "text": "SR_GROUP_CLOSE is modeDestroyer(GroupMode): `a close token for a group` = `)`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "SR_LIST_OPEN is modeCreator(ListMode): `an open token for a list` = `[`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 17,
+        "position": 2
+      },
+      "text": "SR_LIST_CONTINUE: `continue character for next item or statement in list` = `,`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "SR_LIST_CLOSE is modeDestroyer(ListMode): `a close token for a list` = `]`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 36
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 19,
+        "position": 2
+      },
+      "text": "SR_STATEMENT_END: `end character for statements` = `;`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 43
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 12,
+        "position": 2
+      },
+      "text": "SR_BLOCK_OPEN is modeCreator(BlockMode): `an open token for a block` = `{`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "SR_BLOCK_CLOSE is modeDestroyer(BlockMode): `a close token for a block` = `}`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "SR_GROUP_OPEN is modeCreator(GroupMode): `an open token for a group` = `(`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 55
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 15,
+        "position": 2
+      },
+      "text": "SR_GROUP_CLOSE is modeDestroyer(GroupMode): `a close token for a group` = `)`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "SR_LIST_OPEN is modeCreator(ListMode): `an open token for a list` = `[`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 63
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "SR_LIST_CLOSE is modeDestroyer(ListMode): `a close token for a list` = `]`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 85
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 7,
+        "position": 0
+      },
+      "text": "const inList = `{{ListMode}} is the top mode on the [[LexerModeStack]]`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/separator.rs",
+        "line": 98
+      },
+      "source": {
+        "file": "def/lexer/tokens/separator.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "enum Separator {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "trait modeCreator(mode: string, condition?: string) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "trait modeDestroyer(mode: string, condition?: string) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "trait modeBoundary(mode: string, condition?: string) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 31,
+        "position": 0
+      },
+      "text": "trait clearModeAtNewLine(mode: string) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/lexer/tokens/comment.lfy",
+        "line": 25,
+        "position": 2
+      },
+      "text": "CM_DOC_BLOCK_OPEN is modeCreator(DocumentationMode), cantBeFollowedBy(['/'])"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/lexer/tokens/operator.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "OP_BITWISE_XOR is cantBeFollowedBy([`a non-numeric character`]): `Bitwise XOR (when followed by a nu"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 6,
+        "position": 4
+      },
+      "text": "where (onToken) and (`{{mode}} mode is allowed to be created`) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 14,
+        "position": 4
+      },
+      "text": "where (onToken) and (`Top of mode stack is {{mode}}`) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 65
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 24,
+        "position": 4
+      },
+      "text": "where (onToken) and !(inMode) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 67
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 21,
+        "position": 2
+      },
+      "text": "const inMode = `Top of [[LexerModeStack]] stack is {{mode}}`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 68
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 22,
+        "position": 2
+      },
+      "text": "const matchesOpen = `Top of [[LexerModeStack]] stack was created from the same boundary token with {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 72
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 26,
+        "position": 4
+      },
+      "text": "where (onToken) and (inMode) and (matchesOpen)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 84
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "const onToken = `Next \\n or \\r\\n or EOF is encountered after {{mode}} is created for {{@definition}}"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 92
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 34,
+        "position": 4
+      },
+      "text": "where (onToken) and (`Top of mode stack is {{mode}}`)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 104
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 41,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate token for lexer from [[@]]`) -> `Is not considered a match if fol"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 125
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 6,
+        "position": 4
+      },
+      "text": "where (onToken) and (`{{mode}} mode is allowed to be created`) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 155
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 14,
+        "position": 4
+      },
+      "text": "where (onToken) and (`Top of mode stack is {{mode}}`) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 169
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 24,
+        "position": 4
+      },
+      "text": "where (onToken) and !(inMode) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 183
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 24,
+        "position": 4
+      },
+      "text": "where (onToken) and !(inMode) and (condition ?? true)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 199
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 34,
+        "position": 4
+      },
+      "text": "where (onToken) and (`Top of mode stack is {{mode}}`)"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/traits.rs",
+        "line": 219
+      },
+      "source": {
+        "file": "def/lexer/tokens/traits.lfy",
+        "line": 41,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate token for lexer from [[@]]`) -> `Is not considered a match if fol"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 7
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 1,
+        "position": 0
+      },
+      "text": "enum Space {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 2,
+        "position": 2
+      },
+      "text": "SP_SPACE = ` `,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 3,
+        "position": 2
+      },
+      "text": "SP_NEWLINE = `\\n`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 4,
+        "position": 2
+      },
+      "text": "SP_CARRIAGE_RETURN = `\\r`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 12
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 5,
+        "position": 2
+      },
+      "text": "SP_TAB_HORIZONTAL = `\\t`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 6,
+        "position": 2
+      },
+      "text": "SP_TAB_VERTICAL = `\\u000B`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 7,
+        "position": 2
+      },
+      "text": "SP_FORM_FEED = `\\u000C`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 8,
+        "position": 2
+      },
+      "text": "SP_NEXT_LINE = `\\u0085`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 16
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 9,
+        "position": 2
+      },
+      "text": "SP_MARK_LEFT_TO_RIGHT = `\\u200E`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 10,
+        "position": 2
+      },
+      "text": "SP_MARK_RIGHT_TO_LEFT = `\\u200F`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "SP_LINE_SEPARATOR = `\\u2028`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 12,
+        "position": 2
+      },
+      "text": "SP_PARAGRAPH_SEPARATOR = `\\u2029`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 28
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 88,
+        "position": 2
+      },
+      "text": "for(const key, token from Space) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 50
+      },
+      "source": {
+        "file": "def/lexer/tokens/whitespace.lfy",
+        "line": 1,
+        "position": 0
+      },
+      "text": "enum Space {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/tokens/whitespace.rs",
+        "line": 63
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+    },
+    {
+      "generated": {
+        "file": "src/lib.rs",
+        "line": 5
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "fn lexString(str: string, file?: string): `Turn a given string into a set of lexigraphical tokens` ="
+    }
+  ]
+}

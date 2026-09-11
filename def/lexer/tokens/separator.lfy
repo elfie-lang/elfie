@@ -1,0 +1,20 @@
+use "./traits";
+
+const ListMode = `mode::list`;
+const BlockMode = `mode::block`;
+const GroupMode = `mode::group`;
+
+const inList = `{{ListMode}} is the top mode on the [[LexerModeStack]]`;
+const inBlock = `{{BlockMode}} is the top mode on the [[LexerModeStack]]`;
+const inGroup = `{{GroupMode}} is the top mode on the [[LexerModeStack]]`;
+
+enum Separator {
+  SR_BLOCK_OPEN is modeCreator(BlockMode): `an open token for a block` = `{`,
+  SR_BLOCK_CLOSE is modeDestroyer(BlockMode): `a close token for a block` = `}`,
+  SR_GROUP_OPEN is modeCreator(GroupMode): `an open token for a group` = `(`,
+  SR_GROUP_CLOSE is modeDestroyer(GroupMode): `a close token for a group` = `)`,
+  SR_LIST_OPEN is modeCreator(ListMode): `an open token for a list` = `[`,
+  SR_LIST_CONTINUE: `continue character for next item or statement in list` = `,`,
+  SR_LIST_CLOSE is modeDestroyer(ListMode): `a close token for a list` = `]`,
+  SR_STATEMENT_END: `end character for statements` = `;`,
+}

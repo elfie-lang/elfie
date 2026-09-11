@@ -1,0 +1,13 @@
+enum Space {
+  SP_SPACE = ` `,
+  SP_NEWLINE = `\n`,
+  SP_CARRIAGE_RETURN = `\r`,
+  SP_TAB_HORIZONTAL = `\t`,
+  SP_TAB_VERTICAL = `\u000B`,
+  SP_FORM_FEED = `\u000C`,
+  SP_NEXT_LINE = `\u0085`,
+  SP_MARK_LEFT_TO_RIGHT = `\u200E`,
+  SP_MARK_RIGHT_TO_LEFT = `\u200F`,
+  SP_LINE_SEPARATOR = `\u2028`,
+  SP_PARAGRAPH_SEPARATOR = `\u2029`,
+}

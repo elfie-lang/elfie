@@ -1,0 +1,48 @@
+use "../data";
+
+const StringLiteralMode = `mode::literal::string`;
+const TemplateLiteralMode = `mode::literal::template`;
+const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[LexerModeStack]] mode stack` = `mode::template::reference`;
+const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[LexerModeStack]] mode stack` = `mode::template::execution`;
+
+const inString = `{{StringLiteralMode}} is the top mode on the [[LexerModeStack]]`;
+const inTemplate = `{{TemplateLiteralMode}} is the top mode on the [[LexerModeStack]]`;
+const inTemplateReference = `{{TemplateReferenceMode}} is the top mode on the [[LexerModeStack]]`;
+const inTemplateExecution = `{{TemplateExecutionMode}} is the top mode on the [[LexerModeStack]]`;
+
+enum Literal {
+  LT_STRING_SINGLE_BOUNDARY is modeBoundary(StringLiteralMode, `Top of [[LexerModeStack]] is not {{TemplateLiteralMode}}`): `a boundary character for a string` = `'`,
+  LT_STRING_DOUBLE_BOUNDARY is modeBoundary(StringLiteralMode, `Top of [[LexerModeStack]] is not {{TemplateLiteralMode}}`): `a boundary character for a string` = `"`,
+  LT_STRING_TEMPLATE_BOUNDARY is modeBoundary(TemplateLiteralMode, `Top of [[LexerModeStack]] is not {{StringLiteralMode}}`): `a boundary character for a template string` = '`',
+}
+
+enum TemplateBlock {
+  TB_EXECUTION_OPEN is modeCreator(TemplateExecutionMode, inTemplate): `an open token for an execution block within a template literal` = `\{{`,
+  TB_EXECUTION_CLOSE is modeDestroyer(TemplateExecutionMode): `a close token for an execution block within a template literal` = `\}}`,
+  TB_REFERENCE_OPEN is modeCreator(TemplateReferenceMode, inTemplate): `an open token for a reference within a template literal` = `\[[`,
+  TB_REFERENCE_CLOSE is modeDestroyer(TemplateReferenceMode): `a close token for a reference within a template literal` = `\]]`,
+}
+
+enum Sequence {
+  SQ_BACKSLASH: `literal backslash character` = `\\\\`,
+  SQ_CARRIAGE_RETURN: `literal carriage return character` = `\\r`,
+  SQ_CONTINUATION_NEWLINE: `sequence to continue string through a newline character` = `\\\n`,
+  SQ_CONTINUATION_CRLF: `sequence to continue a string through a newline` = `\\\r\n`,
+  SQ_ENCODING_START: `character code encoding marker that is followed by exactly two hex digits for the character code to insert; For all purposes, the two hex digits are considered a part of the sequence` = `\\x`,
+  SQ_UNICODE_ENCODING_START: `character code encoding marker that is followed by either four (with an assumed leading 00) or six hex digits for the 24-bit unicode character code to insert; For all purposes, the hex digits are considered a part of the sequence` = `\\u`,
+  SQ_ESCAPE_EXECUTION_START: `literal opening execution curly braces to escape an execution start sequence` = `\\\{{`,
+  SQ_ESCAPE_EXECUTION_END: `literal closing execution curly braces to escape an execution end sequence` = `\\\}}`,
+  SQ_ESCAPE_REFERENCE_START: `literal opening reference brackets to escape a reference start sequence` = `\\\[[`,
+  SQ_ESCAPE_REFERENCE_END: `literal closing reference brackets to escape a reference end sequence` = `\\\]]`,
+  SQ_NEWLINE: `literal newline character` = `\\n`,
+  SQ_NULL: `literal null character` = `\\0`,
+  SQ_TAB: `literal tab character` = `\\t`,
+
+  SQ_SINGLE_QUOTE: `literal single quote character` = `\\'`,
+  SQ_DOUBLE_QUOTE: `literal double quote character` = `\\"`,
+  SQ_BACKTICK: `literal backtick character` = "\\`",
+}
+
+with Sequence.SQ_UNICODE_ENCODING_START {
+  where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar values`) -> `Text is treated as literal and is not encoded as a sequence`;
+}

@@ -1,0 +1,20 @@
+d LexerModeStack: `Stack of the current mode the lexer should be in based on tokens` {
+  @acceptanceCriteria
+    .add({ situation: `Entering lexing mode`, behavior: `Pushes the mode to the top of the stack`, })
+    .add({ situation: `Exiting lexing mode that is at the top of the stack`, behavior: `Pops a single mode from the top of the stack`, })
+    .add({ situation: `Exiting lexing mode that is not at the top of the stack`, behavior: `Throws an error indicating invalid mode pop`, })
+    .add({ situation: `Lexing any token requires knowledge about the mode or context the lexer is in`, behavior: `The stack contains information needed to be able to successfully lex the token` });
+};
+
+d Token: `Representation of a lexed token` {
+  $value: `Normalized and processed token value as derived from the raw source text` = string;
+  $raw: `Raw source text content that created this token` = string;
+  @acceptanceCriteria
+    .add({
+      behavior = `Keeps track of a token's source file, line number, and position in the line`
+    })
+    .add({
+      situation = `Is a space token`,
+      behavior = `Used to separate tokens and contains no other semantic significance`
+    });
+}
