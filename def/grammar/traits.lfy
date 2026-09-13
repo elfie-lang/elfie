@@ -1,0 +1,3 @@
+use "./tokens/traits" as tokenTraits;
+
+alias ebnfSyntax = tokenTraits.ebnfSyntax;

@@ -1,4 +1,4 @@
-use "../data";
+use "./data";
 
 trait modeCreator(mode: string, condition?: string) {
   const onToken = `New token is created for {{@definition}}`;
@@ -19,7 +19,7 @@ trait modeDestroyer(mode: string, condition?: string) {
 trait modeBoundary(mode: string, condition?: string) {
   const onToken = `New boundary token is created for {{@definition}}`;
   const inMode = `Top of [[LexerModeStack]] stack is {{mode}}`;
-  const matchesOpen = `Top of [[LexerModeStack]] stack was created from the same boundary token with {{.}}`
+  const matchesOpen = `Top of [[LexerModeStack]] stack was created from the same boundary token with {{.}}`;
   with LexerModeStack {
     where (onToken) and !(inMode) and (condition ?? true)
       -> `Push {{mode}} to top of the mode stack`;
@@ -33,11 +33,5 @@ trait clearModeAtNewLine(mode: string) {
   with LexerModeStack {
     where (onToken) and (`Top of mode stack is {{mode}}`)
       -> `Pop the {{mode}} from the top of the stack`;
-  }
-}
-
-trait cantBeFollowedBy(forbidden: string[]) {
-  for(const str in forbidden) {
-    where (`Token {{.}} is a candidate token for lexer from [[@]]`) -> `Is not considered a match if followed by {{str}}`;
   }
 }

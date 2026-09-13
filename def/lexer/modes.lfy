@@ -1,0 +1,74 @@
+use "../grammar/tokens/comment";
+use "../grammar/tokens/literal";
+use "../grammar/tokens/separator";
+use "./data";
+use "./traits";
+
+// Modes
+
+alias CommentMode = `mode::comment`;
+alias DocumentationMode = `mode::documentation`;
+
+const StringLiteralMode = `mode::literal::string`;
+const TemplateLiteralMode = `mode::literal::template`;
+const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} or {{DocumentationMode}} are at the top of the [[LexerModeStack]] mode stack` = `mode::template::reference`;
+const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[LexerModeStack]] mode stack` = `mode::template::execution`;
+
+const ListMode = `mode::list`;
+const BlockMode = `mode::block`;
+const GroupMode = `mode::group`;
+
+// Mode Matchers
+
+const inModes = (...modes: string[]) => `{{modes.join(' or ')}} is the top mode on the [[LexerModeStack]]`;
+const notInModes = (...modes: string[]) => `Top mode on the [[LexerModeStack]] is not {{modes.join(' or ')}}`;
+
+const inComment = inModes(CommentMode);
+const inInlineComment = `{{inModes(CommentMode)}} and {{CommentMode}} was pushed onto the stack when an inline comment token was created`;
+const inBlockComment = `{{inModes(CommentMode)}} and {{CommentMode}} was pushed onto the stack when a block comment start token was created`;
+const inDocumentation = inModes(DocumentationMode);
+const inInlineDocumentation = `{{inModes(DocumentationMode)}} and {{DocumentationMode}} was pushed onto the stack when an inline documentation token was created`;
+const inBlockDocumentation = `{{inModes(DocumentationMode)}} and {{DocumentationMode}} was pushed onto the stack when a block documentation start token was created`;
+
+const inString = inModes(StringLiteralMode);
+const inSingleQuoteString = `{{inModes(StringLiteralMode)}} and {{StringLiteralMode}} was pushed onto the stack when a [[SingleQuoteBoundary]] token was created`;
+const inDoubleQuoteString = `{{inModes(StringLiteralMode)}} and {{StringLiteralMode}} was pushed onto the stack when a [[DoubleQuoteBoundary]] token was created`;
+const inTemplate = inModes(TemplateLiteralMode);
+const inTemplateReference = inModes(TemplateReferenceMode);
+const inTemplateExecution = inModes(TemplateExecutionMode);
+
+const inList = `{{ListMode}} is the top mode on the [[LexerModeStack]]`;
+const inBlock = `{{BlockMode}} is the top mode on the [[LexerModeStack]]`;
+const inGroup = `{{GroupMode}} is the top mode on the [[LexerModeStack]]`;
+
+const inContentBodyMode: `In a mode where the default is that all text counts as content body` = inModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`);
+const notInContentBodyMode: `Not in a mode where the default is that all text counts as content body` = notInModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`);
+
+// Mode Logic
+modeCreator.apply(CommentBlockOpen, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
+modeCreator.apply(CommentInlineStart, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
+modeDestroyer.apply(CommentBlockClose, CommentMode);
+clearModeAtNewLine.apply(CommentInlineStart, CommentMode);
+
+modeCreator.apply(DocumentationBlockOpen, DocumentationMode, notInModes(`[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
+modeCreator.apply(DocumentationInlineStart, DocumentationMode, notInModes(`[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
+modeDestroyer.apply(DocumentationBlockClose, DocumentationMode);
+clearModeAtNewLine.apply(DocumentationInlineStart, DocumentationMode);
+
+modeBoundary.apply(SingleQuoteBoundary, StringLiteralMode, notInModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[TemplateLiteralMode]]`));
+modeBoundary.apply(DoubleQuoteBoundary, StringLiteralMode, notInModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[TemplateLiteralMode]]`));
+// Bail out of single quote literal and let parser throw error in cases of no closing string boundary
+clearModeAtNewLine.apply(SingleQuoteBoundary, StringLiteralMode);
+
+modeBoundary.apply(BacktickBoundary, TemplateLiteralMode, notInModes(`[[DocumentationMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
+modeCreator.apply(ReferenceOpenBoundary, TemplateReferenceMode, inModes(TemplateLiteralMode, DocumentationMode));
+modeDestroyer.apply(ReferenceCloseBoundary, TemplateReferenceMode, inTemplateReference);
+modeCreator.apply(ExecutionOpenBoundary, TemplateExecutionMode, inTemplate);
+modeDestroyer.apply(ExecutionCloseBoundary, TemplateExecutionMode, inTemplateExecution);
+
+modeCreator.apply(ListOpenSeparator, ListMode, notInContentBodyMode);
+modeDestroyer.apply(ListCloseSeparator, ListMode);
+modeCreator.apply(BlockOpenSeparator, BlockMode, notInContentBodyMode);
+modeDestroyer.apply(BlockCloseSeparator, BlockMode);
+modeCreator.apply(GroupOpenSeparator, GroupMode, notInContentBodyMode);
+modeDestroyer.apply(GroupCloseSeparator, GroupMode);

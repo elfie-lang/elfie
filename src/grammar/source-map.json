@@ -1,0 +1,3872 @@
+{
+  "version": 1,
+  "compiler": "elfie grammar compile (Claude Fable 5.1)",
+  "description": "Maps generated Rust in src/grammar back to the Elfie source in def/grammar (and def/grammar rules the lexer is compiled against). A mapping applies from its generated line until the next mapping in the same generated file. Lines are 1-indexed; positions are 0-indexed character columns.",
+  "generated": [
+    "src/grammar/ebnf.rs",
+    "src/grammar/expression.rs",
+    "src/grammar/file.rs",
+    "src/grammar/mod.rs",
+    "src/grammar/statement.rs",
+    "src/grammar/sugar.rs",
+    "src/grammar/tokens/comment.rs",
+    "src/grammar/tokens/identifier.rs",
+    "src/grammar/tokens/keyword.rs",
+    "src/grammar/tokens/literal.rs",
+    "src/grammar/tokens/mod.rs",
+    "src/grammar/tokens/operator.rs",
+    "src/grammar/tokens/separator.rs",
+    "src/grammar/tokens/space.rs",
+    "src/grammar/tokens/traits.rs",
+    "src/grammar/traits.rs",
+    "src/grammar/types.rs",
+    "src/lib.rs"
+  ],
+  "sources": [
+    "def/grammar/expression.lfy",
+    "def/grammar/file.lfy",
+    "def/grammar/statement.lfy",
+    "def/grammar/sugar.lfy",
+    "def/grammar/tokens/comment.lfy",
+    "def/grammar/tokens/identifier.lfy",
+    "def/grammar/tokens/keyword.lfy",
+    "def/grammar/tokens/literal.lfy",
+    "def/grammar/tokens/operator.lfy",
+    "def/grammar/tokens/separator.lfy",
+    "def/grammar/tokens/space.lfy",
+    "def/grammar/tokens/traits.lfy",
+    "def/grammar/traits.lfy",
+    "def/grammar/types.lfy",
+    "def/lexer/main.lfy"
+  ],
+  "mappings": [
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 83
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 186
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 51,
+        "position": 4
+      },
+      "text": ".add({situation = `When using EBNF formatted string`, behavior = `Treats notation surrounded in \\[[ "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 249
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "external const XID_Start is ebnfSyntax(`? XID_Start defined by Unicode / unicode-ident ?`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 251
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "external const XID_Continue is ebnfSyntax(`? XID_Continue defined by Unicode / unicode-ident ?`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 253
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "external const UTF8_CHARACTER is ebnfSyntax(`? all UTF-8 compatible character codes ?`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 341
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 461
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 21,
+        "position": 0
+      },
+      "text": "trait notAllowedPrefix(...forbidden: string[]) {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 607
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/ebnf.rs",
+        "line": 678
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "trait notAllowedPostfix(...forbidden: string[]) {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "d ArrowSingleRightExpression is ebnfSyntax(`[[ArrowSingleRightPunctuation]] | [[ArrowSingleRightSing"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "d ArrowSingleLeftExpression is ebnfSyntax(`[[ArrowSingleLeftPunctuation]] | [[ArrowSingleLeftSingleC"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "d TemplateLiteralReference is ebnfSyntax(`[[ReferenceOpenBoundary]] , [[IdentifierExpression]] , [[R"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 14,
+        "position": 0
+      },
+      "text": "d TemplateLiteralExecution is ebnfSyntax(`[[ExecutionOpenBoundary]] , [[Expression]] , [[ExecutionCl"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 16,
+        "position": 0
+      },
+      "text": "d TemplateLiteralBody is ebnfSyntax(`(: ( UTF8_CHARACTER - ( [[BacktickBoundary]] | \"\\\\\" | [[Referen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 16
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 18,
+        "position": 0
+      },
+      "text": "d TemplateLiteral is ebnfSyntax(`[[BacktickBoundary]] , (: [[TemplateLiteralBody]] | [[TemplateLiter"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 20,
+        "position": 0
+      },
+      "text": "d LiteralExpression is ebnfSyntax(`[[StringLiteral]] | [[TemplateLiteral]] | [[NumberLiteral]] | [[B"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 22,
+        "position": 0
+      },
+      "text": "d IdentifierAccessorExpression is ebnfSyntax(`[[AccessorPunctuation]] , (/ (/ [[QuestionMarkPunctuat"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 24,
+        "position": 0
+      },
+      "text": "d IdentifierReferenceExpression is ebnfSyntax(`[[BitwiseAndPunctuation]] , [[Identifier]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 26,
+        "position": 0
+      },
+      "text": "d ListAccessExpression is ebnfSyntax(`[[Expression]] , [[ListOpenSeparator]] , ([[Expression]]) , [["
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 28,
+        "position": 0
+      },
+      "text": "d GroupedExpression is ebnfSyntax(`[[GroupOpenSeparator]] , [[Expression]] , [[GroupCloseSeparator]]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 30,
+        "position": 0
+      },
+      "text": "d NegationExpression is ebnfSyntax(`[[LogicalNotPunctuation]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 32,
+        "position": 0
+      },
+      "text": "d InlineConditionalExpression is ebnfSyntax(`[[Expression]] , [[QuestionMarkPunctuation]] , [[Expres"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 34,
+        "position": 0
+      },
+      "text": "d CoalescenceExpression is ebnfSyntax(`[[Expression]] , ( [[CoalescenceNullPunctuation]] | [[Logical"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 36,
+        "position": 0
+      },
+      "text": "d ArithmaticExpression is ebnfSyntax(`[[Expression]] , ( [[MathPuncuation]] | [[BitwisePunctuation]]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 38,
+        "position": 0
+      },
+      "text": "d ComparisonExpression is ebnfSyntax(`[[Expression]] , [[EqualityPunctuation]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 40,
+        "position": 0
+      },
+      "text": "d LogicalExpression is ebnfSyntax(`[[Expression]] , ( [[LogicalAddPunctuation]] | [[LogicalOrPunctua"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 28
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 42,
+        "position": 0
+      },
+      "text": "d IdentifierExpression is ebnfSyntax(`[[Expression]] , (: [[IdentifierAccessorExpression]] | [[ListA"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 44,
+        "position": 0
+      },
+      "text": "d CallExpression is ebnfSyntax(`[[Expression]] , [[GroupListExpression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 46,
+        "position": 0
+      },
+      "text": "d TraitExpression is ebnfSyntax(`[[Identifier]] , (/ [[GroupListExpression]] /)`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 48,
+        "position": 0
+      },
+      "text": "d IsExpression is ebnfSyntax(`[[IsKeyword]] , [[TraitExpression]] , (: [[ListContinueSeparator]] , ["
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 50,
+        "position": 0
+      },
+      "text": "d DefinitionExpression is ebnfSyntax(`[[DefinitionPunctuation]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 52,
+        "position": 0
+      },
+      "text": "d IdentityExpression is ebnfSyntax(`[[Identifier]] , (/ [[IsExpression]] /) , (/ [[DefinitionExpress"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 54,
+        "position": 0
+      },
+      "text": "d FunctionIdentityExpression is ebnfSyntax(`(/ [[Identifier]] /) , [[GroupListExpression]] , (/ [[Is"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 56,
+        "position": 0
+      },
+      "text": "d PrimitiveExpression is ebnfSyntax(`[[PrimitiveBooleanKeyword]] | [[NullLiteral]] | [[PrimitiveNumb"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 36
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 58,
+        "position": 0
+      },
+      "text": "d CastExpression is ebnfSyntax(`[[Expression]] , [[AsKeyword]] , ( [[IdentifierExpression]] | [[Prim"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 37
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 60,
+        "position": 0
+      },
+      "text": "d AssignmentExpression is ebnfSyntax(`[[Expression]] , (/ [[IsExpression]] /) , (/ [[DefinitionExpre"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 62,
+        "position": 0
+      },
+      "text": "d ListExpression is ebnfSyntax(`[[ListOpenSeparator]] , (: [[Expression]] | [[ListContinueSeparator]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 64,
+        "position": 0
+      },
+      "text": "d GroupListExpression is ebnfSyntax(`[[GroupOpenSeparator]] , (/ [[Expression]] , (: [[ListContinueS"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 40
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 66,
+        "position": 0
+      },
+      "text": "d ObjectExpression is ebnfSyntax(`[[BlockOpenSeparator]] , (/ [[AssignmentExpression]] , (: [[ListCo"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 68,
+        "position": 0
+      },
+      "text": "d AwaitExpression is ebnfSyntax(`[[AwaitKeyword]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 42
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 70,
+        "position": 0
+      },
+      "text": "d SpreadExpression is ebnfSyntax(`[[SpreadPunctuation]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 43
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 72,
+        "position": 0
+      },
+      "text": "d RangeExpression is ebnfSyntax(`[[Expression]] , [[SpreadPunctuation]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 74,
+        "position": 0
+      },
+      "text": "d FromExpression is ebnfSyntax(`[[FromKeyword]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 45
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 76,
+        "position": 0
+      },
+      "text": "d OfExpression is ebnfSyntax(`[[OfKeyword]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 46
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 78,
+        "position": 0
+      },
+      "text": "d InExpression is ebnfSyntax(`[[InKeyword]] , [[Expression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 80,
+        "position": 0
+      },
+      "text": "d TypeOnlyExpression is ebnfSyntax(`[[LiteralExpression]] | [[IdentifierExpression]] | [[ObjectExpre"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 48
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 82,
+        "position": 0
+      },
+      "text": "d Expression is ebnfSyntax(`[[LiteralExpression]] | [[IdentifierAccessorExpression]] | [[IdentifierR"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/expression.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/grammar/expression.lfy",
+        "line": 16,
+        "position": 0
+      },
+      "text": "d TemplateLiteralBody is ebnfSyntax(`(: ( UTF8_CHARACTER - ( [[BacktickBoundary]] | \"\\\\\" | [[Referen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/file.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/grammar/file.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d SourceFile is ebnfSyntax(`(: [[Statement]] :)`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/mod.rs",
+        "line": 142
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 8,
+        "position": 4
+      },
+      "text": "rule = `{{@identifier}} = {{syntax}} ;`,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/mod.rs",
+        "line": 157
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "d BlockStatement is ebnfSyntax(`[[BlockOpenSeparator]] , (: [[Statement]] :) , [[BlockCloseSeparator"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "d AgentDataStatement is ebnfSyntax(`[[AgentDataKeyword]] , [[IdentityExpression]] , (/ [[ExtendsKeyw"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 13,
+        "position": 0
+      },
+      "text": "d AgentFunctionStatement is ebnfSyntax(`[[AgentFnKeyword]] , [[FunctionIdentityExpression]] , (/ [[A"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 15,
+        "position": 0
+      },
+      "text": "d AliasStatement is ebnfSyntax(`[[AliasKeyword]] , [[AssignmentExpression]] , [[StatementEndSeparato"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 12
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 17,
+        "position": 0
+      },
+      "text": "d AsyncStatement is ebnfSyntax(`[[AsyncKeyword]] , [[Statement]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "d BreakStatement is ebnfSyntax(`[[BreakKeyword]] , [[StatementEndSeparator]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 21,
+        "position": 0
+      },
+      "text": "d AceStatement is ebnfSyntax(`[[CompileTimeExecutionKeyword]] , [[Statement]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 23,
+        "position": 0
+      },
+      "text": "d VariableStatement is ebnfSyntax(`( [[ConstKeyword]] | [[LetKeyword]] ) , [[AssignmentExpression]] "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 16
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 25,
+        "position": 0
+      },
+      "text": "d ContinueStatement is ebnfSyntax(`[[ContinueKeyword]] , [[StatementEndSeparator]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "d IfStatement is ebnfSyntax(`[[IfKeyword]] , [[GroupedExpression]] , ( [[ExpressionStatement]] | [[B"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 29,
+        "position": 0
+      },
+      "text": "d ElseIfStatement is ebnfSyntax(`[[ElseKeyword]] , [[IfKeyword]] , [[GroupedExpression]] , ( [[Expre"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 31,
+        "position": 0
+      },
+      "text": "d ElseStatement is ebnfSyntax(`[[ElseKeyword]] , ( [[ExpressionStatement]] | [[BlockStatement]] )`) "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 33,
+        "position": 0
+      },
+      "text": "d EnumStatement is ebnfSyntax(`[[EnumKeyword]] , [[IdentityExpression]] , [[ObjectExpression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 35,
+        "position": 0
+      },
+      "text": "d ExternalStatement is ebnfSyntax(`[[ExternalKeyword]] , [[AssignmentExpression]] , [[StatementEndSe"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 37,
+        "position": 0
+      },
+      "text": "d ExpressionStatement is ebnfSyntax(`[[Expression]] , [[StatementEndSeparator]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 39,
+        "position": 0
+      },
+      "text": "d ForFromStatement is ebnfSyntax(`[[ForKeyword]] , [[GroupOpenSeparator]] , (/ [[ConstKeyword]] | [["
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 41,
+        "position": 0
+      },
+      "text": "d ForInOfStatement is ebnfSyntax(`[[ForKeyword]] , [[GroupOpenSeparator]] , (/ [[ConstKeyword]] | [["
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 43,
+        "position": 0
+      },
+      "text": "d FunctionStatement is ebnfSyntax(`[[FunctionKeyword]] , [[FunctionIdentityExpression]] , (/ [[Arrow"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 45,
+        "position": 0
+      },
+      "text": "d FunctionInlineStatement is ebnfSyntax(`[[FunctionIdentityExpression]] , (/ [[ArrowSingleRightExpre"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 47,
+        "position": 0
+      },
+      "text": "d LoopStatement is ebnfSyntax(`[[LoopKeyword]] , [[BlockStatement]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 28
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 49,
+        "position": 0
+      },
+      "text": "d MatchStatement is ebnfSyntax(`( [[MatchKeyword]] | [[MatchallKeyword]] ) , [[Expression]] , [[Bloc"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 51,
+        "position": 0
+      },
+      "text": "d ReturnStatement is ebnfSyntax(`[[ReturnKeyword]] , [[ExpressionStatement]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 53,
+        "position": 0
+      },
+      "text": "d TraitStatement is ebnfSyntax(`[[TraitKeyword]] , [[Identifier]] , (/ [[GroupListExpression]] /) , "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 55,
+        "position": 0
+      },
+      "text": "d TypeStatement is ebnfSyntax(`[[TypeKeyword]] , [[IdentityExpression]] , [[ObjectExpression]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 57,
+        "position": 0
+      },
+      "text": "d UseStatement is ebnfSyntax(`[[UseKeyword]] , ( [[StringLiteral]] | [[TemplateLiteral]] ) , (/ [[As"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 59,
+        "position": 0
+      },
+      "text": "d WhileStatement is ebnfSyntax(`[[WhileKeyword]] , [[GroupedExpression]] , [[BlockStatement]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 61,
+        "position": 0
+      },
+      "text": "d WithStatement is ebnfSyntax(`[[WithKeyword]] , [[IdentifierExpression]] , [[BlockStatement]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 63,
+        "position": 0
+      },
+      "text": "d Statement is ebnfSyntax(`[[AgentDataStatement]] | [[AgentFunctionStatement]] | [[AliasStatement]] "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/statement.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/grammar/statement.lfy",
+        "line": 63,
+        "position": 0
+      },
+      "text": "d Statement is ebnfSyntax(`[[AgentDataStatement]] | [[AgentFunctionStatement]] | [[AliasStatement]] "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/sugar.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/sugar.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "d WhereExpression is ebnfSyntax(`( (/ [[LogicalNotPunctuation]] /) , [[GroupOpenSeparator]] , [[Wher"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/sugar.rs",
+        "line": 16
+      },
+      "source": {
+        "file": "def/grammar/sugar.lfy",
+        "line": 49,
+        "position": 0
+      },
+      "text": "d WhereStatement is ebnfSyntax(`[[WhereKeyword]] , [[WhereExpression]] , [[ArrowSingleRightExpressio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/sugar.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/grammar/sugar.lfy",
+        "line": 49,
+        "position": 0
+      },
+      "text": "d WhereStatement is ebnfSyntax(`[[WhereKeyword]] , [[WhereExpression]] , [[ArrowSingleRightExpressio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "d CommentBlockOpen is ebnfSyntax(`\"/*\"`): `a block comment open` {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "d CommentBlockClose is ebnfSyntax(`\"*/\"`): `a block comment close` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "d CommentBlockBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[CommentBlockOpen]] | [[CommentBlockClose]]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 14,
+        "position": 0
+      },
+      "text": "d CommentInlineStart is ebnfSyntax(`\"//\"`): `an inline comment start` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 16,
+        "position": 0
+      },
+      "text": "d CommentInlineBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[NewLine]] ) :)`): `contents of the commen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 18,
+        "position": 0
+      },
+      "text": "d DocumentationBlockOpen is ebnfSyntax(`\"/**\"`), notAllowedPostfix(`/`): `a block documentation open"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 23,
+        "position": 0
+      },
+      "text": "d DocumentationBlockClose is ebnfSyntax(`\"**/\"`): `a block documentation close` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 25,
+        "position": 0
+      },
+      "text": "d DocumentationBlockBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[DocumentationBlockOpen]] | [[Documen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "d DocumentationInlineStart is ebnfSyntax(`\"///\"`): `an inline documentation start` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 29,
+        "position": 0
+      },
+      "text": "d DocumentationInlineBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[NewLine]] | [[ReferenceOpenBoundary"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 18,
+        "position": 0
+      },
+      "text": "d DocumentationBlockOpen is ebnfSyntax(`\"/**\"`), notAllowedPostfix(`/`): `a block documentation open"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/comment.rs",
+        "line": 58
+      },
+      "source": {
+        "file": "def/grammar/tokens/comment.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "d CommentBlockBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[CommentBlockOpen]] | [[CommentBlockClose]]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/identifier.rs",
+        "line": 12
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "external const XID_Start is ebnfSyntax(`? XID_Start defined by Unicode / unicode-ident ?`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/identifier.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "external const XID_Continue is ebnfSyntax(`? XID_Continue defined by Unicode / unicode-ident ?`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/identifier.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "d Identifier is ebnfSyntax(`( XID_Start | \"_\" ) , (: XID_Continue :)`): `Identifier of the format XI"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/identifier.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 8,
+        "position": 4
+      },
+      "text": ".add({ behavior = 'Cannot match keyword' });"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/identifier.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "d Identifier is ebnfSyntax(`( XID_Start | \"_\" ) , (: XID_Continue :)`): `Identifier of the format XI"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/identifier.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/grammar/tokens/identifier.lfy",
+        "line": 8,
+        "position": 4
+      },
+      "text": ".add({ behavior = 'Cannot match keyword' });"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d AgentDataKeyword is ebnfSyntax(`\"d\"`): `Agentically defined data structure` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "d AgentFnKeyword is ebnfSyntax(`\"fn\"`): `Agentically defined function` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "d AliasKeyword is ebnfSyntax(`\"alias\"`): `Alias for identifier` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "d AndKeyword is ebnfSyntax(`\"and\"`): `Combine conditions in contexts like the \"where\" syntax sugar k"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 7,
+        "position": 0
+      },
+      "text": "d AsKeyword is ebnfSyntax(`\"as\"`): `Casting or aliasing` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "d AsyncKeyword is ebnfSyntax(`\"async\"`): `Indicating an asynchronous block wrapped in a Promise` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "d AwaitKeyword is ebnfSyntax(`\"await\"`): `Awaiting the completion of a Promise` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "d BreakKeyword is ebnfSyntax(`\"break\"`): `Breaking out of loops` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 25
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "d CompileTimeExecutionKeyword is ebnfSyntax(`\"ace\"`): `Marking a statement or block to be executed a"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "d ConstKeyword is ebnfSyntax(`\"const\"`): `Defining constant variables` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 13,
+        "position": 0
+      },
+      "text": "d ContinueKeyword is ebnfSyntax(`\"continue\"`): `Completing the block, but not breaking out of it` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 14,
+        "position": 0
+      },
+      "text": "d DefaultKeyword is ebnfSyntax(`\"default\"`): `The default action, value, or block` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 15,
+        "position": 0
+      },
+      "text": "d ElseKeyword is ebnfSyntax(`\"else\"`): `An else statement or block` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 16,
+        "position": 0
+      },
+      "text": "d EnumKeyword is ebnfSyntax(`\"enum\"`): `Defining a variable with enumerated keys and values` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 37
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 17,
+        "position": 0
+      },
+      "text": "d ExtendsKeyword is ebnfSyntax(`\"extends\"`): `Extending an existing trait or data structure` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 18,
+        "position": 0
+      },
+      "text": "d ExternalKeyword is ebnfSyntax(`\"external\"`): `Referencing something external to the code` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "d ForKeyword is ebnfSyntax(`\"for\"`): `A loop over iterators when combined with from, of, and in keyw"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 43
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 20,
+        "position": 0
+      },
+      "text": "d FromKeyword is ebnfSyntax(`\"from\"`): `Referencing a type, variable, or data structures' keys and v"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 45
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 21,
+        "position": 0
+      },
+      "text": "d FunctionKeyword is ebnfSyntax(`\"function\"`): `An explicitly defined function` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 22,
+        "position": 0
+      },
+      "text": "d IfKeyword is ebnfSyntax(`\"if\"`): `An if conditional block or statement` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 49
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 23,
+        "position": 0
+      },
+      "text": "d InKeyword is ebnfSyntax(`\"in\"`): `Referencing a type, variable, or data structures' values` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 24,
+        "position": 0
+      },
+      "text": "d IsKeyword is ebnfSyntax(`\"is\"`): `Marking traits of an expression, block, variable, or value` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 25,
+        "position": 0
+      },
+      "text": "d LetKeyword is ebnfSyntax(`\"let\"`): `Defining a mutable variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 55
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 26,
+        "position": 0
+      },
+      "text": "d LoopKeyword is ebnfSyntax(`\"loop\"`): `A basic loop that runs until it encounters a break` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "d MatchKeyword is ebnfSyntax(`\"match\"`): `A match expression or block that branches based on conditi"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 28,
+        "position": 0
+      },
+      "text": "d MatchallKeyword is ebnfSyntax(`\"matchall\"`): `A matchall expression or block that applies the resu"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 61
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 29,
+        "position": 0
+      },
+      "text": "d OfKeyword is ebnfSyntax(`\"of\"`): `Referencing a type, variable, or data structures' keys` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 63
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 30,
+        "position": 0
+      },
+      "text": "d OrKeyword is ebnfSyntax(`\"or\"`): `Branch conditions in contexts like the \"where\" syntax sugar keyw"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 65
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 31,
+        "position": 0
+      },
+      "text": "d ReturnKeyword is ebnfSyntax(`\"return\"`): `Return expression that ends execution of a function and "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 67
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 32,
+        "position": 0
+      },
+      "text": "d TraitKeyword is ebnfSyntax(`\"trait\"`): `Group of shared definitions, properties, configuration, an"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 69
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 33,
+        "position": 0
+      },
+      "text": "d TypeKeyword is ebnfSyntax(`\"type\"`): `Defining a type map` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 71
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 34,
+        "position": 0
+      },
+      "text": "d UseKeyword is ebnfSyntax(`\"use\"`): `Add the scoped contents of a file, folder, or library to the c"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 73
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 35,
+        "position": 0
+      },
+      "text": "d WhileKeyword is ebnfSyntax(`\"while\"`): `A while loop` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 75
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 36,
+        "position": 0
+      },
+      "text": "d WhereKeyword is ebnfSyntax(`\"where\"`): `Syntax sugar for @acceptanceCriteria.add` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 77
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 37,
+        "position": 0
+      },
+      "text": "d WithKeyword is ebnfSyntax(`\"with\"`): `Sets the scope for a block` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 80
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 39,
+        "position": 0
+      },
+      "text": "d PrimitiveBooleanKeyword is ebnfSyntax(`\"boolean\"`): `Primitive boolean type` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 82
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 40,
+        "position": 0
+      },
+      "text": "d PrimitiveNumberKeyword is ebnfSyntax(`\"number\"`): `Primitive number type` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 84
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 41,
+        "position": 0
+      },
+      "text": "d PrimitiveObjectKeyword is ebnfSyntax(`\"object\"`): `Primitive object type` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 86
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 42,
+        "position": 0
+      },
+      "text": "d PrimitiveStringKeyword is ebnfSyntax(`\"string\"`): `Primitive string type` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 89
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 44,
+        "position": 0
+      },
+      "text": "d AbstractKeyword is ebnfSyntax(`\"abstract\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 91
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 45,
+        "position": 0
+      },
+      "text": "d CaseKeyword is ebnfSyntax(`\"case\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 93
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 46,
+        "position": 0
+      },
+      "text": "d ClassKeyword is ebnfSyntax(`\"class\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 95
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 47,
+        "position": 0
+      },
+      "text": "d ImplKeyword is ebnfSyntax(`\"impl\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 97
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 48,
+        "position": 0
+      },
+      "text": "d InterfaceKeyword is ebnfSyntax(`\"interface\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 99
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 49,
+        "position": 0
+      },
+      "text": "d NewKeyword is ebnfSyntax(`\"new\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 101
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 50,
+        "position": 0
+      },
+      "text": "d PrivateKeyword is ebnfSyntax(`\"private\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 103
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 51,
+        "position": 0
+      },
+      "text": "d PublicKeyword is ebnfSyntax(`\"public\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 105
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 52,
+        "position": 0
+      },
+      "text": "d SelfKeyword is ebnfSyntax(`\"self\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 107
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 53,
+        "position": 0
+      },
+      "text": "d StaticKeyword is ebnfSyntax(`\"static\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 109
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 54,
+        "position": 0
+      },
+      "text": "d SuperKeyword is ebnfSyntax(`\"super\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 111
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 55,
+        "position": 0
+      },
+      "text": "d SwitchKeyword is ebnfSyntax(`\"switch\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 113
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 56,
+        "position": 0
+      },
+      "text": "d ThenKeyword is ebnfSyntax(`\"then\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 115
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 57,
+        "position": 0
+      },
+      "text": "d TypeofKeyword is ebnfSyntax(`\"typeof\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 117
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 58,
+        "position": 0
+      },
+      "text": "d YieldKeyword is ebnfSyntax(`\"yield\"`): `Reserved for future use` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/keyword.rs",
+        "line": 141
+      },
+      "source": {
+        "file": "def/grammar/tokens/keyword.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d AgentDataKeyword is ebnfSyntax(`\"d\"`): `Agentically defined data structure` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "external const UTF8_CHARACTER is ebnfSyntax(`? all UTF-8 compatible character codes ?`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "d NullLiteral is ebnfSyntax(`\"null\"`): `a literal null value` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 7,
+        "position": 0
+      },
+      "text": "d UndefinedLiteral is ebnfSyntax(`\"undefined\"`): `a literal undefined value` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "d BooleanLiteral is ebnfSyntax(`\"true\" | \"false\"`): `a boolean literal value` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "d DigitLiteral is ebnfSyntax(`\"0\" | \"1\" | \"2\" | \"3\" | \"4\" | \"5\" | \"6\" | \"7\" | \"8\" | \"9\"`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "d NumberLiteral is ebnfSyntax(`[[DigitLiteral]] , (/ (: [[DigitLiteral]] | \"_\" :) , [[DigitLiteral]]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 16,
+        "position": 0
+      },
+      "text": "d HexCharacter is ebnfSyntax(`[[DigitLiteral]] | \"a\" | \"A\" | \"b\" | \"B\" | \"c\" | \"C\" | \"d\" | \"D\" | \"e\""
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 18,
+        "position": 0
+      },
+      "text": "d SingleQuoteBoundary is ebnfSyntax(`\"'\"`): `a boundary character for a string` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "d DoubleQuoteBoundary is ebnfSyntax(`'\"'`): `a boundary character for a string` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 31
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 20,
+        "position": 0
+      },
+      "text": "d BacktickBoundary is ebnfSyntax('\"`\"'): `a boundary character for a template string` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 23,
+        "position": 0
+      },
+      "text": "d ExecutionOpenBoundary is ebnfSyntax(`\"\\{{\"`): `an open token for an execution block within a templ"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 36
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 24,
+        "position": 0
+      },
+      "text": "d ExecutionCloseBoundary is ebnfSyntax(`\"\\}}\"`): `a close token for an execution block within a temp"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 38
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 25,
+        "position": 0
+      },
+      "text": "d ReferenceOpenBoundary is ebnfSyntax(`\"\\[[\"`): `an open token for a reference within a template lit"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 40
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 26,
+        "position": 0
+      },
+      "text": "d ReferenceCloseBoundary is ebnfSyntax(`\"\\]]\"`): `a close token for a reference within a template li"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 28,
+        "position": 0
+      },
+      "text": "d Sequence is ebnfSyntax(`( \"\\\\\\\\\" | \"\\\\r\" | \"\\\\\\n\" | \"\\\\\\r\\n\" | (\"\\\\x\" , [[HexCharacter]] , [[HexCh"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 50,
+        "position": 0
+      },
+      "text": "d SingleQuoteLiteralBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[NewLine]] | [[SingleQuoteBoundary]] "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 49
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 51,
+        "position": 0
+      },
+      "text": "d DoubleQuoteLiteralBody is ebnfSyntax(`(: ( UTF8_CHARACTER - ( [[NewLine]] | [[DoubleQuoteBoundary]"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 53,
+        "position": 0
+      },
+      "text": "d SingleQuoteLiteral is ebnfSyntax(`[[SingleQuoteBoundary]] , [[SingleQuoteLiteralBody]] , [[SingleQ"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 52
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 54,
+        "position": 0
+      },
+      "text": "d DoubleQuoteLiteral is ebnfSyntax(`[[DoubleQuoteBoundary]] , [[DoubleQuoteLiteralBody]] , [[DoubleQ"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 55,
+        "position": 0
+      },
+      "text": "d StringLiteral is ebnfSyntax(`[[SingleQuoteLiteral]] | [[DoubleQuoteLiteral]]`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "where (`Underscores are present in the source text`) -> `Underscores are removed from the value to l"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 72
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar va"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 77
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 28,
+        "position": 0
+      },
+      "text": "d Sequence is ebnfSyntax(`( \"\\\\\\\\\" | \"\\\\r\" | \"\\\\\\n\" | \"\\\\\\r\\n\" | (\"\\\\x\" , [[HexCharacter]] , [[HexCh"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 82
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 29,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\\\`) -> `Repressents a literal backslash character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 83
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\r`) -> `Repressents a literal carriage return character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 84
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\n`) -> `Repressents a sequence to continue string through a newline character"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 85
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\r\\n`) -> `Repressents a sequence to continue a string through a newline`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 86
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\x`) -> `Repressents a character code encoding marker that is followed by exact"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 95
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\u`) -> `Repressents a character code encoding marker that is followed by eithe"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 104
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar va"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 110
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\{{`) -> `Repressents a literal opening execution curly braces to escape an ex"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 111
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\}}`) -> `Repressents a literal closing execution curly braces to escape an ex"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 112
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\[[`) -> `Repressents a literal opening reference brackets to escape a referen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 113
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 38,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\]]`) -> `Repressents a literal closing reference brackets to escape a referen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 114
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\n`) -> `Repressents a literal newline character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 115
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 40,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\0`) -> `Repressents a literal null character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 116
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 41,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\t`) -> `Repressents a literal tab character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 117
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 43,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\'`) -> `Repressents a literal single quote character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 118
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 44,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\"`) -> `Repressents a literal double quote character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 119
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 45,
+        "position": 2
+      },
+      "text": "where (\"Sequence is \\\\`\") -> `Repressents a literal backtick character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 141
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "where (`Underscores are present in the source text`) -> `Underscores are removed from the value to l"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 148
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 28,
+        "position": 0
+      },
+      "text": "d Sequence is ebnfSyntax(`( \"\\\\\\\\\" | \"\\\\r\" | \"\\\\\\n\" | \"\\\\\\r\\n\" | (\"\\\\x\" , [[HexCharacter]] , [[HexCh"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 152
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 29,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\\\`) -> `Repressents a literal backslash character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 153
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 30,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\r`) -> `Repressents a literal carriage return character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 154
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 31,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\n`) -> `Repressents a sequence to continue string through a newline character"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 155
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 32,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\r\\n`) -> `Repressents a sequence to continue a string through a newline`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 156
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\x`) -> `Repressents a character code encoding marker that is followed by exact"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 157
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\u`) -> `Repressents a character code encoding marker that is followed by eithe"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 158
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 35,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\{{`) -> `Repressents a literal opening execution curly braces to escape an ex"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 159
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 36,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\}}`) -> `Repressents a literal closing execution curly braces to escape an ex"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 160
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 37,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\[[`) -> `Repressents a literal opening reference brackets to escape a referen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 161
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 38,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\\]]`) -> `Repressents a literal closing reference brackets to escape a referen"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 162
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 39,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\n`) -> `Repressents a literal newline character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 163
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 40,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\0`) -> `Repressents a literal null character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 164
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 41,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\t`) -> `Repressents a literal tab character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 165
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 43,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\'`) -> `Repressents a literal single quote character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 166
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 44,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\\"`) -> `Repressents a literal double quote character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 167
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 45,
+        "position": 2
+      },
+      "text": "where (\"Sequence is \\\\`\") -> `Repressents a literal backtick character`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 187
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 33,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\x`) -> `Repressents a character code encoding marker that is followed by exact"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 197
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 34,
+        "position": 2
+      },
+      "text": "where (`Sequence is \\\\u`) -> `Repressents a character code encoding marker that is followed by eithe"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/literal.rs",
+        "line": 211
+      },
+      "source": {
+        "file": "def/grammar/tokens/literal.lfy",
+        "line": 47,
+        "position": 2
+      },
+      "text": "where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar va"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d AccessorValuePunctuation is ebnfSyntax(`\".\"`), appliesToCurrent: `Accesses the data or value` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "d AccessorContextPunctuation is ebnfSyntax(`\"@\"`), appliesToCurrent: `Accesses the context` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "d AccessorScopePunctuation is ebnfSyntax(`\"$\"`), appliesToCurrent: `Accesses the scope` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 7,
+        "position": 0
+      },
+      "text": "d AccessorPunctuation is ebnfSyntax(`[[AccessorValuePunctuation]] | [[AccessorContextPunctuation]] |"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "d ArrowSingleLeftPunctuation is ebnfSyntax(`\"<-\"`): `Single arrow left` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 20
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "d ArrowSingleLeftSingleCharPunctuation is ebnfSyntax(`\"←\"`): `Single arrow left single character` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 11,
+        "position": 0
+      },
+      "text": "d ArrowSingleRightPunctuation is ebnfSyntax(`\"->\"`): `Single arrow right` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 12,
+        "position": 0
+      },
+      "text": "d ArrowSingleRightSingleCharPunctuation is ebnfSyntax(`\"→\"`): `Single arrow right single character` "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 13,
+        "position": 0
+      },
+      "text": "d ArrowDoubleRightPunctuation is ebnfSyntax(`\"=>\"`): `Double arrow right` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 28
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 14,
+        "position": 0
+      },
+      "text": "d BitwiseAndPunctuation is ebnfSyntax(`\"&\"`): `Bitwise AND; Also used for dereferencing to the scope"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 15,
+        "position": 0
+      },
+      "text": "d BitwiseOrPunctuation is ebnfSyntax(`\"|\"`): `Bitwise OR` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 16,
+        "position": 0
+      },
+      "text": "d BitwiseNotPunctuation is ebnfSyntax(`\"~\"`): `Bitwise NOT` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 17,
+        "position": 0
+      },
+      "text": "d BitwiseXorPunctuation is ebnfSyntax(`\"^\"`), notAllowedPostfix(`a non-numeric character`): `Bitwise"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 37
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 18,
+        "position": 0
+      },
+      "text": "d CoalescenceNullPunctuation is ebnfSyntax(`\"??\"`): `Null coalescence` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 39
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "d DefinitionPunctuation is ebnfSyntax(`\":\"`): `Definition` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 41
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 20,
+        "position": 0
+      },
+      "text": "d EqualityLessThanPunctuation is ebnfSyntax(`\"<\"`): `Less than` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 43
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 21,
+        "position": 0
+      },
+      "text": "d EqualityLessThanOrEqualPunctuation is ebnfSyntax(`\"<=\"`): `Less than or equal to` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 45
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 22,
+        "position": 0
+      },
+      "text": "d EqualityGreaterThanPunctuation is ebnfSyntax(`\">\"`): `Greater than` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 47
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 23,
+        "position": 0
+      },
+      "text": "d EqualityGreaterThanOrEqualPunctuation is ebnfSyntax(`\">=\"`): `Greater than or equal to` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 49
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 24,
+        "position": 0
+      },
+      "text": "d EqualityStrictPunctuation is ebnfSyntax(`\"==\"`): `Equality (Are these two values equal, no auto-ca"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 25,
+        "position": 0
+      },
+      "text": "d EqualityUnequalPunctuation is ebnfSyntax(`\"!=\"`): `Inequality` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 26,
+        "position": 0
+      },
+      "text": "d EqualityReferencePunctuation is ebnfSyntax(`\"&=\"`): `Reference equality (do these refer to the sam"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 55
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "d EqualityWithCastingPunctuation is ebnfSyntax(`\"~=\"`): `About equal (equality + auto-casting)` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 28,
+        "position": 0
+      },
+      "text": "d LogicalNotPunctuation is ebnfSyntax(`\"!\"`): `Logical \"not\"` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 59
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 29,
+        "position": 0
+      },
+      "text": "d LogicalAddPunctuation is ebnfSyntax(`\"&&\"`): `Logical \"and\"` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 61
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 30,
+        "position": 0
+      },
+      "text": "d LogicalOrPunctuation is ebnfSyntax(`\"||\"`): `Logical \"or\"` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 63
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 31,
+        "position": 0
+      },
+      "text": "d QuestionMarkPunctuation is ebnfSyntax(`\"?\"`): `Optional (chaining, type, etc.) or inline condition"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 65
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 32,
+        "position": 0
+      },
+      "text": "d RefLastPunctuation is ebnfSyntax(`\"^^\"`): `Previous statement reference` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 67
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 33,
+        "position": 0
+      },
+      "text": "d RefDefineLastPunctuation is ebnfSyntax(`\"^^:\"`): `Apply a definition to the previous statement` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 69
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 34,
+        "position": 0
+      },
+      "text": "d SetterPlainPunctuation is ebnfSyntax(`\"=\"`): `Setter` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 71
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 35,
+        "position": 0
+      },
+      "text": "d SetterBooleanTogglePunctuation is ebnfSyntax(`\"=!\"`): `For boolean, set variable to NOT value` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 73
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 36,
+        "position": 0
+      },
+      "text": "d SetterAdditivePunctuation is ebnfSyntax(`\"=+\"`): `Add or append and re-set variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 75
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 37,
+        "position": 0
+      },
+      "text": "d SetterIncrementPunctuation is ebnfSyntax(`\"=++\"`): `Add 1 to a numeric value and re-set variable` "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 77
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 38,
+        "position": 0
+      },
+      "text": "d SetterSubtractivePunctuation is ebnfSyntax(`\"=-\"`): `Subtract and re-set variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 79
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 39,
+        "position": 0
+      },
+      "text": "d SetterDecrementPunctuation is ebnfSyntax(`\"=--\"`): `Subtract 1 fom a numeric value and re-set vari"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 81
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 40,
+        "position": 0
+      },
+      "text": "d SetterMultiplicativePunctuation is ebnfSyntax(`\"=*\"`): `Multiply and re-set variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 83
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 41,
+        "position": 0
+      },
+      "text": "d SetterPowerPunctuation is ebnfSyntax(`\"=**\"`): `To power of and re-set variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 85
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 42,
+        "position": 0
+      },
+      "text": "d SetterBitwiseAndPunctuation is ebnfSyntax(`\"=&\"`): `Bitwise AND and re-set variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 87
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 43,
+        "position": 0
+      },
+      "text": "d SetterBitwisseOrPunctuation is ebnfSyntax(`\"=|\"`): `Bitwise OR and re-set variable` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 89
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 44,
+        "position": 0
+      },
+      "text": "d SetterCoalescenceNullPunctuation is ebnfSyntax(`\"=??\"`): `Set if undefined` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 91
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 45,
+        "position": 0
+      },
+      "text": "d SetterCoalescenceFalseyPunctuation is ebnfSyntax(`\"=||\"`): `Set if falsey` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 93
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 46,
+        "position": 0
+      },
+      "text": "d SetterCoalescenceTruthyPunctuation is ebnfSyntax(`\"=&&\"`): `Set if truthy` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 95
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 48,
+        "position": 0
+      },
+      "text": "d BitwisePunctuation is ebnfSyntax(`[[BitwiseAndPunctuation]] | [[BitwiseOrPunctuation]] | [[Bitwise"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 96
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 49,
+        "position": 0
+      },
+      "text": "d EqualityPunctuation is ebnfSyntax(`[[EqualityLessThanPunctuation]] | [[EqualityLessThanOrEqualPunc"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 98
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 50,
+        "position": 0
+      },
+      "text": "d SetterPuncuation is ebnfSyntax(`[[SetterPlainPunctuation]] | [[SetterBooleanTogglePunctuation]] | "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 101
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 52,
+        "position": 0
+      },
+      "text": "d AddPunctuation is ebnfSyntax(`\"+\"`): `Addition, concatenation` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 103
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 53,
+        "position": 0
+      },
+      "text": "d SubtractPunctuation is ebnfSyntax(`\"-\"`): `Subtraction` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 105
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 54,
+        "position": 0
+      },
+      "text": "d MultiplyPunctuation is ebnfSyntax(`\"*\"`): `Multiplication` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 107
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 55,
+        "position": 0
+      },
+      "text": "d PowerPunctuation is ebnfSyntax(`\"**\"`): `Power` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 109
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 56,
+        "position": 0
+      },
+      "text": "d ModulusPunctuation is ebnfSyntax(`\"%\"`): `Modulus` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 111
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 57,
+        "position": 0
+      },
+      "text": "d DividePunctuation is ebnfSyntax(`\"/\"`): `Division` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 113
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 58,
+        "position": 0
+      },
+      "text": "d SpreadPunctuation is ebnfSyntax(`\"...\"`): `Spread or range` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 115
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 60,
+        "position": 0
+      },
+      "text": "d MathPuncuation is ebnfSyntax(`[[AddPunctuation]] | [[SubtractPunctuation]] | [[MultiplyPunctuation"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/operator.rs",
+        "line": 124
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 17,
+        "position": 0
+      },
+      "text": "d BitwiseXorPunctuation is ebnfSyntax(`\"^\"`), notAllowedPostfix(`a non-numeric character`): `Bitwise"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 9
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d BlockOpenSeparator is ebnfSyntax(`\"{\"`): `an open token for a block` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 4,
+        "position": 0
+      },
+      "text": "d BlockCloseSeparator is ebnfSyntax(`\"}\"`): `a close token for a block` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 13
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "d GroupOpenSeparator is ebnfSyntax(`\"(\"`): `an open token for a group` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 15
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 6,
+        "position": 0
+      },
+      "text": "d GroupCloseSeparator is ebnfSyntax(`\")\"`): `a close token for a group` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 17
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 7,
+        "position": 0
+      },
+      "text": "d ListOpenSeparator is ebnfSyntax(`\"[\"`): `an open token for a list` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 8,
+        "position": 0
+      },
+      "text": "d ListContinueSeparator is ebnfSyntax(`\",\"`): `continue character for next item or statement in list"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 21
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 9,
+        "position": 0
+      },
+      "text": "d ListCloseSeparator is ebnfSyntax(`\"]\"`): `a close token for a list` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 23
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 10,
+        "position": 0
+      },
+      "text": "d StatementEndSeparator is ebnfSyntax(`\";\"`): `end character for statements` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/separator.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/grammar/tokens/separator.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d BlockOpenSeparator is ebnfSyntax(`\"{\"`): `an open token for a block` {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/space.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/grammar/tokens/space.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d NewLine is ebnfSyntax(`\"\\n\" | \"\\r\\n\"`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/space.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/grammar/tokens/space.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "d Space is ebnfSyntax(`[[NewLine]] | \" \" | \"\\t\" | \"\\u000B\" | \"\\u000C\" | \"\\u0085\" | \"\\u200E\" | \"\\u200"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/space.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/grammar/tokens/space.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d NewLine is ebnfSyntax(`\"\\n\" | \"\\r\\n\"`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/space.rs",
+        "line": 27
+      },
+      "source": {
+        "file": "def/grammar/tokens/space.lfy",
+        "line": 5,
+        "position": 0
+      },
+      "text": "d Space is ebnfSyntax(`[[NewLine]] | \" \" | \"\\t\" | \"\\u000B\" | \"\\u000C\" | \"\\u0085\" | \"\\u200E\" | \"\\u200"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 11
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "trait ebnfSyntax(syntax: string) {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 14
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 7,
+        "position": 4
+      },
+      "text": "identifier = @identifier,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 18
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 6,
+        "position": 4
+      },
+      "text": "syntax = syntax,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 8,
+        "position": 4
+      },
+      "text": "rule = `{{@identifier}} = {{syntax}} ;`,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 4,
+        "position": 2
+      },
+      "text": "$ebnf: `EBNF details for this token` = EBNFSyntax;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 32
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 6,
+        "position": 4
+      },
+      "text": "syntax = syntax,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 33
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 7,
+        "position": 4
+      },
+      "text": "identifier = @identifier,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 34
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 8,
+        "position": 4
+      },
+      "text": "rule = `{{@identifier}} = {{syntax}} ;`,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 40
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 46
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 11,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria.add({ behavior = `Lexes and parses grammar in the following format (EBNF notatio"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 63
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 14,
+        "position": 0
+      },
+      "text": "trait appliesToCurrent {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 65
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 21,
+        "position": 0
+      },
+      "text": "trait notAllowedPrefix(...forbidden: string[]) {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 67
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "trait notAllowedPostfix(...forbidden: string[]) {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 77
+      },
+      "source": {
+        "file": "def/grammar/tokens/operator.lfy",
+        "line": 17,
+        "position": 0
+      },
+      "text": "d BitwiseXorPunctuation is ebnfSyntax(`\"^\"`), notAllowedPostfix(`a non-numeric character`): `Bitwise"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 82
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate match for lexer from [[@]]`) and (`Text immediately prior to it i"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 94
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 29,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate match for lexer from [[@]]`) and (`Text immediately following is "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 108
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 21,
+        "position": 0
+      },
+      "text": "trait notAllowedPrefix(...forbidden: string[]) {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 111
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate match for lexer from [[@]]`) and (`Text immediately prior to it i"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 113
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 29,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate match for lexer from [[@]]`) and (`Text immediately following is "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 121
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 14,
+        "position": 0
+      },
+      "text": "trait appliesToCurrent {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 126
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 17,
+        "position": 2
+      },
+      "text": "where (isCurrentRef) and !(isInGlobalScope) -> `Applies to the current scope`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 128
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "where (isCurrentRef) and (isInGlobalScope) -> `Applies to the global scope`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 136
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 17,
+        "position": 2
+      },
+      "text": "where (isCurrentRef) and !(isInGlobalScope) -> `Applies to the current scope`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 137
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "where (isCurrentRef) and (isInGlobalScope) -> `Applies to the global scope`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 148
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 17,
+        "position": 2
+      },
+      "text": "where (isCurrentRef) and !(isInGlobalScope) -> `Applies to the current scope`;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 157
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate match for lexer from [[@]]`) and (`Text immediately prior to it i"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/tokens/traits.rs",
+        "line": 170
+      },
+      "source": {
+        "file": "def/grammar/tokens/traits.lfy",
+        "line": 29,
+        "position": 4
+      },
+      "text": "where (`Token {{.}} is a candidate match for lexer from [[@]]`) and (`Text immediately following is "
+    },
+    {
+      "generated": {
+        "file": "src/grammar/traits.rs",
+        "line": 4
+      },
+      "source": {
+        "file": "def/grammar/traits.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "alias ebnfSyntax = tokenTraits.ebnfSyntax;"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/types.rs",
+        "line": 4
+      },
+      "source": {
+        "file": "def/grammar/types.lfy",
+        "line": 1,
+        "position": 0
+      },
+      "text": "type EBNFSyntax {"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/types.rs",
+        "line": 8
+      },
+      "source": {
+        "file": "def/grammar/types.lfy",
+        "line": 2,
+        "position": 2
+      },
+      "text": "rule: `Full EBNF form representation` = string,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/types.rs",
+        "line": 10
+      },
+      "source": {
+        "file": "def/grammar/types.lfy",
+        "line": 3,
+        "position": 2
+      },
+      "text": "identifier: `Identifier for this token in the EBNF format notation` = string,"
+    },
+    {
+      "generated": {
+        "file": "src/grammar/types.rs",
+        "line": 12
+      },
+      "source": {
+        "file": "def/grammar/types.lfy",
+        "line": 4,
+        "position": 2
+      },
+      "text": "syntax: `Syntax for this token in EBNF format` = string,"
+    },
+    {
+      "generated": {
+        "file": "src/lib.rs",
+        "line": 5
+      },
+      "source": {
+        "file": "def/grammar/file.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d SourceFile is ebnfSyntax(`(: [[Statement]] :)`) {}"
+    },
+    {
+      "generated": {
+        "file": "src/lib.rs",
+        "line": 6
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 25,
+        "position": 0
+      },
+      "text": "fn lexString(str: string, file?: string): `Turn a given string into a set of lexigraphical tokens` ="
+    }
+  ]
+}

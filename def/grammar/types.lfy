@@ -1,0 +1,5 @@
+type EBNFSyntax {
+  rule: `Full EBNF form representation` = string,
+  identifier: `Identifier for this token in the EBNF format notation` = string,
+  syntax: `Syntax for this token in EBNF format` = string,
+}

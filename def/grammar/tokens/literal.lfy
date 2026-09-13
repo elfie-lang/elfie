@@ -1,0 +1,55 @@
+use "./space";
+use "./traits";
+
+external const UTF8_CHARACTER is ebnfSyntax(`? all UTF-8 compatible character codes ?`) {}
+
+d NullLiteral is ebnfSyntax(`"null"`): `a literal null value` {}
+d UndefinedLiteral is ebnfSyntax(`"undefined"`): `a literal undefined value` {}
+
+d BooleanLiteral is ebnfSyntax(`"true" | "false"`): `a boolean literal value` {}
+
+d DigitLiteral is ebnfSyntax(`"0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"`) {}
+d NumberLiteral is ebnfSyntax(`[[DigitLiteral]] , (/ (: [[DigitLiteral]] | "_" :) , [[DigitLiteral]] /) , (/ "." , [[DigitLiteral]] , (/ (: [[DigitLiteral]] | "_" :) , [[DigitLiteral]] /) /) `): `a number literal` {
+  where (`Underscores are present in the source text`) -> `Underscores are removed from the value to leave only digits and "." characters`;
+}
+
+d HexCharacter is ebnfSyntax(`[[DigitLiteral]] | "a" | "A" | "b" | "B" | "c" | "C" | "d" | "D" | "e" | "E" | "f" | "F"`) {}
+
+d SingleQuoteBoundary is ebnfSyntax(`"'"`): `a boundary character for a string` {}
+d DoubleQuoteBoundary is ebnfSyntax(`'"'`): `a boundary character for a string` {}
+d BacktickBoundary is ebnfSyntax('"`"'): `a boundary character for a template string` {}
+
+// TemplateLiteral declared in `../expression` as it is more complicated
+d ExecutionOpenBoundary is ebnfSyntax(`"\{{"`): `an open token for an execution block within a template literal` {}
+d ExecutionCloseBoundary is ebnfSyntax(`"\}}"`): `a close token for an execution block within a template literal` {}
+d ReferenceOpenBoundary is ebnfSyntax(`"\[["`): `an open token for a reference within a template literal or documentation block` {}
+d ReferenceCloseBoundary is ebnfSyntax(`"\]]"`): `a close token for a reference within a template literal or documentation block` {}
+
+d Sequence is ebnfSyntax(`( "\\\\" | "\\r" | "\\\n" | "\\\r\n" | ("\\x" , [[HexCharacter]] , [[HexCharacter]]) | ("\\u" , [[HexCharacter]] , [[HexCharacter]] , [[HexCharacter]] , [[HexCharacter]] , (/ [[HexCharacter]] , [[HexCharacter]] /) ) | "\\\{{" | "\\\}}" | "\\\[[" | "\\\]]" | "\\n" | "\\0" | "\\t" | "\\'" | '\\"' | "\\\`" )`): `escape and replacement sequences in string and template bodies` {
+  where (`Sequence is \\\\`) -> `Repressents a literal backslash character`;
+  where (`Sequence is \\r`) -> `Repressents a literal carriage return character`;
+  where (`Sequence is \\\n`) -> `Repressents a sequence to continue string through a newline character`;
+  where (`Sequence is \\\r\n`) -> `Repressents a sequence to continue a string through a newline`;
+  where (`Sequence is \\x`) -> `Repressents a character code encoding marker that is followed by exactly two hex digits for the character code to insert; For all purposes, the two hex digits are considered a part of the sequence`;
+  where (`Sequence is \\u`) -> `Repressents a character code encoding marker that is followed by either four (with an assumed leading 00) or six hex digits for the 24-bit unicode character code to insert; For all purposes, the hex digits are considered a part of the sequence`;
+  where (`Sequence is \\\{{`) -> `Repressents a literal opening execution curly braces to escape an execution start sequence`;
+  where (`Sequence is \\\}}`) -> `Repressents a literal closing execution curly braces to escape an execution end sequence`;
+  where (`Sequence is \\\[[`) -> `Repressents a literal opening reference brackets to escape a reference start sequence`;
+  where (`Sequence is \\\]]`) -> `Repressents a literal closing reference brackets to escape a reference end sequence`;
+  where (`Sequence is \\n`) -> `Repressents a literal newline character`;
+  where (`Sequence is \\0`) -> `Repressents a literal null character`;
+  where (`Sequence is \\t`) -> `Repressents a literal tab character`;
+
+  where (`Sequence is \\'`) -> `Repressents a literal single quote character`;
+  where (`Sequence is \\"`) -> `Repressents a literal double quote character`;
+  where ("Sequence is \\`") -> `Repressents a literal backtick character`;
+
+  where (`When the hex digits that are used for the 24-bit unicode character are not unicode scalar values`) -> `Text is treated as literal and is not encoded as a sequence`;
+}
+
+d SingleQuoteLiteralBody is ebnfSyntax(`(: UTF8_CHARACTER - ( [[NewLine]] | [[SingleQuoteBoundary]] ) :)`): `single quote string literal body contents` {}
+d DoubleQuoteLiteralBody is ebnfSyntax(`(: ( UTF8_CHARACTER - ( [[NewLine]] | [[DoubleQuoteBoundary]] | "\\" ) ) | [[Sequence]] :)`): `double quote string literal body contents` {}
+
+d SingleQuoteLiteral is ebnfSyntax(`[[SingleQuoteBoundary]] , [[SingleQuoteLiteralBody]] , [[SingleQuoteBoundary]]`): `` {}
+d DoubleQuoteLiteral is ebnfSyntax(`[[DoubleQuoteBoundary]] , [[DoubleQuoteLiteralBody]] , [[DoubleQuoteBoundary]]`): `` {}
+d StringLiteral is ebnfSyntax(`[[SingleQuoteLiteral]] | [[DoubleQuoteLiteral]]`) {}

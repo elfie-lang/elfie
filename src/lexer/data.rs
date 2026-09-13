@@ -1,57 +1,23 @@
-//! Compiled from `def/lexer/data.lfy` (`LexerModeStack`, `Token`), together with
-//! the lexer-mode declarations from `def/lexer/tokens/{literal,comment,separator}.lfy`.
+//! Compiled from `def/lexer/data.lfy`.
 
 use std::fmt;
 use std::sync::Arc;
 
-use super::tokens::comment::Comment;
-use super::tokens::keyword::Keyword;
-use super::tokens::literal::{Literal, TemplateBlock};
-use super::tokens::operator::Operator;
-use super::tokens::separator::Separator;
-use super::tokens::whitespace::Space;
+use crate::grammar::RuleInfo;
+use crate::grammar::expression::Expression;
+use crate::grammar::tokens::comment::Comment;
+use crate::grammar::tokens::identifier::Identifier;
+use crate::grammar::tokens::keyword::Keyword;
+use crate::grammar::tokens::literal::Literal;
+use crate::grammar::tokens::operator::Operator;
+use crate::grammar::tokens::separator::Separator;
 
-/// A lexing mode. Each variant is one of the `mode::*` string constants declared in the
-/// token definition files; `name()` yields the original string.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Mode {
-    StringLiteral,     // @lfy def/lexer/tokens/literal.lfy:3
-    TemplateLiteral,   // @lfy def/lexer/tokens/literal.lfy:4
-    TemplateReference, // @lfy def/lexer/tokens/literal.lfy:5
-    TemplateExecution, // @lfy def/lexer/tokens/literal.lfy:6
-    Comment,           // @lfy def/lexer/tokens/comment.lfy:5
-    Documentation,     // @lfy def/lexer/tokens/comment.lfy:6
-    List,              // @lfy def/lexer/tokens/separator.lfy:3
-    Block,             // @lfy def/lexer/tokens/separator.lfy:4
-    Group,             // @lfy def/lexer/tokens/separator.lfy:5
-}
+use super::modes::Mode;
 
-impl Mode {
-    /// The `mode::*` identifier this mode was declared with.
-    pub fn name(self) -> &'static str {
-        match self {
-            Mode::StringLiteral => "mode::literal::string", // @lfy def/lexer/tokens/literal.lfy:3
-            Mode::TemplateLiteral => "mode::literal::template", // @lfy def/lexer/tokens/literal.lfy:4
-            Mode::TemplateReference => "mode::template::reference", // @lfy def/lexer/tokens/literal.lfy:5
-            Mode::TemplateExecution => "mode::template::execution", // @lfy def/lexer/tokens/literal.lfy:6
-            Mode::Comment => "mode::comment", // @lfy def/lexer/tokens/comment.lfy:5
-            Mode::Documentation => "mode::documentation", // @lfy def/lexer/tokens/comment.lfy:6
-            Mode::List => "mode::list",       // @lfy def/lexer/tokens/separator.lfy:3
-            Mode::Block => "mode::block",     // @lfy def/lexer/tokens/separator.lfy:4
-            Mode::Group => "mode::group",     // @lfy def/lexer/tokens/separator.lfy:5
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.name())
-    }
-}
-
-/// One entry on the [`LexerModeStack`]: the mode plus the token kind whose creation
-/// pushed it. The creator is the "information needed to be able to successfully lex"
-/// mode-dependent tokens (inline vs. block comments, matching string boundaries).
+/// One entry on the [`LexerModeStack`]: the mode plus the kind of token whose creation
+/// pushed it. The creator is the information needed to lex mode-dependent tokens (inline
+/// vs. block comments, which boundary opened a string).
+// @lfy def/lexer/data.lfy:5
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ModeEntry {
     pub mode: Mode,
@@ -66,7 +32,7 @@ pub struct LexerModeStack {
 }
 
 impl LexerModeStack {
-    /// A new, empty stack (one is initialized for every `lex_string` run).
+    /// A new, empty stack.
     pub fn new() -> Self {
         Self::default()
     }
@@ -77,22 +43,18 @@ impl LexerModeStack {
         self.entries.push(ModeEntry { mode, creator });
     }
 
-    /// Exiting the mode at the top of the stack pops exactly one entry; exiting a mode that
-    /// is not at the top is an `InvalidModePop` error.
+    /// Exiting the lexing mode at the top of the stack pops a single mode. Nothing is
+    /// popped when `mode` is not on top; the popped entry is returned otherwise.
     // @lfy def/lexer/data.lfy:4
-    pub fn pop(&mut self, mode: Mode) -> Result<ModeEntry, LexError> {
+    pub fn pop(&mut self, mode: Mode) -> Option<ModeEntry> {
         match self.entries.last() {
-            Some(top) if top.mode == mode => Ok(self.entries.pop().expect("top exists")),
-            top => Err(LexError::InvalidModePop {
-                // @lfy def/lexer/data.lfy:5
-                expected: mode,
-                found: top.map(|entry| entry.mode),
-            }),
+            Some(top) if top.mode == mode => self.entries.pop(),
+            _ => None,
         }
     }
 
-    /// The entry at the top of the stack, carrying the mode and its creating token.
-    // @lfy def/lexer/data.lfy:6
+    /// The entry at the top of the stack, carrying the mode and the token that created it.
+    // @lfy def/lexer/data.lfy:5
     pub fn top(&self) -> Option<&ModeEntry> {
         self.entries.last()
     }
@@ -116,62 +78,76 @@ impl LexerModeStack {
     }
 }
 
-/// The kind of a lexed [`Token`]. Enumerated kinds carry the enum member they were
-/// matched from; the remaining kinds are produced by the free-form lexing rules.
+/// The kind of a lexed [`Token`]: the grammar rule it was pushed to the results as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenKind {
-    Literal(Literal),             // @lfy def/lexer/main.lfy:31
-    TemplateBlock(TemplateBlock), // @lfy def/lexer/main.lfy:34
-    Number,                       // @lfy def/lexer/main.lfy:45
-    Text,                         // @lfy def/lexer/main.lfy:51
-    Comment(Comment),             // @lfy def/lexer/main.lfy:66
-    CommentBody,                  // @lfy def/lexer/main.lfy:69
-    DocumentationBody,            // @lfy def/lexer/main.lfy:70
-    Keyword(Keyword),             // @lfy def/lexer/main.lfy:74
-    Operator(Operator),           // @lfy def/lexer/main.lfy:79
-    Separator(Separator),         // @lfy def/lexer/main.lfy:84
-    Space(Space),                 // @lfy def/lexer/main.lfy:89
-    Identifier,                   // @lfy def/lexer/main.lfy:99
+    /// A literal token: a simple literal, a string or template boundary, or a string body.
+    Literal(Literal), // @lfy def/lexer/main.lfy:62
+    /// A template literal body (`Expression.TemplateLiteralBody`).
+    Expression(Expression), // @lfy def/lexer/main.lfy:76
+    /// A comment or documentation delimiter or body.
+    Comment(Comment), // @lfy def/lexer/main.lfy:80
+    /// A keyword token.
+    Keyword(Keyword), // @lfy def/lexer/main.lfy:95
+    /// An operator token.
+    Operator(Operator), // @lfy def/lexer/main.lfy:100
+    /// A separator token.
+    Separator(Separator), // @lfy def/lexer/main.lfy:105
+    /// A space token.
+    Space, // @lfy def/lexer/main.lfy:110
+    /// An identifier token.
+    Identifier, // @lfy def/lexer/main.lfy:114
+    /// An invalid token: characters no other rule matched.
+    Invalid, // @lfy def/lexer/main.lfy:116
+}
+
+impl TokenKind {
+    /// The grammar rule this kind of token was lexed from. Space tokens come from either
+    /// of the two space rules and invalid tokens from none, so both yield `None`.
+    pub fn rule(self) -> Option<RuleInfo> {
+        match self {
+            TokenKind::Literal(rule) => Some(RuleInfo::of(rule)),
+            TokenKind::Expression(rule) => Some(RuleInfo::of(rule)),
+            TokenKind::Comment(rule) => Some(RuleInfo::of(rule)),
+            TokenKind::Keyword(rule) => Some(RuleInfo::of(rule)),
+            TokenKind::Operator(rule) => Some(RuleInfo::of(rule)),
+            TokenKind::Separator(rule) => Some(RuleInfo::of(rule)),
+            TokenKind::Identifier => Some(RuleInfo::of(Identifier::Identifier)),
+            TokenKind::Space | TokenKind::Invalid => None,
+        }
+    }
 }
 
 /// Representation of a lexed token.
-// @lfy def/lexer/data.lfy:9
+// @lfy def/lexer/data.lfy:8
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub kind: TokenKind,
     /// Normalized and processed token value as derived from the raw source text.
-    pub value: String, // @lfy def/lexer/data.lfy:10
+    pub value: String, // @lfy def/lexer/data.lfy:9
     /// Raw source text content that created this token.
-    pub raw: String, // @lfy def/lexer/data.lfy:11
+    pub raw: String, // @lfy def/lexer/data.lfy:10
     /// Source file this token came from (`"anonymous"` when none was given).
-    pub file: Arc<str>, // @lfy def/lexer/data.lfy:14
+    pub file: Arc<str>, // @lfy def/lexer/data.lfy:13
     /// 1-indexed line the token starts on.
-    pub line: usize, // @lfy def/lexer/data.lfy:14
+    pub line: usize, // @lfy def/lexer/data.lfy:13
     /// 0-indexed character position within the line the token starts at.
-    pub position: usize, // @lfy def/lexer/data.lfy:14
+    pub position: usize, // @lfy def/lexer/data.lfy:13
 }
 
 impl Token {
     /// A space token only separates tokens and carries no other semantic significance.
     // @lfy def/lexer/data.lfy:16
     pub fn is_space(&self) -> bool {
-        matches!(self.kind, TokenKind::Space(_))
+        self.kind == TokenKind::Space
     }
 }
 
 /// Errors raised while lexing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LexError {
-    /// A character matched no lexing rule.
-    // @lfy def/lexer/main.lfy:101
-    UnexpectedToken {
-        file: Arc<str>,
-        line: usize,
-        position: usize,
-        found: char,
-    },
     /// The input ended while the mode stack was not empty.
-    // @lfy def/lexer/main.lfy:23
+    // @lfy def/lexer/main.lfy:37
     UnexpectedEndOfFile {
         file: Arc<str>,
         line: usize,
@@ -179,22 +155,11 @@ pub enum LexError {
         /// Modes still open, bottom first.
         open: Vec<Mode>,
     },
-    /// A mode was exited that was not at the top of the stack.
-    // @lfy def/lexer/data.lfy:5
-    InvalidModePop { expected: Mode, found: Option<Mode> },
 }
 
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LexError::UnexpectedToken {
-                file,
-                line,
-                position,
-                found,
-            } => {
-                write!(f, "{file}:{line}:{position}: unexpected token {found:?}")
-            }
             LexError::UnexpectedEndOfFile {
                 file,
                 line,
@@ -213,16 +178,6 @@ impl fmt::Display for LexError {
                 }
                 f.write_str("]")
             }
-            LexError::InvalidModePop { expected, found } => match found {
-                Some(found) => write!(
-                    f,
-                    "invalid mode pop: expected {expected} at top of stack, found {found}"
-                ),
-                None => write!(
-                    f,
-                    "invalid mode pop: expected {expected} at top of stack, stack is empty"
-                ),
-            },
         }
     }
 }
@@ -233,12 +188,20 @@ impl std::error::Error for LexError {}
 mod tests {
     use super::*;
 
+    fn block_open() -> TokenKind {
+        TokenKind::Separator(Separator::BlockOpenSeparator)
+    }
+
+    fn group_open() -> TokenKind {
+        TokenKind::Separator(Separator::GroupOpenSeparator)
+    }
+
     // @lfy def/lexer/data.lfy:3
     #[test]
     fn entering_a_mode_pushes_it_to_the_top() {
         let mut stack = LexerModeStack::new();
-        stack.push(Mode::Block, TokenKind::Separator(Separator::BlockOpen));
-        stack.push(Mode::Group, TokenKind::Separator(Separator::GroupOpen));
+        stack.push(Mode::Block, block_open());
+        stack.push(Mode::Group, group_open());
         assert_eq!(stack.top_mode(), Some(Mode::Group));
         assert_eq!(stack.len(), 2);
     }
@@ -247,47 +210,31 @@ mod tests {
     #[test]
     fn exiting_the_top_mode_pops_a_single_entry() {
         let mut stack = LexerModeStack::new();
-        stack.push(Mode::Block, TokenKind::Separator(Separator::BlockOpen));
-        stack.push(Mode::Group, TokenKind::Separator(Separator::GroupOpen));
+        stack.push(Mode::Block, block_open());
+        stack.push(Mode::Group, group_open());
+        assert_eq!(stack.pop(Mode::Block), None);
+        assert_eq!(stack.len(), 2);
         let popped = stack.pop(Mode::Group).unwrap();
         assert_eq!(popped.mode, Mode::Group);
         assert_eq!(stack.modes(), vec![Mode::Block]);
+        assert!(LexerModeStack::new().pop(Mode::List).is_none());
     }
 
     // @lfy def/lexer/data.lfy:5
     #[test]
-    fn exiting_a_mode_not_at_the_top_is_an_invalid_mode_pop() {
-        let mut stack = LexerModeStack::new();
-        stack.push(Mode::Block, TokenKind::Separator(Separator::BlockOpen));
-        stack.push(Mode::Group, TokenKind::Separator(Separator::GroupOpen));
-        assert_eq!(
-            stack.pop(Mode::Block),
-            Err(LexError::InvalidModePop {
-                expected: Mode::Block,
-                found: Some(Mode::Group)
-            })
-        );
-        assert_eq!(stack.len(), 2);
-        assert_eq!(
-            LexerModeStack::new().pop(Mode::List),
-            Err(LexError::InvalidModePop {
-                expected: Mode::List,
-                found: None
-            })
-        );
-    }
-
-    // @lfy def/lexer/data.lfy:6
-    #[test]
     fn stack_entries_carry_the_creating_token() {
         let mut stack = LexerModeStack::new();
-        stack.push(Mode::Comment, TokenKind::Comment(Comment::InlineStart));
+        stack.push(
+            Mode::Comment,
+            TokenKind::Comment(Comment::CommentInlineStart),
+        );
         let top = stack.top().unwrap();
         assert_eq!(top.mode, Mode::Comment);
-        assert_eq!(top.creator, TokenKind::Comment(Comment::InlineStart));
+        assert_eq!(top.creator, TokenKind::Comment(Comment::CommentInlineStart));
+        assert!(!stack.is_empty());
     }
 
-    // @lfy def/lexer/data.lfy:14
+    // @lfy def/lexer/data.lfy:13
     #[test]
     fn token_tracks_file_line_and_position() {
         let token = Token {
@@ -300,13 +247,14 @@ mod tests {
         };
         assert_eq!(&*token.file, "main.lfy");
         assert_eq!((token.line, token.position), (3, 7));
+        assert_eq!(token.kind.rule().unwrap().identifier(), "Identifier");
     }
 
     // @lfy def/lexer/data.lfy:16
     #[test]
     fn space_tokens_are_identified_as_separators_only() {
         let space = Token {
-            kind: TokenKind::Space(Space::Space),
+            kind: TokenKind::Space,
             value: " ".into(),
             raw: " ".into(),
             file: Arc::from("anonymous"),
@@ -314,6 +262,7 @@ mod tests {
             position: 0,
         };
         assert!(space.is_space());
+        assert!(space.kind.rule().is_none());
         let ident = Token {
             kind: TokenKind::Identifier,
             ..space.clone()
@@ -322,15 +271,16 @@ mod tests {
     }
 
     #[test]
-    fn mode_names_match_their_declarations() {
-        assert_eq!(Mode::StringLiteral.name(), "mode::literal::string");
-        assert_eq!(Mode::TemplateLiteral.name(), "mode::literal::template");
-        assert_eq!(Mode::TemplateReference.name(), "mode::template::reference");
-        assert_eq!(Mode::TemplateExecution.name(), "mode::template::execution");
-        assert_eq!(Mode::Comment.name(), "mode::comment");
-        assert_eq!(Mode::Documentation.name(), "mode::documentation");
-        assert_eq!(Mode::List.name(), "mode::list");
-        assert_eq!(Mode::Block.name(), "mode::block");
-        assert_eq!(Mode::Group.name(), "mode::group");
+    fn errors_display_their_location_and_open_modes() {
+        let error = LexError::UnexpectedEndOfFile {
+            file: Arc::from("a.lfy"),
+            line: 2,
+            position: 1,
+            open: vec![Mode::Group, Mode::List],
+        };
+        assert_eq!(
+            error.to_string(),
+            "a.lfy:2:1: unexpected end of file; open modes: [mode::group, mode::list]"
+        );
     }
 }
