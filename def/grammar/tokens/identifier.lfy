@@ -1,9 +1,0 @@
-use "./traits";
-
-external const XID_Start is ebnfSyntax(`? XID_Start defined by Unicode / unicode-ident ?`) {}
-external const XID_Continue is ebnfSyntax(`? XID_Continue defined by Unicode / unicode-ident ?`) {}
-
-d Identifier is ebnfSyntax(`( XID_Start | "_" ) , (: XID_Continue :)`): `Identifier of the format XID_Start or _ followed by any number of XID_Continue characters that do not match a keyword` {
-  @acceptanceCriteria
-    .add({ behavior = 'Cannot match keyword' });
-}

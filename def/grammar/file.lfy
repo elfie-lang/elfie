@@ -1,3 +1,0 @@
-use "./statement";
-
-d SourceFile is ebnfSyntax(`(: [[Statement]] :)`) {}

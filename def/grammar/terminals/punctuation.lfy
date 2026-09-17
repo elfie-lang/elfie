@@ -1,0 +1,84 @@
+use "../precedence";
+use "../traits";
+
+// Accessors: one per layer
+d ValueAccessor is punctuation(`.`), binding(Level.access): `Reaches into the value layer` {}
+d OptionalValueAccessor is punctuation(`?.`), binding(Level.access): `Reaches into the value layer when the value is present` {}
+d ContextAccessor is punctuation(`@`), binding(Level.access): `Reaches into the context layer` {}
+d ScopeAccessor is punctuation(`$`), binding(Level.access): `Reaches into the scope layer` {}
+d ParentScopeAccessor is punctuation(`$&`), binding(Level.access): `Reaches into the enclosing scope` {}
+d Accessor is alternationList(ValueAccessor, OptionalValueAccessor, ContextAccessor, ScopeAccessor, ParentScopeAccessor): `Any accessor` {}
+
+// Grouping and separation
+d GroupOpen is punctuation(`(`), binding(Level.group): `Opens a group or an argument list` {}
+d GroupClose is punctuation(`)`): `Closes a group or an argument list` {}
+d ListOpen is punctuation(`[`), binding(Level.access): `Opens a list, an index, or an array type` {}
+d ListClose is punctuation(`]`): `Closes a list, an index, or an array type` {}
+d BlockOpen is punctuation(`{`): `Opens a block or an object` {}
+d BlockClose is punctuation(`}`): `Closes a block or an object` {}
+d Comma is punctuation(`,`), binding(Level.joiner): `Separates items` {}
+d Semicolon is punctuation(`;`): `Ends a statement` {}
+d Colon is punctuation(`:`), binding(Level.definition): `Attaches a definition to a name` {}
+d QuestionMark is punctuation(`?`): `Marks a name optional, or begins a conditional` {}
+d Spread is punctuation(`...`), binding(Level.definition, 'right'): `Spreads a list, collects the rest, or makes a range` {}
+d PreviousStatement is punctuation(`^^`), binding(Level.reference, 'right'): `The entity the previous statement declared` {}
+d Ampersand is punctuation(`&`), binding(Level.reference, 'right'): `The entity a name is bound to rather than its value; bitwise and between values` {}
+
+// Arrows
+d SingleArrowRight is punctuation(`->`): `Leads to a consequence or a return type` {}
+d SingleArrowRightGlyph is punctuation(`→`): `The one character spelling of the single right arrow` {}
+d SingleArrowLeft is punctuation(`<-`): `Reserved arrow` {}
+d SingleArrowLeftGlyph is punctuation(`←`): `The one character spelling of the single left arrow` {}
+d DoubleArrowRight is punctuation(`=>`): `Leads to a result` {}
+d SingleArrow is alternationList(SingleArrowRight, SingleArrowRightGlyph): `Either spelling of the single right arrow` {}
+
+// Setters
+d PlainSetter is setter(`=`): `Sets` {}
+d ToggleSetter is setter(`=!`): `Sets a boolean to its opposite` {}
+d AddSetter is setter(`=+`): `Adds, then sets` {}
+d SubtractSetter is setter(`=-`): `Subtracts, then sets` {}
+d MultiplySetter is setter(`=*`): `Multiplies, then sets` {}
+d PowerSetter is setter(`=**`): `Raises to a power, then sets` {}
+d BitwiseAndSetter is setter(`=&`): `Bitwise ands, then sets` {}
+d BitwiseOrSetter is setter(`=|`): `Bitwise ors, then sets` {}
+d NullishSetter is setter(`=??`): `Sets only when null or undefined` {}
+d FalseySetter is setter(`=||`): `Sets only when falsey` {}
+d TruthySetter is setter(`=&&`): `Sets only when truthy` {}
+d Setter is alternationList(...setter@entities): `Any setter` {}
+
+// Comparison
+d LessThan is relational(`<`): `Less than` {}
+d LessThanOrEqual is relational(`<=`): `Less than or equal` {}
+d GreaterThan is relational(`>`): `Greater than` {}
+d GreaterThanOrEqual is relational(`>=`): `Greater than or equal` {}
+d Relational is alternationList(...relational@entities): `Any ordering operator` {}
+
+d Equal is equality(`==`): `Equal without casting` {}
+d NotEqual is equality(`!=`): `Not equal` {}
+d SameReference is equality(`&=`): `The same entity` {}
+d AboutEqual is equality(`~=`): `Equal after casting` {}
+d Equality is alternationList(...equality@entities): `Any equality operator` {}
+
+// Logic
+d LogicalAnd is punctuation(`&&`), binding(Level.logicalAnd): `Both` {}
+d LogicalOr is punctuation(`||`), binding(Level.coalescence): `Either, yielding the first truthy value` {}
+d NullishOr is punctuation(`??`), binding(Level.coalescence): `The right value when the left is null or undefined` {}
+d Coalescence is alternationList(LogicalOr, NullishOr): `Operators that fall back to the right value` {}
+d LogicalNot is punctuation(`!`), binding(Level.unary, 'right'): `Not` {}
+
+// Arithmetic and bitwise
+d Plus is additive(`+`): `Addition or concatenation` {}
+d Minus is additive(`-`): `Subtraction; also negation as a prefix` {}
+d Additive is alternationList(...additive@entities): `Any additive operator` {}
+
+d Star is multiplicative(`*`): `Multiplication` {}
+d Slash is multiplicative(`/`): `Division` {}
+d Percent is multiplicative(`%`): `Remainder` {}
+d Multiplicative is alternationList(...multiplicative@entities): `Any multiplicative operator` {}
+
+d Power is punctuation(`**`), binding(Level.exponentiation, 'right'): `Exponentiation` {}
+d BitwiseOr is punctuation(`|`), binding(Level.bitwiseOr): `Bitwise or; also a union type` {}
+d BitwiseXor is punctuation(`^`), binding(Level.bitwiseXor): `Bitwise exclusive or` {}
+d BitwiseNot is punctuation(`~`), binding(Level.unary, 'right'): `Bitwise not` {}
+
+d Punctuation is alternationList(...punctuation@entities): `Any punctuation` {}

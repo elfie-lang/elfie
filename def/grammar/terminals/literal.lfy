@@ -1,0 +1,51 @@
+use "../traits";
+use "./space";
+
+// Character classes the lexer already knows; never tokens of their own
+external Character is rule(`? any UTF-8 scalar value ?`) = undefined;
+external Digit is rule(`"0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"`) = undefined;
+external HexDigit is rule(`[[Digit]] | "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F"`) = undefined;
+external Backslash is rule(`"\\"`) = undefined;
+
+// Numbers
+d NumberLiteral is terminal(`[[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) , (/ "." , [[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) /)`): `A decimal number; underscores group digits` {
+  where (`Underscores are present`) -> `They are removed from the token value`;
+}
+
+// Boundaries
+d SingleQuote is boundary(`'`): `Opens and closes a single quoted string` {}
+d DoubleQuote is boundary(`"`): `Opens and closes a double quoted string` {}
+d Backtick is boundary('`'): `Opens and closes a template` {}
+d ExecutionOpen is boundary("{{"): `Opens an expression inside a template` {}
+d ExecutionClose is boundary("}}"): `Closes an expression inside a template` {}
+d ReferenceOpen is boundary("[["): `Opens a reference inside a template or documentation` {}
+d ReferenceClose is boundary("]]"): `Closes a reference inside a template or documentation` {}
+
+// Escapes: each names what it becomes; bodies list which escapes they accept
+d BackslashEscape is escape(`"\\\\"`, "\\"): `A backslash` {}
+d SingleQuoteEscape is escape(`"\\'"`, "'"): `A single quote` {}
+d DoubleQuoteEscape is escape(`'\\"'`, '"'): `A double quote` {}
+d BacktickEscape is escape("'\\`'", '`'): `A backtick` {}
+d NewlineEscape is escape(`"\\n"`, "\n"): `A line feed` {}
+d CarriageReturnEscape is escape(`"\\r"`, "\r"): `A carriage return` {}
+d TabEscape is escape(`"\\t"`, "\t"): `A tab` {}
+d NullEscape is escape(`"\\0"`, "\0"): `The null character` {}
+d ContinuationEscape is escape(`"\\" , [[NewLine]]`, ""): `A line break that does not end the text` {}
+d HexEscape is escape(`"\\x" , [[HexDigit]] , [[HexDigit]]`, "the character with that code"): `A character by two hex digits` {}
+d UnicodeEscape is escape(`"\\u" , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , (/ [[HexDigit]] , [[HexDigit]] /)`, "the character with that code point"): `A character by four or six hex digits` {
+  where (`The digits are not a scalar value`) -> `The text is kept as written`;
+}
+d ExecutionOpenEscape is escape(`"\\\{{"`, "{{"): `Literal opening execution braces` {}
+d ExecutionCloseEscape is escape(`"\\\}}"`, "}}"): `Literal closing execution braces` {}
+d ReferenceOpenEscape is escape(`"\\\[["`, "[["): `Literal opening reference brackets` {}
+d ReferenceCloseEscape is escape(`"\\\]]"`, "]]"): `Literal closing reference brackets` {}
+
+// Bodies: what may appear between boundaries
+d SingleQuoteBody is body([NewLine, SingleQuote, Backslash], [BackslashEscape, SingleQuoteEscape, ContinuationEscape]): `Text of a single quoted string` {}
+d DoubleQuoteBody is body([NewLine, DoubleQuote, Backslash], [BackslashEscape, DoubleQuoteEscape, SingleQuoteEscape, NewlineEscape, CarriageReturnEscape, TabEscape, NullEscape, ContinuationEscape, HexEscape, UnicodeEscape]): `Text of a double quoted string` {}
+d TemplateBody is body([Backtick, Backslash, ExecutionOpen, ReferenceOpen], [BackslashEscape, BacktickEscape, SingleQuoteEscape, DoubleQuoteEscape, NewlineEscape, CarriageReturnEscape, TabEscape, NullEscape, ContinuationEscape, HexEscape, UnicodeEscape, ExecutionOpenEscape, ExecutionCloseEscape, ReferenceOpenEscape, ReferenceCloseEscape]): `Text of a template between its expressions and references` {}
+
+// Strings
+d SingleQuoteString is rule(`[[SingleQuote]] , (/ [[SingleQuoteBody]] /) , [[SingleQuote]]`): `A string with no interpolation` {}
+d DoubleQuoteString is rule(`[[DoubleQuote]] , (/ [[DoubleQuoteBody]] /) , [[DoubleQuote]]`): `A string with escapes` {}
+// Template defined in expression rules due to more complex nature

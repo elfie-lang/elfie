@@ -1,0 +1,73 @@
+use "../precedence";
+use "../traits";
+
+// Declarations
+d AgentDataKeyword is keyword(`d`): `Begins a data declaration whose implementation is generated` {}
+d AgentFunctionKeyword is keyword(`fn`): `Begins a function whose implementation is generated` {}
+d FunctionKeyword is keyword(`function`): `Begins a function written out in full; also the function type` {}
+d TraitKeyword is keyword(`trait`): `Begins a reusable component that can be applied to declarations` {}
+d TypeKeyword is keyword(`type`): `Begins a structural type` {}
+d EnumKeyword is keyword(`enum`): `Begins a set of named values` {}
+d AliasKeyword is keyword(`alias`): `Binds a new name to something already named` {}
+d ConstKeyword is keyword(`const`): `Declares a name that is bound once` {}
+d LetKeyword is keyword(`let`): `Declares a name that can be rebound` {}
+d ExternalKeyword is keyword(`external`): `Declares a name whose definition lives outside the program` {}
+d UseKeyword is keyword(`use`): `Brings another file's declarations into scope` {}
+
+// Clauses
+d IsKeyword is keyword(`is`), binding(Level.relational): `Applies traits to a declaration, or names a type by its trait` {}
+d ExtendsKeyword is keyword(`extends`): `Makes a declaration include the listed traits or data` {}
+d AsKeyword is keyword(`as`), binding(Level.relational): `Names a module, or casts a value` {}
+d WithKeyword is keyword(`with`): `Runs a block with another entity as the current one` {}
+d WhereKeyword is keyword(`where`): `Adds an acceptance criterion in condition and consequence form` {}
+d AndKeyword is keyword(`and`): `Joins where conditions that must all hold` {}
+d OrKeyword is keyword(`or`): `Joins where conditions of which one must hold` {}
+d DefaultKeyword is keyword(`default`): `The match arm taken when no other does` {}
+
+// Control
+d IfKeyword is keyword(`if`): `Runs a statement when a condition holds` {}
+d ElseKeyword is keyword(`else`): `Runs a statement when the if condition does not hold` {}
+d ForKeyword is keyword(`for`): `Loops over iterables` {}
+d InKeyword is keyword(`in`), binding(Level.extraction, 'right'): `The values of an iterable` {}
+d OfKeyword is keyword(`of`), binding(Level.extraction, 'right'): `The keys of an iterable` {}
+d FromKeyword is keyword(`from`), binding(Level.extraction, 'right'): `The keys and values of an iterable` {}
+d WhileKeyword is keyword(`while`): `Loops while a condition holds` {}
+d LoopKeyword is keyword(`loop`): `Loops until a break` {}
+d BreakKeyword is keyword(`break`): `Leaves the innermost loop` {}
+d ContinueKeyword is keyword(`continue`): `Starts the next iteration of the innermost loop` {}
+d ReturnKeyword is keyword(`return`): `Ends a function with a value` {}
+d MatchKeyword is keyword(`match`): `Takes the first arm whose pattern matches` {}
+d MatchallKeyword is keyword(`matchall`): `Takes every arm whose pattern matches` {}
+d AsyncKeyword is keyword(`async`): `Marks a statement that runs as a promise` {}
+d AwaitKeyword is keyword(`await`), binding(Level.wrapper, null): `Waits for a promise` {}
+d AceKeyword is keyword(`ace`): `Marks a statement that runs at compile time` {}
+
+// Values and types
+d NullKeyword is keyword(`null`): `The null value` {}
+d UndefinedKeyword is keyword(`undefined`): `The undefined value` {}
+d TrueKeyword is keyword(`true`): `The boolean true value` {}
+d FalseKeyword is keyword(`false`): `The boolean false value` {}
+d BooleanKeyword is keyword(`boolean`): `The boolean type` {}
+d NumberKeyword is keyword(`number`): `The number type` {}
+d StringKeyword is keyword(`string`): `The string type` {}
+d ObjectKeyword is keyword(`object`): `The object type` {}
+
+// Reserved
+d AbstractKeyword is reserved(`abstract`) {}
+d CaseKeyword is reserved(`case`) {}
+d ClassKeyword is reserved(`class`) {}
+d ImplKeyword is reserved(`impl`) {}
+d InterfaceKeyword is reserved(`interface`) {}
+d NewKeyword is reserved(`new`) {}
+d ModuleKeyword is reserved(`module`) {}
+d PrivateKeyword is reserved(`private`) {}
+d PublicKeyword is reserved(`public`) {}
+d SelfKeyword is reserved(`self`) {}
+d StaticKeyword is reserved(`static`) {}
+d SuperKeyword is reserved(`super`) {}
+d SwitchKeyword is reserved(`switch`) {}
+d ThenKeyword is reserved(`then`) {}
+d TypeofKeyword is reserved(`typeof`) {}
+d YieldKeyword is reserved(`yield`) {}
+
+d Keyword is alternationList(...keyword@entities): `Any keyword` {}

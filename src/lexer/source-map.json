@@ -1,7 +1,7 @@
 {
   "version": 1,
   "compiler": "elfie lexer compile (Claude Fable 5.1)",
-  "description": "Maps generated Rust in src/lexer back to the Elfie source in def/lexer (and def/grammar rules the lexer is compiled against). A mapping applies from its generated line until the next mapping in the same generated file. Lines are 1-indexed; positions are 0-indexed character columns.",
+  "description": "Maps generated Rust in src/lexer back to the Elfie source in def/lexer (and the def/grammar rules the lexer is compiled against). A mapping applies from its generated line until the next mapping in the same generated file. Lines are 1-indexed; positions are 0-indexed character columns.",
   "generated": [
     "src/lexer/data.rs",
     "src/lexer/mod.rs",
@@ -10,9 +10,10 @@
     "src/lib.rs"
   ],
   "sources": [
-    "def/grammar/file.lfy",
-    "def/grammar/tokens/comment.lfy",
-    "def/grammar/tokens/literal.lfy",
+    "def/grammar/terminals/comment.lfy",
+    "def/grammar/terminals/literal.lfy",
+    "def/grammar/terminals/space.lfy",
+    "def/grammar/traits.lfy",
     "def/lexer/data.lfy",
     "def/lexer/main.lfy",
     "def/lexer/modes.lfy",
@@ -22,14 +23,62 @@
     {
       "generated": {
         "file": "src/lexer/data.rs",
-        "line": 20
+        "line": 14
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 3,
+        "position": 0
+      },
+      "text": "d Token: `One piece of the source text` {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 19
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "position": 2
+      },
+      "text": "$rule: `The grammar terminal whose syntax matched; null for text no terminal matched` = Rule | null;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 21
       },
       "source": {
         "file": "def/lexer/data.lfy",
         "line": 5,
-        "position": 4
+        "position": 2
       },
-      "text": ".add({ situation = `Lexing any token requires knowledge about the mode or context the lexer is in`, "
+      "text": "$raw: `The characters exactly as written` = string;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 6,
+        "position": 2
+      },
+      "text": "$value: `The characters after escapes are applied and number underscores are removed; equal to [[Token.raw]] for every other token` = string;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 26
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 7,
+        "position": 2
+      },
+      "text": "$file: `The file the token came from` = string;"
     },
     {
       "generated": {
@@ -38,10 +87,34 @@
       },
       "source": {
         "file": "def/lexer/data.lfy",
-        "line": 1,
-        "position": 0
+        "line": 8,
+        "position": 2
       },
-      "text": "d LexerModeStack: `Stack of the current mode the lexer should be in based on tokens` {"
+      "text": "$line: `Line the token starts on, counting from 1` = number;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 30
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 9,
+        "position": 2
+      },
+      "text": "$column: `Column the token starts at within its line, counting from 0` = number;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 35
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "position": 2
+      },
+      "text": "$rule: `The grammar terminal whose syntax matched; null for text no terminal matched` = Rule | null;"
     },
     {
       "generated": {
@@ -50,118 +123,58 @@
       },
       "source": {
         "file": "def/lexer/data.lfy",
-        "line": 3,
+        "line": 13,
         "position": 4
       },
-      "text": ".add({ situation = `Entering lexing mode`, behavior = `Pushes the mode to the top of the stack`, })"
+      "text": ".add({ situation = `[[Token.rule]] is null`, behavior = `[[Token]] is flagged as invalid`, });"
     },
     {
       "generated": {
         "file": "src/lexer/data.rs",
-        "line": 48
+        "line": 54
       },
       "source": {
         "file": "def/lexer/data.lfy",
-        "line": 4,
+        "line": 19,
         "position": 4
       },
-      "text": ".add({ situation = `Exiting lexing mode that is at the top of the stack`, behavior = `Pops a single "
+      "text": ".add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it`, })"
     },
     {
       "generated": {
         "file": "src/lexer/data.rs",
-        "line": 57
+        "line": 63
       },
       "source": {
         "file": "def/lexer/data.lfy",
-        "line": 5,
+        "line": 16,
+        "position": 0
+      },
+      "text": "d ModeStack: `Which region of the source the lexer is in, innermost last` {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 77
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 18,
         "position": 4
       },
-      "text": ".add({ situation = `Lexing any token requires knowledge about the mode or context the lexer is in`, "
+      "text": ".add({ behavior = `Starts with the code mode and is never empty`, })"
     },
     {
       "generated": {
         "file": "src/lexer/data.rs",
-        "line": 85
+        "line": 88
       },
       "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 62,
+        "file": "def/lexer/data.lfy",
+        "line": 19,
         "position": 4
       },
-      "text": "where (matchingEBNF(token.ebnf)) and !(inContentBodyMode) -> pushResults(&token@definition);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 87
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 76,
-        "position": 2
-      },
-      "text": "where (inTemplate) and (matchingEBNF(Expression.TemplateLiteralBody.ebnf)) -> pushContentBodyResults"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 89
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 80,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.CommentBlockOpen.ebnf)) and !(inInlineComment) and !(inDocumentation) an"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 91
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 95,
-        "position": 4
-      },
-      "text": "where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`keyword token from [[&to"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 93
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 100,
-        "position": 4
-      },
-      "text": "where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`operator token from [[&t"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 95
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 105,
-        "position": 4
-      },
-      "text": "where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`separator token from [[&"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 97
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 110,
-        "position": 4
-      },
-      "text": "where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`space token`)"
+      "text": ".add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it`, })"
     },
     {
       "generated": {
@@ -169,188 +182,104 @@
         "line": 99
       },
       "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 114,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Identifier.Identifier.ebnf)) and (notInContentBodyMode) and (`Not a [[Keyword]],"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 101
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 116,
-        "position": 2
-      },
-      "text": "where (`No other match can be found for characters while lexing`) -> pushResults(`invalid token`)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 122
-      },
-      "source": {
         "file": "def/lexer/data.lfy",
-        "line": 8,
-        "position": 0
-      },
-      "text": "d Token: `Representation of a lexed token` {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 127
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 9,
-        "position": 2
-      },
-      "text": "$value: `Normalized and processed token value as derived from the raw source text` = string;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 129
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 10,
-        "position": 2
-      },
-      "text": "$raw: `Raw source text content that created this token` = string;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 131
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 13,
-        "position": 6
-      },
-      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 133
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 13,
-        "position": 6
-      },
-      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 135
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 13,
-        "position": 6
-      },
-      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 140
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 16,
-        "position": 6
-      },
-      "text": "situation = `Is a space token`,"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 150
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 37,
+        "line": 20,
         "position": 4
       },
-      "text": ".add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior"
+      "text": ".add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped`, })"
     },
     {
       "generated": {
         "file": "src/lexer/data.rs",
-        "line": 199
+        "line": 102
       },
       "source": {
         "file": "def/lexer/data.lfy",
-        "line": 3,
+        "line": 20,
         "position": 4
       },
-      "text": ".add({ situation = `Entering lexing mode`, behavior = `Pushes the mode to the top of the stack`, })"
+      "text": ".add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped`, })"
     },
     {
       "generated": {
         "file": "src/lexer/data.rs",
-        "line": 209
+        "line": 104
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 21,
+        "position": 4
+      },
+      "text": ".add({ situation = `A token closes a mode, but that mode is not at the top`, behavior = `Is not a close`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 109
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 22,
+        "position": 4
+      },
+      "text": ".add({ behavior = `The entry at the top decides which terminals are candidates for the next token`, });"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 156
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "position": 4
+      },
+      "text": ".add({ behavior = `Starts with the code mode and is never empty`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 167
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 19,
+        "position": 4
+      },
+      "text": ".add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 185
+      },
+      "source": {
+        "file": "def/lexer/data.lfy",
+        "line": 20,
+        "position": 4
+      },
+      "text": ".add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/data.rs",
+        "line": 200
       },
       "source": {
         "file": "def/lexer/data.lfy",
         "line": 4,
-        "position": 4
+        "position": 2
       },
-      "text": ".add({ situation = `Exiting lexing mode that is at the top of the stack`, behavior = `Pops a single "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 223
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 5,
-        "position": 4
-      },
-      "text": ".add({ situation = `Lexing any token requires knowledge about the mode or context the lexer is in`, "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 237
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 13,
-        "position": 6
-      },
-      "text": "behavior = `Keeps track of a token's source file, line number, and position in the line`"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/data.rs",
-        "line": 253
-      },
-      "source": {
-        "file": "def/lexer/data.lfy",
-        "line": 16,
-        "position": 6
-      },
-      "text": "situation = `Is a space token`,"
+      "text": "$rule: `The grammar terminal whose syntax matched; null for text no terminal matched` = Rule | null;"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 33
+        "line": 26
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 31,
+        "line": 23,
         "position": 4
       },
       "text": ".add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to \"anonymous\"`, })"
@@ -358,26 +287,50 @@
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 38
+        "line": 31
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 13,
+        "line": 11,
         "position": 0
       },
-      "text": "ace function matchingEBNF(ebnf: Grammar.EBNFSyntax) {"
+      "text": "ace function matches(rule: Rule) {"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 45
+        "line": 37
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 44,
+        "line": 97,
         "position": 2
       },
-      "text": "let ebnf: `Full EBNF syntax document` = [];"
+      "text": "const terminals: `EBNF of every terminal` = Grammar.terminalDocument();"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 44
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 102,
+        "position": 2
+      },
+      "text": "for (const rule in terminal@entities) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 49
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 110,
+        "position": 2
+      },
+      "text": "for (const rule in escape@entities) {"
     },
     {
       "generated": {
@@ -386,43 +339,67 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 45,
-        "position": 2
+        "line": 103,
+        "position": 4
       },
-      "text": "for (const token in Comment, Identifier, Keyword, Literal, Operator, Separator, Space) {"
+      "text": "where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 59
+        "line": 60
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 52,
+        "line": 31,
         "position": 4
       },
-      "text": ".add({behavior = `Uses the following grammar (EBNF format) as a baseline reference: \\n\\n {{ebnf.join"
+      "text": ".add({"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 66
+        "line": 97
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "position": 0
+      },
+      "text": "fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 102
       },
       "source": {
         "file": "def/lexer/main.lfy",
         "line": 25,
-        "position": 0
+        "position": 4
       },
-      "text": "fn lexString(str: string, file?: string): `Turn a given string into a set of lexigraphical tokens` ="
+      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 68
+        "line": 103
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 30,
+        "line": 26,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 104
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 22,
         "position": 4
       },
       "text": ".add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })"
@@ -430,98 +407,38 @@
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 72
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 33,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[str]] that this starts "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 73
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 34,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[Token.position]] is set to the 0-indexed position in the line that this token s"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 75
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 36,
-        "position": 4
-      },
-      "text": ".add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects = [`[[LexerModeS"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 90
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 40,
-        "position": 6
-      },
-      "text": "behavior = `Applies context and [[LexerModeStack]] mode to determine which follow characters are all"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 117
+        "line": 105
       },
       "source": {
         "file": "def/lexer/main.lfy",
         "line": 28,
         "position": 4
       },
-      "text": ".add({ behavior = `[[str]] is tokenized by processing the string start to finish`, })"
+      "text": ".add({ behavior = `A new [[ModeStack]] is created for each call`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 122
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 32,
-        "position": 2
-      },
-      "text": "const onToken = `Next \\n or \\r\\n or EOF is encountered after {{mode}} is created for {{@definition}}"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 127
+        "line": 129
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 116,
-        "position": 2
+        "line": 21,
+        "position": 4
       },
-      "text": "where (`No other match can be found for characters while lexing`) -> pushResults(`invalid token`)"
+      "text": ".add({ behavior = `[[source]] is read as UTF-8 from start to end`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 134
+        "line": 133
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 32,
-        "position": 2
+        "line": 37,
+        "position": 4
       },
-      "text": "const onToken = `Next \\n or \\r\\n or EOF is encountered after {{mode}} is created for {{@definition}}"
+      "text": "where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;"
     },
     {
       "generated": {
@@ -530,19 +447,55 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 37,
+        "line": 103,
         "position": 4
       },
-      "text": ".add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior"
+      "text": "where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 150
+        "line": 140
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "const onToken = `A token is created for {{@definition}}`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 142
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 38,
+        "line": 114,
+        "position": 2
+      },
+      "text": "where (`No candidate matched`) -> push(`invalid text`);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 149
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 37,
+        "position": 4
+      },
+      "text": "where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 151
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 50,
         "position": 4
       },
       "text": ".add({"
@@ -550,62 +503,26 @@
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 158
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 61,
-        "position": 2
-      },
-      "text": "for (const token in simpleLiterals) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
         "line": 169
       },
       "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 65,
+        "file": "def/grammar/terminals/comment.lfy",
+        "line": 12,
         "position": 2
       },
-      "text": "where (matchingEBNF(Literal.SingleQuoteBoundary.ebnf)) and !(inDoubleQuoteString) and !(inTemplate) "
+      "text": "where (`Followed immediately by /`) -> `Is a [[BlockCommentOpen]] followed by [[BlockCommentClose]] instead`;"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 177
+        "line": 184
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 66,
-        "position": 2
+        "line": 29,
+        "position": 4
       },
-      "text": "where (matchingEBNF(Literal.DoubleQuoteBoundary.ebnf)) and !(inSingleQuoteString) and !(inTemplate) "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 185
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 67,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Literal.BacktickBoundary.ebnf)) and !(inSingleQuoteString) and !(inDoubleQuoteSt"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 193
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 69,
-        "position": 2
-      },
-      "text": "where (inTemplate) and (matchingEBNF(Literal.ExecutionOpenBoundary.ebnf)) -> pushResults(Literal.Exe"
+      "text": ".add({ behavior = `At each position every [[terminal]] whose [[candidateInModes]] condition holds (or [[inCode]] when it has none) is matched`, })"
     },
     {
       "generated": {
@@ -614,94 +531,34 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 70,
-        "position": 2
+        "line": 30,
+        "position": 4
       },
-      "text": "where (inTemplateExecution) and (matchingEBNF(Literal.ExecutionCloseBoundary.ebnf)) -> pushResults(L"
+      "text": ".add({ behavior = `The longest match is the token`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 201
+        "line": 203
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 71,
-        "position": 2
+        "line": 107,
+        "position": 4
       },
-      "text": "where (inTemplate) and (matchingEBNF(Literal.ReferenceOpenBoundary.ebnf)) -> pushResults(Literal.Ref"
+      "text": "where (`[[&rule]] and [[Identifier]] match the same characters`) -> `[[&rule]] is the token`;"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 205
+        "line": 218
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 72,
-        "position": 2
+        "line": 36,
+        "position": 6
       },
-      "text": "where (inTemplateReference) and (matchingEBNF(Literal.ReferenceCloseBoundary.ebnf)) -> pushResults(L"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 209
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 74,
-        "position": 2
-      },
-      "text": "where (inSingleQuoteString) and (matchingEBNF(Literal.SingleQuoteLiteralBody.ebnf)) -> pushContentBo"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 213
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 75,
-        "position": 2
-      },
-      "text": "where (inDoubleQuoteString) and (matchingEBNF(Literal.DoubleQuoteLiteralBody.ebnf)) -> pushContentBo"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 217
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 76,
-        "position": 2
-      },
-      "text": "where (inTemplate) and (matchingEBNF(Expression.TemplateLiteralBody.ebnf)) -> pushContentBodyResults"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 222
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 77,
-        "position": 2
-      },
-      "text": "where ((inDoubleQuoteString) or (inTemplate)) and (matchingEBNF(Literal.Sequence.ebnf)) -> `Characte"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 225
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 80,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.CommentBlockOpen.ebnf)) and !(inInlineComment) and !(inDocumentation) an"
+      "text": "behavior = `A compile-time lexer error naming both terminals`,"
     },
     {
       "generated": {
@@ -710,106 +567,22 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 81,
-        "position": 2
+        "line": 48,
+        "position": 6
       },
-      "text": "where (matchingEBNF(Comment.CommentBlockClose.ebnf)) and (inBlockComment) -> pushResults(Comment.Com"
+      "text": "behavior = `One [[Token]] with no [[Token.rule]] is created from the characters up to the next position where some terminal matches, and lexing continues`,"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 235
+        "line": 263
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 82,
-        "position": 2
+        "line": 15,
+        "position": 0
       },
-      "text": "where (matchingEBNF(Comment.CommentBlockBody.ebnf)) and (inBlockComment) -> pushResults(Comment.Comm"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 237
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 83,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.CommentInlineStart.ebnf)) and (notInContentBodyMode) -> pushResults(Comm"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 241
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 84,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.CommentInlineBody.ebnf)) and (inInlineComment) -> pushResults(Comment.Co"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 245
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 86,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.DocumentationBlockOpen.ebnf)) and !(inInlineDocumentation) and !(inComme"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 254
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 87,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.DocumentationBlockClose.ebnf)) and (inBlockDocumentation) -> pushResults"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 255
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 88,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.DocumentationBlockBody.ebnf)) and (inBlockDocumentation) -> pushResults("
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 257
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 89,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.DocumentationInlineStart.ebnf)) and (notInContentBodyMode) -> pushResult"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 261
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 90,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.DocumentationInlineBody.ebnf)) and (inInlineDocumentation) -> pushResult"
+      "text": "ace function push(kind: string) {"
     },
     {
       "generated": {
@@ -818,10 +591,22 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 91,
-        "position": 2
+        "line": 27,
+        "position": 4
       },
-      "text": "where (inDocumentation) and (matchingEBNF(Literal.ReferenceOpenBoundary.ebnf)) -> pushResults(Litera"
+      "text": ".add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 271
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 25,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at`, })"
     },
     {
       "generated": {
@@ -830,291 +615,27 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 94,
-        "position": 2
-      },
-      "text": "for(const token in Keyword) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 277
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 99,
-        "position": 2
-      },
-      "text": "for(const key, token from Operator) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 282
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 104,
-        "position": 2
-      },
-      "text": "for(const key, token from Separator) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 287
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 109,
-        "position": 2
-      },
-      "text": "for(const key, token from Space) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 294
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 114,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Identifier.Identifier.ebnf)) and (notInContentBodyMode) and (`Not a [[Keyword]],"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 304
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 17,
-        "position": 0
-      },
-      "text": "ace function pushResults(kind: string) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 306
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 35,
+        "line": 26,
         "position": 4
       },
-      "text": ".add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })"
+      "text": ".add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 308
+        "line": 279
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 32,
+        "line": 25,
         "position": 4
       },
-      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
+      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 310
-      },
-      "source": {
-        "file": "def/grammar/tokens/literal.lfy",
-        "line": 13,
-        "position": 2
-      },
-      "text": "where (`Underscores are present in the source text`) -> `Underscores are removed from the value to l"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 312
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 77,
-        "position": 2
-      },
-      "text": "where ((inDoubleQuoteString) or (inTemplate)) and (matchingEBNF(Literal.Sequence.ebnf)) -> `Characte"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 326
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 36,
-        "position": 4
-      },
-      "text": ".add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects = [`[[LexerModeS"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 331
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 33,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[str]] that this starts "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 347
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 77,
-        "position": 2
-      },
-      "text": "where ((inDoubleQuoteString) or (inTemplate)) and (matchingEBNF(Literal.Sequence.ebnf)) -> `Characte"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 426
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 27,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[str]] is read as a UTF-8 string`, })"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 446
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 28,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[str]] is tokenized by processing the string start to finish`, })"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 455
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 29,
-        "position": 4
-      },
-      "text": ".add({ situation = `[[str]] is empty`, expect = [], })"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 461
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 30,
-        "position": 4
-      },
-      "text": ".add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 468
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 31,
-        "position": 4
-      },
-      "text": ".add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to \"anonymous\"`, })"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 474
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 32,
-        "position": 4
-      },
-      "text": ".add({ behavior = `End of line tokens can be either \\n or \\r\\n interchangably and the values are tre"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 497
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 33,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[str]] that this starts "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 508
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 34,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[Token.position]] is set to the 0-indexed position in the line that this token s"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 519
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 35,
-        "position": 4
-      },
-      "text": ".add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 531
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 36,
-        "position": 4
-      },
-      "text": ".add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects = [`[[LexerModeS"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 539
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 37,
-        "position": 4
-      },
-      "text": ".add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 564
+        "line": 295
       },
       "source": {
         "file": "def/lexer/main.lfy",
@@ -1126,266 +647,326 @@
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 593
+        "line": 298
       },
       "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 40,
-        "position": 6
-      },
-      "text": "behavior = `Applies context and [[LexerModeStack]] mode to determine which follow characters are all"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 606
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 40,
-        "position": 6
-      },
-      "text": "behavior = `Applies context and [[LexerModeStack]] mode to determine which follow characters are all"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 647
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 51,
-        "position": 4
-      },
-      "text": ".add({situation = `When using EBNF formatted string`, behavior = `Treats notation surrounded in \\[[ "
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 676
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 61,
+        "file": "def/grammar/terminals/space.lfy",
+        "line": 4,
         "position": 2
       },
-      "text": "for (const token in simpleLiterals) {"
+      "text": "@acceptanceCriteria.add({ behavior = `Value is always equal to \\n regardless of raw text`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 694
+        "line": 300
       },
       "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 65,
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 12,
         "position": 2
       },
-      "text": "where (matchingEBNF(Literal.SingleQuoteBoundary.ebnf)) and !(inDoubleQuoteString) and !(inTemplate) "
+      "text": "where (`Underscores are present`) -> `They are removed from the token value`;"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 737
+        "line": 302
       },
       "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 69,
-        "position": 2
-      },
-      "text": "where (inTemplate) and (matchingEBNF(Literal.ExecutionOpenBoundary.ebnf)) -> pushResults(Literal.Exe"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 767
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 74,
-        "position": 2
-      },
-      "text": "where (inSingleQuoteString) and (matchingEBNF(Literal.SingleQuoteLiteralBody.ebnf)) -> pushContentBo"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 777
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 75,
-        "position": 2
-      },
-      "text": "where (inDoubleQuoteString) and (matchingEBNF(Literal.DoubleQuoteLiteralBody.ebnf)) -> pushContentBo"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 827
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
+        "file": "def/grammar/traits.lfy",
         "line": 76,
-        "position": 2
-      },
-      "text": "where (inTemplate) and (matchingEBNF(Expression.TemplateLiteralBody.ebnf)) -> pushContentBodyResults"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 838
-      },
-      "source": {
-        "file": "def/lexer/main.lfy",
-        "line": 80,
-        "position": 2
-      },
-      "text": "where (matchingEBNF(Comment.CommentBlockOpen.ebnf)) and !(inInlineComment) and !(inDocumentation) an"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/mod.rs",
-        "line": 842
-      },
-      "source": {
-        "file": "def/grammar/tokens/comment.lfy",
-        "line": 7,
         "position": 4
       },
-      "text": ".add({ behavior = `Can be nested within other comment blocks` });"
+      "text": ".add({ behavior = `The token value is the matched text with each listed escape replaced`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 856
+        "line": 304
       },
       "source": {
-        "file": "def/grammar/tokens/comment.lfy",
-        "line": 20,
+        "file": "def/lexer/main.lfy",
+        "line": 44,
+        "position": 6
+      },
+      "text": "behavior = `[[Token.value]] should be equal to [[Token.raw]]`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 361
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 56,
         "position": 4
       },
-      "text": ".add({ behavior = `Can be nested within other documentation blocks` });"
+      "text": "{"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 939
+        "line": 367
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 82,
-        "position": 2
+        "line": 60,
+        "position": 4
       },
-      "text": "where (matchingEBNF(Comment.CommentBlockBody.ebnf)) and (inBlockComment) -> pushResults(Comment.Comm"
+      "text": "{"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 954
+        "line": 382
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 91,
-        "position": 2
+        "line": 73,
+        "position": 4
       },
-      "text": "where (inDocumentation) and (matchingEBNF(Literal.ReferenceOpenBoundary.ebnf)) -> pushResults(Litera"
+      "text": "{"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 998
+        "line": 397
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 94,
-        "position": 2
+        "line": 86,
+        "position": 4
       },
-      "text": "for(const token in Keyword) {"
+      "text": "{"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 1026
+        "line": 407
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 99,
-        "position": 2
+        "line": 21,
+        "position": 4
       },
-      "text": "for(const key, token from Operator) {"
+      "text": ".add({ behavior = `[[source]] is read as UTF-8 from start to end`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 1062
+        "line": 431
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 104,
-        "position": 2
+        "line": 22,
+        "position": 4
       },
-      "text": "for(const key, token from Separator) {"
+      "text": ".add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 1084
+        "line": 444
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 109,
-        "position": 2
+        "line": 24,
+        "position": 4
       },
-      "text": "for(const key, token from Space) {"
+      "text": ".add({ behavior = `End of line tokens can match any [[NewLine]] terminal and the values are treated equally`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 1103
+        "line": 467
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 114,
-        "position": 2
+        "line": 25,
+        "position": 4
       },
-      "text": "where (matchingEBNF(Identifier.Identifier.ebnf)) and (notInContentBodyMode) and (`Not a [[Keyword]],"
+      "text": ".add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 1125
+        "line": 499
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 116,
-        "position": 2
+        "line": 27,
+        "position": 4
       },
-      "text": "where (`No other match can be found for characters while lexing`) -> pushResults(`invalid token`)"
+      "text": ".add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })"
     },
     {
       "generated": {
         "file": "src/lexer/mod.rs",
-        "line": 1142
+        "line": 510
       },
       "source": {
         "file": "def/lexer/main.lfy",
         "line": 28,
         "position": 4
       },
-      "text": ".add({ behavior = `[[str]] is tokenized by processing the string start to finish`, })"
+      "text": ".add({ behavior = `A new [[ModeStack]] is created for each call`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 518
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 29,
+        "position": 4
+      },
+      "text": ".add({ behavior = `At each position every [[terminal]] whose [[candidateInModes]] condition holds (or [[inCode]] when it has none) is matched`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 584
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 30,
+        "position": 4
+      },
+      "text": ".add({ behavior = `The longest match is the token`, })"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 649
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 31,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 682
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 38,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 728
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 46,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 786
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 50,
+        "position": 4
+      },
+      "text": ".add({"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 824
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 107,
+        "position": 4
+      },
+      "text": "where (`[[&rule]] and [[Identifier]] match the same characters`) -> `[[&rule]] is the token`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 846
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 110,
+        "position": 2
+      },
+      "text": "for (const rule in escape@entities) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 868
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 98,
+        "position": 2
+      },
+      "text": "@acceptanceCriteria"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 879
+      },
+      "source": {
+        "file": "def/grammar/terminals/comment.lfy",
+        "line": 12,
+        "position": 2
+      },
+      "text": "where (`Followed immediately by /`) -> `Is a [[BlockCommentOpen]] followed by [[BlockCommentClose]] instead`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 918
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 37,
+        "position": 4
+      },
+      "text": "where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/mod.rs",
+        "line": 958
+      },
+      "source": {
+        "file": "def/lexer/main.lfy",
+        "line": 21,
+        "position": 4
+      },
+      "text": ".add({ behavior = `[[source]] is read as UTF-8 from start to end`, })"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 18
+        "line": 16
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 9,
+        "line": 10,
         "position": 0
       },
-      "text": "alias CommentMode = `mode::comment`;"
+      "text": "enum Mode: `Regions of the source that change which terminals may match` {"
     },
     {
       "generated": {
@@ -1394,10 +975,10 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 10,
-        "position": 0
+        "line": 11,
+        "position": 2
       },
-      "text": "alias DocumentationMode = `mode::documentation`;"
+      "text": "code = `code`,"
     },
     {
       "generated": {
@@ -1407,9 +988,9 @@
       "source": {
         "file": "def/lexer/modes.lfy",
         "line": 12,
-        "position": 0
+        "position": 2
       },
-      "text": "const StringLiteralMode = `mode::literal::string`;"
+      "text": "blockComment = `block comment`,"
     },
     {
       "generated": {
@@ -1419,9 +1000,21 @@
       "source": {
         "file": "def/lexer/modes.lfy",
         "line": 13,
-        "position": 0
+        "position": 2
       },
-      "text": "const TemplateLiteralMode = `mode::literal::template`;"
+      "text": "lineComment = `line comment`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 22
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "blockDocumentation = `block documentation`,"
     },
     {
       "generated": {
@@ -1430,10 +1023,22 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 14,
-        "position": 0
+        "line": 15,
+        "position": 2
       },
-      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} or {{DocumentationMode}} are"
+      "text": "lineDocumentation = `line documentation`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 24
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 16,
+        "position": 2
+      },
+      "text": "singleQuote = `single quoted string`,"
     },
     {
       "generated": {
@@ -1442,10 +1047,10 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 15,
-        "position": 0
+        "line": 17,
+        "position": 2
       },
-      "text": "const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+      "text": "doubleQuote = `double quoted string`,"
     },
     {
       "generated": {
@@ -1454,10 +1059,10 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 17,
-        "position": 0
+        "line": 18,
+        "position": 2
       },
-      "text": "const ListMode = `mode::list`;"
+      "text": "template = `template`,"
     },
     {
       "generated": {
@@ -1466,10 +1071,10 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 18,
-        "position": 0
+        "line": 19,
+        "position": 2
       },
-      "text": "const BlockMode = `mode::block`;"
+      "text": "execution = `template execution`,"
     },
     {
       "generated": {
@@ -1478,118 +1083,22 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 19,
-        "position": 0
+        "line": 20,
+        "position": 2
       },
-      "text": "const GroupMode = `mode::group`;"
+      "text": "reference = `template reference`,"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 35
+        "line": 49
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 9,
-        "position": 0
+        "line": 11,
+        "position": 2
       },
-      "text": "alias CommentMode = `mode::comment`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 36
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 10,
-        "position": 0
-      },
-      "text": "alias DocumentationMode = `mode::documentation`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 37
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 12,
-        "position": 0
-      },
-      "text": "const StringLiteralMode = `mode::literal::string`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 38
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 13,
-        "position": 0
-      },
-      "text": "const TemplateLiteralMode = `mode::literal::template`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 39
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 14,
-        "position": 0
-      },
-      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} or {{DocumentationMode}} are"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 40
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 15,
-        "position": 0
-      },
-      "text": "const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 41
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 17,
-        "position": 0
-      },
-      "text": "const ListMode = `mode::list`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 42
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 18,
-        "position": 0
-      },
-      "text": "const BlockMode = `mode::block`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 43
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 19,
-        "position": 0
-      },
-      "text": "const GroupMode = `mode::group`;"
+      "text": "code = `code`,"
     },
     {
       "generated": {
@@ -1598,10 +1107,46 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 14,
-        "position": 0
+        "line": 12,
+        "position": 2
       },
-      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} or {{DocumentationMode}} are"
+      "text": "blockComment = `block comment`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 51
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 13,
+        "position": 2
+      },
+      "text": "lineComment = `line comment`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 52
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 14,
+        "position": 2
+      },
+      "text": "blockDocumentation = `block documentation`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 53
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 15,
+        "position": 2
+      },
+      "text": "lineDocumentation = `line documentation`,"
     },
     {
       "generated": {
@@ -1610,34 +1155,82 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 15,
-        "position": 0
+        "line": 16,
+        "position": 2
       },
-      "text": "const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[Lexer"
+      "text": "singleQuote = `single quoted string`,"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 70
+        "line": 55
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 23,
-        "position": 0
+        "line": 17,
+        "position": 2
       },
-      "text": "const inModes = (...modes: string[]) => `{{modes.join(' or ')}} is the top mode on the [[LexerModeSt"
+      "text": "doubleQuote = `double quoted string`,"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 76
+        "line": 56
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 18,
+        "position": 2
+      },
+      "text": "template = `template`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 19,
+        "position": 2
+      },
+      "text": "execution = `template execution`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 58
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 20,
+        "position": 2
+      },
+      "text": "reference = `template reference`,"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 73
       },
       "source": {
         "file": "def/lexer/modes.lfy",
         "line": 24,
         "position": 0
       },
-      "text": "const notInModes = (...modes: string[]) => `Top mode on the [[LexerModeStack]] is not {{modes.join('"
+      "text": "const inCode: `Anywhere ordinary tokens are read, including inside template expressions and references` = inMode([Mode.code, Mode.execution, Mode.reference]);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 78
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 9,
+        "position": 2
+      },
+      "text": "$lexCondition: `When this terminal may match` = string;"
     },
     {
       "generated": {
@@ -1646,22 +1239,82 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 26,
+        "line": 28,
         "position": 0
       },
-      "text": "const inComment = inModes(CommentMode);"
+      "text": "candidateInModes.apply(SingleQuote, Mode.code, Mode.execution, Mode.reference, Mode.singleQuote);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 93
+        "line": 89
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 27,
+        "line": 30,
         "position": 0
       },
-      "text": "const inInlineComment = `{{inModes(CommentMode)}} and {{CommentMode}} was pushed onto the stack when"
+      "text": "candidateInModes.apply(SingleQuoteBody, Mode.singleQuote);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 95
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 33,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(DoubleQuote, Mode.code, Mode.execution, Mode.reference, Mode.doubleQuote);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 96
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 35,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(DoubleQuoteBody, Mode.doubleQuote);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 99
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 38,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(Backtick, Mode.code, Mode.execution, Mode.reference, Mode.template);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 100
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 39,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(TemplateBody, Mode.template);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 101
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 41,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(ExecutionOpen, Mode.template);"
     },
     {
       "generated": {
@@ -1670,10 +1323,46 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 28,
+        "line": 43,
         "position": 0
       },
-      "text": "const inBlockComment = `{{inModes(CommentMode)}} and {{CommentMode}} was pushed onto the stack when "
+      "text": "candidateInModes.apply(ExecutionClose, Mode.execution);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 107
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 45,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(ReferenceOpen, Mode.template, Mode.blockDocumentation, Mode.lineDocumentation);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 108
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 47,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(ReferenceClose, Mode.reference);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 110
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 51,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(BlockCommentOpen, Mode.code, Mode.blockComment);"
     },
     {
       "generated": {
@@ -1682,10 +1371,58 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 29,
+        "line": 53,
         "position": 0
       },
-      "text": "const inDocumentation = inModes(DocumentationMode);"
+      "text": "candidateInModes.apply(BlockCommentClose, Mode.blockComment);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 112
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 54,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(BlockCommentBody, Mode.blockComment);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 113
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 57,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(LineCommentBody, Mode.lineComment);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 114
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 61,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(BlockDocumentationClose, Mode.blockDocumentation);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 115
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 62,
+        "position": 0
+      },
+      "text": "candidateInModes.apply(BlockDocumentationBody, Mode.blockDocumentation);"
     },
     {
       "generated": {
@@ -1694,34 +1431,58 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 30,
+        "line": 65,
         "position": 0
       },
-      "text": "const inInlineDocumentation = `{{inModes(DocumentationMode)}} and {{DocumentationMode}} was pushed o"
+      "text": "candidateInModes.apply(LineDocumentationBody, Mode.lineDocumentation);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 125
+        "line": 117
       },
       "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 31,
-        "position": 0
+        "file": "def/lexer/main.lfy",
+        "line": 103,
+        "position": 4
       },
-      "text": "const inBlockDocumentation = `{{inModes(DocumentationMode)}} and {{DocumentationMode}} was pushed on"
+      "text": "where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 134
+        "line": 123
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 33,
+        "line": 27,
         "position": 0
       },
-      "text": "const inString = inModes(StringLiteralMode);"
+      "text": "modeToggle.apply(SingleQuote, Mode.singleQuote, inCode);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 130
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 27,
+        "position": 0
+      },
+      "text": "modeToggle.apply(SingleQuote, Mode.singleQuote, inCode);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 133
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 29,
+        "position": 0
+      },
+      "text": "appliedUntilNewLine.apply(SingleQuote, Mode.singleQuote);"
     },
     {
       "generated": {
@@ -1730,34 +1491,58 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
+        "line": 32,
+        "position": 0
+      },
+      "text": "modeToggle.apply(DoubleQuote, Mode.doubleQuote, inCode);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 142
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
         "line": 34,
         "position": 0
       },
-      "text": "const inSingleQuoteString = `{{inModes(StringLiteralMode)}} and {{StringLiteralMode}} was pushed ont"
+      "text": "appliedUntilNewLine.apply(DoubleQuote, Mode.doubleQuote);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 148
+        "line": 147
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 35,
+        "line": 37,
         "position": 0
       },
-      "text": "const inDoubleQuoteString = `{{inModes(StringLiteralMode)}} and {{StringLiteralMode}} was pushed ont"
+      "text": "modeToggle.apply(Backtick, Mode.template, inCode);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 157
+        "line": 151
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 36,
+        "line": 40,
         "position": 0
       },
-      "text": "const inTemplate = inModes(TemplateLiteralMode);"
+      "text": "modeOpener.apply(ExecutionOpen, Mode.execution, inMode([Mode.template]));"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 154
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 42,
+        "position": 0
+      },
+      "text": "modeCloser.apply(ExecutionClose, Mode.execution);"
     },
     {
       "generated": {
@@ -1766,22 +1551,34 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 37,
+        "line": 44,
         "position": 0
       },
-      "text": "const inTemplateReference = inModes(TemplateReferenceMode);"
+      "text": "modeOpener.apply(ReferenceOpen, Mode.reference, inMode([Mode.template, Mode.blockDocumentation, Mode.lineDocumentation]));"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 167
+        "line": 165
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 38,
+        "line": 46,
         "position": 0
       },
-      "text": "const inTemplateExecution = inModes(TemplateExecutionMode);"
+      "text": "modeCloser.apply(ReferenceClose, Mode.reference);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 169
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 50,
+        "position": 0
+      },
+      "text": "modeOpener.apply(BlockCommentOpen, Mode.blockComment, inMode([Mode.code, Mode.blockComment]));"
     },
     {
       "generated": {
@@ -1790,10 +1587,10 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 40,
+        "line": 52,
         "position": 0
       },
-      "text": "const inList = `{{ListMode}} is the top mode on the [[LexerModeStack]]`;"
+      "text": "modeCloser.apply(BlockCommentClose, Mode.blockComment);"
     },
     {
       "generated": {
@@ -1802,22 +1599,34 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 41,
+        "line": 55,
         "position": 0
       },
-      "text": "const inBlock = `{{BlockMode}} is the top mode on the [[LexerModeStack]]`;"
+      "text": "modeOpener.apply(LineCommentOpen, Mode.lineComment);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 182
+        "line": 180
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 42,
+        "line": 56,
         "position": 0
       },
-      "text": "const inGroup = `{{GroupMode}} is the top mode on the [[LexerModeStack]]`;"
+      "text": "appliedUntilNewLine.apply(LineCommentOpen, Mode.lineComment);"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/modes.rs",
+        "line": 185
+      },
+      "source": {
+        "file": "def/lexer/modes.lfy",
+        "line": 59,
+        "position": 0
+      },
+      "text": "modeOpener.apply(BlockDocumentationOpen, Mode.blockDocumentation);"
     },
     {
       "generated": {
@@ -1826,94 +1635,58 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 44,
+        "line": 60,
         "position": 0
       },
-      "text": "const inContentBodyMode: `In a mode where the default is that all text counts as content body` = inM"
+      "text": "modeCloser.apply(BlockDocumentationClose, Mode.blockDocumentation);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 197
+        "line": 193
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 44,
+        "line": 63,
         "position": 0
       },
-      "text": "const inContentBodyMode: `In a mode where the default is that all text counts as content body` = inM"
+      "text": "modeOpener.apply(LineDocumentationOpen, Mode.lineDocumentation);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 203
+        "line": 196
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 45,
+        "line": 64,
         "position": 0
       },
-      "text": "const notInContentBodyMode: `Not in a mode where the default is that all text counts as content body"
+      "text": "appliedUntilNewLine.apply(LineDocumentationOpen, Mode.lineDocumentation);"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 222
+        "line": 209
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 48,
+        "line": 10,
         "position": 0
       },
-      "text": "modeCreator.apply(CommentBlockOpen, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLitera"
+      "text": "enum Mode: `Regions of the source that change which terminals may match` {"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 228
+        "line": 221
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 48,
+        "line": 24,
         "position": 0
       },
-      "text": "modeCreator.apply(CommentBlockOpen, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLitera"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 233
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 49,
-        "position": 0
-      },
-      "text": "modeCreator.apply(CommentInlineStart, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLite"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 236
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 51,
-        "position": 0
-      },
-      "text": "clearModeAtNewLine.apply(CommentInlineStart, CommentMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 241
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 50,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(CommentBlockClose, CommentMode);"
+      "text": "const inCode: `Anywhere ordinary tokens are read, including inside template expressions and references` = inMode([Mode.code, Mode.execution, Mode.reference]);"
     },
     {
       "generated": {
@@ -1922,274 +1695,58 @@
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 53,
-        "position": 0
-      },
-      "text": "modeCreator.apply(DocumentationBlockOpen, DocumentationMode, notInModes(`[[CommentMode]]`, `[[String"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 250
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 54,
-        "position": 0
-      },
-      "text": "modeCreator.apply(DocumentationInlineStart, DocumentationMode, notInModes(`[[CommentMode]]`, `[[Stri"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 253
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 56,
-        "position": 0
-      },
-      "text": "clearModeAtNewLine.apply(DocumentationInlineStart, DocumentationMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 258
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 55,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(DocumentationBlockClose, DocumentationMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 263
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 58,
-        "position": 0
-      },
-      "text": "modeBoundary.apply(SingleQuoteBoundary, StringLiteralMode, notInModes(`[[DocumentationMode]]`, `[[Co"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 268
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 61,
-        "position": 0
-      },
-      "text": "clearModeAtNewLine.apply(SingleQuoteBoundary, StringLiteralMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 273
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 59,
-        "position": 0
-      },
-      "text": "modeBoundary.apply(DoubleQuoteBoundary, StringLiteralMode, notInModes(`[[DocumentationMode]]`, `[[Co"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 277
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 63,
-        "position": 0
-      },
-      "text": "modeBoundary.apply(BacktickBoundary, TemplateLiteralMode, notInModes(`[[DocumentationMode]]`, `[[Str"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 281
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 64,
-        "position": 0
-      },
-      "text": "modeCreator.apply(ReferenceOpenBoundary, TemplateReferenceMode, inModes(TemplateLiteralMode, Documen"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 285
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 65,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(ReferenceCloseBoundary, TemplateReferenceMode, inTemplateReference);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 289
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 66,
-        "position": 0
-      },
-      "text": "modeCreator.apply(ExecutionOpenBoundary, TemplateExecutionMode, inTemplate);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 293
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 67,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(ExecutionCloseBoundary, TemplateExecutionMode, inTemplateExecution);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 297
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 69,
-        "position": 0
-      },
-      "text": "modeCreator.apply(ListOpenSeparator, ListMode, notInContentBodyMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 301
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 70,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(ListCloseSeparator, ListMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 305
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 71,
-        "position": 0
-      },
-      "text": "modeCreator.apply(BlockOpenSeparator, BlockMode, notInContentBodyMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 309
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 72,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(BlockCloseSeparator, BlockMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 313
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 73,
-        "position": 0
-      },
-      "text": "modeCreator.apply(GroupOpenSeparator, GroupMode, notInContentBodyMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 317
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 74,
-        "position": 0
-      },
-      "text": "modeDestroyer.apply(GroupCloseSeparator, GroupMode);"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 343
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 14,
-        "position": 0
-      },
-      "text": "const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} or {{DocumentationMode}} are"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/modes.rs",
-        "line": 361
-      },
-      "source": {
-        "file": "def/lexer/modes.lfy",
         "line": 26,
         "position": 0
       },
-      "text": "const inComment = inModes(CommentMode);"
+      "text": "// Text regions: the boundary opens the mode, only the body and the close are candidates inside it"
     },
     {
       "generated": {
         "file": "src/lexer/modes.rs",
-        "line": 422
+        "line": 255
       },
       "source": {
         "file": "def/lexer/modes.lfy",
-        "line": 48,
+        "line": 27,
         "position": 0
       },
-      "text": "modeCreator.apply(CommentBlockOpen, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLitera"
+      "text": "modeToggle.apply(SingleQuote, Mode.singleQuote, inCode);"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 16
+        "line": 13
       },
       "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 23,
+        "file": "def/lexer/traits.lfy",
+        "line": 4,
         "position": 0
       },
-      "text": "const inModes = (...modes: string[]) => `{{modes.join(' or ')}} is the top mode on the [[LexerModeSt"
+      "text": "ace function inMode(modes: string[]) {"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 18
+        "line": 27
       },
       "source": {
-        "file": "def/lexer/modes.lfy",
-        "line": 24,
+        "file": "def/lexer/traits.lfy",
+        "line": 13,
         "position": 0
       },
-      "text": "const notInModes = (...modes: string[]) => `Top mode on the [[LexerModeStack]] is not {{modes.join('"
+      "text": "trait modeOpener(mode: string, when?: string): `Creating this token pushes a mode` {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 29
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 20,
+        "position": 0
+      },
+      "text": "trait modeCloser(mode: string): `Creating this token pops a mode` {"
     },
     {
       "generated": {
@@ -2198,10 +1755,10 @@
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 3,
+        "line": 27,
         "position": 0
       },
-      "text": "trait modeCreator(mode: string, condition?: string) {"
+      "text": "trait modeToggle(mode: string, when?: string): `The same boundary opens the mode and, seen again, closes it` {"
     },
     {
       "generated": {
@@ -2210,106 +1767,58 @@
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 11,
+        "line": 35,
         "position": 0
       },
-      "text": "trait modeDestroyer(mode: string, condition?: string) {"
+      "text": "trait appliedUntilNewLine(mode: string): `The mode this token opens ends with the line` {"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 39
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 19,
-        "position": 0
-      },
-      "text": "trait modeBoundary(mode: string, condition?: string) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 41
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 31,
-        "position": 0
-      },
-      "text": "trait clearModeAtNewLine(mode: string) {"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 46
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 4,
-        "position": 2
-      },
-      "text": "const onToken = `New token is created for {{@definition}}`;"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 50
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 6,
-        "position": 4
-      },
-      "text": "where (onToken) and (`{{mode}} mode is allowed to be created`) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 56
+        "line": 47
       },
       "source": {
         "file": "def/lexer/traits.lfy",
         "line": 14,
-        "position": 4
-      },
-      "text": "where (onToken) and (`Top of mode stack is {{mode}}`) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 62
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 24,
-        "position": 4
-      },
-      "text": "where (onToken) and !(inMode) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 64
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 21,
         "position": 2
       },
-      "text": "const inMode = `Top of [[LexerModeStack]] stack is {{mode}}`;"
+      "text": "const onToken = `A token is created for {{@definition}}`;"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 65
+        "line": 51
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 22,
-        "position": 2
+        "line": 16,
+        "position": 4
       },
-      "text": "const matchesOpen = `Top of [[LexerModeStack]] stack was created from the same boundary token with {"
+      "text": "where (onToken) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 57
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": "where (onToken) and (`{{mode}} is at the top`) -> `{{mode}} is popped`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 66
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 30,
+        "position": 4
+      },
+      "text": "where (onToken) and (`{{mode}} is at the top and was opened by {{@definition}}`) -> `{{mode}} is popped`;"
     },
     {
       "generated": {
@@ -2318,106 +1827,94 @@
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 26,
+        "line": 31,
         "position": 4
       },
-      "text": "where (onToken) and (inMode) and (matchesOpen)"
+      "text": "where (onToken) and !(`{{mode}} is at the top`) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 81
+        "line": 80
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 32,
-        "position": 2
+        "line": 37,
+        "position": 4
       },
-      "text": "const onToken = `Next \\n or \\r\\n or EOF is encountered after {{mode}} is created for {{@definition}}"
+      "text": "where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 88
+        "line": 94
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 34,
+        "line": 37,
         "position": 4
       },
-      "text": "where (onToken) and (`Top of mode stack is {{mode}}`)"
+      "text": "where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;"
     },
     {
       "generated": {
         "file": "src/lexer/traits.rs",
-        "line": 113
+        "line": 115
       },
       "source": {
         "file": "def/lexer/traits.lfy",
-        "line": 6,
-        "position": 4
-      },
-      "text": "where (onToken) and (`{{mode}} mode is allowed to be created`) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 138
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 14,
-        "position": 4
-      },
-      "text": "where (onToken) and (`Top of mode stack is {{mode}}`) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 152
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 24,
-        "position": 4
-      },
-      "text": "where (onToken) and !(inMode) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 166
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 24,
-        "position": 4
-      },
-      "text": "where (onToken) and !(inMode) and (condition ?? true)"
-    },
-    {
-      "generated": {
-        "file": "src/lexer/traits.rs",
-        "line": 185
-      },
-      "source": {
-        "file": "def/lexer/traits.lfy",
-        "line": 34,
-        "position": 4
-      },
-      "text": "where (onToken) and (`Top of mode stack is {{mode}}`)"
-    },
-    {
-      "generated": {
-        "file": "src/lib.rs",
-        "line": 5
-      },
-      "source": {
-        "file": "def/grammar/file.lfy",
-        "line": 3,
+        "line": 4,
         "position": 0
       },
-      "text": "d SourceFile is ebnfSyntax(`(: [[Statement]] :)`) {}"
+      "text": "ace function inMode(modes: string[]) {"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 126
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 16,
+        "position": 4
+      },
+      "text": "where (onToken) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 153
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 23,
+        "position": 4
+      },
+      "text": "where (onToken) and (`{{mode}} is at the top`) -> `{{mode}} is popped`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 167
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 30,
+        "position": 4
+      },
+      "text": "where (onToken) and (`{{mode}} is at the top and was opened by {{@definition}}`) -> `{{mode}} is popped`;"
+    },
+    {
+      "generated": {
+        "file": "src/lexer/traits.rs",
+        "line": 198
+      },
+      "source": {
+        "file": "def/lexer/traits.lfy",
+        "line": 37,
+        "position": 4
+      },
+      "text": "where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;"
     },
     {
       "generated": {
@@ -2426,10 +1923,10 @@
       },
       "source": {
         "file": "def/lexer/main.lfy",
-        "line": 25,
+        "line": 19,
         "position": 0
       },
-      "text": "fn lexString(str: string, file?: string): `Turn a given string into a set of lexigraphical tokens` ="
+      "text": "fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {"
     }
   ]
 }

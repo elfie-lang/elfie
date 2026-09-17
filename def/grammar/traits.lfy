@@ -1,3 +1,133 @@
-use "./tokens/traits" as tokenTraits;
+use "./precedence";
 
-alias ebnfSyntax = tokenTraits.ebnfSyntax;
+// Rule definitions
+type Rule: `EBNF form of one grammar rule` {
+  identifier: `Name of the rule` = string,
+  syntax: `Right hand side of the rule in ISO EBNF` = string,
+  text: `The whole rule line` = string,
+}
+
+trait rule(syntax: string): `A grammar rule` {
+  $rule: `EBNF form of this rule` = Rule;
+  .rule = {
+    identifier = @identifier,
+    syntax = syntax,
+    text = `{{@identifier}} = {{syntax}} ;`,
+  };
+
+  @acceptanceCriteria
+    .add({ behavior = `Is satisfied by source that matches {{.rule.text}}`, })
+    .add({ behavior = `Optional groups, repetitions, and alternations inside [[syntax]] describe what is valid, not how to choose`, });
+}
+
+trait grammarDocumentation {
+  @acceptanceCriteria
+    .add({ behavior = `Every bare name referenced in any rule's syntax is the identifier of a [[rule]] entity`, })
+    .add({ behavior = `No two [[terminal]] entities have the same syntax`, })
+    .add({ behavior = `Every [[prefix]], [[infix]], and [[postfix]] rule either has [[binding]] itself or names an operator whose every alternative has [[binding]] with one shared precedence`, })
+    .add({ behavior = `No rule has more than one of [[statement]], [[primary]], [[prefix]], [[infix]], and [[postfix]]`, })
+    .add({ behavior = `Every [[escape]] listed by a [[body]] is excluded from that body's plain characters by [[Backslash]]`, })
+    .add({ situation = `Any does not`, behavior = [`Each failing rule is reported with which check it fails`], });
+}
+
+
+// Helper functions
+ace function alternation(...items: (is rule)[]) {
+  return items.map((item) => `[[&item]]`).join(` | `);
+}
+
+ace function quoted(text: string) {
+  return text.includes('"') ? `'{{text}}'` : `"{{text}}"`;
+}
+
+ace function bodySyntax(excluded: (is rule)[], escapes: (is escape)[]) {
+  const plain = `( Character - ( {{alternation(...excluded)}} ) )`;
+  return alternation(...escapes) == `` ? `(: {{plain}} :)` : `(: {{plain}} | {{alternation(...escapes)}} :)`;
+}
+
+
+// Terminals
+trait terminal(syntax: string) extends rule(syntax): `A rule matched against characters and delivered as a single token` {
+  @acceptanceCriteria.add({ behavior = `The token created for it records this rule`, });
+}
+
+trait keyword(text: string) extends terminal(quoted(text)): `A word with fixed meaning in the grammar` {
+  @acceptanceCriteria.add({ behavior = `{{text}} cannot be an identifier`, });
+}
+
+trait reserved(text: string) extends keyword(text): `A keyword no rule uses yet` {}
+
+trait punctuation(text: string) extends terminal(quoted(text)): `Punctuation with specific meaning` {}
+trait setter(text: string) extends punctuation(text), binding(Level.assignment, 'right'): `Assigns, possibly after combining with the current value` {}
+trait relational(text: string) extends punctuation(text), binding(Level.relational): `Orders two values` {}
+trait equality(text: string) extends punctuation(text), binding(Level.equality): `Compares two values` {}
+trait additive(text: string) extends punctuation(text), binding(Level.additive): `Adds or subtracts` {}
+trait multiplicative(text: string) extends punctuation(text), binding(Level.multiplicative): `Multiplies or divides` {}
+
+trait boundary(text: string) extends terminal(quoted(text)): `A symbol that opens or closes a region whose contents are text rather than code` {}
+
+trait escape(syntax: string, becomes: string) extends terminal(syntax): `A sequence inside a text body that stands for other characters` {
+  where (`Matched inside a body that lists this escape`) -> `Its characters are replaced by {{becomes}} in the token value`;
+}
+
+trait body(excluded: (is rule)[], escapes: (is escape)[] = []) extends terminal(bodySyntax(excluded, escapes)): `Text between boundaries: any character except the excluded ones, plus the listed escapes` {
+  @acceptanceCriteria
+    .add({ behavior = `The token value is the matched text with each listed escape replaced`, })
+    .add({ situation = `Matches no characters at all`, behavior = `No token is created`, });
+}
+
+// Binding power
+trait binding(precedence: number, associativity: 'left' | 'right' | null = 'left'): `How tightly an operator, or a rule that overrides its operator, groups with its neighbors` {
+  $precedence: `Binding power; a higher value binds tighter` = precedence@type;
+  .precedence = precedence;
+  $associativity: `How two of the same precedence group: left, right, or not at all (null)` = associativity@type;
+  .associativity = associativity;
+  
+  match .associativity {
+    'left' -> @acceptanceCriteria.add({ behavior = `a b c reads as (a b) c` }),
+    'right' -> @acceptanceCriteria.add({ behavior = `a b c reads as a (b c)` }),
+    null -> @acceptanceCriteria.add({ behavior = `a b c is not valid` }),
+  }
+}
+
+// Categories/groupings
+trait alternationList(...items: (is rule)[]) extends rule(alternation(...items)): `A set of rules, any one of which satisfies this rule` {
+  @acceptanceCriteria
+    .add({ behavior = `The order of [[items]] carries no meaning`, })
+    .add({
+      situation = `Match for item in [[items]]`,
+      behavior = `Treats [[item]] as match instead of [[@]]`,
+      sideEffects = [
+        `[[@]] is never included in tokens or tree`,
+      ],
+    });
+}
+
+trait statement(syntax: string) extends rule(syntax): `A rule that is or can be a top level statement` {}
+
+trait primary(syntax: string) extends rule(syntax): `An expression rule that begins with its own token` {}
+
+trait prefix(operator: is rule, disallowSpace: boolean = false) extends rule(`[[&operator]] , [[Expression]]`): `An operator followed by the expression it applies to` {
+  // If rule is later binding, it will just override these values, which is fine
+  if (!(. is binding) && (operator is binding)) {
+    binding.apply(., operator.precedence, operator.associativity)
+  }
+
+  // One of the few cases where space can matter (e.g. "-1" vs "- 1" should be treated differently)
+  if(disallowSpace) {
+    where (`Space, comments, or documentation exists between [[&operator]] and [[Expression]]`) -> `Rule cannot be a match`;
+  }
+}
+
+trait infix(operator: is rule) extends rule(`[[Expression]] , [[&operator]] , [[Expression]]`): `Two expressions joined by an operator` {
+  // If rule is later binding, it will just override these values, which is fine
+  if (!(. is binding) && (operator is binding)) {
+    binding.apply(., operator.precedence, operator.associativity)
+  }
+}
+
+trait postfix(operator: is rule, tail?: string) extends rule(tail == undefined ? `[[Expression]] , [[&operator]]` : `[[Expression]] , [[&operator]] , {{tail}}`): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
+  @acceptanceCriteria
+    .add({ behavior = `Binds as the token that satisfied [[operator]] does, unless this rule itself has [[binding]], which then wins`, })
+    .add({ behavior = `Expressions inside [[tail]] extend as far as this rule's binding power allows; text after a lower-binding operator belongs to the enclosing expression`, });
+}

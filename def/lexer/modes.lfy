@@ -1,74 +1,65 @@
-use "../grammar/tokens/comment";
-use "../grammar/tokens/literal";
-use "../grammar/tokens/separator";
+use "../grammar/terminals/comment";
+use "../grammar/terminals/identifier";
+use "../grammar/terminals/keyword";
+use "../grammar/terminals/literal";
+use "../grammar/terminals/space";
+use "../grammar/traits";
 use "./data";
 use "./traits";
 
-// Modes
+enum Mode: `Regions of the source that change which terminals may match` {
+  code = `code`,
+  blockComment = `block comment`,
+  lineComment = `line comment`,
+  blockDocumentation = `block documentation`,
+  lineDocumentation = `line documentation`,
+  singleQuote = `single quoted string`,
+  doubleQuote = `double quoted string`,
+  template = `template`,
+  execution = `template execution`,
+  reference = `template reference`,
+}
 
-alias CommentMode = `mode::comment`;
-alias DocumentationMode = `mode::documentation`;
+// Conditions
+const inCode: `Anywhere ordinary tokens are read, including inside template expressions and references` = inMode([Mode.code, Mode.execution, Mode.reference]);
 
-const StringLiteralMode = `mode::literal::string`;
-const TemplateLiteralMode = `mode::literal::template`;
-const TemplateReferenceMode: `Allowed only when {{TemplateLiteralMode}} or {{DocumentationMode}} are at the top of the [[LexerModeStack]] mode stack` = `mode::template::reference`;
-const TemplateExecutionMode: `Allowed only when {{TemplateLiteralMode}} is at the top of the [[LexerModeStack]] mode stack` = `mode::template::execution`;
+// Text regions: the boundary opens the mode, only the body and the close are candidates inside it
+modeToggle.apply(SingleQuote, Mode.singleQuote, inCode);
+candidateInModes.apply(SingleQuote, Mode.code, Mode.execution, Mode.reference, Mode.singleQuote);
+appliedUntilNewLine.apply(SingleQuote, Mode.singleQuote);
+candidateInModes.apply(SingleQuoteBody, Mode.singleQuote);
 
-const ListMode = `mode::list`;
-const BlockMode = `mode::block`;
-const GroupMode = `mode::group`;
+modeToggle.apply(DoubleQuote, Mode.doubleQuote, inCode);
+candidateInModes.apply(DoubleQuote, Mode.code, Mode.execution, Mode.reference, Mode.doubleQuote);
+appliedUntilNewLine.apply(DoubleQuote, Mode.doubleQuote);
+candidateInModes.apply(DoubleQuoteBody, Mode.doubleQuote);
 
-// Mode Matchers
+modeToggle.apply(Backtick, Mode.template, inCode);
+candidateInModes.apply(Backtick, Mode.code, Mode.execution, Mode.reference, Mode.template);
+candidateInModes.apply(TemplateBody, Mode.template);
+modeOpener.apply(ExecutionOpen, Mode.execution, inMode([Mode.template]));
+candidateInModes.apply(ExecutionOpen, Mode.template);
+modeCloser.apply(ExecutionClose, Mode.execution);
+candidateInModes.apply(ExecutionClose, Mode.execution);
+modeOpener.apply(ReferenceOpen, Mode.reference, inMode([Mode.template, Mode.blockDocumentation, Mode.lineDocumentation]));
+candidateInModes.apply(ReferenceOpen, Mode.template, Mode.blockDocumentation, Mode.lineDocumentation);
+modeCloser.apply(ReferenceClose, Mode.reference);
+candidateInModes.apply(ReferenceClose, Mode.reference);
 
-const inModes = (...modes: string[]) => `{{modes.join(' or ')}} is the top mode on the [[LexerModeStack]]`;
-const notInModes = (...modes: string[]) => `Top mode on the [[LexerModeStack]] is not {{modes.join(' or ')}}`;
+// Comments nest; documentation does not
+modeOpener.apply(BlockCommentOpen, Mode.blockComment, inMode([Mode.code, Mode.blockComment]));
+candidateInModes.apply(BlockCommentOpen, Mode.code, Mode.blockComment);
+modeCloser.apply(BlockCommentClose, Mode.blockComment);
+candidateInModes.apply(BlockCommentClose, Mode.blockComment);
+candidateInModes.apply(BlockCommentBody, Mode.blockComment);
+modeOpener.apply(LineCommentOpen, Mode.lineComment);
+appliedUntilNewLine.apply(LineCommentOpen, Mode.lineComment);
+candidateInModes.apply(LineCommentBody, Mode.lineComment);
 
-const inComment = inModes(CommentMode);
-const inInlineComment = `{{inModes(CommentMode)}} and {{CommentMode}} was pushed onto the stack when an inline comment token was created`;
-const inBlockComment = `{{inModes(CommentMode)}} and {{CommentMode}} was pushed onto the stack when a block comment start token was created`;
-const inDocumentation = inModes(DocumentationMode);
-const inInlineDocumentation = `{{inModes(DocumentationMode)}} and {{DocumentationMode}} was pushed onto the stack when an inline documentation token was created`;
-const inBlockDocumentation = `{{inModes(DocumentationMode)}} and {{DocumentationMode}} was pushed onto the stack when a block documentation start token was created`;
-
-const inString = inModes(StringLiteralMode);
-const inSingleQuoteString = `{{inModes(StringLiteralMode)}} and {{StringLiteralMode}} was pushed onto the stack when a [[SingleQuoteBoundary]] token was created`;
-const inDoubleQuoteString = `{{inModes(StringLiteralMode)}} and {{StringLiteralMode}} was pushed onto the stack when a [[DoubleQuoteBoundary]] token was created`;
-const inTemplate = inModes(TemplateLiteralMode);
-const inTemplateReference = inModes(TemplateReferenceMode);
-const inTemplateExecution = inModes(TemplateExecutionMode);
-
-const inList = `{{ListMode}} is the top mode on the [[LexerModeStack]]`;
-const inBlock = `{{BlockMode}} is the top mode on the [[LexerModeStack]]`;
-const inGroup = `{{GroupMode}} is the top mode on the [[LexerModeStack]]`;
-
-const inContentBodyMode: `In a mode where the default is that all text counts as content body` = inModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`);
-const notInContentBodyMode: `Not in a mode where the default is that all text counts as content body` = notInModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`);
-
-// Mode Logic
-modeCreator.apply(CommentBlockOpen, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
-modeCreator.apply(CommentInlineStart, CommentMode, notInModes(`[[DocumentationMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
-modeDestroyer.apply(CommentBlockClose, CommentMode);
-clearModeAtNewLine.apply(CommentInlineStart, CommentMode);
-
-modeCreator.apply(DocumentationBlockOpen, DocumentationMode, notInModes(`[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
-modeCreator.apply(DocumentationInlineStart, DocumentationMode, notInModes(`[[CommentMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
-modeDestroyer.apply(DocumentationBlockClose, DocumentationMode);
-clearModeAtNewLine.apply(DocumentationInlineStart, DocumentationMode);
-
-modeBoundary.apply(SingleQuoteBoundary, StringLiteralMode, notInModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[TemplateLiteralMode]]`));
-modeBoundary.apply(DoubleQuoteBoundary, StringLiteralMode, notInModes(`[[DocumentationMode]]`, `[[CommentMode]]`, `[[TemplateLiteralMode]]`));
-// Bail out of single quote literal and let parser throw error in cases of no closing string boundary
-clearModeAtNewLine.apply(SingleQuoteBoundary, StringLiteralMode);
-
-modeBoundary.apply(BacktickBoundary, TemplateLiteralMode, notInModes(`[[DocumentationMode]]`, `[[StringLiteralMode]]`, `[[TemplateLiteralMode]]`));
-modeCreator.apply(ReferenceOpenBoundary, TemplateReferenceMode, inModes(TemplateLiteralMode, DocumentationMode));
-modeDestroyer.apply(ReferenceCloseBoundary, TemplateReferenceMode, inTemplateReference);
-modeCreator.apply(ExecutionOpenBoundary, TemplateExecutionMode, inTemplate);
-modeDestroyer.apply(ExecutionCloseBoundary, TemplateExecutionMode, inTemplateExecution);
-
-modeCreator.apply(ListOpenSeparator, ListMode, notInContentBodyMode);
-modeDestroyer.apply(ListCloseSeparator, ListMode);
-modeCreator.apply(BlockOpenSeparator, BlockMode, notInContentBodyMode);
-modeDestroyer.apply(BlockCloseSeparator, BlockMode);
-modeCreator.apply(GroupOpenSeparator, GroupMode, notInContentBodyMode);
-modeDestroyer.apply(GroupCloseSeparator, GroupMode);
+modeOpener.apply(BlockDocumentationOpen, Mode.blockDocumentation);
+modeCloser.apply(BlockDocumentationClose, Mode.blockDocumentation);
+candidateInModes.apply(BlockDocumentationClose, Mode.blockDocumentation);
+candidateInModes.apply(BlockDocumentationBody, Mode.blockDocumentation);
+modeOpener.apply(LineDocumentationOpen, Mode.lineDocumentation);
+appliedUntilNewLine.apply(LineDocumentationOpen, Mode.lineDocumentation);
+candidateInModes.apply(LineDocumentationBody, Mode.lineDocumentation);

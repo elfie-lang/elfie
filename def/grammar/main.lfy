@@ -1,0 +1,35 @@
+use "./precedence";
+use "./rules/expression";
+use "./rules/file";
+use "./rules/statement";
+use "./terminals/comment";
+use "./terminals/identifier";
+use "./terminals/keyword";
+use "./terminals/literal";
+use "./terminals/punctuation";
+use "./terminals/space";
+use "./traits";
+
+function terminalDocument(): `The EBNF of every terminal` -> string {
+  let lines: `One rule per line` = [];
+  for (const rule in terminal@entities) {
+    lines.push(rule.rule.text);
+  }
+  return lines.join("\n");
+}
+
+function grammarDocument(): `The EBNF of every rule` -> string {
+  let lines: `One rule per line` = [];
+  for (const rule in rule@entities) {
+    lines.push(rule.rule.text);
+  }
+
+  return lines.join("\n");
+}
+
+global@acceptanceCriteria
+  .add({ behavior = `Every bare name referenced in any rule's syntax is the identifier of a [[rule]] entity`, })
+  .add({ behavior = `No two [[terminal]] entities have the same syntax`, })
+  .add({ behavior = `Every [[prefix]], [[infix]], and [[postfix]] rule either has [[binding]] itself or names an operator whose every alternative has [[binding]] with one shared precedence`, })
+  .add({ behavior = `No rule has more than one of [[statement]], [[primary]], [[prefix]], [[infix]], and [[postfix]]`, })
+  .add({ behavior = `Every [[escape]] listed by a [[body]] is excluded from that body's plain characters by [[Backslash]]`, });

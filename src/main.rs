@@ -1,15 +1,16 @@
 //! `elfie <file>`: lexes an Elfie source file and prints its tokens, one per line.
 //!
-//! Each line shows the token's `line:position`, the grammar rule it was lexed as (or
-//! `Space` / `Invalid`), its raw source text, and its value when that differs from the raw
-//! text. A lexing error is reported on stderr with exit status 1.
+//! Each line shows the token's `line:column`, the terminal it was lexed as (or `Invalid`),
+//! its raw source text, and its value when that differs from the raw text. A lexing error
+//! is reported on stderr with exit status 1.
 
 use std::env;
 use std::fs;
 use std::io::{self, BufWriter, ErrorKind, Write};
 use std::process::ExitCode;
 
-use elfie::lexer::{TokenKind, lex_string};
+use elfie::grammar::GrammarRule;
+use elfie::lexer::lex;
 
 fn main() -> ExitCode {
     let mut args = env::args().skip(1);
@@ -24,7 +25,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let tokens = match lex_string(&source, Some(&path)) {
+    let tokens = match lex(&source, Some(&path)) {
         Ok(tokens) => tokens,
         Err(error) => {
             eprintln!("{error}");
@@ -33,15 +34,11 @@ fn main() -> ExitCode {
     };
     let mut out = BufWriter::new(io::stdout().lock());
     let written = tokens.iter().try_for_each(|token| {
-        let kind = match token.kind {
-            TokenKind::Space => "Space",
-            TokenKind::Invalid => "Invalid",
-            kind => kind.rule().map_or("?", |rule| rule.identifier()),
-        };
+        let rule = token.rule.map_or("Invalid", |rule| rule.identifier());
         write!(
             out,
-            "{}:{}\t{kind}\t{:?}",
-            token.line, token.position, token.raw
+            "{}:{}\t{rule}\t{:?}",
+            token.line, token.column, token.raw
         )?;
         if token.value != token.raw {
             write!(out, "\t=> {:?}", token.value)?;

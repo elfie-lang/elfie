@@ -1,19 +1,23 @@
-d LexerModeStack: `Stack of the current mode the lexer should be in based on tokens` {
+use "../grammar/traits";
+
+d Token: `One piece of the source text` {
+  $rule: `The grammar terminal whose syntax matched; null for text no terminal matched` = Rule | null;
+  $raw: `The characters exactly as written` = string;
+  $value: `The characters after escapes are applied and number underscores are removed; equal to [[Token.raw]] for every other token` = string;
+  $file: `The file the token came from` = string;
+  $line: `Line the token starts on, counting from 1` = number;
+  $column: `Column the token starts at within its line, counting from 0` = number;
   @acceptanceCriteria
-    .add({ situation = `Entering lexing mode`, behavior = `Pushes the mode to the top of the stack`, })
-    .add({ situation = `Exiting lexing mode that is at the top of the stack`, behavior = `Pops a single mode from the top of the stack`, })
-    .add({ situation = `Lexing any token requires knowledge about the mode or context the lexer is in`, behavior = `The stack contains information needed to be able to successfully lex the token` });
+    .add({ behavior = `Joining [[Token.raw]] of every token of a file in order reproduces the file exactly`, })
+    .add({ behavior = `[[Token.column]] is based on the [[Token.raw]] text of the file in the original source, not the adjusted [[Token.value]] position`, })
+    .add({ situation = `[[Token.rule]] is null`, behavior = `[[Token]] is flagged as invalid`, });
 }
 
-d Token: `Representation of a lexed token` {
-  $value: `Normalized and processed token value as derived from the raw source text` = string;
-  $raw: `Raw source text content that created this token` = string;
+d ModeStack: `Which region of the source the lexer is in, innermost last` {
   @acceptanceCriteria
-    .add({
-      behavior = `Keeps track of a token's source file, line number, and position in the line`
-    })
-    .add({
-      situation = `Is a space token`,
-      behavior = `Used to separate tokens and contains no other semantic significance`
-    });
+    .add({ behavior = `Starts with the code mode and is never empty`, })
+    .add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it`, })
+    .add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped`, })
+    .add({ situation = `A token closes a mode, but that mode is not at the top`, behavior = `Is not a close`, })
+    .add({ behavior = `The entry at the top decides which terminals are candidates for the next token`, });
 }

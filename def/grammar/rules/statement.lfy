@@ -1,0 +1,53 @@
+use "../terminals/identifier";
+use "../terminals/keyword";
+use "../terminals/punctuation";
+use "../traits";
+use "./expression";
+
+// Declarations
+
+d DataDeclaration is statement(`[[AgentDataKeyword]] , [[Identifier]] , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )`): `A data structure whose implementation is generated from its criteria` {}
+d AgentFunctionDeclaration is statement(`[[AgentFunctionKeyword]] , [[Signature]] , (/ [[DoubleArrowRight]] , [[TypeExpression]] /) , ( [[Block]] | [[Semicolon]] )`): `A function whose implementation is generated from its criteria` {}
+d FunctionDeclaration is statement(`[[FunctionKeyword]] , [[Signature]] , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[Block]]`): `A function written out in full` {}
+d TraitDeclaration is statement(`[[TraitKeyword]] , [[Identifier]] , (/ [[Parameters]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , [[Block]]`): `A reusable component` {}
+d TypeDeclaration is statement(`[[TypeKeyword]] , [[Declared]] , [[Type]]`): `A structural type` {}
+d EnumDeclaration is statement(`[[EnumKeyword]] , [[Declared]] , [[Object]]`): `A set of named values` {}
+d VariableDeclaration is statement(`( [[ConstKeyword]] | [[LetKeyword]] ) , [[Declared]] , (/ [[PlainSetter]] , [[Expression]] /) , [[Semicolon]]`): `A named value` {}
+d AliasDeclaration is statement(`[[AliasKeyword]] , [[Declared]] , [[PlainSetter]] , [[Expression]] , [[Semicolon]]`): `A new name and context for something already named` {}
+d ExternalDeclaration is statement(`[[ExternalKeyword]] , [[Declared]] , [[PlainSetter]] , [[Expression]] , [[Semicolon]]`): `A name defined outside the program` {}
+d Use is statement(`[[UseKeyword]] , [[StringLiteral]] , (/ [[AsKeyword]] , [[Identifier]] /) , [[Semicolon]]`): `Brings a file into scope, as one module name or as its declarations` {}
+
+// Blocks and control
+
+d Block is statement(`[[BlockOpen]] , (: [[Statement]] :) , [[BlockClose]]`): `A sequence of statements with its own scope` {
+  @acceptanceCriteria
+    .add({ behavior = `A [[BlockOpen]] at the start of a statement always begins a [[Block]], never an [[Object]]`, });
+}
+d If is statement(`[[IfKeyword]] , [[Group]] , ( [[Block]] | [[ExpressionStatement]] ) , (/ [[Else]] /)`): `A conditional` {}
+d Else is rule(`[[ElseKeyword]] , ( [[If]] | [[Block]] | [[ExpressionStatement]] )`): `The other branch; else if is else followed by an if` {}
+d ForFrom is rule(`[[Comma]] , [[Declared]] , [[FromKeyword]] , {{listOf(`[[Expression]]`)}}`): `Loop over keys and values` {}
+d ForInOf is rule(`( [[InKeyword]] | [[OfKeyword]] ) , {{listOf(`[[Expression]]`)}}`): `Loop over values or keys` {}
+d For is statement(`[[ForKeyword]] , [[GroupOpen]] , (/ [[ConstKeyword]] | [[LetKeyword]] /) , [[Declared]] , ( [[ForFrom]] | [[ForInOf]] ) , [[GroupClose]] , [[Block]]`): `A loop over one or more iterables, visited in order` {}
+d While is statement(`[[WhileKeyword]] , [[Group]] , [[Block]]`): `A conditional loop` {}
+d Loop is statement(`[[LoopKeyword]] , [[Block]]`): `A loop ended by break` {}
+d Break is statement(`[[BreakKeyword]] , [[Semicolon]]`): `Leaves the loop` {}
+d Continue is statement(`[[ContinueKeyword]] , [[Semicolon]]`): `Next iteration` {}
+d Return is statement(`[[ReturnKeyword]] , [[ExpressionStatement]]`): `Ends the function with a value` {}
+d MatchArm is rule(`( [[Expression]] | [[DefaultKeyword]] ) , [[SingleArrow]] , [[Expression]]`): `A pattern and its result` {}
+d Match is statement(`( [[MatchKeyword]] | [[MatchallKeyword]] ) , [[Expression]] , [[BlockOpen]] , {{listOf(`[[MatchArm]]`)}} , [[BlockClose]]`): `Branches on patterns` {}
+d With is statement(`[[WithKeyword]] , ( [[Name]] | [[Member]] ) , [[Block]]`): `Runs the block with the name or member as the current entity` {}
+d Async is statement(`[[AsyncKeyword]] , [[Statement]]`): `Runs the statement as a promise` {}
+d Ace is statement(`[[AceKeyword]] , [[Statement]]`): `Runs the statement at compile time` {}
+d ExpressionStatement is statement(`[[Expression]] , [[Semicolon]]`): `An expression on its own` {}
+
+// Criteria sugar
+
+d Condition is rule(`(/ [[LogicalNot]] /) , ( [[Group]] | ( [[GroupOpen]] , [[Conditions]] , [[GroupClose]] ) )`): `One condition, possibly negated or nested` {}
+d Conditions is rule(`[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)`): `Conditions joined by and or or` {
+  @acceptanceCriteria
+    .add({ behavior = `A negated nested group distributes the negation: "and" becomes "or" and "or" becomes "and" inside of the group`, })
+    .add({ behavior = `Conditions joined by "or" merge into one situation; conditions joined by "and" are a list of situations`, });
+}
+d Where is statement(`[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]`): `Adds an acceptance criterion: the conditions are the situation, the expression the behavior` {}
+
+d Statement is alternationList(...statement@entities): `Any statement` {}

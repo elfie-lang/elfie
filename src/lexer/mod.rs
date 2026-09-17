@@ -1,484 +1,454 @@
 //! Compiled from `def/lexer/main.lfy`.
 //!
-//! [`lex_string`] turns a source string into a `Vec<Token>`. Every lexing rule matches a
-//! grammar rule's EBNF against the remaining input under a condition on the
-//! [`LexerModeStack`]; among the rules that match, the longest match wins and ties go to
-//! the rule declared first.
+//! [`lex`] turns source text into tokens. At each position every terminal whose
+//! `candidateInModes` condition holds for the top of the [`ModeStack`] (or [`modes::IN_CODE`]
+//! when it has none) is matched against the EBNF of the terminal document, the only
+//! grammar the lexer knows; the longest match is the token, a keyword beats an identifier
+//! of the same text, and any other tie is an error naming both terminals.
 
-use std::sync::Arc;
+use std::fmt;
+use std::sync::{Arc, OnceLock};
 
 pub mod data;
 pub mod modes;
 pub mod traits;
 
-pub use data::{LexError, LexerModeStack, ModeEntry, Token, TokenKind};
+pub use data::{ModeEntry, ModeStack, Token};
 pub use modes::Mode;
 
-use crate::grammar::expression::Expression;
-use crate::grammar::tokens::comment::Comment;
-use crate::grammar::tokens::identifier::Identifier;
-use crate::grammar::tokens::keyword::Keyword;
-use crate::grammar::tokens::literal::{self, Literal, Replacement};
-use crate::grammar::tokens::operator::Operator;
-use crate::grammar::tokens::separator::Separator;
-use crate::grammar::tokens::space::Space;
-use crate::grammar::{EbnfSyntax, RuleInfo, ebnf};
-use modes::{
-    in_block_comment, in_block_documentation, in_comment, in_content_body_mode, in_documentation,
-    in_double_quote_string, in_inline_comment, in_inline_documentation, in_single_quote_string,
-    in_string, in_template, in_template_execution, in_template_reference, not_in_content_body_mode,
-};
+use crate::grammar::terminals::comment::{self, Comment};
+use crate::grammar::terminals::identifier::Identifier;
+use crate::grammar::terminals::literal::{self, Literal};
+use crate::grammar::terminals::space::{self, Space};
+use crate::grammar::{self, Entity, GrammarRule};
 
 /// The file name used when none is given.
-// @lfy def/lexer/main.lfy:31
+// @lfy def/lexer/main.lfy:23
 pub const ANONYMOUS_FILE: &str = "anonymous";
 
-/// `ace function matchingEBNF(ebnf)`: characters match `{{ebnf.syntax}}` from
-/// `{{ebnf.identifier}}`. Yields the byte length of the longest such match.
-// @lfy def/lexer/main.lfy:13
-fn matching_ebnf(rule: RuleInfo, source: &str, offset: usize) -> Option<usize> {
-    ebnf::grammar().longest_match_at(rule.identifier(), source, offset)
+/// `ace function matches(rule)`: the characters at `offset` match the rule's syntax.
+/// Yields the byte length of the longest such match.
+// @lfy def/lexer/main.lfy:11
+fn matches(rule: Entity, source: &str, offset: usize) -> Option<usize> {
+    rule.longest_match_at(source, offset)
 }
 
-/// Full EBNF syntax document: the rule of every token, in the order the token files are
-/// loaded, separated by blank lines. The lexer uses it as its baseline reference.
-// @lfy def/lexer/main.lfy:44
-pub fn ebnf_document() -> String {
-    fn rules<R: EbnfSyntax>(all: &'static [R]) -> impl Iterator<Item = &'static str> {
-        all.iter().map(|rule| rule.rule())
+/// The terminal document is the only grammar the lexer knows: the EBNF of every terminal.
+// @lfy def/lexer/main.lfy:97
+pub fn terminals() -> String {
+    grammar::terminal_document()
+}
+
+/// Every terminal the lexer considers, with its lex condition. Escapes are matched only
+/// as part of another terminal and can never be a token, so they are left out.
+// @lfy def/lexer/main.lfy:102
+fn candidates() -> &'static [(Entity, &'static [Mode])] {
+    static CANDIDATES: OnceLock<Vec<(Entity, &'static [Mode])>> = OnceLock::new();
+    CANDIDATES.get_or_init(|| {
+        Entity::terminals()
+            .filter(|terminal| !terminal.is_escape()) // @lfy def/lexer/main.lfy:110
+            .map(|terminal| (terminal, modes::lex_condition(terminal))) // @lfy def/lexer/main.lfy:103
+            .collect()
+    })
+}
+
+/// A compile-time lexer error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LexError {
+    /// Two terminals matched tokens of equal length and no other criteria specifies
+    /// which wins.
+    // @lfy def/lexer/main.lfy:31
+    AmbiguousMatch {
+        file: Arc<str>,
+        line: usize,
+        column: usize,
+        text: String,
+        first: Entity,
+        second: Entity,
+    },
+}
+
+impl fmt::Display for LexError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LexError::AmbiguousMatch {
+                file,
+                line,
+                column,
+                text,
+                first,
+                second,
+            } => write!(
+                f,
+                "{file}:{line}:{column}: {text:?} matches both {first} and {second}"
+            ),
+        }
     }
-    // @lfy def/lexer/main.lfy:45
-    let rules: Vec<&'static str> = rules(Comment::ALL)
-        .chain(rules(Identifier::ALL))
-        .chain(rules(Keyword::ALL))
-        .chain(rules(Literal::ALL))
-        .chain(rules(Operator::ALL))
-        .chain(rules(Separator::ALL))
-        .chain(rules(Space::ALL))
-        .collect();
-    rules.join("\n\n") // @lfy def/lexer/main.lfy:52
 }
 
-/// Turn a given string into a set of lexigraphical tokens.
+impl std::error::Error for LexError {}
+
+/// Turn source text into tokens.
 ///
-/// `file` is recorded on every token; it defaults to `"anonymous"`. The only error is
-/// input that ends while a lexing mode is still open.
-// @lfy def/lexer/main.lfy:25
-pub fn lex_string(str: &str, file: Option<&str>) -> Result<Vec<Token>, LexError> {
-    let file: Arc<str> = Arc::from(file.unwrap_or(ANONYMOUS_FILE)); // @lfy def/lexer/main.lfy:30
+/// `source` is read from start to end; every token records `file`, or `"anonymous"` when
+/// none is given. Text no terminal matches becomes a token without a rule, and a mode
+/// still open at the end of the source becomes a token without a rule or raw text whose
+/// value names the mode. The only error is a tie between two terminals.
+// @lfy def/lexer/main.lfy:19
+pub fn lex(source: &str, file: Option<&str>) -> Result<Vec<Token>, LexError> {
     let mut lexer = Lexer {
-        input: str,
+        input: source,
         offset: 0,
-        line: 1,     // @lfy def/lexer/main.lfy:33
-        position: 0, // @lfy def/lexer/main.lfy:34
-        file,
-        stack: LexerModeStack::new(), // @lfy def/lexer/main.lfy:36
+        line: 1,                                         // @lfy def/lexer/main.lfy:25
+        column: 0,                                       // @lfy def/lexer/main.lfy:26
+        file: Arc::from(file.unwrap_or(ANONYMOUS_FILE)), // @lfy def/lexer/main.lfy:22
+        stack: ModeStack::new(),                         // @lfy def/lexer/main.lfy:28
         tokens: Vec::new(),
     };
     lexer.run()?;
     Ok(lexer.tokens)
 }
 
-/// The best match found so far at the current position.
-struct Candidate {
-    kind: TokenKind,
-    len: usize,
-}
-
-/// Records a match of `len` bytes for `kind` unless a longer match was already found.
-/// Ties keep the earlier rule. (Traits that forbid a match are applied by the matcher.)
-// @lfy def/lexer/main.lfy:40
-fn consider(best: &mut Option<Candidate>, kind: TokenKind, len: usize) {
-    if best.as_ref().is_none_or(|current| len > current.len) {
-        *best = Some(Candidate { kind, len });
-    }
-}
-
-/// [`consider`] for a kind whose single grammar rule decides the match length.
-fn consider_rule(best: &mut Option<Candidate>, kind: TokenKind, source: &str, offset: usize) {
-    let rule = kind.rule().expect("a kind lexed from one rule");
-    if let Some(len) = matching_ebnf(rule, source, offset) {
-        consider(best, kind, len);
-    }
-}
-
 struct Lexer<'a> {
     input: &'a str,
     offset: usize,
     line: usize,
-    position: usize,
+    column: usize,
     file: Arc<str>,
-    stack: LexerModeStack,
+    stack: ModeStack,
     tokens: Vec<Token>,
 }
 
+/// Whether `rest` begins with a line break, either spelling.
+fn at_line_break(rest: &str) -> bool {
+    rest.starts_with('\n') || rest.starts_with("\r\n")
+}
+
 impl Lexer<'_> {
-    /// Processes the input start to finish.
-    // @lfy def/lexer/main.lfy:28
+    /// Reads the source from start to end.
+    // @lfy def/lexer/main.lfy:21
     fn run(&mut self) -> Result<(), LexError> {
         while self.offset < self.input.len() {
-            let rest = &self.input[self.offset..];
-            if rest.starts_with('\n') || rest.starts_with("\r\n") {
-                // @lfy def/lexer/traits.lfy:32
-                traits::on_end_of_line(&mut self.stack);
+            if at_line_break(&self.input[self.offset..]) {
+                // @lfy def/lexer/traits.lfy:37
+                traits::before_line_break(&mut self.stack);
             }
-            match self.candidate() {
-                Some(Candidate { kind, len }) => self.push_token(kind, len),
-                // @lfy def/lexer/main.lfy:116
+            match self.candidate()? {
+                // @lfy def/lexer/main.lfy:103
+                Some((terminal, len)) => {
+                    self.push(Some(terminal), len);
+                    traits::on_token(terminal, &mut self.stack); // @lfy def/lexer/traits.lfy:14
+                }
+                // @lfy def/lexer/main.lfy:114
                 None => {
-                    let c = rest.chars().next().expect("offset is inside the input");
-                    self.push_token(TokenKind::Invalid, c.len_utf8());
+                    let len = self.invalid_run();
+                    self.push(None, len);
                 }
             }
         }
-        // @lfy def/lexer/traits.lfy:32
-        traits::on_end_of_line(&mut self.stack);
-        if !self.stack.is_empty() {
-            // @lfy def/lexer/main.lfy:37
-            return Err(LexError::UnexpectedEndOfFile {
+        // @lfy def/lexer/traits.lfy:37
+        traits::before_line_break(&mut self.stack);
+        // @lfy def/lexer/main.lfy:50
+        for entry in self.stack.open() {
+            self.tokens.push(Token {
+                rule: None,
+                raw: String::new(),
+                value: entry.mode.name().to_owned(),
                 file: Arc::clone(&self.file),
                 line: self.line,
-                position: self.position,
-                open: self.stack.modes(),
+                column: self.column,
             });
         }
         Ok(())
     }
 
-    /// Evaluates every lexing rule at `rest` under the current mode and returns the best
-    /// candidate: the longest match, ties going to the rule declared first.
-    // @lfy def/lexer/main.lfy:38
-    fn candidate(&self) -> Option<Candidate> {
-        let stack = &self.stack;
-        let (source, offset) = (self.input, self.offset);
-        let mut best = None;
-        let mut rule = |kind: TokenKind| consider_rule(&mut best, kind, source, offset);
+    /// The match of one candidate terminal at `offset`, after the `where` clauses of the
+    /// terminal are applied.
+    fn candidate_match(&self, terminal: Entity) -> Option<(Entity, usize)> {
+        let len = matches(terminal, self.input, self.offset)?;
+        // @lfy def/grammar/terminals/comment.lfy:12
+        if terminal == Entity::Comment(Comment::BlockDocumentationOpen)
+            && comment::block_documentation_open_is_block_comment_open(
+                &self.input[self.offset + len..],
+            )
+        {
+            let open = Entity::Comment(Comment::BlockCommentOpen);
+            return matches(open, self.input, self.offset).map(|len| (open, len));
+        }
+        Some((terminal, len))
+    }
 
-        // Literals
-        // @lfy def/lexer/main.lfy:61
-        if !in_content_body_mode(stack) {
-            for simple in [
-                Literal::NullLiteral,
-                Literal::UndefinedLiteral,
-                Literal::BooleanLiteral,
-                Literal::NumberLiteral,
-            ] {
-                rule(TokenKind::Literal(simple));
+    /// Matches every candidate terminal at `offset` and picks the token: the longest
+    /// match; between a keyword and an identifier of the same text, the keyword. Any
+    /// other tie is an error naming both terminals.
+    // @lfy def/lexer/main.lfy:29
+    fn candidate(&self) -> Result<Option<(Entity, usize)>, LexError> {
+        let mode = self.stack.top_mode();
+        let mut best: Option<(Entity, usize)> = None;
+        let mut tie: Option<Entity> = None;
+        for &(terminal, condition) in candidates() {
+            if !condition.contains(&mode) {
+                continue;
             }
-        }
-        // @lfy def/lexer/main.lfy:65
-        if !in_double_quote_string(stack)
-            && !in_template(stack)
-            && !in_comment(stack)
-            && !in_documentation(stack)
-        {
-            rule(TokenKind::Literal(Literal::SingleQuoteBoundary));
-        }
-        // @lfy def/lexer/main.lfy:66
-        if !in_single_quote_string(stack)
-            && !in_template(stack)
-            && !in_comment(stack)
-            && !in_documentation(stack)
-        {
-            rule(TokenKind::Literal(Literal::DoubleQuoteBoundary));
-        }
-        // @lfy def/lexer/main.lfy:67
-        if !in_single_quote_string(stack)
-            && !in_double_quote_string(stack)
-            && !in_comment(stack)
-            && !in_documentation(stack)
-        {
-            rule(TokenKind::Literal(Literal::BacktickBoundary));
-        }
-        // @lfy def/lexer/main.lfy:69
-        if in_template(stack) {
-            rule(TokenKind::Literal(Literal::ExecutionOpenBoundary));
-        }
-        // @lfy def/lexer/main.lfy:70
-        if in_template_execution(stack) {
-            rule(TokenKind::Literal(Literal::ExecutionCloseBoundary));
-        }
-        // @lfy def/lexer/main.lfy:71
-        if in_template(stack) {
-            rule(TokenKind::Literal(Literal::ReferenceOpenBoundary));
-        }
-        // @lfy def/lexer/main.lfy:72
-        if in_template_reference(stack) {
-            rule(TokenKind::Literal(Literal::ReferenceCloseBoundary));
-        }
-        // @lfy def/lexer/main.lfy:74
-        if in_single_quote_string(stack) {
-            rule(TokenKind::Literal(Literal::SingleQuoteLiteralBody));
-        }
-        // @lfy def/lexer/main.lfy:75
-        if in_double_quote_string(stack) {
-            rule(TokenKind::Literal(Literal::DoubleQuoteLiteralBody));
-        }
-        // @lfy def/lexer/main.lfy:76
-        if in_template(stack) {
-            rule(TokenKind::Expression(Expression::TemplateLiteralBody));
-        }
-        // Sequences inside those bodies are replaced when the token value is built.
-        // @lfy def/lexer/main.lfy:77
-
-        // Comments
-        // @lfy def/lexer/main.lfy:80
-        if !in_inline_comment(stack)
-            && !in_documentation(stack)
-            && !in_string(stack)
-            && !in_template(stack)
-        {
-            rule(TokenKind::Comment(Comment::CommentBlockOpen));
-        }
-        if in_block_comment(stack) {
-            rule(TokenKind::Comment(Comment::CommentBlockClose)); // @lfy def/lexer/main.lfy:81
-            rule(TokenKind::Comment(Comment::CommentBlockBody)); // @lfy def/lexer/main.lfy:82
-        }
-        // @lfy def/lexer/main.lfy:83
-        if not_in_content_body_mode(stack) {
-            rule(TokenKind::Comment(Comment::CommentInlineStart));
-        }
-        // @lfy def/lexer/main.lfy:84
-        if in_inline_comment(stack) {
-            rule(TokenKind::Comment(Comment::CommentInlineBody));
-        }
-        // @lfy def/lexer/main.lfy:86
-        if !in_inline_documentation(stack)
-            && !in_comment(stack)
-            && !in_string(stack)
-            && !in_template(stack)
-        {
-            rule(TokenKind::Comment(Comment::DocumentationBlockOpen));
-        }
-        if in_block_documentation(stack) {
-            rule(TokenKind::Comment(Comment::DocumentationBlockClose)); // @lfy def/lexer/main.lfy:87
-            rule(TokenKind::Comment(Comment::DocumentationBlockBody)); // @lfy def/lexer/main.lfy:88
-        }
-        // @lfy def/lexer/main.lfy:89
-        if not_in_content_body_mode(stack) {
-            rule(TokenKind::Comment(Comment::DocumentationInlineStart));
-        }
-        // @lfy def/lexer/main.lfy:90
-        if in_inline_documentation(stack) {
-            rule(TokenKind::Comment(Comment::DocumentationInlineBody));
-        }
-        // @lfy def/lexer/main.lfy:91
-        if in_documentation(stack) {
-            rule(TokenKind::Literal(Literal::ReferenceOpenBoundary));
-        }
-
-        if not_in_content_body_mode(stack) {
-            // Keywords
-            // @lfy def/lexer/main.lfy:94
-            for &keyword in Keyword::ALL {
-                rule(TokenKind::Keyword(keyword));
-            }
-            // Operators
-            // @lfy def/lexer/main.lfy:99
-            for &operator in Operator::ALL {
-                rule(TokenKind::Operator(operator));
-            }
-            // Separators
-            // @lfy def/lexer/main.lfy:104
-            for &separator in Separator::ALL {
-                rule(TokenKind::Separator(separator));
-            }
-            // Space
-            // @lfy def/lexer/main.lfy:109
-            for &space in Space::ALL {
-                if let Some(len) = matching_ebnf(RuleInfo::of(space), source, offset) {
-                    consider(&mut best, TokenKind::Space, len);
+            let Some((matched, len)) = self.candidate_match(terminal) else {
+                continue;
+            };
+            match best {
+                // @lfy def/lexer/main.lfy:30
+                Some((_, longest)) if len < longest => {}
+                Some((current, longest)) if len == longest => {
+                    if current == matched {
+                        continue;
+                    }
+                    // @lfy def/lexer/main.lfy:107
+                    let identifier = Entity::Identifier(Identifier::Identifier);
+                    if current == identifier && matched.is_keyword() {
+                        best = Some((matched, len));
+                    } else if !(matched == identifier && current.is_keyword()) {
+                        tie.get_or_insert(matched);
+                    }
+                }
+                _ => {
+                    best = Some((matched, len));
+                    tie = None;
                 }
             }
-            // Identifiers
-            // @lfy def/lexer/main.lfy:114
-            if let Some(len) = Identifier::match_identifier(&source[offset..]) {
-                consider(&mut best, TokenKind::Identifier, len);
+        }
+        match (best, tie) {
+            // @lfy def/lexer/main.lfy:36
+            (Some((first, len)), Some(second)) => Err(LexError::AmbiguousMatch {
+                file: Arc::clone(&self.file),
+                line: self.line,
+                column: self.column,
+                text: self.input[self.offset..self.offset + len].to_owned(),
+                first,
+                second,
+            }),
+            (best, None) => Ok(best),
+            (None, Some(_)) => unreachable!("a tie needs a best match"),
+        }
+    }
+
+    /// Byte length of the text from `offset` up to the next position where some terminal
+    /// matches, which is where lexing continues.
+    // @lfy def/lexer/main.lfy:48
+    fn invalid_run(&self) -> usize {
+        let mode = self.stack.top_mode();
+        let mut end = self.offset;
+        loop {
+            let c = self.input[end..]
+                .chars()
+                .next()
+                .expect("the run is inside the input");
+            end += c.len_utf8();
+            let rest = &self.input[end..];
+            if rest.is_empty() {
+                break;
+            }
+            // A line break that ends the mode at the top is lexed after the mode ends.
+            if at_line_break(rest) && traits::mode_ending_with_line(&self.stack).is_some() {
+                break;
+            }
+            let some_terminal_matches = candidates().iter().any(|&(terminal, condition)| {
+                condition.contains(&mode) && matches(terminal, self.input, end).is_some()
+            });
+            if some_terminal_matches {
+                break;
             }
         }
-
-        best
+        end - self.offset
     }
 
-    /// Pushes a token spanning the next `len` bytes and lets the mode stack respond to it.
-    // @lfy def/lexer/main.lfy:17
-    fn push_token(&mut self, kind: TokenKind, len: usize) {
-        let raw = &self.input[self.offset..self.offset + len]; // @lfy def/lexer/main.lfy:35
-        let value = match kind {
-            // @lfy def/lexer/main.lfy:32
-            TokenKind::Space if raw == "\r\n" => "\n".to_owned(),
-            // @lfy def/grammar/tokens/literal.lfy:13
-            TokenKind::Literal(Literal::NumberLiteral) => literal::normalize_number(raw),
-            // @lfy def/lexer/main.lfy:77
-            TokenKind::Literal(Literal::DoubleQuoteLiteralBody)
-            | TokenKind::Expression(Expression::TemplateLiteralBody) => decode_body(raw),
-            _ => raw.to_owned(),
-        };
+    /// Creates the token for `rule` from the next `len` bytes and appends it.
+    // @lfy def/lexer/main.lfy:15
+    fn push(&mut self, rule: Option<Entity>, len: usize) {
+        let raw = &self.input[self.offset..self.offset + len]; // @lfy def/lexer/main.lfy:27
         self.tokens.push(Token {
-            kind,
-            value,
+            rule,
             raw: raw.to_owned(),
+            value: value(rule, raw),
             file: Arc::clone(&self.file),
-            line: self.line,
-            position: self.position,
+            line: self.line,     // @lfy def/lexer/main.lfy:25
+            column: self.column, // @lfy def/lexer/main.lfy:26
         });
         self.advance(len);
-        // @lfy def/lexer/main.lfy:36
-        traits::on_token_created(kind, &mut self.stack);
     }
 
-    /// Consumes `len` bytes, tracking the 1-indexed line and 0-indexed character position.
-    // @lfy def/lexer/main.lfy:33
+    /// Consumes `len` bytes, tracking the 1-indexed line and the 0-indexed column in
+    /// characters of the raw text.
+    // @lfy def/lexer/main.lfy:25
     fn advance(&mut self, len: usize) {
         for c in self.input[self.offset..self.offset + len].chars() {
             if c == '\n' {
                 self.line += 1;
-                self.position = 0;
+                self.column = 0;
             } else {
-                self.position += 1;
+                self.column += 1;
             }
         }
         self.offset += len;
     }
 }
 
-/// Characters are replaced in the value according to the rules of `Sequence`; text that is
-/// not a sequence, or a sequence that is not encoded, is kept as it is.
-// @lfy def/lexer/main.lfy:77
-fn decode_body(raw: &str) -> String {
-    let mut value = String::with_capacity(raw.len());
-    let mut rest = raw;
-    while !rest.is_empty() {
-        match literal::decode_sequence(rest) {
-            Some((len, replacement)) => {
-                match replacement {
-                    Replacement::Text(text) => value.push_str(text),
-                    Replacement::Char(c) => value.push(c),
-                    Replacement::Literal => value.push_str(&rest[..len]),
-                }
-                rest = &rest[len..];
-            }
-            None => {
-                let c = rest.chars().next().expect("rest is not empty");
-                value.push(c);
-                rest = &rest[c.len_utf8()..];
-            }
-        }
+/// The value of a token: what the terminal's criteria say it should be, and the raw text
+/// for every terminal without such criteria.
+// @lfy def/lexer/main.lfy:38
+fn value(rule: Option<Entity>, raw: &str) -> String {
+    match rule {
+        // @lfy def/grammar/terminals/space.lfy:4
+        Some(Entity::Space(Space::NewLine)) => space::NEW_LINE_VALUE.to_owned(),
+        // @lfy def/grammar/terminals/literal.lfy:12
+        Some(Entity::Literal(Literal::NumberLiteral)) => literal::number_value(raw),
+        // @lfy def/grammar/traits.lfy:76
+        Some(rule) if rule.is_body() => grammar::traits::body_value(rule, raw),
+        // @lfy def/lexer/main.lfy:44
+        _ => raw.to_owned(),
     }
-    value
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::grammar::rules;
+    use crate::grammar::terminals::keyword::Keyword;
+    use crate::grammar::terminals::punctuation::Punctuation;
 
-    fn lex(source: &str) -> Vec<Token> {
-        lex_string(source, None).unwrap_or_else(|error| panic!("{source:?}: {error}"))
+    fn tokens(source: &str) -> Vec<Token> {
+        lex(source, None).unwrap_or_else(|error| panic!("{source:?}: {error}"))
     }
 
-    fn kinds(source: &str) -> Vec<TokenKind> {
-        lex(source).into_iter().map(|token| token.kind).collect()
-    }
-
-    fn raws(source: &str) -> Vec<String> {
-        lex(source).into_iter().map(|token| token.raw).collect()
+    fn rules_of(source: &str) -> Vec<Option<Entity>> {
+        tokens(source).into_iter().map(|token| token.rule).collect()
     }
 
     fn values(source: &str) -> Vec<String> {
-        lex(source).into_iter().map(|token| token.value).collect()
+        tokens(source)
+            .into_iter()
+            .map(|token| token.value)
+            .collect()
     }
 
-    fn error(source: &str) -> LexError {
-        lex_string(source, None).expect_err("expected a lexing error")
+    fn raws(source: &str) -> Vec<String> {
+        tokens(source).into_iter().map(|token| token.raw).collect()
     }
 
-    const SP: TokenKind = TokenKind::Space;
-    const ID: TokenKind = TokenKind::Identifier;
-    const INVALID: TokenKind = TokenKind::Invalid;
-    const SINGLE: TokenKind = TokenKind::Literal(Literal::SingleQuoteBoundary);
-    const DOUBLE: TokenKind = TokenKind::Literal(Literal::DoubleQuoteBoundary);
-    const TEMPLATE: TokenKind = TokenKind::Literal(Literal::BacktickBoundary);
-    const SBODY: TokenKind = TokenKind::Literal(Literal::SingleQuoteLiteralBody);
-    const DBODY: TokenKind = TokenKind::Literal(Literal::DoubleQuoteLiteralBody);
-    const TBODY: TokenKind = TokenKind::Expression(Expression::TemplateLiteralBody);
-    const NUMBER: TokenKind = TokenKind::Literal(Literal::NumberLiteral);
-    const EXEC_OPEN: TokenKind = TokenKind::Literal(Literal::ExecutionOpenBoundary);
-    const EXEC_CLOSE: TokenKind = TokenKind::Literal(Literal::ExecutionCloseBoundary);
-    const REF_OPEN: TokenKind = TokenKind::Literal(Literal::ReferenceOpenBoundary);
-    const REF_CLOSE: TokenKind = TokenKind::Literal(Literal::ReferenceCloseBoundary);
-
-    fn lit(literal: Literal) -> TokenKind {
-        TokenKind::Literal(literal)
-    }
-    fn kw(keyword: Keyword) -> TokenKind {
-        TokenKind::Keyword(keyword)
-    }
-    fn op(operator: Operator) -> TokenKind {
-        TokenKind::Operator(operator)
-    }
-    fn sep(separator: Separator) -> TokenKind {
-        TokenKind::Separator(separator)
-    }
-    fn cm(comment: Comment) -> TokenKind {
-        TokenKind::Comment(comment)
+    fn keyword(keyword: Keyword) -> Option<Entity> {
+        Some(Entity::Keyword(keyword))
     }
 
-    // @lfy def/lexer/main.lfy:27
+    fn punctuation(punctuation: Punctuation) -> Option<Entity> {
+        Some(Entity::Punctuation(punctuation))
+    }
+
+    fn literal(literal: Literal) -> Option<Entity> {
+        Some(Entity::Literal(literal))
+    }
+
+    fn comment(comment: Comment) -> Option<Entity> {
+        Some(Entity::Comment(comment))
+    }
+
+    const IDENTIFIER: Option<Entity> = Some(Entity::Identifier(Identifier::Identifier));
+    const SPACE: Option<Entity> = Some(Entity::Space(Space::Space));
+    const NEW_LINE: Option<Entity> = Some(Entity::Space(Space::NewLine));
+    const INVALID: Option<Entity> = None;
+
+    /// `Token@like(`Token for [[rule]] with value "..."`)`
+    fn like(token: &Token, rule: impl GrammarRule, value: &str) -> bool {
+        token.is(rule) && token.value == value
+    }
+
+    // @lfy def/lexer/main.lfy:56
     #[test]
-    fn input_is_utf8_and_positions_count_characters() {
-        let tokens = lex("é ← 日本");
+    fn test_empty_source_gives_no_tokens() {
+        assert_eq!(tokens(""), Vec::<Token>::new());
+    }
+
+    // @lfy def/lexer/main.lfy:60
+    #[test]
+    fn test_a_constant_declaration() {
+        let tokens = tokens("const x = 1_0;");
+        assert_eq!(tokens.len(), 8);
+        assert!(like(&tokens[0], Keyword::ConstKeyword, "const"));
+        assert!(like(&tokens[1], Space::Space, " "));
+        assert!(like(&tokens[2], Identifier::Identifier, "x"));
+        assert!(like(&tokens[3], Space::Space, " "));
+        assert!(like(&tokens[4], Punctuation::PlainSetter, "="));
+        assert!(like(&tokens[5], Space::Space, " "));
+        assert!(like(&tokens[6], Literal::NumberLiteral, "10"));
+        assert!(like(&tokens[7], Punctuation::Semicolon, ";"));
+    }
+
+    // @lfy def/lexer/main.lfy:73
+    #[test]
+    fn test_a_template_with_an_execution() {
+        let tokens = tokens("`a {{b}} c`;");
+        assert_eq!(tokens.len(), 8);
+        assert!(like(&tokens[0], Literal::Backtick, "`"));
+        assert!(like(&tokens[1], Literal::TemplateBody, "a "));
+        assert!(like(&tokens[2], Literal::ExecutionOpen, "{{"));
+        assert!(like(&tokens[3], Identifier::Identifier, "b"));
+        assert!(like(&tokens[4], Literal::ExecutionClose, "}}"));
+        assert!(like(&tokens[5], Literal::TemplateBody, " c"));
+        assert!(like(&tokens[6], Literal::Backtick, "`"));
+        assert!(like(&tokens[7], Punctuation::Semicolon, ";"));
+    }
+
+    // @lfy def/lexer/main.lfy:86
+    #[test]
+    fn test_a_single_quoted_string_with_an_escaped_quote() {
+        let tokens = tokens("'it\\'s'");
+        assert_eq!(tokens.len(), 3);
+        assert!(like(&tokens[0], Literal::SingleQuote, "'"));
+        assert!(like(&tokens[1], Literal::SingleQuoteBody, "it's"));
+        assert!(like(&tokens[2], Literal::SingleQuote, "'"));
+    }
+
+    // @lfy def/lexer/main.lfy:21
+    #[test]
+    fn source_is_read_as_utf8_from_start_to_end() {
+        let tokens = tokens("é ← 日本");
         assert_eq!(
-            tokens.iter().map(|t| t.kind).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.rule).collect::<Vec<_>>(),
             vec![
-                ID,
-                SP,
-                op(Operator::ArrowSingleLeftSingleCharPunctuation),
-                SP,
-                ID
+                IDENTIFIER,
+                SPACE,
+                punctuation(Punctuation::SingleArrowLeftGlyph),
+                SPACE,
+                IDENTIFIER
             ]
         );
         assert_eq!(
-            tokens.iter().map(|t| t.position).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.column).collect::<Vec<_>>(),
             vec![0, 1, 2, 3, 4]
         );
-    }
-
-    // @lfy def/lexer/main.lfy:28
-    #[test]
-    fn tokens_come_out_in_source_order() {
         assert_eq!(
             raws("let x = 1;"),
             vec!["let", " ", "x", " ", "=", " ", "1", ";"]
         );
     }
 
-    // @lfy def/lexer/main.lfy:29
+    // @lfy def/lexer/main.lfy:22
     #[test]
-    fn empty_input_yields_no_tokens() {
-        assert_eq!(lex(""), Vec::<Token>::new());
+    fn file_is_recorded_on_every_token_and_defaults_to_anonymous() {
+        assert!(
+            lex("a b", Some("lib.lfy"))
+                .unwrap()
+                .iter()
+                .all(|t| &*t.file == "lib.lfy")
+        );
+        assert!(tokens("a b").iter().all(|t| &*t.file == "anonymous"));
+        assert_eq!(ANONYMOUS_FILE, "anonymous");
     }
 
-    // @lfy def/lexer/main.lfy:30
+    // @lfy def/lexer/main.lfy:24
     #[test]
-    fn file_is_recorded_on_every_token_when_given() {
-        let tokens = lex_string("a b", Some("lib.lfy")).unwrap();
-        assert!(tokens.iter().all(|token| &*token.file == "lib.lfy"));
-    }
-
-    // @lfy def/lexer/main.lfy:31
-    #[test]
-    fn file_defaults_to_anonymous() {
-        assert!(lex("a b").iter().all(|token| &*token.file == "anonymous"));
-    }
-
-    // @lfy def/lexer/main.lfy:32
-    #[test]
-    fn lf_and_crlf_are_interchangeable_end_of_line_tokens() {
-        let lf = lex("a\nb");
-        let crlf = lex("a\r\nb");
+    fn both_line_break_spellings_are_new_line_tokens_with_the_same_value() {
+        let lf = tokens("a\nb");
+        let crlf = tokens("a\r\nb");
         assert_eq!(
-            lf.iter().map(|t| t.kind).collect::<Vec<_>>(),
-            crlf.iter().map(|t| t.kind).collect::<Vec<_>>()
+            lf.iter().map(|t| t.rule).collect::<Vec<_>>(),
+            vec![IDENTIFIER, NEW_LINE, IDENTIFIER]
         );
         assert_eq!(
             lf.iter().map(|t| &t.value).collect::<Vec<_>>(),
@@ -486,297 +456,235 @@ mod tests {
         );
         assert_eq!(crlf[1].raw, "\r\n");
         assert_eq!(crlf[1].value, "\n");
-        assert_eq!((crlf[2].line, crlf[2].position), (2, 0));
-        assert_eq!((lf[2].line, lf[2].position), (2, 0));
-        // A lone carriage return is not a space character.
-        let cr = lex("a\rb");
-        assert_eq!(cr[1].kind, INVALID);
-        assert_eq!((cr[2].line, cr[2].position), (1, 2));
+        assert_eq!((crlf[2].line, crlf[2].column), (2, 0));
+        assert_eq!((lf[2].line, lf[2].column), (2, 0));
+        // A lone carriage return is no line break.
+        let cr = tokens("a\rb");
+        assert_eq!(cr[1].rule, INVALID);
+        assert_eq!((cr[2].line, cr[2].column), (1, 2));
     }
 
-    // @lfy def/lexer/main.lfy:33
+    // @lfy def/lexer/main.lfy:25
     #[test]
-    fn line_is_one_indexed_and_counts_end_of_lines_inside_bodies() {
-        let tokens = lex("a\n\nb `x\ny` c");
-        let find = |raw: &str| tokens.iter().find(|t| t.raw == raw).unwrap();
-        assert_eq!(find("a").line, 1);
-        assert_eq!(find("b").line, 3);
-        assert_eq!(find("x\ny").line, 3);
-        assert_eq!((find("c").line, find("c").position), (4, 3));
-    }
-
-    // @lfy def/lexer/main.lfy:34
-    #[test]
-    fn position_is_zero_indexed_within_the_line() {
-        let tokens = lex("ab cd\n  ef");
-        let positions: Vec<(usize, usize)> = tokens.iter().map(|t| (t.line, t.position)).collect();
+    fn line_and_column_come_from_the_raw_text() {
+        let tokens = tokens("ab cd\n  ef `x\ny` g");
+        let positions: Vec<(usize, usize)> = tokens.iter().map(|t| (t.line, t.column)).collect();
         assert_eq!(
             positions,
-            vec![(1, 0), (1, 2), (1, 3), (1, 5), (2, 0), (2, 1), (2, 2)]
+            vec![
+                (1, 0),
+                (1, 2),
+                (1, 3),
+                (1, 5),
+                (2, 0),
+                (2, 1),
+                (2, 2),
+                (2, 4),
+                (2, 5),
+                (2, 6),
+                (3, 1),
+                (3, 2),
+                (3, 3)
+            ]
         );
-    }
-
-    // @lfy def/lexer/main.lfy:35
-    #[test]
-    fn raw_is_the_original_source_text() {
-        let tokens = lex("\"a\\nb\"");
-        assert_eq!(tokens[1].raw, "a\\nb");
-        assert_eq!(tokens[1].value, "a\nb");
+        let body = tokens.iter().find(|t| t.raw == "x\ny").unwrap();
+        assert_eq!((body.line, body.column), (2, 6));
+        // Joining the raw text reproduces the source.
         assert_eq!(
             tokens.iter().map(|t| t.raw.as_str()).collect::<String>(),
-            "\"a\\nb\""
+            "ab cd\n  ef `x\ny` g"
         );
     }
 
-    // @lfy def/lexer/main.lfy:36
+    // @lfy def/lexer/main.lfy:27
     #[test]
-    fn a_fresh_mode_stack_is_used_for_every_run() {
-        assert!(matches!(error("("), LexError::UnexpectedEndOfFile { .. }));
-        assert_eq!(kinds(")"), vec![sep(Separator::GroupCloseSeparator)]);
-        assert_eq!(kinds("x"), vec![ID]);
+    fn raw_is_the_original_text_and_value_is_adjusted_only_where_declared() {
+        let tokens = tokens("\"a\\nb\"");
+        assert_eq!(tokens[1].raw, "a\\nb");
+        assert_eq!(tokens[1].value, "a\nb");
+        assert_eq!(values("1_000.5"), vec!["1000.5"]);
+        assert_eq!(raws("1_000.5"), vec!["1_000.5"]);
+        assert_eq!(values("if x"), vec!["if", " ", "x"]);
     }
 
-    // @lfy def/lexer/main.lfy:37
+    // @lfy def/lexer/main.lfy:28
     #[test]
-    fn end_of_input_with_open_modes_is_an_unexpected_end_of_file() {
-        for source in [
-            "(", "{", "[", "\"abc", "`abc", "`{{", "`[[", "/* x", "/** x", "`{{ (`", "/// [[x",
-        ] {
-            assert!(
-                matches!(error(source), LexError::UnexpectedEndOfFile { .. }),
-                "{source:?}"
-            );
+    fn a_new_mode_stack_is_created_for_each_call() {
+        assert_eq!(tokens("`").len(), 2);
+        assert_eq!(rules_of("x"), vec![IDENTIFIER]);
+        assert_eq!(rules_of("}"), vec![punctuation(Punctuation::BlockClose)]);
+    }
+
+    // @lfy def/lexer/main.lfy:29
+    #[test]
+    fn candidates_depend_on_the_mode_at_the_top_of_the_stack() {
+        // `{{` outside a template is two block opens.
+        assert_eq!(
+            rules_of("{{}}"),
+            vec![
+                punctuation(Punctuation::BlockOpen),
+                punctuation(Punctuation::BlockOpen),
+                punctuation(Punctuation::BlockClose),
+                punctuation(Punctuation::BlockClose)
+            ]
+        );
+        // Inside an execution, ordinary tokens are read; `}}` is the longest match there,
+        // so it closes the execution before a lone `}` is read.
+        assert_eq!(
+            rules_of("`{{{}}}`"),
+            vec![
+                literal(Literal::Backtick),
+                literal(Literal::ExecutionOpen),
+                punctuation(Punctuation::BlockOpen),
+                literal(Literal::ExecutionClose),
+                literal(Literal::TemplateBody),
+                literal(Literal::Backtick)
+            ]
+        );
+        assert_eq!(
+            rules_of("`{{ {} }}`")[2..6],
+            [
+                SPACE,
+                punctuation(Punctuation::BlockOpen),
+                punctuation(Punctuation::BlockClose),
+                SPACE
+            ]
+        );
+        // `]]` closes the reference the same way; `[[` inside it is two list opens.
+        assert_eq!(
+            rules_of("`[[a[0]]]`"),
+            vec![
+                literal(Literal::Backtick),
+                literal(Literal::ReferenceOpen),
+                IDENTIFIER,
+                punctuation(Punctuation::ListOpen),
+                literal(Literal::NumberLiteral),
+                literal(Literal::ReferenceClose),
+                literal(Literal::TemplateBody),
+                literal(Literal::Backtick)
+            ]
+        );
+        assert_eq!(
+            rules_of("`{{[[]]}}`")[2..6],
+            [
+                punctuation(Punctuation::ListOpen),
+                punctuation(Punctuation::ListOpen),
+                punctuation(Punctuation::ListClose),
+                punctuation(Punctuation::ListClose)
+            ]
+        );
+        // Text modes only see their body and boundaries.
+        assert_eq!(values("'{{x}} // y'"), vec!["'", "{{x}} // y", "'"]);
+        assert_eq!(values("\"[[x]] /* y\""), vec!["\"", "[[x]] /* y", "\""]);
+        assert_eq!(values("`a}}b]]c`"), vec!["`", "a}}b]]c", "`"]);
+        assert_eq!(values("/* ' ` \" // */"), vec!["/*", " ' ` \" // ", "*/"]);
+        assert_eq!(values("// /* */ /** **/"), vec!["//", " /* */ /** **/"]);
+    }
+
+    // @lfy def/lexer/main.lfy:30
+    #[test]
+    fn the_longest_match_is_the_token() {
+        assert_eq!(
+            rules_of("=>"),
+            vec![punctuation(Punctuation::DoubleArrowRight)]
+        );
+        assert_eq!(rules_of("=**"), vec![punctuation(Punctuation::PowerSetter)]);
+        assert_eq!(rules_of("**"), vec![punctuation(Punctuation::Power)]);
+        assert_eq!(rules_of("..."), vec![punctuation(Punctuation::Spread)]);
+        assert_eq!(
+            rules_of("^^"),
+            vec![punctuation(Punctuation::PreviousStatement)]
+        );
+        assert_eq!(
+            rules_of("$&"),
+            vec![punctuation(Punctuation::ParentScopeAccessor)]
+        );
+        assert_eq!(
+            rules_of("?."),
+            vec![punctuation(Punctuation::OptionalValueAccessor)]
+        );
+        assert_eq!(rules_of("??"), vec![punctuation(Punctuation::NullishOr)]);
+        assert_eq!(
+            rules_of("<-"),
+            vec![punctuation(Punctuation::SingleArrowLeft)]
+        );
+        assert_eq!(
+            rules_of("<="),
+            vec![punctuation(Punctuation::LessThanOrEqual)]
+        );
+        assert_eq!(
+            rules_of("=??"),
+            vec![punctuation(Punctuation::NullishSetter)]
+        );
+        assert_eq!(
+            rules_of("&="),
+            vec![punctuation(Punctuation::SameReference)]
+        );
+        assert_eq!(
+            rules_of("a=-1"),
+            vec![
+                IDENTIFIER,
+                punctuation(Punctuation::SubtractSetter),
+                literal(Literal::NumberLiteral)
+            ]
+        );
+        assert_eq!(rules_of("//"), vec![comment(Comment::LineCommentOpen)]);
+        assert_eq!(
+            rules_of("///"),
+            vec![comment(Comment::LineDocumentationOpen)]
+        );
+        assert_eq!(
+            rules_of("matchall"),
+            vec![keyword(Keyword::MatchallKeyword)]
+        );
+        assert_eq!(rules_of("format"), vec![IDENTIFIER]);
+        assert_eq!(rules_of("trueish"), vec![IDENTIFIER]);
+        assert_eq!(rules_of("d1"), vec![IDENTIFIER]);
+        assert_eq!(
+            rules_of("1_"),
+            vec![literal(Literal::NumberLiteral), IDENTIFIER]
+        );
+    }
+
+    // @lfy def/lexer/main.lfy:31
+    #[test]
+    fn no_two_candidates_tie_on_the_terminal_document() {
+        // Every fixed text of every terminal lexes to exactly that terminal in code.
+        for terminal in Entity::terminals() {
+            let crate::grammar::Category::Terminal(kind) = terminal.category() else {
+                unreachable!()
+            };
+            let Some(text) = kind.fixed_text() else {
+                continue;
+            };
+            if modes::lex_condition(terminal) != modes::IN_CODE
+                && !modes::lex_condition(terminal).contains(&Mode::Code)
+            {
+                continue;
+            }
+            let tokens = tokens(text);
+            assert_eq!(tokens[0].rule, Some(terminal), "{terminal}");
         }
-        // Modes cleared at the end of a line are also cleared at the end of the input.
-        for source in ["'abc", "// x", "/// x"] {
-            assert!(lex_string(source, None).is_ok(), "{source:?}");
-        }
-        let LexError::UnexpectedEndOfFile {
-            line,
-            position,
-            open,
-            ..
-        } = error("(\n[");
-        assert_eq!((line, position), (2, 1));
-        assert_eq!(open, vec![Mode::Group, Mode::List]);
+        let error = LexError::AmbiguousMatch {
+            file: Arc::from("a.lfy"),
+            line: 2,
+            column: 1,
+            text: "x".into(),
+            first: Entity::Keyword(Keyword::IfKeyword),
+            second: Entity::Keyword(Keyword::ElseKeyword),
+        };
+        assert_eq!(
+            error.to_string(),
+            "a.lfy:2:1: \"x\" matches both IfKeyword and ElseKeyword"
+        );
     }
 
     // @lfy def/lexer/main.lfy:38
     #[test]
-    fn maximal_munch_picks_the_longest_candidate() {
-        assert_eq!(kinds("=>"), vec![op(Operator::ArrowDoubleRightPunctuation)]);
-        assert_eq!(kinds("=++"), vec![op(Operator::SetterIncrementPunctuation)]);
-        assert_eq!(kinds("=**"), vec![op(Operator::SetterPowerPunctuation)]);
-        assert_eq!(kinds("**"), vec![op(Operator::PowerPunctuation)]);
-        assert_eq!(kinds("..."), vec![op(Operator::SpreadPunctuation)]);
-        assert_eq!(kinds("^^:"), vec![op(Operator::RefDefineLastPunctuation)]);
-        assert_eq!(kinds("<-"), vec![op(Operator::ArrowSingleLeftPunctuation)]);
-        assert_eq!(
-            kinds("<="),
-            vec![op(Operator::EqualityLessThanOrEqualPunctuation)]
-        );
-        assert_eq!(
-            kinds("=??"),
-            vec![op(Operator::SetterCoalescenceNullPunctuation)]
-        );
-        assert_eq!(
-            kinds("a=-1"),
-            vec![ID, op(Operator::SetterSubtractivePunctuation), NUMBER]
-        );
-        assert_eq!(kinds("//"), vec![cm(Comment::CommentInlineStart)]);
-        assert_eq!(kinds("///"), vec![cm(Comment::DocumentationInlineStart)]);
-        assert_eq!(kinds("matchall"), vec![kw(Keyword::MatchallKeyword)]);
-        assert_eq!(kinds("format"), vec![ID]);
-        assert_eq!(kinds("trueish"), vec![ID]);
-    }
-
-    // @lfy def/lexer/main.lfy:40
-    #[test]
-    fn equal_length_matches_go_to_the_rule_declared_first() {
-        assert_eq!(kinds("true"), vec![lit(Literal::BooleanLiteral)]);
-        assert_eq!(kinds("false"), vec![lit(Literal::BooleanLiteral)]);
-        assert_eq!(kinds("null"), vec![lit(Literal::NullLiteral)]);
-        assert_eq!(kinds("undefined"), vec![lit(Literal::UndefinedLiteral)]);
-        assert_eq!(kinds("\n"), vec![SP]);
-        assert_eq!(kinds("."), vec![op(Operator::AccessorValuePunctuation)]);
-        assert_eq!(kinds("+"), vec![op(Operator::AddPunctuation)]);
-        assert_eq!(kinds("="), vec![op(Operator::SetterPlainPunctuation)]);
-    }
-
-    // @lfy def/lexer/main.lfy:40
-    #[test]
-    fn context_decides_which_candidates_are_allowed_before_munching() {
-        // `{{` outside a template is two block opens.
-        assert_eq!(
-            kinds("{{}}"),
-            vec![
-                sep(Separator::BlockOpenSeparator),
-                sep(Separator::BlockOpenSeparator),
-                sep(Separator::BlockCloseSeparator),
-                sep(Separator::BlockCloseSeparator)
-            ]
-        );
-        // `}}` closes the execution block only when it is on top; a block inside it wins first.
-        assert_eq!(
-            kinds("`{{{}}}`"),
-            vec![
-                TEMPLATE,
-                EXEC_OPEN,
-                sep(Separator::BlockOpenSeparator),
-                sep(Separator::BlockCloseSeparator),
-                EXEC_CLOSE,
-                TEMPLATE
-            ]
-        );
-        // `]]` closes the reference block only when it is on top.
-        assert_eq!(
-            kinds("`[[a[0]]]`"),
-            vec![
-                TEMPLATE,
-                REF_OPEN,
-                ID,
-                sep(Separator::ListOpenSeparator),
-                NUMBER,
-                sep(Separator::ListCloseSeparator),
-                REF_CLOSE,
-                TEMPLATE
-            ]
-        );
-    }
-
-    // @lfy def/lexer/main.lfy:51
-    #[test]
-    fn the_ebnf_document_lists_every_token_rule_with_bare_references() {
-        let document = ebnf_document();
-        assert!(document.starts_with("CommentBlockOpen = \"/*\" ;\n\n"));
-        assert!(
-            document.contains("\n\nIdentifier = ( XID_Start | \"_\" ) , (: XID_Continue :) ;\n\n")
-        );
-        assert!(document.ends_with("\"\u{2028}\" | \"\u{2029}\" ;"));
-        fn check<R: EbnfSyntax>(document: &str, all: &[R]) {
-            for &rule in all {
-                assert!(document.contains(rule.rule()), "{}", rule.identifier());
-            }
-        }
-        check(&document, Comment::ALL);
-        check(&document, Identifier::ALL);
-        check(&document, Keyword::ALL);
-        check(&document, Literal::ALL);
-        check(&document, Operator::ALL);
-        check(&document, Separator::ALL);
-        check(&document, Space::ALL);
-        assert!(!document.contains("SourceFile"));
-        // References inside the EBNF are bare rule names.
-        assert_eq!(
-            crate::grammar::ebnf::parse("[[NewLine]]").unwrap(),
-            crate::grammar::ebnf::Expr::Reference("NewLine".to_owned())
-        );
-    }
-
-    // @lfy def/lexer/main.lfy:61
-    #[test]
-    fn simple_literals_are_lexed_outside_content_bodies() {
-        assert_eq!(kinds("1_000.5"), vec![NUMBER]);
-        assert_eq!(values("1_000.5"), vec!["1000.5"]);
-        assert_eq!(raws("1_000.5"), vec!["1_000.5"]);
-        assert_eq!(kinds("1_"), vec![NUMBER, ID]);
-        assert_eq!(kinds("1abc"), vec![NUMBER, ID]);
-        assert_eq!(
-            kinds(".5"),
-            vec![op(Operator::AccessorValuePunctuation), NUMBER]
-        );
-        assert_eq!(kinds("'1'"), vec![SINGLE, SBODY, SINGLE]);
-        assert_eq!(kinds("`true`"), vec![TEMPLATE, TBODY, TEMPLATE]);
-        assert_eq!(kinds("/*null*/")[1], cm(Comment::CommentBlockBody));
-        assert_eq!(kinds("`{{1}}`")[2], NUMBER);
-    }
-
-    // @lfy def/lexer/main.lfy:65
-    #[test]
-    fn literal_boundaries_open_and_close_strings() {
-        assert_eq!(kinds("'a'"), vec![SINGLE, SBODY, SINGLE]);
-        assert_eq!(kinds("\"a\""), vec![DOUBLE, DBODY, DOUBLE]);
-        assert_eq!(kinds("`a`"), vec![TEMPLATE, TBODY, TEMPLATE]);
-        assert_eq!(kinds("''"), vec![SINGLE, SINGLE]);
-        // Not boundaries inside comments or documentation.
-        assert_eq!(
-            kinds("/* ' */"),
-            vec![
-                cm(Comment::CommentBlockOpen),
-                cm(Comment::CommentBlockBody),
-                cm(Comment::CommentBlockClose)
-            ]
-        );
-        assert_eq!(
-            kinds("/** ` **/"),
-            vec![
-                cm(Comment::DocumentationBlockOpen),
-                cm(Comment::DocumentationBlockBody),
-                cm(Comment::DocumentationBlockClose)
-            ]
-        );
-        // Strings nest inside template execution blocks and templates inside those.
-        assert_eq!(
-            kinds("`{{'a'}}`"),
-            vec![
-                TEMPLATE, EXEC_OPEN, SINGLE, SBODY, SINGLE, EXEC_CLOSE, TEMPLATE
-            ]
-        );
-        assert_eq!(
-            kinds("`{{`b`}}`"),
-            vec![
-                TEMPLATE, EXEC_OPEN, TEMPLATE, TBODY, TEMPLATE, EXEC_CLOSE, TEMPLATE
-            ]
-        );
-        // Other boundary characters inside a literal are body text.
-        assert_eq!(values("'a\"b`c'"), vec!["'", "a\"b`c", "'"]);
-        assert_eq!(values("\"a'b`c\""), vec!["\"", "a'b`c", "\""]);
-        assert_eq!(values("`a'b\"c`"), vec!["`", "a'b\"c", "`"]);
-    }
-
-    // @lfy def/lexer/main.lfy:69
-    #[test]
-    fn template_blocks_are_only_recognised_in_their_modes() {
-        assert_eq!(
-            kinds("`a{{b}}c[[e]]f`"),
-            vec![
-                TEMPLATE, TBODY, EXEC_OPEN, ID, EXEC_CLOSE, TBODY, REF_OPEN, ID, REF_CLOSE, TBODY,
-                TEMPLATE
-            ]
-        );
-        // `}}` and `]]` in plain template text are text; `{{` inside a string is text.
-        assert_eq!(values("`a}}b]]c`"), vec!["`", "a}}b]]c", "`"]);
-        assert_eq!(values("'{{x}}'"), vec!["'", "{{x}}", "'"]);
-        assert_eq!(values("\"[[x]]\""), vec!["\"", "[[x]]", "\""]);
-        // `[[` inside an execution block is two list opens, not a reference.
-        assert_eq!(
-            kinds("`{{[[]]}}`"),
-            vec![
-                TEMPLATE,
-                EXEC_OPEN,
-                sep(Separator::ListOpenSeparator),
-                sep(Separator::ListOpenSeparator),
-                sep(Separator::ListCloseSeparator),
-                sep(Separator::ListCloseSeparator),
-                EXEC_CLOSE,
-                TEMPLATE
-            ]
-        );
-    }
-
-    // @lfy def/lexer/main.lfy:74
-    #[test]
-    fn single_quote_bodies_are_raw_and_end_at_the_line() {
-        assert_eq!(values("'a\\nb'"), vec!["'", "a\\nb", "'"]);
-        assert_eq!(values("'a\\'"), vec!["'", "a\\", "'"]);
-        // Bail out of single quote literal at the end of the line.
-        assert_eq!(kinds("'ab\ncd"), vec![SINGLE, SBODY, SP, ID]);
-        assert_eq!(kinds("'ab\r\ncd'"), vec![SINGLE, SBODY, SP, ID, SINGLE]);
-    }
-
-    // @lfy def/lexer/main.lfy:75
-    #[test]
-    fn double_quote_and_template_bodies_replace_sequences_in_the_value() {
+    fn values_follow_the_criteria_of_their_terminals() {
+        assert_eq!(values("\n"), vec!["\n"]);
+        assert_eq!(values("\r\n"), vec!["\n"]);
+        assert_eq!(values("1_0"), vec!["10"]);
         let cases = [
             ("\"\\\\\"", "\\"),
             ("\"\\r\"", "\r"),
@@ -785,414 +693,303 @@ mod tests {
             ("\"\\x41\"", "A"),
             ("\"\\u0041\"", "A"),
             ("\"\\u01F600\"", "😀"),
-            ("\"\\{{\"", "{{"),
-            ("\"\\}}\"", "}}"),
-            ("\"\\[[\"", "[["),
-            ("\"\\]]\"", "]]"),
             ("\"\\n\"", "\n"),
             ("\"\\0\"", "\0"),
             ("\"\\t\"", "\t"),
             ("\"\\'\"", "'"),
             ("\"\\\"\"", "\""),
-            ("\"\\`\"", "`"),
-            ("`\\`\\{{\\n`", "`{{\n"),
+            ("`\\`\\{{\\}}\\[[\\]]\\n`", "`{{}}[[]]\n"),
+            ("'a\\\\b\\'c'", "a\\b'c"),
         ];
         for (source, expected) in cases {
-            let tokens = lex(source);
+            let tokens = tokens(source);
             assert_eq!(tokens.len(), 3, "{source:?}");
             assert_eq!(tokens[1].value, expected, "{source:?}");
             assert_eq!(tokens[1].raw, &source[1..source.len() - 1], "{source:?}");
         }
         // Escaped template blocks stay text inside a template.
-        assert_eq!(kinds("`\\{{x\\}}`"), vec![TEMPLATE, TBODY, TEMPLATE]);
-        // Non-scalar code points are literal text; unknown sequences are not body text.
+        assert_eq!(
+            rules_of("`\\{{x\\}}`"),
+            vec![
+                literal(Literal::Backtick),
+                literal(Literal::TemplateBody),
+                literal(Literal::Backtick)
+            ]
+        );
+        // A code point that is not a scalar value is kept as written.
         assert_eq!(
             values("\"\\uD800 \\uFFFFFF\""),
             vec!["\"", "\\uD800 \\uFFFFFF", "\""]
         );
+        // Every other token's value is its raw text.
+        assert_eq!(values("/** d **/"), vec!["/**", " d ", "**/"]);
+    }
+
+    // @lfy def/lexer/main.lfy:46
+    #[test]
+    fn text_no_terminal_matches_is_one_invalid_token_up_to_the_next_match() {
+        let tokens = tokens("ab\n c#");
         assert_eq!(
-            kinds("\"a\\qb\""),
-            vec![DOUBLE, DBODY, INVALID, DBODY, DOUBLE]
+            tokens.iter().map(|t| t.rule).collect::<Vec<_>>(),
+            vec![IDENTIFIER, NEW_LINE, SPACE, IDENTIFIER, INVALID]
         );
-        assert_eq!(kinds("`\\x4`"), vec![TEMPLATE, INVALID, TBODY, TEMPLATE]);
-        // A bare end of line is not double quote body text.
+        let invalid = &tokens[4];
+        assert!(invalid.is_invalid());
+        assert_eq!((invalid.line, invalid.column), (2, 2));
+        assert_eq!((invalid.raw.as_str(), invalid.value.as_str()), ("#", "#"));
+        // One token for the whole run; lexing continues afterwards.
+        assert_eq!(values("##x"), vec!["##", "x"]);
+        assert_eq!(values("\u{FEFF}x"), vec!["\u{FEFF}", "x"]);
         assert_eq!(
-            kinds("\"a\nb\""),
-            vec![DOUBLE, DBODY, INVALID, DBODY, DOUBLE]
+            rules_of("^ x"),
+            vec![punctuation(Punctuation::BitwiseXor), SPACE, IDENTIFIER]
         );
+        // Unknown escapes are not body text.
+        assert_eq!(
+            rules_of("\"a\\qb\""),
+            vec![
+                literal(Literal::DoubleQuote),
+                literal(Literal::DoubleQuoteBody),
+                INVALID,
+                literal(Literal::DoubleQuoteBody),
+                literal(Literal::DoubleQuote)
+            ]
+        );
+        assert_eq!(values("'a\\nb'"), vec!["'", "a", "\\", "nb", "'"]);
+        assert_eq!(
+            rules_of("`\\x4`"),
+            vec![
+                literal(Literal::Backtick),
+                INVALID,
+                literal(Literal::TemplateBody),
+                literal(Literal::Backtick)
+            ]
+        );
+        assert_eq!(values("`\\x4`"), vec!["`", "\\", "x4", "`"]);
+        // A bare line break is not double quote body text; the string ends with the line.
+        assert_eq!(
+            rules_of("\"a\nb\""),
+            vec![
+                literal(Literal::DoubleQuote),
+                literal(Literal::DoubleQuoteBody),
+                NEW_LINE,
+                IDENTIFIER,
+                literal(Literal::DoubleQuote)
+            ]
+        );
+        // A run stops at a line break that ends the mode at the top.
+        assert_eq!(values("/// a]]\nb"), vec!["///", " a", "]", "]", "\n", "b"]);
         // Sequences are not recognised outside strings and templates.
-        assert_eq!(kinds("\\n"), vec![INVALID, ID]);
+        assert_eq!(rules_of("\\n"), vec![INVALID, IDENTIFIER]);
     }
 
-    // @lfy def/lexer/main.lfy:76
+    // @lfy def/lexer/main.lfy:50
     #[test]
-    fn template_body_is_one_token_up_to_a_boundary_or_block() {
-        let tokens = lex("`ab\ncd {{x}} ef`");
-        assert_eq!(tokens[1].kind, TBODY);
-        assert_eq!(tokens[1].value, "ab\ncd ");
-        assert_eq!(tokens[3].kind, ID);
-        assert_eq!(tokens[5].value, " ef");
-        assert_eq!(tokens.len(), 7);
-    }
-
-    // @lfy def/lexer/main.lfy:80
-    #[test]
-    fn comment_delimiters_depend_on_the_comment_mode() {
-        // Block comments nest.
-        // @lfy def/grammar/tokens/comment.lfy:7
-        assert_eq!(
-            kinds("/* a /* b */ c */"),
-            vec![
-                cm(Comment::CommentBlockOpen),
-                cm(Comment::CommentBlockBody),
-                cm(Comment::CommentBlockOpen),
-                cm(Comment::CommentBlockBody),
-                cm(Comment::CommentBlockClose),
-                cm(Comment::CommentBlockBody),
-                cm(Comment::CommentBlockClose)
-            ]
-        );
-        // Documentation blocks nest.
-        // @lfy def/grammar/tokens/comment.lfy:20
-        assert_eq!(
-            kinds("/** a /** b **/ c **/"),
-            vec![
-                cm(Comment::DocumentationBlockOpen),
-                cm(Comment::DocumentationBlockBody),
-                cm(Comment::DocumentationBlockOpen),
-                cm(Comment::DocumentationBlockBody),
-                cm(Comment::DocumentationBlockClose),
-                cm(Comment::DocumentationBlockBody),
-                cm(Comment::DocumentationBlockClose)
-            ]
-        );
-        // Inline delimiters are not tokens inside block comments or documentation.
-        assert_eq!(values("/* // /// */"), vec!["/*", " // /// ", "*/"]);
-        assert_eq!(values("/** // /// **/"), vec!["/**", " // /// ", "**/"]);
-        // Nothing is a delimiter inside inline comments or documentation.
-        assert_eq!(values("// /* */ /** **/"), vec!["//", " /* */ /** **/"]);
-        assert_eq!(values("/// /* */ // x"), vec!["///", " /* */ // x"]);
-        // `/**` cannot be followed by `/`, so `/**/` is an empty block comment.
-        assert_eq!(
-            kinds("/**/"),
-            vec![
-                cm(Comment::CommentBlockOpen),
-                cm(Comment::CommentBlockClose)
-            ]
-        );
-        // `*/` is documentation body text, so these never close.
-        for source in ["/***/", "/** x */"] {
+    fn modes_left_open_at_the_end_become_invalid_tokens_naming_them() {
+        for (source, open) in [
+            ("`abc", vec!["template"]),
+            ("`{{", vec!["template", "template execution"]),
+            ("`[[", vec!["template", "template reference"]),
+            ("/* x", vec!["block comment"]),
+            ("/* /* x */", vec!["block comment"]),
+            ("/** x", vec!["block documentation"]),
+            ("`{{ (`", vec!["template", "template execution", "template"]),
+            ("/// [[x", vec!["line documentation", "template reference"]),
+        ] {
+            let tokens = tokens(source);
+            let unclosed: Vec<&Token> = tokens.iter().filter(|t| t.raw.is_empty()).collect();
+            assert_eq!(
+                unclosed
+                    .iter()
+                    .map(|t| t.value.as_str())
+                    .collect::<Vec<_>>(),
+                open,
+                "{source:?}"
+            );
+            assert!(unclosed.iter().all(|t| t.is_invalid()), "{source:?}");
+            let last = tokens.last().unwrap();
+            assert_eq!(last.line, 1, "{source:?}");
+            assert_eq!(last.column, source.chars().count(), "{source:?}");
+        }
+        // Modes that end with the line also end with the source.
+        for source in ["'abc", "\"abc", "\"abc\n", "// x", "/// x"] {
             assert!(
-                matches!(error(source), LexError::UnexpectedEndOfFile { .. }),
+                tokens(source).iter().all(|t| !t.raw.is_empty()),
                 "{source:?}"
             );
         }
-        // `**/` ends with a comment close.
-        assert_eq!(values("/* x **/"), vec!["/*", " x *", "*/"]);
-        // Not delimiters inside strings or templates.
-        assert_eq!(values("'/* // */'"), vec!["'", "/* // */", "'"]);
-        assert_eq!(values("`/* // */`"), vec!["`", "/* // */", "`"]);
-        // Inline comments end at `\n`, `\r\n` and EOF; the end of line is a space token.
+        assert!(tokens("(").iter().all(|t| !t.is_invalid()));
+    }
+
+    // @lfy def/lexer/main.lfy:107
+    #[test]
+    fn a_keyword_beats_an_identifier_of_the_same_text() {
+        for &rule in crate::grammar::terminals::keyword::KEYWORDS {
+            let Entity::Keyword(keyword) = rule else {
+                unreachable!()
+            };
+            let text = keyword.word().unwrap();
+            assert_eq!(rules_of(text), vec![Some(rule)], "{rule}");
+            let quoted = format!("'{text}'");
+            assert_eq!(
+                rules_of(&quoted)[1],
+                literal(Literal::SingleQuoteBody),
+                "{rule}"
+            );
+        }
+        assert_eq!(rules_of("d"), vec![keyword(Keyword::AgentDataKeyword)]);
+        assert_eq!(rules_of("true"), vec![keyword(Keyword::TrueKeyword)]);
+        assert_eq!(rules_of("with"), vec![keyword(Keyword::WithKeyword)]);
+        assert_eq!(rules_of("constant"), vec![IDENTIFIER]);
+    }
+
+    // @lfy def/lexer/main.lfy:110
+    #[test]
+    fn escapes_are_never_tokens() {
+        for rule in tokens("\"\\n\\x41\\u0041\\\\\" `\\`\\{{`")
+            .iter()
+            .filter_map(|t| t.rule)
+        {
+            assert!(!rule.is_escape(), "{rule}");
+        }
+        assert!(
+            candidates()
+                .iter()
+                .all(|(terminal, _)| !terminal.is_escape())
+        );
         assert_eq!(
-            kinds("// x\ny"),
+            candidates().len(),
+            rules()
+                .filter(|r| r.is_terminal() && !r.is_escape())
+                .count()
+        );
+    }
+
+    // @lfy def/lexer/main.lfy:98
+    #[test]
+    fn the_lexer_matches_against_the_terminal_document_only() {
+        let document = terminals();
+        assert_eq!(document, grammar::terminal_document());
+        for (terminal, _) in candidates() {
+            assert!(document.contains(terminal.text()), "{terminal}");
+        }
+        assert!(!document.contains("Expression ="));
+    }
+
+    // @lfy def/grammar/terminals/comment.lfy:12
+    #[test]
+    fn block_documentation_open_followed_by_a_slash_or_close_is_a_block_comment() {
+        assert_eq!(
+            rules_of("/**/"),
             vec![
-                cm(Comment::CommentInlineStart),
-                cm(Comment::CommentInlineBody),
-                SP,
-                ID
+                comment(Comment::BlockCommentOpen),
+                comment(Comment::BlockCommentClose)
+            ]
+        );
+        assert_eq!(values("/***/"), vec!["/*", "*", "*/"]);
+        assert_eq!(rules_of("/***/")[1], comment(Comment::BlockCommentBody));
+        assert_eq!(rules_of("/**/x")[2], IDENTIFIER);
+        assert_eq!(values("/** x **/"), vec!["/**", " x ", "**/"]);
+        // Comments nest; documentation does not.
+        assert_eq!(
+            rules_of("/* a /* b */ c */"),
+            vec![
+                comment(Comment::BlockCommentOpen),
+                comment(Comment::BlockCommentBody),
+                comment(Comment::BlockCommentOpen),
+                comment(Comment::BlockCommentBody),
+                comment(Comment::BlockCommentClose),
+                comment(Comment::BlockCommentBody),
+                comment(Comment::BlockCommentClose)
             ]
         );
         assert_eq!(
-            kinds("// x\r\ny"),
+            values("/** a /** b **/"),
+            vec!["/**", " a ", "/", "** b ", "**/"]
+        );
+        // Block comments do not open inside template executions; line comments do.
+        assert_eq!(rules_of("`{{ /* }}`")[3], punctuation(Punctuation::Slash));
+        assert_eq!(
+            rules_of("`{{ // c\n}}`")[3],
+            comment(Comment::LineCommentOpen)
+        );
+    }
+
+    // @lfy def/lexer/traits.lfy:37
+    #[test]
+    fn line_modes_end_before_the_line_break() {
+        assert_eq!(
+            rules_of("// x\ny"),
             vec![
-                cm(Comment::CommentInlineStart),
-                cm(Comment::CommentInlineBody),
-                SP,
-                ID
+                comment(Comment::LineCommentOpen),
+                comment(Comment::LineCommentBody),
+                NEW_LINE,
+                IDENTIFIER
             ]
         );
+        assert_eq!(rules_of("// x\r\ny")[2], NEW_LINE);
         assert_eq!(values("// x\ry"), vec!["//", " x\ry"]);
         assert_eq!(
-            kinds("/// x"),
+            rules_of("'ab\ncd'"),
             vec![
-                cm(Comment::DocumentationInlineStart),
-                cm(Comment::DocumentationInlineBody)
+                literal(Literal::SingleQuote),
+                literal(Literal::SingleQuoteBody),
+                NEW_LINE,
+                IDENTIFIER,
+                literal(Literal::SingleQuote)
             ]
         );
-        assert_eq!(kinds("//"), vec![cm(Comment::CommentInlineStart)]);
-        // Comments open inside template execution blocks.
+        assert_eq!(rules_of("\"ab\ncd\"")[2], NEW_LINE);
         assert_eq!(
-            kinds("`{{ // c\n}}`"),
+            rules_of("/// see [[Foo.bar]] x"),
             vec![
-                TEMPLATE,
-                EXEC_OPEN,
-                SP,
-                cm(Comment::CommentInlineStart),
-                cm(Comment::CommentInlineBody),
-                SP,
-                EXEC_CLOSE,
-                TEMPLATE
-            ]
-        );
-    }
-
-    // @lfy def/lexer/main.lfy:82
-    #[test]
-    fn comment_and_documentation_bodies_are_single_tokens() {
-        let tokens = lex("/* a\nb */");
-        assert_eq!(tokens[1].kind, cm(Comment::CommentBlockBody));
-        assert_eq!(tokens[1].value, " a\nb ");
-        assert_eq!(tokens[1].raw, " a\nb ");
-        assert_eq!((tokens[1].line, tokens[1].position), (1, 2));
-        assert_eq!((tokens[2].line, tokens[2].position), (2, 2));
-
-        let tokens = lex("/** d **/");
-        assert_eq!(tokens[1].kind, cm(Comment::DocumentationBlockBody));
-        assert_eq!(tokens[1].value, " d ");
-    }
-
-    // @lfy def/lexer/main.lfy:91
-    #[test]
-    fn references_are_lexed_inside_documentation() {
-        assert_eq!(
-            kinds("/// see [[Foo.bar]] x"),
-            vec![
-                cm(Comment::DocumentationInlineStart),
-                cm(Comment::DocumentationInlineBody),
-                REF_OPEN,
-                ID,
-                op(Operator::AccessorValuePunctuation),
-                ID,
-                REF_CLOSE,
-                cm(Comment::DocumentationInlineBody)
-            ]
-        );
-        assert_eq!(
-            kinds("/** [[a]] **/"),
-            vec![
-                cm(Comment::DocumentationBlockOpen),
-                cm(Comment::DocumentationBlockBody),
-                REF_OPEN,
-                ID,
-                REF_CLOSE,
-                cm(Comment::DocumentationBlockBody),
-                cm(Comment::DocumentationBlockClose)
-            ]
-        );
-        // `]]` outside a reference is not inline documentation text; a lone `]` is.
-        assert_eq!(
-            kinds("/// a]]b"),
-            vec![
-                cm(Comment::DocumentationInlineStart),
-                cm(Comment::DocumentationInlineBody),
-                INVALID,
-                cm(Comment::DocumentationInlineBody)
-            ]
-        );
-        assert_eq!(values("/// a]]b"), vec!["///", " a", "]", "]b"]);
-        // Not references inside comments or execution blocks.
-        assert_eq!(values("// [[a]]"), vec!["//", " [[a]]"]);
-        assert_eq!(values("/* [[a]] */")[1], " [[a]] ");
-    }
-
-    // @lfy def/lexer/main.lfy:94
-    #[test]
-    fn every_keyword_lexes_to_its_rule_outside_content_bodies() {
-        for &keyword in Keyword::ALL {
-            assert_eq!(
-                kinds(keyword.text()),
-                vec![kw(keyword)],
-                "{}",
-                keyword.identifier()
-            );
-            let quoted = format!("'{}'", keyword.text());
-            assert_eq!(
-                kinds(&quoted),
-                vec![SINGLE, SBODY, SINGLE],
-                "{}",
-                keyword.identifier()
-            );
-            let commented = format!("/*{}*/", keyword.text());
-            assert_eq!(
-                kinds(&commented)[1],
-                cm(Comment::CommentBlockBody),
-                "{}",
-                keyword.identifier()
-            );
-        }
-        assert_eq!(kinds("with"), vec![kw(Keyword::WithKeyword)]);
-    }
-
-    // @lfy def/lexer/main.lfy:99
-    #[test]
-    fn every_operator_lexes_to_its_rule_outside_content_bodies() {
-        for &operator in Operator::ALL {
-            let syntax = operator.syntax();
-            if !syntax.starts_with('"') {
-                continue; // group rules never win a tie against their members
-            }
-            let text = &syntax[1..syntax.len() - 1];
-            // `^` may only be followed by a number.
-            let source = if operator == Operator::BitwiseXorPunctuation {
-                "^1".to_string()
-            } else {
-                text.to_string()
-            };
-            assert_eq!(kinds(&source)[0], op(operator), "{}", operator.identifier());
-            let templated = format!("`{text}`");
-            assert_eq!(
-                kinds(&templated),
-                vec![TEMPLATE, TBODY, TEMPLATE],
-                "{}",
-                operator.identifier()
-            );
-        }
-        assert_eq!(kinds("^ x"), vec![INVALID, SP, ID]);
-        assert_eq!(kinds("^^"), vec![op(Operator::RefLastPunctuation)]);
-        assert_eq!(
-            kinds("/**/x"),
-            vec![
-                cm(Comment::CommentBlockOpen),
-                cm(Comment::CommentBlockClose),
-                ID
+                comment(Comment::LineDocumentationOpen),
+                comment(Comment::LineDocumentationBody),
+                literal(Literal::ReferenceOpen),
+                IDENTIFIER,
+                punctuation(Punctuation::ValueAccessor),
+                IDENTIFIER,
+                literal(Literal::ReferenceClose),
+                comment(Comment::LineDocumentationBody)
             ]
         );
     }
 
-    // @lfy def/lexer/main.lfy:104
-    #[test]
-    fn every_separator_lexes_to_its_rule_outside_content_bodies() {
-        assert_eq!(
-            kinds("{}()[],;"),
-            vec![
-                sep(Separator::BlockOpenSeparator),
-                sep(Separator::BlockCloseSeparator),
-                sep(Separator::GroupOpenSeparator),
-                sep(Separator::GroupCloseSeparator),
-                sep(Separator::ListOpenSeparator),
-                sep(Separator::ListCloseSeparator),
-                sep(Separator::ListContinueSeparator),
-                sep(Separator::StatementEndSeparator)
-            ]
-        );
-        assert_eq!(kinds("'{}()[],;'"), vec![SINGLE, SBODY, SINGLE]);
-        assert_eq!(kinds("/*{}()[],;*/")[1], cm(Comment::CommentBlockBody));
-        // A closing separator with no matching open mode is still a token.
-        assert_eq!(kinds("}"), vec![sep(Separator::BlockCloseSeparator)]);
-    }
-
-    // @lfy def/lexer/main.lfy:109
-    #[test]
-    fn every_space_character_is_its_own_space_token() {
-        for c in [
-            ' ', '\t', '\u{000B}', '\u{000C}', '\u{0085}', '\u{200E}', '\u{200F}', '\u{2028}',
-            '\u{2029}',
-        ] {
-            let source = format!("a{c}{c}b");
-            let tokens = lex(&source);
-            assert_eq!(tokens.len(), 4, "{c:?}");
-            assert_eq!(tokens[1].kind, SP, "{c:?}");
-            assert_eq!(tokens[2].kind, SP, "{c:?}");
-            assert!(tokens[1].is_space());
-        }
-        assert_eq!(kinds("\n\r\n"), vec![SP, SP]);
-        assert_eq!(kinds("' '"), vec![SINGLE, SBODY, SINGLE]);
-        assert_eq!(kinds("/* */")[1], cm(Comment::CommentBlockBody));
-    }
-
-    // @lfy def/lexer/main.lfy:114
-    #[test]
-    fn identifiers_are_xid_runs_that_are_not_keywords() {
-        assert_eq!(
-            kinds("héllo _x1 __ constant d1"),
-            vec![ID, SP, ID, SP, ID, SP, ID, SP, ID]
-        );
-        assert_eq!(kinds("const"), vec![kw(Keyword::ConstKeyword)]);
-        assert_eq!(
-            kinds("if()"),
-            vec![
-                kw(Keyword::IfKeyword),
-                sep(Separator::GroupOpenSeparator),
-                sep(Separator::GroupCloseSeparator)
-            ]
-        );
-        assert_eq!(kinds("'x'"), vec![SINGLE, SBODY, SINGLE]);
-        assert_eq!(kinds("`x`"), vec![TEMPLATE, TBODY, TEMPLATE]);
-        assert_eq!(kinds("/*x*/")[1], cm(Comment::CommentBlockBody));
-        assert_eq!(kinds("/**x**/")[1], cm(Comment::DocumentationBlockBody));
-    }
-
-    // @lfy def/lexer/main.lfy:116
-    #[test]
-    fn characters_matching_no_rule_become_invalid_tokens() {
-        let tokens = lex("ab\n c#");
-        assert_eq!(
-            tokens.iter().map(|t| t.kind).collect::<Vec<_>>(),
-            vec![ID, SP, SP, ID, INVALID]
-        );
-        let invalid = &tokens[4];
-        assert_eq!((invalid.line, invalid.position), (2, 2));
-        assert_eq!((invalid.raw.as_str(), invalid.value.as_str()), ("#", "#"));
-        assert_eq!(&*invalid.file, "anonymous");
-        assert_eq!(kinds("\u{FEFF}x"), vec![INVALID, ID]);
-        // One token per unmatched character; lexing continues afterwards.
-        assert_eq!(kinds("##x"), vec![INVALID, INVALID, ID]);
-    }
-
-    // @lfy def/lexer/main.lfy:28
+    // @lfy def/lexer/main.lfy:21
     #[test]
     fn the_elfie_definitions_lex_start_to_finish_without_invalid_tokens() {
         for path in [
-            "def/grammar/expression.lfy",
-            "def/grammar/file.lfy",
-            "def/grammar/statement.lfy",
-            "def/grammar/sugar.lfy",
-            "def/grammar/tokens/comment.lfy",
-            "def/grammar/tokens/identifier.lfy",
-            "def/grammar/tokens/keyword.lfy",
-            "def/grammar/tokens/literal.lfy",
-            "def/grammar/tokens/operator.lfy",
-            "def/grammar/tokens/separator.lfy",
-            "def/grammar/tokens/space.lfy",
-            "def/grammar/tokens/traits.lfy",
+            "def/grammar/main.lfy",
+            "def/grammar/precedence.lfy",
+            "def/grammar/rules/expression.lfy",
+            "def/grammar/rules/file.lfy",
+            "def/grammar/rules/statement.lfy",
+            "def/grammar/terminals/comment.lfy",
+            "def/grammar/terminals/identifier.lfy",
+            "def/grammar/terminals/keyword.lfy",
+            "def/grammar/terminals/literal.lfy",
+            "def/grammar/terminals/punctuation.lfy",
+            "def/grammar/terminals/space.lfy",
             "def/grammar/traits.lfy",
-            "def/grammar/types.lfy",
             "def/lexer/data.lfy",
             "def/lexer/main.lfy",
             "def/lexer/modes.lfy",
             "def/lexer/traits.lfy",
         ] {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
-            let tokens = lex_string(&source, Some(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
+            let tokens = lex(&source, Some(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
             assert_eq!(
                 tokens.iter().map(|t| t.raw.as_str()).collect::<String>(),
                 source,
                 "{path}"
             );
-            let invalid: Vec<&Token> = tokens.iter().filter(|t| t.kind == INVALID).collect();
+            let invalid: Vec<String> = tokens
+                .iter()
+                .filter(|t| t.is_invalid())
+                .map(ToString::to_string)
+                .collect();
             assert!(invalid.is_empty(), "{path}: {invalid:?}");
             assert!(tokens.iter().all(|t| &*t.file == path));
         }
-    }
-
-    #[test]
-    fn a_representative_program_lexes_end_to_end() {
-        let source = "fn add(a: number, b?: number): `Add {{a}} to [[b]]` => number {\r\n  // sum\n  return a + b;\n}\n";
-        let tokens = lex(source);
-        assert_eq!(
-            tokens.iter().map(|t| t.raw.as_str()).collect::<String>(),
-            source
-        );
-        assert_eq!(tokens[0].kind, kw(Keyword::AgentFnKeyword));
-        assert!(tokens.iter().any(|t| t.kind == EXEC_OPEN));
-        assert!(tokens.iter().any(|t| t.kind == REF_OPEN));
-        assert!(
-            tokens
-                .iter()
-                .any(|t| t.kind == cm(Comment::CommentInlineBody) && t.value == " sum")
-        );
-        assert!(tokens.iter().all(|t| t.kind != INVALID));
-        let last = tokens.last().unwrap();
-        assert_eq!((last.kind, last.line), (SP, 4));
     }
 }

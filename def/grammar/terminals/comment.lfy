@@ -1,0 +1,42 @@
+use "../traits";
+use "./literal";
+use "./space";
+
+d BlockCommentOpen is boundary(`/*`): `Opens a block comment` {}
+d BlockCommentClose is boundary(`*/`): `Closes a block comment` {}
+d BlockCommentBody is body([BlockCommentOpen, BlockCommentClose]): `Text of a block comment; nested opens and closes are tokens of their own` {}
+d LineCommentOpen is boundary(`//`): `Opens a comment that ends with the line` {}
+d LineCommentBody is body([NewLine]): `Text of a line comment` {}
+
+d BlockDocumentationOpen is boundary(`/**`): `Opens documentation that ends with its close` {
+  where (`Followed immediately by /`) -> `Is a [[BlockCommentOpen]] followed by [[BlockCommentClose]] instead`;
+  where (`Followed immediately by */`) -> `Is a [[BlockCommentOpen]] followed by a [[BlockCommentBody]] with the '*' text followed by a [[BlockCommentClose]] instead`;
+}
+d BlockDocumentationClose is boundary(`**/`): `Closes block documentation` {}
+d BlockDocumentationBody is body([BlockDocumentationOpen, BlockDocumentationClose, ReferenceOpen]): `Text of block documentation; references are tokens of their own` {}
+d LineDocumentationOpen is boundary(`///`): `Opens documentation that ends with the line` {}
+d LineDocumentationBody is body([NewLine, ReferenceOpen, ReferenceClose]): `Text of line documentation` {}
+
+d Comment is rule(`( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )`): `A comment` {}
+d Documentation is rule(`( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )`): `Documentation for the declaration that follows it` {
+  @acceptanceCriteria
+    .add({ behavior = `Attaches to the declaration that follows it`, })
+    .add({
+      situation = `No declaration follows`,
+      behavior = `Attaches to the declaration that follows it`,
+    })
+    .add({
+      situation = [
+        `No decleration exists between two or more documentation blocks`,
+        `Documentation blocks were all opened with [[BlockDocumentationOpen]]`,
+      ],
+      behavior = `Attaches to the "global" object`,
+    })
+    .add({
+      situation = [
+        `[[LineDocumentationOpen]] is the first token`,
+        `[[TemplateReference]] is used`,
+      ],
+      behavior = `[[TemplateReference]] cannot contain a [[Newline]] character inside of it`,
+    });
+}

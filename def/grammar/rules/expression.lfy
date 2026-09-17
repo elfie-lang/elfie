@@ -1,0 +1,133 @@
+use "../precedence";
+use "../terminals/identifier";
+use "../terminals/keyword";
+use "../terminals/literal";
+use "../terminals/punctuation";
+use "../traits";
+
+ace function listOf(syntax: string, wrapper?: 'group' | 'list' | 'object'): `Creates a EBNF list separated by commas`  -> string {
+  return `( {{syntax}} ) , (: [[Comma]] , ( {{syntax}} ) :) , (/ [[Comma]] /)`;
+}
+
+// Helpers: rules other rules are built from
+
+d MemberName is alternationList(Identifier, ...keyword@entities): `A name after an accessor; keywords are allowed because context properties such as type are keywords` {}
+d TraitUse is rule(`[[Identifier]] , (/ [[Arguments]] /)`): `A trait, with arguments when it takes any` {}
+d TraitUses is rule(listOf(`[[TraitUse]]`)): `One or more traits` {}
+d IsClause is rule(`[[IsKeyword]] , [[TraitUses]]`): `Traits applied to a declaration` {}
+d ExtendsClause is rule(`[[ExtendsKeyword]] , [[TraitUses]]`): `Traits or data a declaration includes` {}
+d DefinitionClause is rule(`[[Colon]] , [[Expression]]`): `A description or type attached to a declaration` {}
+d Declared is rule(`[[Identifier]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)`): `A declared name with its traits and definition` {}
+d ObjectKey is rule(`[[Declared]] , [[PlainSetter]] , [[Expression]]`): `An object key name with its traits, definition, and value` {}
+d Parameter is rule(`[[Name]] , (/ [[QuestionMark]] /) , (/ [[DefinitionClause]] /) , (/ [[PlainSetter]] , [[Expression]] /)`): `A single parameter` {}
+d SpreadParameter is rule(`[[Spread]] , [[Name]] , (/ [[DefinitionClause]] /) , (/ [[PlainSetter]] , [[Expression]] /)`): `A spread parameter` {}
+d Parameters is rule(`[[GroupOpen]] , (: [[Parameter]] :) , (/ [[SpreadParameter]] /) , [[GroupClose]]`): `A parameter list` {}
+d Signature is rule(`(/ [[Identifier]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)`): `A function's name, parameters, traits, and definition` {}
+d Items is rule(`(/ {{listOf(`[[Expression]]`)}} /)`): `Zero or more comma separated expressions` {}
+d Arguments is rule(`[[GroupOpen]] , [[Items]] , [[GroupClose]]`): `A parenthesized list` {}
+d Reference is rule(`( [[Name]] | [[Current]] | [[Dereference]] ) , (: [[Member]] | [[Index]] :) `): `A reference chain` {}
+d TemplateReference is rule(`[[ReferenceOpen]] , [[Reference]] , [[ReferenceClose]]`): `A reference to a name inside a template or documentation` {}
+d TemplateExecution is rule(`[[ExecutionOpen]] , [[Expression]] , [[ExecutionClose]]`): `An expression whose value is written into a template` {}
+d TypeValue is alternationList(PrimitiveType, StringLiteral, Template, Number, Nullish, Object, List, Ampersand, TypePredicate, ): `An expression in a type position` {}
+d TypeExpression is rule(`( ( ( [[TypeValue]] , (/ [[ListOpen]] , [[ListClose]] /) ) | [[BitwiseOr]] | [[Ampersand]] ) , (: ( [[TypeValue]] , (/ [[ListOpen]] , [[ListClose]] /) ) | [[BitwiseOr]] | [[Reference]] :) ) | ( [[GroupOpen]] , [[TypeExpression]] , [[GroupClose]] )`): `An expression in a type position` {}
+d TypeKey is rule(`[[Name]] , (/ [[QuestionMark]] /) , (/ [[DefinitionClause]] /) , [[PlainSetter]] , [[TypeExpression]]`): `A type key name with its definition and value` {}
+
+// Primaries
+
+d StringLiteral is primary(`[[SingleQuoteString]] | [[DoubleQuoteString]]`): `A string` {}
+d Template is primary(`[[Backtick]] , (: [[TemplateBody]] | [[TemplateReference]] | [[TemplateExecution]] :) , [[Backtick]]`): `A template: text with references and expressions` {}
+d Number is primary(`[[NumberLiteral]]`): `A number` {}
+d Boolean is primary(`[[TrueKeyword]] | [[FalseKeyword]]`): `A boolean` {}
+d Nullish is primary(`[[NullKeyword]] | [[UndefinedKeyword]]`): `Null or undefined` {}
+d PrimitiveType is primary(`[[BooleanKeyword]] | [[NumberKeyword]] | [[StringKeyword]] | [[ObjectKeyword]] | [[FunctionKeyword]] | [[TraitKeyword]]`): `A primitive type used as a value` {
+  @acceptanceCriteria
+    .add({
+      situation = `[[FunctionKeyword]] is followed by a [[Name]] or [[Parameters]] at statement start`,
+      behavior = `Is a [[FunctionDeclaration]] instead`,
+    })
+    .add({
+      situation = `[[TraitKeyword]] is followed by a [[Name]]`,
+      behavior = `Is a [[TraitDeclaration]] instead`,
+    });
+}
+d Name is primary(`[[Identifier]]`): `A name in scope` {}
+d Current is primary(`[[Accessor]] , (/ [[MemberName]] /)`): `A layer of the current entity, or a member of it` {}
+d Previous is primary(`[[PreviousStatement]]`): `The entity the previous statement declared` {}
+d Group is primary(`[[GroupOpen]] , [[Expression]] , [[GroupClose]]`): `A parenthesized expression` {
+  @acceptanceCriteria
+    .add({
+      situation = `[[GroupClose]] followed by [[IsKeyword]], [[Colon]], [[SingleArrow]], or [[DoubleArrowRight]]`,
+      behavior = `Is an [[InlineFunction]] instead`,
+    });
+}
+d InlineFunction is primary(`[[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[DoubleArrowRight]] , ( [[Block]] | [[Expression]] )`): `A function written as an expression` {
+  @acceptanceCriteria
+    .add({ behavior = `A [[BlockOpen]] after the [[DoubleArrowRight]] begins a [[Block]], never an [[Object]]`, });
+}
+d List is primary(`[[ListOpen]] , [[Items]] , [[ListClose]]`): `A list` {}
+d Object is primary(`[[BlockOpen]] , (/ {{listOf(`[[ObjectKey]]`)}} /) , [[BlockClose]]`): `An object` {}
+d TypePredicate is primary(`[[IsKeyword]] , [[TraitUse]]`): `The type of anything with a trait` {}
+d Type is primary(`[[BlockOpen]] , (/ {{listOf(`[[TypeKey]]`)}} /) , [[BlockClose]]`): `A type` {}
+
+// Prefix operations
+
+d NotOperation is prefix(LogicalNot): `Logical not` {}
+d NegateOperation is prefix(Minus, true), binding(Level.unary, 'right'): `Negation` {}
+d BitwiseNotOperation is prefix(BitwiseNot): `Bitwise not` {}
+d Dereference is prefix(Ampersand, true): `The entity a name is bound to` {
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Applies to a [[Name]] or [[Current]]`,
+        `Steps written after it apply to the dereferenced entity`,
+      ],
+    });
+}
+d SpreadOperation is prefix(Spread): `Spread, or the rest of a list` {}
+d AwaitOperation is prefix(AwaitKeyword): `The value of a promise` {}
+d InOperation is prefix(InKeyword): `The values of` {}
+d OfOperation is prefix(OfKeyword): `The keys of` {}
+d FromOperation is prefix(FromKeyword): `The keys and values of` {}
+
+// Infix operations
+
+d AdditiveOperation is infix(Additive): `Addition, concatenation, or subtraction` {}
+d MultiplicativeOperation is infix(Multiplicative): `Multiplication, division, or remainder` {}
+d PowerOperation is infix(Power): `Exponentiation` {}
+d BitwiseOrOperation is infix(BitwiseOr): `Bitwise or; a union when both sides are types` {}
+d BitwiseXorOperation is infix(BitwiseXor): `Bitwise exclusive or` {}
+d BitwiseAndOperation is infix(Ampersand), binding(Level.bitwiseAnd): `Bitwise and` {}
+d RelationalOperation is infix(Relational): `Ordering comparison` {}
+d EqualityOperation is infix(Equality): `Equality comparison` {}
+d LogicalAndOperation is infix(LogicalAnd): `Both` {}
+d CoalescenceOperation is infix(Coalescence): `Either, or a fallback` {}
+d RangeOperation is infix(Spread): `A range` {}
+d Cast is infix(AsKeyword): `A value read as a type` {
+  @acceptanceCriteria
+    .add({ behavior = `The right side is a [[TypeExpression]]`, });
+}
+d Assignment is infix(Setter): `Sets the left side` {}
+d PlainAssignment is infix(PlainSetter): `Sets the left side` {}
+
+// Postfix operations
+
+d Member is postfix(Accessor, `(/ [[MemberName]] /)`): `A member of a layer of the left expression, or that layer itself` {}
+d Index is postfix(ListOpen, `(/ [[Expression]] /) , [[ListClose]]`): `An element of the left expression, or with nothing inside, the array type of it` {}
+d Call is postfix(GroupOpen, `[[Items]] , [[GroupClose]]`): `Calls the left expression` {}
+d Traits is postfix(IsKeyword, `[[TraitUses]]`): `Applies traits to the declared left expression` {}
+d Definition is postfix(Colon, `[[Expression]]`): `Attaches a description or type to the declared left expression` {}
+d Conditional is postfix(QuestionMark, `[[Expression]] , [[Colon]] , [[Expression]]`), binding(Level.definition, 'right'): `Chooses between two values` {
+  @acceptanceCriteria
+    .add({ behavior = `The [[Colon]] belongs to this rule; the middle expression ends at it`, });
+}
+
+// The expression sets
+
+d Primary is alternationList(...primary@entities): `Any primary expression` {}
+d Prefix is alternationList(...prefix@entities): `Any prefix operation` {}
+d Infix is alternationList(...infix@entities): `Any infix operation` {}
+d Postfix is alternationList(...postfix@entities): `Any postfix operation` {}
+d Expression is alternationList(Primary, Prefix, Infix, Postfix): `Any expression` {
+  @acceptanceCriteria
+    .add({ behavior = `Begins with one [[Primary]] or [[Prefix]] and continues with any number of [[Infix]] and [[Postfix]] operations, grouped by their binding power`, });
+}

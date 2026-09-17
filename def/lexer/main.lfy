@@ -1,117 +1,115 @@
-use "../grammar/expression" as Expression;
-use "../grammar/tokens/comment" as Comment;
-use "../grammar/tokens/identifier" as Identifier;
-use "../grammar/tokens/keyword" as Keyword;
-use "../grammar/tokens/literal" as Literal;
-use "../grammar/tokens/operator" as Operator;
-use "../grammar/tokens/separator" as Separator;
-use "../grammar/tokens/space" as Space;
-use "../grammar/types" as Grammar;
+use "../grammar/main" as Grammar;
+use "../grammar/terminals/keyword";
+use "../grammar/terminals/literal";
+use "../grammar/terminals/punctuation";
+use "../grammar/terminals/space";
+use "../grammar/traits";
 use "./data";
 use "./modes";
+use "./traits";
 
-ace function matchingEBNF(ebnf: Grammar.EBNFSyntax) {
-  return `Characters match {{ebnf.syntax}} from {{ebnf.identifier}} ([[&ebnf$parent]])`;
+ace function matches(rule: Rule) {
+  return `The characters at the current position match {{rule.syntax}} from {{rule.identifier}} ([[&rule$&]])`;
 }
 
-ace function pushResults(kind: string) {
-  return `A new [[Token]] is pushed to the results as {{kind}}`
+ace function push(kind: string) {
+  return `A [[Token]] for {{kind}} is created from the matched characters and appended to the result`;
 }
 
-ace function pushContentBodyResults(kind: string) {
-  return `Characters are treated as text and grouped into a new text [[Token]] that is pushed to the results as {{kind}}`
-}
-
-fn lexString(str: string, file?: string): `Turn a given string into a set of lexigraphical tokens` => Token[] {
+fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {
   @acceptanceCriteria
-    .add({ behavior = `[[str]] is read as a UTF-8 string`, })
-    .add({ behavior = `[[str]] is tokenized by processing the string start to finish`, })
-    .add({ situation = `[[str]] is empty`, expect = [], })
+    .add({ behavior = `[[source]] is read as UTF-8 from start to end`, })
     .add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })
     .add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to "anonymous"`, })
-    .add({ behavior = `End of line tokens can be either \n or \r\n interchangably and the values are treated equally`, })
-    .add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[str]] that this starts at`, })
-    .add({ behavior = `[[Token.position]] is set to the 0-indexed position in the line that this token starts at`, })
+    .add({ behavior = `End of line tokens can match any [[NewLine]] terminal and the values are treated equally`, })
+    .add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at`, })
+    .add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at`, })
     .add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })
-    .add({ behavior = `New [[LexerModeStack]] is initialized for each run`, sideEffects = [`[[LexerModeStack]] responds when new tokens are created to manage modes based on tokens`], })
-    .add({ situation = `Reached end of string and [[LexerModeStack]] for the run is not empty`, behavior = `Throws error indicating an unexpected end of file`, })
+    .add({ behavior = `A new [[ModeStack]] is created for each call`, })
+    .add({ behavior = `At each position every [[terminal]] whose [[candidateInModes]] condition holds (or [[inCode]] when it has none) is matched`, })
+    .add({ behavior = `The longest match is the token`, })
     .add({
-      situation = `Characters would match multiple different tokens`,
-      behavior = `Applies context and [[LexerModeStack]] mode to determine which follow characters are allowed for the given situation, then uses a maximal munch approach, with a fallback to rule ordering with first rule defined gets priority`,
+      situation = [
+        `Tokens are of equal length`,
+        `No other criteria specifies which token wins`,
+      ],
+      behavior = `A compile-time lexer error naming both terminals`,
+    })
+    .add({
+      situation = `Terminal has criteria for what [[Token.value]] should be`,
+      behavior = `Terminal criteria is respected`,
+    })
+    .add({
+      situation = `Terminal does not have criteria for what [[Token.value]] should be`,
+      behavior = `[[Token.value]] should be equal to [[Token.raw]]`,
+    })
+    .add({
+      situation = `No terminal matches at a position`,
+      behavior = `One [[Token]] with no [[Token.rule]] is created from the characters up to the next position where some terminal matches, and lexing continues`,
+    })
+    .add({
+      situation = `The source ends while the [[ModeStack]] holds more than a single code mode`,
+      behavior = `For each remaining mode, an invalid [[Token]] with no [[Token.rule]] and empty [[Token.raw]] is appended whose [[Token.value]] names the mode that was not closed`,
     });
 
-  // Load EBNF for all tokens
-  let ebnf: `Full EBNF syntax document` = [];
-  for (const token in Comment, Identifier, Keyword, Literal, Operator, Separator, Space) {
-    if(token$ebnf) {
-      ebnf.push(token.ebnf.rule)
-    }
-  }
+  @test(
+    {
+      input = [''],
+      expect = [],
+    },
+    {
+      input = ['const x = 1_0;'],
+      expect = [
+        Token@like(`Token for [[ConstKeyword]] with value "const"`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Token for [[Identifier]] with value "x"`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Token for [[PlainSetter]] with value "="`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Token for [[NumberLiteral]] with value "10"`),
+        Token@like(`Token for [[Semicolon]] with value ";"`),
+      ],
+    },
+    {
+      input = ['`a {{b}} c`;'],
+      expect = [
+        Token@like(`Token for [[Backtick]] with value "\`"`),
+        Token@like(`Token for [[TemplateBody]] with value "a "`),
+        Token@like(`Token for [[ExecutionOpen]] with value "\{{"`),
+        Token@like(`Token for [[Identifier]] with value "b"`),
+        Token@like(`Token for [[ExecutionClose]] with value "\}}"`),
+        Token@like(`Token for [[TemplateBody]] with value " c"`),
+        Token@like(`Token for [[Backtick]] with value "\`"`),
+        Token@like(`Token for [[Semicolon]] with value ";"`),
+      ],
+    },
+    {
+      input = [`'it\\'s'`],
+      expect = [
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+        Token@like(`Token for [[SingleQuoteBody]] with value "it's"`),
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+      ],
+    },
+  );
+
+  // The terminal document is the only grammar the lexer knows
+  const terminals: `EBNF of every terminal` = Grammar.terminalDocument();
   @acceptanceCriteria
-    .add({situation = `When using EBNF formatted string`, behavior = `Treats notation surrounded in \[[ and \]] characters (e.g. \[[Name\]]) as a bare reference to the rule (e.g. Name)` })
-    .add({behavior = `Uses the following grammar (EBNF format) as a baseline reference: \n\n {{ebnf.join("\n\n")}}`});
+    .add({ behavior = `Reads a bare name inside a rule as a reference to the terminal or character class with that identifier`, })
+    .add({ behavior = `Matches against the following terminals only: \n\n {{terminals}}`, });
 
-  // Literals
-  const simpleLiterals = [
-    Literal.NullLiteral,
-    Literal.UndefinedLiteral,
-    Literal.BooleanLiteral,
-    Literal.NumberLiteral,
-  ];
-  for (const token in simpleLiterals) {
-    where (matchingEBNF(token.ebnf)) and !(inContentBodyMode) -> pushResults(&token@definition);
+  for (const rule in terminal@entities) {
+    where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);
   }
 
-  where (matchingEBNF(Literal.SingleQuoteBoundary.ebnf)) and !(inDoubleQuoteString) and !(inTemplate) and !(inComment) and !(inDocumentation) -> pushResults(Literal.SingleQuoteBoundary@definition);
-  where (matchingEBNF(Literal.DoubleQuoteBoundary.ebnf)) and !(inSingleQuoteString) and !(inTemplate) and !(inComment) and !(inDocumentation) -> pushResults(Literal.DoubleQuoteBoundary@definition);
-  where (matchingEBNF(Literal.BacktickBoundary.ebnf)) and !(inSingleQuoteString) and !(inDoubleQuoteString) and !(inComment) and !(inDocumentation) -> pushResults(Literal.BacktickBoundary@definition);
-
-  where (inTemplate) and (matchingEBNF(Literal.ExecutionOpenBoundary.ebnf)) -> pushResults(Literal.ExecutionOpenBoundary@definition);
-  where (inTemplateExecution) and (matchingEBNF(Literal.ExecutionCloseBoundary.ebnf)) -> pushResults(Literal.ExecutionCloseBoundary@definition);
-  where (inTemplate) and (matchingEBNF(Literal.ReferenceOpenBoundary.ebnf)) -> pushResults(Literal.ReferenceOpenBoundary@definition);
-  where (inTemplateReference) and (matchingEBNF(Literal.ReferenceCloseBoundary.ebnf)) -> pushResults(Literal.ReferenceCloseBoundary@definition);
-
-  where (inSingleQuoteString) and (matchingEBNF(Literal.SingleQuoteLiteralBody.ebnf)) -> pushContentBodyResults(Literal.SingleQuoteLiteralBody@definition);
-  where (inDoubleQuoteString) and (matchingEBNF(Literal.DoubleQuoteLiteralBody.ebnf)) -> pushContentBodyResults(Literal.DoubleQuoteLiteralBody@definition);
-  where (inTemplate) and (matchingEBNF(Expression.TemplateLiteralBody.ebnf)) -> pushContentBodyResults(Expression.TemplateLiteralBody@definition);
-  where ((inDoubleQuoteString) or (inTemplate)) and (matchingEBNF(Literal.Sequence.ebnf)) -> `Characters are replaced in the value according to the rules of [[Sequence]]`;
-
-  // Comments
-  where (matchingEBNF(Comment.CommentBlockOpen.ebnf)) and !(inInlineComment) and !(inDocumentation) and !(inString) and !(inTemplate) -> pushResults(Comment.CommentBlockOpen@definition);
-  where (matchingEBNF(Comment.CommentBlockClose.ebnf)) and (inBlockComment) -> pushResults(Comment.CommentBlockClose@definition);
-  where (matchingEBNF(Comment.CommentBlockBody.ebnf)) and (inBlockComment) -> pushResults(Comment.CommentBlockBody@definition);
-  where (matchingEBNF(Comment.CommentInlineStart.ebnf)) and (notInContentBodyMode) -> pushResults(Comment.CommentInlineStart@definition);
-  where (matchingEBNF(Comment.CommentInlineBody.ebnf)) and (inInlineComment) -> pushResults(Comment.CommentInlineBody@definition);
-
-  where (matchingEBNF(Comment.DocumentationBlockOpen.ebnf)) and !(inInlineDocumentation) and !(inComment) and !(inString) and !(inTemplate) -> pushResults(Comment.DocumentationBlockOpen@definition);
-  where (matchingEBNF(Comment.DocumentationBlockClose.ebnf)) and (inBlockDocumentation) -> pushResults(Comment.DocumentationBlockClose@definition);
-  where (matchingEBNF(Comment.DocumentationBlockBody.ebnf)) and (inBlockDocumentation) -> pushResults(Comment.DocumentationBlockBody@definition);
-  where (matchingEBNF(Comment.DocumentationInlineStart.ebnf)) and (notInContentBodyMode) -> pushResults(Comment.DocumentationInlineStart@definition);
-  where (matchingEBNF(Comment.DocumentationInlineBody.ebnf)) and (inInlineDocumentation) -> pushResults(Comment.DocumentationInlineBody@definition);
-  where (inDocumentation) and (matchingEBNF(Literal.ReferenceOpenBoundary.ebnf)) -> pushResults(Literal.ReferenceOpenBoundary@definition);
-
-  // Keywords
-  for(const token in Keyword) {
-    where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`keyword token from [[&token]]`)
+  for (const rule in keyword@entities) {
+    where (`[[&rule]] and [[Identifier]] match the same characters`) -> `[[&rule]] is the token`;
+  }
+  
+  for (const rule in escape@entities) {
+    @acceptanceCriteria.add({ behavior = `Matched only as part of another terminal`, sideEffects = [`Can never be a token`] });
   }
 
-  // Operators
-  for(const key, token from Operator) {
-    where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`operator token from [[&token]]`)
-  }
-
-  // Separators
-  for(const key, token from Separator) {
-    where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`separator token from [[&token]]`)
-  }
-
-  // Space
-  for(const key, token from Space) {
-    where (matchingEBNF(token.ebnf)) and (notInContentBodyMode) -> pushResults(`space token`)
-  }
-
-  // Identifiers
-  where (matchingEBNF(Identifier.Identifier.ebnf)) and (notInContentBodyMode) and (`Not a [[Keyword]], [[Operator]], [[Separator]], or [[Space]] character`) -> pushResults(`identifier token`)
-
-  where (`No other match can be found for characters while lexing`) -> pushResults(`invalid token`)
+  where (`No candidate matched`) -> push(`invalid text`);
 }

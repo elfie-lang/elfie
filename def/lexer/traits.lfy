@@ -1,37 +1,39 @@
+use "../grammar/traits";
 use "./data";
 
-trait modeCreator(mode: string, condition?: string) {
-  const onToken = `New token is created for {{@definition}}`;
-  with LexerModeStack {
-    where (onToken) and (`{{mode}} mode is allowed to be created`) and (condition ?? true)
-      -> `Push {{mode}} to top of the mode stack`;
+ace function inMode(modes: string[]) {
+  return `The top of the [[ModeStack]] is {{modes.join(` or `)}}`;
+}
+
+trait candidateInModes(...modes: string[]): `A terminal is considered only while the condition holds` {
+  $lexCondition: `When this terminal may match` = string;
+  .lexCondition = inMode(modes);
+}
+
+trait modeOpener(mode: string, when?: string): `Creating this token pushes a mode` {
+  const onToken = `A token is created for {{@definition}}`;
+  with ModeStack {
+    where (onToken) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;
   }
 }
 
-trait modeDestroyer(mode: string, condition?: string) {
-  const onToken = `New token is created for {{@definition}}`;
-  with LexerModeStack {
-    where (onToken) and (`Top of mode stack is {{mode}}`) and (condition ?? true)
-      -> `Pop the {{mode}} from the top of the stack`;
+trait modeCloser(mode: string): `Creating this token pops a mode` {
+  const onToken = `A token is created for {{@definition}}`;
+  with ModeStack {
+    where (onToken) and (`{{mode}} is at the top`) -> `{{mode}} is popped`;
   }
 }
 
-trait modeBoundary(mode: string, condition?: string) {
-  const onToken = `New boundary token is created for {{@definition}}`;
-  const inMode = `Top of [[LexerModeStack]] stack is {{mode}}`;
-  const matchesOpen = `Top of [[LexerModeStack]] stack was created from the same boundary token with {{.}}`;
-  with LexerModeStack {
-    where (onToken) and !(inMode) and (condition ?? true)
-      -> `Push {{mode}} to top of the mode stack`;
-    where (onToken) and (inMode) and (matchesOpen)
-      -> `Pop the {{mode}} from the top of the stack`;
+trait modeToggle(mode: string, when?: string): `The same boundary opens the mode and, seen again, closes it` {
+  const onToken = `A token is created for {{@definition}}`;
+  with ModeStack {
+    where (onToken) and (`{{mode}} is at the top and was opened by {{@definition}}`) -> `{{mode}} is popped`;
+    where (onToken) and !(`{{mode}} is at the top`) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;
   }
 }
 
-trait clearModeAtNewLine(mode: string) {
-  const onToken = `Next \n or \r\n or EOF is encountered after {{mode}} is created for {{@definition}}`;
-  with LexerModeStack {
-    where (onToken) and (`Top of mode stack is {{mode}}`)
-      -> `Pop the {{mode}} from the top of the stack`;
+trait appliedUntilNewLine(mode: string): `The mode this token opens ends with the line` {
+  with ModeStack {
+    where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;
   }
 }

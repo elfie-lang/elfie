@@ -1,0 +1,9 @@
+use "../traits";
+use "./keyword";
+
+external IdentifierStart is rule(`? XID_Start defined by Unicode / unicode-ident ?`) = undefined;
+external IdentifierContinue is rule(`? XID_Continue defined by Unicode / unicode-ident ?`) = undefined;
+
+d Identifier is terminal(`( [[IdentifierStart]] | "_" ) , (: [[IdentifierContinue]] :)`): `A name` {
+  where (`The text is a [[Keyword]]`) -> `Is that keyword, not an identifier`;
+}
