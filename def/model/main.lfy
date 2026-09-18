@@ -97,7 +97,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
   @test(
     {
       input = [[Source@like(`a.lfy, parsed from: trait t { $x: \`d\` = string; } d A is t {} const y = A.x;`)]],
-      expect = Model@like(`Symbols t, A, and y in the file scope; entity A with one [[Applied]] for t and a member x with definition d and type string; [[Entity.entities]] of t holding A; a [[Usage]] for A.x resolving to that member; no problems`),
+      expect = Model@like(`Symbols t, A, and y in the file scope; entity A with one [[Applied]] for t and a member x with definition d and type string; [[TraitEntity.entities]] of t holding A; a [[Usage]] for A.x resolving to that member; no problems`),
     },
     {
       input = [[Source@like(`main.lfy, parsed from: use "./tokens/keyword" as Keyword; for (const token in Keyword) { }, its one use naming tokens/keyword.lfy`), Source@like(`tokens/keyword.lfy, parsed`)]],
@@ -130,7 +130,7 @@ fn resolve(model: Model, node: Node): `The symbol a node uses or declares` => Sy
 
 fn entitiesOf(model: Model, traitEntity: Entity): `Everything that has a trait` => Entity[] {
   @acceptanceCriteria
-    .add({ behavior = `Returns [[Entity.entities]] of [[traitEntity]]`, })
+    .add({ behavior = `Returns [[TraitEntity.entities]] of [[traitEntity]]`, })
     .add({ situation = `[[traitEntity]] is not a trait`, behavior = `Returns an empty list`, });
 }
 

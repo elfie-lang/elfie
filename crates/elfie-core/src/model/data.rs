@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::grammar::{Entity as Rule, GrammarRule};
+use crate::grammar::Entity as Rule;
 use crate::lexer::Token;
 use crate::parser::data::{Child, Node, Tree};
 
@@ -224,12 +224,15 @@ pub enum AppliedSource {
 
 /// One trait on one entity.
 // @lfy def/model/data.lfy:44
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Applied {
     /// The trait.
     pub entity: EntityId, // @lfy def/model/data.lfy:45
     /// Argument nodes, in order.
     pub arguments: Vec<NodeRef>, // @lfy def/model/data.lfy:46
+    /// The arguments evaluated where they were written, in order; a spread parameter
+    /// takes the rest as one list.
+    pub values: Vec<Value>,
     pub source: AppliedSource, // @lfy def/model/data.lfy:48
 }
 
@@ -293,6 +296,14 @@ pub enum Value {
     Function(NodeRef, ScopeId),
     Scope(ScopeId),
     Type(Box<TypeRef>),
+    /// An inline function with the variables it captured.
+    Closure(NodeRef, Vec<(String, Value)>),
+    /// `@acceptanceCriteria` of an entity: what `add` is called on.
+    Criteria(EntityId),
+    /// `@test` of an entity: what is called to add tests.
+    Tester(EntityId),
+    /// `@like` of a type: a prompt describing an instance.
+    Like(Box<Value>),
 }
 
 impl Value {
@@ -660,7 +671,3 @@ impl fmt::Display for Problem {
     }
 }
 
-/// A rule as a node satisfies it, for matching in the binder.
-pub(crate) fn rule_name(rule: Rule) -> &'static str {
-    rule.identifier()
-}

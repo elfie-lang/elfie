@@ -84,7 +84,7 @@ trait alternationList(...items: (is rule)[]) extends rule(alternation(...items))
     .add({ behavior = `The order of [[items]] carries no meaning`, })
     .add({
       situation = `Match for item in [[items]]`,
-      behavior = `Treats [[item]] as match instead of [[@]]`,
+      behavior = `Treats the matched item as the match instead of [[@]]`,
       sideEffects = [
         `[[@]] is never included in tokens or tree`,
       ],
