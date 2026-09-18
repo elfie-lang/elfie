@@ -682,7 +682,7 @@ fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     assert!(statement.node(Expression::Group).is_none());
 }
 
-// @lfy def/parser/traits.lfy:40
+// @lfy def/parser/traits.lfy:39
 #[test]
 fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     // The `;` inside the call is not at the same depth as the call's missing `)`.
@@ -693,7 +693,7 @@ fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     assert_eq!(shape(call, &tree), ["Name", "GroupOpen(()", "Items", "Error(\"; b\")", "GroupClose())"]);
     assert_eq!(tree.errors.len(), 1);
     assert_eq!(tree.errors[0].expected, vec!["GroupClose"]);
-    // @lfy def/parser/traits.lfy:41
+    // @lfy def/parser/traits.lfy:40
     // A closing bracket that would take the depth below 0 ends the error before it.
     let tree = file("for (x y) { }");
     let for_ = first_statement(&tree);
@@ -709,7 +709,7 @@ fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/traits.lfy:42
+// @lfy def/parser/traits.lfy:41
 #[test]
 fn a_stopped_repetition_ends_or_covers_the_stopping_tokens() {
     // A token an element after the repetition begins with ends it.
@@ -833,7 +833,7 @@ fn an_invalid_token_after_a_prefix_operator_is_not_space() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/traits.lfy:45
+// @lfy def/parser/traits.lfy:44
 #[test]
 fn expected_lists_what_could_have_continued_the_open_rule() {
     let tree = file("a #");
@@ -856,7 +856,7 @@ fn expected_lists_what_could_have_continued_the_open_rule() {
 
 // trivia
 
-// @lfy def/parser/traits.lfy:24
+// @lfy def/parser/traits.lfy:23
 #[test]
 fn trivia_is_not_taken_inside_rules_that_reference_a_body_terminal() {
     let source = "`a {{ b }} c`;";
@@ -894,7 +894,7 @@ fn a_new_line_inside_a_line_documentation_reference_is_not_trivia() {
 
 // documented
 
-// @lfy def/parser/traits.lfy:32
+// @lfy def/parser/traits.lfy:31
 #[test]
 fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
     let source = "/// a\n/// b\n\n// c\nconst x;\ny;\n/** d **/ z;";
@@ -926,7 +926,7 @@ fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
 
 // triedBefore
 
-// @lfy def/parser/traits.lfy:36
+// @lfy def/parser/traits.lfy:35
 #[test]
 fn the_rule_tried_first_wins_and_the_other_is_tried_only_when_it_fails() {
     let tree = file("(a) => a; (a); where (a) -> b; {} x = {};");

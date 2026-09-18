@@ -16,17 +16,17 @@ pub enum Check {
     /// Every bare name referenced in any rule's syntax is the identifier of a rule entity.
     BareNamesAreRules, // @lfy def/grammar/main.lfy:31
     /// No two terminal entities have the same syntax.
-    TerminalSyntaxIsUnique, // @lfy def/grammar/main.lfy:32
+    TerminalSyntaxIsUnique, // @lfy def/grammar/main.lfy:33
     /// Every prefix, infix, and postfix rule either has a binding itself or names an
     /// operator whose every alternative has a binding with one shared precedence.
-    OperatorRulesBind, // @lfy def/grammar/main.lfy:33
+    OperatorRulesBind, // @lfy def/grammar/main.lfy:34
     /// No rule has more than one of statement, primary, prefix, infix, and postfix.
-    OneCategory, // @lfy def/grammar/main.lfy:34
+    OneCategory, // @lfy def/grammar/main.lfy:35
     /// Every escape listed by a body is excluded from that body's plain characters by
     /// `Backslash`.
-    BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:35
+    BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:36
     /// No alternative of an alternation can be satisfied without taking a token.
-    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:36
+    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:37
 }
 
 impl Check {
@@ -113,7 +113,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 None
             }
         };
-        // @lfy def/grammar/main.lfy:32
+        // @lfy def/grammar/main.lfy:33
         if rule.is_terminal()
             && let Some(other) = syntaxes.insert(rule.syntax(), rule)
         {
@@ -123,7 +123,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: format!("has the same syntax as {}", other.identifier()),
             });
         }
-        // @lfy def/grammar/main.lfy:33
+        // @lfy def/grammar/main.lfy:34
         if let Some(operator) = rule.category().operator()
             && rule.effective_binding().is_none()
         {
@@ -136,9 +136,9 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 ),
             });
         }
-        // @lfy def/grammar/main.lfy:34
-        // A rule's category is a single value, so this check holds by construction.
         // @lfy def/grammar/main.lfy:35
+        // A rule's category is a single value, so this check holds by construction.
+        // @lfy def/grammar/main.lfy:36
         if let Category::Terminal(Terminal::Body { excluded, escapes }) = rule.category()
             && !escapes.is_empty()
             && !excluded.contains(&Entity::Literal(Literal::Backslash))
@@ -149,7 +149,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: "lists escapes but does not exclude Backslash".to_owned(),
             });
         }
-        // @lfy def/grammar/main.lfy:36
+        // @lfy def/grammar/main.lfy:37
         if let Some(expr) = &parsed
             && let Ok(grammar) = ebnf::Grammar::compile_cached()
         {
@@ -199,7 +199,7 @@ mod tests {
         assert_eq!(Check::ALL.len(), 6);
     }
 
-    // @lfy def/grammar/main.lfy:36
+    // @lfy def/grammar/main.lfy:37
     #[test]
     fn every_alternative_of_every_alternation_takes_a_token() {
         let grammar = ebnf::grammar();

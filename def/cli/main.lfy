@@ -68,7 +68,8 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({ behavior = `[[Request.previous]] is the source at the last accepted generation when the root is a git repository and that source is recoverable from it, undefined otherwise`, })
     .add({ situation = `The command exits`, behavior = `[[Generation.accept]] runs on the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit; when accepted its [[SourceMap]]s replace the unit's in source-map.json; when rejected the problems are printed and the command is run once more with them appended to the instructions`, })
     .add({ situation = `The second run is rejected too, or the command cannot be run`, behavior = `The remaining units are not run, and the code is problems or failure respectively`, })
-    .add({ situation = `elfie.json names no compiler`, behavior = `The request of each planned unit is written to elfie-requests under the output directory, one file per unit named by its stem, for a compiler run by hand; the code is success`, });
+    .add({ situation = `elfie.json names no compiler`, behavior = `The request of each planned unit is written to elfie-requests under the output directory, one file per unit named by its stem, for a compiler run by hand; the code is success`, })
+    .add({ situation = `compile with --accept`, behavior = `No compiler is run; the outputs already on disk for each planned unit are checked with [[Generation.accept]] and recorded when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`, });
 
   // lsp, mcp
   @acceptanceCriteria

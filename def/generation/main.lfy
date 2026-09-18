@@ -88,7 +88,8 @@ fn accept(request: Request, outputs: Output[]): `Whether outputs satisfy a reque
   @acceptanceCriteria
     .add({ situation = `[[outputs]] is empty`, behavior = `Rejected with a problem saying so`, })
     .add({ situation = `An output's path is not under [[Target.outputDirectory]] of the unit's target`, behavior = `Rejected with a problem naming the path`, })
-    .add({ situation = `An output holds a [[Marker]] naming a file other than the unit's [[File.path]], or a line beyond the file's last`, behavior = `Rejected with a problem naming the output line`, })
+    .add({ situation = `An output holds a [[Marker]] naming a file that is not in the program, or a line of the unit's [[File.path]] beyond its last`, behavior = `Rejected with a problem naming the output line`, })
+    .add({ behavior = `An output may hold markers for other files of the program, because one output often mirrors several`, })
     .add({ situation = `An entity of the unit has no marker in any output naming a line its declaring node covers`, behavior = `Rejected with a problem naming the entity`, })
     .add({ behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of [[Request.source]], the time of acceptance, and every marker in output order`, })
     .add({ behavior = `Whether an output builds or its tests pass is not checked here; the guidance says how, and the caller runs it`, });

@@ -5,6 +5,8 @@ mod components;
 pub mod data;
 mod eval;
 mod trees;
+#[cfg(test)]
+mod tests;
 
 use std::rc::Rc;
 
@@ -39,6 +41,11 @@ pub fn bind(sources: Vec<Source>) -> Model {
     }
     binder.finish_definitions();
     let mut model = binder.model;
+    // Own criteria first, then each trait's in application order.
+    // @lfy def/model/data.lfy:67
+    for (id, entity) in model.entities.iter_mut().enumerate() {
+        entity.acceptance_criteria.sort_by_key(|criterion| criterion.contributor != id);
+    }
     model.problems.sort_by_key(|problem| (problem.node.file, problem.node.index));
     model.sources = match Rc::try_unwrap(binder.trees) {
         Ok(trees) => trees.sources,

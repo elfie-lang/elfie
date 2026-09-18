@@ -559,11 +559,11 @@ fn compile(invocation: &Invocation) -> ExitCode {
         plan = generation::plan(&workspace, &maps, &requested);
     }
     let target_filter = invocation.option("target").map(str::to_string);
-    if let Some(target) = &target_filter {
-        if !workspace.targets.iter().any(|t| &t.identifier == target) {
-            eprintln!("{target} is not a target; known: {}", workspace.targets.iter().map(|t| t.identifier.as_str()).collect::<Vec<_>>().join(", "));
-            return ExitCode::Usage;
-        }
+    if let Some(target) = &target_filter
+        && !workspace.targets.iter().any(|t| &t.identifier == target)
+    {
+        eprintln!("{target} is not a target; known: {}", workspace.targets.iter().map(|t| t.identifier.as_str()).collect::<Vec<_>>().join(", "));
+        return ExitCode::Usage;
     }
     let selected: Vec<usize> = (0..plan.units.len())
         .filter(|&i| target_filter.as_ref().is_none_or(|t| &workspace.targets[plan.units[i].target].identifier == t))
@@ -600,6 +600,42 @@ fn compile(invocation: &Invocation) -> ExitCode {
     }
     let compiler = compiler_command(root);
     let mut maps = maps;
+    // --accept records what is already on disk without running the compiler.
+    // @lfy def/cli/main.lfy:70
+    if invocation.flag("accept") {
+        let mut code = ExitCode::Success;
+        for index in planned {
+            let unit = plan.units[index].clone();
+            let request = generation::request(&workspace, &plan, index, &[], None);
+            let outputs = outputs_of(&workspace, &plan, index);
+            let verdict = generation::accept(&workspace, &plan, &request, &outputs);
+            if verdict.accepted {
+                let target = workspace.targets[unit.target].identifier.clone();
+                let file = workspace.files[unit.file].path.clone();
+                maps.retain(|m| !(m.target == target && m.source == file));
+                maps.extend(verdict.source_maps.iter().cloned());
+                if json {
+                    println!("{}", serde_json::json!({ "stem": unit.stem, "accepted": true, "outputs": outputs.iter().map(|o| o.path.clone()).collect::<Vec<_>>() }));
+                } else {
+                    println!("accepted {} ({} outputs)", unit.stem, outputs.len());
+                }
+            } else {
+                code = ExitCode::Problems;
+                for problem in &verdict.problems {
+                    if json {
+                        println!("{}", serde_json::json!({ "stem": unit.stem, "accepted": false, "problem": problem }));
+                    } else {
+                        println!("rejected {}: {problem}", unit.stem);
+                    }
+                }
+            }
+        }
+        if let Err(error) = save_source_maps(&workspace, &maps) {
+            eprintln!("source-map.json: {error}");
+            return ExitCode::Failure;
+        }
+        return code;
+    }
     for index in planned {
         let unit = plan.units[index].clone();
         let existing: Vec<Output> = unit

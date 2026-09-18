@@ -13,12 +13,12 @@ use crate::grammar::{Entity, GrammarRule};
 // Trivia
 
 /// `trivia.apply(...)`: the rules that have little to no semantic meaning.
-// @lfy def/parser/components.lfy:11
+// @lfy def/parser/components.lfy:12
 pub const TRIVIA: &[Entity] = &[
-    Entity::Space(Space::Space),          // @lfy def/parser/components.lfy:11
-    Entity::Space(Space::NewLine),        // @lfy def/parser/components.lfy:12
-    Entity::Comment(Comment::Comment),    // @lfy def/parser/components.lfy:13
-    Entity::Comment(Comment::Documentation), // @lfy def/parser/components.lfy:14
+    Entity::Space(Space::Space),          // @lfy def/parser/components.lfy:12
+    Entity::Space(Space::NewLine),        // @lfy def/parser/components.lfy:13
+    Entity::Comment(Comment::Comment),    // @lfy def/parser/components.lfy:14
+    Entity::Comment(Comment::Documentation), // @lfy def/parser/components.lfy:15
 ];
 
 /// Whether the rule carries `trivia`.
@@ -29,13 +29,13 @@ pub fn is_trivia(rule: Entity) -> bool {
 // Every statement can have documentation and should be recoverable
 
 /// Whether the rule carries `documented`: every statement does.
-// @lfy def/parser/components.lfy:18
+// @lfy def/parser/components.lfy:19
 pub fn is_documented(rule: Entity) -> bool {
     rule.is_statement()
 }
 
 /// The sync terminals of every statement and of the source file.
-// @lfy def/parser/components.lfy:19
+// @lfy def/parser/components.lfy:20
 pub const STATEMENT_SYNC: &[Entity] = &[
     Entity::Punctuation(Punctuation::Semicolon),
     Entity::Punctuation(Punctuation::BlockOpen),
@@ -51,16 +51,16 @@ const EXECUTION_CLOSE: &[Entity] = &[Entity::Literal(Literal::ExecutionClose)];
 /// for a rule without the trait.
 pub fn sync(rule: Entity) -> Option<&'static [Entity]> {
     Some(match rule {
-        Entity::Statement(_) if rule.is_statement() => STATEMENT_SYNC, // @lfy def/parser/components.lfy:19
-        Entity::File(File::SourceFile) => STATEMENT_SYNC,               // @lfy def/parser/components.lfy:21
+        Entity::Statement(_) if rule.is_statement() => STATEMENT_SYNC, // @lfy def/parser/components.lfy:20
+        Entity::File(File::SourceFile) => STATEMENT_SYNC,               // @lfy def/parser/components.lfy:22
         // More targetted recovery
-        Entity::Expression(Expression::Parameters) => GROUP_CLOSE, // @lfy def/parser/components.lfy:24
-        Entity::Expression(Expression::Arguments) => GROUP_CLOSE,  // @lfy def/parser/components.lfy:25
-        Entity::Expression(Expression::Call) => GROUP_CLOSE,       // @lfy def/parser/components.lfy:26
-        Entity::Expression(Expression::List) => LIST_CLOSE,        // @lfy def/parser/components.lfy:27
-        Entity::Expression(Expression::Index) => LIST_CLOSE,       // @lfy def/parser/components.lfy:28
-        Entity::Expression(Expression::TemplateReference) => REFERENCE_CLOSE, // @lfy def/parser/components.lfy:29
-        Entity::Expression(Expression::TemplateExecution) => EXECUTION_CLOSE, // @lfy def/parser/components.lfy:30
+        Entity::Expression(Expression::Parameters) => GROUP_CLOSE, // @lfy def/parser/components.lfy:25
+        Entity::Expression(Expression::Arguments) => GROUP_CLOSE,  // @lfy def/parser/components.lfy:26
+        Entity::Expression(Expression::Call) => GROUP_CLOSE,       // @lfy def/parser/components.lfy:27
+        Entity::Expression(Expression::List) => LIST_CLOSE,        // @lfy def/parser/components.lfy:28
+        Entity::Expression(Expression::Index) => LIST_CLOSE,       // @lfy def/parser/components.lfy:29
+        Entity::Expression(Expression::TemplateReference) => REFERENCE_CLOSE, // @lfy def/parser/components.lfy:30
+        Entity::Expression(Expression::TemplateExecution) => EXECUTION_CLOSE, // @lfy def/parser/components.lfy:31
         _ => return None,
     })
 }
@@ -74,15 +74,15 @@ pub fn is_recoverable(rule: Entity) -> bool {
 
 /// `triedBefore.apply(first, other)`: `first` is tried ahead of `other` wherever both could
 /// begin at the same token.
-// @lfy def/parser/components.lfy:33
+// @lfy def/parser/components.lfy:34
 pub const TRIED_BEFORE: &[(Entity, Entity)] = &[
-    (Entity::Statement(Statement::Block), Entity::Expression(Expression::Expression)), // @lfy def/parser/components.lfy:33
-    (Entity::Statement(Statement::Block), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:34
-    (Entity::Statement(Statement::FunctionDeclaration), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:35
-    (Entity::Statement(Statement::TraitDeclaration), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:36
-    (Entity::Expression(Expression::Object), Entity::Expression(Expression::Type)), // @lfy def/parser/components.lfy:37
-    (Entity::Expression(Expression::InlineFunction), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:38
-    (Entity::Statement(Statement::ConditionGroup), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:39
+    (Entity::Statement(Statement::Block), Entity::Expression(Expression::Expression)), // @lfy def/parser/components.lfy:34
+    (Entity::Statement(Statement::Block), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:35
+    (Entity::Statement(Statement::FunctionDeclaration), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:36
+    (Entity::Statement(Statement::TraitDeclaration), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:37
+    (Entity::Expression(Expression::Object), Entity::Expression(Expression::Type)), // @lfy def/parser/components.lfy:38
+    (Entity::Expression(Expression::InlineFunction), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:39
+    (Entity::Statement(Statement::ConditionGroup), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:40
 ];
 
 /// The rules that carry `documented` and `recoverable` through the statement loop.
@@ -95,7 +95,7 @@ mod tests {
     use super::*;
     use crate::grammar::rules;
 
-    // @lfy def/parser/components.lfy:11
+    // @lfy def/parser/components.lfy:12
     #[test]
     fn trivia_is_space_new_line_comment_and_documentation() {
         assert_eq!(TRIVIA.len(), 4);
@@ -107,7 +107,7 @@ mod tests {
         assert!(!is_trivia(Entity::Statement(Statement::Block)));
     }
 
-    // @lfy def/parser/components.lfy:17
+    // @lfy def/parser/components.lfy:18
     #[test]
     fn every_statement_is_documented_and_recoverable_at_statement_boundaries() {
         for &rule in statements() {
@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(sync(Entity::Statement(Statement::MatchArm)), None);
     }
 
-    // @lfy def/parser/components.lfy:23
+    // @lfy def/parser/components.lfy:24
     #[test]
     fn targeted_recovery_closes_on_the_matching_bracket() {
         let close = |rule: Expression| sync(Entity::Expression(rule)).unwrap();
@@ -139,7 +139,7 @@ mod tests {
         assert!(!is_recoverable(Entity::Expression(Expression::Object)));
     }
 
-    // @lfy def/parser/components.lfy:33
+    // @lfy def/parser/components.lfy:34
     #[test]
     fn tried_before_lists_the_seven_orderings() {
         assert_eq!(TRIED_BEFORE.len(), 7);

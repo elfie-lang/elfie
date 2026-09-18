@@ -213,9 +213,8 @@ impl Trees {
         let Some(Part::Token(accessor)) = accessor else {
             return None;
         };
-        if super::components::accessor_layer(self.token(r.file, accessor).rule?).is_none() {
-            return None;
-        }
+        // The token must be an accessor.
+        super::components::accessor_layer(self.token(r.file, accessor).rule?)?;
         let name = match iter.next() {
             Some(Part::Token(name)) if self.is_member_name_token(r.file, name) => Some(name),
             _ => None,

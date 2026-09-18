@@ -403,7 +403,7 @@ impl<'t> Parser<'t> {
     /// that has taken a token closes a failed required element with an error node and
     /// tries the remaining elements as if optional; anywhere else a failed element fails
     /// the sequence.
-    // @lfy def/parser/traits.lfy:40
+    // @lfy def/parser/traits.lfy:39
     fn parse_elements(
         &mut self,
         elements: &[&Expr],
@@ -561,7 +561,7 @@ impl<'t> Parser<'t> {
                     continue;
                 }
             }
-            // @lfy def/parser/traits.lfy:42
+            // @lfy def/parser/traits.lfy:41
             let Some(sync) = seq.sync else {
                 return Some(pos);
             };

@@ -412,7 +412,7 @@ impl Grammar {
     }
 
     /// Whether the rule can be satisfied without taking anything.
-    // @lfy def/grammar/main.lfy:36
+    // @lfy def/grammar/main.lfy:37
     pub fn is_nullable(&self, identifier: &str) -> bool {
         self.nullable.contains(identifier)
     }
@@ -420,7 +420,7 @@ impl Grammar {
     /// Whether `expr` can be satisfied without taking anything: optional groups and
     /// repetitions always can, a sequence can when every item can, an alternation when
     /// any alternative can, and a reference when the rule it names can.
-    // @lfy def/grammar/main.lfy:36
+    // @lfy def/grammar/main.lfy:37
     pub fn is_expr_nullable(&self, expr: &Expr) -> bool {
         expr_nullable(expr, &self.nullable)
     }
@@ -770,7 +770,7 @@ mod tests {
         assert_eq!(grammar.longest_match("Statement", "break;"), Some(6));
     }
 
-    // @lfy def/grammar/main.lfy:36
+    // @lfy def/grammar/main.lfy:37
     #[test]
     fn nullable_rules_are_those_that_can_match_nothing() {
         let grammar = grammar();

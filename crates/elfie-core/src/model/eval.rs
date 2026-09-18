@@ -83,11 +83,12 @@ impl Binder {
         }
         let trees = self.trees.clone();
         let rule = trees.rule(r);
-        if let Some(symbol) = self.model.symbol_of(r) {
-            if trees.is_statement(r) && self.model.symbols[symbol].kind != SymbolKind::LoopVariable {
-                self.exec_declaration(r, symbol, env);
-                return;
-            }
+        if let Some(symbol) = self.model.symbol_of(r)
+            && trees.is_statement(r)
+            && self.model.symbols[symbol].kind != SymbolKind::LoopVariable
+        {
+            self.exec_declaration(r, symbol, env);
+            return;
         }
         if rule == S::ExpressionStatement.entity() {
             if let Some(expression) = trees.child_nodes(r).into_iter().next() {
@@ -201,10 +202,10 @@ impl Binder {
         for statement in trees.child_nodes(block) {
             let rule = trees.rule(statement);
             if rule == S::ExpressionStatement.entity() {
-                if let Some(expression) = trees.child_nodes(statement).into_iter().next() {
-                    if self.is_context_expression(expression) {
-                        self.eval(expression, env);
-                    }
+                if let Some(expression) = trees.child_nodes(statement).into_iter().next()
+                    && self.is_context_expression(expression)
+                {
+                    self.eval(expression, env);
                 }
             } else if rule == S::Where.entity() || rule == S::With.entity() || rule == S::For.entity() || rule == S::If.entity() {
                 self.exec(statement, env);
@@ -220,20 +221,20 @@ impl Binder {
     fn is_context_expression(&self, expression: NodeRef) -> bool {
         let trees = &self.trees;
         let leftmost = trees.leftmost(expression);
-        if trees.is(leftmost, E::Current) {
-            if let Some((accessor, _)) = trees.accessor_and_name(leftmost) {
-                return trees.token_is(leftmost.file, accessor, P::ContextAccessor);
-            }
+        if trees.is(leftmost, E::Current)
+            && let Some((accessor, _)) = trees.accessor_and_name(leftmost)
+        {
+            return trees.token_is(leftmost.file, accessor, P::ContextAccessor);
         }
         // `X.apply(...)` or `X@acceptanceCriteria...`
         let mut node = expression;
         while trees.rule(node).is_postfix() {
-            if trees.is(node, E::Member) {
-                if let Some((accessor, Some(name))) = trees.accessor_and_name(node) {
-                    let text = trees.token(node.file, name).value.as_str();
-                    if trees.token_is(node.file, accessor, P::ContextAccessor) || text == "apply" {
-                        return true;
-                    }
+            if trees.is(node, E::Member)
+                && let Some((accessor, Some(name))) = trees.accessor_and_name(node)
+            {
+                let text = trees.token(node.file, name).value.as_str();
+                if trees.token_is(node.file, accessor, P::ContextAccessor) || text == "apply" {
+                    return true;
                 }
             }
             match trees.left(node) {
@@ -532,7 +533,7 @@ impl Binder {
     fn exec_with(&mut self, r: NodeRef, env: &mut Env) {
         // A trait's own body is run without a receiver; its With blocks belong to each
         // application, so they are skipped here.
-        if env.dry && env.in_trait == false && matches!(self.model.entities[env.current].kind, EntityKind::Trait { .. }) {
+        if env.dry && !env.in_trait && matches!(self.model.entities[env.current].kind, EntityKind::Trait { .. }) {
             return;
         }
         let trees = self.trees.clone();
@@ -569,10 +570,10 @@ impl Binder {
             if let Some(&branch) = children.get(1) {
                 self.exec(branch, env);
             }
-        } else if let Some(&else_node) = children.iter().find(|&&c| trees.is(c, S::Else)) {
-            if let Some(branch) = trees.child_nodes(else_node).into_iter().next() {
-                self.exec(branch, env);
-            }
+        } else if let Some(&else_node) = children.iter().find(|&&c| trees.is(c, S::Else))
+            && let Some(branch) = trees.child_nodes(else_node).into_iter().next()
+        {
+            self.exec(branch, env);
         }
     }
 
@@ -754,7 +755,7 @@ impl Binder {
         }
         if rule == E::NotOperation.entity() {
             let operand = trees.child_nodes(r).into_iter().next();
-            return Value::Bool(!operand.map_or(false, |o| self.eval(o, env).is_truthy()));
+            return Value::Bool(!operand.is_some_and(|o| self.eval(o, env).is_truthy()));
         }
         if rule == E::NegateOperation.entity() {
             let operand = trees.child_nodes(r).into_iter().next();
@@ -1012,13 +1013,13 @@ impl Binder {
                 match ContextProperty::lookup(name) {
                     Some(ContextProperty::Identifier) => self.model.entities[entity].identifier.clone().map_or(Value::Undefined, Value::String),
                     Some(ContextProperty::Definition) => {
-                        if self.model.entities[entity].definition.is_none() {
-                            if let Some(node) = self.model.entities[entity].definition_node {
-                                let scope = self.model.entities[entity].scope.unwrap_or(self.universe);
-                                let env = Env { vars: Vec::new(), current: entity, target: entity, contributor: entity, scope, in_trait: false, dry: true, ret: None };
-                                let text = self.text_of(node, &env);
-                                self.model.entities[entity].definition = Some(text);
-                            }
+                        if self.model.entities[entity].definition.is_none()
+                            && let Some(node) = self.model.entities[entity].definition_node
+                        {
+                            let scope = self.model.entities[entity].scope.unwrap_or(self.universe);
+                            let env = Env { vars: Vec::new(), current: entity, target: entity, contributor: entity, scope, in_trait: false, dry: true, ret: None };
+                            let text = self.text_of(node, &env);
+                            self.model.entities[entity].definition = Some(text);
                         }
                         self.model.entities[entity].definition.clone().map_or(Value::Undefined, Value::String)
                     }
@@ -1101,14 +1102,13 @@ impl Binder {
                     return Value::Type(Box::new(self.model.entities[symbol_entity].ty.clone().unwrap_or(TypeRef::Unknown(String::new()))));
                 }
                 let expression = trees.child_nodes(node).into_iter().next();
-                if let Some(expression) = expression {
-                    if trees.is(expression, E::Assignment) {
-                        if let Some(right) = trees.child_nodes(expression).get(1).copied() {
-                            let mut inner = env.clone();
-                            inner.scope = self.model.symbols[symbol].scope;
-                            return self.eval(right, &mut inner);
-                        }
-                    }
+                if let Some(expression) = expression
+                    && trees.is(expression, E::Assignment)
+                    && let Some(right) = trees.child_nodes(expression).get(1).copied()
+                {
+                    let mut inner = env.clone();
+                    inner.scope = self.model.symbols[symbol].scope;
+                    return self.eval(right, &mut inner);
                 }
                 Value::Undefined
             }
@@ -1168,84 +1168,83 @@ impl Binder {
         let Some(callee) = trees.left(r) else { return Value::Undefined };
         let arguments = trees.arguments(r);
         // Method calls.
-        if trees.is(callee, E::Member) {
-            if let (Some(left), Some((accessor, Some(name)))) = (trees.left(callee), trees.accessor_and_name(callee)) {
-                if trees.token_is(callee.file, accessor, P::ValueAccessor) || trees.token_is(callee.file, accessor, P::OptionalValueAccessor) {
-                    let method = trees.token(callee.file, name).value.clone();
-                    let receiver = self.eval(left, env);
-                    match (&receiver, method.as_str()) {
-                        (Value::Criteria(target), "add") => {
-                            // An add Call on the entity's context appends one Criterion.
-                            // @lfy def/model/main.lfy:93
-                            let target = *target;
-                            for argument in arguments {
-                                let criterion = self.criterion_of(argument, env);
-                                let target = if env.in_trait && target == env.current { env.target } else { target };
-                                self.model.entities[target].acceptance_criteria.push(criterion);
-                            }
-                            return receiver;
-                        }
-                        (Value::Entity(trait_id), "apply") if self.model.entities[*trait_id].is_trait() => {
-                            // The trait is applied to the entity the first argument resolves to.
-                            // @lfy def/model/main.lfy:44
-                            let trait_id = *trait_id;
-                            if env.dry {
-                                return Value::Undefined;
-                            }
-                            let Some((&first, rest)) = arguments.split_first() else { return Value::Undefined };
-                            let receivers = self.apply_receivers(first, env);
-                            let values = self.eval_arguments(rest, env);
-                            for receiver in receivers {
-                                self.apply_trait(receiver, trait_id, rest.to_vec(), values.clone(), AppliedSource::Apply(r), false);
-                            }
-                            return Value::Undefined;
-                        }
-                        (Value::List(items), "map") => {
-                            let function = arguments.first().map(|&a| self.eval(a, env));
-                            let Some(function) = function else { return Value::Undefined };
-                            let items = items.clone();
-                            let mapped = items.into_iter().map(|item| self.call_value(&function, vec![item], env)).collect();
-                            return Value::List(mapped);
-                        }
-                        (Value::List(items), "join") => {
-                            let separator = arguments.first().map_or(Value::String(",".into()), |&a| self.eval(a, env));
-                            let separator = self.to_text(&separator);
-                            let texts: Vec<String> = items.iter().map(|i| self.to_text(i)).collect();
-                            return Value::String(texts.join(&separator));
-                        }
-                        (Value::List(items), "push") => {
-                            let mut items = items.clone();
-                            for &argument in &arguments {
-                                let value = self.eval(argument, env);
-                                items.push(value);
-                            }
-                            if let Some(name) = trees.name(left) {
-                                env.set(&name, Value::List(items.clone()));
-                            }
-                            return Value::Number(items.len() as f64);
-                        }
-                        (Value::List(items), "includes") => {
-                            let needle = arguments.first().map_or(Value::Undefined, |&a| self.eval(a, env));
-                            return Value::Bool(items.contains(&needle));
-                        }
-                        (Value::String(text), "includes") => {
-                            let needle = arguments.first().map_or(Value::Undefined, |&a| self.eval(a, env));
-                            return Value::Bool(text.contains(&self.to_text(&needle)));
-                        }
-                        (Value::String(text), "trim") => return Value::String(text.trim().to_string()),
-                        (Value::String(text), "split") => {
-                            let separator = arguments.first().map_or(Value::String(",".into()), |&a| self.eval(a, env));
-                            let separator = self.to_text(&separator);
-                            return Value::List(text.split(separator.as_str()).map(|s| Value::String(s.to_string())).collect());
-                        }
-                        (Value::Entity(_), _) | (Value::Object(_), _) => {
-                            let function = self.access(receiver.clone(), P::ValueAccessor.entity(), Some(&method), env);
-                            let values = self.eval_arguments(&arguments, env);
-                            return self.call_value(&function, values, env);
-                        }
-                        _ => return Value::Undefined,
+        if trees.is(callee, E::Member)
+            && let (Some(left), Some((accessor, Some(name)))) = (trees.left(callee), trees.accessor_and_name(callee))
+            && (trees.token_is(callee.file, accessor, P::ValueAccessor) || trees.token_is(callee.file, accessor, P::OptionalValueAccessor))
+        {
+            let method = trees.token(callee.file, name).value.clone();
+            let receiver = self.eval(left, env);
+            match (&receiver, method.as_str()) {
+                (Value::Criteria(target), "add") => {
+                    // An add Call on the entity's context appends one Criterion.
+                    // @lfy def/model/main.lfy:93
+                    let target = *target;
+                    for argument in arguments {
+                        let criterion = self.criterion_of(argument, env);
+                        let target = if env.in_trait && target == env.current { env.target } else { target };
+                        self.model.entities[target].acceptance_criteria.push(criterion);
                     }
+                    return receiver;
                 }
+                (Value::Entity(trait_id), "apply") if self.model.entities[*trait_id].is_trait() => {
+                    // The trait is applied to the entity the first argument resolves to.
+                    // @lfy def/model/main.lfy:44
+                    let trait_id = *trait_id;
+                    if env.dry {
+                        return Value::Undefined;
+                    }
+                    let Some((&first, rest)) = arguments.split_first() else { return Value::Undefined };
+                    let receivers = self.apply_receivers(first, env);
+                    let values = self.eval_arguments(rest, env);
+                    for receiver in receivers {
+                        self.apply_trait(receiver, trait_id, rest.to_vec(), values.clone(), AppliedSource::Apply(r), false);
+                    }
+                    return Value::Undefined;
+                }
+                (Value::List(items), "map") => {
+                    let function = arguments.first().map(|&a| self.eval(a, env));
+                    let Some(function) = function else { return Value::Undefined };
+                    let items = items.clone();
+                    let mapped = items.into_iter().map(|item| self.call_value(&function, vec![item], env)).collect();
+                    return Value::List(mapped);
+                }
+                (Value::List(items), "join") => {
+                    let separator = arguments.first().map_or(Value::String(",".into()), |&a| self.eval(a, env));
+                    let separator = self.to_text(&separator);
+                    let texts: Vec<String> = items.iter().map(|i| self.to_text(i)).collect();
+                    return Value::String(texts.join(&separator));
+                }
+                (Value::List(items), "push") => {
+                    let mut items = items.clone();
+                    for &argument in &arguments {
+                        let value = self.eval(argument, env);
+                        items.push(value);
+                    }
+                    if let Some(name) = trees.name(left) {
+                        env.set(&name, Value::List(items.clone()));
+                    }
+                    return Value::Number(items.len() as f64);
+                }
+                (Value::List(items), "includes") => {
+                    let needle = arguments.first().map_or(Value::Undefined, |&a| self.eval(a, env));
+                    return Value::Bool(items.contains(&needle));
+                }
+                (Value::String(text), "includes") => {
+                    let needle = arguments.first().map_or(Value::Undefined, |&a| self.eval(a, env));
+                    return Value::Bool(text.contains(&self.to_text(&needle)));
+                }
+                (Value::String(text), "trim") => return Value::String(text.trim().to_string()),
+                (Value::String(text), "split") => {
+                    let separator = arguments.first().map_or(Value::String(",".into()), |&a| self.eval(a, env));
+                    let separator = self.to_text(&separator);
+                    return Value::List(text.split(separator.as_str()).map(|s| Value::String(s.to_string())).collect());
+                }
+                (Value::Entity(_), _) | (Value::Object(_), _) => {
+                    let function = self.access(receiver.clone(), P::ValueAccessor.entity(), Some(&method), env);
+                    let values = self.eval_arguments(&arguments, env);
+                    return self.call_value(&function, values, env);
+                }
+                _ => return Value::Undefined,
             }
         }
         let function = self.eval(callee, env);
@@ -1290,17 +1289,17 @@ impl Binder {
         };
         // An alternationList: every item.
         // @lfy def/model/main.lfy:44
-        if let Some(alternation) = self.model.trait_named("alternationList") {
-            if let Some(applied) = self.model.entities[entity].traits.iter().find(|a| a.entity == alternation).cloned() {
-                let mut items = Vec::new();
-                for value in &applied.values {
-                    if let Value::Entity(e) = value {
-                        items.push(*e);
-                    }
+        if let Some(alternation) = self.model.trait_named("alternationList")
+            && let Some(applied) = self.model.entities[entity].traits.iter().find(|a| a.entity == alternation).cloned()
+        {
+            let mut items = Vec::new();
+            for value in &applied.values {
+                if let Value::Entity(e) = value {
+                    items.push(*e);
                 }
-                if !items.is_empty() {
-                    return items;
-                }
+            }
+            if !items.is_empty() {
+                return items;
             }
         }
         vec![entity]

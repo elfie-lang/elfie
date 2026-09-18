@@ -211,9 +211,10 @@ impl Binder {
             (entity, kind, name, name_token)
         });
         if is_scoped(rule) {
+            // A For declares its loop variable, not itself: its current stays the parent's.
             let current = match declared {
-                Some((entity, _, _, _)) => entity,
-                None => self.model.scopes[enclosing].current,
+                Some((entity, kind, _, _)) if kind != SymbolKind::LoopVariable => entity,
+                _ => self.model.scopes[enclosing].current,
             };
             scope = self.new_scope(Some(enclosing), r, current);
             if let Some((entity, _, _, _)) = declared {
@@ -247,14 +248,12 @@ impl Binder {
         if trees.is(r, E::ObjectKey)
             && trees.parent(r).is_some_and(|p| trees.is(p, E::Object))
             && trees.parent(r).and_then(|p| trees.parent(p)).is_some_and(|g| trees.is(g, S::EnumDeclaration))
+            && let Some(declared) = trees.child(r, E::Declared)
+            && let Some(token) = trees.child_token(declared, crate::grammar::terminals::identifier::Identifier::Identifier)
         {
-            if let Some(declared) = trees.child(r, E::Declared) {
-                if let Some(token) = trees.child_token(declared, crate::grammar::terminals::identifier::Identifier::Identifier) {
-                    let name = trees.token(r.file, token).value.clone();
-                    let entity = self.new_entity(EntityKind::EnumMember, Some(r), Some(name.clone()));
-                    self.add_symbol(enclosing, name, entity, SymbolKind::EnumMember, r, Some(token));
-                }
-            }
+            let name = trees.token(r.file, token).value.clone();
+            let entity = self.new_entity(EntityKind::EnumMember, Some(r), Some(name.clone()));
+            self.add_symbol(enclosing, name, entity, SymbolKind::EnumMember, r, Some(token));
         }
         for child in trees.children(r) {
             self.declare_node(child, scope);
@@ -365,10 +364,10 @@ impl Binder {
                         } else {
                             (Some(expression), None)
                         };
-                        if let Some(left) = left {
-                            if trees.is(left, E::Definition) {
-                                definition = trees.child_nodes(left).get(1).copied();
-                            }
+                        if let Some(left) = left
+                            && trees.is(left, E::Definition)
+                        {
+                            definition = trees.child_nodes(left).get(1).copied();
                         }
                         if let Some(right) = right {
                             ty = Some(self.type_from_expression(right));
@@ -380,10 +379,10 @@ impl Binder {
             EntityKind::Variable | EntityKind::Alias | EntityKind::External => {
                 let declared = trees.child(node, E::Declared);
                 let (mut ty, definition) = declared.map_or((None, None), |d| self.clause_type_or_definition(d));
-                if ty.is_none() {
-                    if let Some(value) = trees.child_nodes(node).into_iter().find(|&c| !trees.is(c, E::Declared)) {
-                        ty = Some(self.type_from_expression(value));
-                    }
+                if ty.is_none()
+                    && let Some(value) = trees.child_nodes(node).into_iter().find(|&c| !trees.is(c, E::Declared))
+                {
+                    ty = Some(self.type_from_expression(value));
                 }
                 (ty, definition)
             }
@@ -441,19 +440,15 @@ impl Binder {
             .or_else(|| trees.child(for_node, S::ForFrom))?;
         let first = trees.child_nodes(iterable).into_iter().find(|&c| !trees.is(c, E::Declared))?;
         // `T@entities` gives the things carrying T.
-        if trees.is(first, E::Member) {
-            if let Some((accessor, Some(name))) = trees.accessor_and_name(first) {
-                if trees.token_is(first.file, accessor, P::ContextAccessor)
-                    && (trees.token(first.file, name).value == "entities" || trees.token(first.file, name).value == "extenders")
-                {
-                    if let Some(left) = trees.left(first) {
-                        if let Some(symbol) = self.resolve_name_node(left) {
-                            let entity = self.model.symbols[symbol].entity;
-                            return Some(TypeRef::Predicate(entity));
-                        }
-                    }
-                }
-            }
+        if trees.is(first, E::Member)
+            && let Some((accessor, Some(name))) = trees.accessor_and_name(first)
+            && trees.token_is(first.file, accessor, P::ContextAccessor)
+            && (trees.token(first.file, name).value == "entities" || trees.token(first.file, name).value == "extenders")
+            && let Some(left) = trees.left(first)
+            && let Some(symbol) = self.resolve_name_node(left)
+        {
+            let entity = self.model.symbols[symbol].entity;
+            return Some(TypeRef::Predicate(entity));
         }
         match self.type_from_expression(first) {
             TypeRef::List(item) => Some(*item),
@@ -546,6 +541,13 @@ impl Binder {
             }
             return TypeRef::Unknown(trees.raw(node));
         }
+        if rule == E::Reference.entity() {
+            // A name in a type position is wrapped in a Reference.
+            if let Some(inner) = trees.child_nodes(node).into_iter().next() {
+                return self.type_from_expression(inner);
+            }
+            return TypeRef::Unknown(trees.raw(node));
+        }
         if rule == E::Index.entity() {
             let parts = trees.child_nodes(node);
             if parts.len() == 1 {
@@ -563,10 +565,10 @@ impl Binder {
             }
             return TypeRef::Union(items);
         }
-        if rule == E::Group.entity() {
-            if let Some(inner) = trees.child_nodes(node).into_iter().next() {
-                return self.type_from_expression(inner);
-            }
+        if rule == E::Group.entity()
+            && let Some(inner) = trees.child_nodes(node).into_iter().next()
+        {
+            return self.type_from_expression(inner);
         }
         if rule == E::Nullish.entity() {
             let text = trees.raw(node);
@@ -589,24 +591,22 @@ impl Binder {
         if rule == E::InlineFunction.entity() {
             return TypeRef::Function;
         }
-        if rule == E::TypePredicate.entity() {
-            if let Some(trait_use) = trees.child(node, E::TraitUse) {
-                if let Some(symbol) = self.resolve_trait_use(trait_use) {
-                    return TypeRef::Predicate(self.model.symbols[symbol].entity);
-                }
-            }
+        if rule == E::TypePredicate.entity()
+            && let Some(trait_use) = trees.child(node, E::TraitUse)
+            && let Some(symbol) = self.resolve_trait_use(trait_use)
+        {
+            return TypeRef::Predicate(self.model.symbols[symbol].entity);
         }
         if rule == E::TypeExpression.entity() {
             return self.type_from_type_expression(node);
         }
-        if rule == E::Call.entity() {
-            if let Some(left) = trees.left(node) {
-                if let Some(symbol) = self.resolve_name_node(left) {
-                    let entity = self.model.symbols[symbol].entity;
-                    if let Some(output) = self.model.entities[entity].output() {
-                        return output.clone();
-                    }
-                }
+        if rule == E::Call.entity()
+            && let Some(left) = trees.left(node)
+            && let Some(symbol) = self.resolve_name_node(left)
+        {
+            let entity = self.model.symbols[symbol].entity;
+            if let Some(output) = self.model.entities[entity].output() {
+                return output.clone();
             }
         }
         TypeRef::Unknown(trees.raw(node))
@@ -654,12 +654,12 @@ impl Binder {
             for &child in &children {
                 if !trees.is(child, S::Block) {
                     self.resolve_node(child);
-                    if let Some(usage) = self.model.usage_of(child) {
-                        if let Some(symbol) = self.model.usages[usage].symbol {
-                            let entity = self.model.symbols[symbol].entity;
-                            if let Some(scope) = self.model.scope_of(r) {
-                                self.model.scopes[scope].current = entity;
-                            }
+                    if let Some(usage) = self.model.usage_of(child)
+                        && let Some(symbol) = self.model.usages[usage].symbol
+                    {
+                        let entity = self.model.symbols[symbol].entity;
+                        if let Some(scope) = self.model.scope_of(r) {
+                            self.set_current(scope, entity);
                         }
                     }
                 }
@@ -723,6 +723,24 @@ impl Binder {
         }
     }
 
+    /// Sets the current entity of a scope and of every scope inside it that inherited the
+    /// old one (a Block, For, or With), leaving the scopes of declarations alone.
+    // @lfy def/model/main.lfy:34
+    fn set_current(&mut self, scope: ScopeId, entity: EntityId) {
+        let old = self.model.scopes[scope].current;
+        let mut updated = HashSet::new();
+        updated.insert(scope);
+        self.model.scopes[scope].current = entity;
+        // A scope is created after its parent, so one pass in order reaches every descendant.
+        for id in scope + 1..self.model.scopes.len() {
+            let inherits = self.model.scopes[id].parent.is_some_and(|parent| updated.contains(&parent)) && self.model.scopes[id].current == old;
+            if inherits {
+                self.model.scopes[id].current = entity;
+                updated.insert(id);
+            }
+        }
+    }
+
     fn in_template(&self, r: NodeRef) -> bool {
         let trees = &self.trees;
         trees.ancestor(r, E::TemplateReference).is_some()
@@ -743,10 +761,10 @@ impl Binder {
     }
 
     fn record_reference(&mut self, r: NodeRef, usage: UsageId) {
-        if self.trees.ancestor(r, E::TemplateReference).is_some() {
-            if let Some(entity) = self.enclosing_entity(r) {
-                self.model.entities[entity].references.push(usage);
-            }
+        if self.trees.ancestor(r, E::TemplateReference).is_some()
+            && let Some(entity) = self.enclosing_entity(r)
+        {
+            self.model.entities[entity].references.push(usage);
         }
     }
 
@@ -756,10 +774,10 @@ impl Binder {
     fn resolve_name(&mut self, r: NodeRef) {
         let trees = self.trees.clone();
         // The Name that spells a declared name is the declaration, not a usage.
-        if let Some(parent) = trees.parent(r) {
-            if declaring(trees.rule(parent)).is_some_and(|(holder, _)| holder == E::Name.entity()) {
-                return;
-            }
+        if let Some(parent) = trees.parent(r)
+            && declaring(trees.rule(parent)).is_some_and(|(holder, _)| holder == E::Name.entity())
+        {
+            return;
         }
         let Some(name) = trees.name(r) else { return };
         let token = trees.name_token(r);
@@ -808,7 +826,7 @@ impl Binder {
     /// Resolves a member name in a target through one layer, adding problems as the
     /// model says.
     fn resolve_in(&mut self, r: NodeRef, target: Target, layer: Layer, name: Option<&str>, current: bool) -> Option<SymbolId> {
-        let Some(name) = name else { return None };
+        let name = name?;
         match layer {
             Layer::Context => {
                 // The MemberName must be the value of a ContextProperty.

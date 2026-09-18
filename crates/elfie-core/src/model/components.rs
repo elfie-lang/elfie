@@ -11,6 +11,7 @@ use crate::grammar::{Entity as Rule, GrammarRule};
 use super::data::{Layer, SymbolKind};
 
 /// The rules carrying `scoped`: each owns a scope.
+// @lfy def/model/traits.lfy:10
 // @lfy def/model/components.lfy:10
 pub fn is_scoped(rule: Rule) -> bool {
     [
@@ -43,6 +44,7 @@ pub fn accessor_layer(rule: Rule) -> Option<Layer> {
 }
 
 /// The layer a rule carrying `reading` reads, for the expression rules.
+// @lfy def/model/traits.lfy:16
 // @lfy def/model/components.lfy:28
 pub fn reading_layer(rule: Rule) -> Option<Layer> {
     Some(match rule {
