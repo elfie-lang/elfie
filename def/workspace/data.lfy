@@ -1,0 +1,42 @@
+use "../grammar/rules/statement";
+use "../model/data";
+
+d NativeDependency: `Something the generated code needs from the target's own ecosystem` {
+  $identifier: `The name that ecosystem knows it by` = string;
+  $ecosystem: `The ecosystem that the dependency is in` = string;
+  $version: `The version the project asks for, spelled as that ecosystem spells it; undefined when it pins none` = string | undefined;
+}
+
+d Package: `Elfie source loaded from outside the project` {
+  $identifier: `The name a [[Use]] refers to it by` = string;
+  $root: `Its directory, relative to [[Workspace.root]]` = string;
+  $nativeDependencies: `What code generated from it requires` = NativeDependency[];
+}
+
+d File extends Source: `One .lfy file in the program, ready to bind` {
+  $package: `The package it came from; undefined for the project's own source` = Package | undefined;
+}
+
+d Target: `One thing the project is compiled into` {
+  $identifier: `The name the project calls it` = string;
+  $marker: `The trait an entity carries to be built for this target` = Entity;
+  $package: `The package that declares it, and the guidance for building against it` = Package;
+  $outputDirectory: `Where its generated code is written, relative to [[Workspace.root]]` = string;
+}
+
+d LoadProblem: `Something that went wrong before there was a node to point at` {
+  $path: `What could not be read, relative to [[Workspace.root]]; undefined when the project itself is at fault` = string | undefined;
+  $message: `What and why` = string;
+}
+
+d Workspace: `A project, loaded and bound` {
+  $root: `The project's directory` = string;
+  $name: `The project's name` = string;
+  $sourceDirectory: `Where the project's own source lives, relative to [[Workspace.root]]` = string;
+  $outputDirectory: `Where generated code is written by default, relative to [[Workspace.root]]` = string;
+  $files: `Every file in the program, in the order they were bound` = File[];
+  $model: `The program` = Model;
+  $targets: `What the project is compiled into` = Target[];
+  $nativeDependencies: `What code generated from the project's own source requires, as its elfie.json names it` = NativeDependency[];
+  $problems: `Every [[LoadProblem]], then every [[Problem]] of [[Workspace.model]]` = (LoadProblem | Problem)[];
+}

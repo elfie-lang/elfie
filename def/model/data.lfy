@@ -1,0 +1,112 @@
+use "../grammar/rules/expression";
+use "../grammar/rules/statement";
+use "../lexer/data";
+use "../parser/data";
+
+enum Layer: `The three layers of every entity, plus the two ways of pointing at an entity itself` {
+  value = `value`,
+  context = `context`,
+  scope = `scope`,
+  parent = `parent scope`,
+  dereference = `the entity a name is bound to`,
+  previous = `the entity the previous statement declared`,
+}
+
+enum ContextProperty: `Every context property; a name after the context accessor must be one of these` {
+  identifier = `identifier`,
+  definition = `definition`,
+  _type = `type`,
+  acceptanceCriteria = `acceptanceCriteria`,
+  parameters = `parameters`,
+  output = `output`,
+  entities = `entities`,
+  extenders = `extenders`,
+  references = `references`,
+  like = `like`,
+  test = `test`,
+  tests = `tests`,
+  itemType = `itemType`,
+}
+
+d Symbol: `A name bound to an entity in one scope` {
+  $name: `The name` = string;
+  $entity: `What the name is bound to; for an alias, the target's entity` = Entity;
+  @acceptanceCriteria
+    .add({ behavior = `Knows the node that declared it, the scope that holds it, and the kind of declaration it came from`, });
+}
+
+d Scope: `A region in which names resolve` {
+  @acceptanceCriteria
+    .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent; a file scope has no parent and also holds the symbols its use statements import`, })
+    .add({ behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`, });
+}
+
+d Applied: `One trait on one entity` {
+  $entity: `The trait` = Entity;
+  $arguments: `Argument nodes, in order` = Node[];
+  @acceptanceCriteria
+    .add({ behavior = `Knows the [[IsClause]], [[ExtendsClause]], or apply [[Call]] that applied it, or the application it was inherited through`, });
+}
+
+d Criterion: `One acceptance criterion as written, with the entity it came from` {
+  $situation: `situation` = string | string[] | undefined;
+  $behavior: `behavior` = string | string[] | undefined;
+  $sideEffects: `sideEffects` = string[] | undefined;
+  $contributor: `The entity whose body holds it: the entity itself or one of its traits` = Entity;
+}
+
+d Test: `One test` {
+  $input: `` = @parameters ?? @type;
+  $expect: `` = @output ?? @type;
+}
+
+d Entity: `A declared thing seen through its context layer` {
+  $identifier: `ContextProperty identifier: the declared name; undefined when anonymous` = string | undefined;
+  $definition: `ContextProperty definition: the description written after the colon` = string | undefined;
+  $type: `ContextProperty _type: the declared or inferred type` = Entity | undefined;
+  $acceptanceCriteria: `ContextProperty acceptanceCriteria: own criteria first, then each trait's in application order` = Criterion[];
+  $traits: `Every trait applied to it, direct or inherited, in application order` = Applied[];
+  $itemType: `ContextProperty itemType: what a list holds; undefined when the type is not a list` = Entity | undefined;
+  $references: `Every entity referenced via a [[Reference]] in definition, documentation, or value` = Usage[];
+
+  $like: `ContextProperty like: a prompt that describes an instance of [[.]]` = (prompt: string) => @type;
+  $test: `ContextProperty test: adds cases this entity must satisfy` = (...tests: Test[]) => @;
+  $tests: `ContextProperty tests: list of all added tests` = Test[];
+
+  @acceptanceCriteria
+    .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)`, });
+}
+
+d FnEntity extends Entity: `A declared fn seen through its context layer` {
+  $parameters: `ContextProperty parameters: parameters` = Symbol[];
+  $output: `ContextProperty output: the declared return type` = Entity;
+}
+
+d TraitEntity extends Entity: `A declared trait seen through its context layer` {
+  $entities: `ContextProperty entities: everything the trait was applied to, directly or by inheritance` = Entity[];
+  $extenders: `ContextProperty extenders: every trait that names it in an [[ExtendsClause]]` = Entity[];
+}
+
+d Usage: `One use of a name or of an entity` {
+  $node: `The node that uses it` = Node;
+  $name: `The name spelled after the accessor; undefined when the usage is of the layer itself` = string | undefined;
+  $layer: `Which layer is read` = Layer;
+  $symbol: `What it resolved to; undefined when unresolved` = Symbol | undefined;
+}
+
+d Problem: `Something that did not resolve; binding continues past it` {
+  $node: `Where` = Node;
+  $message: `What and why` = string;
+}
+
+d Source: `One file to bind, with its [[Use]] statements already resolved` {
+  $path: `The file's path, as [[Token.file]] holds it` = string;
+  $tree: `The parse of the file` = Tree;
+  $uses: `The path each [[Use]] in the tree refers to, in the order the uses appear; undefined where it refers to nothing` = (string | undefined)[];
+}
+
+d Model: `The program, queryable` {
+  @acceptanceCriteria
+    .add({ behavior = `Answers every query of this module for every file it was bound from`, })
+    .add({ behavior = `Lists every [[Problem]] in node order`, });
+}

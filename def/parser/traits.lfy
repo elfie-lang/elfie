@@ -1,4 +1,3 @@
-use "../grammar/rules/statement";
 use "../grammar/terminals/comment";
 use "../grammar/terminals/literal";
 use "../grammar/terminals/punctuation";

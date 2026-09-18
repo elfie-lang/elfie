@@ -26,7 +26,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     })
     .add({
       situation = [
-        `[[rule]] is an [[alternationList]]`,
+        `[[rule]] is an [[GrammarTraits.alternationList]]`,
         `Tokens are left over or trivia precedes the item`,
       ],
       behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia, the item, and the [[ErrorNode]]`,
@@ -45,7 +45,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
 
   // Rules
   @acceptanceCriteria
-    .add({ situation = `A [[terminal]] is referenced`, behavior = `It is satisfied by one token whose [[Token.rule]] is that terminal`, })
+    .add({ situation = `A [[GrammarTraits.terminal]] is referenced`, behavior = `It is satisfied by one token whose [[Token.rule]] is that terminal`, })
     .add({ situation = `Any other rule is referenced`, behavior = `It is satisfied by a node whose children are what its elements produced, in order`, })
     .add({
       situation = [
@@ -118,7 +118,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     },
     {
       input = [Token[]@like(`The lexing of: x : T = 1`), Expression],
-      expect = Tree@like(`An [[Assignment]] root whose left side is the [[Definition]] of x as T and whose right side is 1, because [[Definition]] binds tighter than a [[setter]]`),
+      expect = Tree@like(`An [[Assignment]] root whose left side is the [[Definition]] of x as T and whose right side is 1, because [[Definition]] binds tighter than a [[GrammarTraits.setter]]`),
     },
     {
       input = [Token[]@like(`The lexing of: a ? b : c ? e : f`), Expression],

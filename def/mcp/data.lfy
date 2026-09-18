@@ -1,0 +1,24 @@
+use "../workspace/data";
+
+d ToolArgument: `One argument of a tool` {
+  $name: `As the parameter is named` = string;
+  $description: `What it is for` = string;
+  $type: `string, number, or boolean` = string;
+  $required: `Whether a call must give it` = boolean;
+}
+
+d Tool: `One tool as the server lists it` {
+  $name: `elfie_ followed by the fn's identifier` = string;
+  $description: `The fn's definition` = string;
+  $arguments: `In parameter order` = ToolArgument[];
+}
+
+d ToolResult: `What a call returns` {
+  $text: `Plain text for the agent to read` = string;
+  $isError: `Whether the call failed` = boolean;
+}
+
+d Session: `One agent's connection` {
+  $workspace: `The program as of the last call` = Workspace;
+  $seen: `The modification time and size of every file of the program when it was last read, by path` = object;
+}

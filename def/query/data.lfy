@@ -1,0 +1,69 @@
+use "../grammar/terminals/comment";
+use "../lexer/data";
+use "../model/data";
+use "../model/main" as Binder;
+use "../model/traits";
+
+// Decision: positions are spelled exactly as tokens spell them (line from 1, column from 0,
+// counted in characters) so that no query converts anything; the LSP converts at its edge.
+
+d Position: `A place in a file's text` {
+  $line: `The line, counting from 1 as [[Token.line]] does` = number;
+  $column: `The column within the line, counting characters from 0 as [[Token.column]] does` = number;
+}
+
+d Range: `A run of text in one file` {
+  $file: `The file's path, as [[Token.file]] holds it` = string;
+  $start: `Where it begins` = Position;
+  $end: `The position just after the last character; equal to [[Range.start]] when empty` = Position;
+}
+
+enum Severity: `How bad a diagnostic is` {
+  error = `error`,
+  warning = `warning`,
+  information = `information`,
+  hint = `hint`,
+}
+
+enum Stage: `The stage that reported a diagnostic` {
+  loader = `loader`,
+  lexer = `lexer`,
+  parser = `parser`,
+  binder = `binder`,
+}
+
+d Diagnostic: `One problem, placed` {
+  $range: `Where it is` = Range;
+  $severity: `How bad it is` = Severity;
+  $stage: `Who reported it` = Stage;
+  $message: `What and why` = string;
+}
+
+d Hover: `Everything an editor or agent shows for one entity` {
+  $range: `The token the entity was found at; the identifier of its declaration when it was found by name` = Range;
+  $kind: `The kind of declaration, as [[declaring]] names it; member for a member` = string;
+  $identifier: `The entity's name` = string;
+  $definition: `[[Entity.definition]] with every template reference and execution resolved for the entity` = string | undefined;
+  $type: `The identifier of [[Entity.type]], or the source text of the type when it is anonymous` = string | undefined;
+  $documentation: `The text of the [[Documentation]] attached to the declaration, without the boundaries and with references kept as written` = string | undefined;
+  $criteria: `[[Binder.criteriaOf]] the entity` = Criterion[];
+}
+
+d Completion: `One thing that could be typed at a position` {
+  $label: `What is shown and inserted` = string;
+  $kind: `keyword, path, or the kind of declaration as [[declaring]] names it` = string;
+  $detail: `The definition, when there is one` = string | undefined;
+}
+
+d Outline: `One declaration in the outline of a file` {
+  $name: `The declared name` = string;
+  $kind: `The kind of declaration, as [[declaring]] names it` = string;
+  $range: `The whole declaration, its [[Documentation]] included` = Range;
+  $selectionRange: `The identifier alone` = Range;
+  $children: `Members and the declarations nested in its body, in order` = Outline[];
+}
+
+d Edit: `One replacement in one file` {
+  $range: `What is replaced` = Range;
+  $text: `What replaces it` = string;
+}

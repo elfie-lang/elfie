@@ -1,0 +1,26 @@
+enum Command: `What the command line can do` {
+  help = `help`,
+  version = `version`,
+  init = `init`,
+  check = `check`,
+  format = `format`,
+  tree = `tree`,
+  tokens = `tokens`,
+  compile = `compile`,
+  lsp = `lsp`,
+  mcp = `mcp`,
+}
+
+enum ExitCode: `What the process returns` {
+  success: `Done, and nothing to report` = 0,
+  problems: `Done, and problems were found or outputs rejected` = 1,
+  usage: `The arguments could not be read` = 2,
+  failure: `Something the command relies on failed` = 3,
+}
+
+d Invocation: `One parsed command line` {
+  $command: `What to do` = Command;
+  $root: `The project directory` = string;
+  $arguments: `The positional arguments after the command, in order` = string[];
+  $options: `Named options by name without their dashes; true for a flag, the text for a valued option` = object;
+}

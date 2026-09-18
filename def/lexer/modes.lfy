@@ -1,10 +1,6 @@
 use "../grammar/terminals/comment";
-use "../grammar/terminals/identifier";
-use "../grammar/terminals/keyword";
 use "../grammar/terminals/literal";
-use "../grammar/terminals/space";
 use "../grammar/traits";
-use "./data";
 use "./traits";
 
 enum Mode: `Regions of the source that change which terminals may match` {

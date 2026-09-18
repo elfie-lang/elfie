@@ -1,0 +1,46 @@
+use "../grammar/rules/expression";
+use "../grammar/terminals/identifier";
+use "../grammar/traits";
+use "../lexer/data";
+use "../parser/data";
+use "./data";
+
+// Components the model attaches to grammar rules from components.lfy.
+
+trait scoped: `Owns a scope` {
+  with Scope {
+    where (`A [[Node]] for {{@identifier}} is bound`) -> `A [[Scope]] is created whose parent is the scope of the nearest [[scoped]] ancestor, or null for [[SourceFile]], and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
+  }
+}
+
+trait reading(layer: string): `Reads one layer` {
+  $layer: `The layer` = layer@type;
+  .layer = layer;
+  with Usage {
+    where (`A [[Usage]] is created for a node that satisfies {{@identifier}} or whose accessor token does`) -> `[[Usage.layer]] is {{layer}}`;
+    where (`The node spells no name after its accessor`) -> `[[Usage.name]] is undefined and the usage is of that layer itself`;
+  }
+}
+
+trait applyingTraits: `Applies the traits in its [[TraitUses]] to the entity being declared` {
+  with Entity {
+    where (`A [[Node]] for {{@identifier}} is bound`) -> `Each [[TraitUse]] becomes one [[Applied]] on the declared entity, with the trait resolved by name and the arguments from its [[Arguments]]`;
+    where (`A [[TraitUse]] resolves to a trait`) -> `The declared entity joins that trait's [[TraitEntity.entities]]`;
+  }
+}
+
+trait applyingExtensions: `Takes on what its [[TraitUses]] name, and passes it to everything that later receives this declaration` {
+  with Entity {
+    where (`A [[Node]] for {{@identifier}} is bound`) -> `Each [[TraitUse]] becomes one [[Applied]] on the declared entity, with the trait resolved by name and the arguments from its [[Arguments]]`;
+    where (`A [[TraitUse]] resolves to a trait`) -> `The declared entity joins that trait's [[TraitEntity.extenders]] and not its [[TraitEntity.entities]]`;
+    where (`An entity later receives what is being declared`) -> `It receives each [[TraitUse]] too, recorded as an [[Applied]] whose source is the receiving application, and joins each one's [[TraitEntity.entities]]`;
+  }
+}
+
+trait declaring(holder: is rule, kind: string): `Introduces one name of kind {{kind}}, spelled by the first [[&holder]] found in token order without entering a nested [[Parameters]], [[Block]], [[Object]], or [[Type]]` {
+  with Symbol {
+    where (`A [[Node]] for {{@identifier}} is bound and a [[&holder]] is found that way`) -> `A [[Symbol]] of kind {{kind}} named by the [[Token.value]] of the first [[Identifier]] inside it is added to the scope that encloses the node, not one the node owns, declared by the node`;
+    where (`{{kind}} is loopVariable`) -> `The [[Symbol]] is added to the scope the [[For]] owns instead, so it is visible in the loop body and nowhere else`;
+    where (`No [[&holder]] is found that way`) -> `The node is an anonymous entity`;
+  }
+}

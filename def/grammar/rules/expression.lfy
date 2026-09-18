@@ -96,7 +96,7 @@ d Assignment is infix(Setter): `Sets the left side` {}
 d Member is postfix(Accessor, `(/ [[MemberName]] /)`, true): `A member of a layer of the left expression, or that layer itself` {}
 d Index is postfix(ListOpen, `(/ [[Expression]] /) , [[ListClose]]`): `An element of the left expression, or with nothing inside, the array type of it` {}
 d Call is postfix(GroupOpen, `[[Items]] , [[GroupClose]]`): `Calls the left expression` {}
-d Traits is postfix(IsKeyword, `[[TraitUses]]`): `Applies traits to the declared left expression` {}
+d Traits is postfix(IsKeyword, `[[TraitUses]]`): `Whether traits are applied to the left expression` {}
 d Definition is postfix(Colon, `[[Expression]]`): `Attaches a description or type to the declared left expression` {}
 d Cast is postfix(AsKeyword, `[[TypeExpression]]`): `A value read as a type` {}
 d Conditional is postfix(QuestionMark, `[[Expression]] , [[Colon]] , [[Expression]]`), binding(Level.definition, 'right'): `Chooses between two values` {

@@ -1,0 +1,69 @@
+use "../model/data";
+use "../workspace/data";
+
+enum Reason: `Why a unit needs generating` {
+  fresh = `no output has been generated for it`,
+  changed = `its source differs from what its output was generated from`,
+  dependency = `the output of a unit it depends on was generated after its own`,
+  requested = `the caller asked for it regardless`,
+}
+
+d Marker: `One place where generated code says where it came from` {
+  $outputLine: `The line of the output file that carries the marker, counting from 1` = number;
+  $line: `The source line, counting from 1` = number;
+  $column: `The source column, counting from 0; undefined when the marker names a whole line` = number | undefined;
+  @acceptanceCriteria
+    .add({ behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, the line, and optionally a colon and the column`, });
+}
+
+d SourceMap: `What one output file was generated from` {
+  $target: `The identifier of the target it was generated for` = string;
+  $output: `The output file's path, relative to [[Workspace.root]]` = string;
+  $source: `The source file's path, relative to [[Workspace.root]]` = string;
+  $hash: `SHA-256 of the source file's bytes when the output was generated, as lowercase hex` = string;
+  $generated: `When the output was accepted, as an RFC 3339 timestamp` = string;
+  $markers: `Every [[Marker]] in the output, in output order` = Marker[];
+}
+
+d Unit: `The work the compiler does as one piece: one source file for one target` {
+  $target: `What it is built for` = Target;
+  $file: `The source file` = File;
+  $entities: `The entities of the file built for the target, in file order` = Entity[];
+  $stem: `[[File.path]] relative to the directory it was found under, without its extension; the target's guidance spells the output file from it` = string;
+  $dependencies: `The units of the same target for the files this file uses, transitively through files that have no unit` = Unit[];
+  $outputs: `The outputs the last accepted generation produced, from the target's source maps; empty when none` = SourceMap[];
+  $reason: `Why it is planned; undefined when it is up to date` = Reason | undefined;
+}
+
+d Interface: `What a dependent unit may rely on from another unit's output` {
+  $unit: `The unit` = Unit;
+  $outputs: `The paths of its outputs` = string[];
+  $entities: `Its entities: each one's identifier, kind, definition, type, parameters and output as applicable` = Entity[];
+}
+
+d Request: `Everything the compiler is handed to produce one unit's outputs` {
+  $unit: `The unit` = Unit;
+  $instructions: `The prompt: what to produce, where, and the rules for producing it` = string;
+  $source: `The source file's text` = string;
+  $previous: `The source text the existing outputs were generated from; undefined when unknown` = string | undefined;
+  $existing: `The current text of each existing output, by path` = object;
+  $interfaces: `One [[Interface]] per dependency, in dependency order` = Interface[];
+  $guidance: `Every criterion of [[Target.marker]] and of every trait it extends, in that order, resolved for the marker` = Criterion[];
+  $nativeDependencies: `What the generated code may require from the target's ecosystem` = NativeDependency[];
+}
+
+d Output: `One file the compiler produced` {
+  $path: `Relative to [[Workspace.root]]` = string;
+  $text: `Its content` = string;
+}
+
+d Verdict: `Whether outputs are accepted for a request` {
+  $accepted: `Whether every check passed` = boolean;
+  $problems: `What failed and why, one per failure; empty when accepted` = string[];
+  $sourceMaps: `One per accepted output; empty when rejected` = SourceMap[];
+}
+
+d Plan: `Every unit of a workspace, and which need generating` {
+  $workspace: `The workspace planned` = Workspace;
+  $units: `Every unit of every target, each after its dependencies` = Unit[];
+}

@@ -1,0 +1,66 @@
+use "../format/main" as Formatter;
+use "../query/data";
+use "../query/main" as Query;
+use "../workspace/data";
+use "../workspace/main" as Loader;
+use "./data";
+
+// Decision: the whole server, protocol plumbing included, is defined here and compiled, with the
+// protocol library as an external dependency. The earlier plan to hand-write the plumbing predates
+// external declarations and native dependencies; one crate must be all compiled or all written.
+external Protocol: `The Language Server Protocol, version 3.17, as the target ecosystem's library provides it` = undefined;
+
+fn serve(root?: string): `Serve one editor over standard input and output until it shuts the server down` => number {
+  // Transport
+  @acceptanceCriteria
+    .add({ behavior = `Speaks JSON-RPC 2.0 with the framing [[Protocol]] specifies over standard input and output; nothing else is ever written to standard output, and logging goes to standard error`, })
+    .add({ behavior = `Requests are answered in the order received; a request that fails inside the server yields an error response and the server goes on`, })
+    .add({ behavior = `Returns 0 when exit follows shutdown and 1 when exit arrives without it`, });
+
+  // Lifecycle
+  @acceptanceCriteria
+    .add({ behavior = `On initialize, [[Session.workspace]] is [[Loader.load]] of [[root]], or of the client's first workspace folder, or of the current directory, in that order of availability`, })
+    .add({ behavior = `[[Session.encoding]] is utf-8 when the client offers it, utf-16 otherwise, and the response says which`, })
+    .add({ behavior = `The response advertises hover, definition, references, completion, rename with prepare, document symbols, workspace symbols, and document formatting, and full text document synchronization`, })
+    .add({ behavior = `After initialized, diagnostics are published for every file of the program`, })
+    .add({ behavior = `Registers for watched file changes to every .lfy file and to elfie.json under the root`, });
+
+  // Documents
+  @acceptanceCriteria
+    .add({ situation = `A document is opened or changed`, behavior = `[[Session.workspace]] becomes [[Loader.change]] of it with the full text the editor sent, because full synchronization is what change takes; incremental synchronization would only be reassembled into it`, })
+    .add({ situation = `A document is closed`, behavior = `[[Session.workspace]] becomes [[Loader.change]] of it with undefined, so the disk is read again`, })
+    .add({ situation = `A watched .lfy file that is not open changes, appears, or vanishes`, behavior = `[[Session.workspace]] becomes [[Loader.change]] of it with undefined`, })
+    .add({ situation = `elfie.json changes`, behavior = `[[Session.workspace]] is loaded again and every open document applied to it`, })
+    .add({ situation = `The workspace changed`, behavior = `Diagnostics are published for every file whose [[Query.diagnosticsOf]] differ from those last published, and as empty for a file that left the program`, })
+    .add({ situation = `Another change arrives before the diagnostics for the last one were published`, behavior = `The earlier publication is dropped and only the latest workspace is published`, })
+    .add({ situation = `A document is outside the root, or is neither under [[Workspace.sourceDirectory]] nor used by a file in the program`, behavior = `It gets no diagnostics and every request on it answers as if nothing were there, and one log message says why`, });
+
+  // Positions and paths
+  @acceptanceCriteria
+    .add({ behavior = `A document URI maps to a path relative to [[Workspace.root]] and back`, })
+    .add({ behavior = `A protocol line is [[Position.line]] minus one; a protocol character is the count of [[Session.encoding]] code units in the characters before [[Position.column]] on that line, and back`, })
+    .add({ behavior = `Every range sent is a [[Range]] converted that way`, });
+
+  // Features, each one query
+  @acceptanceCriteria
+    .add({ situation = `hover`, behavior = `[[Query.hoverAt]] as markdown: a code line of the kind, identifier, a colon, and the type; then the definition; then the documentation; then each criterion as a list item reading its situations then its behaviors`, })
+    .add({ situation = `definition`, behavior = `[[Query.definitionOf]] as one location`, })
+    .add({ situation = `references`, behavior = `[[Query.referencesTo]] with the request's includeDeclaration`, })
+    .add({ situation = `completion`, behavior = `[[Query.completionsAt]] with [[Completion.kind]] mapped to the protocol's kinds: keyword to Keyword, path to File, data and type to Struct, trait to Interface, enum to Enum, function and agentFunction to Function, member to Field, variable and parameter to Variable, module to Module, anything else to Text`, })
+    .add({ situation = `prepareRename`, behavior = `The range of the token under the position when [[Query.symbolAt]] finds a symbol, and an error saying nothing is declared here otherwise`, })
+    .add({ situation = `rename`, behavior = `[[Query.renameAt]] as one workspace edit with the edits grouped by file, or an error response carrying the reason it returned`, })
+    .add({ situation = `documentSymbol`, behavior = `[[Query.outlineOf]] nested as the protocol's document symbols, with kinds mapped as completion maps them`, })
+    .add({ situation = `workspace symbol`, behavior = `[[Query.findSymbols]] with the request's query`, })
+    .add({ situation = `formatting`, behavior = `One edit replacing the whole document with [[Formatter.format]] of its tree when that differs, no edits when it is the same, and no edits with a log message when the tree has errors`, });
+
+  @test(
+    {
+      input = [string@like(`A root whose def holds a.lfy reading: const y = z;`)],
+      expect = number@like(`After initialize and initialized, a publishDiagnostics for a.lfy with one binder error at z; after shutdown and exit, 0`),
+    },
+    {
+      input = [string@like(`A root whose def holds a.lfy reading: d A {} and b.lfy reading: use "./a"; const y = A;`)],
+      expect = number@like(`A definition request on A in b.lfy answers with the identifier A in a.lfy; a rename of A to B edits both files`),
+    },
+  );
+}

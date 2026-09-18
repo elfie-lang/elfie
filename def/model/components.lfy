@@ -1,0 +1,52 @@
+use "../grammar/rules/expression";
+use "../grammar/rules/file";
+use "../grammar/rules/statement";
+use "../grammar/terminals/identifier";
+use "../grammar/terminals/punctuation";
+use "./data";
+use "./traits";
+
+// Scopes
+scoped.apply(SourceFile);
+scoped.apply(Block);
+scoped.apply(DataDeclaration);
+scoped.apply(AgentFunctionDeclaration);
+scoped.apply(FunctionDeclaration);
+scoped.apply(InlineFunction);
+scoped.apply(TraitDeclaration);
+scoped.apply(TypeDeclaration);
+scoped.apply(EnumDeclaration);
+scoped.apply(For);
+scoped.apply(With);
+
+// Layers
+reading.apply(ValueAccessor, Layer.value);
+reading.apply(OptionalValueAccessor, Layer.value);
+reading.apply(ContextAccessor, Layer.context);
+reading.apply(ScopeAccessor, Layer.scope);
+reading.apply(ParentScopeAccessor, Layer.parent);
+reading.apply(Name, Layer.value);
+reading.apply(TraitUse, Layer.value);
+reading.apply(Dereference, Layer.dereference);
+reading.apply(Previous, Layer.previous);
+
+// Traits
+applyingTraits.apply(IsClause);
+applyingExtensions.apply(ExtendsClause);
+
+// Names: which rule spells a declared name, and what kind of symbol it makes
+declaring.apply(DataDeclaration, Identifier, 'data');
+declaring.apply(TraitDeclaration, Identifier, 'trait');
+declaring.apply(FunctionDeclaration, Signature, 'function');
+declaring.apply(AgentFunctionDeclaration, Signature, 'agentFunction');
+declaring.apply(TypeDeclaration, Declared, 'type');
+declaring.apply(EnumDeclaration, Declared, 'enum');
+declaring.apply(VariableDeclaration, Declared, 'variable');
+declaring.apply(AliasDeclaration, Declared, 'alias');
+declaring.apply(ExternalDeclaration, Declared, 'external');
+declaring.apply(Use, Identifier, 'module');
+declaring.apply(For, Declared, 'loopVariable');
+declaring.apply(ForFrom, Declared, 'loopVariable');
+declaring.apply(Parameter, Name, 'parameter');
+declaring.apply(SpreadParameter, Name, 'parameter');
+declaring.apply(TypeKey, Name, 'member');

@@ -1,0 +1,19 @@
+use "../workspace/data";
+
+d Document: `A file the editor holds open, whose text the editor owns until it closes it` {
+  $path: `Relative to [[Workspace.root]]` = string;
+  $text: `The text as the editor last sent it` = string;
+  $version: `The editor's version of the text, increasing with each change` = number;
+}
+
+enum Encoding: `How the client counts columns` {
+  utf8 = `utf-8`,
+  utf16 = `utf-16`,
+  utf32 = `utf-32`,
+}
+
+d Session: `One editor's connection` {
+  $workspace: `The program as the editor sees it, open documents included` = Workspace;
+  $documents: `Every open document` = Document[];
+  $encoding: `The position encoding agreed at initialization` = Encoding;
+}
