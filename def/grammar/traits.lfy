@@ -20,17 +20,6 @@ trait rule(syntax: string): `A grammar rule` {
     .add({ behavior = `Optional groups, repetitions, and alternations inside [[syntax]] describe what is valid, not how to choose`, });
 }
 
-trait grammarDocumentation {
-  @acceptanceCriteria
-    .add({ behavior = `Every bare name referenced in any rule's syntax is the identifier of a [[rule]] entity`, })
-    .add({ behavior = `No two [[terminal]] entities have the same syntax`, })
-    .add({ behavior = `Every [[prefix]], [[infix]], and [[postfix]] rule either has [[binding]] itself or names an operator whose every alternative has [[binding]] with one shared precedence`, })
-    .add({ behavior = `No rule has more than one of [[statement]], [[primary]], [[prefix]], [[infix]], and [[postfix]]`, })
-    .add({ behavior = `Every [[escape]] listed by a [[body]] is excluded from that body's plain characters by [[Backslash]]`, })
-    .add({ situation = `Any does not`, behavior = [`Each failing rule is reported with which check it fails`], });
-}
-
-
 // Helper functions
 ace function alternation(...items: (is rule)[]) {
   return items.map((item) => `[[&item]]`).join(` | `);
@@ -44,7 +33,6 @@ ace function bodySyntax(excluded: (is rule)[], escapes: (is escape)[]) {
   const plain = `( Character - ( {{alternation(...excluded)}} ) )`;
   return alternation(...escapes) == `` ? `(: {{plain}} :)` : `(: {{plain}} | {{alternation(...escapes)}} :)`;
 }
-
 
 // Terminals
 trait terminal(syntax: string) extends rule(syntax): `A rule matched against characters and delivered as a single token` {
@@ -110,24 +98,32 @@ trait primary(syntax: string) extends rule(syntax): `An expression rule that beg
 trait prefix(operator: is rule, disallowSpace: boolean = false) extends rule(`[[&operator]] , [[Expression]]`): `An operator followed by the expression it applies to` {
   // If rule is later binding, it will just override these values, which is fine
   if (!(. is binding) && (operator is binding)) {
-    binding.apply(., operator.precedence, operator.associativity)
+    binding.apply(., operator.precedence, operator.associativity);
   }
 
   // One of the few cases where space can matter (e.g. "-1" vs "- 1" should be treated differently)
   if(disallowSpace) {
-    where (`Space, comments, or documentation exists between [[&operator]] and [[Expression]]`) -> `Rule cannot be a match`;
+    where (`Space, NewLine, comments, or documentation exists between [[&operator]] and [[Expression]]`) -> `Rule cannot be a match`;
   }
 }
 
 trait infix(operator: is rule) extends rule(`[[Expression]] , [[&operator]] , [[Expression]]`): `Two expressions joined by an operator` {
   // If rule is later binding, it will just override these values, which is fine
   if (!(. is binding) && (operator is binding)) {
-    binding.apply(., operator.precedence, operator.associativity)
+    binding.apply(., operator.precedence, operator.associativity);
   }
 }
 
-trait postfix(operator: is rule, tail?: string) extends rule(tail == undefined ? `[[Expression]] , [[&operator]]` : `[[Expression]] , [[&operator]] , {{tail}}`): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
+trait postfix(operator: is rule, tail?: string, disallowSpace?: boolean) extends rule(tail == undefined ? `[[Expression]] , [[&operator]]` : `[[Expression]] , [[&operator]] , {{tail}}`): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
   @acceptanceCriteria
     .add({ behavior = `Binds as the token that satisfied [[operator]] does, unless this rule itself has [[binding]], which then wins`, })
-    .add({ behavior = `Expressions inside [[tail]] extend as far as this rule's binding power allows; text after a lower-binding operator belongs to the enclosing expression`, });
+    .add({
+      situation = `[[Expression]] after [[tail]] do not follow [[GroupOpen]] or [[ListOpen]]`,
+      behavior = `Expressions inside tail are parsed with this rule's binding power as the minimum`,
+    });
+
+  // One of the few cases where space can matter (e.g. ".is" vs ". is" should be treated differently)
+  if(disallowSpace) {
+    where (`Space, NewLine, comments, or documentation exists between [[&operator]] and [[tail]]`) -> `Rule cannot be a match`;
+  }
 }

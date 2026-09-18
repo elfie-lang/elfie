@@ -45,22 +45,23 @@ grammar_rules! {
         ExpressionStatement is [statement()]: "An expression on its own" = "[[Expression]] , [[Semicolon]]", // @lfy def/grammar/rules/statement.lfy:41
 
         // Criteria sugar
-        Condition is [rule()]: "One condition, possibly negated or nested" = "(/ [[LogicalNot]] /) , ( [[Group]] | ( [[GroupOpen]] , [[Conditions]] , [[GroupClose]] ) )", // @lfy def/grammar/rules/statement.lfy:45
+        Condition is [rule()]: "One condition, possibly negated or nested" = "(/ [[LogicalNot]] /) , ( [[Group]] | [[ConditionGroup]] )", // @lfy def/grammar/rules/statement.lfy:45
+        ConditionGroup is [rule()]: "One condition, possibly negated or nested" = "(/ [[LogicalNot]] /) , [[GroupOpen]] , [[Conditions]] , [[GroupClose]]", // @lfy def/grammar/rules/statement.lfy:46
         /// Acceptance criteria:
         /// - A negated nested group distributes the negation: "and" becomes "or" and "or"
         ///   becomes "and" inside of the group.
         /// - Conditions joined by "or" merge into one situation; conditions joined by "and"
         ///   are a list of situations.
-        Conditions is [rule()]: "Conditions joined by and or or" = "[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)", // @lfy def/grammar/rules/statement.lfy:46
-        Where is [statement()]: "Adds an acceptance criterion: the conditions are the situation, the expression the behavior" = "[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]", // @lfy def/grammar/rules/statement.lfy:51
+        Conditions is [rule()]: "Conditions joined by and or or" = "[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)", // @lfy def/grammar/rules/statement.lfy:47
+        Where is [statement()]: "Adds an acceptance criterion: the conditions are the situation, the expression the behavior" = "[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]", // @lfy def/grammar/rules/statement.lfy:52
 
         /// `alternationList(...statement@entities)`
-        Statement is [alternation_list(STATEMENTS)]: "Any statement" = "[[DataDeclaration]] | [[AgentFunctionDeclaration]] | [[FunctionDeclaration]] | [[TraitDeclaration]] | [[TypeDeclaration]] | [[EnumDeclaration]] | [[VariableDeclaration]] | [[AliasDeclaration]] | [[ExternalDeclaration]] | [[Use]] | [[Block]] | [[If]] | [[For]] | [[While]] | [[Loop]] | [[Break]] | [[Continue]] | [[Return]] | [[Match]] | [[With]] | [[Async]] | [[Ace]] | [[ExpressionStatement]] | [[Where]]", // @lfy def/grammar/rules/statement.lfy:53
+        Statement is [alternation_list(STATEMENTS)]: "Any statement" = "[[DataDeclaration]] | [[AgentFunctionDeclaration]] | [[FunctionDeclaration]] | [[TraitDeclaration]] | [[TypeDeclaration]] | [[EnumDeclaration]] | [[VariableDeclaration]] | [[AliasDeclaration]] | [[ExternalDeclaration]] | [[Use]] | [[Block]] | [[If]] | [[For]] | [[While]] | [[Loop]] | [[Break]] | [[Continue]] | [[Return]] | [[Match]] | [[With]] | [[Async]] | [[Ace]] | [[ExpressionStatement]] | [[Where]]", // @lfy def/grammar/rules/statement.lfy:54
     }
 }
 
 /// `statement@entities`
-// @lfy def/grammar/rules/statement.lfy:53
+// @lfy def/grammar/rules/statement.lfy:54
 pub const STATEMENTS: &[Entity] = &[
     Entity::Statement(Statement::DataDeclaration),
     Entity::Statement(Statement::AgentFunctionDeclaration),
@@ -94,19 +95,20 @@ mod tests {
     use super::super::expression::list_of;
     use super::*;
 
-    // @lfy def/grammar/rules/statement.lfy:53
+    // @lfy def/grammar/rules/statement.lfy:54
     #[test]
     fn the_statement_set_lists_every_statement_in_order() {
         let statements: Vec<Entity> = rules().filter(|rule| rule.is_statement()).collect();
         assert_eq!(statements, STATEMENTS);
         assert_eq!(STATEMENTS.len(), 24);
-        assert_eq!(Statement::ALL.len(), 31);
+        assert_eq!(Statement::ALL.len(), 32);
         for rule in [
             Statement::Else,
             Statement::ForFrom,
             Statement::ForInOf,
             Statement::MatchArm,
             Statement::Condition,
+            Statement::ConditionGroup,
             Statement::Conditions,
             Statement::Statement,
         ] {
@@ -133,6 +135,19 @@ mod tests {
                 "( [[MatchKeyword]] | [[MatchallKeyword]] ) , [[Expression]] , [[BlockOpen]] , {} , [[BlockClose]]",
                 list_of("[[MatchArm]]")
             )
+        );
+    }
+
+    // @lfy def/grammar/rules/statement.lfy:45
+    #[test]
+    fn a_condition_is_a_group_or_a_condition_group() {
+        assert_eq!(
+            Statement::Condition.expression().unwrap().references(),
+            vec!["LogicalNot", "Group", "ConditionGroup"]
+        );
+        assert_eq!(
+            Statement::ConditionGroup.expression().unwrap().references(),
+            vec!["LogicalNot", "GroupOpen", "Conditions", "GroupClose"]
         );
     }
 }

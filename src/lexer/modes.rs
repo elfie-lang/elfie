@@ -107,13 +107,16 @@ pub fn lex_condition(terminal: Entity) -> &'static [Mode] {
         ], // @lfy def/lexer/modes.lfy:45
         Entity::Literal(Literal::ReferenceClose) => &[Mode::Reference], // @lfy def/lexer/modes.lfy:47
         // Comments nest; documentation does not
-        Entity::Comment(Comment::BlockCommentOpen) => &[Mode::Code, Mode::BlockComment], // @lfy def/lexer/modes.lfy:51
+        Entity::Comment(Comment::BlockCommentOpen) => &[Mode::Code, Mode::BlockComment, Mode::Execution], // @lfy def/lexer/modes.lfy:51
+        Entity::Comment(Comment::LineCommentOpen) => &[Mode::Code], // @lfy def/lexer/modes.lfy:56
         Entity::Comment(Comment::BlockCommentClose) => &[Mode::BlockComment], // @lfy def/lexer/modes.lfy:53
         Entity::Comment(Comment::BlockCommentBody) => &[Mode::BlockComment], // @lfy def/lexer/modes.lfy:54
-        Entity::Comment(Comment::LineCommentBody) => &[Mode::LineComment], // @lfy def/lexer/modes.lfy:57
-        Entity::Comment(Comment::BlockDocumentationClose) => &[Mode::BlockDocumentation], // @lfy def/lexer/modes.lfy:61
-        Entity::Comment(Comment::BlockDocumentationBody) => &[Mode::BlockDocumentation], // @lfy def/lexer/modes.lfy:62
-        Entity::Comment(Comment::LineDocumentationBody) => &[Mode::LineDocumentation], // @lfy def/lexer/modes.lfy:65
+        Entity::Comment(Comment::LineCommentBody) => &[Mode::LineComment], // @lfy def/lexer/modes.lfy:58
+        Entity::Comment(Comment::BlockDocumentationOpen) => &[Mode::Code, Mode::Execution], // @lfy def/lexer/modes.lfy:61
+        Entity::Comment(Comment::BlockDocumentationClose) => &[Mode::BlockDocumentation], // @lfy def/lexer/modes.lfy:63
+        Entity::Comment(Comment::BlockDocumentationBody) => &[Mode::BlockDocumentation], // @lfy def/lexer/modes.lfy:64
+        Entity::Comment(Comment::LineDocumentationOpen) => &[Mode::Code], // @lfy def/lexer/modes.lfy:66
+        Entity::Comment(Comment::LineDocumentationBody) => &[Mode::LineDocumentation], // @lfy def/lexer/modes.lfy:68
         // @lfy def/lexer/main.lfy:103
         _ => IN_CODE,
     }
@@ -165,7 +168,7 @@ pub fn mode_behaviors(terminal: Entity) -> &'static [ModeBehavior] {
         }], // @lfy def/lexer/modes.lfy:46
         Entity::Comment(Comment::BlockCommentOpen) => &[ModeBehavior::Opener {
             mode: Mode::BlockComment,
-            when: Some(&[Mode::Code, Mode::BlockComment]),
+            when: Some(&[Mode::Code, Mode::BlockComment, Mode::Execution]),
         }], // @lfy def/lexer/modes.lfy:50
         Entity::Comment(Comment::BlockCommentClose) => &[ModeBehavior::Closer {
             mode: Mode::BlockComment,
@@ -173,27 +176,27 @@ pub fn mode_behaviors(terminal: Entity) -> &'static [ModeBehavior] {
         Entity::Comment(Comment::LineCommentOpen) => &[
             ModeBehavior::Opener {
                 mode: Mode::LineComment,
-                when: None,
+                when: Some(&[Mode::Code]),
             }, // @lfy def/lexer/modes.lfy:55
             ModeBehavior::AppliedUntilNewLine {
                 mode: Mode::LineComment,
-            }, // @lfy def/lexer/modes.lfy:56
+            }, // @lfy def/lexer/modes.lfy:57
         ],
         Entity::Comment(Comment::BlockDocumentationOpen) => &[ModeBehavior::Opener {
             mode: Mode::BlockDocumentation,
-            when: None,
-        }], // @lfy def/lexer/modes.lfy:59
+            when: Some(&[Mode::Code, Mode::Execution]),
+        }], // @lfy def/lexer/modes.lfy:60
         Entity::Comment(Comment::BlockDocumentationClose) => &[ModeBehavior::Closer {
             mode: Mode::BlockDocumentation,
-        }], // @lfy def/lexer/modes.lfy:60
+        }], // @lfy def/lexer/modes.lfy:62
         Entity::Comment(Comment::LineDocumentationOpen) => &[
             ModeBehavior::Opener {
                 mode: Mode::LineDocumentation,
-                when: None,
-            }, // @lfy def/lexer/modes.lfy:63
+                when: Some(&[Mode::Code]),
+            }, // @lfy def/lexer/modes.lfy:65
             ModeBehavior::AppliedUntilNewLine {
                 mode: Mode::LineDocumentation,
-            }, // @lfy def/lexer/modes.lfy:64
+            }, // @lfy def/lexer/modes.lfy:67
         ],
         _ => &[],
     }
@@ -224,17 +227,15 @@ mod tests {
         assert_eq!(IN_CODE, &[Mode::Code, Mode::Execution, Mode::Reference]);
         assert_eq!(lex_condition(Entity::Keyword(Keyword::IfKeyword)), IN_CODE);
         assert_eq!(lex_condition(Entity::Space(Space::NewLine)), IN_CODE);
-        assert_eq!(
-            lex_condition(Entity::Comment(Comment::LineCommentOpen)),
-            IN_CODE
-        );
+        assert_eq!(lex_condition(Entity::Comment(Comment::LineCommentOpen)), &[Mode::Code]);
+        assert_eq!(lex_condition(Entity::Comment(Comment::LineDocumentationOpen)), &[Mode::Code]);
         assert_eq!(
             lex_condition(Entity::Comment(Comment::BlockDocumentationOpen)),
-            IN_CODE
+            &[Mode::Code, Mode::Execution]
         );
         assert_eq!(
             lex_condition(Entity::Comment(Comment::BlockCommentOpen)),
-            &[Mode::Code, Mode::BlockComment]
+            &[Mode::Code, Mode::BlockComment, Mode::Execution]
         );
         assert_eq!(
             lex_condition(Entity::Literal(Literal::TemplateBody)),

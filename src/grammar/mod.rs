@@ -13,16 +13,17 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;
 
+pub mod checks; // @lfy def/grammar/main.lfy:30
 pub mod ebnf;
 pub mod precedence; // @lfy def/grammar/main.lfy:1
 pub mod rules; // @lfy def/grammar/main.lfy:2
 pub mod terminals; // @lfy def/grammar/main.lfy:5
 pub mod traits; // @lfy def/grammar/main.lfy:11
 
+pub use checks::{Check, Violation};
 pub use precedence::Level;
 pub use traits::{
-    Associativity, Becomes, Binding, Category, Check, GrammarRule, PunctuationClass, Rule,
-    Terminal, Violation,
+    Associativity, Becomes, Binding, Category, GrammarRule, PunctuationClass, Rule, Terminal,
 };
 
 use rules::expression::Expression;
@@ -240,12 +241,11 @@ pub fn grammar_document() -> String {
     lines.join("\n") // @lfy def/grammar/main.lfy:27
 }
 
-/// The global acceptance criteria of the grammar: every check of
-/// [`traits::grammar_documentation`] holds for every rule, otherwise each failing rule is
-/// reported with the check it fails.
+/// The global acceptance criteria of the grammar: every [`Check`] holds for every rule,
+/// otherwise each failing rule is reported with the check it fails.
 // @lfy def/grammar/main.lfy:30
 pub fn validate() -> Result<(), Vec<Violation>> {
-    traits::grammar_documentation()
+    checks::validate()
 }
 
 #[cfg(test)]
@@ -324,7 +324,7 @@ mod tests {
         let document = grammar_document();
         let texts: Vec<&str> = rules().map(|rule| rule.text()).collect();
         assert_eq!(document, texts.join("\n"));
-        assert_eq!(texts.len(), 274);
+        assert_eq!(texts.len(), 275);
         assert!(document.ends_with("SourceFile = (: [[Statement]] :) ;"));
         assert!(document.len() > terminal_document().len());
     }

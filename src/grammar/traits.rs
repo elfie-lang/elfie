@@ -3,18 +3,15 @@
 //! `trait rule` is the [`GrammarRule`] trait every rule enum implements. The traits that
 //! extend it (`terminal` and its kinds, `alternationList`, `statement`, `primary`, `prefix`,
 //! `infix`, `postfix`) are the [`Category`] of a rule, and `binding` is its optional
-//! [`Binding`]. The `ace` helper functions are compiled both into the syntax literals of
+//! [`Binding`]. The global checks of the grammar live in [`super::checks`]. The `ace` helper functions are compiled both into the syntax literals of
 //! every rule (evaluated at compile time) and into the functions here that recompute them,
 //! which the tests use to check the two agree.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
-use std::fmt;
 
+use super::Entity;
 use super::ebnf::{self, Expr};
 use super::precedence::Level;
-use super::terminals::literal::Literal;
-use super::{Entity, rules};
 
 // Rule definitions
 
@@ -53,7 +50,7 @@ pub trait GrammarRule: Copy + Into<Entity> + 'static {
     fn category(self) -> Category;
 
     /// The `binding` trait of the rule, when it has one.
-    // @lfy def/grammar/traits.lfy:81
+    // @lfy def/grammar/traits.lfy:68
     fn binding(self) -> Option<Binding>;
 
     /// `$rule`: EBNF form of this rule.
@@ -97,7 +94,7 @@ pub trait GrammarRule: Copy + Into<Entity> + 'static {
 
     /// The binding this rule groups with: its own `binding`, or for an operator rule the
     /// binding of the operator that satisfied it.
-    // @lfy def/grammar/traits.lfy:132
+    // @lfy def/grammar/traits.lfy:121
     fn effective_binding(self) -> Option<Binding> {
         self.binding()
             .or_else(|| self.category().operator_binding())
@@ -168,7 +165,7 @@ pub trait GrammarRule: Copy + Into<Entity> + 'static {
 // Helper functions
 
 /// `ace function alternation(...items)`: `[[A]] | [[B]] | …`
-// @lfy def/grammar/traits.lfy:36
+// @lfy def/grammar/traits.lfy:24
 pub fn alternation(items: &[Entity]) -> String {
     items
         .iter()
@@ -179,7 +176,7 @@ pub fn alternation(items: &[Entity]) -> String {
 
 /// `ace function quoted(text)`: the text as an EBNF terminal, in single quotes when it
 /// contains a double quote and in double quotes otherwise.
-// @lfy def/grammar/traits.lfy:40
+// @lfy def/grammar/traits.lfy:28
 pub fn quoted(text: &str) -> String {
     if text.contains('"') {
         format!("'{text}'")
@@ -190,14 +187,14 @@ pub fn quoted(text: &str) -> String {
 
 /// `ace function bodySyntax(excluded, escapes)`: any character except the excluded ones,
 /// plus the listed escapes, repeated.
-// @lfy def/grammar/traits.lfy:44
+// @lfy def/grammar/traits.lfy:32
 pub fn body_syntax(excluded: &[Entity], escapes: &[Entity]) -> String {
-    let plain = format!("( Character - ( {} ) )", alternation(excluded)); // @lfy def/grammar/traits.lfy:45
+    let plain = format!("( Character - ( {} ) )", alternation(excluded)); // @lfy def/grammar/traits.lfy:33
     let escapes = alternation(escapes);
     if escapes.is_empty() {
-        format!("(: {plain} :)") // @lfy def/grammar/traits.lfy:46
+        format!("(: {plain} :)") // @lfy def/grammar/traits.lfy:34
     } else {
-        format!("(: {plain} | {escapes} :)") // @lfy def/grammar/traits.lfy:46
+        format!("(: {plain} | {escapes} :)") // @lfy def/grammar/traits.lfy:34
     }
 }
 
@@ -205,7 +202,7 @@ pub fn body_syntax(excluded: &[Entity], escapes: &[Entity]) -> String {
 
 /// `trait terminal(syntax)` and the traits that extend it: a rule matched against
 /// characters and delivered as a single token, which records the rule.
-// @lfy def/grammar/traits.lfy:51
+// @lfy def/grammar/traits.lfy:38
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Terminal {
     /// `terminal(syntax)` with no further trait.
@@ -214,28 +211,28 @@ pub enum Terminal {
     /// identifier; `reserved` marks a keyword no rule uses yet.
     Keyword {
         text: &'static str,
-        reserved: bool, // @lfy def/grammar/traits.lfy:59
-    }, // @lfy def/grammar/traits.lfy:55
+        reserved: bool, // @lfy def/grammar/traits.lfy:46
+    }, // @lfy def/grammar/traits.lfy:42
     /// `punctuation(text)`: punctuation with specific meaning; `class` is the trait that
     /// extends `punctuation`, which also gives the rule its binding.
     Punctuation {
         text: &'static str,
         class: Option<PunctuationClass>,
-    }, // @lfy def/grammar/traits.lfy:61
+    }, // @lfy def/grammar/traits.lfy:48
     /// `boundary(text)`: a symbol that opens or closes a region whose contents are text
     /// rather than code.
-    Boundary { text: &'static str }, // @lfy def/grammar/traits.lfy:68
+    Boundary { text: &'static str }, // @lfy def/grammar/traits.lfy:55
     /// `escape(syntax, becomes)`: a sequence inside a text body that stands for other
     /// characters. Matched inside a body that lists this escape, its characters are
     /// replaced by `becomes` in the token value.
-    Escape { becomes: Becomes }, // @lfy def/grammar/traits.lfy:70
+    Escape { becomes: Becomes }, // @lfy def/grammar/traits.lfy:57
     /// `body(excluded, escapes)`: text between boundaries: any character except the
     /// excluded ones, plus the listed escapes. The token value is the matched text with
     /// each listed escape replaced, and no token is created when it matches nothing.
     Body {
         excluded: &'static [Entity],
         escapes: &'static [Entity],
-    }, // @lfy def/grammar/traits.lfy:74
+    }, // @lfy def/grammar/traits.lfy:61
 }
 
 impl Terminal {
@@ -254,32 +251,32 @@ impl Terminal {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PunctuationClass {
     /// Assigns, possibly after combining with the current value.
-    Setter, // @lfy def/grammar/traits.lfy:62
+    Setter, // @lfy def/grammar/traits.lfy:49
     /// Orders two values.
-    Relational, // @lfy def/grammar/traits.lfy:63
+    Relational, // @lfy def/grammar/traits.lfy:50
     /// Compares two values.
-    Equality, // @lfy def/grammar/traits.lfy:64
+    Equality, // @lfy def/grammar/traits.lfy:51
     /// Adds or subtracts.
-    Additive, // @lfy def/grammar/traits.lfy:65
+    Additive, // @lfy def/grammar/traits.lfy:52
     /// Multiplies or divides.
-    Multiplicative, // @lfy def/grammar/traits.lfy:66
+    Multiplicative, // @lfy def/grammar/traits.lfy:53
 }
 
 impl PunctuationClass {
     /// The binding the class gives its rules.
     pub const fn binding(self) -> Binding {
         match self {
-            PunctuationClass::Setter => Binding::right(Level::Assignment), // @lfy def/grammar/traits.lfy:62
-            PunctuationClass::Relational => Binding::left(Level::Relational), // @lfy def/grammar/traits.lfy:63
-            PunctuationClass::Equality => Binding::left(Level::Equality), // @lfy def/grammar/traits.lfy:64
-            PunctuationClass::Additive => Binding::left(Level::Additive), // @lfy def/grammar/traits.lfy:65
-            PunctuationClass::Multiplicative => Binding::left(Level::Multiplicative), // @lfy def/grammar/traits.lfy:66
+            PunctuationClass::Setter => Binding::right(Level::Assignment), // @lfy def/grammar/traits.lfy:49
+            PunctuationClass::Relational => Binding::left(Level::Relational), // @lfy def/grammar/traits.lfy:50
+            PunctuationClass::Equality => Binding::left(Level::Equality), // @lfy def/grammar/traits.lfy:51
+            PunctuationClass::Additive => Binding::left(Level::Additive), // @lfy def/grammar/traits.lfy:52
+            PunctuationClass::Multiplicative => Binding::left(Level::Multiplicative), // @lfy def/grammar/traits.lfy:53
         }
     }
 }
 
 /// The `becomes` argument of an escape: what its characters are replaced by.
-// @lfy def/grammar/traits.lfy:70
+// @lfy def/grammar/traits.lfy:57
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Becomes {
     /// Fixed replacement text.
@@ -296,7 +293,7 @@ pub enum Becomes {
 impl Becomes {
     /// The replacement for the matched text of the escape, or `None` when the text is
     /// kept as written.
-    // @lfy def/grammar/traits.lfy:71
+    // @lfy def/grammar/traits.lfy:58
     pub fn apply(self, matched: &str) -> Option<Cow<'static, str>> {
         match self {
             Becomes::Text(text) => Some(Cow::Borrowed(text)),
@@ -312,7 +309,7 @@ impl Becomes {
 
 /// The value of a token matched by a `body` terminal: the matched text with each escape
 /// the body lists replaced. Text matched by any other rule is its own value.
-// @lfy def/grammar/traits.lfy:76
+// @lfy def/grammar/traits.lfy:63
 pub fn body_value(body: Entity, raw: &str) -> String {
     let Category::Terminal(Terminal::Body { escapes, .. }) = body.category() else {
         return raw.to_owned();
@@ -337,7 +334,7 @@ pub fn body_value(body: Entity, raw: &str) -> String {
             })
         });
         match escape.flatten() {
-            // @lfy def/grammar/traits.lfy:71
+            // @lfy def/grammar/traits.lfy:58
             Some((len, replacement)) => {
                 match replacement {
                     Some(text) => value.push_str(&text),
@@ -361,21 +358,21 @@ pub fn body_value(body: Entity, raw: &str) -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Associativity {
     /// `a b c` reads as `(a b) c`.
-    Left, // @lfy def/grammar/traits.lfy:88
+    Left, // @lfy def/grammar/traits.lfy:75
     /// `a b c` reads as `a (b c)`.
-    Right, // @lfy def/grammar/traits.lfy:89
+    Right, // @lfy def/grammar/traits.lfy:76
 }
 
 /// `trait binding(precedence, associativity)`: how tightly an operator, or a rule that
 /// overrides its operator, groups with its neighbors. An associativity of `None` (the
 /// source's `null`) means `a b c` is not valid.
-// @lfy def/grammar/traits.lfy:81
+// @lfy def/grammar/traits.lfy:68
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Binding {
     /// `$precedence`: binding power; a higher value binds tighter.
-    pub precedence: Level, // @lfy def/grammar/traits.lfy:82
+    pub precedence: Level, // @lfy def/grammar/traits.lfy:69
     /// `$associativity`: how two of the same precedence group: left, right, or not at all.
-    pub associativity: Option<Associativity>, // @lfy def/grammar/traits.lfy:84
+    pub associativity: Option<Associativity>, // @lfy def/grammar/traits.lfy:71
 }
 
 impl Binding {
@@ -396,7 +393,7 @@ impl Binding {
     }
 
     /// `binding(precedence, null)`: `a b c` is not valid.
-    // @lfy def/grammar/traits.lfy:90
+    // @lfy def/grammar/traits.lfy:77
     pub const fn non_associative(precedence: Level) -> Self {
         Binding {
             precedence,
@@ -420,34 +417,37 @@ pub enum Category {
     /// `rule(syntax)` with no further trait.
     Rule,
     /// `terminal(syntax)` or one of the traits extending it.
-    Terminal(Terminal), // @lfy def/grammar/traits.lfy:51
+    Terminal(Terminal), // @lfy def/grammar/traits.lfy:38
     /// `alternationList(...items)`: a set of rules, any one of which satisfies this rule.
     /// The order of the items carries no meaning; a match for an item is treated as a
     /// match for that item instead of this rule, which is never included in tokens or a
     /// tree.
-    AlternationList(&'static [Entity]), // @lfy def/grammar/traits.lfy:95
+    AlternationList(&'static [Entity]), // @lfy def/grammar/traits.lfy:82
     /// `statement(syntax)`: a rule that is or can be a top level statement.
-    Statement, // @lfy def/grammar/traits.lfy:107
+    Statement, // @lfy def/grammar/traits.lfy:94
     /// `primary(syntax)`: an expression rule that begins with its own token.
-    Primary, // @lfy def/grammar/traits.lfy:109
+    Primary, // @lfy def/grammar/traits.lfy:96
     /// `prefix(operator, disallowSpace)`: an operator followed by the expression it
-    /// applies to. With `disallow_space`, the rule cannot be a match when space,
-    /// comments, or documentation exist between the operator and the expression.
+    /// applies to. With `disallow_space`, the rule cannot be a match when space, a line
+    /// break, comments, or documentation exist between the operator and the expression.
     Prefix {
         operator: Entity,
-        disallow_space: bool, // @lfy def/grammar/traits.lfy:118
-    }, // @lfy def/grammar/traits.lfy:111
+        disallow_space: bool, // @lfy def/grammar/traits.lfy:106
+    }, // @lfy def/grammar/traits.lfy:98
     /// `infix(operator)`: two expressions joined by an operator.
-    Infix { operator: Entity }, // @lfy def/grammar/traits.lfy:123
+    Infix { operator: Entity }, // @lfy def/grammar/traits.lfy:110
     /// `postfix(operator, tail)`: an expression followed by an operator and, when `tail`
     /// is given, more syntax. It binds as the token that satisfied the operator does
-    /// unless the rule itself has a binding; expressions inside the tail extend as far as
-    /// the rule's binding power allows, and text after a lower-binding operator belongs
-    /// to the enclosing expression.
+    /// unless the rule itself has a binding; expressions inside the tail that do not
+    /// follow `GroupOpen` or `ListOpen` are parsed with the rule's binding power as the
+    /// minimum.
     Postfix {
         operator: Entity,
         tail: Option<&'static str>,
-    }, // @lfy def/grammar/traits.lfy:130
+        /// With `disallow_space`, the rule cannot be a match when space, a line break,
+        /// comments, or documentation exist between the operator and the tail.
+        disallow_space: bool, // @lfy def/grammar/traits.lfy:127
+    }, // @lfy def/grammar/traits.lfy:119
 }
 
 impl Category {
@@ -456,29 +456,29 @@ impl Category {
     pub fn derived_syntax(self) -> Option<String> {
         Some(match self {
             Category::Terminal(terminal) => match terminal {
-                // @lfy def/grammar/traits.lfy:55
+                // @lfy def/grammar/traits.lfy:42
                 Terminal::Keyword { text, .. }
                 | Terminal::Punctuation { text, .. }
                 | Terminal::Boundary { text } => quoted(text),
-                // @lfy def/grammar/traits.lfy:74
+                // @lfy def/grammar/traits.lfy:61
                 Terminal::Body { excluded, escapes } => body_syntax(excluded, escapes),
                 Terminal::Plain | Terminal::Escape { .. } => return None,
             },
-            // @lfy def/grammar/traits.lfy:95
+            // @lfy def/grammar/traits.lfy:82
             Category::AlternationList(items) => alternation(items),
-            // @lfy def/grammar/traits.lfy:111
+            // @lfy def/grammar/traits.lfy:98
             Category::Prefix { operator, .. } => {
                 format!("[[{}]] , [[Expression]]", operator.identifier())
             }
-            // @lfy def/grammar/traits.lfy:123
+            // @lfy def/grammar/traits.lfy:110
             Category::Infix { operator } => {
                 format!(
                     "[[Expression]] , [[{}]] , [[Expression]]",
                     operator.identifier()
                 )
             }
-            // @lfy def/grammar/traits.lfy:130
-            Category::Postfix { operator, tail } => match tail {
+            // @lfy def/grammar/traits.lfy:119
+            Category::Postfix { operator, tail, .. } => match tail {
                 None => format!("[[Expression]] , [[{}]]", operator.identifier()),
                 Some(tail) => format!("[[Expression]] , [[{}]] , {tail}", operator.identifier()),
             },
@@ -501,7 +501,7 @@ impl Category {
     /// alternative binds with one shared precedence, that binding (the associativity of
     /// the first alternative). `None` for other categories and for operators without
     /// such a binding.
-    // @lfy def/grammar/traits.lfy:113
+    // @lfy def/grammar/traits.lfy:101
     pub fn operator_binding(self) -> Option<Binding> {
         shared_binding(self.operator()?)
     }
@@ -539,13 +539,13 @@ pub mod category {
     }
 
     /// `terminal(syntax)`
-    // @lfy def/grammar/traits.lfy:51
+    // @lfy def/grammar/traits.lfy:38
     pub const fn terminal() -> Category {
         Category::Terminal(Terminal::Plain)
     }
 
     /// `keyword(text)`
-    // @lfy def/grammar/traits.lfy:55
+    // @lfy def/grammar/traits.lfy:42
     pub const fn keyword(text: &'static str) -> Category {
         Category::Terminal(Terminal::Keyword {
             text,
@@ -554,7 +554,7 @@ pub mod category {
     }
 
     /// `reserved(text)`
-    // @lfy def/grammar/traits.lfy:59
+    // @lfy def/grammar/traits.lfy:46
     pub const fn reserved(text: &'static str) -> Category {
         Category::Terminal(Terminal::Keyword {
             text,
@@ -563,7 +563,7 @@ pub mod category {
     }
 
     /// `punctuation(text)`
-    // @lfy def/grammar/traits.lfy:61
+    // @lfy def/grammar/traits.lfy:48
     pub const fn punctuation(text: &'static str) -> Category {
         Category::Terminal(Terminal::Punctuation { text, class: None })
     }
@@ -576,31 +576,31 @@ pub mod category {
     }
 
     /// `setter(text)`
-    // @lfy def/grammar/traits.lfy:62
+    // @lfy def/grammar/traits.lfy:49
     pub const fn setter(text: &'static str) -> Category {
         classed(text, PunctuationClass::Setter)
     }
 
     /// `relational(text)`
-    // @lfy def/grammar/traits.lfy:63
+    // @lfy def/grammar/traits.lfy:50
     pub const fn relational(text: &'static str) -> Category {
         classed(text, PunctuationClass::Relational)
     }
 
     /// `equality(text)`
-    // @lfy def/grammar/traits.lfy:64
+    // @lfy def/grammar/traits.lfy:51
     pub const fn equality(text: &'static str) -> Category {
         classed(text, PunctuationClass::Equality)
     }
 
     /// `additive(text)`
-    // @lfy def/grammar/traits.lfy:65
+    // @lfy def/grammar/traits.lfy:52
     pub const fn additive(text: &'static str) -> Category {
         classed(text, PunctuationClass::Additive)
     }
 
     /// `multiplicative(text)`
-    // @lfy def/grammar/traits.lfy:66
+    // @lfy def/grammar/traits.lfy:53
     pub const fn multiplicative(text: &'static str) -> Category {
         classed(text, PunctuationClass::Multiplicative)
     }
@@ -612,43 +612,43 @@ pub mod category {
     }
 
     /// `boundary(text)`
-    // @lfy def/grammar/traits.lfy:68
+    // @lfy def/grammar/traits.lfy:55
     pub const fn boundary(text: &'static str) -> Category {
         Category::Terminal(Terminal::Boundary { text })
     }
 
     /// `escape(syntax, becomes)`
-    // @lfy def/grammar/traits.lfy:70
+    // @lfy def/grammar/traits.lfy:57
     pub const fn escape(becomes: Becomes) -> Category {
         Category::Terminal(Terminal::Escape { becomes })
     }
 
     /// `body(excluded, escapes)`
-    // @lfy def/grammar/traits.lfy:74
+    // @lfy def/grammar/traits.lfy:61
     pub const fn body(excluded: &'static [Entity], escapes: &'static [Entity]) -> Category {
         Category::Terminal(Terminal::Body { excluded, escapes })
     }
 
     /// `alternationList(...items)`
-    // @lfy def/grammar/traits.lfy:95
+    // @lfy def/grammar/traits.lfy:82
     pub const fn alternation_list(items: &'static [Entity]) -> Category {
         Category::AlternationList(items)
     }
 
     /// `statement(syntax)`
-    // @lfy def/grammar/traits.lfy:107
+    // @lfy def/grammar/traits.lfy:94
     pub const fn statement() -> Category {
         Category::Statement
     }
 
     /// `primary(syntax)`
-    // @lfy def/grammar/traits.lfy:109
+    // @lfy def/grammar/traits.lfy:96
     pub const fn primary() -> Category {
         Category::Primary
     }
 
     /// `prefix(operator, disallowSpace)`
-    // @lfy def/grammar/traits.lfy:111
+    // @lfy def/grammar/traits.lfy:98
     pub const fn prefix(operator: Entity, disallow_space: bool) -> Category {
         Category::Prefix {
             operator,
@@ -657,167 +657,31 @@ pub mod category {
     }
 
     /// `infix(operator)`
-    // @lfy def/grammar/traits.lfy:123
+    // @lfy def/grammar/traits.lfy:110
     pub const fn infix(operator: Entity) -> Category {
         Category::Infix { operator }
     }
 
     /// `postfix(operator, tail)`
-    // @lfy def/grammar/traits.lfy:130
-    pub const fn postfix(operator: Entity, tail: Option<&'static str>) -> Category {
-        Category::Postfix { operator, tail }
-    }
-}
-
-// Grammar documentation: the checks every rule set must pass
-
-/// One of the checks of `grammarDocumentation`, which the global acceptance criteria of
-/// the grammar repeat.
-// @lfy def/grammar/traits.lfy:23
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Check {
-    /// Every bare name referenced in any rule's syntax is the identifier of a rule entity.
-    BareNamesAreRules, // @lfy def/grammar/traits.lfy:25
-    /// No two terminal entities have the same syntax.
-    TerminalSyntaxIsUnique, // @lfy def/grammar/traits.lfy:26
-    /// Every prefix, infix, and postfix rule either has a binding itself or names an
-    /// operator whose every alternative has a binding with one shared precedence.
-    OperatorRulesBind, // @lfy def/grammar/traits.lfy:27
-    /// No rule has more than one of statement, primary, prefix, infix, and postfix.
-    OneCategory, // @lfy def/grammar/traits.lfy:28
-    /// Every escape listed by a body is excluded from that body's plain characters by
-    /// `Backslash`.
-    BodiesExcludeBackslash, // @lfy def/grammar/traits.lfy:29
-}
-
-impl Check {
-    pub const ALL: &'static [Check] = &[
-        Check::BareNamesAreRules,
-        Check::TerminalSyntaxIsUnique,
-        Check::OperatorRulesBind,
-        Check::OneCategory,
-        Check::BodiesExcludeBackslash,
-    ];
-
-    /// The behavior the check requires, as declared.
-    pub const fn behavior(self) -> &'static str {
-        match self {
-            Check::BareNamesAreRules => {
-                "Every bare name referenced in any rule's syntax is the identifier of a rule entity"
-            }
-            Check::TerminalSyntaxIsUnique => "No two terminal entities have the same syntax",
-            Check::OperatorRulesBind => {
-                "Every prefix, infix, and postfix rule either has binding itself or names an operator whose every alternative has binding with one shared precedence"
-            }
-            Check::OneCategory => {
-                "No rule has more than one of statement, primary, prefix, infix, and postfix"
-            }
-            Check::BodiesExcludeBackslash => {
-                "Every escape listed by a body is excluded from that body's plain characters by Backslash"
-            }
+    // @lfy def/grammar/traits.lfy:119
+    pub const fn postfix(operator: Entity, tail: Option<&'static str>, disallow_space: bool) -> Category {
+        Category::Postfix {
+            operator,
+            tail,
+            disallow_space,
         }
-    }
-}
-
-/// A rule that fails one of the checks, reported with which check it fails.
-// @lfy def/grammar/traits.lfy:31
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Violation {
-    pub rule: Entity,
-    pub check: Check,
-    pub detail: String,
-}
-
-impl fmt::Display for Violation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {} ({:?}: {})",
-            self.rule.identifier(),
-            self.detail,
-            self.check,
-            self.check.behavior()
-        )
-    }
-}
-
-/// `trait grammarDocumentation`: `Ok` when every check holds for every rule, otherwise
-/// every failing rule with the check it fails.
-// @lfy def/grammar/traits.lfy:23
-pub fn grammar_documentation() -> Result<(), Vec<Violation>> {
-    let mut violations = Vec::new();
-    let mut syntaxes: HashMap<&'static str, Entity> = HashMap::new();
-    for rule in rules() {
-        // @lfy def/grammar/traits.lfy:25
-        match ebnf::parse(rule.syntax()) {
-            Ok(expr) => {
-                for reference in expr.references() {
-                    if Entity::lookup(reference).is_none() {
-                        violations.push(Violation {
-                            rule,
-                            check: Check::BareNamesAreRules,
-                            detail: format!("references {reference}, which is not a rule"),
-                        });
-                    }
-                }
-            }
-            Err(error) => violations.push(Violation {
-                rule,
-                check: Check::BareNamesAreRules,
-                detail: format!("syntax does not parse: {error}"),
-            }),
-        }
-        // @lfy def/grammar/traits.lfy:26
-        if rule.is_terminal()
-            && let Some(other) = syntaxes.insert(rule.syntax(), rule)
-        {
-            violations.push(Violation {
-                rule,
-                check: Check::TerminalSyntaxIsUnique,
-                detail: format!("has the same syntax as {}", other.identifier()),
-            });
-        }
-        // @lfy def/grammar/traits.lfy:27
-        if let Some(operator) = rule.category().operator()
-            && rule.effective_binding().is_none()
-        {
-            violations.push(Violation {
-                rule,
-                check: Check::OperatorRulesBind,
-                detail: format!(
-                    "has no binding and its operator {} does not bind with one precedence",
-                    operator.identifier()
-                ),
-            });
-        }
-        // @lfy def/grammar/traits.lfy:28
-        // A rule's category is a single value, so this check holds by construction.
-        // @lfy def/grammar/traits.lfy:29
-        if let Category::Terminal(Terminal::Body { excluded, escapes }) = rule.category()
-            && !escapes.is_empty()
-            && !excluded.contains(&Entity::Literal(Literal::Backslash))
-        {
-            violations.push(Violation {
-                rule,
-                check: Check::BodiesExcludeBackslash,
-                detail: "lists escapes but does not exclude Backslash".to_owned(),
-            });
-        }
-    }
-    if violations.is_empty() {
-        Ok(()) // @lfy def/grammar/traits.lfy:30
-    } else {
-        Err(violations) // @lfy def/grammar/traits.lfy:31
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::grammar::rules;
     use crate::grammar::terminals::keyword::Keyword;
+    use crate::grammar::terminals::literal::Literal;
     use crate::grammar::terminals::punctuation::Punctuation;
 
-    // @lfy def/grammar/traits.lfy:36
+    // @lfy def/grammar/traits.lfy:24
     #[test]
     fn alternation_joins_references_with_bars() {
         assert_eq!(
@@ -830,7 +694,7 @@ mod tests {
         assert_eq!(alternation(&[]), "");
     }
 
-    // @lfy def/grammar/traits.lfy:40
+    // @lfy def/grammar/traits.lfy:28
     #[test]
     fn quoted_picks_the_quote_the_text_does_not_contain() {
         assert_eq!(quoted("d"), "\"d\"");
@@ -838,7 +702,7 @@ mod tests {
         assert_eq!(quoted("'"), "\"'\"");
     }
 
-    // @lfy def/grammar/traits.lfy:44
+    // @lfy def/grammar/traits.lfy:32
     #[test]
     fn body_syntax_lists_escapes_only_when_there_are_some() {
         let excluded = [Entity::Space(
@@ -869,7 +733,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/traits.lfy:55
+    // @lfy def/grammar/traits.lfy:42
     #[test]
     fn every_derived_syntax_matches_the_compiled_syntax() {
         for rule in rules() {
@@ -879,7 +743,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/traits.lfy:62
+    // @lfy def/grammar/traits.lfy:49
     #[test]
     fn punctuation_classes_carry_their_bindings() {
         assert_eq!(
@@ -905,7 +769,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/traits.lfy:71
+    // @lfy def/grammar/traits.lfy:58
     #[test]
     fn escapes_become_their_replacement() {
         assert_eq!(Becomes::Text("\n").apply("\\n"), Some(Cow::Borrowed("\n")));
@@ -922,7 +786,7 @@ mod tests {
         assert_eq!(Becomes::CharacterWithCodePoint.apply("\\u110000"), None);
     }
 
-    // @lfy def/grammar/traits.lfy:76
+    // @lfy def/grammar/traits.lfy:63
     #[test]
     fn body_values_replace_the_listed_escapes_only() {
         let double = Entity::Literal(Literal::DoubleQuoteBody);
@@ -975,7 +839,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/traits.lfy:113
+    // @lfy def/grammar/traits.lfy:101
     #[test]
     fn operator_rules_bind_as_their_operators_do() {
         use crate::grammar::rules::expression::Expression;
@@ -1005,21 +869,5 @@ mod tests {
             Some(Binding::non_associative(Level::Wrapper))
         );
         assert_eq!(Keyword::AsKeyword.category().operator_binding(), None);
-    }
-
-    // @lfy def/grammar/traits.lfy:30
-    #[test]
-    fn the_grammar_passes_every_check() {
-        if let Err(violations) = grammar_documentation() {
-            panic!(
-                "{}",
-                violations
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
-        }
-        assert_eq!(Check::ALL.len(), 5);
     }
 }

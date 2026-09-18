@@ -7,10 +7,10 @@ grammar_rules! {
     /// The root rule of a source file.
     pub enum File {
         /// Acceptance criteria:
-        /// - When `Space`, `Comment`, or `Documentation` appear between two tokens and no
-        ///   rule exists on either token specifying that they are not allowed for a match:
-        ///   `Space`, `Comment`, and `Documentation` may appear between any two tokens
-        ///   outside text bodies.
+        /// - When `Space`, `NewLine`, `Comment`, or `Documentation` appear between two
+        ///   tokens and no rule exists on either token specifying that they are not
+        ///   allowed for a match: `Space`, `NewLine`, `Comment`, and `Documentation` may
+        ///   appear between any two tokens outside text bodies.
         SourceFile is [rule()]: "A file: statements in order" = "(: [[Statement]] :)", // @lfy def/grammar/rules/file.lfy:6
     }
 }

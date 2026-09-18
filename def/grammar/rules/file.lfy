@@ -7,9 +7,9 @@ d SourceFile is rule(`(: [[Statement]] :)`): `A file: statements in order` {
   @acceptanceCriteria
     .add({
       situation = [
-        `[[Space]], [[Comment]], or [[Documentation]] appear between two tokens`,
-        `No rule exists on either token specifing that [[Space]], [[Comment]], or [[Documentation]] are not allowed for a match`,
+        `[[Space]], [[NewLine]], [[Comment]], or [[Documentation]] appear between two tokens`,
+        `No rule exists on either token specifing that [[Space]], [[NewLine]], [[Comment]], or [[Documentation]] are not allowed for a match`,
       ],
-      behavior = `[[Space]], [[Comment]], and [[Documentation]] may appear between any two tokens outside text bodies`,
+      behavior = `[[Space]], [[NewLine]], [[Comment]], and [[Documentation]] may appear between any two tokens outside text bodies`,
     });
 }

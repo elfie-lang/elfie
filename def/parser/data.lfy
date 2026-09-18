@@ -1,0 +1,29 @@
+use "../grammar/traits";
+use "../lexer/data";
+
+d Node: `A rule satisfied by a run of consecutive tokens` {
+  $rule: `The rule this node satisfies` = Rule;
+  $children: `Nodes and tokens in source order, trivia included` = (Node | Token)[];
+  $start: `Index of the first token covered, counting from 0 over [[Tree.tokens]]` = number;
+  $end: `Index after the last token covered` = number;
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Joining [[Token.raw]] of the tokens from [[Node.start]] up to [[Node.end]] reproduces the source this node covers`,
+        `Each child [[Token]] is reached through exactly one child`,
+      ],
+    })
+    .add({ behavior = `An [[alternationList]] rule has no node; the item that satisfied it stands in its place`, });
+}
+
+d ErrorNode extends Node: `Tokens the parser could not fit into the open rule` {
+  $rule: `No rule being satisfied due to error` = undefined;
+  $expected: `Identifiers of what could have continued the open rule at [[Node.start]]` = string[];
+}
+
+d Tree: `The result of parsing one token list` {
+  $tokens: `The tokens parsed, exactly as the lexer delivered them` = Token[];
+  $rootRule: `The root rule that was being used to build the tree` = Rule;
+  $root: `The root node, covering every token` = Node;
+  $errors: `Every [[ErrorNode]], if any, in the tree ordered by [[Node.start]]` = ErrorNode[];
+}

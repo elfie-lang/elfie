@@ -23,7 +23,7 @@ d Documentation is rule(`( [[BlockDocumentationOpen]] , (: [[BlockDocumentationB
     .add({ behavior = `Attaches to the declaration that follows it`, })
     .add({
       situation = `No declaration follows`,
-      behavior = `Attaches to the declaration that follows it`,
+      behavior = `Attaches to nothing`,
     })
     .add({
       situation = [
@@ -37,6 +37,6 @@ d Documentation is rule(`( [[BlockDocumentationOpen]] , (: [[BlockDocumentationB
         `[[LineDocumentationOpen]] is the first token`,
         `[[TemplateReference]] is used`,
       ],
-      behavior = `[[TemplateReference]] cannot contain a [[Newline]] character inside of it`,
+      behavior = `A [[NewLine]] inside the [[TemplateReference]] is not trivia`,
     });
 }

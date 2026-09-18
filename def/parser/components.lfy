@@ -1,0 +1,39 @@
+use "../grammar/rules/expression";
+use "../grammar/rules/file";
+use "../grammar/rules/statement";
+use "../grammar/terminals/comment";
+use "../grammar/terminals/punctuation";
+use "../grammar/terminals/space";
+use "../grammar/traits";
+use "./traits";
+
+// Trivia
+trivia.apply(Space);
+trivia.apply(NewLine);
+trivia.apply(Comment);
+trivia.apply(Documentation);
+
+// Every statement can have documentation and should be recoverable
+for (const rule in statement@entities) {
+  documented.apply(rule);
+  recoverable.apply(rule, Semicolon, BlockOpen, BlockClose);
+}
+recoverable.apply(SourceFile, Semicolon, BlockOpen, BlockClose);
+
+// More targetted recovery
+recoverable.apply(Parameters, GroupClose);
+recoverable.apply(Arguments, GroupClose);
+recoverable.apply(Call, GroupClose);
+recoverable.apply(List, ListClose);
+recoverable.apply(Index, ListClose);
+recoverable.apply(TemplateReference, ReferenceClose);
+recoverable.apply(TemplateExecution, ExecutionClose);
+
+// What to try for first when things begin with the same token
+triedBefore.apply(Block, Expression);
+triedBefore.apply(Block, ExpressionStatement);
+triedBefore.apply(FunctionDeclaration, ExpressionStatement);
+triedBefore.apply(TraitDeclaration, ExpressionStatement);
+triedBefore.apply(Object, Type);
+triedBefore.apply(InlineFunction, Group);
+triedBefore.apply(ConditionGroup, Group);

@@ -299,7 +299,7 @@ fn value(rule: Option<Entity>, raw: &str) -> String {
         Some(Entity::Space(Space::NewLine)) => space::NEW_LINE_VALUE.to_owned(),
         // @lfy def/grammar/terminals/literal.lfy:12
         Some(Entity::Literal(Literal::NumberLiteral)) => literal::number_value(raw),
-        // @lfy def/grammar/traits.lfy:76
+        // @lfy def/grammar/traits.lfy:63
         Some(rule) if rule.is_body() => grammar::traits::body_value(rule, raw),
         // @lfy def/lexer/main.lfy:44
         _ => raw.to_owned(),
@@ -907,12 +907,26 @@ mod tests {
             values("/** a /** b **/"),
             vec!["/**", " a ", "/", "** b ", "**/"]
         );
-        // Block comments do not open inside template executions; line comments do.
-        assert_eq!(rules_of("`{{ /* }}`")[3], punctuation(Punctuation::Slash));
+        // Block comments and documentation open inside template executions; line
+        // comments and line documentation do not and are not candidates there.
         assert_eq!(
-            rules_of("`{{ // c\n}}`")[3],
-            comment(Comment::LineCommentOpen)
+            rules_of("`{{ /* c }} */ x }}`")[3..7],
+            [
+                comment(Comment::BlockCommentOpen),
+                comment(Comment::BlockCommentBody),
+                comment(Comment::BlockCommentClose),
+                SPACE
+            ]
         );
+        assert_eq!(rules_of("`{{ /** d **/ }}`")[3], comment(Comment::BlockDocumentationOpen));
+        assert_eq!(
+            rules_of("`{{ // c\n}}`")[3..5],
+            [punctuation(Punctuation::Slash), punctuation(Punctuation::Slash)]
+        );
+        assert_eq!(rules_of("`{{ /// c }}`")[3], punctuation(Punctuation::Slash));
+        // Inside a reference neither kind of comment is a candidate.
+        assert_eq!(rules_of("`[[ /* c ]]`")[3], punctuation(Punctuation::Slash));
+        assert_eq!(rules_of("`[[ // c ]]`")[3], punctuation(Punctuation::Slash));
     }
 
     // @lfy def/lexer/traits.lfy:37
@@ -975,6 +989,10 @@ mod tests {
             "def/lexer/main.lfy",
             "def/lexer/modes.lfy",
             "def/lexer/traits.lfy",
+            "def/parser/components.lfy",
+            "def/parser/data.lfy",
+            "def/parser/main.lfy",
+            "def/parser/traits.lfy",
         ] {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
             let tokens = lex(&source, Some(path)).unwrap_or_else(|e| panic!("{path}: {e}"));

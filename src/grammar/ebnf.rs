@@ -42,6 +42,22 @@ pub enum Expr {
 }
 
 impl Expr {
+    /// Visits this expression and every expression nested inside it, outermost first.
+    pub fn for_each<'e>(&'e self, visit: &mut impl FnMut(&'e Expr)) {
+        visit(self);
+        match self {
+            Expr::Terminal(_) | Expr::Reference(_) | Expr::Special(_) => {}
+            Expr::Sequence(items) | Expr::Alternation(items) => {
+                items.iter().for_each(|item| item.for_each(visit));
+            }
+            Expr::Exception(included, excluded) => {
+                included.for_each(visit);
+                excluded.for_each(visit);
+            }
+            Expr::Optional(inner) | Expr::Repetition(inner) => inner.for_each(visit),
+        }
+    }
+
     /// Every rule name referenced by this expression, in order of appearance.
     pub fn references(&self) -> Vec<&str> {
         fn walk<'e>(expr: &'e Expr, out: &mut Vec<&'e str>) {
@@ -330,6 +346,8 @@ struct Compiled {
 /// The complete rule set with every syntax parsed and every reference resolved.
 pub struct Grammar {
     rules: HashMap<&'static str, Compiled>,
+    /// The rules that can be satisfied without taking anything: an empty match.
+    nullable: HashSet<&'static str>,
 }
 
 impl Grammar {
@@ -383,10 +401,28 @@ impl Grammar {
             }
         }
         if errors.is_empty() {
-            Ok(Grammar { rules: compiled })
+            let nullable = nullable_rules(&compiled);
+            Ok(Grammar {
+                rules: compiled,
+                nullable,
+            })
         } else {
             Err(errors)
         }
+    }
+
+    /// Whether the rule can be satisfied without taking anything.
+    // @lfy def/grammar/main.lfy:36
+    pub fn is_nullable(&self, identifier: &str) -> bool {
+        self.nullable.contains(identifier)
+    }
+
+    /// Whether `expr` can be satisfied without taking anything: optional groups and
+    /// repetitions always can, a sequence can when every item can, an alternation when
+    /// any alternative can, and a reference when the rule it names can.
+    // @lfy def/grammar/main.lfy:36
+    pub fn is_expr_nullable(&self, expr: &Expr) -> bool {
+        expr_nullable(expr, &self.nullable)
     }
 
     /// The rule with this identifier.
@@ -435,6 +471,40 @@ impl Grammar {
         Matcher::new(self, input)
             .ends_of_rule(identifier, 0)
             .contains(&input.len())
+    }
+}
+
+fn expr_nullable(expr: &Expr, nullable: &HashSet<&'static str>) -> bool {
+    match expr {
+        Expr::Terminal(_) | Expr::Special(_) => false,
+        Expr::Reference(name) => nullable.contains(name.as_str()),
+        Expr::Sequence(items) => items.iter().all(|item| expr_nullable(item, nullable)),
+        Expr::Alternation(items) => items.iter().any(|item| expr_nullable(item, nullable)),
+        Expr::Exception(included, _) => expr_nullable(included, nullable),
+        Expr::Optional(_) | Expr::Repetition(_) => true,
+    }
+}
+
+/// The rules that can match nothing, found as a fixed point over every rule's syntax. A
+/// terminal is delivered as one token and never counts as nullable, whatever its
+/// character-level syntax allows: a body that matches no characters creates no token.
+fn nullable_rules(compiled: &HashMap<&'static str, Compiled>) -> HashSet<&'static str> {
+    let mut nullable: HashSet<&'static str> = HashSet::new();
+    loop {
+        let mut changed = false;
+        for (&identifier, rule) in compiled {
+            if let Body::Expr(expr) = &rule.body
+                && !rule.rule.is_terminal()
+                && !nullable.contains(identifier)
+                && expr_nullable(expr, &nullable)
+            {
+                nullable.insert(identifier);
+                changed = true;
+            }
+        }
+        if !changed {
+            return nullable;
+        }
     }
 }
 
@@ -546,15 +616,23 @@ fn normalize(ends: &mut Vec<usize>) {
     ends.dedup();
 }
 
+impl Grammar {
+    /// The compiled grammar built on first use, or the errors that stop it compiling.
+    pub fn compile_cached() -> Result<&'static Grammar, &'static [Error]> {
+        static GRAMMAR: OnceLock<Result<Grammar, Vec<Error>>> = OnceLock::new();
+        match GRAMMAR.get_or_init(Grammar::compile) {
+            Ok(grammar) => Ok(grammar),
+            Err(errors) => Err(errors),
+        }
+    }
+}
+
 /// The compiled grammar, built on first use. The rule set is fixed at compile time, so a
 /// failure here is a defect in `def/grammar` and is reported by panicking.
 pub fn grammar() -> &'static Grammar {
-    static GRAMMAR: OnceLock<Grammar> = OnceLock::new();
-    GRAMMAR.get_or_init(|| {
-        Grammar::compile().unwrap_or_else(|errors| {
-            let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
-            panic!("the grammar does not compile:\n{}", errors.join("\n"))
-        })
+    Grammar::compile_cached().unwrap_or_else(|errors| {
+        let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        panic!("the grammar does not compile:\n{}", errors.join("\n"))
     })
 }
 
@@ -690,6 +768,28 @@ mod tests {
         assert!(!grammar.matches("Documentation", "/// a ]] d"));
         assert_eq!(grammar.longest_match("Expression", "x"), Some(1));
         assert_eq!(grammar.longest_match("Statement", "break;"), Some(6));
+    }
+
+    // @lfy def/grammar/main.lfy:36
+    #[test]
+    fn nullable_rules_are_those_that_can_match_nothing() {
+        let grammar = grammar();
+        assert!(grammar.is_nullable("Items"));
+        assert!(!grammar.is_nullable("Expression"));
+        assert!(!grammar.is_nullable("Member"));
+        assert!(grammar.is_nullable("SourceFile"));
+        // A body terminal matches no characters only by creating no token.
+        assert!(!grammar.is_nullable("TemplateBody"));
+        assert!(!grammar.is_nullable("LineCommentBody"));
+        assert!(!grammar.is_nullable("Identifier"));
+        assert!(!grammar.is_nullable("Character"));
+        assert!(grammar.is_expr_nullable(&parse("(/ [[Comma]] /)").unwrap()));
+        assert!(grammar.is_expr_nullable(&parse("(: [[Comma]] :) , [[Items]]").unwrap()));
+        assert!(!grammar.is_expr_nullable(&parse("[[Items]] , [[Comma]]").unwrap()));
+        assert!(grammar.is_expr_nullable(&parse("[[Comma]] | [[Items]]").unwrap()));
+        let mut count = 0;
+        parse("[[A]] , ( B | (/ C /) )").unwrap().for_each(&mut |_| count += 1);
+        assert_eq!(count, 6);
     }
 
     #[test]

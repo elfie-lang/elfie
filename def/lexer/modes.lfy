@@ -47,19 +47,22 @@ modeCloser.apply(ReferenceClose, Mode.reference);
 candidateInModes.apply(ReferenceClose, Mode.reference);
 
 // Comments nest; documentation does not
-modeOpener.apply(BlockCommentOpen, Mode.blockComment, inMode([Mode.code, Mode.blockComment]));
-candidateInModes.apply(BlockCommentOpen, Mode.code, Mode.blockComment);
+modeOpener.apply(BlockCommentOpen, Mode.blockComment, inMode([Mode.code, Mode.blockComment, Mode.execution]));
+candidateInModes.apply(BlockCommentOpen, Mode.code, Mode.blockComment, Mode.execution);
 modeCloser.apply(BlockCommentClose, Mode.blockComment);
 candidateInModes.apply(BlockCommentClose, Mode.blockComment);
 candidateInModes.apply(BlockCommentBody, Mode.blockComment);
-modeOpener.apply(LineCommentOpen, Mode.lineComment);
+modeOpener.apply(LineCommentOpen, Mode.lineComment, inMode([Mode.code]));
+candidateInModes.apply(LineCommentOpen, Mode.code);
 appliedUntilNewLine.apply(LineCommentOpen, Mode.lineComment);
 candidateInModes.apply(LineCommentBody, Mode.lineComment);
 
-modeOpener.apply(BlockDocumentationOpen, Mode.blockDocumentation);
+modeOpener.apply(BlockDocumentationOpen, Mode.blockDocumentation, inMode([Mode.code, Mode.execution]));
+candidateInModes.apply(BlockDocumentationOpen, Mode.code, Mode.execution);
 modeCloser.apply(BlockDocumentationClose, Mode.blockDocumentation);
 candidateInModes.apply(BlockDocumentationClose, Mode.blockDocumentation);
 candidateInModes.apply(BlockDocumentationBody, Mode.blockDocumentation);
-modeOpener.apply(LineDocumentationOpen, Mode.lineDocumentation);
+modeOpener.apply(LineDocumentationOpen, Mode.lineDocumentation, inMode([Mode.code]));
+candidateInModes.apply(LineDocumentationOpen, Mode.code);
 appliedUntilNewLine.apply(LineDocumentationOpen, Mode.lineDocumentation);
 candidateInModes.apply(LineDocumentationBody, Mode.lineDocumentation);

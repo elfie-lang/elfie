@@ -27,12 +27,12 @@ grammar_rules! {
         Comment is [rule()]: "A comment; carries no meaning" = "( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )", // @lfy def/grammar/terminals/comment.lfy:20
         /// Acceptance criteria:
         /// - Attaches to the declaration that follows it.
-        /// - When no declaration follows: attaches to the declaration that follows it.
+        /// - When no declaration follows: attaches to nothing.
         /// - When no declaration exists between two or more documentation blocks and the
         ///   documentation blocks were all opened with `BlockDocumentationOpen`: attaches
         ///   to the "global" object.
         /// - When `LineDocumentationOpen` is the first token and `TemplateReference` is
-        ///   used: the `TemplateReference` cannot contain a `Newline` character inside of it.
+        ///   used: a `NewLine` inside the `TemplateReference` is not trivia.
         Documentation is [rule()]: "Documentation for the declaration that follows it" = "( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )", // @lfy def/grammar/terminals/comment.lfy:21
     }
 }

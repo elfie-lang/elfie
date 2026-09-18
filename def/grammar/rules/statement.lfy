@@ -42,7 +42,8 @@ d ExpressionStatement is statement(`[[Expression]] , [[Semicolon]]`): `An expres
 
 // Criteria sugar
 
-d Condition is rule(`(/ [[LogicalNot]] /) , ( [[Group]] | ( [[GroupOpen]] , [[Conditions]] , [[GroupClose]] ) )`): `One condition, possibly negated or nested` {}
+d Condition is rule(`(/ [[LogicalNot]] /) , ( [[Group]] | [[ConditionGroup]] )`): `One condition, possibly negated or nested` {}
+d ConditionGroup is rule(`(/ [[LogicalNot]] /) , [[GroupOpen]] , [[Conditions]] , [[GroupClose]]`): `One condition, possibly negated or nested` {}
 d Conditions is rule(`[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)`): `Conditions joined by and or or` {
   @acceptanceCriteria
     .add({ behavior = `A negated nested group distributes the negation: "and" becomes "or" and "or" becomes "and" inside of the group`, })
