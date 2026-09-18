@@ -267,7 +267,7 @@ pub enum TypeRef {
     /// `string`, `number`, `boolean`, `object`, `function`, or `trait`.
     Primitive(&'static str),
     /// A literal type: a string, template, number, null, or undefined.
-    Literal(Value),
+    Literal(Box<Value>),
     List(Box<TypeRef>),
     Union(Vec<TypeRef>),
     /// Anything with the trait.
@@ -292,7 +292,7 @@ pub enum Value {
     /// written in.
     Function(NodeRef, ScopeId),
     Scope(ScopeId),
-    Type(TypeRef),
+    Type(Box<TypeRef>),
 }
 
 impl Value {
