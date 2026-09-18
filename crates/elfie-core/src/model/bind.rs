@@ -265,10 +265,10 @@ impl Binder {
     pub fn link_uses(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let root = NodeRef { file, index: 0 };
-        let uses: Vec<NodeRef> = trees
-            .children(root)
-            .into_iter()
-            .filter(|&c| trees.is(c, S::Use))
+        // Every Use of the file in preorder, as the workspace lists Source.uses.
+        let uses: Vec<NodeRef> = (0..trees.nodes[file].len())
+            .map(|index| NodeRef { file, index })
+            .filter(|&r| trees.is(r, S::Use))
             .collect();
         for (i, use_node) in uses.into_iter().enumerate() {
             let Some(Some(path)) = trees.sources[file].uses.get(i) else {
