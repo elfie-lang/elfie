@@ -1084,7 +1084,7 @@ fn the_elfie_definitions_parse_start_to_finish() {
         "def/parser/main.lfy",
         "def/parser/traits.lfy",
     ] {
-        let source = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        let source = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../").to_string() + path).unwrap_or_else(|e| panic!("{path}: {e}"));
         let lexed = lex(&source, Some(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
         let tree = parse(lexed, None);
         check_lossless(&tree, &source);

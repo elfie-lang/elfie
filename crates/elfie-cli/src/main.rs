@@ -10,9 +10,9 @@ use std::fs;
 use std::io::{self, BufWriter, ErrorKind, Write};
 use std::process::ExitCode;
 
-use elfie::grammar::GrammarRule;
-use elfie::lexer::lex;
-use elfie::parser::parse;
+use elfie_core::grammar::GrammarRule;
+use elfie_core::lexer::lex;
+use elfie_core::parser::parse;
 
 fn main() -> ExitCode {
     let mut args: Vec<String> = env::args().skip(1).collect();

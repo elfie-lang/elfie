@@ -994,7 +994,7 @@ mod tests {
             "def/parser/main.lfy",
             "def/parser/traits.lfy",
         ] {
-            let source = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+            let source = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../").to_string() + path).unwrap_or_else(|e| panic!("{path}: {e}"));
             let tokens = lex(&source, Some(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
             assert_eq!(
                 tokens.iter().map(|t| t.raw.as_str()).collect::<String>(),

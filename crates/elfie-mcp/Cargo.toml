@@ -1,0 +1,7 @@
+[package]
+name = "elfie-mcp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+elfie-core.workspace = true

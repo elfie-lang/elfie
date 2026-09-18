@@ -1,0 +1,11 @@
+[package]
+name = "elfie"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "elfie"
+path = "src/main.rs"
+
+[dependencies]
+elfie-core.workspace = true
