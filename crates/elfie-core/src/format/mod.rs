@@ -117,7 +117,9 @@ fn is_accessor(rule: Entity) -> bool {
 fn closes_bracket(rule: Entity) -> bool {
     matches!(
         rule,
-        Entity::Punctuation(Punctuation::GroupClose | Punctuation::ListClose | Punctuation::BlockClose)
+        Entity::Punctuation(
+            Punctuation::GroupClose | Punctuation::ListClose | Punctuation::BlockClose
+        )
     )
 }
 
@@ -129,8 +131,12 @@ fn glue_after(a: Tok) -> bool {
         // @lfy def/format/main.lfy:38
         Entity::Punctuation(Punctuation::GroupOpen | Punctuation::ListOpen) => true,
         Entity::Literal(Literal::ExecutionOpen | Literal::ReferenceOpen) => true,
-        Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => a.position == 0,
-        Entity::Literal(Literal::TemplateBody | Literal::SingleQuoteBody | Literal::DoubleQuoteBody) => true,
+        Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
+            a.position == 0
+        }
+        Entity::Literal(
+            Literal::TemplateBody | Literal::SingleQuoteBody | Literal::DoubleQuoteBody,
+        ) => true,
         // A `where` condition's negation is written like the prefix operator it mirrors.
         Entity::Punctuation(Punctuation::LogicalNot) => {
             a.parent.is_prefix()
@@ -139,7 +145,11 @@ fn glue_after(a: Tok) -> bool {
                     Entity::Statement(Statement::Condition | Statement::ConditionGroup)
                 )
         }
-        Entity::Punctuation(Punctuation::Spread) if a.parent == Entity::Expression(Expression::SpreadParameter) => true,
+        Entity::Punctuation(Punctuation::Spread)
+            if a.parent == Entity::Expression(Expression::SpreadParameter) =>
+        {
+            true
+        }
         rule if is_accessor(rule) => matches!(
             a.parent,
             Entity::Expression(Expression::Member | Expression::TraitUse)
@@ -159,11 +169,18 @@ fn glue_before(a: Tok, b: Tok) -> bool {
     match b.rule {
         // @lfy def/format/main.lfy:38
         Entity::Punctuation(
-            Punctuation::Comma | Punctuation::Semicolon | Punctuation::GroupClose | Punctuation::ListClose,
+            Punctuation::Comma
+            | Punctuation::Semicolon
+            | Punctuation::GroupClose
+            | Punctuation::ListClose,
         ) => true,
         Entity::Literal(Literal::ExecutionClose | Literal::ReferenceClose) => true,
-        Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => b.position > 0,
-        Entity::Literal(Literal::TemplateBody | Literal::SingleQuoteBody | Literal::DoubleQuoteBody) => true,
+        Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
+            b.position > 0
+        }
+        Entity::Literal(
+            Literal::TemplateBody | Literal::SingleQuoteBody | Literal::DoubleQuoteBody,
+        ) => true,
         // Decision: the colon and question mark of a `Conditional` keep a space on both sides
         // (`a ? b : c`); the no-space rules are for definitions and optional names.
         Entity::Punctuation(Punctuation::Colon) => matches!(
@@ -186,9 +203,11 @@ fn glue_before(a: Tok, b: Tok) -> bool {
             Entity::Expression(Expression::Index | Expression::TypeItem)
         ),
         Entity::Punctuation(Punctuation::GroupOpen) => {
-            matches!(b.parent, Entity::Expression(Expression::Call | Expression::Arguments))
-                || (b.parent == Entity::Expression(Expression::Parameters)
-                    && a.rule == Entity::Identifier(Identifier::Identifier))
+            matches!(
+                b.parent,
+                Entity::Expression(Expression::Call | Expression::Arguments)
+            ) || (b.parent == Entity::Expression(Expression::Parameters)
+                && a.rule == Entity::Identifier(Identifier::Identifier))
         }
         _ => false,
     }
@@ -314,7 +333,9 @@ impl<'t> Formatter<'t> {
 
     fn token_glued(&mut self, index: usize, parent: Entity, position: usize, glue: bool) {
         let token = &self.tree.tokens[index];
-        let rule = token.rule.unwrap_or(Entity::Identifier(Identifier::Identifier));
+        let rule = token
+            .rule
+            .unwrap_or(Entity::Identifier(Identifier::Identifier));
         let tok = Tok {
             rule,
             parent,
@@ -452,12 +473,16 @@ impl<'t> Formatter<'t> {
 
     /// Index of the first significant child.
     fn first_significant(&self, node: &Node) -> Option<usize> {
-        node.children.iter().position(|child| self.significant(child))
+        node.children
+            .iter()
+            .position(|child| self.significant(child))
     }
 
     /// Index of the last significant child.
     fn last_significant(&self, node: &Node) -> Option<usize> {
-        node.children.iter().rposition(|child| self.significant(child))
+        node.children
+            .iter()
+            .rposition(|child| self.significant(child))
     }
 
     /// Lays out `node.children[from..to]` in order: tokens with the spacing rules, nodes
@@ -597,7 +622,12 @@ impl<'t> Formatter<'t> {
     fn ends_with_bracket(&self, node: &Node) -> bool {
         let mut node = node;
         loop {
-            match node.children.iter().rev().find(|child| self.significant(child)) {
+            match node
+                .children
+                .iter()
+                .rev()
+                .find(|child| self.significant(child))
+            {
                 Some(Child::Node(inner)) => node = inner,
                 Some(Child::Token(index)) => {
                     return self.tree.tokens[*index].rule.is_some_and(closes_bracket);
@@ -651,7 +681,8 @@ impl<'t> Formatter<'t> {
             && self.ends_with_bracket(items[0]);
         let multiline = !self.flat
             && (comment
-                || (!items.is_empty() && (line_break || (!hugs && self.exceeds(node, open, close)))));
+                || (!items.is_empty()
+                    && (line_break || (!hugs && self.exceeds(node, open, close)))));
         self.list(node, open, close, multiline);
     }
 
@@ -781,7 +812,9 @@ impl<'t> Formatter<'t> {
                     let mut position = 1;
                     for child in &link.children[1..] {
                         match child {
-                            Child::Token(index) if self.is_trivia_token(*index) => self.trivia_token(*index),
+                            Child::Token(index) if self.is_trivia_token(*index) => {
+                                self.trivia_token(*index)
+                            }
                             Child::Token(index) => {
                                 if broken && position == 1 && self.value_accessor(*index) {
                                     self.newline(false);
@@ -789,7 +822,9 @@ impl<'t> Formatter<'t> {
                                 self.token(*index, link.rule, position);
                                 position += 1;
                             }
-                            Child::Node(inner) if is_trivia(inner.rule) => self.comment(inner, false),
+                            Child::Node(inner) if is_trivia(inner.rule) => {
+                                self.comment(inner, false)
+                            }
                             Child::Node(inner) => {
                                 self.node(inner);
                                 position += 1;
@@ -813,7 +848,9 @@ impl<'t> Formatter<'t> {
     fn value_accessor(&self, index: usize) -> bool {
         matches!(
             self.tree.tokens[index].rule,
-            Some(Entity::Punctuation(Punctuation::ValueAccessor | Punctuation::OptionalValueAccessor))
+            Some(Entity::Punctuation(
+                Punctuation::ValueAccessor | Punctuation::OptionalValueAccessor
+            ))
         )
     }
 
@@ -826,7 +863,9 @@ impl<'t> Formatter<'t> {
         let mut line_break = false;
         for child in &link.children[1..] {
             match child {
-                Child::Token(index) if self.tree.tokens[*index].rule == Some(NEW_LINE) => line_break = true,
+                Child::Token(index) if self.tree.tokens[*index].rule == Some(NEW_LINE) => {
+                    line_break = true
+                }
                 Child::Token(index) if self.is_trivia_token(*index) => {}
                 Child::Token(index) => return line_break && self.value_accessor(*index),
                 _ => {}
@@ -935,15 +974,30 @@ mod tests {
             assert!(
                 first.errors.is_empty(),
                 "{path}: {}",
-                first.errors.iter().map(|error| format!("{}:{}", error.start, error.end)).collect::<Vec<_>>().join(", ")
+                first
+                    .errors
+                    .iter()
+                    .map(|error| format!("{}:{}", error.start, error.end))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
             let once = format(&first);
             let reparsed = tree(&once);
-            assert!(reparsed.errors.is_empty(), "{path}: formatting introduced errors:\n{once}");
-            assert_eq!(tokens_of(&reparsed), tokens_of(&first), "{path}: tokens changed");
+            assert!(
+                reparsed.errors.is_empty(),
+                "{path}: formatting introduced errors:\n{once}"
+            );
+            assert_eq!(
+                tokens_of(&reparsed),
+                tokens_of(&first),
+                "{path}: tokens changed"
+            );
             // @lfy def/format/main.lfy:21
             let twice = format(&reparsed);
-            assert!(twice == once, "{path}: not a fixed point:\n--- once\n{once}\n--- twice\n{twice}");
+            assert!(
+                twice == once,
+                "{path}: not a fixed point:\n--- once\n{once}\n--- twice\n{twice}"
+            );
             // @lfy def/format/main.lfy:23
             assert!(once.ends_with('\n') && !once.ends_with("\n\n"), "{path}");
             assert!(!once.contains('\r'), "{path}");
@@ -999,8 +1053,14 @@ mod tests {
     // @lfy def/format/main.lfy:31
     #[test]
     fn blank_lines_between_statements_become_one_and_inside_a_statement_are_removed() {
-        assert_eq!(formatted("\n\na;\n\n\n\nb;\n{\n\n  c;\n\n\n  e;\n\n}"), "a;\n\nb;\n{\n  c;\n\n  e;\n}\n");
-        assert_eq!(formatted("const o = {\n\n  a = 1,\n\n\n  b = 2,\n\n};"), "const o = {\n  a = 1,\n  b = 2,\n};\n");
+        assert_eq!(
+            formatted("\n\na;\n\n\n\nb;\n{\n\n  c;\n\n\n  e;\n\n}"),
+            "a;\n\nb;\n{\n  c;\n\n  e;\n}\n"
+        );
+        assert_eq!(
+            formatted("const o = {\n\n  a = 1,\n\n\n  b = 2,\n\n};"),
+            "const o = {\n  a = 1,\n  b = 2,\n};\n"
+        );
         assert_eq!(formatted("x\n\n  .a()\n\n  .b();"), "x\n  .a()\n  .b();\n");
     }
 
@@ -1015,7 +1075,10 @@ mod tests {
             formatted("const o = {\n  // key\n  a = 1, // one\n  b = 2 };"),
             "const o = {\n  // key\n  a = 1, // one\n  b = 2,\n};\n"
         );
-        assert_eq!(formatted("fn f() { // open\n  a;\n}"), "fn f() { // open\n  a;\n}\n");
+        assert_eq!(
+            formatted("fn f() { // open\n  a;\n}"),
+            "fn f() { // open\n  a;\n}\n"
+        );
         assert_eq!(formatted("x\n  // why\n  .a();"), "x\n  // why\n  .a();\n");
     }
 
@@ -1032,21 +1095,36 @@ mod tests {
     fn operators_are_spaced_by_their_category() {
         assert_eq!(formatted("x=a+b*-c;"), "x = a + b * -c;\n");
         assert_eq!(formatted("y=a**!e-~f;"), "y = a ** !e - ~f;\n");
-        assert_eq!(formatted("x = a&&b||c;"), "x = a && b || c;\n");
-        assert_eq!(formatted("x = c??d;"), "x = c ?? d;\n");
-        assert_eq!(formatted("x = d|e^f;"), "x = d | e ^ f;\n");
+        assert_eq!(formatted("x = (a&&b||c);"), "x = (a && b || c);\n");
+        assert_eq!(formatted("x = (c  ??  e);"), "x = (c ?? e);\n");
+        assert_eq!(formatted("x = g|e^f;"), "x = g | e ^ f;\n");
         assert_eq!(formatted("x = e & f;"), "x = e & f;\n");
-        assert_eq!(formatted("x = a<b==c>=d;"), "x = a < b == c >= d;\n");
+        assert_eq!(formatted("x = a<b==c>=g;"), "x = a < b == c >= g;\n");
         assert_eq!(formatted("x = a ? b : c;"), "x = a ? b : c;\n");
-        assert_eq!(formatted("x = a . b ( c ) [ 0 ] @ type;"), "x = a.b(c)[0]@type;\n");
+        assert_eq!(
+            formatted("x = a.b ( c ) [ 0 ]@type;"),
+            "x = a.b(c)[0]@type;\n"
+        );
         assert_eq!(formatted("x = ( a ) => b;"), "x = (a) => b;\n");
-        assert_eq!(formatted("where ( a ) and ! ( b ) -> c;"), "where (a) and !(b) -> c;\n");
-        assert_eq!(formatted("x = a is t, u as string;"), "x = a is t, u as string;\n");
+        assert_eq!(
+            formatted("where ( a ) and ! ( b ) -> c;"),
+            "where (a) and !(b) -> c;\n"
+        );
+        assert_eq!(
+            formatted("x = a is t, u as string;"),
+            "x = a is t, u as string;\n"
+        );
         assert_eq!(formatted("x = &a  ...b;"), "x = &a ... b;\n");
-        assert_eq!(formatted("x = [...a, await b, in c];"), "x = [...a, await b, in c];\n");
+        assert_eq!(
+            formatted("x = [...a, await b, in c];"),
+            "x = [...a, await b, in c];\n"
+        );
         assert_eq!(formatted("x = ^^;"), "x = ^^;\n");
         assert_eq!(formatted("$a: `d` = b@type;"), "$a: `d` = b@type;\n");
-        assert_eq!(formatted("if (!(. is b) && (c is d)) {}"), "if (!(. is b) && (c is d)) {}\n");
+        assert_eq!(
+            formatted("if (!(. is b) && (c is e)) {}"),
+            "if (!(. is b) && (c is e)) {}\n"
+        );
         assert_eq!(formatted("f(. , @ , $ , $&);"), "f(., @, $, $&);\n");
     }
 
@@ -1056,12 +1134,27 @@ mod tests {
         assert_eq!(formatted("f( a , b );"), "f(a, b);\n");
         assert_eq!(formatted("x = [ 1 , 2 ];"), "x = [1, 2];\n");
         assert_eq!(formatted("x = [ [ 1 ] ];"), "x = [[1]];\n");
-        assert_eq!(formatted("x = `{{ a }} [[ b.c ]]`;"), "x = `{{a}} [[b.c]]`;\n");
-        assert_eq!(formatted("fn f(a : string, b ? : number = 1, ... c : (is t)[]) ;"), "fn f(a: string, b?: number = 1, ...c: (is t)[]);\n");
+        assert_eq!(
+            formatted("x = `{{ a }} [[ b.c ]]`;"),
+            "x = `{{a}} [[b.c]]`;\n"
+        );
+        assert_eq!(
+            formatted("fn f(a : string, b ? : number = 1, ... c : (is t)[]) ;"),
+            "fn f(a: string, b?: number = 1, ...c: (is t)[]);\n"
+        );
         assert_eq!(formatted("x = a : `d`;"), "x = a: `d`;\n");
-        assert_eq!(formatted("d X is a . b ( 1 ) , c : `d` ;"), "d X is a.b(1), c: `d`;\n");
-        assert_eq!(formatted("type T { a ? : `d` = string | number [] }"), "type T { a?: `d` = string | number[] }\n");
-        assert_eq!(formatted("for ( const k , v from a , b ) { }"), "for (const k, v from a, b) {}\n");
+        assert_eq!(
+            formatted("d X is a . b ( 1 ) , c : `d` ;"),
+            "d X is a.b(1), c: `d`;\n"
+        );
+        assert_eq!(
+            formatted("type T { a ? : `d` = string | number [] }"),
+            "type T { a?: `d` = string | number[] }\n"
+        );
+        assert_eq!(
+            formatted("for ( const k , v from a , b ) { }"),
+            "for (const k, v from a, b) {}\n"
+        );
     }
 
     // @lfy def/format/main.lfy:39
@@ -1070,8 +1163,14 @@ mod tests {
         assert_eq!(formatted("if(a){}else{}"), "if (a) {} else {}\n");
         assert_eq!(formatted("while(a){b;}"), "while (a) {\n  b;\n}\n");
         assert_eq!(formatted("use\"./a\"as A;"), "use \"./a\" as A;\n");
-        assert_eq!(formatted("ace function f()->string{return`x`;}"), "ace function f() -> string {\n  return `x`;\n}\n");
-        assert_eq!(formatted("trait t(a:string)extends u(a):`d`{}"), "trait t(a: string) extends u(a): `d` {}\n");
+        assert_eq!(
+            formatted("ace function f()->string{return`x`;}"),
+            "ace function f() -> string {\n  return `x`;\n}\n"
+        );
+        assert_eq!(
+            formatted("trait t(a:string)extends u(a):`d`{}"),
+            "trait t(a: string) extends u(a): `d` {}\n"
+        );
         assert_eq!(formatted("with a.b{}"), "with a.b {}\n");
         assert_eq!(formatted("enum E:`d`{a=1}"), "enum E: `d` { a = 1 }\n");
     }
@@ -1081,8 +1180,14 @@ mod tests {
     fn a_block_opens_on_its_line_and_closes_alone_or_is_two_braces() {
         assert_eq!(formatted("loop\n{\n}"), "loop {}\n");
         assert_eq!(formatted("loop { break; }"), "loop {\n  break;\n}\n");
-        assert_eq!(formatted("x = (a) =>\n{\n  b;\n};"), "x = (a) => {\n  b;\n};\n");
-        assert_eq!(formatted("f((a) => { b; }, 1);"), "f(\n  (a) => {\n    b;\n  },\n  1,\n);\n");
+        assert_eq!(
+            formatted("x = (a) =>\n{\n  b;\n};"),
+            "x = (a) => {\n  b;\n};\n"
+        );
+        assert_eq!(
+            formatted("f((a) => { b; }, 1);"),
+            "f(\n  (a) => {\n    b;\n  },\n  1,\n);\n"
+        );
         assert_eq!(formatted("f((a) => { b; });"), "f((a) => {\n  b;\n});\n");
     }
 
@@ -1090,18 +1195,33 @@ mod tests {
     #[test]
     fn a_list_with_a_line_break_or_too_long_becomes_one_item_per_line() {
         assert_eq!(formatted("x = [\n1, 2];"), "x = [\n  1,\n  2,\n];\n");
-        assert_eq!(formatted("x = {a = 1, b = 2\n};"), "x = {\n  a = 1,\n  b = 2,\n};\n");
+        assert_eq!(
+            formatted("x = {a = 1, b = 2\n};"),
+            "x = {\n  a = 1,\n  b = 2,\n};\n"
+        );
         assert_eq!(formatted("f(\n  a);"), "f(\n  a,\n);\n");
         assert_eq!(formatted("fn f(a,\n b);"), "fn f(\n  a,\n  b,\n);\n");
-        assert_eq!(formatted("x = (a,\n b) => c;"), "x = (\n  a,\n  b,\n) => c;\n");
+        assert_eq!(
+            formatted("x = (a,\n b) => c;"),
+            "x = (\n  a,\n  b,\n) => c;\n"
+        );
         assert_eq!(formatted("d X is a(\n1) {}"), "d X is a(\n  1,\n) {}\n");
         let long = "x".repeat(60);
         let source = format!("const v = [`{long}`, `{long}`];");
-        assert_eq!(formatted(&source), format!("const v = [\n  `{long}`,\n  `{long}`,\n];\n"));
+        assert_eq!(
+            formatted(&source),
+            format!("const v = [\n  `{long}`,\n  `{long}`,\n];\n")
+        );
         let source = format!("f({{ a = `{long}`, b = `{long}` }});");
-        assert_eq!(formatted(&source), format!("f({{\n  a = `{long}`,\n  b = `{long}`,\n}});\n"));
+        assert_eq!(
+            formatted(&source),
+            format!("f({{\n  a = `{long}`,\n  b = `{long}`,\n}});\n")
+        );
         // Empty brackets stay together whatever sat between them.
-        assert_eq!(formatted("f(\n);\nx = [\n];\ny = {\n};"), "f();\nx = [];\ny = {};\n");
+        assert_eq!(
+            formatted("f(\n);\nx = [\n];\ny = {\n};"),
+            "f();\nx = [];\ny = {};\n"
+        );
         assert_eq!(formatted("x = { // c\n};"), "x = { // c\n};\n");
         assert_eq!(formatted("x = {\n  // c\n};"), "x = {\n  // c\n};\n");
     }
@@ -1113,7 +1233,10 @@ mod tests {
         assert_eq!(formatted("x = { a = 1, };"), "x = { a = 1 };\n");
         assert_eq!(formatted("f(a, b,);"), "f(a, b);\n");
         assert_eq!(formatted("fn f(a, b,);"), "fn f(a, b);\n");
-        assert_eq!(formatted("type T { a = string, }"), "type T { a = string }\n");
+        assert_eq!(
+            formatted("type T { a = string, }"),
+            "type T { a = string }\n"
+        );
         assert_eq!(formatted("match x { a -> 1, }"), "match x { a -> 1 }\n");
     }
 
@@ -1123,11 +1246,19 @@ mod tests {
         assert_eq!(formatted("x.a().b();"), "x.a().b();\n");
         assert_eq!(formatted("x.a()\n.b();"), "x\n  .a()\n  .b();\n");
         assert_eq!(
-            formatted("fn f() {\n  @acceptanceCriteria\n    .add({ behavior = `a`, })\n    .add({\n      behavior = [\n        `b`,\n      ],\n    });\n}"),
+            formatted(
+                "fn f() {\n  @acceptanceCriteria\n    .add({ behavior = `a`, })\n    .add({\n      behavior = [\n        `b`,\n      ],\n    });\n}"
+            ),
             "fn f() {\n  @acceptanceCriteria\n    .add({ behavior = `a` })\n    .add({\n      behavior = [\n        `b`,\n      ],\n    });\n}\n"
         );
-        assert_eq!(formatted("global@acceptanceCriteria\n  .add({ a = 1 });"), "global@acceptanceCriteria\n  .add({ a = 1 });\n");
-        assert_eq!(formatted("x = [a\n  .b().c[0]];"), "x = [a\n  .b()\n  .c[0]];\n");
+        assert_eq!(
+            formatted("global@acceptanceCriteria\n  .add({ a = 1 });"),
+            "global@acceptanceCriteria\n  .add({ a = 1 });\n"
+        );
+        assert_eq!(
+            formatted("x = [a\n  .b().c[0]];"),
+            "x = [a\n  .b()\n  .c[0]];\n"
+        );
         assert_eq!(formatted("x = a.b\n  ?.c;"), "x = a\n  .b\n  ?.c;\n");
     }
 

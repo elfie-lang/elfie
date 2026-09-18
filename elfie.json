@@ -1,3 +1,20 @@
 {
-  "name": "elfie"
+  "name": "elfie",
+  "source": "def",
+  "output": "src",
+  "dependencies": {
+    "rust": { "root": "targets/rust" }
+  },
+  "targets": {
+    "rust": { "package": "rust", "marker": "rust", "output": "crates" }
+  },
+  "native": [
+    { "identifier": "unicode-ident", "ecosystem": "cargo", "version": "1" },
+    { "identifier": "serde_json", "ecosystem": "cargo", "version": "1" },
+    { "identifier": "sha2", "ecosystem": "cargo", "version": "0.11" },
+    { "identifier": "tokio", "ecosystem": "cargo", "version": "1" },
+    { "identifier": "tower-lsp", "ecosystem": "cargo", "version": "0.20" },
+    { "identifier": "rmcp", "ecosystem": "cargo", "version": "3" },
+    { "identifier": "clap", "ecosystem": "cargo", "version": "4" }
+  ]
 }

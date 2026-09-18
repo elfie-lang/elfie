@@ -9,3 +9,6 @@ path = "src/main.rs"
 
 [dependencies]
 elfie-core.workspace = true
+elfie-lsp = { path = "../elfie-lsp" }
+elfie-mcp = { path = "../elfie-mcp" }
+serde_json.workspace = true
