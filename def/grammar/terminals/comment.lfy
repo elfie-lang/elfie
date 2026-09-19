@@ -17,10 +17,14 @@ d BlockDocumentationBody is body([BlockDocumentationOpen, BlockDocumentationClos
 d LineDocumentationOpen is boundary(`///`): `Opens documentation that ends with the line` {}
 d LineDocumentationBody is body([NewLine, ReferenceOpen, ReferenceClose]): `Text of line documentation` {}
 
-d Comment is rule(`( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )`): `A comment` {}
-d Documentation is rule(`( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )`): `Documentation for the declaration that follows it` {
+d Comment is rule(
+  `( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )`,
+): `A comment` {}
+d Documentation is rule(
+  `( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )`,
+): `Documentation for the declaration that follows it` {
   @acceptanceCriteria
-    .add({ behavior = `Attaches to the declaration that follows it`, })
+    .add({ behavior = `Attaches to the declaration that follows it` })
     .add({
       situation = `No declaration follows`,
       behavior = `Attaches to nothing`,

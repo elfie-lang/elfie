@@ -2,6 +2,7 @@ use "../grammar/rules/expression";
 use "../grammar/rules/file";
 use "../grammar/rules/statement";
 use "../grammar/terminals/comment";
+use "../grammar/terminals/literal";
 use "../grammar/terminals/punctuation";
 use "../grammar/terminals/space";
 use "../grammar/traits";

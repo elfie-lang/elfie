@@ -1,10 +1,6 @@
 use "../grammar/terminals/comment";
-use "../grammar/terminals/identifier";
-use "../grammar/terminals/keyword";
 use "../grammar/terminals/literal";
-use "../grammar/terminals/space";
 use "../grammar/traits";
-use "./data";
 use "./traits";
 
 enum Mode: `Regions of the source that change which terminals may match` {
@@ -21,7 +17,11 @@ enum Mode: `Regions of the source that change which terminals may match` {
 }
 
 // Conditions
-const inCode: `Anywhere ordinary tokens are read, including inside template expressions and references` = inMode([Mode.code, Mode.execution, Mode.reference]);
+const inCode: `Anywhere ordinary tokens are read, including inside template expressions and references` = inMode([
+  Mode.code,
+  Mode.execution,
+  Mode.reference,
+]);
 
 // Text regions: the boundary opens the mode, only the body and the close are candidates inside it
 modeToggle.apply(SingleQuote, Mode.singleQuote, inCode);
@@ -41,7 +41,11 @@ modeOpener.apply(ExecutionOpen, Mode.execution, inMode([Mode.template]));
 candidateInModes.apply(ExecutionOpen, Mode.template);
 modeCloser.apply(ExecutionClose, Mode.execution);
 candidateInModes.apply(ExecutionClose, Mode.execution);
-modeOpener.apply(ReferenceOpen, Mode.reference, inMode([Mode.template, Mode.blockDocumentation, Mode.lineDocumentation]));
+modeOpener.apply(
+  ReferenceOpen,
+  Mode.reference,
+  inMode([Mode.template, Mode.blockDocumentation, Mode.lineDocumentation]),
+);
 candidateInModes.apply(ReferenceOpen, Mode.template, Mode.blockDocumentation, Mode.lineDocumentation);
 modeCloser.apply(ReferenceClose, Mode.reference);
 candidateInModes.apply(ReferenceClose, Mode.reference);

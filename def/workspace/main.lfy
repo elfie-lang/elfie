@@ -1,0 +1,194 @@
+use "../grammar/rules/file";
+use "../grammar/rules/statement";
+use "../lexer/main" as Lexer;
+use "../model/data";
+use "../model/main" as Binder;
+use "../parser/main" as Parser;
+use "./data";
+
+fn load(root: string): `Load a project from disk and bind it` => Workspace {
+  // Passes
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Loading reads the project layout, discovers every file, orders the files by what they use, then binds them once`,
+        `[[Workspace.root]] is [[root]]`,
+        `Loading never stops for a failure`,
+        `Every failure below is a [[LoadProblem]] or a [[Problem]], and the rest of the project still loads`,
+      ],
+    })
+    .add({
+      behavior = `[[Workspace.files]] are the [[Source]]s the model was bound from, so each holds the path every [[Use]] in it resolved to`,
+    });
+
+  // Layout
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `[[Workspace.name]] is the name elfie.json gives, or the name of the [[root]] directory`,
+        `[[Workspace.sourceDirectory]] is the source directory elfie.json gives, or def`,
+        `[[Workspace.outputDirectory]] is the output directory elfie.json gives, or src`,
+      ],
+    })
+    .add({
+      situation = `An elfie.json cannot be read or is not an object`,
+      behavior = `A [[LoadProblem]] for it is added and every default above stands`,
+    })
+    .add({
+      situation = `[[root]] or [[Workspace.sourceDirectory]] does not exist`,
+      behavior = `A [[LoadProblem]] with no path is added and [[Workspace.files]] is empty`,
+    });
+
+  // Discovery
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Every file under [[Workspace.sourceDirectory]] whose name ends in .lfy is in the program, with no [[File.package]]`,
+        `Every file a [[Use]] in a file of the program refers to is in the program`,
+        `A file is in [[Workspace.files]] once, however many files use it`,
+      ],
+    })
+    .add({
+      behavior = `[[File.path]] is the file's path relative to [[Workspace.root]], and [[File.tree]] is what [[Parser.parse]] gives for [[Lexer.lex]] of its text with that path as the file, satisfying [[SourceFile]]`,
+    })
+    .add({
+      situation = `A file cannot be read`,
+      behavior = `A [[LoadProblem]] for its path is added and it is left out of the program`,
+    });
+
+  // use
+  @acceptanceCriteria
+    .add({
+      situation = `A [[Use]] names a path beginning with a dot`,
+      behavior = `It resolves relatively against the directory of the file that holds it`,
+    })
+    .add({
+      situation = `A [[Use]] names a path beginning with anything else`,
+      behavior = `Its first segment names a [[Package]] and the rest resolves against that [[Package.root]]`,
+    })
+    .add({ behavior = `A path resolves to the file at the path plus .lfy, or to main.lfy in a directory at the path` })
+    .add({
+      situation = `Both a file at the path plus .lfy, and a main.lfy in a directory at the path exist`,
+      behavior = `The path plus .lfy is the one`,
+    })
+    .add({
+      situation = `A [[Use]] resolves to no file`,
+      behavior = `A [[Problem]] is added at the [[Use]] and its entry in [[Source.uses]] is undefined`,
+    });
+
+  // Order
+  @acceptanceCriteria
+    .add({ behavior = `[[Workspace.files]] places every file after the files it uses` })
+    .add({
+      situation = `The use statements form a cycle`,
+      behavior = `A [[Problem]] is added at each [[Use]] in the cycle and those files keep the order they were discovered in`,
+    });
+
+  // Dependencies
+  @acceptanceCriteria
+    .add({ behavior = `Each dependency elfie.json names gives one [[Package]]` })
+    .add({
+      behavior = `Every .lfy file under a [[Package.root]] is in the program and carries that package as its [[File.package]]`,
+    })
+    .add({
+      behavior = `[[Package.nativeDependencies]] is what that package's own elfie.json names; a [[NativeDependency]] is recorded and never loaded`,
+    })
+    .add({ behavior = `[[Workspace.nativeDependencies]] is what the project's own elfie.json names, read the same way` })
+    .add({
+      situation = `A [[Package.root]] does not exist`,
+      behavior = `A [[LoadProblem]] for it is added and no file of it is in the program`,
+    });
+
+  // Targets
+  @acceptanceCriteria
+    .add({
+      behavior = `Each target elfie.json names gives one [[Target]], from a [[Package]], the identifier of the trait that marks what is built for it, and optionally an output directory`,
+    })
+    .add({ behavior = `[[Target.package]] is loaded as any other dependency is` })
+    .add({
+      behavior = `[[Target.marker]] is what that identifier resolves to in the file scope of that package's main file`,
+    })
+    .add({ behavior = `[[Target.outputDirectory]] is the one elfie.json gives, or [[Workspace.outputDirectory]]` })
+    .add({
+      behavior = [
+        `The entities built for a target are [[Binder.entitiesOf]] of [[Target.marker]]`,
+        `Every entity declared in the file scope of a file whose own entity carries the marker`,
+        `Every entity of every project file when global carries it`,
+      ],
+    })
+    .add({
+      situation = `A target's identifier resolves to nothing, or to an entity that is not a trait`,
+      behavior = `A [[LoadProblem]] for it is added and it is left out of [[Workspace.targets]]`,
+    });
+
+  // Binding
+  @acceptanceCriteria
+    .add({ behavior = `[[Workspace.model]] is [[Binder.bind]] of [[Workspace.files]], called once` });
+
+  @test(
+    {
+      input = [string@like(`A root with an empty def directory and no elfie.json`)],
+      expect = Workspace@like(
+        `[[Workspace.name]] from the directory, source directory def, output directory src, no files, no targets, and no problems`,
+      ),
+    },
+    {
+      input = [
+        string@like(`A root whose def holds main.lfy reading: use "./rules"; and a rules directory holding main.lfy`),
+      ],
+      expect = Workspace@like(
+        `def/rules/main.lfy before def/main.lfy in [[Workspace.files]], both with no [[File.package]], and no problems`,
+      ),
+    },
+    {
+      input = [string@like(`A root whose def holds a.lfy using ./b and b.lfy using ./a`)],
+      expect = Workspace@like(
+        `Both files in the order they were discovered and one [[Problem]] at each [[Use]] of the cycle`,
+      ),
+    },
+    {
+      input = [string@like(`A root whose def holds one file reading: use "./missing";`)],
+      expect = Workspace@like(
+        `One file, one [[Problem]] at the [[Use]], and the [[Source.uses]] entry for it undefined`,
+      ),
+    },
+  );
+}
+
+fn change(workspace: Workspace, path: string, text: string | undefined): `A workspace with one file read as something other than what is on disk` => Workspace {
+  @acceptanceCriteria
+    .add({ behavior = `[[path]] is relative to [[Workspace.root]] of [[workspace]]` })
+    .add({ behavior = `[[workspace]] is left as it was and the result is a new [[Workspace]]` })
+    .add({
+      situation = `[[text]] is set`,
+      behavior = `The file at [[path]] is read as [[text]] instead of what is on disk`,
+    })
+    .add({ situation = `[[text]] is undefined`, behavior = `The file at [[path]] is read from disk again` })
+    .add({
+      situation = `[[text]] is undefined and there is no file at [[path]] on disk`,
+      behavior = `It leaves the program`,
+    })
+    .add({
+      behavior = `The result is what [[load]] of the same root gives when every file replaced this way holds what it was replaced with`,
+    })
+    .add({ behavior = `A replacement stands until the same [[path]] is given again` })
+    .add({
+      situation = `[[path]] is neither under [[Workspace.sourceDirectory]] nor resolved to by a [[Use]] in the program`,
+      behavior = `The result matches [[workspace]]`,
+    });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`A project whose def holds only main.lfy`),
+        `def/extra.lfy`,
+        string@like(`A file declaring one trait`),
+      ],
+      expect = Workspace@like(`Two files, the declared trait among the symbols of [[Workspace.model]], and no problems`),
+    },
+    {
+      input = [Workspace@like(`A project whose def holds main.lfy and extra.lfy`), `def/extra.lfy`, undefined],
+      expect = Workspace@like(`Two files again, matching a fresh [[load]] of the root`),
+    },
+  );
+}

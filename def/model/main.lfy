@@ -1,0 +1,227 @@
+use "../grammar/rules/expression";
+use "../grammar/rules/statement";
+use "../grammar/terminals/punctuation";
+use "../grammar/traits";
+use "../parser/data";
+use "./data";
+use "./traits";
+
+fn bind(sources: Source[]): `Build the model of a program from the resolved files of all of it` => Model {
+  // Passes
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Binding runs three passes over every file: declare (scopes, symbols, entities), apply (traits, members, criteria), resolve (usages, properties, templates)`,
+        `[[sources]] are bound in the order given, which places every file after the files it uses`,
+        `Binding never stops; every failure below is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
+      ],
+    })
+    .add({ behavior = `Each [[Source]] is bound once, however many others use it` });
+
+  // Declare
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Each [[SourceFile]] is a file scope whose current entity is an anonymous entity for the file`,
+        `Every [[scoped]] node creates a scope and every [[declaring]] node a symbol and an entity, as those traits say; a declaration's [[Block]] is the child of the declaration's own scope`,
+        `Names in a scope are visible throughout that scope`,
+      ],
+    })
+    .add({
+      situation = `An [[ExpressionStatement]] in a data or trait body begins with [[Current]] using [[ScopeAccessor]]`,
+      behavior = `It declares a member whose description is the [[Definition]] on it and whose type is the right side of its [[Assignment]]`,
+    })
+    .add({
+      situation = `An [[ObjectKey]] is bound in the [[Object]] of an [[EnumDeclaration]]`,
+      behavior = `It declares a symbol of kind enumMember; an [[ObjectKey]] anywhere else declares nothing`,
+    })
+    .add({
+      situation = `A name is declared twice in the same scope`,
+      behavior = `A [[Problem]] is added at the second and the first wins`,
+    })
+    .add({
+      situation = `A name is declared in a child scope that already exists in the parent scope`,
+      behavior = `The name is visible in the child scope and the parent scope's name is shadowed there, but no [[Problem]] is added`,
+    })
+    .add({
+      situation = `A scope belongs to a declaration, a [[With]], or any other node`,
+      behavior = `Its current entity is, in the same order, the declared entity, the entity the [[With]] expression resolves to, or the parent scope's`,
+    });
+
+  // use
+  @acceptanceCriteria
+    .add({
+      behavior = `A [[Use]] refers to the [[Source]] whose [[Source.path]] its entry in [[Source.uses]] names; an entry of undefined imports nothing`,
+    })
+    .add({
+      situation = `[[Use]] has no [[AsKeyword]]`,
+      behavior = `The used file's own symbols, not its imports, are visible in the user's file scope after its own`,
+    })
+    .add({
+      situation = `[[Use]] has [[AsKeyword]]`,
+      behavior = `The module symbol's entity is the used file's entity, so a [[Member]] on it resolves in that file's symbols and a [[For]] over it visits those symbols' entities (in) or names (of) or both (from)`,
+    });
+
+  // Apply
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `A [[Call]] whose left is a [[Member]] named apply on an expression that resolves to a trait is bound`,
+        `[[Member]] apply is bound on an expression that resolves to a trait`,
+      ],
+      behavior = `The trait is applied to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
+    })
+    .add({
+      situation = `An applied trait has an [[ExtendsClause]]`,
+      behavior = `Each extended trait is applied too, up the whole chain, with its arguments evaluated from the extending trait's parameters`,
+    })
+    .add({
+      situation = `A trait is applied to an entity`,
+      behavior = [
+        `Each member declared in the trait's body joins the entity's scope`,
+        `The trait body's value setters are evaluated with the parameters bound to the arguments as the entity's values`,
+        `Each criterion of the trait body is appended to [[Entity.acceptanceCriteria]] with [[Criterion.contributor]] set to the trait`,
+      ],
+    })
+    .add({
+      situation = `Two applied traits declare the same member`,
+      behavior = `Most recently applied trait definition wins`,
+    })
+    .add({
+      behavior = [
+        `[[TraitEntity.entities]] is every entity the trait was applied to, in file order then application order, complete before the resolve pass reads it`,
+        `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
+      ],
+    });
+
+  // Resolve
+  @acceptanceCriteria
+    .add({
+      situation = `A [[Name]] or [[TraitUse]] is bound`,
+      behavior = `It resolves to the first match walking from its scope outward`,
+    })
+    .add({
+      situation = [
+        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+      ],
+      behavior = [
+        `With [[ValueAccessor]] or [[OptionalValueAccessor]], the [[MemberName]] resolves in the value of the left side: a module's symbols, an entity's members, or an object's keys`,
+        `With [[ScopeAccessor]], the [[MemberName]] resolves to the member symbol itself, or to the entity's scope when there is no name`,
+        `With [[ContextAccessor]], the [[MemberName]] must be the value of a [[ContextProperty]], not its name, and yields that property`,
+        `With [[ParentScopeAccessor]], it yields the scope that contains the left side's scope, or undefined when there is none`,
+        `A keyword is a valid [[MemberName]] in this position only`,
+      ],
+    })
+    .add({
+      situation = `A [[Dereference]] is bound`,
+      behavior = `It yields the entity its operand is bound to, not its value`,
+    })
+    .add({
+      situation = `A [[Previous]] is bound`,
+      behavior = `It yields the entity declared by the nearest earlier statement of the same block`,
+    })
+    .add({
+      situation = `A [[TemplateReference]] or [[TemplateExecution]] is bound`,
+      behavior = `It resolves in the scope the template is written in; a reference found nowhere resolves to the one [[rule]] entity with that identifier in any file`,
+    })
+    .add({
+      situation = `Nothing is found for a name`,
+      behavior = `The [[Usage]] has no symbol and a [[Problem]] is added`,
+    });
+
+  // Properties
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `[[Entity.identifier]] is the symbol's name`,
+        `[[Entity.definition]] is the string or template in the declaration's [[DefinitionClause]] or [[Definition]]`,
+        `[[FnEntity.parameters]] is the symbols of its [[Parameter]] and [[SpreadParameter]] nodes in order`,
+        `[[FnEntity.output]] is what the type after the arrow resolves to`,
+      ],
+    })
+    .add({
+      situation = `The entity is a data, trait, type, or enum declaration`,
+      behavior = `[[Entity.type]] is the entity itself`,
+    })
+    .add({
+      situation = `The declaration has a [[TypeExpression]] after the colon, an [[Assignment]] right side on a member or external, or a value on a variable or parameter`,
+      behavior = `[[Entity.type]] is, in the same order, what that expression resolves to, what the right side resolves to, or the type of the value`,
+    })
+    .add({
+      situation = `[[Entity.type]] is a list`,
+      behavior = `[[ListEntity.itemType]] is what that list holds, and is undefined otherwise`,
+    })
+    .add({
+      situation = `An add [[Call]] on the entity's context, or a [[Where]], is bound in its body or in a [[With]] whose current it is`,
+      behavior = `One [[Criterion]] is appended to [[Entity.acceptanceCriteria]]`,
+    })
+    .add({
+      situation = `A test [[Call]] on the entity's context is bound`,
+      behavior = `Each of its arguments is appended to [[Entity.tests]] as one [[Test]]`,
+    })
+    .add({ behavior = `[[Entity.like]] takes a prompt and yields a value of [[Entity.type]] that the prompt describes` });
+
+  @test(
+    {
+      input = [[Source@like(`a.lfy, parsed from: trait t { $x: \`d\` = string; } d A is t {} const y = A.x;`)]],
+      expect = Model@like(
+        `Symbols t, A, and y in the file scope; entity A with one [[Applied]] for t and a member x with definition d and type string; [[TraitEntity.entities]] of t holding A; a [[Usage]] for A.x resolving to that member; no problems`,
+      ),
+    },
+    {
+      input = [
+        [
+          Source@like(
+            `main.lfy, parsed from: use "./tokens/keyword" as Keyword; for (const token in Keyword) { }, its one use naming tokens/keyword.lfy`,
+          ),
+          Source@like(`tokens/keyword.lfy, parsed`),
+        ],
+      ],
+      expect = Model@like(
+        `A module symbol Keyword bound to the second file's entity; a loop variable token in the [[For]] scope; a [[Usage]] of Keyword with layer value resolving to the module symbol; no problems`,
+      ),
+    },
+    {
+      input = [[Source@like(`a.lfy, parsed from: const y = z;`)]],
+      expect = Model@like(`Symbol y; a [[Usage]] of z with no symbol; one [[Problem]] at z`),
+    },
+    {
+      input = [[Source@like(`a.lfy, parsed from: trait a {} trait b extends a {} d C is b {}`)]],
+      expect = Model@like(`[[TraitEntity.entities]] of a holding C alone and [[TraitEntity.extenders]] of a holding b`),
+    },
+  );
+
+  for (const rule in declaring@entities) {
+    where (`A [[Node]] for [[&rule]] is bound`) -> `A symbol and an entity are created as [[declaring]] says`;
+  }
+  for (const rule in reading@entities) {
+    where (`A [[Node]] for [[&rule]] is bound`) -> `A [[Usage]] with the layer from [[reading]] is created and resolved as above`;
+  }
+}
+
+fn resolve(model: Model, node: Node): `The symbol a node uses or declares` => Symbol | undefined {
+  @acceptanceCriteria
+    .add({ situation = `[[node]] has a [[Usage]] in [[model]]`, behavior = `Returns its [[Usage.symbol]]` })
+    .add({ situation = `[[node]] declares a symbol in [[model]]`, behavior = `Returns that symbol` })
+    .add({ situation = `Neither`, behavior = `Returns undefined` });
+}
+
+fn entitiesOf(model: Model, traitEntity: TraitEntity): `Everything that has a trait` => Entity[] {
+  @acceptanceCriteria
+    .add({ behavior = `Returns [[TraitEntity.entities]] of [[traitEntity]]` })
+    .add({ situation = `[[traitEntity]] is not a trait`, behavior = `Returns an empty list` });
+}
+
+fn usagesOf(model: Model, target: Symbol): `Every use of a symbol` => Usage[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns every [[Usage]] whose symbol is [[target]] or an alias chain ending at it, in node order`,
+    });
+}
+
+fn criteriaOf(model: Model, entity: Entity): `Every criterion attached to an entity, with templates resolved for it` => Criterion[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns [[Entity.acceptanceCriteria]] with each template reference replaced by the referenced entity's identifier and each execution by its value, evaluated for [[entity]]`,
+    });
+}

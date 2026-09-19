@@ -1,0 +1,8 @@
+[package]
+name = "elfie-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+unicode-ident.workspace = true
+serde_json.workspace = true

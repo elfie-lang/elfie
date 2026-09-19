@@ -1,13 +1,4 @@
-use "./precedence";
-use "./rules/expression";
-use "./rules/file";
-use "./rules/statement";
-use "./terminals/comment";
-use "./terminals/identifier";
-use "./terminals/keyword";
 use "./terminals/literal";
-use "./terminals/punctuation";
-use "./terminals/space";
 use "./traits";
 
 function terminalDocument(): `The EBNF of every terminal` -> string {
@@ -28,9 +19,16 @@ function grammarDocument(): `The EBNF of every rule` -> string {
 }
 
 global@acceptanceCriteria
-  .add({ behavior = `Every bare name referenced in any rule's syntax is the identifier of a [[rule]] entity`, })
-  .add({ behavior = `No two [[terminal]] entities have the same syntax`, })
-  .add({ behavior = `Every [[prefix]], [[infix]], and [[postfix]] rule either has [[binding]] itself or names an operator whose every alternative has [[binding]] with one shared precedence`, })
-  .add({ behavior = `No rule has more than one of [[statement]], [[primary]], [[prefix]], [[infix]], and [[postfix]]`, })
-  .add({ behavior = `Every [[escape]] listed by a [[body]] is excluded from that body's plain characters by [[Backslash]]`, })
-  .add({ behavior = `No alternative of an alternation can be satisfied without taking a token.`, });
+  .add({ behavior = `Every bare name referenced in any rule's syntax is the identifier of a [[rule]] entity` })
+  .add({
+    behavior = `No two [[rule]] entities share an identifier, so a name that resolves nowhere in scope names exactly one rule`,
+  })
+  .add({ behavior = `No two [[terminal]] entities have the same syntax` })
+  .add({
+    behavior = `Every [[prefix]], [[infix]], and [[postfix]] rule either has [[binding]] itself or names an operator whose every alternative has [[binding]] with one shared precedence`,
+  })
+  .add({ behavior = `No rule has more than one of [[statement]], [[primary]], [[prefix]], [[infix]], and [[postfix]]` })
+  .add({
+    behavior = `Every [[escape]] listed by a [[body]] is excluded from that body's plain characters by [[Backslash]]`,
+  })
+  .add({ behavior = `No alternative of an alternation can be satisfied without taking a token.` });
