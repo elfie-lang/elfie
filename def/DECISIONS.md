@@ -233,3 +233,15 @@ Decisions made on the way:
 - **Unused-`use` warnings** are reported by `check` for nine `use`s in `def/grammar/main.lfy` and
   a few elsewhere whose purpose is to load files, not names. They are warnings, not errors, and
   the criterion in `def/query/main.lfy` may want an exemption for a file that declares nothing.
+
+## Claude Code as the compiler (2026-09-19)
+
+`elfie.json` names `scripts/compile-unit.sh` as the compiler: `claude -p` in `acceptEdits`
+mode, allowed to read, edit, glob, grep, run `cargo build/test/clippy/fmt`, and call the `elfie`
+MCP tools, with `scripts/compiler-prompt.md` appended to its system prompt. The request text
+is its prompt on stdin. `.mcp.json` registers the agent server for every Claude Code session in
+the repository through `scripts/elfie-mcp.sh`, which prefers a built binary over `cargo run` so
+the server never contends for the build lock. Decisions: a wrapper script rather than a long
+command in JSON, so the flags are reviewable and editable; `acceptEdits` rather than
+`bypassPermissions`, so anything outside the allowed list still stops the run; no `--bare`, so
+the repository's own settings and CLAUDE.md apply.

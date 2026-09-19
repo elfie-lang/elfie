@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "elfie": {
+      "command": "scripts/elfie-mcp.sh",
+      "args": []
+    }
+  }
+}
