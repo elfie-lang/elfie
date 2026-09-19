@@ -41,6 +41,11 @@ syntax highlighting, comment toggling, and bracket pairing.
    `elfie.root` is passed as `--root`; leave it empty to use the first workspace folder,
    which should be the directory holding `elfie.json`.
 
+Formatting: **Format Document** and format on save use the server, which applies the same
+rules as `elfie format`; the extension sets itself as the default formatter for `.lfy` files.
+**Elfie: Format File with elfie format** (also in the editor context menu) runs the command
+line on the file instead, which works even when the server is stopped.
+
 Open any `.lfy` file. Diagnostics, hover, go to definition, references, rename, completion,
 document and workspace symbols, and formatting come from the server. The command
 **Elfie: Restart Language Server** restarts it after rebuilding; `elfie.trace.server` set to

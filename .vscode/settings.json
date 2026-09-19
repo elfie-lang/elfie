@@ -1,4 +1,10 @@
 {
   "elfie.path": "${workspaceFolder}/target/release/elfie",
-  "files.associations": { "*.lfy": "elfie" }
+  "files.associations": {
+    "*.lfy": "elfie"
+  },
+  "[elfie]": {
+    "editor.defaultFormatter": "elfie.elfie",
+    "editor.formatOnSave": true
+  }
 }

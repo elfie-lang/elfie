@@ -66,6 +66,10 @@
       {
         "command": "elfie.restartServer",
         "title": "Elfie: Restart Language Server"
+      },
+      {
+        "command": "elfie.formatFile",
+        "title": "Elfie: Format File with elfie format"
       }
     ],
     "semanticTokenTypes": [
@@ -171,7 +175,20 @@
             "underline": true
           }
         }
+      },
+      "[elfie]": {
+        "editor.defaultFormatter": "elfie.elfie",
+        "editor.formatOnSave": true
       }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "elfie.formatFile",
+          "when": "editorLangId == elfie",
+          "group": "1_modification"
+        }
+      ]
     }
   },
   "dependencies": {

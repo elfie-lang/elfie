@@ -41,8 +41,27 @@ function start(context) {
   });
 }
 
+/// Runs `elfie format <file>` on the active document: the same layout the server gives
+/// Format Document, for when the server is stopped or a file is outside the program.
+async function formatFile() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== "elfie") return;
+  await editor.document.save();
+  const root = rootOf();
+  const command = (vscode.workspace.getConfiguration("elfie").get("path") || "elfie").replace("${workspaceFolder}", root || "");
+  const { execFile } = require("child_process");
+  await new Promise((resolve) => {
+    execFile(command, ["format", editor.document.uri.fsPath], { cwd: root }, (error, stdout, stderr) => {
+      if (error && error.code !== 1) vscode.window.showErrorMessage(`elfie format: ${stderr || error.message}`);
+      else if (stdout.trim()) vscode.window.setStatusBarMessage(stdout.trim(), 3000);
+      resolve();
+    });
+  });
+}
+
 async function activate(context) {
   await start(context);
+  context.subscriptions.push(vscode.commands.registerCommand("elfie.formatFile", formatFile));
   context.subscriptions.push(
     vscode.commands.registerCommand("elfie.restartServer", async () => {
       if (client) await client.stop();
