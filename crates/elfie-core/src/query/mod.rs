@@ -23,6 +23,7 @@ use crate::lexer::Token;
 use crate::model::{
     self, ContextProperty, EntityId, EntityKind, FileId, Model, NodeRef, ScopeId, SymbolId,
     SymbolKind, TypeRef, Usage,
+    Layer,
 };
 use crate::parser::Node;
 use crate::parser::components::is_trivia;
@@ -1683,6 +1684,184 @@ pub fn source_of(workspace: &Workspace, entity: EntityId) -> String {
     out
 }
 
+
+/// The semantic token type of a symbol, by its kind; an alias or external by the entity
+/// it is bound to.
+// @lfy def/query/main.lfy:231
+fn token_type_of(model: &Model, symbol: SymbolId) -> TokenType {
+    let symbol = &model.symbols[symbol];
+    match symbol.kind {
+        SymbolKind::Data => TokenType::Data,
+        SymbolKind::Trait => TokenType::Trait,
+        SymbolKind::Type => TokenType::Type,
+        SymbolKind::Enum => TokenType::Enum,
+        SymbolKind::EnumMember => TokenType::EnumMember,
+        SymbolKind::Function | SymbolKind::AgentFunction => TokenType::Function,
+        SymbolKind::Parameter => TokenType::Parameter,
+        SymbolKind::Variable | SymbolKind::LoopVariable => TokenType::Variable,
+        SymbolKind::Member => TokenType::Property,
+        SymbolKind::Module => TokenType::Namespace,
+        // @lfy def/query/main.lfy:232
+        SymbolKind::Alias | SymbolKind::External => match &model.entities[symbol.entity].kind {
+            EntityKind::Data => TokenType::Data,
+            EntityKind::Trait { .. } => TokenType::Trait,
+            EntityKind::Type => TokenType::Type,
+            EntityKind::Enum => TokenType::Enum,
+            EntityKind::EnumMember => TokenType::EnumMember,
+            EntityKind::Fn { .. } => TokenType::Function,
+            EntityKind::File | EntityKind::Module => TokenType::Namespace,
+            EntityKind::Member => TokenType::Property,
+            EntityKind::Parameter => TokenType::Parameter,
+            _ => TokenType::Variable,
+        },
+    }
+}
+
+/// Whether the entity a symbol is bound to was declared with `d` or `fn`.
+// @lfy def/query/main.lfy:240
+fn is_agentic(model: &Model, symbol: SymbolId) -> bool {
+    let entity = &model.entities[model.symbols[symbol].entity];
+    matches!(entity.kind, EntityKind::Data | EntityKind::Fn { agent: true, .. })
+}
+
+/// Whether a symbol is a variable declared with `const`.
+// @lfy def/query/main.lfy:241
+fn is_readonly(model: &Model, symbol: SymbolId) -> bool {
+    let symbol = &model.symbols[symbol];
+    if symbol.kind != SymbolKind::Variable || !is_real(model, symbol.node) {
+        return false;
+    }
+    let node = model.node(symbol.node);
+    node.token(K::ConstKeyword, model.tokens(symbol.node.file)).is_some()
+}
+
+/// Whether a node lies inside a `TemplateReference`, a `TemplateExecution`, or
+/// `Documentation`.
+// @lfy def/query/main.lfy:243
+fn in_prose(model: &Model, node: NodeRef) -> bool {
+    let mut current = Some(node);
+    while let Some(at) = current {
+        let rule = model.info(at).rule;
+        if rule == E::TemplateReference.entity() || rule == E::TemplateExecution.entity() || rule == C::Documentation.entity() {
+            return true;
+        }
+        current = model.parent(at);
+    }
+    false
+}
+
+/// Modifiers as a set, given back in `TokenModifier` order with each at most once.
+// @lfy def/query/main.lfy:245
+fn modifier_list(set: u32) -> Vec<TokenModifier> {
+    TokenModifier::ALL
+        .into_iter()
+        .filter(|modifier| set & (1 << modifier.index()) != 0)
+        .collect()
+}
+
+fn with_modifier(set: &mut u32, modifier: TokenModifier) {
+    *set |= 1 << modifier.index();
+}
+
+/// Every name of a file, classified by meaning for an editor to color.
+///
+/// One token per token that spells a declared name, a used name, or a context property;
+/// keywords, punctuation, strings, numbers, and comments get none. Tokens are in position
+/// order and never overlap; a file not in the program gives an empty list.
+// @lfy def/query/main.lfy:223
+pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToken> {
+    let model = &workspace.model;
+    // @lfy def/query/main.lfy:227
+    let Some(file_id) = file_of(workspace, file) else {
+        return Vec::new();
+    };
+    // Keyed by token index, so the result is in position order and no two overlap.
+    // @lfy def/query/main.lfy:226
+    let mut found: std::collections::BTreeMap<usize, SemanticToken> = std::collections::BTreeMap::new();
+    // Declarations.
+    // @lfy def/query/main.lfy:239
+    for (id, symbol) in model.symbols.iter().enumerate() {
+        if !is_real(model, symbol.node) || symbol.node.file != file_id {
+            continue;
+        }
+        let Some(token) = symbol.name_token else { continue };
+        if found.contains_key(&token) {
+            continue;
+        }
+        let mut set = 0;
+        with_modifier(&mut set, TokenModifier::Declaration);
+        if is_agentic(model, id) {
+            with_modifier(&mut set, TokenModifier::Agentic); // @lfy def/query/main.lfy:240
+        }
+        if is_readonly(model, id) {
+            with_modifier(&mut set, TokenModifier::Readonly); // @lfy def/query/main.lfy:241
+        }
+        found.insert(
+            token,
+            SemanticToken { range: span(workspace, file_id, token, token + 1), ty: token_type_of(model, id), modifiers: modifier_list(set) },
+        );
+    }
+    // Usages.
+    // @lfy def/query/main.lfy:225
+    for usage in &model.usages {
+        if usage.node.file != file_id || usage.name.is_none() {
+            continue;
+        }
+        let Some(token) = usage.token else { continue };
+        if found.contains_key(&token) || !is_name_token(&model.tokens(file_id)[token]) {
+            continue;
+        }
+        let mut set = 0;
+        let rule = model.info(usage.node).rule;
+        let accessed = rule == E::Current.entity() || rule == E::Member.entity();
+        // @lfy def/query/main.lfy:242
+        if accessed {
+            match usage.layer {
+                Layer::Context => with_modifier(&mut set, TokenModifier::Context),
+                Layer::Scope | Layer::Parent => with_modifier(&mut set, TokenModifier::Scope),
+                Layer::Value => with_modifier(&mut set, TokenModifier::Value),
+                Layer::Dereference | Layer::Previous => {}
+            }
+        }
+        if in_prose(model, usage.node) {
+            with_modifier(&mut set, TokenModifier::Documentation); // @lfy def/query/main.lfy:243
+        }
+        let ty = match usage.symbol {
+            Some(symbol) => {
+                if is_agentic(model, symbol) {
+                    with_modifier(&mut set, TokenModifier::Agentic);
+                }
+                if is_readonly(model, symbol) {
+                    with_modifier(&mut set, TokenModifier::Readonly);
+                }
+                token_type_of(model, symbol)
+            }
+            // A context property is a property; anything else unresolved is a variable.
+            // @lfy def/query/main.lfy:234
+            None if usage.layer == Layer::Context => {
+                let name = usage.name.as_deref().unwrap_or_default();
+                if ContextProperty::lookup(name).is_none() {
+                    with_modifier(&mut set, TokenModifier::Unresolved);
+                }
+                TokenType::Property
+            }
+            // @lfy def/query/main.lfy:235
+            None => {
+                // A member of something the model does not know got no problem and is
+                // not a name of the program.
+                // @lfy def/query/main.lfy:236
+                if !model.problems.iter().any(|problem| problem.node == usage.node) {
+                    continue;
+                }
+                with_modifier(&mut set, TokenModifier::Unresolved); // @lfy def/query/main.lfy:244
+                TokenType::Variable
+            }
+        };
+        found.insert(token, SemanticToken { range: span(workspace, file_id, token, token + 1), ty, modifiers: modifier_list(set) });
+    }
+    found.into_values().collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -2477,7 +2656,8 @@ mod tests {
         let outline = outline_of(&ws, main);
         let names: Vec<&str> = outline.iter().map(|o| o.name.as_str()).collect();
         assert_eq!(names[0], "rangeOf");
-        assert_eq!(names.len(), 15);
+        assert_eq!(names.len(), 16);
+        assert!(names.contains(&"semanticTokensOf"));
         assert!(outline.iter().all(|o| o.kind == "agentFunction"));
         // Parameters are not outlined.
         assert!(outline[0].children.is_empty(), "{:?}", outline[0].children);
@@ -2512,5 +2692,81 @@ mod tests {
         assert!(labels(&completions_at(&ws, main, position)).contains(&"acceptanceCriteria"));
         let position = after(find_pos(&text, "use \"./data\";", 0), 7);
         assert!(labels(&completions_at(&ws, main, position)).contains(&"data"));
+    }
+
+    // @lfy def/query/main.lfy:248
+    #[test]
+    fn semantic_tokens_classify_declarations_and_layers() {
+        let text = "d A { $x: `d` = string; } const y = A$x;";
+        let fixture = Fixture::one(text);
+        let workspace = fixture.load();
+        let tokens = semantic_tokens_of(&workspace, A);
+        let summary: Vec<(String, TokenType, Vec<TokenModifier>)> = tokens
+            .iter()
+            .map(|t| {
+                let index = token_at(&workspace, A, t.range.start).unwrap();
+                (token(&workspace, 0, index).value.clone(), t.ty, t.modifiers.clone())
+            })
+            .collect();
+        use TokenModifier::*;
+        assert_eq!(
+            summary,
+            vec![
+                ("A".to_string(), TokenType::Data, vec![Declaration, Agentic]),
+                ("x".to_string(), TokenType::Property, vec![Declaration]),
+                ("y".to_string(), TokenType::Variable, vec![Declaration, Readonly]),
+                ("A".to_string(), TokenType::Data, vec![Agentic]),
+                ("x".to_string(), TokenType::Property, vec![Scope]),
+            ]
+        );
+        // In position order, never overlapping.
+        // @lfy def/query/main.lfy:226
+        for pair in tokens.windows(2) {
+            assert!(pair[0].range.end <= pair[1].range.start || pair[0].range.end.line < pair[1].range.start.line);
+        }
+    }
+
+    // @lfy def/query/main.lfy:253
+    #[test]
+    fn semantic_tokens_mark_prose_context_properties_and_unresolved_names() {
+        let text = "fn f(): `See [[g]]` => number { @acceptanceCriteria.add({ behavior = `b` }); }";
+        let fixture = Fixture::one(text);
+        let workspace = fixture.load();
+        let tokens = semantic_tokens_of(&workspace, A);
+        let names: Vec<(String, TokenType, Vec<TokenModifier>)> = tokens
+            .iter()
+            .map(|t| {
+                let index = token_at(&workspace, A, t.range.start).unwrap();
+                (token(&workspace, 0, index).value.clone(), t.ty, t.modifiers.clone())
+            })
+            .collect();
+        use TokenModifier::*;
+        assert_eq!(
+            names,
+            vec![
+                ("f".to_string(), TokenType::Function, vec![Declaration, Agentic]),
+                ("g".to_string(), TokenType::Variable, vec![Documentation, Unresolved]),
+                ("acceptanceCriteria".to_string(), TokenType::Property, vec![Context]),
+            ]
+        );
+        // @lfy def/query/main.lfy:227
+        assert!(semantic_tokens_of(&workspace, "def/missing.lfy").is_empty());
+    }
+
+    // @lfy def/query/main.lfy:225
+    #[test]
+    fn semantic_tokens_cover_the_repository_without_keywords() {
+        let workspace = workspace::load(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")));
+        let tokens = semantic_tokens_of(&workspace, "def/lexer/data.lfy");
+        assert!(tokens.len() > 20);
+        for t in &tokens {
+            let index = token_at(&workspace, "def/lexer/data.lfy", t.range.start).unwrap();
+            let file = workspace.model.file("def/lexer/data.lfy").unwrap();
+            let raw = &token(&workspace, file, index).raw;
+            assert!(raw.chars().all(|c| c.is_alphanumeric() || c == '_'), "{raw:?} is not a name");
+        }
+        assert!(tokens.iter().any(|t| t.ty == TokenType::Data && t.modifiers.contains(&TokenModifier::Declaration)));
+        assert!(tokens.iter().any(|t| t.modifiers.contains(&TokenModifier::Documentation)));
+        assert!(tokens.iter().any(|t| t.modifiers.contains(&TokenModifier::Context)));
     }
 }

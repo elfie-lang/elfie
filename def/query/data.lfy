@@ -67,3 +67,37 @@ d Edit: `One replacement in one file` {
   $range: `What is replaced` = Range;
   $text: `What replaces it` = string;
 }
+
+// Semantic tokens: what the editor colors by meaning rather than by spelling.
+// Decision: only names get semantic tokens; keywords, punctuation, strings, numbers, and
+// comments keep the editor's own grammar, which already knows their spelling.
+
+enum TokenType: `What a semantic token stands for; the protocol's own kinds where one fits, and data and trait where Elfie has no equivalent there` {
+  namespace = `namespace`,
+  data = `data`,
+  _trait = `trait`,
+  _type = `type`,
+  _enum = `enum`,
+  enumMember = `enumMember`,
+  _function = `function`,
+  parameter = `parameter`,
+  variable = `variable`,
+  property = `property`,
+}
+
+enum TokenModifier: `What refines a semantic token` {
+  declaration = `declaration`,
+  agentic = `agentic`,
+  readonly = `readonly`,
+  context = `context`,
+  scope = `scope`,
+  value = `value`,
+  documentation = `documentation`,
+  unresolved = `unresolved`,
+}
+
+d SemanticToken: `One name in a file, classified by what it resolves to` {
+  $range: `The token that spells the name` = Range;
+  $type: `What it stands for` = TokenType;
+  $modifiers: `What refines it, in [[TokenModifier]] order; empty when nothing does` = TokenModifier[];
+}

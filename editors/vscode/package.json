@@ -5,16 +5,28 @@
   "version": "0.1.0",
   "publisher": "elfie",
   "license": "SEE LICENSE IN ../../README.md",
-  "engines": { "vscode": "^1.82.0" },
-  "categories": ["Programming Languages"],
-  "activationEvents": ["onLanguage:elfie", "workspaceContains:elfie.json"],
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:elfie",
+    "workspaceContains:elfie.json"
+  ],
   "main": "./extension.js",
   "contributes": {
     "languages": [
       {
         "id": "elfie",
-        "aliases": ["Elfie", "elfie"],
-        "extensions": [".lfy"],
+        "aliases": [
+          "Elfie",
+          "elfie"
+        ],
+        "extensions": [
+          ".lfy"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -40,15 +52,127 @@
         },
         "elfie.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
         }
       }
     },
     "commands": [
-      { "command": "elfie.restartServer", "title": "Elfie: Restart Language Server" }
-    ]
+      {
+        "command": "elfie.restartServer",
+        "title": "Elfie: Restart Language Server"
+      }
+    ],
+    "semanticTokenTypes": [
+      {
+        "id": "data",
+        "superType": "struct",
+        "description": "A data declaration (d), whose implementation is generated"
+      },
+      {
+        "id": "trait",
+        "superType": "interface",
+        "description": "A trait, applied to declarations with is or extends"
+      }
+    ],
+    "semanticTokenModifiers": [
+      {
+        "id": "agentic",
+        "description": "Declared with d or fn: the implementation is generated from criteria"
+      },
+      {
+        "id": "context",
+        "description": "Reached through the context layer (@)"
+      },
+      {
+        "id": "scope",
+        "description": "Reached through the scope layer ($)"
+      },
+      {
+        "id": "value",
+        "description": "Reached through the value layer (.)"
+      },
+      {
+        "id": "unresolved",
+        "description": "A name that resolves to nothing"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "elfie",
+        "scopes": {
+          "data": [
+            "entity.name.type.data.elfie",
+            "entity.name.type.elfie"
+          ],
+          "trait": [
+            "entity.name.type.trait.elfie",
+            "entity.name.type.interface.elfie"
+          ],
+          "property.context": [
+            "entity.name.tag.context.elfie"
+          ],
+          "property.scope": [
+            "variable.other.constant.scope.elfie"
+          ],
+          "property.value": [
+            "variable.other.property.value.elfie"
+          ],
+          "*.unresolved": [
+            "invalid.unresolved.elfie"
+          ],
+          "*.documentation": [
+            "variable.other.reference.elfie"
+          ]
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "entity.name.tag.context.elfie",
+            "settings": {
+              "fontStyle": "italic"
+            }
+          },
+          {
+            "scope": "variable.other.constant.scope.elfie",
+            "settings": {
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "invalid.unresolved.elfie",
+            "settings": {
+              "fontStyle": "underline"
+            }
+          }
+        ]
+      },
+      "editor.semanticTokenColorCustomizations": {
+        "enabled": true,
+        "rules": {
+          "*.context:elfie": {
+            "italic": true
+          },
+          "*.scope:elfie": {
+            "bold": true
+          },
+          "*.agentic:elfie": {
+            "underline": false
+          },
+          "*.unresolved:elfie": {
+            "underline": true
+          }
+        }
+      }
+    }
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"

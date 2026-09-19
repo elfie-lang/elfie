@@ -219,3 +219,41 @@ fn sourceOf(workspace: Workspace, entity: Entity): `The text that declares an en
     .add({ situation = `[[entity]] is the anonymous entity of a file`, behavior = `The whole file`, })
     .add({ situation = `[[entity]] is a member added by a trait`, behavior = `The member statement inside the trait body`, });
 }
+
+fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, classified by meaning for an editor to color` => SemanticToken[] {
+  // Which tokens
+  @acceptanceCriteria
+    .add({ behavior = `One [[SemanticToken]] per token that spells a declared name, a used name, or a context property; keywords, punctuation, strings, numbers, and comments get none`, })
+    .add({ behavior = `Tokens are in position order and never overlap`, })
+    .add({ situation = `[[file]] is not in [[Workspace.files]]`, behavior = `Returns an empty list`, });
+
+  // Type
+  @acceptanceCriteria
+    .add({ behavior = `[[SemanticToken.type]] follows the kind of the symbol the token declares or resolves to: data gives data; trait gives trait; type gives type; enum gives enum; enumMember gives enumMember; function and agentFunction give function; parameter gives parameter; variable and loopVariable give variable; member gives property; module gives namespace`, })
+    .add({ situation = `The symbol is an alias`, behavior = `The type is that of the entity it is bound to`, })
+    .add({ situation = `The token names a context property after the context accessor`, behavior = `The type is property`, })
+    .add({ situation = `The token resolves to nothing`, behavior = `The type is variable`, })
+    .add({ situation = `The token is a member of something the model does not know, so the binder reported no [[Problem]] there`, behavior = `It gets no token: it is not a name of the program`, });
+
+  // Modifiers
+  @acceptanceCriteria
+    .add({ situation = `The token spells the name in a declaration`, behavior = `declaration is among its modifiers`, })
+    .add({ situation = `The entity is declared with [[AgentDataKeyword]] or [[AgentFunctionKeyword]]`, behavior = `agentic is among the modifiers of every token of that entity, declaration and use alike`, })
+    .add({ situation = `The entity is a variable declared with [[ConstKeyword]]`, behavior = `readonly is among its modifiers`, })
+    .add({ situation = `The token follows a [[ContextAccessor]], a [[ScopeAccessor]] or [[ParentScopeAccessor]], or a [[ValueAccessor]] or [[OptionalValueAccessor]]`, behavior = `context, scope, or value, in the same order, is among its modifiers`, })
+    .add({ situation = `The token is inside a [[TemplateReference]], a [[TemplateExecution]], or [[Documentation]]`, behavior = `documentation is among its modifiers`, })
+    .add({ situation = `The token resolves to nothing`, behavior = `unresolved is among its modifiers`, })
+    .add({ behavior = `Modifiers are in [[TokenModifier]] order and each appears once`, });
+
+  @test(
+    {
+      input = [Workspace@like(`One file a.lfy reading: d A { $x: \`d\` = string; } const y = A$x;`), `def/a.lfy`],
+      expect = SemanticToken[]@like(`A as data with declaration and agentic; x as property with declaration; y as variable with declaration and readonly; A as data with agentic; x as property with scope`),
+    },
+    {
+      input = [Workspace@like(`One file a.lfy reading: fn f(): \`See \[[g\]]\` => number { @acceptanceCriteria.add({ behavior = \`b\` }); }`), `def/a.lfy`],
+      expect = SemanticToken[]@like(`f as function with declaration and agentic; g as variable with documentation and unresolved; acceptanceCriteria as property with context; no token for add, since it is not a name in the program`),
+    },
+  );
+}
+

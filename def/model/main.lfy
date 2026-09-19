@@ -128,7 +128,7 @@ fn resolve(model: Model, node: Node): `The symbol a node uses or declares` => Sy
     .add({ situation = `Neither`, behavior = `Returns undefined`, });
 }
 
-fn entitiesOf(model: Model, traitEntity: Entity): `Everything that has a trait` => Entity[] {
+fn entitiesOf(model: Model, traitEntity: TraitEntity): `Everything that has a trait` => Entity[] {
   @acceptanceCriteria
     .add({ behavior = `Returns [[TraitEntity.entities]] of [[traitEntity]]`, })
     .add({ situation = `[[traitEntity]] is not a trait`, behavior = `Returns an empty list`, });

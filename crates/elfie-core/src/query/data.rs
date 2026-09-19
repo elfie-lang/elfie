@@ -213,6 +213,130 @@ pub struct Edit {
     pub text: String, // @lfy def/query/data.lfy:68
 }
 
+/// What a semantic token stands for: the protocol's own kinds where one fits, and `data`
+/// and `trait` where Elfie has no equivalent there.
+// @lfy def/query/data.lfy:75
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TokenType {
+    Namespace,  // @lfy def/query/data.lfy:76
+    Data,       // @lfy def/query/data.lfy:77
+    Trait,      // @lfy def/query/data.lfy:78
+    Type,       // @lfy def/query/data.lfy:79
+    Enum,       // @lfy def/query/data.lfy:80
+    EnumMember, // @lfy def/query/data.lfy:81
+    Function,   // @lfy def/query/data.lfy:82
+    Parameter,  // @lfy def/query/data.lfy:83
+    Variable,   // @lfy def/query/data.lfy:84
+    Property,   // @lfy def/query/data.lfy:85
+}
+
+impl TokenType {
+    /// Every type in enum order: the order of a semantic tokens legend.
+    pub const ALL: [TokenType; 10] = [
+        TokenType::Namespace,
+        TokenType::Data,
+        TokenType::Trait,
+        TokenType::Type,
+        TokenType::Enum,
+        TokenType::EnumMember,
+        TokenType::Function,
+        TokenType::Parameter,
+        TokenType::Variable,
+        TokenType::Property,
+    ];
+
+    /// The value of the enum member: the name the protocol or the client knows.
+    pub fn value(self) -> &'static str {
+        match self {
+            TokenType::Namespace => "namespace",
+            TokenType::Data => "data",
+            TokenType::Trait => "trait",
+            TokenType::Type => "type",
+            TokenType::Enum => "enum",
+            TokenType::EnumMember => "enumMember",
+            TokenType::Function => "function",
+            TokenType::Parameter => "parameter",
+            TokenType::Variable => "variable",
+            TokenType::Property => "property",
+        }
+    }
+
+    /// The position in [`TokenType::ALL`], which is the legend index.
+    pub fn index(self) -> usize {
+        TokenType::ALL.iter().position(|&t| t == self).expect("listed")
+    }
+}
+
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.value())
+    }
+}
+
+/// What refines a semantic token.
+// @lfy def/query/data.lfy:88
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TokenModifier {
+    Declaration,   // @lfy def/query/data.lfy:89
+    Agentic,       // @lfy def/query/data.lfy:90
+    Readonly,      // @lfy def/query/data.lfy:91
+    Context,       // @lfy def/query/data.lfy:92
+    Scope,         // @lfy def/query/data.lfy:93
+    Value,         // @lfy def/query/data.lfy:94
+    Documentation, // @lfy def/query/data.lfy:95
+    Unresolved,    // @lfy def/query/data.lfy:96
+}
+
+impl TokenModifier {
+    /// Every modifier in enum order: the order of a legend and of `SemanticToken.modifiers`.
+    pub const ALL: [TokenModifier; 8] = [
+        TokenModifier::Declaration,
+        TokenModifier::Agentic,
+        TokenModifier::Readonly,
+        TokenModifier::Context,
+        TokenModifier::Scope,
+        TokenModifier::Value,
+        TokenModifier::Documentation,
+        TokenModifier::Unresolved,
+    ];
+
+    pub fn value(self) -> &'static str {
+        match self {
+            TokenModifier::Declaration => "declaration",
+            TokenModifier::Agentic => "agentic",
+            TokenModifier::Readonly => "readonly",
+            TokenModifier::Context => "context",
+            TokenModifier::Scope => "scope",
+            TokenModifier::Value => "value",
+            TokenModifier::Documentation => "documentation",
+            TokenModifier::Unresolved => "unresolved",
+        }
+    }
+
+    /// The position in [`TokenModifier::ALL`], which is the legend index and the bit.
+    pub fn index(self) -> usize {
+        TokenModifier::ALL.iter().position(|&m| m == self).expect("listed")
+    }
+}
+
+impl fmt::Display for TokenModifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.value())
+    }
+}
+
+/// One name in a file, classified by what it resolves to.
+// @lfy def/query/data.lfy:99
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SemanticToken {
+    /// The token that spells the name.
+    pub range: Range, // @lfy def/query/data.lfy:100
+    /// What it stands for.
+    pub ty: TokenType, // @lfy def/query/data.lfy:101
+    /// What refines it, in `TokenModifier` order; empty when nothing does.
+    pub modifiers: Vec<TokenModifier>, // @lfy def/query/data.lfy:102
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,5 +372,16 @@ mod tests {
         assert_eq!(Stage::Lexer.value(), "lexer");
         assert_eq!(Stage::Parser.value(), "parser");
         assert_eq!(Stage::Binder.value(), "binder");
+    }
+
+    // @lfy def/query/data.lfy:75
+    #[test]
+    fn token_types_and_modifiers_keep_enum_order_and_values() {
+        assert_eq!(TokenType::ALL.iter().map(|t| t.value()).collect::<Vec<_>>(), ["namespace", "data", "trait", "type", "enum", "enumMember", "function", "parameter", "variable", "property"]);
+        assert_eq!(TokenType::Property.index(), 9);
+        assert_eq!(TokenModifier::ALL.iter().map(|m| m.value()).collect::<Vec<_>>(), ["declaration", "agentic", "readonly", "context", "scope", "value", "documentation", "unresolved"]);
+        assert_eq!(TokenModifier::Unresolved.index(), 7);
+        assert_eq!(TokenType::Trait.to_string(), "trait");
+        assert_eq!(TokenModifier::Scope.to_string(), "scope");
     }
 }

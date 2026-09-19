@@ -264,7 +264,7 @@ impl Binder {
     // @lfy def/model/main.lfy:38
     pub fn link_uses(&mut self, file: FileId) {
         let trees = self.trees.clone();
-        let root = NodeRef { file, index: 0 };
+        let _ = file;
         // Every Use of the file in preorder, as the workspace lists Source.uses.
         let uses: Vec<NodeRef> = (0..trees.nodes[file].len())
             .map(|index| NodeRef { file, index })

@@ -21,7 +21,8 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
   @acceptanceCriteria
     .add({ behavior = `On initialize, [[Session.workspace]] is [[Loader.load]] of [[root]], or of the client's first workspace folder, or of the current directory, in that order of availability`, })
     .add({ behavior = `[[Session.encoding]] is utf-8 when the client offers it, utf-16 otherwise, and the response says which`, })
-    .add({ behavior = `The response advertises hover, definition, references, completion, rename with prepare, document symbols, workspace symbols, and document formatting, and full text document synchronization`, })
+    .add({ behavior = `The response advertises hover, definition, references, completion, rename with prepare, document symbols, workspace symbols, document formatting, and semantic tokens for a whole document, and full text document synchronization`, })
+    .add({ behavior = `The semantic tokens legend lists the values of [[TokenType]] then of [[TokenModifier]], each in enum order, so a client maps the custom types data and trait itself`, })
     .add({ behavior = `After initialized, diagnostics are published for every file of the program`, })
     .add({ behavior = `Registers for watched file changes to every .lfy file and to elfie.json under the root`, });
 
@@ -51,7 +52,8 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     .add({ situation = `rename`, behavior = `[[Query.renameAt]] as one workspace edit with the edits grouped by file, or an error response carrying the reason it returned`, })
     .add({ situation = `documentSymbol`, behavior = `[[Query.outlineOf]] nested as the protocol's document symbols, with kinds mapped as completion maps them`, })
     .add({ situation = `workspace symbol`, behavior = `[[Query.findSymbols]] with the request's query`, })
-    .add({ situation = `formatting`, behavior = `One edit replacing the whole document with [[Formatter.format]] of its tree when that differs, no edits when it is the same, and no edits with a log message when the tree has errors`, });
+    .add({ situation = `formatting`, behavior = `One edit replacing the whole document with [[Formatter.format]] of its tree when that differs, no edits when it is the same, and no edits with a log message when the tree has errors`, })
+    .add({ situation = `semantic tokens for a whole document`, behavior = `[[Query.semanticTokensOf]] encoded as the protocol's relative form: for each token in order, the line difference from the token before, the start difference when on the same line or the start itself otherwise, the length in [[Session.encoding]] units, the index of its type in the legend, and the modifiers as a bit set by legend index`, });
 
   @test(
     {

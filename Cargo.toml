@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/elfie-core", "crates/elfie-lsp", "crates/elfie-mcp", "crates/elfie-cli"]
 resolver = "3"
 
 [workspace.package]

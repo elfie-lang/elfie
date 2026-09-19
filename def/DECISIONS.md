@@ -78,8 +78,10 @@ only be reassembled into it. **Push diagnostics** (publish after each change, la
 pull. **Position encoding** utf-8 when offered, utf-16 otherwise; queries never convert, the server
 does at its edge.
 
-**Not included:** semantic tokens (a TextMate grammar covers highlighting for now), code actions,
-signature help, inlay hints. Each is one more query when wanted.
+**Semantic tokens** were added on 2026-09-19 (`semanticTokensOf` in `def/query`, one feature in
+`def/lsp`): only names are classified, keywords and literals stay with the editor's grammar, the
+three layers become modifiers, and `data` and `trait` are custom token types the extension maps
+to scopes. **Not included:** code actions, signature help, inlay hints.
 
 ## MCP
 

@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use elfie_core::format;
 use elfie_core::model::Criterion;
-use elfie_core::query::{self, Position, Range};
+use elfie_core::query::{self, Position, Range, SemanticToken, TokenModifier, TokenType};
 use elfie_core::workspace;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_lsp::jsonrpc::{Error, Result};
@@ -651,6 +651,22 @@ impl LanguageServer for Backend {
     /// no edits when it is the same, and no edits with a log message when the tree has
     /// errors.
     // @lfy def/lsp/main.lfy:49
+    /// `semanticTokensOf` encoded in the protocol's relative form.
+    // @lfy def/lsp/main.lfy:56
+    async fn semantic_tokens_full(
+        &self,
+        params: lsp::SemanticTokensParams,
+    ) -> Result<Option<lsp::SemanticTokensResult>> {
+        self.with_document(&params.text_document.uri, |session, path, converter| {
+            let tokens = query::semantic_tokens_of(&session.workspace, path);
+            let protocol: Vec<lsp::Range> = tokens.iter().map(|t| converter.range(session, &t.range)).collect();
+            Some(lsp::SemanticTokensResult::Tokens(lsp::SemanticTokens {
+                result_id: None,
+                data: encode_tokens(&tokens, &protocol),
+            }))
+        })
+    }
+
     async fn formatting(
         &self,
         params: lsp::DocumentFormattingParams,
@@ -742,8 +758,56 @@ fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
         document_symbol_provider: Some(lsp::OneOf::Left(true)),
         workspace_symbol_provider: Some(lsp::OneOf::Left(true)),
         document_formatting_provider: Some(lsp::OneOf::Left(true)),
+        // @lfy def/lsp/main.lfy:24
+        semantic_tokens_provider: Some(
+            lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(lsp::SemanticTokensOptions {
+                legend: legend(),
+                full: Some(lsp::SemanticTokensFullOptions::Bool(true)),
+                range: Some(false),
+                work_done_progress_options: Default::default(),
+            }),
+        ),
         ..Default::default()
     }
+}
+
+/// The semantic tokens legend: the values of `TokenType` then of `TokenModifier`, each in
+/// enum order, so a client maps the custom types `data` and `trait` itself.
+// @lfy def/lsp/main.lfy:25
+fn legend() -> lsp::SemanticTokensLegend {
+    lsp::SemanticTokensLegend {
+        token_types: TokenType::ALL.iter().map(|t| lsp::SemanticTokenType::new(t.value())).collect(),
+        token_modifiers: TokenModifier::ALL.iter().map(|m| lsp::SemanticTokenModifier::new(m.value())).collect(),
+    }
+}
+
+/// Semantic tokens in the protocol's relative form: for each token in order, the line
+/// difference from the token before, the start difference when on the same line or the
+/// start itself otherwise, the length in encoding units, the legend index of its type, and
+/// the modifiers as a bit set by legend index.
+// @lfy def/lsp/main.lfy:56
+fn encode_tokens(tokens: &[SemanticToken], protocol: &[lsp::Range]) -> Vec<lsp::SemanticToken> {
+    let mut out = Vec::with_capacity(tokens.len());
+    let mut previous_line = 0;
+    let mut previous_start = 0;
+    for (token, range) in tokens.iter().zip(protocol) {
+        let line = range.start.line;
+        let start = range.start.character;
+        let delta_line = line - previous_line;
+        let delta_start = if delta_line == 0 { start - previous_start } else { start };
+        let length = range.end.character.saturating_sub(range.start.character);
+        let modifiers = token.modifiers.iter().fold(0u32, |bits, m| bits | (1 << m.index()));
+        out.push(lsp::SemanticToken {
+            delta_line,
+            delta_start,
+            length,
+            token_type: token.ty.index() as u32,
+            token_modifiers_bitset: modifiers,
+        });
+        previous_line = line;
+        previous_start = start;
+    }
+    out
 }
 
 /// A watcher for one glob under the root.
@@ -1762,5 +1826,38 @@ mod tests {
         );
 
         assert_eq!(editor.exit(true).await, 0);
+    }
+
+    // @lfy def/lsp/main.lfy:56
+    #[test]
+    fn tokens_are_encoded_relative_to_the_one_before() {
+        let range = |line, start, end| lsp::Range { start: lsp::Position::new(line, start), end: lsp::Position::new(line, end) };
+        let query_range = Range { file: "def/a.lfy".into(), start: Position::new(1, 0), end: Position::new(1, 0) };
+        let tokens = vec![
+            SemanticToken { range: query_range.clone(), ty: TokenType::Data, modifiers: vec![TokenModifier::Declaration, TokenModifier::Agentic] },
+            SemanticToken { range: query_range.clone(), ty: TokenType::Property, modifiers: vec![TokenModifier::Scope] },
+            SemanticToken { range: query_range, ty: TokenType::Variable, modifiers: vec![] },
+        ];
+        let encoded = encode_tokens(&tokens, &[range(0, 2, 3), range(0, 8, 9), range(2, 6, 7)]);
+        let flat: Vec<(u32, u32, u32, u32, u32)> = encoded.iter().map(|t| (t.delta_line, t.delta_start, t.length, t.token_type, t.token_modifiers_bitset)).collect();
+        assert_eq!(flat, vec![(0, 2, 1, 1, 0b11), (0, 6, 1, 9, 1 << 4), (2, 6, 1, 8, 0)]);
+        let legend = legend();
+        assert_eq!(legend.token_types[1].as_str(), "data");
+        assert_eq!(legend.token_types.len(), 10);
+        assert_eq!(legend.token_modifiers[4].as_str(), "scope");
+    }
+
+    // @lfy def/lsp/main.lfy:24
+    #[tokio::test]
+    async fn semantic_tokens_are_served_for_a_document() {
+        let root = fixture(&[("def/a.lfy", "d A {}\nconst y = A;\n")]);
+        let mut editor = Editor::connect(root);
+        let initialized = editor.initialize(json!({})).await;
+        assert!(initialized["result"]["capabilities"]["semanticTokensProvider"]["full"].as_bool().unwrap());
+        let a = editor.uri("def/a.lfy");
+        let answer = editor.request("textDocument/semanticTokens/full", json!({ "textDocument": { "uri": a } })).await;
+        // A at 0:2 (data, declaration+agentic), y at 1:6 (variable, declaration+readonly), A at 1:10 (data, agentic).
+        assert_eq!(answer["result"]["data"], json!([0, 2, 1, 1, 0b11, 1, 6, 1, 8, 0b101, 0, 4, 1, 1, 0b10]));
+        editor.exit(true).await;
     }
 }

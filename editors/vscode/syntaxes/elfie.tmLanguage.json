@@ -3,15 +3,33 @@
   "name": "Elfie",
   "scopeName": "source.elfie",
   "patterns": [
-    { "include": "#documentation" },
-    { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#template" },
-    { "include": "#numbers" },
-    { "include": "#keywords" },
-    { "include": "#accessors" },
-    { "include": "#declarations" },
-    { "include": "#operators" }
+    {
+      "include": "#documentation"
+    },
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#template"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#accessors"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#operators"
+    }
   ],
   "repository": {
     "documentation": {
@@ -20,20 +38,41 @@
           "name": "comment.block.documentation.elfie",
           "begin": "/\\*\\*(?!/)",
           "end": "\\*\\*/",
-          "patterns": [{ "include": "#reference" }]
+          "patterns": [
+            {
+              "include": "#reference"
+            }
+          ]
         },
         {
           "name": "comment.line.documentation.elfie",
           "begin": "///",
           "end": "$",
-          "patterns": [{ "include": "#reference" }]
+          "patterns": [
+            {
+              "include": "#reference"
+            }
+          ]
         }
       ]
     },
     "comments": {
       "patterns": [
-        { "name": "comment.block.elfie", "begin": "/\\*", "end": "\\*/", "patterns": [{ "include": "#comments" }] },
-        { "name": "comment.line.double-slash.elfie", "begin": "//", "end": "$" }
+        {
+          "name": "comment.block.elfie",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "patterns": [
+            {
+              "include": "#comments"
+            }
+          ]
+        },
+        {
+          "name": "comment.line.double-slash.elfie",
+          "begin": "//",
+          "end": "$"
+        }
       ]
     },
     "strings": {
@@ -42,13 +81,23 @@
           "name": "string.quoted.double.elfie",
           "begin": "\"",
           "end": "\"",
-          "patterns": [{ "name": "constant.character.escape.elfie", "match": "\\\\." }]
+          "patterns": [
+            {
+              "name": "constant.character.escape.elfie",
+              "match": "\\\\."
+            }
+          ]
         },
         {
           "name": "string.quoted.single.elfie",
           "begin": "'",
           "end": "'",
-          "patterns": [{ "name": "constant.character.escape.elfie", "match": "\\\\." }]
+          "patterns": [
+            {
+              "name": "constant.character.escape.elfie",
+              "match": "\\\\."
+            }
+          ]
         }
       ]
     },
@@ -57,15 +106,32 @@
       "begin": "`",
       "end": "`",
       "patterns": [
-        { "name": "constant.character.escape.elfie", "match": "\\\\." },
-        { "include": "#reference" },
+        {
+          "name": "constant.character.escape.elfie",
+          "match": "\\\\."
+        },
+        {
+          "include": "#reference"
+        },
         {
           "name": "meta.embedded.execution.elfie",
           "begin": "\\{\\{",
           "end": "\\}\\}",
-          "beginCaptures": { "0": { "name": "punctuation.section.embedded.begin.elfie" } },
-          "endCaptures": { "0": { "name": "punctuation.section.embedded.end.elfie" } },
-          "patterns": [{ "include": "$self" }]
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.section.embedded.begin.elfie"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.section.embedded.end.elfie"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
         }
       ]
     },
@@ -73,37 +139,114 @@
       "name": "meta.embedded.reference.elfie",
       "begin": "\\[\\[",
       "end": "\\]\\]",
-      "beginCaptures": { "0": { "name": "punctuation.section.embedded.begin.elfie" } },
-      "endCaptures": { "0": { "name": "punctuation.section.embedded.end.elfie" } },
-      "patterns": [{ "name": "variable.other.reference.elfie", "match": "[&$@.]*[A-Za-z_][A-Za-z0-9_]*" }]
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.elfie"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.elfie"
+        }
+      },
+      "patterns": [
+        {
+          "name": "variable.other.reference.elfie",
+          "match": "[&$@.]*[A-Za-z_][A-Za-z0-9_]*"
+        }
+      ]
     },
-    "numbers": { "name": "constant.numeric.elfie", "match": "\\b[0-9][0-9_]*(\\.[0-9][0-9_]*)?\\b" },
+    "numbers": {
+      "name": "constant.numeric.elfie",
+      "match": "\\b[0-9][0-9_]*(\\.[0-9][0-9_]*)?\\b"
+    },
     "keywords": {
       "patterns": [
-        { "name": "storage.type.elfie", "match": "\\b(d|fn|function|trait|type|enum|alias|const|let|external|use)\\b" },
-        { "name": "keyword.control.elfie", "match": "\\b(if|else|for|in|of|from|while|loop|break|continue|return|match|matchall|async|await|ace|with|where|and|or|default)\\b" },
-        { "name": "keyword.operator.expression.elfie", "match": "\\b(is|extends|as)\\b" },
-        { "name": "constant.language.elfie", "match": "\\b(null|undefined|true|false|global)\\b" },
-        { "name": "support.type.primitive.elfie", "match": "\\b(boolean|number|string|object)\\b" },
-        { "name": "invalid.reserved.elfie", "match": "\\b(abstract|case|class|impl|interface|new|module|private|public|self|static|super|switch|then|typeof|yield)\\b" }
+        {
+          "name": "storage.type.elfie",
+          "match": "\\b(d|fn|function|trait|type|enum|alias|const|let|external|use)\\b"
+        },
+        {
+          "name": "keyword.control.elfie",
+          "match": "\\b(if|else|for|in|of|from|while|loop|break|continue|return|match|matchall|async|await|ace|with|where|and|or|default)\\b"
+        },
+        {
+          "name": "keyword.operator.expression.elfie",
+          "match": "\\b(is|extends|as)\\b"
+        },
+        {
+          "name": "constant.language.elfie",
+          "match": "\\b(null|undefined|true|false|global)\\b"
+        },
+        {
+          "name": "support.type.primitive.elfie",
+          "match": "\\b(boolean|number|string|object)\\b"
+        },
+        {
+          "name": "invalid.reserved.elfie",
+          "match": "\\b(abstract|case|class|impl|interface|new|module|private|public|self|static|super|switch|then|typeof|yield)\\b"
+        }
       ]
     },
     "accessors": {
       "patterns": [
-        { "name": "variable.other.member.context.elfie", "match": "@[A-Za-z_][A-Za-z0-9_]*" },
-        { "name": "variable.other.member.scope.elfie", "match": "\\$&|\\$[A-Za-z_][A-Za-z0-9_]*" },
-        { "name": "keyword.operator.accessor.elfie", "match": "\\?\\.|\\^\\^|[.@$]" }
+        {
+          "name": "entity.name.tag.context.elfie",
+          "match": "@[A-Za-z_][A-Za-z0-9_]*",
+          "comment": "Context layer: @identifier, @acceptanceCriteria. entity.name.tag is a distinct hue in most themes."
+        },
+        {
+          "name": "variable.other.constant.scope.elfie",
+          "match": "\\$&|\\$[A-Za-z_][A-Za-z0-9_]*",
+          "comment": "Scope layer: $member, $&. variable.other.constant is colored apart from plain variables."
+        },
+        {
+          "match": "(\\.|\\?\\.)([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.operator.accessor.elfie"
+            },
+            "2": {
+              "name": "variable.other.property.value.elfie"
+            }
+          },
+          "comment": "Value layer: .member"
+        },
+        {
+          "name": "keyword.operator.accessor.elfie",
+          "match": "\\?\\.|\\^\\^|[.@$]"
+        }
       ]
     },
     "declarations": {
       "patterns": [
-        { "match": "\\b(d|trait|type|enum|alias|const|let|external)\\s+([A-Za-z_][A-Za-z0-9_]*)", "captures": { "1": { "name": "storage.type.elfie" }, "2": { "name": "entity.name.type.elfie" } } },
-        { "match": "\\b(fn|function)\\s+([A-Za-z_][A-Za-z0-9_]*)", "captures": { "1": { "name": "storage.type.elfie" }, "2": { "name": "entity.name.function.elfie" } } }
+        {
+          "match": "\\b(d|trait|type|enum|alias|const|let|external)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.elfie"
+            },
+            "2": {
+              "name": "entity.name.type.elfie"
+            }
+          }
+        },
+        {
+          "match": "\\b(fn|function)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.elfie"
+            },
+            "2": {
+              "name": "entity.name.function.elfie"
+            }
+          }
+        }
       ]
     },
     "operators": {
       "name": "keyword.operator.elfie",
-      "match": "=>|->|→|<-|←|=[!+\\-*&|]|=\\*\\*|=\\?\\?|=\\|\\||=&&|==|!=|&=|~=|<=|>=|&&|\\|\\||\\?\\?|\\*\\*|\\.\\.\\.|[=<>!&|^~+\\-*/%?:]"
+      "match": "=>|->|\u2192|<-|\u2190|=[!+\\-*&|]|=\\*\\*|=\\?\\?|=\\|\\||=&&|==|!=|&=|~=|<=|>=|&&|\\|\\||\\?\\?|\\*\\*|\\.\\.\\.|[=<>!&|^~+\\-*/%?:]"
     }
   }
 }
