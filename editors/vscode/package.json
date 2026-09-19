@@ -1,0 +1,62 @@
+{
+  "name": "elfie",
+  "displayName": "Elfie",
+  "description": "Language support for Elfie (.lfy) through the elfie language server",
+  "version": "0.1.0",
+  "publisher": "elfie",
+  "license": "SEE LICENSE IN ../../README.md",
+  "engines": { "vscode": "^1.82.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:elfie", "workspaceContains:elfie.json"],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "elfie",
+        "aliases": ["Elfie", "elfie"],
+        "extensions": [".lfy"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "elfie",
+        "scopeName": "source.elfie",
+        "path": "./syntaxes/elfie.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Elfie",
+      "properties": {
+        "elfie.path": {
+          "type": "string",
+          "default": "elfie",
+          "description": "The elfie executable to run as the language server (a name on PATH or an absolute path)."
+        },
+        "elfie.root": {
+          "type": "string",
+          "default": "",
+          "description": "The project root passed as --root; empty means the first workspace folder."
+        },
+        "elfie.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    },
+    "commands": [
+      { "command": "elfie.restartServer", "title": "Elfie: Restart Language Server" }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.0.0"
+  },
+  "scripts": {
+    "package": "vsce package --allow-missing-repository"
+  }
+}

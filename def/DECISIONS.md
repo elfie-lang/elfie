@@ -194,9 +194,11 @@ query, format, generation), `crates/elfie-lsp`, `crates/elfie-mcp`, `crates/elfi
 
 ## Known issues left open
 
-- `x = c ?? d;` and `y = (c ?? d);` at statement level parse with errors although the same
-  operators parse inside a `where` group; a parser bug in `crates/elfie-core/src/parser`, not hit
-  by any def file.
+- A reported parse failure for `x = c ?? d;` turned out not to be a bug: `d` is the data
+  keyword and can never be a name, so the sample itself was invalid; `x = c ?? e;` parses. The
+  error the parser gives (`expected [Semicolon] but found "= d"`) does not say so, which is the
+  real shortcoming; a keyword-in-name-position diagnostic would need a criterion in the parser
+  def before the compiled parser can grow one.
 - The formatter treats a trailing comma as layout (added on wrap, removed on one line), which is
   the one deliberate deviation from "the same tokens, trivia aside".
 

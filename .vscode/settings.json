@@ -1,0 +1,4 @@
+{
+  "elfie.path": "${workspaceFolder}/target/release/elfie",
+  "files.associations": { "*.lfy": "elfie" }
+}
