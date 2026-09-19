@@ -13,8 +13,9 @@ function rootOf() {
 
 function start(context) {
   const configuration = vscode.workspace.getConfiguration("elfie");
-  const command = configuration.get("path") || "elfie";
   const root = rootOf();
+  // `${workspaceFolder}` in elfie.path stands for the first workspace folder.
+  const command = (configuration.get("path") || "elfie").replace("${workspaceFolder}", root || "");
   const args = root ? ["lsp", "--root", root] : ["lsp"];
   const serverOptions = {
     run: { command, args, transport: TransportKind.stdio },
