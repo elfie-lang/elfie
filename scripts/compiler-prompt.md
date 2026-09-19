@@ -16,3 +16,6 @@ definition file compiled for one target. Produce its outputs and nothing else.
 - An ambiguous criterion, two criteria in conflict, or a name that resolves nowhere means no
   output: stop and report the problem, quoting the criterion, instead of guessing.
 - Do not commit. Print a short report of the files written and any decision you had to make.
+- End your report with exactly one line: `ELFIE: DONE` when every output is written and the
+  crate builds and tests; `ELFIE: BLOCKED: <reason>` when you cannot proceed (write no output for
+  that unit); or `ELFIE: CLARIFY: <question>` when only a person can decide (write nothing).
