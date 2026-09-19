@@ -75,7 +75,7 @@ pub struct Node {
     /// `$documentation` of the `documented` trait: the `Documentation` nodes that precede
     /// this node with only trivia between; empty when there are none, and always empty
     /// for rules without the trait.
-    pub documentation: Vec<Node>, // @lfy def/parser/traits.lfy:31
+    pub documentation: Vec<Node>, // @lfy def/parser/traits.lfy:32
 }
 
 impl Node {

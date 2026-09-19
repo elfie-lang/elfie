@@ -245,3 +245,30 @@ the server never contends for the build lock. Decisions: a wrapper script rather
 command in JSON, so the flags are reviewable and editable; `acceptEdits` rather than
 `bypassPermissions`, so anything outside the allowed list still stops the run; no `--bare`, so
 the repository's own settings and CLAUDE.md apply.
+
+# Merge of main and the compile-process changes (2026-09-19)
+
+Main's `def/` (grammar, lexer, parser, model, workspace, query) and its compiled core modules
+replaced this branch's copies; the query Rust stayed this branch's, since main's is a stub. The
+unwritten pieces (cli, format, generation, lsp, mcp) were formatted with `elfie format` to match.
+
+- **Markers name entities, not lines.** `@lfy def/lexer/main.lfy:lex` (or `Entity.member`).
+  Lines are derived from the model at acceptance and a line-form marker that falls inside a
+  declaration is rewritten to the name form, so a source map never contains a number the compiler
+  typed and no marker drifts when definitions move. Alternative rejected: keeping line markers
+  and asking the compiler to shift them, which is exactly the error-prone step this removes.
+- **Interface signatures decide dependency staleness.** A source map records the hash of the
+  unit's interface text (identifier, kind, definition, type, parameters, output per entity) and
+  the hashes of its dependencies' interfaces. A dependent is planned only when one of those
+  differs, so a change inside a body regenerates one unit. Timestamps are no longer consulted.
+- **Batches.** Planned units are grouped by plan order and first stem segment, at most six units
+  or 60,000 characters of source per batch, with a dependency-only unit joining the batch that
+  produces what it depends on. One request per batch sends guidance and interfaces once.
+- **Outcomes.** The compiler ends its report with `ELFIE: DONE`, `ELFIE: BLOCKED: <why>`, or
+  `ELFIE: CLARIFY: <question>`; `outcomeOf` reads that line and the verdicts. Rejected batches are
+  retried once with the problems; blocked and clarification stop the compile and leave a file
+  under `elfie-requests/` for the person; failures retry once. `--continue` lets independent
+  batches proceed past a stopped one.
+- **Progress** is one line per step (planned, requesting, compiling, checking, accepted, ...) with
+  done/total and elapsed seconds, as JSON with `--json`, with the compiler's own output streamed
+  under the batch name and everything appended to `elfie-requests/compile.log`.

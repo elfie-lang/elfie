@@ -38,7 +38,7 @@ impl Token {
     }
 
     /// Whether the token is flagged as invalid: no terminal matched its text.
-    // @lfy def/lexer/data.lfy:13
+    // @lfy def/lexer/data.lfy:15
     pub fn is_invalid(&self) -> bool {
         self.rule.is_none()
     }
@@ -51,7 +51,7 @@ impl Token {
 
 /// One entry of the [`ModeStack`]: a mode together with the terminal whose token opened
 /// it (`None` for the code mode the stack starts with).
-// @lfy def/lexer/data.lfy:19
+// @lfy def/lexer/data.lfy:21
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ModeEntry {
     pub mode: Mode,
@@ -60,7 +60,7 @@ pub struct ModeEntry {
 
 /// Which region of the source the lexer is in, innermost last. The entry at the top
 /// decides which terminals are candidates for the next token.
-// @lfy def/lexer/data.lfy:16
+// @lfy def/lexer/data.lfy:18
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModeStack {
     entries: Vec<ModeEntry>,
@@ -74,7 +74,7 @@ impl Default for ModeStack {
 
 impl ModeStack {
     /// A stack holding the code mode, which it never loses.
-    // @lfy def/lexer/data.lfy:18
+    // @lfy def/lexer/data.lfy:20
     pub fn new() -> Self {
         ModeStack {
             entries: vec![ModeEntry {
@@ -85,7 +85,7 @@ impl ModeStack {
     }
 
     /// A token opens a mode: the mode is pushed together with the rule that opened it.
-    // @lfy def/lexer/data.lfy:19
+    // @lfy def/lexer/data.lfy:21
     pub fn push(&mut self, mode: Mode, opener: Entity) {
         self.entries.push(ModeEntry {
             mode,
@@ -96,17 +96,17 @@ impl ModeStack {
     /// A token closes the mode at the top: the top entry is popped and returned. When
     /// `mode` is not at the top it is not a close and nothing changes. The code mode the
     /// stack starts with is never popped.
-    // @lfy def/lexer/data.lfy:20
+    // @lfy def/lexer/data.lfy:22
     pub fn pop(&mut self, mode: Mode) -> Option<ModeEntry> {
         if self.entries.len() > 1 && self.top().mode == mode {
-            self.entries.pop() // @lfy def/lexer/data.lfy:20
+            self.entries.pop() // @lfy def/lexer/data.lfy:22
         } else {
-            None // @lfy def/lexer/data.lfy:21
+            None // @lfy def/lexer/data.lfy:23
         }
     }
 
     /// The entry at the top of the stack.
-    // @lfy def/lexer/data.lfy:22
+    // @lfy def/lexer/data.lfy:24
     pub fn top(&self) -> &ModeEntry {
         self.entries.last().expect("the stack is never empty")
     }
@@ -153,7 +153,7 @@ mod tests {
         Entity::Literal(Literal::Backtick)
     }
 
-    // @lfy def/lexer/data.lfy:18
+    // @lfy def/lexer/data.lfy:20
     #[test]
     fn the_stack_starts_with_code_and_is_never_empty() {
         let mut stack = ModeStack::new();
@@ -164,7 +164,7 @@ mod tests {
         assert!(stack.open().is_empty());
     }
 
-    // @lfy def/lexer/data.lfy:19
+    // @lfy def/lexer/data.lfy:21
     #[test]
     fn opening_a_mode_pushes_it_with_its_opener() {
         let mut stack = ModeStack::new();
@@ -182,7 +182,7 @@ mod tests {
         assert_eq!(stack.open().len(), 2);
     }
 
-    // @lfy def/lexer/data.lfy:20
+    // @lfy def/lexer/data.lfy:22
     #[test]
     fn closing_pops_only_the_mode_at_the_top() {
         let mut stack = ModeStack::new();

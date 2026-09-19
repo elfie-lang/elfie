@@ -38,5 +38,5 @@ d Workspace: `A project, loaded and bound` {
   $model: `The program` = Model;
   $targets: `What the project is compiled into` = Target[];
   $nativeDependencies: `What code generated from the project's own source requires, as its elfie.json names it` = NativeDependency[];
-  $problems: `Every [[LoadProblem]], then every [[Problem]] of [[Workspace.model]]` = (LoadProblem | Problem)[];
+  $problems: `Every [[LoadProblem]], then every [[Problem]] loading or binding added` = (LoadProblem | Problem)[];
 }

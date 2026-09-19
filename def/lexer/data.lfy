@@ -8,16 +8,18 @@ d Token: `One piece of the source text` {
   $line: `Line the token starts on, counting from 1` = number;
   $column: `Column the token starts at within its line, counting from 0` = number;
   @acceptanceCriteria
-    .add({ behavior = `Joining [[Token.raw]] of every token of a file in order reproduces the file exactly`, })
-    .add({ behavior = `[[Token.column]] is based on the [[Token.raw]] text of the file in the original source, not the adjusted [[Token.value]] position`, })
-    .add({ situation = `[[Token.rule]] is null`, behavior = `[[Token]] is flagged as invalid`, });
+    .add({ behavior = `Joining [[Token.raw]] of every token of a file in order reproduces the file exactly` })
+    .add({
+      behavior = `[[Token.column]] is based on the [[Token.raw]] text of the file in the original source, not the adjusted [[Token.value]] position`,
+    })
+    .add({ situation = `[[Token.rule]] is null`, behavior = `[[Token]] is flagged as invalid` });
 }
 
 d ModeStack: `Which region of the source the lexer is in, innermost last` {
   @acceptanceCriteria
-    .add({ behavior = `Starts with the code mode and is never empty`, })
-    .add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it`, })
-    .add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped`, })
-    .add({ situation = `A token closes a mode, but that mode is not at the top`, behavior = `Is not a close`, })
-    .add({ behavior = `The entry at the top decides which terminals are candidates for the next token`, });
+    .add({ behavior = `Starts with the code mode and is never empty` })
+    .add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it` })
+    .add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped` })
+    .add({ situation = `A token closes a mode, but that mode is not at the top`, behavior = `Is not a close` })
+    .add({ behavior = `The entry at the top decides which terminals are candidates for the next token` });
 }

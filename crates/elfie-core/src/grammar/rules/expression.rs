@@ -29,103 +29,103 @@ grammar_rules! {
         Declared is [rule()]: "A declared name with its traits and definition" = "[[Identifier]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)", // @lfy def/grammar/rules/expression.lfy:20
         ObjectKey is [rule()]: "An object key name with its traits, definition, and value" = "[[Declared]] , [[PlainSetter]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:21
         Parameter is [rule()]: "A single parameter" = "[[Name]] , (/ [[QuestionMark]] /) , (/ [[DefinitionClause]] /) , (/ [[PlainSetter]] , [[Expression]] /)", // @lfy def/grammar/rules/expression.lfy:22
-        SpreadParameter is [rule()]: "A spread parameter" = "[[Spread]] , [[Name]] , (/ [[DefinitionClause]] /) , (/ [[PlainSetter]] , [[Expression]] /)", // @lfy def/grammar/rules/expression.lfy:23
-        Parameters is [rule()]: "A parameter list" = "[[GroupOpen]] , (/ ( ( [[Parameter]] , (: [[Comma]] , [[Parameter]] :) , (/ [[Comma]] , [[SpreadParameter]] /) ) | [[SpreadParameter]] ) , (/ [[Comma]] /) /) , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:24
-        Signature is [rule()]: "A function's name, parameters, traits, and definition" = "(/ [[Identifier]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)", // @lfy def/grammar/rules/expression.lfy:25
+        SpreadParameter is [rule()]: "A spread parameter" = "[[Spread]] , [[Name]] , (/ [[DefinitionClause]] /) , (/ [[PlainSetter]] , [[Expression]] /)", // @lfy def/grammar/rules/expression.lfy:25
+        Parameters is [rule()]: "A parameter list" = "[[GroupOpen]] , (/ ( ( [[Parameter]] , (: [[Comma]] , [[Parameter]] :) , (/ [[Comma]] , [[SpreadParameter]] /) ) | [[SpreadParameter]] ) , (/ [[Comma]] /) /) , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:26
+        Signature is [rule()]: "A function's name, parameters, traits, and definition" = "(/ [[Identifier]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)", // @lfy def/grammar/rules/expression.lfy:29
         /// `(/ listOf([[Expression]]) /)`
-        Items is [rule()]: "Zero or more comma separated expressions" = "(/ ( [[Expression]] ) , (: [[Comma]] , ( [[Expression]] ) :) , (/ [[Comma]] /) /)", // @lfy def/grammar/rules/expression.lfy:26
-        Arguments is [rule()]: "A parenthesized list" = "[[GroupOpen]] , [[Items]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:27
-        Reference is [rule()]: "A reference chain" = "( [[Name]] | [[Current]] | [[Dereference]] | [[Member]] | [[Index]] ) ", // @lfy def/grammar/rules/expression.lfy:28
-        TemplateReference is [rule()]: "A reference to a name inside a template or documentation" = "[[ReferenceOpen]] , [[Reference]] , [[ReferenceClose]]", // @lfy def/grammar/rules/expression.lfy:29
-        TemplateExecution is [rule()]: "An expression whose value is written into a template" = "[[ExecutionOpen]] , [[Expression]] , [[ExecutionClose]]", // @lfy def/grammar/rules/expression.lfy:30
+        Items is [rule()]: "Zero or more comma separated expressions" = "(/ ( [[Expression]] ) , (: [[Comma]] , ( [[Expression]] ) :) , (/ [[Comma]] /) /)", // @lfy def/grammar/rules/expression.lfy:30
+        Arguments is [rule()]: "A parenthesized list" = "[[GroupOpen]] , [[Items]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:31
+        Reference is [rule()]: "A reference chain" = "( [[Name]] | [[Current]] | [[Dereference]] | [[Member]] | [[Index]] ) ", // @lfy def/grammar/rules/expression.lfy:32
+        TemplateReference is [rule()]: "A reference to a name inside a template or documentation" = "[[ReferenceOpen]] , [[Reference]] , [[ReferenceClose]]", // @lfy def/grammar/rules/expression.lfy:33
+        TemplateExecution is [rule()]: "An expression whose value is written into a template" = "[[ExecutionOpen]] , [[Expression]] , [[ExecutionClose]]", // @lfy def/grammar/rules/expression.lfy:34
         /// `alternationList(PrimitiveType, StringLiteral, Template, Number, Nullish, Object, List, TypePredicate, Reference)`
-        TypeValue is [alternation_list(TYPE_VALUES)]: "A type value" = "[[PrimitiveType]] | [[StringLiteral]] | [[Template]] | [[Number]] | [[Nullish]] | [[Object]] | [[List]] | [[TypePredicate]] | [[Reference]]", // @lfy def/grammar/rules/expression.lfy:31
-        TypeItem is [rule()]: "A type, or an array of it" = "( [[TypeValue]] | ( [[GroupOpen]] , [[TypeExpression]] , [[GroupClose]] ) ) , (/ [[ListOpen]] , [[ListClose]] /)", // @lfy def/grammar/rules/expression.lfy:32
-        TypeExpression is [rule()]: "An expression in a type position" = "(/ [[BitwiseOr]] | [[Ampersand]] /) , [[TypeItem]] , (: ( [[BitwiseOr]] | [[Ampersand]] ) , [[TypeItem]] :)", // @lfy def/grammar/rules/expression.lfy:33
-        TypeKey is [rule()]: "A type key name with its definition and value" = "[[Name]] , (/ [[QuestionMark]] /) , (/ [[DefinitionClause]] /) , [[PlainSetter]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:34
+        TypeValue is [alternation_list(TYPE_VALUES)]: "A type value" = "[[PrimitiveType]] | [[StringLiteral]] | [[Template]] | [[Number]] | [[Nullish]] | [[Object]] | [[List]] | [[TypePredicate]] | [[Reference]]", // @lfy def/grammar/rules/expression.lfy:35
+        TypeItem is [rule()]: "A type, or an array of it" = "( [[TypeValue]] | ( [[GroupOpen]] , [[TypeExpression]] , [[GroupClose]] ) ) , (/ [[ListOpen]] , [[ListClose]] /)", // @lfy def/grammar/rules/expression.lfy:46
+        TypeExpression is [rule()]: "An expression in a type position" = "(/ [[BitwiseOr]] | [[Ampersand]] /) , [[TypeItem]] , (: ( [[BitwiseOr]] | [[Ampersand]] ) , [[TypeItem]] :)", // @lfy def/grammar/rules/expression.lfy:49
+        TypeKey is [rule()]: "A type key name with its definition and value" = "[[Name]] , (/ [[QuestionMark]] /) , (/ [[DefinitionClause]] /) , [[PlainSetter]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:52
 
         // Primaries
-        StringLiteral is [primary()]: "A string" = "[[SingleQuoteString]] | [[DoubleQuoteString]]", // @lfy def/grammar/rules/expression.lfy:38
-        Template is [primary()]: "A template: text with references and expressions" = "[[Backtick]] , (: [[TemplateBody]] | [[TemplateReference]] | [[TemplateExecution]] :) , [[Backtick]]", // @lfy def/grammar/rules/expression.lfy:39
-        Number is [primary()]: "A number" = "[[NumberLiteral]]", // @lfy def/grammar/rules/expression.lfy:40
-        Boolean is [primary()]: "A boolean" = "[[TrueKeyword]] | [[FalseKeyword]]", // @lfy def/grammar/rules/expression.lfy:41
-        Nullish is [primary()]: "Null or undefined" = "[[NullKeyword]] | [[UndefinedKeyword]]", // @lfy def/grammar/rules/expression.lfy:42
-        PrimitiveType is [primary()]: "A primitive type used as a value" = "[[BooleanKeyword]] | [[NumberKeyword]] | [[StringKeyword]] | [[ObjectKeyword]] | [[FunctionKeyword]] | [[TraitKeyword]]", // @lfy def/grammar/rules/expression.lfy:43
-        Name is [primary()]: "A name in scope" = "[[Identifier]]", // @lfy def/grammar/rules/expression.lfy:44
+        StringLiteral is [primary()]: "A string" = "[[SingleQuoteString]] | [[DoubleQuoteString]]", // @lfy def/grammar/rules/expression.lfy:58
+        Template is [primary()]: "A template: text with references and expressions" = "[[Backtick]] , (: [[TemplateBody]] | [[TemplateReference]] | [[TemplateExecution]] :) , [[Backtick]]", // @lfy def/grammar/rules/expression.lfy:59
+        Number is [primary()]: "A number" = "[[NumberLiteral]]", // @lfy def/grammar/rules/expression.lfy:62
+        Boolean is [primary()]: "A boolean" = "[[TrueKeyword]] | [[FalseKeyword]]", // @lfy def/grammar/rules/expression.lfy:63
+        Nullish is [primary()]: "Null or undefined" = "[[NullKeyword]] | [[UndefinedKeyword]]", // @lfy def/grammar/rules/expression.lfy:64
+        PrimitiveType is [primary()]: "A primitive type used as a value" = "[[BooleanKeyword]] | [[NumberKeyword]] | [[StringKeyword]] | [[ObjectKeyword]] | [[FunctionKeyword]] | [[TraitKeyword]]", // @lfy def/grammar/rules/expression.lfy:65
+        Name is [primary()]: "A name in scope" = "[[Identifier]]", // @lfy def/grammar/rules/expression.lfy:68
         /// When space, a line break, comments, or documentation exist between the
         /// `Accessor` and the `MemberName`, the `MemberName` is not matched.
-        Current is [primary()]: "A layer of the current entity, or a member of it" = "[[Accessor]] , (/ [[MemberName]] /)", // @lfy def/grammar/rules/expression.lfy:45
-        Previous is [primary()]: "The entity the previous statement declared" = "[[PreviousStatement]]", // @lfy def/grammar/rules/expression.lfy:48
+        Current is [primary()]: "A layer of the current entity, or a member of it" = "[[Accessor]] , (/ [[MemberName]] /)", // @lfy def/grammar/rules/expression.lfy:69
+        Previous is [primary()]: "The entity the previous statement declared" = "[[PreviousStatement]]", // @lfy def/grammar/rules/expression.lfy:72
         /// When the `GroupClose` is followed by `IsKeyword`, `Colon`, or `DoubleArrowRight`
         /// the rule cannot be a match; see [`group_cannot_match_before`].
-        Group is [primary()]: "A parenthesized expression" = "[[GroupOpen]] , [[Expression]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:49
+        Group is [primary()]: "A parenthesized expression" = "[[GroupOpen]] , [[Expression]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:73
         /// Acceptance criteria:
         /// - A `BlockOpen` after the `DoubleArrowRight` begins a `Block`, never an `Object`.
-        InlineFunction is [primary()]: "A function written as an expression" = "[[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[DoubleArrowRight]] , ( [[Block]] | [[Expression]] )", // @lfy def/grammar/rules/expression.lfy:52
-        List is [primary()]: "A list" = "[[ListOpen]] , [[Items]] , [[ListClose]]", // @lfy def/grammar/rules/expression.lfy:56
+        InlineFunction is [primary()]: "A function written as an expression" = "[[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[DoubleArrowRight]] , ( [[Block]] | [[Expression]] )", // @lfy def/grammar/rules/expression.lfy:76
+        List is [primary()]: "A list" = "[[ListOpen]] , [[Items]] , [[ListClose]]", // @lfy def/grammar/rules/expression.lfy:82
         /// `[[BlockOpen]] , (/ listOf([[ObjectKey]]) /) , [[BlockClose]]`
-        Object is [primary()]: "An object" = "[[BlockOpen]] , (/ ( [[ObjectKey]] ) , (: [[Comma]] , ( [[ObjectKey]] ) :) , (/ [[Comma]] /) /) , [[BlockClose]]", // @lfy def/grammar/rules/expression.lfy:57
-        TypePredicate is [primary()]: "The type of anything with a trait" = "[[IsKeyword]] , [[TraitUse]]", // @lfy def/grammar/rules/expression.lfy:58
+        Object is [primary()]: "An object" = "[[BlockOpen]] , (/ ( [[ObjectKey]] ) , (: [[Comma]] , ( [[ObjectKey]] ) :) , (/ [[Comma]] /) /) , [[BlockClose]]", // @lfy def/grammar/rules/expression.lfy:83
+        TypePredicate is [primary()]: "The type of anything with a trait" = "[[IsKeyword]] , [[TraitUse]]", // @lfy def/grammar/rules/expression.lfy:84
         /// `[[BlockOpen]] , (/ listOf([[TypeKey]]) /) , [[BlockClose]]`
-        Type is [primary()]: "A type" = "[[BlockOpen]] , (/ ( [[TypeKey]] ) , (: [[Comma]] , ( [[TypeKey]] ) :) , (/ [[Comma]] /) /) , [[BlockClose]]", // @lfy def/grammar/rules/expression.lfy:59
+        Type is [primary()]: "A type" = "[[BlockOpen]] , (/ ( [[TypeKey]] ) , (: [[Comma]] , ( [[TypeKey]] ) :) , (/ [[Comma]] /) /) , [[BlockClose]]", // @lfy def/grammar/rules/expression.lfy:85
 
         // Prefix operations
-        NotOperation is [prefix(Entity::Punctuation(Punctuation::LogicalNot), false), Binding::right(Level::Unary)]: "Logical not" = "[[LogicalNot]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:63
-        NegateOperation is [prefix(Entity::Punctuation(Punctuation::Minus), true), Binding::right(Level::Unary)]: "Negation" = "[[Minus]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:64
-        BitwiseNotOperation is [prefix(Entity::Punctuation(Punctuation::BitwiseNot), false), Binding::right(Level::Unary)]: "Bitwise not" = "[[BitwiseNot]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:65
+        NotOperation is [prefix(Entity::Punctuation(Punctuation::LogicalNot), false), Binding::right(Level::Unary)]: "Logical not" = "[[LogicalNot]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:89
+        NegateOperation is [prefix(Entity::Punctuation(Punctuation::Minus), true), Binding::right(Level::Unary)]: "Negation" = "[[Minus]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:90
+        BitwiseNotOperation is [prefix(Entity::Punctuation(Punctuation::BitwiseNot), false), Binding::right(Level::Unary)]: "Bitwise not" = "[[BitwiseNot]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:91
         /// Acceptance criteria:
         /// - When the operand is not a `Name` or `Current`: reported after parsing.
-        Dereference is [prefix(Entity::Punctuation(Punctuation::Ampersand), true), Binding::right(Level::Reference)]: "The entity a name is bound to" = "[[Ampersand]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:66
-        SpreadOperation is [prefix(Entity::Punctuation(Punctuation::Spread), false), Binding::right(Level::Definition)]: "Spread, or the rest of a list" = "[[Spread]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:73
-        AwaitOperation is [prefix(Entity::Keyword(Keyword::AwaitKeyword), false), Binding::non_associative(Level::Wrapper)]: "The value of a promise" = "[[AwaitKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:74
-        InOperation is [prefix(Entity::Keyword(Keyword::InKeyword), false), Binding::right(Level::Extraction)]: "The values of" = "[[InKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:75
-        OfOperation is [prefix(Entity::Keyword(Keyword::OfKeyword), false), Binding::right(Level::Extraction)]: "The keys of" = "[[OfKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:76
-        FromOperation is [prefix(Entity::Keyword(Keyword::FromKeyword), false), Binding::right(Level::Extraction)]: "The keys and values of" = "[[FromKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:77
+        Dereference is [prefix(Entity::Punctuation(Punctuation::Ampersand), true), Binding::right(Level::Reference)]: "The entity a name is bound to" = "[[Ampersand]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:92
+        SpreadOperation is [prefix(Entity::Punctuation(Punctuation::Spread), false), Binding::right(Level::Definition)]: "Spread, or the rest of a list" = "[[Spread]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:99
+        AwaitOperation is [prefix(Entity::Keyword(Keyword::AwaitKeyword), false), Binding::non_associative(Level::Wrapper)]: "The value of a promise" = "[[AwaitKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:100
+        InOperation is [prefix(Entity::Keyword(Keyword::InKeyword), false), Binding::right(Level::Extraction)]: "The values of" = "[[InKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:101
+        OfOperation is [prefix(Entity::Keyword(Keyword::OfKeyword), false), Binding::right(Level::Extraction)]: "The keys of" = "[[OfKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:102
+        FromOperation is [prefix(Entity::Keyword(Keyword::FromKeyword), false), Binding::right(Level::Extraction)]: "The keys and values of" = "[[FromKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:103
 
         // Infix operations
-        AdditiveOperation is [infix(Entity::Punctuation(Punctuation::Additive))]: "Addition, concatenation, or subtraction" = "[[Expression]] , [[Additive]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:81
-        MultiplicativeOperation is [infix(Entity::Punctuation(Punctuation::Multiplicative))]: "Multiplication, division, or remainder" = "[[Expression]] , [[Multiplicative]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:82
-        PowerOperation is [infix(Entity::Punctuation(Punctuation::Power)), Binding::right(Level::Exponentiation)]: "Exponentiation" = "[[Expression]] , [[Power]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:83
-        BitwiseOrOperation is [infix(Entity::Punctuation(Punctuation::BitwiseOr)), Binding::left(Level::BitwiseOr)]: "Bitwise or; a union when both sides are types" = "[[Expression]] , [[BitwiseOr]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:84
-        BitwiseXorOperation is [infix(Entity::Punctuation(Punctuation::BitwiseXor)), Binding::left(Level::BitwiseXor)]: "Bitwise exclusive or" = "[[Expression]] , [[BitwiseXor]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:85
-        BitwiseAndOperation is [infix(Entity::Punctuation(Punctuation::Ampersand)), Binding::left(Level::BitwiseAnd)]: "Bitwise and" = "[[Expression]] , [[Ampersand]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:86
-        RelationalOperation is [infix(Entity::Punctuation(Punctuation::Relational))]: "Ordering comparison" = "[[Expression]] , [[Relational]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:87
-        EqualityOperation is [infix(Entity::Punctuation(Punctuation::Equality))]: "Equality comparison" = "[[Expression]] , [[Equality]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:88
-        LogicalAndOperation is [infix(Entity::Punctuation(Punctuation::LogicalAnd)), Binding::left(Level::LogicalAnd)]: "Both" = "[[Expression]] , [[LogicalAnd]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:89
-        CoalescenceOperation is [infix(Entity::Punctuation(Punctuation::Coalescence))]: "Either, or a fallback" = "[[Expression]] , [[Coalescence]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:90
-        RangeOperation is [infix(Entity::Punctuation(Punctuation::Spread)), Binding::right(Level::Definition)]: "A range" = "[[Expression]] , [[Spread]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:91
-        Assignment is [infix(Entity::Punctuation(Punctuation::Setter))]: "Sets the left side" = "[[Expression]] , [[Setter]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:92
+        AdditiveOperation is [infix(Entity::Punctuation(Punctuation::Additive))]: "Addition, concatenation, or subtraction" = "[[Expression]] , [[Additive]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:107
+        MultiplicativeOperation is [infix(Entity::Punctuation(Punctuation::Multiplicative))]: "Multiplication, division, or remainder" = "[[Expression]] , [[Multiplicative]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:108
+        PowerOperation is [infix(Entity::Punctuation(Punctuation::Power)), Binding::right(Level::Exponentiation)]: "Exponentiation" = "[[Expression]] , [[Power]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:109
+        BitwiseOrOperation is [infix(Entity::Punctuation(Punctuation::BitwiseOr)), Binding::left(Level::BitwiseOr)]: "Bitwise or; a union when both sides are types" = "[[Expression]] , [[BitwiseOr]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:110
+        BitwiseXorOperation is [infix(Entity::Punctuation(Punctuation::BitwiseXor)), Binding::left(Level::BitwiseXor)]: "Bitwise exclusive or" = "[[Expression]] , [[BitwiseXor]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:111
+        BitwiseAndOperation is [infix(Entity::Punctuation(Punctuation::Ampersand)), Binding::left(Level::BitwiseAnd)]: "Bitwise and" = "[[Expression]] , [[Ampersand]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:112
+        RelationalOperation is [infix(Entity::Punctuation(Punctuation::Relational))]: "Ordering comparison" = "[[Expression]] , [[Relational]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:113
+        EqualityOperation is [infix(Entity::Punctuation(Punctuation::Equality))]: "Equality comparison" = "[[Expression]] , [[Equality]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:114
+        LogicalAndOperation is [infix(Entity::Punctuation(Punctuation::LogicalAnd)), Binding::left(Level::LogicalAnd)]: "Both" = "[[Expression]] , [[LogicalAnd]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:115
+        CoalescenceOperation is [infix(Entity::Punctuation(Punctuation::Coalescence))]: "Either, or a fallback" = "[[Expression]] , [[Coalescence]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:116
+        RangeOperation is [infix(Entity::Punctuation(Punctuation::Spread)), Binding::right(Level::Definition)]: "A range" = "[[Expression]] , [[Spread]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:117
+        Assignment is [infix(Entity::Punctuation(Punctuation::Setter))]: "Sets the left side" = "[[Expression]] , [[Setter]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:118
 
         // Postfix operations
-        Member is [postfix(Entity::Punctuation(Punctuation::Accessor), Some("(/ [[MemberName]] /)"), true)]: "A member of a layer of the left expression, or that layer itself" = "[[Expression]] , [[Accessor]] , (/ [[MemberName]] /)", // @lfy def/grammar/rules/expression.lfy:96
-        Index is [postfix(Entity::Punctuation(Punctuation::ListOpen), Some("(/ [[Expression]] /) , [[ListClose]]"), false)]: "An element of the left expression, or with nothing inside, the array type of it" = "[[Expression]] , [[ListOpen]] , (/ [[Expression]] /) , [[ListClose]]", // @lfy def/grammar/rules/expression.lfy:97
-        Call is [postfix(Entity::Punctuation(Punctuation::GroupOpen), Some("[[Items]] , [[GroupClose]]"), false)]: "Calls the left expression" = "[[Expression]] , [[GroupOpen]] , [[Items]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:98
-        Traits is [postfix(Entity::Keyword(Keyword::IsKeyword), Some("[[TraitUses]]"), false)]: "Applies traits to the declared left expression" = "[[Expression]] , [[IsKeyword]] , [[TraitUses]]", // @lfy def/grammar/rules/expression.lfy:99
-        Definition is [postfix(Entity::Punctuation(Punctuation::Colon), Some("[[Expression]]"), false)]: "Attaches a description or type to the declared left expression" = "[[Expression]] , [[Colon]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:100
-        Cast is [postfix(Entity::Keyword(Keyword::AsKeyword), Some("[[TypeExpression]]"), false)]: "A value read as a type" = "[[Expression]] , [[AsKeyword]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:101
+        Member is [postfix(Entity::Punctuation(Punctuation::Accessor), Some("(/ [[MemberName]] /)"), true)]: "A member of a layer of the left expression, or that layer itself" = "[[Expression]] , [[Accessor]] , (/ [[MemberName]] /)", // @lfy def/grammar/rules/expression.lfy:122
+        Index is [postfix(Entity::Punctuation(Punctuation::ListOpen), Some("(/ [[Expression]] /) , [[ListClose]]"), false)]: "An element of the left expression, or with nothing inside, the array type of it" = "[[Expression]] , [[ListOpen]] , (/ [[Expression]] /) , [[ListClose]]", // @lfy def/grammar/rules/expression.lfy:123
+        Call is [postfix(Entity::Punctuation(Punctuation::GroupOpen), Some("[[Items]] , [[GroupClose]]"), false)]: "Calls the left expression" = "[[Expression]] , [[GroupOpen]] , [[Items]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:124
+        Traits is [postfix(Entity::Keyword(Keyword::IsKeyword), Some("[[TraitUses]]"), false)]: "Whether traits are applied to the left expression" = "[[Expression]] , [[IsKeyword]] , [[TraitUses]]", // @lfy def/grammar/rules/expression.lfy:125
+        Definition is [postfix(Entity::Punctuation(Punctuation::Colon), Some("[[Expression]]"), false)]: "Attaches a description or type to the declared left expression" = "[[Expression]] , [[Colon]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:126
+        Cast is [postfix(Entity::Keyword(Keyword::AsKeyword), Some("[[TypeExpression]]"), false)]: "A value read as a type" = "[[Expression]] , [[AsKeyword]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:127
         /// Acceptance criteria:
         /// - The `Colon` belongs to this rule; the middle expression ends at it.
-        Conditional is [postfix(Entity::Punctuation(Punctuation::QuestionMark), Some("[[Expression]] , [[Colon]] , [[Expression]]"), false), Binding::right(Level::Definition)]: "Chooses between two values" = "[[Expression]] , [[QuestionMark]] , [[Expression]] , [[Colon]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:102
+        Conditional is [postfix(Entity::Punctuation(Punctuation::QuestionMark), Some("[[Expression]] , [[Colon]] , [[Expression]]"), false), Binding::right(Level::Definition)]: "Chooses between two values" = "[[Expression]] , [[QuestionMark]] , [[Expression]] , [[Colon]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:128
 
         // The expression sets
         /// `alternationList(...primary@entities)`
-        Primary is [alternation_list(PRIMARIES)]: "Any primary expression" = "[[StringLiteral]] | [[Template]] | [[Number]] | [[Boolean]] | [[Nullish]] | [[PrimitiveType]] | [[Name]] | [[Current]] | [[Previous]] | [[Group]] | [[InlineFunction]] | [[List]] | [[Object]] | [[TypePredicate]] | [[Type]]", // @lfy def/grammar/rules/expression.lfy:109
+        Primary is [alternation_list(PRIMARIES)]: "Any primary expression" = "[[StringLiteral]] | [[Template]] | [[Number]] | [[Boolean]] | [[Nullish]] | [[PrimitiveType]] | [[Name]] | [[Current]] | [[Previous]] | [[Group]] | [[InlineFunction]] | [[List]] | [[Object]] | [[TypePredicate]] | [[Type]]", // @lfy def/grammar/rules/expression.lfy:138
         /// `alternationList(...prefix@entities)`
-        Prefix is [alternation_list(PREFIXES)]: "Any prefix operation" = "[[NotOperation]] | [[NegateOperation]] | [[BitwiseNotOperation]] | [[Dereference]] | [[SpreadOperation]] | [[AwaitOperation]] | [[InOperation]] | [[OfOperation]] | [[FromOperation]]", // @lfy def/grammar/rules/expression.lfy:110
+        Prefix is [alternation_list(PREFIXES)]: "Any prefix operation" = "[[NotOperation]] | [[NegateOperation]] | [[BitwiseNotOperation]] | [[Dereference]] | [[SpreadOperation]] | [[AwaitOperation]] | [[InOperation]] | [[OfOperation]] | [[FromOperation]]", // @lfy def/grammar/rules/expression.lfy:139
         /// `alternationList(...infix@entities)`
-        Infix is [alternation_list(INFIXES)]: "Any infix operation" = "[[AdditiveOperation]] | [[MultiplicativeOperation]] | [[PowerOperation]] | [[BitwiseOrOperation]] | [[BitwiseXorOperation]] | [[BitwiseAndOperation]] | [[RelationalOperation]] | [[EqualityOperation]] | [[LogicalAndOperation]] | [[CoalescenceOperation]] | [[RangeOperation]] | [[Assignment]]", // @lfy def/grammar/rules/expression.lfy:111
+        Infix is [alternation_list(INFIXES)]: "Any infix operation" = "[[AdditiveOperation]] | [[MultiplicativeOperation]] | [[PowerOperation]] | [[BitwiseOrOperation]] | [[BitwiseXorOperation]] | [[BitwiseAndOperation]] | [[RelationalOperation]] | [[EqualityOperation]] | [[LogicalAndOperation]] | [[CoalescenceOperation]] | [[RangeOperation]] | [[Assignment]]", // @lfy def/grammar/rules/expression.lfy:140
         /// `alternationList(...postfix@entities)`
-        Postfix is [alternation_list(POSTFIXES)]: "Any postfix operation" = "[[Member]] | [[Index]] | [[Call]] | [[Traits]] | [[Definition]] | [[Cast]] | [[Conditional]]", // @lfy def/grammar/rules/expression.lfy:112
+        Postfix is [alternation_list(POSTFIXES)]: "Any postfix operation" = "[[Member]] | [[Index]] | [[Call]] | [[Traits]] | [[Definition]] | [[Cast]] | [[Conditional]]", // @lfy def/grammar/rules/expression.lfy:141
         /// Acceptance criteria:
         /// - Begins with one `Primary` or `Prefix` and continues with any number of `Infix`
         ///   and `Postfix` operations, grouped by their binding power.
-        Expression is [alternation_list(EXPRESSIONS)]: "Any expression" = "[[Primary]] | [[Prefix]] | [[Infix]] | [[Postfix]]", // @lfy def/grammar/rules/expression.lfy:113
+        Expression is [alternation_list(EXPRESSIONS)]: "Any expression" = "[[Primary]] | [[Prefix]] | [[Infix]] | [[Postfix]]", // @lfy def/grammar/rules/expression.lfy:142
     }
 }
 
 /// The `where` clause of `Group`: the rule cannot be a match when `next`, the token that
 /// follows its `GroupClose`, is `IsKeyword`, `Colon`, or `DoubleArrowRight`.
-// @lfy def/grammar/rules/expression.lfy:50
+// @lfy def/grammar/rules/expression.lfy:74
 pub fn group_cannot_match_before(next: Entity) -> bool {
     matches!(
         next,
@@ -141,7 +141,7 @@ pub const MEMBER_NAMES: &[Entity] = &[
     Entity::Keyword(Keyword::TypeKeyword),
 ];
 
-// @lfy def/grammar/rules/expression.lfy:31
+// @lfy def/grammar/rules/expression.lfy:35
 pub const TYPE_VALUES: &[Entity] = &[
     Entity::Expression(Expression::PrimitiveType),
     Entity::Expression(Expression::StringLiteral),
@@ -154,7 +154,7 @@ pub const TYPE_VALUES: &[Entity] = &[
     Entity::Expression(Expression::Reference),
 ];
 /// `primary@entities`
-// @lfy def/grammar/rules/expression.lfy:109
+// @lfy def/grammar/rules/expression.lfy:138
 pub const PRIMARIES: &[Entity] = &[
     Entity::Expression(Expression::StringLiteral),
     Entity::Expression(Expression::Template),
@@ -173,7 +173,7 @@ pub const PRIMARIES: &[Entity] = &[
     Entity::Expression(Expression::Type),
 ];
 /// `prefix@entities`
-// @lfy def/grammar/rules/expression.lfy:110
+// @lfy def/grammar/rules/expression.lfy:139
 pub const PREFIXES: &[Entity] = &[
     Entity::Expression(Expression::NotOperation),
     Entity::Expression(Expression::NegateOperation),
@@ -186,7 +186,7 @@ pub const PREFIXES: &[Entity] = &[
     Entity::Expression(Expression::FromOperation),
 ];
 /// `infix@entities`
-// @lfy def/grammar/rules/expression.lfy:111
+// @lfy def/grammar/rules/expression.lfy:140
 pub const INFIXES: &[Entity] = &[
     Entity::Expression(Expression::AdditiveOperation),
     Entity::Expression(Expression::MultiplicativeOperation),
@@ -202,7 +202,7 @@ pub const INFIXES: &[Entity] = &[
     Entity::Expression(Expression::Assignment),
 ];
 /// `postfix@entities`
-// @lfy def/grammar/rules/expression.lfy:112
+// @lfy def/grammar/rules/expression.lfy:141
 pub const POSTFIXES: &[Entity] = &[
     Entity::Expression(Expression::Member),
     Entity::Expression(Expression::Index),
@@ -212,7 +212,7 @@ pub const POSTFIXES: &[Entity] = &[
     Entity::Expression(Expression::Cast),
     Entity::Expression(Expression::Conditional),
 ];
-// @lfy def/grammar/rules/expression.lfy:113
+// @lfy def/grammar/rules/expression.lfy:142
 pub const EXPRESSIONS: &[Entity] = &[
     Entity::Expression(Expression::Primary),
     Entity::Expression(Expression::Prefix),
@@ -253,7 +253,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/expression.lfy:109
+    // @lfy def/grammar/rules/expression.lfy:138
     #[test]
     fn the_sets_list_every_rule_of_their_category_in_order() {
         let of = |predicate: fn(Entity) -> bool| -> Vec<Entity> {
@@ -270,7 +270,7 @@ mod tests {
         assert_eq!(POSTFIXES.len(), 7);
     }
 
-    // @lfy def/grammar/rules/expression.lfy:31
+    // @lfy def/grammar/rules/expression.lfy:35
     #[test]
     fn type_values_are_the_listed_rules_in_order() {
         assert_eq!(
@@ -290,7 +290,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/expression.lfy:64
+    // @lfy def/grammar/rules/expression.lfy:90
     #[test]
     fn only_negation_and_dereference_disallow_space() {
         for &rule in PREFIXES {
@@ -305,7 +305,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/rules/expression.lfy:96
+    // @lfy def/grammar/rules/expression.lfy:122
     #[test]
     fn postfix_rules_keep_their_operator_and_tail() {
         assert_eq!(
@@ -325,14 +325,14 @@ mod tests {
             Some(Binding::right(Level::Definition))
         );
         assert_eq!(Expression::Member.binding(), None);
-        // @lfy def/grammar/rules/expression.lfy:96
+        // @lfy def/grammar/rules/expression.lfy:122
         for &rule in POSTFIXES {
             let Category::Postfix { disallow_space, .. } = rule.category() else {
                 panic!("{rule}");
             };
             assert_eq!(disallow_space, rule == Entity::Expression(Expression::Member), "{rule}");
         }
-        // @lfy def/grammar/rules/expression.lfy:101
+        // @lfy def/grammar/rules/expression.lfy:127
         assert_eq!(
             Expression::Cast.category(),
             Category::Postfix {
@@ -351,7 +351,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/expression.lfy:50
+    // @lfy def/grammar/rules/expression.lfy:74
     #[test]
     fn a_group_cannot_match_before_a_clause_or_arrow() {
         assert!(group_cannot_match_before(Entity::Keyword(Keyword::IsKeyword)));

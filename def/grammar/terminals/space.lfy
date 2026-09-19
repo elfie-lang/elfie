@@ -1,6 +1,6 @@
 use "../traits";
 
 d NewLine is terminal(`"\n" | "\r\n"`): `A line break` {
-  @acceptanceCriteria.add({ behavior = `Value is always equal to \n regardless of raw text`, });
+  @acceptanceCriteria.add({ behavior = `Value is always equal to \n regardless of raw text` });
 }
 d Space is terminal(`" " | "\t" | "\u000B" | "\u000C" | "\u0085" | "\u200E" | "\u200F" | "\u2028" | "\u2029"`): `Various space characters` {}

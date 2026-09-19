@@ -34,7 +34,7 @@ This is the layer that will feel more familiar to folks familiar with more class
 
 The context layer will still seem somewhat familiar to those familiar with reflective programming. This is the layer in which the context for the system is defined, and it provides necessary information for agents to be able to translate code effectively. Using that same example, with `const x = 2;` the value `x` has a `type` of `number`, which you can access with `x@type`. The `@` keyword accesses context for the object, and allows for specific operations.
 
-This layer is most helpful when it comes to the agentic instructions layer. All variables, functions and other objects in the code can have a description, a type, and various other properties that the agent can access as it writes its code.
+This layer is most helpful when it comes to the agentic instructions layer. All variables, functions and other objects in the code can have a description, a type, and various other properties that the agent can access as it writes its code. This layer is unlikley to transfer directly to code and is more likely to be seen in tests, documentation, or broader patterns of logic.
 
 ### Scope
 

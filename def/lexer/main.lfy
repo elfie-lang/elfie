@@ -18,16 +18,18 @@ ace function push(kind: string) {
 
 fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {
   @acceptanceCriteria
-    .add({ behavior = `[[source]] is read as UTF-8 from start to end`, })
-    .add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}`, })
-    .add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to "anonymous"`, })
-    .add({ behavior = `End of line tokens can match any [[NewLine]] terminal and the values are treated equally`, })
-    .add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at`, })
-    .add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at`, })
-    .add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token`, })
-    .add({ behavior = `A new [[ModeStack]] is created for each call`, })
-    .add({ behavior = `At each position every [[terminal]] whose [[candidateInModes]] condition holds (or [[inCode]] when it has none) is matched`, })
-    .add({ behavior = `The longest match is the token`, })
+    .add({ behavior = `[[source]] is read as UTF-8 from start to end` })
+    .add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}` })
+    .add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to "anonymous"` })
+    .add({ behavior = `End of line tokens can match any [[NewLine]] terminal and the values are treated equally` })
+    .add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at` })
+    .add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at` })
+    .add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token` })
+    .add({ behavior = `A new [[ModeStack]] is created for each call` })
+    .add({
+      behavior = `At each position every [[terminal]] whose [[candidateInModes]] condition holds (or [[inCode]] when it has none) is matched`,
+    })
+    .add({ behavior = `The longest match is the token` })
     .add({
       situation = [
         `Tokens are of equal length`,
@@ -96,8 +98,10 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
   // The terminal document is the only grammar the lexer knows
   const terminals: `EBNF of every terminal` = Grammar.terminalDocument();
   @acceptanceCriteria
-    .add({ behavior = `Reads a bare name inside a rule as a reference to the terminal or character class with that identifier`, })
-    .add({ behavior = `Matches against the following terminals only: \n\n {{terminals}}`, });
+    .add({
+      behavior = `Reads a bare name inside a rule as a reference to the terminal or character class with that identifier`,
+    })
+    .add({ behavior = `Matches against the following terminals only: \n\n {{terminals}}` });
 
   for (const rule in terminal@entities) {
     where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);
@@ -106,9 +110,12 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
   for (const rule in keyword@entities) {
     where (`[[&rule]] and [[Identifier]] match the same characters`) -> `[[&rule]] is the token`;
   }
-  
+
   for (const rule in escape@entities) {
-    @acceptanceCriteria.add({ behavior = `Matched only as part of another terminal`, sideEffects = [`Can never be a token`] });
+    @acceptanceCriteria.add({
+      behavior = `Matched only as part of another terminal`,
+      sideEffects = [`Can never be a token`],
+    });
   }
 
   where (`No candidate matched`) -> push(`invalid text`);

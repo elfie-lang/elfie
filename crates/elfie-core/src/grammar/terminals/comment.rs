@@ -33,7 +33,7 @@ grammar_rules! {
         ///   to the "global" object.
         /// - When `LineDocumentationOpen` is the first token and `TemplateReference` is
         ///   used: a `NewLine` inside the `TemplateReference` is not trivia.
-        Documentation is [rule()]: "Documentation for the declaration that follows it" = "( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )", // @lfy def/grammar/terminals/comment.lfy:21
+        Documentation is [rule()]: "Documentation for the declaration that follows it" = "( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )", // @lfy def/grammar/terminals/comment.lfy:23
     }
 }
 

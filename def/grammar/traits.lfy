@@ -16,8 +16,10 @@ trait rule(syntax: string): `A grammar rule` {
   };
 
   @acceptanceCriteria
-    .add({ behavior = `Is satisfied by source that matches {{.rule.text}}`, })
-    .add({ behavior = `Optional groups, repetitions, and alternations inside [[syntax]] describe what is valid, not how to choose`, });
+    .add({ behavior = `Is satisfied by source that matches {{.rule.text}}` })
+    .add({
+      behavior = `Optional groups, repetitions, and alternations inside [[syntax]] describe what is valid, not how to choose`,
+    });
 }
 
 // Helper functions
@@ -36,11 +38,11 @@ ace function bodySyntax(excluded: (is rule)[], escapes: (is escape)[]) {
 
 // Terminals
 trait terminal(syntax: string) extends rule(syntax): `A rule matched against characters and delivered as a single token` {
-  @acceptanceCriteria.add({ behavior = `The token created for it records this rule`, });
+  @acceptanceCriteria.add({ behavior = `The token created for it records this rule` });
 }
 
 trait keyword(text: string) extends terminal(quoted(text)): `A word with fixed meaning in the grammar` {
-  @acceptanceCriteria.add({ behavior = `{{text}} cannot be an identifier`, });
+  @acceptanceCriteria.add({ behavior = `{{text}} cannot be an identifier` });
 }
 
 trait reserved(text: string) extends keyword(text): `A keyword no rule uses yet` {}
@@ -60,8 +62,8 @@ trait escape(syntax: string, becomes: string) extends terminal(syntax): `A seque
 
 trait body(excluded: (is rule)[], escapes: (is escape)[] = []) extends terminal(bodySyntax(excluded, escapes)): `Text between boundaries: any character except the excluded ones, plus the listed escapes` {
   @acceptanceCriteria
-    .add({ behavior = `The token value is the matched text with each listed escape replaced`, })
-    .add({ situation = `Matches no characters at all`, behavior = `No token is created`, });
+    .add({ behavior = `The token value is the matched text with each listed escape replaced` })
+    .add({ situation = `Matches no characters at all`, behavior = `No token is created` });
 }
 
 // Binding power
@@ -70,7 +72,7 @@ trait binding(precedence: number, associativity: 'left' | 'right' | null = 'left
   .precedence = precedence;
   $associativity: `How two of the same precedence group: left, right, or not at all (null)` = associativity@type;
   .associativity = associativity;
-  
+
   match .associativity {
     'left' -> @acceptanceCriteria.add({ behavior = `a b c reads as (a b) c` }),
     'right' -> @acceptanceCriteria.add({ behavior = `a b c reads as a (b c)` }),
@@ -81,10 +83,10 @@ trait binding(precedence: number, associativity: 'left' | 'right' | null = 'left
 // Categories/groupings
 trait alternationList(...items: (is rule)[]) extends rule(alternation(...items)): `A set of rules, any one of which satisfies this rule` {
   @acceptanceCriteria
-    .add({ behavior = `The order of [[items]] carries no meaning`, })
+    .add({ behavior = `The order of [[items]] carries no meaning` })
     .add({
       situation = `Match for item in [[items]]`,
-      behavior = `Treats the matched item as the match instead of [[@]]`,
+      behavior = `Treats item as match instead of [[@]]`,
       sideEffects = [
         `[[@]] is never included in tokens or tree`,
       ],
@@ -102,7 +104,7 @@ trait prefix(operator: is rule, disallowSpace: boolean = false) extends rule(`[[
   }
 
   // One of the few cases where space can matter (e.g. "-1" vs "- 1" should be treated differently)
-  if(disallowSpace) {
+  if (disallowSpace) {
     where (`Space, NewLine, comments, or documentation exists between [[&operator]] and [[Expression]]`) -> `Rule cannot be a match`;
   }
 }
@@ -114,16 +116,20 @@ trait infix(operator: is rule) extends rule(`[[Expression]] , [[&operator]] , [[
   }
 }
 
-trait postfix(operator: is rule, tail?: string, disallowSpace?: boolean) extends rule(tail == undefined ? `[[Expression]] , [[&operator]]` : `[[Expression]] , [[&operator]] , {{tail}}`): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
+trait postfix(operator: is rule, tail?: string, disallowSpace?: boolean) extends rule(
+  tail == undefined ? `[[Expression]] , [[&operator]]` : `[[Expression]] , [[&operator]] , {{tail}}`,
+): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
   @acceptanceCriteria
-    .add({ behavior = `Binds as the token that satisfied [[operator]] does, unless this rule itself has [[binding]], which then wins`, })
+    .add({
+      behavior = `Binds as the token that satisfied [[operator]] does, unless this rule itself has [[binding]], which then wins`,
+    })
     .add({
       situation = `[[Expression]] after [[tail]] do not follow [[GroupOpen]] or [[ListOpen]]`,
       behavior = `Expressions inside tail are parsed with this rule's binding power as the minimum`,
     });
 
   // One of the few cases where space can matter (e.g. ".is" vs ". is" should be treated differently)
-  if(disallowSpace) {
+  if (disallowSpace) {
     where (`Space, NewLine, comments, or documentation exists between [[&operator]] and [[tail]]`) -> `Rule cannot be a match`;
   }
 }

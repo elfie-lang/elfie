@@ -13,12 +13,12 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;
 
-pub mod checks; // @lfy def/grammar/main.lfy:30
+pub mod checks; // @lfy def/grammar/main.lfy:21
 pub mod ebnf;
 pub mod precedence; // @lfy def/grammar/main.lfy:1
 pub mod rules; // @lfy def/grammar/main.lfy:2
 pub mod terminals; // @lfy def/grammar/main.lfy:5
-pub mod traits; // @lfy def/grammar/main.lfy:11
+pub mod traits; // @lfy def/grammar/main.lfy:2
 
 pub use checks::{Check, Violation};
 pub use precedence::Level;
@@ -129,7 +129,7 @@ pub enum Entity {
     Keyword(Keyword),         // @lfy def/grammar/main.lfy:7
     Identifier(Identifier),   // @lfy def/grammar/main.lfy:6
     Space(Space),             // @lfy def/grammar/main.lfy:10
-    Literal(Literal),         // @lfy def/grammar/main.lfy:8
+    Literal(Literal),         // @lfy def/grammar/main.lfy:1
     Punctuation(Punctuation), // @lfy def/grammar/main.lfy:9
     Expression(Expression),   // @lfy def/grammar/main.lfy:2
     Comment(Comment),         // @lfy def/grammar/main.lfy:5
@@ -228,22 +228,22 @@ pub fn rules() -> impl Iterator<Item = Entity> {
 }
 
 /// The EBNF of every terminal, one rule per line.
-// @lfy def/grammar/main.lfy:13
+// @lfy def/grammar/main.lfy:4
 pub fn terminal_document() -> String {
-    let lines: Vec<&'static str> = Entity::terminals().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:15
-    lines.join("\n") // @lfy def/grammar/main.lfy:18
+    let lines: Vec<&'static str> = Entity::terminals().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:6
+    lines.join("\n") // @lfy def/grammar/main.lfy:9
 }
 
 /// The EBNF of every rule, one rule per line.
-// @lfy def/grammar/main.lfy:21
+// @lfy def/grammar/main.lfy:12
 pub fn grammar_document() -> String {
-    let lines: Vec<&'static str> = rules().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:23
-    lines.join("\n") // @lfy def/grammar/main.lfy:27
+    let lines: Vec<&'static str> = rules().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:14
+    lines.join("\n") // @lfy def/grammar/main.lfy:18
 }
 
 /// The global acceptance criteria of the grammar: every [`Check`] holds for every rule,
 /// otherwise each failing rule is reported with the check it fails.
-// @lfy def/grammar/main.lfy:30
+// @lfy def/grammar/main.lfy:21
 pub fn validate() -> Result<(), Vec<Violation>> {
     checks::validate()
 }
@@ -253,6 +253,7 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
+    // @lfy def/grammar/main.lfy:24
     #[test]
     fn rule_identifiers_are_unique_and_looked_up_by_name() {
         let mut seen = HashSet::new();
@@ -296,7 +297,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/main.lfy:13
+    // @lfy def/grammar/main.lfy:4
     #[test]
     fn the_terminal_document_lists_every_terminal_once_per_line() {
         let document = terminal_document();
@@ -318,7 +319,7 @@ mod tests {
         assert!(!document.contains("\nStatement ="));
     }
 
-    // @lfy def/grammar/main.lfy:21
+    // @lfy def/grammar/main.lfy:12
     #[test]
     fn the_grammar_document_lists_every_rule_once_per_line() {
         let document = grammar_document();
@@ -329,7 +330,7 @@ mod tests {
         assert!(document.len() > terminal_document().len());
     }
 
-    // @lfy def/grammar/main.lfy:30
+    // @lfy def/grammar/main.lfy:21
     #[test]
     fn the_grammar_satisfies_its_global_acceptance_criteria() {
         assert_eq!(validate(), Ok(()));
@@ -356,7 +357,7 @@ mod tests {
         );
         assert_eq!(
             Entity::Space(Space::Space).definition(),
-            "Separates tokens and carries no meaning in almost all circumstances"
+            "Various space characters"
         );
         assert_eq!(Entity::Keyword(Keyword::AbstractKeyword).definition(), "");
     }

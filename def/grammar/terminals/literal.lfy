@@ -8,7 +8,9 @@ external HexDigit is rule(`[[Digit]] | "a" | "b" | "c" | "d" | "e" | "f" | "A" |
 external Backslash is rule(`"\\"`) = undefined;
 
 // Numbers
-d NumberLiteral is terminal(`[[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) , (/ "." , [[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) /)`): `A decimal number; underscores group digits` {
+d NumberLiteral is terminal(
+  `[[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) , (/ "." , [[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) /)`,
+): `A decimal number; underscores group digits` {
   where (`Underscores are present`) -> `They are removed from the token value`;
 }
 
@@ -32,7 +34,10 @@ d TabEscape is escape(`"\\t"`, "\t"): `A tab` {}
 d NullEscape is escape(`"\\0"`, "\0"): `The null character` {}
 d ContinuationEscape is escape(`"\\" , [[NewLine]]`, ""): `A line break that does not end the text` {}
 d HexEscape is escape(`"\\x" , [[HexDigit]] , [[HexDigit]]`, "the character with that code"): `A character by two hex digits` {}
-d UnicodeEscape is escape(`"\\u" , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , (/ [[HexDigit]] , [[HexDigit]] /)`, "the character with that code point"): `A character by four or six hex digits` {
+d UnicodeEscape is escape(
+  `"\\u" , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , (/ [[HexDigit]] , [[HexDigit]] /)`,
+  "the character with that code point",
+): `A character by four or six hex digits` {
   where (`The digits are not a scalar value`) -> `The text is kept as written`;
 }
 d ExecutionOpenEscape is escape(`"\\\{{"`, "{{"): `Literal opening execution braces` {}
@@ -42,8 +47,41 @@ d ReferenceCloseEscape is escape(`"\\\]]"`, "]]"): `Literal closing reference br
 
 // Bodies: what may appear between boundaries
 d SingleQuoteBody is body([NewLine, SingleQuote, Backslash], [BackslashEscape, SingleQuoteEscape, ContinuationEscape]): `Text of a single quoted string` {}
-d DoubleQuoteBody is body([NewLine, DoubleQuote, Backslash], [BackslashEscape, DoubleQuoteEscape, SingleQuoteEscape, NewlineEscape, CarriageReturnEscape, TabEscape, NullEscape, ContinuationEscape, HexEscape, UnicodeEscape]): `Text of a double quoted string` {}
-d TemplateBody is body([Backtick, Backslash, ExecutionOpen, ReferenceOpen], [BackslashEscape, BacktickEscape, SingleQuoteEscape, DoubleQuoteEscape, NewlineEscape, CarriageReturnEscape, TabEscape, NullEscape, ContinuationEscape, HexEscape, UnicodeEscape, ExecutionOpenEscape, ExecutionCloseEscape, ReferenceOpenEscape, ReferenceCloseEscape]): `Text of a template between its expressions and references` {}
+d DoubleQuoteBody is body(
+  [NewLine, DoubleQuote, Backslash],
+  [
+    BackslashEscape,
+    DoubleQuoteEscape,
+    SingleQuoteEscape,
+    NewlineEscape,
+    CarriageReturnEscape,
+    TabEscape,
+    NullEscape,
+    ContinuationEscape,
+    HexEscape,
+    UnicodeEscape,
+  ],
+): `Text of a double quoted string` {}
+d TemplateBody is body(
+  [Backtick, Backslash, ExecutionOpen, ReferenceOpen],
+  [
+    BackslashEscape,
+    BacktickEscape,
+    SingleQuoteEscape,
+    DoubleQuoteEscape,
+    NewlineEscape,
+    CarriageReturnEscape,
+    TabEscape,
+    NullEscape,
+    ContinuationEscape,
+    HexEscape,
+    UnicodeEscape,
+    ExecutionOpenEscape,
+    ExecutionCloseEscape,
+    ReferenceOpenEscape,
+    ReferenceCloseEscape,
+  ],
+): `Text of a template between its expressions and references` {}
 
 // Strings
 d SingleQuoteString is rule(`[[SingleQuote]] , (/ [[SingleQuoteBody]] /) , [[SingleQuote]]`): `A string with no interpolation` {}

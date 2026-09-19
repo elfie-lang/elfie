@@ -30,23 +30,23 @@ reading.apply(TraitUse, Layer.value);
 reading.apply(Dereference, Layer.dereference);
 reading.apply(Previous, Layer.previous);
 
-// Traits
+// Traits/Extensions
 applyingTraits.apply(IsClause);
 applyingExtensions.apply(ExtendsClause);
 
-// Names: which rule spells a declared name, and what kind of symbol it makes
-declaring.apply(DataDeclaration, Identifier, 'data');
-declaring.apply(TraitDeclaration, Identifier, 'trait');
-declaring.apply(FunctionDeclaration, Signature, 'function');
-declaring.apply(AgentFunctionDeclaration, Signature, 'agentFunction');
-declaring.apply(TypeDeclaration, Declared, 'type');
-declaring.apply(EnumDeclaration, Declared, 'enum');
-declaring.apply(VariableDeclaration, Declared, 'variable');
-declaring.apply(AliasDeclaration, Declared, 'alias');
-declaring.apply(ExternalDeclaration, Declared, 'external');
-declaring.apply(Use, Identifier, 'module');
-declaring.apply(For, Declared, 'loopVariable');
-declaring.apply(ForFrom, Declared, 'loopVariable');
-declaring.apply(Parameter, Name, 'parameter');
-declaring.apply(SpreadParameter, Name, 'parameter');
-declaring.apply(TypeKey, Name, 'member');
+// Declarations
+declaring.apply(DataDeclaration, Identifier, SymbolKind.data);
+declaring.apply(TraitDeclaration, Identifier, SymbolKind._trait);
+declaring.apply(FunctionDeclaration, Signature, SymbolKind._function);
+declaring.apply(AgentFunctionDeclaration, Signature, SymbolKind.agentFunction);
+declaring.apply(TypeDeclaration, Declared, SymbolKind._type);
+declaring.apply(EnumDeclaration, Declared, SymbolKind._enum);
+declaring.apply(VariableDeclaration, Declared, SymbolKind.variable);
+declaring.apply(AliasDeclaration, Declared, SymbolKind._alias);
+declaring.apply(ExternalDeclaration, Declared, SymbolKind._external);
+declaring.apply(Use, Identifier, SymbolKind._module);
+declaring.apply(For, Declared, SymbolKind.loopVariable);
+declaring.apply(ForFrom, Declared, SymbolKind.loopVariable);
+declaring.apply(Parameter, Name, SymbolKind.parameter);
+declaring.apply(SpreadParameter, Name, SymbolKind.parameter);
+declaring.apply(TypeKey, Name, SymbolKind.member);

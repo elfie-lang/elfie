@@ -37,10 +37,10 @@ trait applyingExtensions: `Takes on what its [[TraitUses]] name, and passes it t
   }
 }
 
-trait declaring(holder: is rule, kind: string): `Introduces one name of kind {{kind}}, spelled by the first [[&holder]] found in token order without entering a nested [[Parameters]], [[Block]], [[Object]], or [[Type]]` {
+trait declaring(holder: is rule, kind: SymbolKind): `Introduces one name of kind {{kind}}, spelled by the first [[&holder]] found in token order without entering a nested [[Parameters]], [[Block]], [[Object]], or [[Type]]` {
   with Symbol {
     where (`A [[Node]] for {{@identifier}} is bound and a [[&holder]] is found that way`) -> `A [[Symbol]] of kind {{kind}} named by the [[Token.value]] of the first [[Identifier]] inside it is added to the scope that encloses the node, not one the node owns, declared by the node`;
-    where (`{{kind}} is loopVariable`) -> `The [[Symbol]] is added to the scope the [[For]] owns instead, so it is visible in the loop body and nowhere else`;
+    where (`{{kind}} is [[SymbolKind.loopVariable]]`) -> `The [[Symbol]] is added to the scope the [[For]] owns instead, so it is visible in the loop body and nowhere else`;
     where (`No [[&holder]] is found that way`) -> `The node is an anonymous entity`;
   }
 }

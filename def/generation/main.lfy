@@ -7,39 +7,111 @@ use "./data";
 
 // Decision: a unit is one source file for one target. Outputs and source maps are per file, a
 // declaration's scope is its file, and a smaller unit would make the compiler merge into a file it
-// does not own, which is itself an act of generation. A larger unit would not fit a request.
+// does not own, which is itself an act of generation. A larger unit would not fit a request, but
+// several units can share one: that is a batch.
 
-fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = []): `Every unit of a workspace, and which of them need generating` => Plan {
+fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may rely on, as one text whose hash tells whether it changed` => string {
+  @acceptanceCriteria
+    .add({
+      behavior = `One line per entity of [[Unit.entities]] in file order: its identifier, its kind, its definition, its type, and for a fn its parameters with their types and its output, each as [[Binder.criteriaOf]] would spell them`,
+    })
+    .add({
+      behavior = `A change that leaves every line the same, such as a new criterion or a moved line, leaves the text the same, so dependents are not regenerated for it`,
+    });
+}
+
+fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = []): `Every unit of a workspace, which need generating, and how they are batched` => Plan {
   // Selection
   @acceptanceCriteria
-    .add({ behavior = `An entity is built for a [[Target]] when it is among [[Binder.entitiesOf]] the [[Target.marker]], when the anonymous entity of its file is, or when global is; the last two select every entity declared in the file scope`, })
-    .add({ behavior = `Every file without a [[File.package]] that has at least one built entity for a target gives one [[Unit]] holding those entities in file order`, })
-    .add({ situation = `A file has a [[File.package]]`, behavior = `It gives no unit; a package is compiled by its own project`, })
-    .add({ behavior = `[[Unit.stem]] is [[File.path]] relative to [[Workspace.sourceDirectory]], without the .lfy extension`, });
+    .add({
+      behavior = `An entity is built for a [[Target]] when it is among [[Binder.entitiesOf]] the [[Target.marker]], when the anonymous entity of its file is, or when global is; the last two select every entity declared in the file scope`,
+    })
+    .add({
+      behavior = `Every file without a [[File.package]] that has at least one built entity for a target gives one [[Unit]] holding those entities in file order`,
+    })
+    .add({
+      situation = `A file has a [[File.package]]`,
+      behavior = `It gives no unit; a package is compiled by its own project`,
+    })
+    .add({
+      behavior = `[[Unit.stem]] is [[File.path]] relative to [[Workspace.sourceDirectory]], without the .lfy extension`,
+    });
 
   // Dependencies
   @acceptanceCriteria
-    .add({ behavior = `[[Unit.dependencies]] holds, for each path in [[Source.uses]] of the file, the unit of that file for the same target; a used file with no unit contributes the units of its own uses instead, transitively`, })
-    .add({ behavior = `Each unit appears once among dependencies, and a cycle among uses adds nothing beyond the [[Problem]] the workspace already holds`, })
-    .add({ behavior = `[[Plan.units]] holds every unit of every target, each after its dependencies, otherwise in [[Workspace.targets]] then [[Workspace.files]] order`, });
+    .add({
+      behavior = `[[Unit.dependencies]] holds, for each path in [[Source.uses]] of the file, the unit of that file for the same target; a used file with no unit contributes the units of its own uses instead, transitively`,
+    })
+    .add({
+      behavior = `Each unit appears once among dependencies, and a cycle among uses adds nothing beyond the [[Problem]] the workspace already holds`,
+    })
+    .add({
+      behavior = `[[Plan.units]] holds every unit of every target, each after its dependencies, otherwise in [[Workspace.targets]] then [[Workspace.files]] order`,
+    });
 
   // Staleness
   @acceptanceCriteria
-    .add({ behavior = `[[Unit.outputs]] is every [[SourceMap]] in [[sourceMaps]] whose target and source are the unit's; the caller drops maps whose output no longer exists before calling`, })
-    .add({ behavior = `[[Unit.reason]] is the first of these that holds: requested when [[File.path]] or [[Unit.stem]] is in [[requested]]; fresh when [[Unit.outputs]] is empty; changed when the SHA-256 of the file's text differs from [[SourceMap.hash]] of any output; dependency when any dependency has a reason or a [[SourceMap.generated]] later than the unit's earliest; undefined otherwise`, });
+    .add({
+      behavior = `[[Unit.outputs]] is every [[SourceMap]] in [[sourceMaps]] whose target and source are the unit's; the caller drops maps whose output no longer exists before calling`,
+    })
+    .add({
+      behavior = `[[Unit.reason]] is the first of these that holds: requested when [[File.path]] or [[Unit.stem]] is in [[requested]]; fresh when [[Unit.outputs]] is empty; changed when the SHA-256 of the file's text differs from [[SourceMap.hash]] of any output; dependency when any dependency is planned with a reason other than dependency, or when the hash of [[interfaceOf]] any dependency differs from what [[SourceMap.dependencies]] of the unit's outputs record for it, or records nothing for it; undefined otherwise`,
+    })
+    .add({
+      behavior = `A dependency that is planned only because of its own dependencies, and whose interface is unchanged, plans nothing beyond itself, so an edit inside one function body regenerates one unit`,
+    });
+
+  // Batching
+  // Decision: batches follow the plan order and the directory a unit sits in, because units of one
+  // directory share a crate module and most of their interfaces, so the shared context is sent once.
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Plan.batches]] partitions the planned units in [[Plan.units]] order: a unit joins the open batch when both share the first segment of [[Unit.stem]], the batch holds fewer than 6 units, and the sources of the batch and the unit together are under 60,000 characters; otherwise it opens a new batch`,
+    })
+    .add({
+      behavior = `A unit whose reason is dependency and whose only planned dependencies are in the open batch joins that batch even across directories, since it is compiled against what the batch produces`,
+    })
+    .add({
+      behavior = `Every batch comes after the batches holding the dependencies of its units, and [[Batch.identifier]] is the first unit's stem, then a plus sign and the count of the others when there are any`,
+    })
+    .add({ situation = `Nothing is planned`, behavior = `[[Plan.batches]] is empty` });
 
   @test(
     {
-      input = [Workspace@like(`One target rust whose marker global carries; def holds a.lfy using ./b and b.lfy`), [], []],
-      expect = Plan@like(`Two units, b before a, a depending on b, both with reason fresh`),
+      input = [
+        Workspace@like(`One target rust whose marker global carries; def holds a.lfy using ./b and b.lfy`),
+        [],
+        [],
+      ],
+      expect = Plan@like(`Two units, b before a, a depending on b, both with reason fresh, in one batch named b+1`),
     },
     {
-      input = [Workspace@like(`The same project`), [SourceMap@like(`For a and for b, hashes matching the files, generated at the same time`)], []],
-      expect = Plan@like(`Two units, neither with a reason`),
+      input = [
+        Workspace@like(`The same project`),
+        [
+          SourceMap@like(
+            `For a and for b, hashes matching the files, interface hashes matching, generated at the same time`,
+          ),
+        ],
+        [],
+      ],
+      expect = Plan@like(`Two units, neither with a reason, and no batches`),
     },
     {
-      input = [Workspace@like(`The same project with b.lfy edited`), [SourceMap@like(`For a and for b, hashes of the old files`)], []],
-      expect = Plan@like(`b with reason changed and a with reason dependency`),
+      input = [
+        Workspace@like(`The same project with a comment added inside b.lfy`),
+        [SourceMap@like(`For a and for b, hashes of the old files, interface hashes matching the current interfaces`)],
+        [],
+      ],
+      expect = Plan@like(`b with reason changed and a without a reason, because b's interface is the same`),
+    },
+    {
+      input = [
+        Workspace@like(`The same project with a member added to a data of b.lfy`),
+        [SourceMap@like(`For a and for b, hashes and interface hashes of the old files`)],
+        [],
+      ],
+      expect = Plan@like(`b with reason changed and a with reason dependency, in one batch`),
     },
     {
       input = [Workspace@like(`A project whose only target's marker nothing carries`), [], []],
@@ -48,13 +120,23 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [])
   );
 }
 
-fn request(plan: Plan, unit: Unit, existing: Output[], previous?: string): `Everything the compiler is handed to produce one unit's outputs` => Request {
+fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
-    .add({ behavior = `[[Request.unit]] is [[unit]], [[Request.source]] is the joined [[Token.raw]] of the file's tokens, and [[Request.previous]] is [[previous]]`, })
-    .add({ behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among [[Unit.outputs]] to its text`, })
-    .add({ behavior = `[[Request.interfaces]] holds one [[Interface]] per dependency in [[Unit.dependencies]], listing its output paths and its entities`, })
-    .add({ behavior = `[[Request.guidance]] is [[Binder.criteriaOf]] the [[Target.marker]], which already holds the criteria of every trait the marker extends`, })
-    .add({ behavior = `[[Request.nativeDependencies]] is [[Workspace.nativeDependencies]] followed by [[Package.nativeDependencies]] of [[Target.package]]`, });
+    .add({
+      behavior = `[[Request.batch]] is [[batch]]; [[Request.sources]] maps each unit's [[File.path]] to the joined [[Token.raw]] of its tokens; [[Request.previous]] is [[previous]]`,
+    })
+    .add({
+      behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of a unit of the batch to its text`,
+    })
+    .add({
+      behavior = `[[Request.interfaces]] holds one [[Interface]] per dependency of any unit of the batch that is not itself in the batch, each once, in dependency order`,
+    })
+    .add({
+      behavior = `[[Request.guidance]] is [[Binder.criteriaOf]] the [[Target.marker]], which already holds the criteria of every trait the marker extends`,
+    })
+    .add({
+      behavior = `[[Request.nativeDependencies]] is [[Workspace.nativeDependencies]] followed by [[Package.nativeDependencies]] of [[Target.package]]`,
+    });
 
   // Decision: the instructions quote every criterion and test already resolved, so a compiler with no
   // access to the model can still work; the agent server is offered for what the request leaves out.
@@ -62,46 +144,134 @@ fn request(plan: Plan, unit: Unit, existing: Output[], previous?: string): `Ever
     .add({
       behavior = [
         `[[Request.instructions]] says, in this order:`,
-        `That the reader is the compiler for the target, that its whole job is the outputs for this one source file, and that it writes nothing outside them`,
-        `Where the outputs go: under [[Target.outputDirectory]], spelled from [[Unit.stem]] as the guidance says, at the paths in [[Unit.outputs]] when there are any`,
-        `Each entity of the unit, with its source text, its kind, and every criterion and test of [[Binder.criteriaOf]] and [[Entity.tests]] resolved for it`,
-        `The guidance, then the native dependencies it may require`,
-        `Each interface: the dependency's output paths and the identifier, kind, definition, and type of each of its entities, to be used by the names its outputs spell and never edited`,
+        `That the reader is the compiler for the target, that its whole job is the outputs for the units of this batch, listed by stem, and that it writes nothing outside them`,
+        `Where the outputs go: under [[Target.outputDirectory]], spelled from each [[Unit.stem]] as the guidance says, at the paths in [[Unit.outputs]] when there are any`,
+        `The guidance, then the native dependencies it may require, then each interface: the dependency's output paths and the identifier, kind, definition, and type of each of its entities, to be used by the names its outputs spell and never edited`,
+        `Then, for each unit of the batch in order, a section with its source text and each of its entities with its kind and every criterion and test of [[Binder.criteriaOf]] and [[Entity.tests]] resolved for it`,
         `The rules for kinds: a [[DataDeclaration]] becomes a type; an [[AgentFunctionDeclaration]] becomes a function whose body satisfies every criterion and test; a [[FunctionDeclaration]] is translated statement by statement with nothing added; a [[TraitDeclaration]] emits nothing of its own, its members and criteria belong to each entity that carries it; a [[TypeDeclaration]] and [[EnumDeclaration]] become their nearest equivalents; an [[ExternalDeclaration]] is bound to what the guidance says; an [[Ace]] statement is evaluated during compilation and its results inlined where used; a [[Use]] is satisfied by the interfaces`,
-        `That every emitted item and every test carries a [[Marker]] for the source line it comes from, spelled as [[Marker]] says`,
+        `That every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says, and never a line number`,
         `That each [[Test]] becomes one test, and each criterion that can be checked mechanically becomes one test named after its entity, placed where the guidance says`,
-        `When [[Request.existing]] is not empty: that only what the difference between [[Request.previous]] and [[Request.source]] requires changes, that names and structure are kept, and that markers of unchanged lines are kept; when [[Request.previous]] is undefined, that the existing output is reconciled with the source`,
-        `That an ambiguous criterion, two criteria in conflict, or a name that resolves nowhere means no output for the unit and a report quoting the criterion, never a guess`,
+        `When [[Request.existing]] is not empty: that only what the difference between [[Request.previous]] and [[Request.sources]] requires changes, that names and structure are kept, and that markers of unchanged items are kept; where [[Request.previous]] has no entry, that the existing output is reconciled with the source`,
         `That the tools of the agent server may be called for anything the request leaves out`,
+        `How to end its report: with one line reading ELFIE: DONE when every output is written; ELFIE: BLOCKED: followed by the reason when an ambiguous criterion, two criteria in conflict, a name that resolves nowhere, or anything else stops it, in which case it writes no output for the unit and quotes the criterion; or ELFIE: CLARIFY: followed by one question when only a person can decide, in which case it writes nothing`,
       ],
     });
 
   @test(
     {
-      input = [Plan@like(`Two units, b before a`), Unit@like(`a, depending on b, reason fresh`), [], undefined],
-      expect = Request@like(`Instructions naming the target, quoting a's entities with their criteria, one interface for b, no existing outputs`),
+      input = [Plan@like(`One batch of two units, b before a`), Batch@like(`b+1`), [], {}],
+      expect = Request@like(
+        `Instructions naming the target, listing b and a, quoting each one's entities with their criteria, no interfaces, no existing outputs, and the three report lines`,
+      ),
     },
   );
 }
 
-fn accept(request: Request, outputs: Output[]): `Whether outputs satisfy a request structurally, and the source maps they earn` => Verdict {
+fn outcomeOf(report: string, verdicts: Verdict[]): `How one run of the compiler ended, read from its report and the verdicts of its units` => Outcome {
   @acceptanceCriteria
-    .add({ situation = `[[outputs]] is empty`, behavior = `Rejected with a problem saying so`, })
-    .add({ situation = `An output's path is not under [[Target.outputDirectory]] of the unit's target`, behavior = `Rejected with a problem naming the path`, })
-    .add({ situation = `An output holds a [[Marker]] naming a file that is not in the program, or a line of the unit's [[File.path]] beyond its last`, behavior = `Rejected with a problem naming the output line`, })
-    .add({ behavior = `An output may hold markers for other files of the program, because one output often mirrors several`, })
-    .add({ situation = `An entity of the unit has no marker in any output naming a line its declaring node covers`, behavior = `Rejected with a problem naming the entity`, })
-    .add({ behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of [[Request.source]], the time of acceptance, and every marker in output order`, })
-    .add({ behavior = `Whether an output builds or its tests pass is not checked here; the guidance says how, and the caller runs it`, });
+    .add({
+      situation = `The last line of [[report]] that begins with ELFIE: reads ELFIE: BLOCKED:`,
+      behavior = `The kind is blocked and the message is the rest of that line and every line after it`,
+    })
+    .add({
+      situation = `That line reads ELFIE: CLARIFY:`,
+      behavior = `The kind is clarification and the message is the rest of that line and every line after it`,
+    })
+    .add({
+      situation = `[[verdicts]] is empty and no such line exists`,
+      behavior = `The kind is failed and the message says the compiler reported nothing`,
+    })
+    .add({
+      situation = `Some verdict is rejected`,
+      behavior = `The kind is rejected and the message is the first problem of the first rejected verdict`,
+    })
+    .add({ situation = `Otherwise`, behavior = `The kind is accepted and the message is empty` })
+    .add({ behavior = `[[Outcome.verdicts]] is [[verdicts]]` });
 
   @test(
     {
-      input = [Request@like(`For a unit with entities A and B in a.lfy`), [Output@like(`One file under the output directory with a marker for A's line and one for B's`)]],
-      expect = Verdict@like(`Accepted, one source map with two markers`),
+      input = [`I wrote it.\nELFIE: DONE`, [Verdict@like(`accepted`)]],
+      expect = Outcome@like(`accepted, empty message`),
     },
     {
-      input = [Request@like(`For a unit with entities A and B in a.lfy`), [Output@like(`One file with a marker for A's line only`)]],
+      input = [`ELFIE: CLARIFY: should Range.end be inclusive?`, []],
+      expect = Outcome@like(`clarification with the question`),
+    },
+    {
+      input = [`ELFIE: BLOCKED: \[[tokenAt\]] contradicts \[[nodesAt\]] on empty files`, []],
+      expect = Outcome@like(`blocked with the reason`),
+    },
+    { input = [``, []], expect = Outcome@like(`failed`) },
+  );
+}
+
+fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs satisfy a request for one unit structurally, the source maps they earn, and the outputs with their markers normalized` => Verdict {
+  // Markers
+  @acceptanceCriteria
+    .add({ situation = `[[outputs]] is empty`, behavior = `Rejected with a problem saying so` })
+    .add({
+      situation = `An output's path is not under [[Target.outputDirectory]] of the unit's target`,
+      behavior = `Rejected with a problem naming the path`,
+    })
+    .add({
+      situation = `A marker names an entity`,
+      behavior = `Its line is derived as the first line of the declaring node of the entity with that name in that file, and the marker is left as written`,
+    })
+    .add({
+      situation = `A marker names an entity that the file does not declare`,
+      behavior = `Rejected with a problem naming the output line and the name`,
+    })
+    .add({
+      situation = `A marker names a line of the unit's file that falls inside an entity's declaration`,
+      behavior = `The marker is rewritten in [[Verdict.outputs]] to name that entity, since a name survives edits and a line does not`,
+    })
+    .add({
+      situation = `An output holds a [[Marker]] naming a file that is not in the program, or a line of the unit's [[File.path]] beyond its last`,
+      behavior = `Rejected with a problem naming the output line`,
+    })
+    .add({
+      behavior = `An output may hold markers for other files of the program, because one output often mirrors several`,
+    })
+    .add({
+      situation = `An entity of the unit has no marker in any output naming it or a line its declaring node covers`,
+      behavior = `Rejected with a problem naming the entity`,
+    });
+
+  // Source maps, mechanically
+  @acceptanceCriteria
+    .add({
+      behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of the unit's source, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, the time of acceptance, and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
+    })
+    .add({
+      behavior = `Whether an output builds or its tests pass is not checked here; the guidance says how, and the caller runs it`,
+    });
+
+  @test(
+    {
+      input = [
+        Request@like(`For a batch holding a unit with entities A and B in a.lfy`),
+        Unit@like(`that unit`),
+        [Output@like(`One file under the output directory with a marker a.lfy:A and one a.lfy:B`)],
+      ],
+      expect = Verdict@like(
+        `Accepted, one source map with two markers whose lines are those of A and B, the output unchanged`,
+      ),
+    },
+    {
+      input = [
+        Request@like(`For a batch holding a unit with entities A and B in a.lfy`),
+        Unit@like(`that unit`),
+        [Output@like(`One file with a marker naming the line of A only`)],
+      ],
       expect = Verdict@like(`Rejected, one problem naming B`),
+    },
+    {
+      input = [
+        Request@like(`For a batch holding a unit with entity A on line 3 of a.lfy`),
+        Unit@like(`that unit`),
+        [Output@like(`One file with a marker a.lfy:3`)],
+      ],
+      expect = Verdict@like(`Accepted, and the output in [[Verdict.outputs]] reads a.lfy:A instead`),
     },
   );
 }

@@ -42,7 +42,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
     binder.finish_definitions();
     let mut model = binder.model;
     // Own criteria first, then each trait's in application order.
-    // @lfy def/model/data.lfy:67
+    // @lfy def/model/data.lfy:78
     for (id, entity) in model.entities.iter_mut().enumerate() {
         entity.acceptance_criteria.sort_by_key(|criterion| criterion.contributor != id);
     }
@@ -82,23 +82,23 @@ impl bind::Binder {
 }
 
 /// The symbol a node uses or declares.
-// @lfy def/model/main.lfy:124
+// @lfy def/model/main.lfy:202
 pub fn resolve(model: &Model, node: NodeRef) -> Option<SymbolId> {
     if let Some(usage) = model.usage_of(node) {
-        return model.usages[usage].symbol; // @lfy def/model/main.lfy:127
+        return model.usages[usage].symbol; // @lfy def/model/main.lfy:204
     }
-    model.symbol_of(node) // @lfy def/model/main.lfy:128
+    model.symbol_of(node) // @lfy def/model/main.lfy:205
 }
 
 /// Everything that has a trait; empty when the entity is not a trait.
-// @lfy def/model/main.lfy:131
+// @lfy def/model/main.lfy:209
 pub fn entities_of(model: &Model, trait_entity: EntityId) -> Vec<EntityId> {
     model.entities[trait_entity].entities().to_vec()
 }
 
 /// Every use of a symbol: every usage whose symbol is the target or an alias chain
 /// ending at it, in node order.
-// @lfy def/model/main.lfy:137
+// @lfy def/model/main.lfy:215
 pub fn usages_of(model: &Model, target: SymbolId) -> Vec<UsageId> {
     let entity = model.symbols[target].entity;
     let mut out: Vec<UsageId> = model
@@ -119,7 +119,7 @@ pub fn usages_of(model: &Model, target: SymbolId) -> Vec<UsageId> {
 /// Every criterion attached to an entity, with templates resolved for it: each
 /// reference is replaced by the referenced entity's identifier and each execution by
 /// its value.
-// @lfy def/model/main.lfy:142
+// @lfy def/model/main.lfy:222
 pub fn criteria_of(model: &Model, entity: EntityId) -> Vec<Criterion> {
     model.entities[entity]
         .acceptance_criteria

@@ -4,25 +4,34 @@ use "../workspace/data";
 enum Reason: `Why a unit needs generating` {
   fresh = `no output has been generated for it`,
   changed = `its source differs from what its output was generated from`,
-  dependency = `the output of a unit it depends on was generated after its own`,
+  dependency = `the interface of a unit it depends on differs from the one its output was generated against`,
   requested = `the caller asked for it regardless`,
 }
 
 d Marker: `One place where generated code says where it came from` {
   $outputLine: `The line of the output file that carries the marker, counting from 1` = number;
-  $line: `The source line, counting from 1` = number;
-  $column: `The source column, counting from 0; undefined when the marker names a whole line` = number | undefined;
+  $file: `The source path the marker names, relative to [[Workspace.root]]` = string;
+  $entity: `The name the marker spells, when it names an entity: the identifier, or the owner's identifier, a dot, and a member's name; undefined when it names a line` = string | undefined;
+  $line: `The source line: as spelled, or derived from [[Marker.entity]] as the first line of that entity's declaration` = number;
+  $column: `The source column, counting from 0; undefined when the marker names a whole line or an entity` = number | undefined;
   @acceptanceCriteria
-    .add({ behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, the line, and optionally a colon and the column`, });
+    .add({
+      behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, and then either a line (optionally a colon and a column) or the name of an entity of that file`,
+    })
+    .add({
+      behavior = `The compiler is asked to write names, never lines, so that its markers survive edits that move lines; every line in a source map is derived from the model, never copied from the compiler`,
+    });
 }
 
-d SourceMap: `What one output file was generated from` {
+d SourceMap: `What one output file was generated from, recorded mechanically at acceptance` {
   $target: `The identifier of the target it was generated for` = string;
   $output: `The output file's path, relative to [[Workspace.root]]` = string;
   $source: `The source file's path, relative to [[Workspace.root]]` = string;
-  $hash: `SHA-256 of the source file's bytes when the output was generated, as lowercase hex` = string;
+  $hash: `SHA-256 of the source file's bytes when the output was accepted, as lowercase hex` = string;
+  $signature: `SHA-256 of the unit's interface text, as interfaceOf spells it, when the output was accepted` = string;
+  $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = object;
   $generated: `When the output was accepted, as an RFC 3339 timestamp` = string;
-  $markers: `Every [[Marker]] in the output, in output order` = Marker[];
+  $markers: `Every [[Marker]] in the output, in output order, with lines derived` = Marker[];
 }
 
 d Unit: `The work the compiler does as one piece: one source file for one target` {
@@ -35,19 +44,24 @@ d Unit: `The work the compiler does as one piece: one source file for one target
   $reason: `Why it is planned; undefined when it is up to date` = Reason | undefined;
 }
 
+d Batch: `Planned units compiled together in one request, so shared context is sent once` {
+  $units: `In plan order; every dependency of a unit is in this batch or an earlier one` = Unit[];
+  $identifier: `The stem of the first unit, then the count when there are more, as the batch is named in requests and progress` = string;
+}
+
 d Interface: `What a dependent unit may rely on from another unit's output` {
   $unit: `The unit` = Unit;
   $outputs: `The paths of its outputs` = string[];
   $entities: `Its entities: each one's identifier, kind, definition, type, parameters and output as applicable` = Entity[];
 }
 
-d Request: `Everything the compiler is handed to produce one unit's outputs` {
-  $unit: `The unit` = Unit;
-  $instructions: `The prompt: what to produce, where, and the rules for producing it` = string;
-  $source: `The source file's text` = string;
-  $previous: `The source text the existing outputs were generated from; undefined when unknown` = string | undefined;
-  $existing: `The current text of each existing output, by path` = object;
-  $interfaces: `One [[Interface]] per dependency, in dependency order` = Interface[];
+d Request: `Everything the compiler is handed to produce the outputs of one batch` {
+  $batch: `The batch` = Batch;
+  $instructions: `The prompt: what to produce, where, the rules for producing it, and how to report the outcome` = string;
+  $sources: `The text of each unit's source file, by [[File.path]]` = object;
+  $previous: `The source text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = object;
+  $existing: `The current text of each existing output of the batch, by path` = object;
+  $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
   $guidance: `Every criterion of [[Target.marker]] and of every trait it extends, in that order, resolved for the marker` = Criterion[];
   $nativeDependencies: `What the generated code may require from the target's ecosystem` = NativeDependency[];
 }
@@ -57,13 +71,29 @@ d Output: `One file the compiler produced` {
   $text: `Its content` = string;
 }
 
-d Verdict: `Whether outputs are accepted for a request` {
+enum OutcomeKind: `How one run of the compiler ended` {
+  accepted = `every unit of the batch was accepted`,
+  rejected = `an output failed acceptance`,
+  blocked = `the compiler reported it could not proceed`,
+  clarification = `the compiler asked a question only a person can answer`,
+  failed = `the compiler command could not run, or exited without producing anything`,
+}
+
+d Outcome: `What one run of the compiler came to, read mechanically from its report and the verdicts` {
+  $kind: `How it ended` = OutcomeKind;
+  $message: `The compiler's reason or question, or the first problem; empty when accepted` = string;
+  $verdicts: `One [[Verdict]] per unit of the batch, in batch order; empty when the compiler never got that far` = Verdict[];
+}
+
+d Verdict: `Whether outputs are accepted for one unit` {
   $accepted: `Whether every check passed` = boolean;
   $problems: `What failed and why, one per failure; empty when accepted` = string[];
   $sourceMaps: `One per accepted output; empty when rejected` = SourceMap[];
+  $outputs: `Each accepted output with its markers normalized to the name form, for the caller to write back; empty when rejected` = Output[];
 }
 
-d Plan: `Every unit of a workspace, and which need generating` {
+d Plan: `Every unit of a workspace, which need generating, and how they are batched` {
   $workspace: `The workspace planned` = Workspace;
   $units: `Every unit of every target, each after its dependencies` = Unit[];
+  $batches: `The planned units grouped for compilation, each batch after the batches holding its dependencies` = Batch[];
 }

@@ -24,3 +24,27 @@ d Invocation: `One parsed command line` {
   $arguments: `The positional arguments after the command, in order` = string[];
   $options: `Named options by name without their dashes; true for a flag, the text for a valued option` = object;
 }
+
+enum Step: `What a compile is doing, as progress reports it` {
+  planned = `the plan is made`,
+  requesting = `a batch's request is being assembled`,
+  compiling = `the compiler is running on a batch`,
+  checking = `the outputs of a unit are being checked`,
+  accepted = `a unit was accepted and recorded`,
+  rejected = `a unit was rejected`,
+  retrying = `the compiler is running a batch again with the problems`,
+  blocked = `the compiler could not proceed`,
+  clarification = `the compiler asked a question`,
+  failed = `the compiler command failed`,
+  finished = `the compile is over`,
+}
+
+d Progress: `One line of what a compile is doing, for a person or a script watching` {
+  $step: `What is happening` = Step;
+  $batch: `The batch it concerns; undefined for the plan and the end` = string | undefined;
+  $unit: `The unit it concerns; undefined when it concerns a whole batch` = string | undefined;
+  $done: `Units accepted so far` = number;
+  $total: `Units planned` = number;
+  $elapsed: `Seconds since the compile began` = number;
+  $message: `The detail: the reason a unit is planned, a problem, a question, or the count of batches` = string;
+}

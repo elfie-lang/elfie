@@ -15,128 +15,306 @@ use "../parser/traits";
 use "../workspace/data";
 use "./data";
 
-// Decision: one query surface, built on a bound [[Workspace]], that both the language server and
-// the agent server call. Editors and agents differ only in how they spell a position or a name,
-// so each query below takes either a position or a name and nothing protocol-shaped.
+// Lookup Queries
 
 fn rangeOf(workspace: Workspace, node: Node | Token): `Where a node or token sits` => Range {
   @acceptanceCriteria
-    .add({ behavior = `[[Range.file]] is [[Token.file]] of the first token covered`, })
-    .add({ behavior = `[[Range.start]] is [[Token.line]] and [[Token.column]] of the first token covered`, })
-    .add({ behavior = `[[Range.end]] is the position just after the last character of [[Token.raw]] of the last token covered, with every [[NewLine]] inside the tokens ending a line`, })
-    .add({ situation = `[[node]] covers no token`, behavior = `The range is empty at the position the node would start at`, });
+    .add({ behavior = `[[Range.file]] is [[Token.file]] of the first token covered` })
+    .add({ behavior = `[[Range.start]] is [[Token.line]] and [[Token.column]] of the first token covered` })
+    .add({
+      behavior = `[[Range.end]] is the position just after the last character of [[Token.raw]] of the last token covered, with every [[NewLine]] inside the tokens ending a line`,
+    })
+    .add({
+      situation = `[[node]] covers no token`,
+      behavior = `The range is empty at the position the node would start at`,
+    });
 }
 
 fn tokenAt(workspace: Workspace, file: string, position: Position): `The token under a position` => Token | undefined {
   @acceptanceCriteria
-    .add({ behavior = `[[file]] is relative to [[Workspace.root]], as [[File.path]] is`, })
-    .add({ behavior = `Returns the token of that file whose range covers [[position]]`, })
-    .add({ situation = `[[position]] is exactly between two tokens`, behavior = `It belongs to the earlier token when that is an [[Identifier]], a [[Keyword]], or a [[MemberName]], and to the later token otherwise`, })
-    .add({ situation = `[[file]] is not in [[Workspace.files]], or [[position]] is past the end of the file`, behavior = `Returns undefined`, });
-
-  @test(
-    {
-      input = [Workspace@like(`One file a.lfy reading: const x = 1;`), `def/a.lfy`, Position@like(`line 1, column 7`)],
-      expect = Token@like(`The [[Identifier]] x, because the position just after x still belongs to it`),
-    },
-    {
-      input = [Workspace@like(`One file a.lfy reading: const x = 1;`), `def/a.lfy`, Position@like(`line 2, column 0`)],
-      expect = undefined,
-    },
-  );
+    .add({ behavior = `[[file]] is relative to [[Workspace.root]], as [[File.path]] is` })
+    .add({ behavior = `Returns the token of that file whose range covers [[position]]` })
+    .add({
+      situation = [
+        `[[position]] is exactly between two tokens`,
+        `The earlier token is an [[Identifier]], a [[Keyword]], or a [[MemberName]]`,
+      ],
+      behavior = `It belongs to the earlier token`,
+    })
+    .add({
+      situation = [
+        `[[position]] is exactly between two tokens`,
+        `The earlier token is not an [[Identifier]], a [[Keyword]], or a [[MemberName]]`,
+      ],
+      behavior = `It belongs to the later token`,
+    })
+    .add({
+      situation = `[[file]] is not in [[Workspace.files]] or [[position]] is past the end of the file`,
+      behavior = `Returns undefined`,
+    });
 }
 
 fn nodesAt(workspace: Workspace, file: string, position: Position): `Every node covering a position, outermost first` => Node[] {
   @acceptanceCriteria
-    .add({ behavior = `The first node is [[Tree.root]] of the file and each next node is a child of the one before it; the last holds [[tokenAt]] as a direct child`, })
-    .add({ situation = `[[tokenAt]] is undefined`, behavior = `Returns an empty list`, });
+    .add({
+      behavior = `The first node is [[Tree.root]] of the file and each next node is a child of the one before it; the last holds [[tokenAt]] as a direct child`,
+    })
+    .add({ situation = `[[tokenAt]] is undefined`, behavior = `Returns an empty list` });
 }
 
 fn symbolAt(workspace: Workspace, file: string, position: Position): `The symbol declared or used at a position` => Symbol | undefined {
   @acceptanceCriteria
-    .add({ situation = `[[tokenAt]] is an [[Identifier]], or a keyword standing as a [[MemberName]]`, behavior = `Walking [[nodesAt]] innermost outward, the first node for which [[Binder.resolve]] gives a symbol, and whose name that token spells, gives the symbol`, })
-    .add({ situation = `[[tokenAt]] is inside a [[TemplateReference]], including one inside [[Documentation]]`, behavior = `The [[Usage]] of the [[Reference]] gives the symbol, so references in prose resolve like code`, })
-    .add({ situation = `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`, behavior = `Returns the module symbol the [[Use]] declares, or undefined when it has no [[AsKeyword]]`, })
-    .add({ situation = `Anything else is under the position`, behavior = `Returns undefined`, });
+    .add({
+      situation = `[[tokenAt]] is an [[Identifier]] or a keyword standing as a [[MemberName]]`,
+      behavior = `Walking [[nodesAt]] innermost outward, the first node for which [[Binder.resolve]] gives a symbol, and whose name that token spells, gives the symbol`,
+    })
+    .add({
+      situation = `[[tokenAt]] is inside a [[TemplateReference]], including one inside [[Documentation]]`,
+      behavior = `The [[Usage]] of the [[Reference]] gives the symbol, so references in prose resolve like code`,
+    })
+    .add({
+      situation = `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+      behavior = `Returns the module symbol the [[Use]] declares, or undefined when it has no [[AsKeyword]]`,
+    })
+    .add({ situation = `Anything else is under the position`, behavior = `Returns undefined` });
 
   @test(
     {
-      input = [Workspace@like(`One file a.lfy reading: d A {} const y = A;`), `def/a.lfy`, Position@like(`on the A after the equals sign`)],
+      input = [
+        Workspace@like(`One file a.lfy reading: d A {} const y = A;`),
+        `def/a.lfy`,
+        Position@like(`on the A after the equals sign`),
+      ],
       expect = Symbol@like(`The symbol A of kind data`),
     },
     {
-      input = [Workspace@like(`One file a.lfy reading: d A {} const y: \`See \[[A\]]\` = 1;`), `def/a.lfy`, Position@like(`on the A inside the template reference`)],
+      input = [
+        Workspace@like(`One file a.lfy reading: d A {} const y: \`See \[[A\]]\` = 1;`),
+        `def/a.lfy`,
+        Position@like(`on the A inside the template reference`),
+      ],
       expect = Symbol@like(`The symbol A of kind data`),
     },
   );
 }
 
+// Definition Queries
+
 fn definitionOf(workspace: Workspace, file: string, position: Position): `Where the symbol at a position is declared` => Range | undefined {
   @acceptanceCriteria
-    .add({ behavior = `Returns [[rangeOf]] the identifier that spells the name in the declaring node of [[symbolAt]], as [[declaring]] finds it`, })
-    .add({ situation = `The symbol is a module symbol, or the position is on the path of a [[Use]]`, behavior = `Returns an empty range at line 1, column 0 of the file the [[Use]] resolved to in [[Source.uses]]`, })
-    .add({ situation = `The symbol is an alias`, behavior = `Returns the [[AliasDeclaration]], not what it aliases; following the chain is the reader's next jump`, })
-    .add({ situation = `The symbol is a member added by a trait`, behavior = `Returns the member statement inside the trait body`, })
-    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns undefined`, });
+    .add({
+      behavior = `Returns [[rangeOf]] the identifier that spells the name in the declaring node of [[symbolAt]], as [[declaring]] finds it`,
+    })
+    .add({
+      situation = `The symbol is a module symbol, or the position is on the path of a [[Use]]`,
+      behavior = `Returns an empty range at line 1, column 0 of the file the [[Use]] resolved to in [[Source.uses]]`,
+    })
+    .add({
+      situation = `The symbol is an alias`,
+      behavior = `Returns the [[AliasDeclaration]], not what it aliases`,
+    })
+    .add({
+      situation = `The symbol is a member added by a trait`,
+      behavior = `Returns the member statement inside the trait body`,
+    })
+    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns undefined` });
 }
 
 fn referencesTo(workspace: Workspace, file: string, position: Position, includeDeclaration: boolean = true): `Every place the symbol at a position is used` => Range[] {
   @acceptanceCriteria
-    .add({ behavior = `One range per [[Usage]] in [[Binder.usagesOf]] the symbol, covering the token that spells the name, or the accessor when the usage is of a layer itself`, })
-    .add({ situation = `[[includeDeclaration]] is true`, behavior = `The range [[definitionOf]] gives is first`, })
-    .add({ behavior = `Ranges are in [[Workspace.files]] order, then by [[Range.start]]`, })
-    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns an empty list`, });
+    .add({
+      behavior = `One range per [[Usage]] in [[Binder.usagesOf]] the symbol, covering the token that spells the name, or the accessor when the usage is of a layer itself`,
+    })
+    .add({ situation = `[[includeDeclaration]] is true`, behavior = `The range [[definitionOf]] gives is first` })
+    .add({ behavior = `Ranges are in [[Workspace.files]] order, then by [[Range.start]]` })
+    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns an empty list` });
 }
 
-fn hoverOf(workspace: Workspace, entity: Entity, range: Range): `Everything shown for one entity` => Hover {
+fn sourceOf(workspace: Workspace, entity: Entity): `The text that declares an entity` => string {
   @acceptanceCriteria
-    .add({ behavior = `[[Hover.range]] is [[range]]`, })
-    .add({ behavior = `[[Hover.kind]] is the kind of the entity's symbol; member when the entity is a member`, })
-    .add({ behavior = `[[Hover.identifier]] is [[Entity.identifier]], or the text of the declaring node's first line when anonymous`, })
-    .add({ behavior = `[[Hover.definition]] is [[Entity.definition]] with each [[TemplateReference]] replaced by the referenced identifier and each [[TemplateExecution]] by its value`, })
-    .add({ behavior = `[[Hover.type]] is the identifier of [[Entity.type]], or the source text of the type expression when it declares no name`, })
-    .add({ behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`, })
-    .add({ behavior = `[[Hover.criteria]] is [[Binder.criteriaOf]] the entity`, });
+    .add({
+      behavior = `The joined [[Token.raw]] of every token the declaring node covers, with the text of its [[documented]] nodes before it`,
+    })
+    .add({ situation = `[[entity]] is the anonymous entity of a file`, behavior = `The whole file` })
+    .add({
+      situation = `[[entity]] is a member added by a trait`,
+      behavior = `The member statement inside the trait body`,
+    });
+}
+
+fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, classified by meaning for an editor to color` => SemanticToken[] {
+  // Which tokens
+  @acceptanceCriteria
+    .add({
+      behavior = `One [[SemanticToken]] per token that spells a declared name, a used name, or a context property; keywords, punctuation, strings, numbers, and comments get none`,
+    })
+    .add({ behavior = `Tokens are in position order and never overlap` })
+    .add({ situation = `[[file]] is not in [[Workspace.files]]`, behavior = `Returns an empty list` });
+
+  // Type
+  @acceptanceCriteria
+    .add({
+      behavior = `[[SemanticToken.type]] follows the kind of the symbol the token declares or resolves to: the [[TokenType]] of the same name where there is one; [[SymbolKind.agentFunction]] gives [[TokenType._function]]; [[SymbolKind.loopVariable]] and [[SymbolKind._external]] give [[TokenType.variable]]; [[SymbolKind.member]] gives [[TokenType.property]]; [[SymbolKind._module]] gives [[TokenType.namespace]]`,
+    })
+    .add({ situation = `The symbol is an alias`, behavior = `The type is that of the entity it is bound to` })
+    .add({
+      situation = `The token names a context property after the context accessor`,
+      behavior = `The type is property`,
+    })
+    .add({ situation = `The token resolves to nothing`, behavior = `The type is variable` })
+    .add({
+      situation = `The token is a member of something the model does not know, so the binder reported no [[Problem]] there`,
+      behavior = `It gets no token: it is not a name of the program`,
+    });
+
+  // Modifiers
+  @acceptanceCriteria
+    .add({ situation = `The token spells the name in a declaration`, behavior = `declaration is among its modifiers` })
+    .add({
+      situation = `The entity is declared with [[AgentDataKeyword]] or [[AgentFunctionKeyword]]`,
+      behavior = `agentic is among the modifiers of every token of that entity, declaration and use alike`,
+    })
+    .add({
+      situation = `The entity is a variable declared with [[ConstKeyword]]`,
+      behavior = `readonly is among its modifiers`,
+    })
+    .add({
+      situation = `The token follows a [[ContextAccessor]], a [[ScopeAccessor]] or [[ParentScopeAccessor]], or a [[ValueAccessor]] or [[OptionalValueAccessor]]`,
+      behavior = `context, scope, or value, in the same order, is among its modifiers`,
+    })
+    .add({
+      situation = `The token is inside a [[TemplateReference]], a [[TemplateExecution]], or [[Documentation]]`,
+      behavior = `documentation is among its modifiers`,
+    })
+    .add({ situation = `The token resolves to nothing`, behavior = `unresolved is among its modifiers` })
+    .add({ behavior = `Modifiers are in [[TokenModifier]] order and each appears once` });
+
+  @test(
+    {
+      input = [Workspace@like(`One file a.lfy reading: d A { $x: \`d\` = string; } const y = A$x;`), `def/a.lfy`],
+      expect = SemanticToken[]@like(
+        `A as data with declaration and agentic; x as property with declaration; y as variable with declaration and readonly; A as data with agentic; x as property with scope`,
+      ),
+    },
+    {
+      input = [
+        Workspace@like(
+          `One file a.lfy reading: fn f(): \`See \[[g\]]\` => number { @acceptanceCriteria.add({ behavior = \`b\` }); }`,
+        ),
+        `def/a.lfy`,
+      ],
+      expect = SemanticToken[]@like(
+        `f as function with declaration and agentic; g as variable with documentation and unresolved; acceptanceCriteria as property with context; no token for add, since it is not a name in the program`,
+      ),
+    },
+  );
+}
+
+// Hover Queries
+
+fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one entity` => Hover {
+  @acceptanceCriteria
+    .add({ behavior = `[[Hover.range]] covers the identifier of the entity's declaration, as [[declaring]] finds it` })
+    .add({
+      behavior = `[[Hover.kind]] is the kind of the entity's symbol; [[SymbolKind.member]] when the entity is a member`,
+    })
+    .add({
+      behavior = `[[Hover.identifier]] is [[Entity.identifier]], or the text of the declaring node's first line when anonymous`,
+    })
+    .add({
+      behavior = `[[Hover.definition]] is [[Entity.definition]] with each [[TemplateReference]] replaced by the referenced identifier and each [[TemplateExecution]] by its value`,
+    })
+    .add({
+      behavior = `[[Hover.type]] is the identifier of [[Entity.type]], or the source text of the type expression when it declares no name`,
+    })
+    .add({
+      behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`,
+    })
+    .add({ behavior = `[[Hover.criteria]] is [[Binder.criteriaOf]] the entity` });
 }
 
 fn hoverAt(workspace: Workspace, file: string, position: Position): `Everything shown for the symbol at a position` => Hover | undefined {
   @acceptanceCriteria
-    .add({ behavior = `Returns [[hoverOf]] the entity of [[symbolAt]], with [[rangeOf]] the token under the position`, })
-    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns undefined`, });
+    .add({ behavior = `Returns [[hoverOf]] the entity of [[symbolAt]]` })
+    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns undefined` });
 
   @test(
     {
-      input = [Workspace@like(`One file a.lfy reading: /// Doc\nd A: \`An A\` {} const y = A;`), `def/a.lfy`, Position@like(`on the A after the equals sign`)],
+      input = [
+        Workspace@like(`One file a.lfy reading: /// Doc\nd A: \`An A\` {} const y = A;`),
+        `def/a.lfy`,
+        Position@like(`on the A after the equals sign`),
+      ],
       expect = Hover@like(`kind data, identifier A, definition An A, documentation Doc, no criteria`),
     },
   );
 }
 
-fn completionsAt(workspace: Workspace, file: string, position: Position): `What could be typed at a position` => Completion[] {
-  // Decision: the token before the position decides the context; the innermost node breaks ties.
-  // The alternative, re-parsing a synthetic identifier at the position, was rejected because the
-  // parser recovers well enough that the real tree already says where the position is.
-  @acceptanceCriteria
-    .add({ behavior = `The context is decided by the nearest token before [[position]] that is not [[trivia]], and by the innermost node of [[nodesAt]]`, })
-    .add({ behavior = `Every completion appears once, filtered to labels that begin with the identifier characters already typed before [[position]], case sensitive`, })
-    .add({ behavior = `Completions from a nearer scope come before those from an enclosing scope, then in file order, then keywords`, });
+// Recommendation Queries
 
+fn completionsAt(workspace: Workspace, file: string, position: Position): `What could be typed at a position` => Completion[] {
   @acceptanceCriteria
-    .add({ situation = `The token is a [[ContextAccessor]]`, behavior = `One completion of kind context per [[ContextProperty]], labelled by its value`, })
-    .add({ situation = `The token is a [[ScopeAccessor]]`, behavior = `The members of the current entity of the scope that holds the position`, })
-    .add({ situation = `The token is a [[ParentScopeAccessor]]`, behavior = `The members of the current entity of the parent of that scope`, })
-    .add({ situation = `The token is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`, behavior = `A module's symbols, an entity's members, an enum's keys, or an object's keys, as the left side is`, })
-    .add({ situation = `The token is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side resolves to nothing`, behavior = `No completions`, })
-    .add({ situation = `The token is an [[IsKeyword]], an [[ExtendsKeyword]], or a [[Comma]] inside [[TraitUses]]`, behavior = `Every symbol of kind trait visible from the position, plus the module symbols`, })
-    .add({ situation = `The position is inside the string of a [[Use]]`, behavior = `Of kind path: for a path beginning with a dot, the directories and the .lfy files without their extension under the directory the path names so far, relative to the file's directory; otherwise the identifier of each [[Package]], then paths under its root the same way`, })
-    .add({ situation = `The position is inside a [[TemplateReference]] or [[Documentation]]`, behavior = `Every name visible from the position, then every [[rule]] entity's identifier, because a reference found nowhere resolves to a rule`, })
-    .add({ situation = `The token is the [[Colon]] of a [[DefinitionClause]] or [[Definition]]`, behavior = `Every symbol of kind data, type, enum, or trait visible from the position, then the primitive type keywords`, })
-    .add({ situation = `A [[Statement]] can begin at the position`, behavior = `Every name visible from the position, then the keyword that begins each [[statement]] rule`, })
-    .add({ situation = `An [[Expression]] can begin at the position and nothing above applies`, behavior = `Every name visible from the position, then the value keywords true, false, null, and undefined, then the primitive type keywords`, });
+    .add({
+      behavior = `The context is decided by the nearest token before [[position]] that is not [[trivia]], and by the innermost node of [[nodesAt]]`,
+    })
+    .add({
+      behavior = `Every completion appears once, filtered to labels that begin with the identifier characters already typed before [[position]], case sensitive`,
+    })
+    .add({
+      behavior = `Completions from a nearer scope come before those from an enclosing scope, then in file order, then those of kind [[CompletionKind.keyword]]`,
+    })
+    .add({
+      situation = `The token is a [[ContextAccessor]]`,
+      behavior = `One completion of kind [[CompletionKind.context]] per [[ContextProperty]], labelled by its value`,
+    })
+    .add({
+      situation = `The token is a [[ScopeAccessor]]`,
+      behavior = `The members of the current entity of the scope that holds the position`,
+    })
+    .add({
+      situation = `The token is a [[ParentScopeAccessor]]`,
+      behavior = `The members of the current entity of the parent of that scope`,
+    })
+    .add({
+      situation = `The token is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+      behavior = `A module's symbols, an entity's members, an enum's keys, or an object's keys, as the left side is`,
+    })
+    .add({
+      situation = `The token is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side resolves to nothing`,
+      behavior = `No completions`,
+    })
+    .add({
+      situation = `The token is an [[IsKeyword]], an [[ExtendsKeyword]], or a [[Comma]] inside [[TraitUses]]`,
+      behavior = `Every symbol of kind [[SymbolKind._trait]] visible from the position, plus the module symbols`,
+    })
+    .add({
+      situation = `The position is inside the string of a [[Use]]`,
+      behavior = `Of kind [[CompletionKind.path]]: for a path beginning with a dot, the directories and the .lfy files without their extension under the directory the path names so far, relative to the file's directory; otherwise the identifier of each [[Package]], then paths under its root the same way`,
+    })
+    .add({
+      situation = `The position is inside a [[TemplateReference]] or [[Documentation]]`,
+      behavior = `Every name visible from the position, then every [[rule]] entity's identifier, because a reference found nowhere resolves to a rule`,
+    })
+    .add({
+      situation = `The token is the [[Colon]] of a [[DefinitionClause]] or [[Definition]]`,
+      behavior = `Every symbol of kind [[SymbolKind.data]], [[SymbolKind._type]], [[SymbolKind._enum]], or [[SymbolKind._trait]] visible from the position, then the primitive type keywords`,
+    })
+    .add({
+      situation = `A [[Statement]] can begin at the position`,
+      behavior = `Every name visible from the position, then the keyword that begins each [[statement]] rule`,
+    })
+    .add({
+      situation = `An [[Expression]] can begin at the position and nothing above applies`,
+      behavior = `Every name visible from the position, then the value keywords true, false, null, and undefined, then the primitive type keywords`,
+    });
 
   @test(
     {
-      input = [Workspace@like(`One file a.lfy reading: d A { $x = string; } const y = A@`), `def/a.lfy`, Position@like(`just after the at sign`)],
+      input = [
+        Workspace@like(`One file a.lfy reading: d A { $x = string; } const y = A@`),
+        `def/a.lfy`,
+        Position@like(`just after the at sign`),
+      ],
       expect = Completion[]@like(`One per [[ContextProperty]] value, identifier and definition among them, no A or y`),
     },
     {
@@ -148,14 +326,32 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
 
 fn diagnosticsOf(workspace: Workspace, file?: string): `Every problem of the program, placed` => Diagnostic[] {
   @acceptanceCriteria
-    .add({ situation = `A [[LoadProblem]] has a path`, behavior = `An error of stage loader at an empty range at line 1, column 0 of that path`, })
-    .add({ situation = `A [[LoadProblem]] has no path`, behavior = `An error of stage loader at an empty range at line 1, column 0 of elfie.json under [[Workspace.root]], whether or not that file exists`, })
-    .add({ situation = `A [[Token]] has no [[Token.rule]]`, behavior = `An error of stage lexer at the token, whose message is invalid text, or names the mode left open when [[Token.raw]] is empty`, })
-    .add({ situation = `An [[ErrorNode]] is in a tree`, behavior = `An error of stage parser at the node, whose message lists [[ErrorNode.expected]] and the text found`, })
-    .add({ situation = `A [[Problem]] is in [[Workspace.model]]`, behavior = `An error of stage binder at [[Problem.node]] with [[Problem.message]]`, })
-    .add({ situation = `A [[Use]] without [[AsKeyword]] imports symbols of which none is used in the file, or one with [[AsKeyword]] whose module symbol is never used`, behavior = `A warning of stage binder at the [[Use]]`, })
-    .add({ situation = `[[file]] is set`, behavior = `Only diagnostics whose range is in that file are returned`, })
-    .add({ behavior = `Diagnostics are in [[Workspace.files]] order, then by [[Range.start]], with elfie.json first`, });
+    .add({
+      situation = `A [[LoadProblem]] has a path`,
+      behavior = `An error of stage loader at an empty range at line 1, column 0 of that path`,
+    })
+    .add({
+      situation = `A [[LoadProblem]] has no path`,
+      behavior = `An error of stage loader at an empty range at line 1, column 0 of elfie.json under [[Workspace.root]], whether or not that file exists`,
+    })
+    .add({
+      situation = `A [[Token]] has no [[Token.rule]]`,
+      behavior = `An error of stage lexer at the token, whose message is invalid text, or names the mode left open when [[Token.raw]] is empty`,
+    })
+    .add({
+      situation = `An [[ErrorNode]] is in a tree`,
+      behavior = `An error of stage parser at the node, whose message lists [[ErrorNode.expected]] and the text found`,
+    })
+    .add({
+      situation = `A [[Problem]] is in [[Workspace.problems]]`,
+      behavior = `An error at [[Problem.node]] with [[Problem.message]], of stage loader when loading added it and binder when binding added it`,
+    })
+    .add({
+      situation = `A [[Use]] without [[AsKeyword]] imports symbols of which none is used in the file, or one with [[AsKeyword]] whose module symbol is never used`,
+      behavior = `A warning of stage binder at the [[Use]]`,
+    })
+    .add({ situation = `[[file]] is set`, behavior = `Only diagnostics whose range is in that file are returned` })
+    .add({ behavior = `Diagnostics are in [[Workspace.files]] order, then by [[Range.start]], with elfie.json first` });
 
   @test(
     {
@@ -169,91 +365,83 @@ fn diagnosticsOf(workspace: Workspace, file?: string): `Every problem of the pro
   );
 }
 
+// Search Queries
+
 fn outlineOf(workspace: Workspace, file: string): `The declarations of one file, nested as written` => Outline[] {
   @acceptanceCriteria
-    .add({ behavior = `One [[Outline]] per symbol declared in the file scope, in order, except module symbols and the symbols a [[Use]] imports`, })
-    .add({ behavior = `[[Outline.children]] holds the members of a data, trait, type, or enum declaration, then every declaration nested in its body, in order; parameters and loop variables are left out`, })
-    .add({ behavior = `[[Outline.range]] covers the declaring node and its [[documented]] nodes; [[Outline.selectionRange]] covers the identifier`, })
-    .add({ situation = `[[file]] is not in [[Workspace.files]]`, behavior = `Returns an empty list`, });
+    .add({
+      behavior = `One [[Outline]] per symbol declared in the file scope, in order, except module symbols and the symbols a [[Use]] imports`,
+    })
+    .add({
+      behavior = `[[Outline.children]] holds the members of a data, trait, type, or enum declaration, then every declaration nested in its body, in order; parameters and loop variables are left out`,
+    })
+    .add({
+      behavior = `[[Outline.range]] covers the declaring node and its [[documented]] nodes; [[Outline.selectionRange]] covers the identifier`,
+    })
+    .add({ situation = `[[file]] is not in [[Workspace.files]]`, behavior = `Returns an empty list` });
 }
 
 fn findSymbols(workspace: Workspace, query: string): `Declarations across the program whose name contains a text` => Outline[] {
   @acceptanceCriteria
-    .add({ behavior = `Every [[Outline]] of every file, flattened, whose name contains [[query]] ignoring case; a child's name is its parent's name, a dot, and its own`, })
-    .add({ situation = `[[query]] is empty`, behavior = `Every top level declaration of every file`, })
-    .add({ behavior = `Files without a [[File.package]] come first, then package files, each in [[Workspace.files]] order`, });
-}
-
-fn renameAt(workspace: Workspace, file: string, position: Position, name: string): `The edits that rename the symbol at a position everywhere, or why it cannot be renamed` => Edit[] | string {
-  @acceptanceCriteria
-    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns a reason saying nothing is declared here`, })
-    .add({ situation = `[[name]] is not an [[Identifier]], or is a [[Keyword]]`, behavior = `Returns a reason naming the rule`, })
-    .add({ situation = `A symbol named [[name]] is already visible from the declaring scope, or from the scope of any [[Usage]] of the symbol`, behavior = `Returns a reason naming that symbol's file and line, because the rename would capture or be captured`, })
-    .add({ behavior = `Otherwise one [[Edit]] replaces the identifier of the declaration, and one replaces the name token of every [[Usage]] in [[Binder.usagesOf]] the symbol, references in templates and [[Documentation]] included`, })
-    .add({ situation = `The symbol is a module symbol`, behavior = `Only the name after [[AsKeyword]] and its usages change; the file is not renamed`, })
-    .add({ behavior = `Edits are in [[Workspace.files]] order, then by [[Range.start]], and never overlap`, });
-
-  @test(
-    {
-      input = [Workspace@like(`One file a.lfy reading: d A {} const y: \`See \[[A\]]\` = A;`), `def/a.lfy`, Position@like(`on the declared A`), `B`],
-      expect = Edit[]@like(`Three edits: the declaration, the reference in the template, and the value`),
-    },
-    {
-      input = [Workspace@like(`One file a.lfy reading: d A {} const y = A;`), `def/a.lfy`, Position@like(`on the declared A`), `const`],
-      expect = string@like(`A reason saying const is a keyword`),
-    },
-  );
+    .add({
+      behavior = `Every [[Outline]] of every file, flattened, whose name contains [[query]] ignoring case; a child's name is its parent's name, a dot, and its own`,
+    })
+    .add({ situation = `[[query]] is empty`, behavior = `Every top level declaration of every file` })
+    .add({
+      behavior = `Files without a [[File.package]] come first, then package files, each in [[Workspace.files]] order`,
+    });
 }
 
 fn find(workspace: Workspace, name: string): `Entities by the name an agent would spell` => Entity[] {
   @acceptanceCriteria
-    .add({ behavior = `[[name]] is an identifier, or an owner's identifier, a dot, and a member's name`, })
-    .add({ behavior = `Every entity whose symbol is named that way in any file scope, or whose owner is, in the order [[findSymbols]] uses; the reader tells matches apart by file`, })
-    .add({ situation = `[[name]] begins with a file path and a colon`, behavior = `Only that file's scope is searched`, })
-    .add({ situation = `Nothing matches`, behavior = `Returns an empty list`, });
+    .add({ behavior = `[[name]] is an identifier, or an owner's identifier, a dot, and a member's name` })
+    .add({
+      behavior = `Every entity whose symbol is named that way in any file scope, or whose owner is, in the order [[findSymbols]] uses; the reader tells matches apart by file`,
+    })
+    .add({ situation = `[[name]] begins with a file path and a colon`, behavior = `Only that file's scope is searched` })
+    .add({ situation = `Nothing matches`, behavior = `Returns an empty list` });
 }
 
-fn sourceOf(workspace: Workspace, entity: Entity): `The text that declares an entity` => string {
-  @acceptanceCriteria
-    .add({ behavior = `The joined [[Token.raw]] of every token the declaring node covers, with the text of its [[documented]] nodes before it`, })
-    .add({ situation = `[[entity]] is the anonymous entity of a file`, behavior = `The whole file`, })
-    .add({ situation = `[[entity]] is a member added by a trait`, behavior = `The member statement inside the trait body`, });
-}
+// Action Queries
 
-fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, classified by meaning for an editor to color` => SemanticToken[] {
-  // Which tokens
+fn renameAt(workspace: Workspace, file: string, position: Position, name: string): `The edits that rename the symbol at a position everywhere, or why it cannot be renamed` => Edit[] | string {
   @acceptanceCriteria
-    .add({ behavior = `One [[SemanticToken]] per token that spells a declared name, a used name, or a context property; keywords, punctuation, strings, numbers, and comments get none`, })
-    .add({ behavior = `Tokens are in position order and never overlap`, })
-    .add({ situation = `[[file]] is not in [[Workspace.files]]`, behavior = `Returns an empty list`, });
-
-  // Type
-  @acceptanceCriteria
-    .add({ behavior = `[[SemanticToken.type]] follows the kind of the symbol the token declares or resolves to: data gives data; trait gives trait; type gives type; enum gives enum; enumMember gives enumMember; function and agentFunction give function; parameter gives parameter; variable and loopVariable give variable; member gives property; module gives namespace`, })
-    .add({ situation = `The symbol is an alias`, behavior = `The type is that of the entity it is bound to`, })
-    .add({ situation = `The token names a context property after the context accessor`, behavior = `The type is property`, })
-    .add({ situation = `The token resolves to nothing`, behavior = `The type is variable`, })
-    .add({ situation = `The token is a member of something the model does not know, so the binder reported no [[Problem]] there`, behavior = `It gets no token: it is not a name of the program`, });
-
-  // Modifiers
-  @acceptanceCriteria
-    .add({ situation = `The token spells the name in a declaration`, behavior = `declaration is among its modifiers`, })
-    .add({ situation = `The entity is declared with [[AgentDataKeyword]] or [[AgentFunctionKeyword]]`, behavior = `agentic is among the modifiers of every token of that entity, declaration and use alike`, })
-    .add({ situation = `The entity is a variable declared with [[ConstKeyword]]`, behavior = `readonly is among its modifiers`, })
-    .add({ situation = `The token follows a [[ContextAccessor]], a [[ScopeAccessor]] or [[ParentScopeAccessor]], or a [[ValueAccessor]] or [[OptionalValueAccessor]]`, behavior = `context, scope, or value, in the same order, is among its modifiers`, })
-    .add({ situation = `The token is inside a [[TemplateReference]], a [[TemplateExecution]], or [[Documentation]]`, behavior = `documentation is among its modifiers`, })
-    .add({ situation = `The token resolves to nothing`, behavior = `unresolved is among its modifiers`, })
-    .add({ behavior = `Modifiers are in [[TokenModifier]] order and each appears once`, });
+    .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns a reason saying nothing is declared here` })
+    .add({
+      situation = `[[name]] is not an [[Identifier]], or is a [[Keyword]]`,
+      behavior = `Returns a reason naming the rule`,
+    })
+    .add({
+      situation = `A symbol named [[name]] is already visible from the declaring scope, or from the scope of any [[Usage]] of the symbol`,
+      behavior = `Returns a reason naming that symbol's file and line, because the rename would capture or be captured`,
+    })
+    .add({
+      behavior = `Otherwise one [[Edit]] replaces the identifier of the declaration, and one replaces the name token of every [[Usage]] in [[Binder.usagesOf]] the symbol, references in templates and [[Documentation]] included`,
+    })
+    .add({
+      situation = `The symbol is a module symbol`,
+      behavior = `Only the name after [[AsKeyword]] and its usages change; the file is not renamed`,
+    })
+    .add({ behavior = `Edits are in [[Workspace.files]] order, then by [[Range.start]], and never overlap` });
 
   @test(
     {
-      input = [Workspace@like(`One file a.lfy reading: d A { $x: \`d\` = string; } const y = A$x;`), `def/a.lfy`],
-      expect = SemanticToken[]@like(`A as data with declaration and agentic; x as property with declaration; y as variable with declaration and readonly; A as data with agentic; x as property with scope`),
+      input = [
+        Workspace@like(`One file a.lfy reading: d A {} const y: \`See \[[A\]]\` = A;`),
+        `def/a.lfy`,
+        Position@like(`on the declared A`),
+        `B`,
+      ],
+      expect = Edit[]@like(`Three edits: the declaration, the reference in the template, and the value`),
     },
     {
-      input = [Workspace@like(`One file a.lfy reading: fn f(): \`See \[[g\]]\` => number { @acceptanceCriteria.add({ behavior = \`b\` }); }`), `def/a.lfy`],
-      expect = SemanticToken[]@like(`f as function with declaration and agentic; g as variable with documentation and unresolved; acceptanceCriteria as property with context; no token for add, since it is not a name in the program`),
+      input = [
+        Workspace@like(`One file a.lfy reading: d A {} const y = A;`),
+        `def/a.lfy`,
+        Position@like(`on the declared A`),
+        `const`,
+      ],
+      expect = string@like(`A reason saying const is a keyword`),
     },
   );
 }
-

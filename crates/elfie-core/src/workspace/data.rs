@@ -9,7 +9,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
-use crate::model::{EntityId, Model, Problem};
+use crate::model::{EntityId, Model, Problem, Source};
+use crate::parser::Tree;
 
 /// Something the generated code needs from the target's own ecosystem.
 // @lfy def/workspace/data.lfy:4
@@ -150,13 +151,33 @@ pub struct Workspace {
     pub problems: Vec<WorkspaceProblem>, // @lfy def/workspace/data.lfy:41
     /// The files `change` replaced, by path, holding the text each is read as instead of
     /// what is on disk. A replacement stands until the same path is given again.
-    pub overlays: BTreeMap<String, String>, // @lfy def/workspace/main.lfy:108
+    pub overlays: BTreeMap<String, String>, // @lfy def/workspace/main.lfy:174
 }
 
 impl Workspace {
     /// The file at a path, when it is in the program.
     pub fn file(&self, path: &str) -> Option<&File> {
         self.files.iter().find(|file| file.path == path)
+    }
+
+    /// The `Source` a file extends: `File extends Source`, so a file's `path`, `tree`,
+    /// and `uses` are the source's.
+    // @lfy def/workspace/data.lfy:16
+    pub fn source(&self, file: &File) -> &Source {
+        &self.model.sources[file.source]
+    }
+
+    /// `File.tree`: the parse of the file.
+    // @lfy def/workspace/main.lfy:52
+    pub fn tree(&self, file: &File) -> &Tree {
+        &self.source(file).tree
+    }
+
+    /// `File.uses`: the path each `Use` in the tree refers to, in the order the uses
+    /// appear; `None` where it refers to nothing.
+    // @lfy def/workspace/main.lfy:21
+    pub fn uses(&self, file: &File) -> &[Option<String>] {
+        &self.source(file).uses
     }
 
     /// Every load problem, in the order it arose.

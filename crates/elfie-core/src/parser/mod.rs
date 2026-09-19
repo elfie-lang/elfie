@@ -232,7 +232,7 @@ impl<'t> Parser<'t> {
                     at += 1;
                 }
                 Some(_) if !admit => break,
-                // @lfy def/grammar/terminals/comment.lfy:40
+                // @lfy def/grammar/terminals/comment.lfy:44
                 Some(Entity::Space(Space::NewLine)) if !self.newline_is_trivia => break,
                 // @lfy def/parser/main.lfy:55
                 Some(rule) if components::is_trivia(rule) => {
@@ -348,7 +348,7 @@ impl<'t> Parser<'t> {
     fn parse_syntax(&mut self, rule: Entity, at: usize) -> Option<Parsed> {
         let expr = rule.expression()?;
         // A NewLine inside a line documentation's TemplateReference is not trivia.
-        // @lfy def/grammar/terminals/comment.lfy:35
+        // @lfy def/grammar/terminals/comment.lfy:39
         let line_documentation = rule == Entity::Comment(Comment::Documentation)
             && self.rule_at(at) == Some(Entity::Comment(Comment::LineDocumentationOpen));
         let saved = self.newline_is_trivia;
@@ -366,7 +366,7 @@ impl<'t> Parser<'t> {
         self.newline_is_trivia = saved;
         let end = result?;
         node.end = end;
-        // @lfy def/grammar/rules/expression.lfy:48
+        // @lfy def/grammar/rules/expression.lfy:74
         if rule == Entity::Expression(Expression::Group) {
             let (_, next) = self.skip(end, true, Vec::new);
             if self.rule_at(next).is_some_and(expression::group_cannot_match_before) {
@@ -383,7 +383,7 @@ impl<'t> Parser<'t> {
     /// `Current`: an accessor and, only when nothing sits between them, a member name.
     /// When space, a line break, comments, or documentation exist between the accessor
     /// and the member name, the member name is not matched.
-    // @lfy def/grammar/rules/expression.lfy:46
+    // @lfy def/grammar/rules/expression.lfy:70
     fn parse_current(&mut self, node: &mut Node) -> Option<usize> {
         let accessor = self.parse_rule(Entity::Punctuation(Punctuation::Accessor), node.start, 0)?;
         let mut end = accessor.end;
@@ -403,7 +403,7 @@ impl<'t> Parser<'t> {
     /// that has taken a token closes a failed required element with an error node and
     /// tries the remaining elements as if optional; anywhere else a failed element fails
     /// the sequence.
-    // @lfy def/parser/traits.lfy:39
+    // @lfy def/parser/traits.lfy:40
     fn parse_elements(
         &mut self,
         elements: &[&Expr],
@@ -561,7 +561,7 @@ impl<'t> Parser<'t> {
                     continue;
                 }
             }
-            // @lfy def/parser/traits.lfy:41
+            // @lfy def/parser/traits.lfy:39
             let Some(sync) = seq.sync else {
                 return Some(pos);
             };
@@ -692,7 +692,7 @@ impl<'t> Parser<'t> {
 
     /// An expression begins with one primary or prefix and continues with any number of
     /// infix and postfix operations, grouped by their binding power.
-    // @lfy def/grammar/rules/expression.lfy:113
+    // @lfy def/grammar/rules/expression.lfy:142
     fn parse_expression(
         &mut self,
         at: usize,
@@ -774,10 +774,10 @@ impl<'t> Parser<'t> {
                     None => return Err(left),
                 }
             }
-            // @lfy def/grammar/traits.lfy:117
+            // @lfy def/grammar/traits.lfy:119
             Category::Postfix { disallow_space, .. } => match self.tables.tail(operation) {
                 Some(tail) => {
-                    // @lfy def/grammar/traits.lfy:127
+                    // @lfy def/grammar/traits.lfy:133
                     if disallow_space {
                         let (between, next) = self.skip(at + 1, true, Vec::new);
                         let tail_begins = self
@@ -789,7 +789,7 @@ impl<'t> Parser<'t> {
                     }
                     let mut seq = Seq::new(operation);
                     seq.taken = true;
-                    seq.tail_power = Some(power); // @lfy def/grammar/traits.lfy:121
+                    seq.tail_power = Some(power); // @lfy def/grammar/traits.lfy:127
                     seq.previous = self.rule_at(at);
                     let elements = elements_of(tail);
                     match self.parse_elements(&elements, &mut rest, &mut seq, at + 1, &HashSet::new()) {
@@ -815,7 +815,7 @@ impl<'t> Parser<'t> {
 
     /// A prefix operation: the operator followed by an operand parsed with the operation's
     /// power as the minimum.
-    // @lfy def/grammar/traits.lfy:98
+    // @lfy def/grammar/traits.lfy:100
     fn parse_prefix(&mut self, rule: Entity, at: usize) -> Option<Parsed> {
         let Category::Prefix { disallow_space, .. } = rule.category() else {
             unreachable!()
@@ -827,7 +827,7 @@ impl<'t> Parser<'t> {
         let tables = self.tables;
         let (trivia, operand) =
             self.skip(at + 1, true, || tables.expected(Entity::Expression(Expression::Expression)));
-        // @lfy def/grammar/traits.lfy:106
+        // @lfy def/grammar/traits.lfy:108
         // Space, a line break, comments, or documentation between the operator and its
         // operand; a token without a rule is none of those.
         if disallow_space && trivia.iter().any(|child| !matches!(child, Child::Error(_))) {

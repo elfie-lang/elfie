@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
             self.expect(")")?;
             return Ok(inner);
         }
-        // @lfy def/lexer/main.lfy:99
+        // @lfy def/lexer/main.lfy:101
         if self.eat("[[") {
             let name = self.name()?;
             self.expect("]]")?;
@@ -382,7 +382,7 @@ impl Grammar {
                 errors.push(Error::DuplicateIdentifier(identifier));
             }
         }
-        // @lfy def/grammar/main.lfy:31
+        // @lfy def/grammar/main.lfy:22
         for rule in rules() {
             let identifier = rule.identifier();
             if let Some(Compiled {
@@ -412,7 +412,7 @@ impl Grammar {
     }
 
     /// Whether the rule can be satisfied without taking anything.
-    // @lfy def/grammar/main.lfy:37
+    // @lfy def/grammar/main.lfy:34
     pub fn is_nullable(&self, identifier: &str) -> bool {
         self.nullable.contains(identifier)
     }
@@ -420,7 +420,7 @@ impl Grammar {
     /// Whether `expr` can be satisfied without taking anything: optional groups and
     /// repetitions always can, a sequence can when every item can, an alternation when
     /// any alternative can, and a reference when the rule it names can.
-    // @lfy def/grammar/main.lfy:37
+    // @lfy def/grammar/main.lfy:34
     pub fn is_expr_nullable(&self, expr: &Expr) -> bool {
         expr_nullable(expr, &self.nullable)
     }
@@ -770,7 +770,7 @@ mod tests {
         assert_eq!(grammar.longest_match("Statement", "break;"), Some(6));
     }
 
-    // @lfy def/grammar/main.lfy:37
+    // @lfy def/grammar/main.lfy:34
     #[test]
     fn nullable_rules_are_those_that_can_match_nothing() {
         let grammar = grammar();

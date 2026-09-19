@@ -28,25 +28,53 @@ enum ContextProperty: `Every context property; a name after the context accessor
   itemType = `itemType`,
 }
 
+enum SymbolKind: `What kind of declaration a symbol came from` {
+  data = `data`,
+  _trait = `trait`,
+  _type = `type`,
+  _enum = `enum`,
+  enumMember = `enumMember`,
+  _function = `function`,
+  agentFunction = `agentFunction`,
+  variable = `variable`,
+  loopVariable = `loopVariable`,
+  parameter = `parameter`,
+  member = `member`,
+  _alias = `alias`,
+  _external = `external`,
+  _module = `module`,
+}
+
+// Core
+
 d Symbol: `A name bound to an entity in one scope` {
   $name: `The name` = string;
   $entity: `What the name is bound to; for an alias, the target's entity` = Entity;
   @acceptanceCriteria
-    .add({ behavior = `Knows the node that declared it, the scope that holds it, and the kind of declaration it came from`, });
+    .add({
+      behavior = `Knows the node that declared it, the scope that holds it, and its [[SymbolKind]]`,
+    });
 }
 
 d Scope: `A region in which names resolve` {
   @acceptanceCriteria
-    .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent; a file scope has no parent and also holds the symbols its use statements import`, })
-    .add({ behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`, });
+    .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent` })
+    .add({ behavior = `A file scope has no parent and also holds the symbols its use statements import` })
+    .add({
+      behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`,
+    });
 }
 
 d Applied: `One trait on one entity` {
   $entity: `The trait` = Entity;
   $arguments: `Argument nodes, in order` = Node[];
   @acceptanceCriteria
-    .add({ behavior = `Knows the [[IsClause]], [[ExtendsClause]], or apply [[Call]] that applied it, or the application it was inherited through`, });
+    .add({
+      behavior = `Knows the [[IsClause]], [[ExtendsClause]], or apply [[Call]] that applied it, or the application it was inherited through`,
+    });
 }
+
+// Context
 
 d Criterion: `One acceptance criterion as written, with the entity it came from` {
   $situation: `situation` = string | string[] | undefined;
@@ -56,17 +84,16 @@ d Criterion: `One acceptance criterion as written, with the entity it came from`
 }
 
 d Test: `One test` {
-  $input: `` = @parameters ?? @type;
-  $expect: `` = @output ?? @type;
+  $input: `Input for the test (parameters for functions, value otherwise)` = @parameters ?? @type;
+  $expect: `Expected output for the test` = @output ?? @type;
 }
 
 d Entity: `A declared thing seen through its context layer` {
-  $identifier: `ContextProperty identifier: the declared name; undefined when anonymous` = string | undefined;
-  $definition: `ContextProperty definition: the description written after the colon` = string | undefined;
-  $type: `ContextProperty _type: the declared or inferred type` = Entity | undefined;
-  $acceptanceCriteria: `ContextProperty acceptanceCriteria: own criteria first, then each trait's in application order` = Criterion[];
+  $identifier: `The declared name; undefined when anonymous` = string | undefined;
+  $definition: `The description provided for this entity` = string | undefined;
+  $type: `The declared or inferred type` = Entity | undefined;
+  $acceptanceCriteria: `Acceptance criteria specifying Own criteria first, then each trait's in application order` = Criterion[];
   $traits: `Every trait applied to it, direct or inherited, in application order` = Applied[];
-  $itemType: `ContextProperty itemType: what a list holds; undefined when the type is not a list` = Entity | undefined;
   $references: `Every entity referenced via a [[Reference]] in definition, documentation, or value` = Usage[];
 
   $like: `ContextProperty like: a prompt that describes an instance of [[.]]` = (prompt: string) => @type;
@@ -74,7 +101,11 @@ d Entity: `A declared thing seen through its context layer` {
   $tests: `ContextProperty tests: list of all added tests` = Test[];
 
   @acceptanceCriteria
-    .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)`, });
+    .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)` });
+}
+
+d ListEntity extends Entity: `A declared list seen through its context layer` {
+  $itemType: `What the list holds` = Entity;
 }
 
 d FnEntity extends Entity: `A declared fn seen through its context layer` {
@@ -86,6 +117,8 @@ d TraitEntity extends Entity: `A declared trait seen through its context layer` 
   $entities: `ContextProperty entities: everything the trait was applied to, directly or by inheritance` = Entity[];
   $extenders: `ContextProperty extenders: every trait that names it in an [[ExtendsClause]]` = Entity[];
 }
+
+// Tracking
 
 d Usage: `One use of a name or of an entity` {
   $node: `The node that uses it` = Node;
@@ -107,6 +140,6 @@ d Source: `One file to bind, with its [[Use]] statements already resolved` {
 
 d Model: `The program, queryable` {
   @acceptanceCriteria
-    .add({ behavior = `Answers every query of this module for every file it was bound from`, })
-    .add({ behavior = `Lists every [[Problem]] in node order`, });
+    .add({ behavior = `Answers every query of this module for every file it was bound from` })
+    .add({ behavior = `Lists every [[Problem]] in node order` });
 }

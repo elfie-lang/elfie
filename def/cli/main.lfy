@@ -14,16 +14,30 @@ use "./data";
 
 fn parse(arguments: string[]): `The invocation the arguments spell, or the usage error they make` => Invocation | string {
   @acceptanceCriteria
-    .add({ behavior = `The first argument that does not begin with a dash names the [[Command]]; none, or --help or -h anywhere, means help; --version means version`, })
-    .add({ behavior = `--root followed by a directory, or --root= and the directory, sets [[Invocation.root]]; otherwise the root is the nearest directory at or above the current one holding elfie.json, or the current one`, })
-    .add({ behavior = `--tree followed by a file is read as the tree command with that file, so what the parser stage shipped keeps working`, })
-    .add({ behavior = `Every other argument beginning with two dashes is an option: --name gives true and --name=value or --name value gives the text; every other argument is positional`, })
-    .add({ situation = `The command is not one of [[Command]], or an option's value is missing`, behavior = `Returns a usage message naming the argument`, });
+    .add({
+      behavior = `The first argument that does not begin with a dash names the [[Command]]; none, or --help or -h anywhere, means help; --version means version`,
+    })
+    .add({
+      behavior = `--root followed by a directory, or --root= and the directory, sets [[Invocation.root]]; otherwise the root is the nearest directory at or above the current one holding elfie.json, or the current one`,
+    })
+    .add({
+      behavior = `--tree followed by a file is read as the tree command with that file, so what the parser stage shipped keeps working`,
+    })
+    .add({
+      behavior = `Every other argument beginning with two dashes is an option: --name gives true and --name=value or --name value gives the text; every other argument is positional`,
+    })
+    .add({
+      situation = `The command is not one of [[Command]], or an option's value is missing`,
+      behavior = `Returns a usage message naming the argument`,
+    });
 
   @test(
-    { input = [ [`check`] ], expect = Invocation@like(`check with no arguments and the root found from the current directory`) },
-    { input = [ [`--tree`, `def/a.lfy`] ], expect = Invocation@like(`tree with the one argument def/a.lfy`) },
-    { input = [ [`frobnicate`] ], expect = string@like(`A usage message naming frobnicate`) },
+    {
+      input = [[`check`]],
+      expect = Invocation@like(`check with no arguments and the root found from the current directory`),
+    },
+    { input = [[`--tree`, `def/a.lfy`]], expect = Invocation@like(`tree with the one argument def/a.lfy`) },
+    { input = [[`frobnicate`]], expect = string@like(`A usage message naming frobnicate`) },
   );
 }
 
@@ -31,54 +45,168 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // Decision: every command is a thin driver over the stage it belongs to, and the process exits
   // with a code from [[ExitCode]] so agents and scripts can read the outcome without parsing text.
   @acceptanceCriteria
-    .add({ situation = `[[parse]] returns a usage message`, behavior = `It is printed to standard error with the help text and the code is usage`, })
-    .add({ behavior = `--json on any command that prints results prints them as JSON lines instead of text, one object per result`, })
-    .add({ behavior = `A [[Diagnostic]] is printed as the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`, });
+    .add({
+      situation = `[[parse]] returns a usage message`,
+      behavior = `It is printed to standard error with the help text and the code is usage`,
+    })
+    .add({
+      behavior = `--json on any command that prints results prints them as JSON lines instead of text, one object per result`,
+    })
+    .add({
+      behavior = `A [[Diagnostic]] is printed as the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`,
+    });
 
   // help, version
   @acceptanceCriteria
-    .add({ situation = `help`, behavior = `Prints every command with one line of description and the global options, and returns success`, })
-    .add({ situation = `version`, behavior = `Prints the version of the executable and returns success`, });
+    .add({
+      situation = `help`,
+      behavior = `Prints every command with one line of description and the global options, and returns success`,
+    })
+    .add({ situation = `version`, behavior = `Prints the version of the executable and returns success` });
 
   // init
   @acceptanceCriteria
-    .add({ situation = `init`, behavior = `Creates elfie.json in the root naming the project after the argument, or the directory, and creates the source directory; returns failure when elfie.json already exists`, });
+    .add({
+      situation = `init`,
+      behavior = `Creates elfie.json in the root naming the project after the argument, or the directory, and creates the source directory; returns failure when elfie.json already exists`,
+    });
 
   // check
   @acceptanceCriteria
-    .add({ situation = `check`, behavior = `[[Loader.load]] of the root, then every [[Query.diagnosticsOf]] printed, or of the files given as arguments only; the code is problems when any is an error and success otherwise`, });
+    .add({
+      situation = `check`,
+      behavior = `[[Loader.load]] of the root, then every [[Query.diagnosticsOf]] printed, or of the files given as arguments only; the code is problems when any is an error and success otherwise`,
+    });
 
   // format
   @acceptanceCriteria
-    .add({ situation = `format`, behavior = `Each file given, or every .lfy file under the source directory, is lexed, parsed, and replaced by [[Formatter.format]] of its tree when that differs`, })
-    .add({ situation = `format with --check`, behavior = `Nothing is written; each file that would change is printed and the code is problems when any would`, })
-    .add({ situation = `format on a file whose tree has errors`, behavior = `Its errors are printed, it is left as it is, and the code is problems`, });
+    .add({
+      situation = `format`,
+      behavior = `Each file given, or every .lfy file under the source directory, is lexed, parsed, and replaced by [[Formatter.format]] of its tree when that differs`,
+    })
+    .add({
+      situation = `format with --check`,
+      behavior = `Nothing is written; each file that would change is printed and the code is problems when any would`,
+    })
+    .add({
+      situation = `format on a file whose tree has errors`,
+      behavior = `Its errors are printed, it is left as it is, and the code is problems`,
+    });
 
   // tree, tokens
   @acceptanceCriteria
-    .add({ situation = `tree`, behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value; an [[ErrorNode]] is printed with what it expected, and the code is problems when there is one`, })
-    .add({ situation = `tokens`, behavior = `Prints [[Lexer.lex]] of the one file given, one token per line as its line, column, rule, and value`, });
+    .add({
+      situation = `tree`,
+      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value; an [[ErrorNode]] is printed with what it expected, and the code is problems when there is one`,
+    })
+    .add({
+      situation = `tokens`,
+      behavior = `Prints [[Lexer.lex]] of the one file given, one token per line as its line, column, rule, and value`,
+    });
 
   // compile
   @acceptanceCriteria
-    .add({ situation = `compile`, behavior = `[[Loader.load]] of the root; when any diagnostic is an error, they are printed and the code is problems, because the compiler is never handed a program with problems`, })
-    .add({ behavior = `The source maps of each target are read from source-map.json in its output directory, dropping any whose output no longer exists, and [[Generation.plan]] is made with the stems given as arguments as the requested units; --all requests every unit and --target limits the plan to one target`, })
-    .add({ situation = `compile with --dry-run`, behavior = `Each unit is printed as elfie_units lists it and nothing is generated`, })
-    .add({ behavior = `The compiler is the command elfie.json names under compiler; it is run once per planned unit in plan order with [[Request.instructions]] of [[Generation.request]] on its standard input, the root as its working directory, and ELFIE_ROOT and ELFIE_UNIT in its environment`, })
-    .add({ behavior = `[[Request.previous]] is the source at the last accepted generation when the root is a git repository and that source is recoverable from it, undefined otherwise`, })
-    .add({ situation = `The command exits`, behavior = `[[Generation.accept]] runs on the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit; when accepted its [[SourceMap]]s replace the unit's in source-map.json; when rejected the problems are printed and the command is run once more with them appended to the instructions`, })
-    .add({ situation = `The second run is rejected too, or the command cannot be run`, behavior = `The remaining units are not run, and the code is problems or failure respectively`, })
-    .add({ situation = `elfie.json names no compiler`, behavior = `The request of each planned unit is written to elfie-requests under the output directory, one file per unit named by its stem, for a compiler run by hand; the code is success`, })
-    .add({ situation = `compile with --accept`, behavior = `No compiler is run; the outputs already on disk for each planned unit are checked with [[Generation.accept]] and recorded when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`, });
+    .add({
+      situation = `compile`,
+      behavior = `[[Loader.load]] of the root; when any diagnostic is an error, they are printed and the code is problems, because the compiler is never handed a program with problems`,
+    })
+    .add({
+      behavior = `The source maps of each target are read from source-map.json in its output directory, dropping any whose output no longer exists, and [[Generation.plan]] is made with the stems given as arguments as the requested units; --all requests every unit and --target limits the plan to one target`,
+    })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `Each unit is printed as elfie_units lists it, then each batch with the stems it holds, and nothing is generated`,
+    });
+
+  // Progress
+  // Decision: progress is a stream of one-line events rather than a redrawn screen, so it reads the
+  // same in a terminal, in a log, and as JSON lines for a script.
+  @acceptanceCriteria
+    .add({
+      behavior = `Every step of a compile prints one [[Progress]] line as it happens: the step, the batch and unit when there are any, done over total, the elapsed seconds, and the message; with --json each is one JSON object`,
+    })
+    .add({
+      behavior = `The first line is planned, with the count of units planned and of batches; the last is finished, with the count accepted, rejected, blocked, and failed`,
+    })
+    .add({
+      behavior = `While the compiler runs, its standard output and standard error are shown as they arrive, each line prefixed by the batch, and its standard output is also kept whole as the report`,
+    })
+    .add({
+      behavior = `Every progress line and report is appended to elfie-requests/compile.log under the output directory, so a run can be read after the fact`,
+    });
+
+  // Running the compiler
+  @acceptanceCriteria
+    .add({
+      behavior = `The compiler is the command elfie.json names under compiler; it is run once per batch in plan order with [[Request.instructions]] of [[Generation.request]] on its standard input, the root as its working directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS (the stems, space separated) in its environment`,
+    })
+    .add({
+      behavior = `[[Request.previous]] holds, for each unit, the source at the last accepted generation when the root is a git repository and that source is recoverable from it`,
+    })
+    .add({
+      situation = `The command exits`,
+      behavior = `For each unit of the batch, [[Generation.accept]] runs on the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit; [[Generation.outcomeOf]] is read from the report and the verdicts`,
+    })
+    .add({
+      situation = `The outcome is accepted`,
+      behavior = `Each unit's [[Verdict.outputs]] are written back, its [[SourceMap]]s replace the unit's in source-map.json, and the batch counts as done`,
+    })
+    .add({
+      situation = `The outcome is rejected`,
+      behavior = `The problems are printed, and the batch is run once more with them appended to the instructions; a second rejection stops the compile`,
+    })
+    .add({
+      situation = `The outcome is blocked`,
+      behavior = `The reason is printed and written to elfie-requests/<batch>.blocked.md under the output directory, and the compile stops`,
+    })
+    .add({
+      situation = `The outcome is clarification`,
+      behavior = `The question is printed and written to elfie-requests/<batch>.question.md under the output directory, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file, which the next compile of the batch appends to its instructions`,
+    })
+    .add({
+      situation = `The outcome is failed, or the command cannot be run`,
+      behavior = `The batch is run once more; a second failure stops the compile`,
+    })
+    .add({
+      situation = `compile with --continue`,
+      behavior = `A stopped batch stops only the batches that depend on one of its units; independent batches still run, and the finished line lists every batch that did not complete`,
+    })
+    .add({
+      behavior = `The code is success when every batch was accepted, problems when any was rejected, blocked, or asked a question, and failure when a command could not run`,
+    })
+    .add({
+      situation = `elfie.json names no compiler`,
+      behavior = `The request of each batch is written to elfie-requests under the output directory, one file per batch named by its identifier, for a compiler run by hand; the code is success`,
+    })
+    .add({
+      situation = `compile with --accept`,
+      behavior = `No compiler is run; the outputs already on disk for each planned unit are checked with [[Generation.accept]], written back normalized, and recorded when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`,
+    });
 
   // lsp, mcp
   @acceptanceCriteria
-    .add({ situation = `lsp`, behavior = `Returns [[Lsp.serve]] of the root`, })
-    .add({ situation = `mcp`, behavior = `Returns [[Mcp.serve]] of the root`, });
+    .add({ situation = `lsp`, behavior = `Returns [[Lsp.serve]] of the root` })
+    .add({ situation = `mcp`, behavior = `Returns [[Mcp.serve]] of the root` });
 
   @test(
-    { input = [ [`check`, `--root`, string@like(`A root whose def holds a.lfy reading: const y = z;`)] ], expect = number@like(`1, after printing def/a.lfy:1:10: binder error and the message`) },
-    { input = [ [`format`, `--check`, `--root`, string@like(`A root whose def holds a.lfy reading: const   x=1;`)] ], expect = number@like(`1, after printing def/a.lfy, and the file unchanged`) },
-    { input = [ [`compile`, `--dry-run`, `--root`, string@like(`A root with one target whose marker global carries and one file`)] ], expect = number@like(`0, after printing one unit with reason fresh`) },
+    {
+      input = [[`check`, `--root`, string@like(`A root whose def holds a.lfy reading: const y = z;`)]],
+      expect = number@like(`1, after printing def/a.lfy:1:10: binder error and the message`),
+    },
+    {
+      input = [[`format`, `--check`, `--root`, string@like(`A root whose def holds a.lfy reading: const   x=1;`)]],
+      expect = number@like(`1, after printing def/a.lfy, and the file unchanged`),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--dry-run`,
+          `--root`,
+          string@like(`A root with one target whose marker global carries and one file`),
+        ],
+      ],
+      expect = number@like(`0, after printing one unit with reason fresh and one batch holding it`),
+    },
   );
 }

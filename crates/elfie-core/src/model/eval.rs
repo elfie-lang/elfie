@@ -466,7 +466,7 @@ impl Binder {
 
     /// A Where adds a criterion: the conditions are the situation, the expression the
     /// behavior.
-    // @lfy def/grammar/rules/statement.lfy:52
+    // @lfy def/grammar/rules/statement.lfy:72
     fn exec_where(&mut self, r: NodeRef, env: &mut Env) {
         let trees = self.trees.clone();
         let Some(conditions) = trees.child(r, S::Conditions) else { return };
@@ -487,7 +487,7 @@ impl Binder {
 
     /// Conditions joined by "or" merge into one situation; conditions joined by "and" are
     /// a list of situations. A negated nested group distributes the negation.
-    // @lfy def/grammar/rules/statement.lfy:47
+    // @lfy def/grammar/rules/statement.lfy:63
     fn conditions_text(&mut self, conditions: NodeRef, env: &mut Env) -> Vec<String> {
         let trees = self.trees.clone();
         let mut groups: Vec<Vec<String>> = vec![Vec::new()];
@@ -529,7 +529,7 @@ impl Binder {
     }
 
     /// A With runs the block with the name or member as the entity criteria attach to.
-    // @lfy def/grammar/rules/statement.lfy:38
+    // @lfy def/grammar/rules/statement.lfy:54
     fn exec_with(&mut self, r: NodeRef, env: &mut Env) {
         // A trait's own body is run without a receiver; its With blocks belong to each
         // application, so they are skipped here.
@@ -578,7 +578,7 @@ impl Binder {
     }
 
     /// A loop over one or more iterables, visited in order.
-    // @lfy def/grammar/rules/statement.lfy:30
+    // @lfy def/grammar/rules/statement.lfy:42
     fn exec_for(&mut self, r: NodeRef, env: &mut Env) {
         let trees = self.trees.clone();
         let Some(declared) = trees.child(r, E::Declared) else { return };

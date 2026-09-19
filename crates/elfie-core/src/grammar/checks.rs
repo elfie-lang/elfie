@@ -10,23 +10,23 @@ use super::traits::{Category, GrammarRule, Terminal};
 use super::{Entity, rules};
 
 /// One of the global checks of the grammar.
-// @lfy def/grammar/main.lfy:30
+// @lfy def/grammar/main.lfy:21
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {
     /// Every bare name referenced in any rule's syntax is the identifier of a rule entity.
-    BareNamesAreRules, // @lfy def/grammar/main.lfy:31
+    BareNamesAreRules, // @lfy def/grammar/main.lfy:22
     /// No two terminal entities have the same syntax.
-    TerminalSyntaxIsUnique, // @lfy def/grammar/main.lfy:33
+    TerminalSyntaxIsUnique, // @lfy def/grammar/main.lfy:26
     /// Every prefix, infix, and postfix rule either has a binding itself or names an
     /// operator whose every alternative has a binding with one shared precedence.
-    OperatorRulesBind, // @lfy def/grammar/main.lfy:34
+    OperatorRulesBind, // @lfy def/grammar/main.lfy:28
     /// No rule has more than one of statement, primary, prefix, infix, and postfix.
-    OneCategory, // @lfy def/grammar/main.lfy:35
+    OneCategory, // @lfy def/grammar/main.lfy:30
     /// Every escape listed by a body is excluded from that body's plain characters by
     /// `Backslash`.
-    BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:36
+    BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:32
     /// No alternative of an alternation can be satisfied without taking a token.
-    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:37
+    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:34
 }
 
 impl Check {
@@ -85,12 +85,12 @@ impl fmt::Display for Violation {
 
 /// `global@acceptanceCriteria`: `Ok` when every check holds for every rule, otherwise
 /// every failing rule with the check it fails.
-// @lfy def/grammar/main.lfy:30
+// @lfy def/grammar/main.lfy:21
 pub fn validate() -> Result<(), Vec<Violation>> {
     let mut violations = Vec::new();
     let mut syntaxes: HashMap<&'static str, Entity> = HashMap::new();
     for rule in rules() {
-        // @lfy def/grammar/main.lfy:31
+        // @lfy def/grammar/main.lfy:22
         let parsed = match ebnf::parse(rule.syntax()) {
             Ok(expr) => {
                 for reference in expr.references() {
@@ -113,7 +113,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 None
             }
         };
-        // @lfy def/grammar/main.lfy:33
+        // @lfy def/grammar/main.lfy:26
         if rule.is_terminal()
             && let Some(other) = syntaxes.insert(rule.syntax(), rule)
         {
@@ -123,7 +123,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: format!("has the same syntax as {}", other.identifier()),
             });
         }
-        // @lfy def/grammar/main.lfy:34
+        // @lfy def/grammar/main.lfy:28
         if let Some(operator) = rule.category().operator()
             && rule.effective_binding().is_none()
         {
@@ -136,9 +136,9 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 ),
             });
         }
-        // @lfy def/grammar/main.lfy:35
+        // @lfy def/grammar/main.lfy:30
         // A rule's category is a single value, so this check holds by construction.
-        // @lfy def/grammar/main.lfy:36
+        // @lfy def/grammar/main.lfy:32
         if let Category::Terminal(Terminal::Body { excluded, escapes }) = rule.category()
             && !escapes.is_empty()
             && !excluded.contains(&Entity::Literal(Literal::Backslash))
@@ -149,7 +149,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: "lists escapes but does not exclude Backslash".to_owned(),
             });
         }
-        // @lfy def/grammar/main.lfy:37
+        // @lfy def/grammar/main.lfy:34
         if let Some(expr) = &parsed
             && let Ok(grammar) = ebnf::Grammar::compile_cached()
         {
@@ -183,7 +183,7 @@ mod tests {
     use super::*;
     use crate::grammar::terminals::keyword::Keyword;
 
-    // @lfy def/grammar/main.lfy:30
+    // @lfy def/grammar/main.lfy:21
     #[test]
     fn the_grammar_passes_every_check() {
         if let Err(violations) = validate() {
@@ -199,7 +199,7 @@ mod tests {
         assert_eq!(Check::ALL.len(), 6);
     }
 
-    // @lfy def/grammar/main.lfy:37
+    // @lfy def/grammar/main.lfy:34
     #[test]
     fn every_alternative_of_every_alternation_takes_a_token() {
         let grammar = ebnf::grammar();

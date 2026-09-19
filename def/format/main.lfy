@@ -23,27 +23,53 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
         `Every line ends with one line feed and the result ends with one`,
       ],
     })
-    .add({ situation = `[[Tree.errors]] is not empty`, behavior = `The result is the source unchanged, because moving tokens the parser could not place would hide the error`, });
+    .add({
+      situation = `[[Tree.errors]] is not empty`,
+      behavior = `The result is the source unchanged, because moving tokens the parser could not place would hide the error`,
+    });
 
   // Lines and indentation
   @acceptanceCriteria
-    .add({ behavior = `Each [[Statement]] begins on its own line, indented two spaces per enclosing [[Block]], [[Object]], [[Type]], or multi-line [[List]], [[Arguments]], or [[Parameters]]`, })
-    .add({ behavior = `A run of blank lines between statements becomes one blank line; blank lines inside a statement are removed`, })
-    .add({ behavior = `[[Documentation]] and a [[Comment]] on its own line stay on their own line before what follows them, indented like it; a [[Comment]] that shares a line with code stays at the end of that line after one space`, })
-    .add({ behavior = `Trailing spaces are removed and every [[NewLine]] becomes a line feed`, });
+    .add({
+      behavior = `Each [[Statement]] begins on its own line, indented two spaces per enclosing [[Block]], [[Object]], [[Type]], or multi-line [[List]], [[Arguments]], or [[Parameters]]`,
+    })
+    .add({
+      behavior = `A run of blank lines between statements becomes one blank line; blank lines inside a statement are removed`,
+    })
+    .add({
+      behavior = `[[Documentation]] and a [[Comment]] on its own line stay on their own line before what follows them, indented like it; a [[Comment]] that shares a line with code stays at the end of that line after one space`,
+    })
+    .add({ behavior = `Trailing spaces are removed and every [[NewLine]] becomes a line feed` });
 
   // Spacing
   @acceptanceCriteria
-    .add({ behavior = `One space on both sides of every [[infix]] operator, [[SingleArrow]], and [[DoubleArrowRight]]; none between a [[prefix]] operator and its operand, nor between a [[postfix]] operator and the expression before it`, })
-    .add({ behavior = `One space after each [[Comma]] and [[Colon]] and none before; none after [[GroupOpen]], [[ListOpen]], [[ReferenceOpen]], or [[ExecutionOpen]] and none before their closes`, })
-    .add({ behavior = `One space between a keyword and what follows it, and between a closing [[GroupClose]] and a [[BlockOpen]]`, })
-    .add({ behavior = `A [[Block]] opens on the line of its statement and its close stands alone on its own line; an empty [[Block]] is the two braces together`, });
+    .add({
+      behavior = `One space on both sides of every [[infix]] operator, [[SingleArrow]], and [[DoubleArrowRight]]; none between a [[prefix]] operator and its operand, nor between a [[postfix]] operator and the expression before it`,
+    })
+    .add({
+      behavior = `One space after each [[Comma]] and [[Colon]] and none before; none after [[GroupOpen]], [[ListOpen]], [[ReferenceOpen]], or [[ExecutionOpen]] and none before their closes`,
+    })
+    .add({
+      behavior = `One space between a keyword and what follows it, and between a closing [[GroupClose]] and a [[BlockOpen]]`,
+    })
+    .add({
+      behavior = `A [[Block]] opens on the line of its statement and its close stands alone on its own line; an empty [[Block]] is the two braces together`,
+    });
 
   // Wrapping
   @acceptanceCriteria
-    .add({ situation = `A [[List]], [[Object]], [[Type]], [[Arguments]], [[Parameters]], [[Items]], or [[TraitUses]] held a [[NewLine]] between its brackets in the source, or the line would exceed 120 characters`, behavior = `It is multi-line: one item per line, each ending with a [[Comma]], the close on its own line`, })
-    .add({ situation = `Otherwise`, behavior = `It stays on one line and a trailing [[Comma]] before the close is removed`, })
-    .add({ situation = `A chain of [[Call]] and [[Member]] on one left side, such as add on acceptanceCriteria, held a [[NewLine]] before an accessor in the source`, behavior = `Each [[Member]] of the chain begins a new line indented one level below the chain's first line`, });
+    .add({
+      situation = `A [[List]], [[Object]], [[Type]], [[Arguments]], [[Parameters]], [[Items]], or [[TraitUses]] held a [[NewLine]] between its brackets in the source, or the line would exceed 120 characters`,
+      behavior = `It is multi-line: one item per line, each ending with a [[Comma]], the close on its own line`,
+    })
+    .add({
+      situation = `Otherwise`,
+      behavior = `It stays on one line and a trailing [[Comma]] before the close is removed`,
+    })
+    .add({
+      situation = `A chain of [[Call]] and [[Member]] on one left side, such as add on acceptanceCriteria, held a [[NewLine]] before an accessor in the source`,
+      behavior = `Each [[Member]] of the chain begins a new line indented one level below the chain's first line`,
+    });
 
   @test(
     {

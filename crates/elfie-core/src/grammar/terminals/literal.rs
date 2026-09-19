@@ -24,69 +24,69 @@ grammar_rules! {
         NumberLiteral is [terminal()]: "A decimal number; underscores group digits" = r#"[[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) , (/ "." , [[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) /)"#, // @lfy def/grammar/terminals/literal.lfy:11
 
         // Boundaries
-        SingleQuote is [boundary("'")]: "Opens and closes a single quoted string" = r#""'""#, // @lfy def/grammar/terminals/literal.lfy:16
-        DoubleQuote is [boundary("\"")]: "Opens and closes a double quoted string" = r#"'"'"#, // @lfy def/grammar/terminals/literal.lfy:17
-        Backtick is [boundary("`")]: "Opens and closes a template" = r#""`""#, // @lfy def/grammar/terminals/literal.lfy:18
-        ExecutionOpen is [boundary("{{")]: "Opens an expression inside a template" = r#""{{""#, // @lfy def/grammar/terminals/literal.lfy:19
-        ExecutionClose is [boundary("}}")]: "Closes an expression inside a template" = r#""}}""#, // @lfy def/grammar/terminals/literal.lfy:20
-        ReferenceOpen is [boundary("[[")]: "Opens a reference inside a template or documentation" = r#""[[""#, // @lfy def/grammar/terminals/literal.lfy:21
-        ReferenceClose is [boundary("]]")]: "Closes a reference inside a template or documentation" = r#""]]""#, // @lfy def/grammar/terminals/literal.lfy:22
+        SingleQuote is [boundary("'")]: "Opens and closes a single quoted string" = r#""'""#, // @lfy def/grammar/terminals/literal.lfy:18
+        DoubleQuote is [boundary("\"")]: "Opens and closes a double quoted string" = r#"'"'"#, // @lfy def/grammar/terminals/literal.lfy:19
+        Backtick is [boundary("`")]: "Opens and closes a template" = r#""`""#, // @lfy def/grammar/terminals/literal.lfy:20
+        ExecutionOpen is [boundary("{{")]: "Opens an expression inside a template" = r#""{{""#, // @lfy def/grammar/terminals/literal.lfy:21
+        ExecutionClose is [boundary("}}")]: "Closes an expression inside a template" = r#""}}""#, // @lfy def/grammar/terminals/literal.lfy:22
+        ReferenceOpen is [boundary("[[")]: "Opens a reference inside a template or documentation" = r#""[[""#, // @lfy def/grammar/terminals/literal.lfy:23
+        ReferenceClose is [boundary("]]")]: "Closes a reference inside a template or documentation" = r#""]]""#, // @lfy def/grammar/terminals/literal.lfy:24
 
         // Escapes: each names what it becomes; bodies list which escapes they accept
-        BackslashEscape is [escape(Becomes::Text("\\"))]: "A backslash" = r#""\\""#, // @lfy def/grammar/terminals/literal.lfy:25
-        SingleQuoteEscape is [escape(Becomes::Text("'"))]: "A single quote" = r#""\'""#, // @lfy def/grammar/terminals/literal.lfy:26
-        DoubleQuoteEscape is [escape(Becomes::Text("\""))]: "A double quote" = r#"'\"'"#, // @lfy def/grammar/terminals/literal.lfy:27
-        BacktickEscape is [escape(Becomes::Text("`"))]: "A backtick" = r#"'\`'"#, // @lfy def/grammar/terminals/literal.lfy:28
-        NewlineEscape is [escape(Becomes::Text("\n"))]: "A line feed" = r#""\n""#, // @lfy def/grammar/terminals/literal.lfy:29
-        CarriageReturnEscape is [escape(Becomes::Text("\r"))]: "A carriage return" = r#""\r""#, // @lfy def/grammar/terminals/literal.lfy:30
-        TabEscape is [escape(Becomes::Text("\t"))]: "A tab" = r#""\t""#, // @lfy def/grammar/terminals/literal.lfy:31
-        NullEscape is [escape(Becomes::Text("\0"))]: "The null character" = r#""\0""#, // @lfy def/grammar/terminals/literal.lfy:32
-        ContinuationEscape is [escape(Becomes::Text(""))]: "A line break that does not end the text" = r#""\" , [[NewLine]]"#, // @lfy def/grammar/terminals/literal.lfy:33
-        HexEscape is [escape(Becomes::CharacterWithCode)]: "A character by two hex digits" = r#""\x" , [[HexDigit]] , [[HexDigit]]"#, // @lfy def/grammar/terminals/literal.lfy:34
+        BackslashEscape is [escape(Becomes::Text("\\"))]: "A backslash" = r#""\\""#, // @lfy def/grammar/terminals/literal.lfy:27
+        SingleQuoteEscape is [escape(Becomes::Text("'"))]: "A single quote" = r#""\'""#, // @lfy def/grammar/terminals/literal.lfy:28
+        DoubleQuoteEscape is [escape(Becomes::Text("\""))]: "A double quote" = r#"'\"'"#, // @lfy def/grammar/terminals/literal.lfy:29
+        BacktickEscape is [escape(Becomes::Text("`"))]: "A backtick" = r#"'\`'"#, // @lfy def/grammar/terminals/literal.lfy:30
+        NewlineEscape is [escape(Becomes::Text("\n"))]: "A line feed" = r#""\n""#, // @lfy def/grammar/terminals/literal.lfy:31
+        CarriageReturnEscape is [escape(Becomes::Text("\r"))]: "A carriage return" = r#""\r""#, // @lfy def/grammar/terminals/literal.lfy:32
+        TabEscape is [escape(Becomes::Text("\t"))]: "A tab" = r#""\t""#, // @lfy def/grammar/terminals/literal.lfy:33
+        NullEscape is [escape(Becomes::Text("\0"))]: "The null character" = r#""\0""#, // @lfy def/grammar/terminals/literal.lfy:34
+        ContinuationEscape is [escape(Becomes::Text(""))]: "A line break that does not end the text" = r#""\" , [[NewLine]]"#, // @lfy def/grammar/terminals/literal.lfy:35
+        HexEscape is [escape(Becomes::CharacterWithCode)]: "A character by two hex digits" = r#""\x" , [[HexDigit]] , [[HexDigit]]"#, // @lfy def/grammar/terminals/literal.lfy:36
         /// When the digits are not a scalar value the text is kept as written.
-        UnicodeEscape is [escape(Becomes::CharacterWithCodePoint)]: "A character by four or six hex digits" = r#""\u" , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , (/ [[HexDigit]] , [[HexDigit]] /)"#, // @lfy def/grammar/terminals/literal.lfy:35
-        ExecutionOpenEscape is [escape(Becomes::Text("{{"))]: "Literal opening execution braces" = r#""\{{""#, // @lfy def/grammar/terminals/literal.lfy:38
-        ExecutionCloseEscape is [escape(Becomes::Text("}}"))]: "Literal closing execution braces" = r#""\}}""#, // @lfy def/grammar/terminals/literal.lfy:39
-        ReferenceOpenEscape is [escape(Becomes::Text("[["))]: "Literal opening reference brackets" = r#""\[[""#, // @lfy def/grammar/terminals/literal.lfy:40
-        ReferenceCloseEscape is [escape(Becomes::Text("]]"))]: "Literal closing reference brackets" = r#""\]]""#, // @lfy def/grammar/terminals/literal.lfy:41
+        UnicodeEscape is [escape(Becomes::CharacterWithCodePoint)]: "A character by four or six hex digits" = r#""\u" , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , [[HexDigit]] , (/ [[HexDigit]] , [[HexDigit]] /)"#, // @lfy def/grammar/terminals/literal.lfy:37
+        ExecutionOpenEscape is [escape(Becomes::Text("{{"))]: "Literal opening execution braces" = r#""\{{""#, // @lfy def/grammar/terminals/literal.lfy:43
+        ExecutionCloseEscape is [escape(Becomes::Text("}}"))]: "Literal closing execution braces" = r#""\}}""#, // @lfy def/grammar/terminals/literal.lfy:44
+        ReferenceOpenEscape is [escape(Becomes::Text("[["))]: "Literal opening reference brackets" = r#""\[[""#, // @lfy def/grammar/terminals/literal.lfy:45
+        ReferenceCloseEscape is [escape(Becomes::Text("]]"))]: "Literal closing reference brackets" = r#""\]]""#, // @lfy def/grammar/terminals/literal.lfy:46
 
         // Bodies: what may appear between boundaries
-        SingleQuoteBody is [body(SINGLE_QUOTE_BODY_EXCLUDED, SINGLE_QUOTE_BODY_ESCAPES)]: "Text of a single quoted string" = "(: ( Character - ( [[NewLine]] | [[SingleQuote]] | [[Backslash]] ) ) | [[BackslashEscape]] | [[SingleQuoteEscape]] | [[ContinuationEscape]] :)", // @lfy def/grammar/terminals/literal.lfy:44
-        DoubleQuoteBody is [body(DOUBLE_QUOTE_BODY_EXCLUDED, DOUBLE_QUOTE_BODY_ESCAPES)]: "Text of a double quoted string" = "(: ( Character - ( [[NewLine]] | [[DoubleQuote]] | [[Backslash]] ) ) | [[BackslashEscape]] | [[DoubleQuoteEscape]] | [[SingleQuoteEscape]] | [[NewlineEscape]] | [[CarriageReturnEscape]] | [[TabEscape]] | [[NullEscape]] | [[ContinuationEscape]] | [[HexEscape]] | [[UnicodeEscape]] :)", // @lfy def/grammar/terminals/literal.lfy:45
-        TemplateBody is [body(TEMPLATE_BODY_EXCLUDED, TEMPLATE_BODY_ESCAPES)]: "Text of a template between its expressions and references" = "(: ( Character - ( [[Backtick]] | [[Backslash]] | [[ExecutionOpen]] | [[ReferenceOpen]] ) ) | [[BackslashEscape]] | [[BacktickEscape]] | [[SingleQuoteEscape]] | [[DoubleQuoteEscape]] | [[NewlineEscape]] | [[CarriageReturnEscape]] | [[TabEscape]] | [[NullEscape]] | [[ContinuationEscape]] | [[HexEscape]] | [[UnicodeEscape]] | [[ExecutionOpenEscape]] | [[ExecutionCloseEscape]] | [[ReferenceOpenEscape]] | [[ReferenceCloseEscape]] :)", // @lfy def/grammar/terminals/literal.lfy:46
+        SingleQuoteBody is [body(SINGLE_QUOTE_BODY_EXCLUDED, SINGLE_QUOTE_BODY_ESCAPES)]: "Text of a single quoted string" = "(: ( Character - ( [[NewLine]] | [[SingleQuote]] | [[Backslash]] ) ) | [[BackslashEscape]] | [[SingleQuoteEscape]] | [[ContinuationEscape]] :)", // @lfy def/grammar/terminals/literal.lfy:49
+        DoubleQuoteBody is [body(DOUBLE_QUOTE_BODY_EXCLUDED, DOUBLE_QUOTE_BODY_ESCAPES)]: "Text of a double quoted string" = "(: ( Character - ( [[NewLine]] | [[DoubleQuote]] | [[Backslash]] ) ) | [[BackslashEscape]] | [[DoubleQuoteEscape]] | [[SingleQuoteEscape]] | [[NewlineEscape]] | [[CarriageReturnEscape]] | [[TabEscape]] | [[NullEscape]] | [[ContinuationEscape]] | [[HexEscape]] | [[UnicodeEscape]] :)", // @lfy def/grammar/terminals/literal.lfy:50
+        TemplateBody is [body(TEMPLATE_BODY_EXCLUDED, TEMPLATE_BODY_ESCAPES)]: "Text of a template between its expressions and references" = "(: ( Character - ( [[Backtick]] | [[Backslash]] | [[ExecutionOpen]] | [[ReferenceOpen]] ) ) | [[BackslashEscape]] | [[BacktickEscape]] | [[SingleQuoteEscape]] | [[DoubleQuoteEscape]] | [[NewlineEscape]] | [[CarriageReturnEscape]] | [[TabEscape]] | [[NullEscape]] | [[ContinuationEscape]] | [[HexEscape]] | [[UnicodeEscape]] | [[ExecutionOpenEscape]] | [[ExecutionCloseEscape]] | [[ReferenceOpenEscape]] | [[ReferenceCloseEscape]] :)", // @lfy def/grammar/terminals/literal.lfy:65
 
         // Strings
-        SingleQuoteString is [rule()]: "A string with no interpolation" = "[[SingleQuote]] , (/ [[SingleQuoteBody]] /) , [[SingleQuote]]", // @lfy def/grammar/terminals/literal.lfy:49
-        DoubleQuoteString is [rule()]: "A string with escapes" = "[[DoubleQuote]] , (/ [[DoubleQuoteBody]] /) , [[DoubleQuote]]", // @lfy def/grammar/terminals/literal.lfy:50
+        SingleQuoteString is [rule()]: "A string with no interpolation" = "[[SingleQuote]] , (/ [[SingleQuoteBody]] /) , [[SingleQuote]]", // @lfy def/grammar/terminals/literal.lfy:87
+        DoubleQuoteString is [rule()]: "A string with escapes" = "[[DoubleQuote]] , (/ [[DoubleQuoteBody]] /) , [[DoubleQuote]]", // @lfy def/grammar/terminals/literal.lfy:88
         // Template is defined in the expression rules due to its more complex nature
     }
 }
 
 /// The value of a `NumberLiteral` token: the raw text with its underscores removed.
-// @lfy def/grammar/terminals/literal.lfy:12
+// @lfy def/grammar/terminals/literal.lfy:14
 pub fn number_value(raw: &str) -> String {
     raw.chars().filter(|&c| c != '_').collect()
 }
 
-// @lfy def/grammar/terminals/literal.lfy:44
+// @lfy def/grammar/terminals/literal.lfy:49
 pub const SINGLE_QUOTE_BODY_EXCLUDED: &[Entity] = &[
     Entity::Space(Space::NewLine),
     Entity::Literal(Literal::SingleQuote),
     Entity::Literal(Literal::Backslash),
 ];
-// @lfy def/grammar/terminals/literal.lfy:44
+// @lfy def/grammar/terminals/literal.lfy:49
 pub const SINGLE_QUOTE_BODY_ESCAPES: &[Entity] = &[
     Entity::Literal(Literal::BackslashEscape),
     Entity::Literal(Literal::SingleQuoteEscape),
     Entity::Literal(Literal::ContinuationEscape),
 ];
-// @lfy def/grammar/terminals/literal.lfy:45
+// @lfy def/grammar/terminals/literal.lfy:50
 pub const DOUBLE_QUOTE_BODY_EXCLUDED: &[Entity] = &[
     Entity::Space(Space::NewLine),
     Entity::Literal(Literal::DoubleQuote),
     Entity::Literal(Literal::Backslash),
 ];
-// @lfy def/grammar/terminals/literal.lfy:45
+// @lfy def/grammar/terminals/literal.lfy:50
 pub const DOUBLE_QUOTE_BODY_ESCAPES: &[Entity] = &[
     Entity::Literal(Literal::BackslashEscape),
     Entity::Literal(Literal::DoubleQuoteEscape),
@@ -99,14 +99,14 @@ pub const DOUBLE_QUOTE_BODY_ESCAPES: &[Entity] = &[
     Entity::Literal(Literal::HexEscape),
     Entity::Literal(Literal::UnicodeEscape),
 ];
-// @lfy def/grammar/terminals/literal.lfy:46
+// @lfy def/grammar/terminals/literal.lfy:65
 pub const TEMPLATE_BODY_EXCLUDED: &[Entity] = &[
     Entity::Literal(Literal::Backtick),
     Entity::Literal(Literal::Backslash),
     Entity::Literal(Literal::ExecutionOpen),
     Entity::Literal(Literal::ReferenceOpen),
 ];
-// @lfy def/grammar/terminals/literal.lfy:46
+// @lfy def/grammar/terminals/literal.lfy:65
 pub const TEMPLATE_BODY_ESCAPES: &[Entity] = &[
     Entity::Literal(Literal::BackslashEscape),
     Entity::Literal(Literal::BacktickEscape),
@@ -128,6 +128,7 @@ pub const TEMPLATE_BODY_ESCAPES: &[Entity] = &[
 #[cfg(test)]
 mod tests {
     use super::super::super::GrammarRule;
+    use super::super::super::traits::body_value;
     use super::*;
 
     // @lfy def/grammar/terminals/literal.lfy:5
@@ -164,12 +165,12 @@ mod tests {
         assert_eq!(number.longest_match("_1"), None);
         assert!(number.matches("1_0.0_1"));
         assert!(!number.matches("1_"));
-        // @lfy def/grammar/terminals/literal.lfy:12
+        // @lfy def/grammar/terminals/literal.lfy:14
         assert_eq!(number_value("1_000.000_1"), "1000.0001");
         assert_eq!(number_value("42"), "42");
     }
 
-    // @lfy def/grammar/terminals/literal.lfy:16
+    // @lfy def/grammar/terminals/literal.lfy:18
     #[test]
     fn boundaries_are_their_quoted_text() {
         assert_eq!(Literal::SingleQuote.syntax(), "\"'\"");
@@ -180,7 +181,7 @@ mod tests {
         assert_eq!(Literal::ReferenceClose.longest_match("]"), None);
     }
 
-    // @lfy def/grammar/terminals/literal.lfy:25
+    // @lfy def/grammar/terminals/literal.lfy:27
     #[test]
     fn every_escape_matches_its_own_spelling() {
         let cases: &[(Literal, &str, usize)] = &[
@@ -218,7 +219,16 @@ mod tests {
         assert_eq!(Literal::NewlineEscape.longest_match("\\\\n"), None);
     }
 
-    // @lfy def/grammar/terminals/literal.lfy:44
+    // @lfy def/grammar/terminals/literal.lfy:41
+    #[test]
+    fn unicode_escapes_that_are_not_a_scalar_value_are_kept_as_written() {
+        let double = Entity::Literal(Literal::DoubleQuoteBody);
+        assert_eq!(body_value(double, "a\\u0042c"), "aBc");
+        assert_eq!(body_value(double, "a\\uD800c"), "a\\uD800c");
+        assert_eq!(body_value(double, "a\\u110000c"), "a\\u110000c");
+    }
+
+    // @lfy def/grammar/terminals/literal.lfy:49
     #[test]
     fn bodies_stop_at_their_boundaries_and_unlisted_escapes() {
         let single = Literal::SingleQuoteBody;
@@ -245,7 +255,7 @@ mod tests {
         assert!(single.is_body() && double.is_body() && template.is_body());
     }
 
-    // @lfy def/grammar/terminals/literal.lfy:49
+    // @lfy def/grammar/terminals/literal.lfy:87
     #[test]
     fn strings_are_a_boundary_an_optional_body_and_a_boundary() {
         assert!(Literal::SingleQuoteString.matches("'it\\'s'"));

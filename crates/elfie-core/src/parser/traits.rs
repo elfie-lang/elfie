@@ -13,13 +13,13 @@ use super::data::{Child, Node};
 
 /// `ace const brackets`: token pairs that nest, with the first token opening and the second
 /// closing.
-// @lfy def/parser/traits.lfy:8
+// @lfy def/parser/traits.lfy:7
 pub const BRACKETS: &[(Entity, Entity)] = &[
-    (Entity::Punctuation(Punctuation::GroupOpen), Entity::Punctuation(Punctuation::GroupClose)), // @lfy def/parser/traits.lfy:9
+    (Entity::Punctuation(Punctuation::GroupOpen), Entity::Punctuation(Punctuation::GroupClose)), // @lfy def/parser/traits.lfy:8
     (Entity::Punctuation(Punctuation::ListOpen), Entity::Punctuation(Punctuation::ListClose)), // @lfy def/parser/traits.lfy:9
-    (Entity::Punctuation(Punctuation::BlockOpen), Entity::Punctuation(Punctuation::BlockClose)), // @lfy def/parser/traits.lfy:9
-    (Entity::Literal(Literal::ExecutionOpen), Entity::Literal(Literal::ExecutionClose)), // @lfy def/parser/traits.lfy:10
-    (Entity::Literal(Literal::ReferenceOpen), Entity::Literal(Literal::ReferenceClose)), // @lfy def/parser/traits.lfy:10
+    (Entity::Punctuation(Punctuation::BlockOpen), Entity::Punctuation(Punctuation::BlockClose)), // @lfy def/parser/traits.lfy:10
+    (Entity::Literal(Literal::ExecutionOpen), Entity::Literal(Literal::ExecutionClose)), // @lfy def/parser/traits.lfy:11
+    (Entity::Literal(Literal::ReferenceOpen), Entity::Literal(Literal::ReferenceClose)), // @lfy def/parser/traits.lfy:12
 ];
 
 /// Whether a token of this terminal opens a bracket.
@@ -37,32 +37,33 @@ pub fn closes_bracket(rule: Entity) -> bool {
 /// [`BRACKETS`] that would take the depth below 0, or the end of the input. Bracket depth
 /// is 0 at `start`; each opening token adds one and each closing token removes one, and a
 /// token is at the same depth when the depth before it is 0.
-// @lfy def/parser/traits.lfy:13
+// @lfy def/parser/traits.lfy:18
 pub fn sweep_end(tokens: &[Token], start: usize, sync: &[Entity]) -> usize {
     let mut depth = 0usize;
     for (index, token) in tokens.iter().enumerate().skip(start) {
         let Some(rule) = token.rule else {
             continue;
         };
-        // @lfy def/parser/traits.lfy:16
+        // @lfy def/parser/traits.lfy:20
+        // @lfy def/parser/traits.lfy:40
         if depth == 0 && sync.contains(&rule) {
             return index;
         }
         if closes_bracket(rule) {
-            // @lfy def/parser/traits.lfy:40
+            // @lfy def/parser/traits.lfy:43
             if depth == 0 {
                 return index;
             }
-            depth -= 1; // @lfy def/parser/traits.lfy:15
+            depth -= 1; // @lfy def/parser/traits.lfy:18
         } else if opens_bracket(rule) {
-            depth += 1; // @lfy def/parser/traits.lfy:15
+            depth += 1; // @lfy def/parser/traits.lfy:18
         }
     }
-    tokens.len() // @lfy def/parser/traits.lfy:39
+    tokens.len() // @lfy def/parser/traits.lfy:40
 }
 
 /// `ace function listed(rules)`: `[[A]], [[B]], …`
-// @lfy def/parser/traits.lfy:19
+// @lfy def/parser/traits.lfy:23
 pub fn listed(rules: &[Entity]) -> String {
     rules
         .iter()
@@ -76,13 +77,13 @@ pub fn listed(rules: &[Entity]) -> String {
 /// `trait trivia`: whether tokens of a trivia rule may sit between two elements of `rule`
 /// and become children of its node, which they may unless the rule references a `body`
 /// terminal.
-// @lfy def/parser/traits.lfy:23
+// @lfy def/parser/traits.lfy:27
 pub fn admits_trivia(rule: Entity) -> bool {
     !references_body_terminal(rule)
 }
 
 /// Whether the rule's own syntax references a `body` terminal.
-// @lfy def/parser/traits.lfy:25
+// @lfy def/parser/traits.lfy:28
 pub fn references_body_terminal(rule: Entity) -> bool {
     rule.expression().is_some_and(|expr| {
         expr.references()
@@ -106,7 +107,7 @@ pub fn is_trivia_child(child: &Child, tokens: &[Token]) -> bool {
 
 /// `trait documented`: the `Documentation` nodes that precede `children[index]` with only
 /// trivia between, in source order; empty when there are none.
-// @lfy def/parser/traits.lfy:31
+// @lfy def/parser/traits.lfy:32
 pub fn documentation_before(children: &[Child], index: usize, tokens: &[Token]) -> Vec<Node> {
     let mut found = Vec::new();
     for child in children[..index].iter().rev() {
@@ -124,7 +125,7 @@ pub fn documentation_before(children: &[Child], index: usize, tokens: &[Token]) 
 }
 
 /// Attaches `$documentation` to every child of `node` whose rule carries `documented`.
-// @lfy def/parser/traits.lfy:30
+// @lfy def/parser/traits.lfy:31
 pub fn attach_documentation(node: &mut Node, tokens: &[Token]) {
     for index in 0..node.children.len() {
         let Child::Node(child) = &node.children[index] else {
@@ -144,7 +145,7 @@ pub fn attach_documentation(node: &mut Node, tokens: &[Token]) {
 
 /// `trait triedBefore(other)`: whether `first` is tried ahead of `other`, directly or
 /// through rules tried between them.
-// @lfy def/parser/traits.lfy:35
+// @lfy def/parser/traits.lfy:36
 pub fn tried_before(first: Entity, other: Entity) -> bool {
     let mut reached = vec![first];
     let mut index = 0;
@@ -167,7 +168,7 @@ pub fn tried_before(first: Entity, other: Entity) -> bool {
 
 /// Orders candidates so that each is tried only when the one before it fails: a total
 /// order under [`tried_before`]. `Err` names two candidates the trait does not order.
-// @lfy def/parser/traits.lfy:35
+// @lfy def/parser/traits.lfy:36
 pub fn order_by_tried_before(candidates: &[Entity]) -> Result<Vec<Entity>, (Entity, Entity)> {
     for (index, &a) in candidates.iter().enumerate() {
         for &b in &candidates[index + 1..] {
@@ -193,24 +194,24 @@ pub fn order_by_tried_before(candidates: &[Entity]) -> Result<Vec<Entity>, (Enti
 
 /// What a recoverable rule does when a repetition stops on the token at `at` (`None` at
 /// the end of the input).
-// @lfy def/parser/traits.lfy:41
+// @lfy def/parser/traits.lfy:39
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RepetitionStop {
     /// The repetition ends and the element after it is tried.
-    Ends, // @lfy def/parser/traits.lfy:41
+    Ends, // @lfy def/parser/traits.lfy:46
     /// An error node covers the stopping token alone, and the repetition continues after
     /// it.
-    ErrorAlone, // @lfy def/parser/traits.lfy:42
+    ErrorAlone, // @lfy def/parser/traits.lfy:47
     /// An error node covers the stopping token and the tokens after it up to this index,
     /// and the repetition continues there.
-    ErrorUpTo(usize), // @lfy def/parser/traits.lfy:43
+    ErrorUpTo(usize), // @lfy def/parser/traits.lfy:48
 }
 
 /// Decides how a repetition of a recoverable rule with these `sync` terminals continues
 /// when it stops on the token at `at`. `begins_after` tells whether a terminal can begin
 /// an element after the repetition and `begins_repeated` whether it can begin the
 /// repeated element.
-// @lfy def/parser/traits.lfy:41
+// @lfy def/parser/traits.lfy:39
 pub fn repetition_stop(
     tokens: &[Token],
     at: Option<usize>,
@@ -218,7 +219,7 @@ pub fn repetition_stop(
     begins_after: impl Fn(Entity) -> bool,
     begins_repeated: impl Fn(Entity) -> bool,
 ) -> RepetitionStop {
-    // @lfy def/parser/traits.lfy:41
+    // @lfy def/parser/traits.lfy:46
     let Some(at) = at else {
         return RepetitionStop::Ends;
     };
@@ -226,11 +227,11 @@ pub fn repetition_stop(
     if rule.is_some_and(&begins_after) {
         return RepetitionStop::Ends;
     }
-    // @lfy def/parser/traits.lfy:42
+    // @lfy def/parser/traits.lfy:47
     if rule.is_some_and(|rule| sync.contains(&rule)) {
         return RepetitionStop::ErrorAlone;
     }
-    // @lfy def/parser/traits.lfy:43
+    // @lfy def/parser/traits.lfy:48
     let end = tokens
         .iter()
         .enumerate()
@@ -257,7 +258,7 @@ mod tests {
         Entity::Punctuation(rule)
     }
 
-    // @lfy def/parser/traits.lfy:8
+    // @lfy def/parser/traits.lfy:7
     #[test]
     fn brackets_pair_every_opening_token_with_its_closing_token() {
         assert_eq!(BRACKETS.len(), 5);
@@ -269,7 +270,7 @@ mod tests {
         assert!(!closes_bracket(Entity::Literal(Literal::Backtick)));
     }
 
-    // @lfy def/parser/traits.lfy:13
+    // @lfy def/parser/traits.lfy:18
     #[test]
     fn a_sweep_stops_at_a_sync_token_at_depth_zero_or_an_unmatched_close() {
         let tokens = lex("a (b; c) {d} ; e", None).unwrap();
@@ -278,10 +279,13 @@ mod tests {
         // and `{` is a sync token at depth 0.
         assert_eq!(tokens[9].raw, "{");
         assert_eq!(sweep_end(&tokens, 0, sync), 9);
+        // @lfy def/parser/traits.lfy:20
         // Starting inside the parentheses, `;` is at depth 0.
         assert_eq!(sweep_end(&tokens, 3, sync), 4);
+        // @lfy def/parser/traits.lfy:43
         // A close that would take the depth below 0 ends the sweep before it.
         assert_eq!(sweep_end(&tokens, 5, sync), 7);
+        // @lfy def/parser/traits.lfy:40
         // No sync at all reaches the end of the input.
         let tokens = lex("a (b c", None).unwrap();
         assert_eq!(sweep_end(&tokens, 0, sync), tokens.len());
@@ -294,7 +298,7 @@ mod tests {
         assert_eq!(sweep_end(&tokens, 0, sync), 2);
     }
 
-    // @lfy def/parser/traits.lfy:19
+    // @lfy def/parser/traits.lfy:23
     #[test]
     fn listed_joins_rule_references_with_commas() {
         assert_eq!(
@@ -304,7 +308,7 @@ mod tests {
         assert_eq!(listed(&[]), "");
     }
 
-    // @lfy def/parser/traits.lfy:23
+    // @lfy def/parser/traits.lfy:28
     #[test]
     fn rules_that_reference_a_body_terminal_admit_no_trivia() {
         for rule in [
@@ -329,7 +333,7 @@ mod tests {
         assert!(!references_body_terminal(Entity::Identifier(Identifier::Identifier)));
     }
 
-    // @lfy def/parser/traits.lfy:35
+    // @lfy def/parser/traits.lfy:36
     #[test]
     fn tried_before_is_transitive_and_orders_candidates() {
         let block = Entity::Statement(Statement::Block);
@@ -347,7 +351,7 @@ mod tests {
         assert_eq!(order_by_tried_before(&[group, block]), Err((group, block)));
     }
 
-    // @lfy def/parser/traits.lfy:41
+    // @lfy def/parser/traits.lfy:39
     #[test]
     fn a_stopped_repetition_ends_or_covers_tokens_with_an_error() {
         let tokens = lex("a ; ) b", None).unwrap();

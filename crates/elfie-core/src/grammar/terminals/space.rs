@@ -7,8 +7,8 @@ grammar_rules! {
     /// Whitespace terminals.
     pub enum Space {
         /// Value is always equal to `\n` regardless of raw text; see [`NEW_LINE_VALUE`].
-        NewLine is [terminal()]: "A line break; both spellings are the same token" = "\"\n\" | \"\r\n\"", // @lfy def/grammar/terminals/space.lfy:3
-        Space is [terminal()]: "Separates tokens and carries no meaning in almost all circumstances" = "\" \" | \"\t\" | \"\u{000B}\" | \"\u{000C}\" | \"\u{0085}\" | \"\u{200E}\" | \"\u{200F}\" | \"\u{2028}\" | \"\u{2029}\"", // @lfy def/grammar/terminals/space.lfy:6
+        NewLine is [terminal()]: "A line break" = "\"\n\" | \"\r\n\"", // @lfy def/grammar/terminals/space.lfy:3
+        Space is [terminal()]: "Various space characters" = "\" \" | \"\t\" | \"\u{000B}\" | \"\u{000C}\" | \"\u{0085}\" | \"\u{200E}\" | \"\u{200F}\" | \"\u{2028}\" | \"\u{2029}\"", // @lfy def/grammar/terminals/space.lfy:6
     }
 }
 

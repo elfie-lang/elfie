@@ -483,7 +483,7 @@ fn a_statement_is_selected_among_the_statement_rules_in_tried_before_order() {
     );
     assert!(tree.errors.is_empty());
     // A statement that begins with a block is a Block, never an Object.
-    // @lfy def/grammar/rules/statement.lfy:24
+    // @lfy def/grammar/rules/statement.lfy:36
     let tree = file("{ a = 1 }");
     assert!(first_statement(&tree).is(Statement::Block));
     assert_eq!(tree.errors.len(), 1);
@@ -616,7 +616,7 @@ fn operands_and_tails_are_parsed_with_the_operation_power_as_the_minimum() {
     let definition = tree.root.node(Expression::Definition).unwrap();
     assert!(definition.node(Expression::BitwiseOrOperation).is_some());
     // A cast's tail is a type expression.
-    // @lfy def/grammar/rules/expression.lfy:99
+    // @lfy def/grammar/rules/expression.lfy:127
     let tree = expr("a as string | number");
     assert!(tree.root.is(Expression::Cast));
     assert_eq!(shape(&tree.root, &tree), ["Name", "AsKeyword(as)", "TypeExpression"]);
@@ -682,7 +682,7 @@ fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     assert!(statement.node(Expression::Group).is_none());
 }
 
-// @lfy def/parser/traits.lfy:39
+// @lfy def/parser/traits.lfy:40
 #[test]
 fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     // The `;` inside the call is not at the same depth as the call's missing `)`.
@@ -693,7 +693,7 @@ fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     assert_eq!(shape(call, &tree), ["Name", "GroupOpen(()", "Items", "Error(\"; b\")", "GroupClose())"]);
     assert_eq!(tree.errors.len(), 1);
     assert_eq!(tree.errors[0].expected, vec!["GroupClose"]);
-    // @lfy def/parser/traits.lfy:40
+    // @lfy def/parser/traits.lfy:43
     // A closing bracket that would take the depth below 0 ends the error before it.
     let tree = file("for (x y) { }");
     let for_ = first_statement(&tree);
@@ -709,12 +709,13 @@ fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/traits.lfy:41
+// @lfy def/parser/traits.lfy:46
 #[test]
 fn a_stopped_repetition_ends_or_covers_the_stopping_tokens() {
     // A token an element after the repetition begins with ends it.
     let tree = file("{ a; }");
     assert!(tree.errors.is_empty());
+    // @lfy def/parser/traits.lfy:47
     // A sync token no element after can begin with is an error alone.
     let source = "{ a; ; b; } ;";
     let tree = file(source);
@@ -728,6 +729,7 @@ fn a_stopped_repetition_ends_or_covers_the_stopping_tokens() {
     assert_eq!(tree.errors.len(), 2);
     assert!(tree.errors[0].expected.contains(&"Identifier"));
     assert!(tree.errors[0].expected.contains(&"BlockClose"));
+    // @lfy def/parser/traits.lfy:48
     // Any other token is covered up to the next token that begins the repeated element,
     // an element after it, or a sync token.
     let source = "{ ) ] a; }";
@@ -824,7 +826,7 @@ fn leftover_tokens_without_a_rule_are_one_error_node_at_the_end_of_the_root() {
     assert_eq!(shape(&tree.root, &tree), ["ExpressionStatement", "Error(\"#\")", "ExpressionStatement"]);
 }
 
-// @lfy def/grammar/traits.lfy:106
+// @lfy def/grammar/traits.lfy:108
 #[test]
 fn an_invalid_token_after_a_prefix_operator_is_not_space() {
     let tree = file("x = -#1;");
@@ -833,7 +835,7 @@ fn an_invalid_token_after_a_prefix_operator_is_not_space() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/traits.lfy:44
+// @lfy def/parser/traits.lfy:51
 #[test]
 fn expected_lists_what_could_have_continued_the_open_rule() {
     let tree = file("a #");
@@ -856,7 +858,7 @@ fn expected_lists_what_could_have_continued_the_open_rule() {
 
 // trivia
 
-// @lfy def/parser/traits.lfy:23
+// @lfy def/parser/traits.lfy:28
 #[test]
 fn trivia_is_not_taken_inside_rules_that_reference_a_body_terminal() {
     let source = "`a {{ b }} c`;";
@@ -872,7 +874,7 @@ fn trivia_is_not_taken_inside_rules_that_reference_a_body_terminal() {
     assert!(tree.errors.is_empty());
 }
 
-// @lfy def/grammar/terminals/comment.lfy:35
+// @lfy def/grammar/terminals/comment.lfy:39
 #[test]
 fn a_new_line_inside_a_line_documentation_reference_is_not_trivia() {
     let source = "/// see [[a\nb]] c\nx;";
@@ -894,7 +896,7 @@ fn a_new_line_inside_a_line_documentation_reference_is_not_trivia() {
 
 // documented
 
-// @lfy def/parser/traits.lfy:31
+// @lfy def/parser/traits.lfy:32
 #[test]
 fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
     let source = "/// a\n/// b\n\n// c\nconst x;\ny;\n/** d **/ z;";
@@ -926,7 +928,7 @@ fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
 
 // triedBefore
 
-// @lfy def/parser/traits.lfy:35
+// @lfy def/parser/traits.lfy:36
 #[test]
 fn the_rule_tried_first_wins_and_the_other_is_tried_only_when_it_fails() {
     let tree = file("(a) => a; (a); where (a) -> b; {} x = {};");
@@ -947,7 +949,7 @@ fn the_rule_tried_first_wins_and_the_other_is_tried_only_when_it_fails() {
 
 // Grammar clauses the parser applies
 
-// @lfy def/grammar/rules/expression.lfy:46
+// @lfy def/grammar/rules/expression.lfy:70
 #[test]
 fn a_member_name_is_only_taken_when_nothing_sits_between_it_and_the_accessor() {
     // Current: the member name is not matched across space, so `is` is a trait clause.
@@ -965,7 +967,7 @@ fn a_member_name_is_only_taken_when_nothing_sits_between_it_and_the_accessor() {
     // Only identifiers and `type` are member names.
     let tree = file("x.is;");
     assert!(!tree.errors.is_empty());
-    // @lfy def/grammar/traits.lfy:127
+    // @lfy def/grammar/traits.lfy:133
     // Member: with space before the member name the rule cannot be a match at all.
     let tree = file("b. c;");
     assert!(first_statement(&tree).find(Expression::Member).is_none());
@@ -982,7 +984,7 @@ fn a_member_name_is_only_taken_when_nothing_sits_between_it_and_the_accessor() {
     assert!(tree.errors.is_empty(), "{:?}", tree.errors);
 }
 
-// @lfy def/grammar/rules/expression.lfy:50
+// @lfy def/grammar/rules/expression.lfy:74
 #[test]
 fn a_group_cannot_match_before_a_trait_clause_a_definition_or_a_double_arrow() {
     for source in ["(a) : T;", "(a) is t;", "(a) =>;"] {
@@ -995,7 +997,7 @@ fn a_group_cannot_match_before_a_trait_clause_a_definition_or_a_double_arrow() {
     assert!(tree.root.find(Expression::Group).is_some());
 }
 
-// @lfy def/grammar/traits.lfy:106
+// @lfy def/grammar/traits.lfy:108
 #[test]
 fn negation_and_dereference_cannot_be_matched_across_space() {
     let tree = expr("-1");
@@ -1013,14 +1015,14 @@ fn negation_and_dereference_cannot_be_matched_across_space() {
     assert!(tree.root.is(Expression::NotOperation));
 }
 
-// @lfy def/grammar/rules/expression.lfy:52
+// @lfy def/grammar/rules/expression.lfy:76
 #[test]
 fn a_block_after_the_double_arrow_is_a_block_and_a_conditional_owns_its_colon() {
     let tree = expr("() => { a = 1; }");
     assert!(tree.root.is(Expression::InlineFunction));
     assert!(tree.root.node(Statement::Block).is_some());
     assert!(tree.root.node(Expression::Object).is_none());
-    // @lfy def/grammar/rules/expression.lfy:102
+    // @lfy def/grammar/rules/expression.lfy:128
     let tree = expr("a ? x : T : c");
     assert!(tree.root.is(Expression::Definition));
     let conditional = tree.root.node(Expression::Conditional).unwrap();

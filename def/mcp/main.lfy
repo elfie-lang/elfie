@@ -15,16 +15,27 @@ external Protocol: `The Model Context Protocol, revision 2025-06-18, as the targ
 
 fn serve(root?: string): `Serve agents over standard input and output until the connection closes` => number {
   @acceptanceCriteria
-    .add({ behavior = `Speaks the [[Protocol]] over standard input and output; nothing else is ever written to standard output, and logging goes to standard error`, })
-    .add({ behavior = `On initialize, [[Session.workspace]] is [[Loader.load]] of [[root]], or of the current directory`, })
-    .add({ behavior = `Lists exactly the fns of this file that carry [[tool]], as [[tool]] says, and nothing else: no resources and no prompts, because one surface is enough to keep exact`, })
-    .add({ situation = `A call arrives`, behavior = `First, every file of the program whose modification time or size differs from [[Session.seen]] is re-read through [[Loader.change]] with undefined, a file that vanished the same way, and a changed elfie.json loads the workspace again; then the tool runs`, })
-    .add({ behavior = `Returns 0 when standard input closes`, });
+    .add({
+      behavior = `Speaks the [[Protocol]] over standard input and output; nothing else is ever written to standard output, and logging goes to standard error`,
+    })
+    .add({
+      behavior = `On initialize, [[Session.workspace]] is [[Loader.load]] of [[root]], or of the current directory`,
+    })
+    .add({
+      behavior = `Lists exactly the fns of this file that carry [[tool]], as [[tool]] says, and nothing else: no resources and no prompts, because one surface is enough to keep exact`,
+    })
+    .add({
+      situation = `A call arrives`,
+      behavior = `First, every file of the program whose modification time or size differs from [[Session.seen]] is re-read through [[Loader.change]] with undefined, a file that vanished the same way, and a changed elfie.json loads the workspace again; then the tool runs`,
+    })
+    .add({ behavior = `Returns 0 when standard input closes` });
 
   @test(
     {
       input = [string@like(`A root whose def holds a.lfy reading: const y = z;`)],
-      expect = number@like(`A tools/list answer naming elfie_problems, elfie_find, elfie_entity, elfie_references, elfie_outline, elfie_grammar, elfie_units, elfie_request, and elfie_check; a call of elfie_problems answering with one binder error at z`),
+      expect = number@like(
+        `A tools/list answer naming elfie_problems, elfie_find, elfie_entity, elfie_references, elfie_outline, elfie_grammar, elfie_units, elfie_request, and elfie_check; a call of elfie_problems answering with one binder error at z`,
+      ),
     },
   );
 }
@@ -32,62 +43,90 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
 /// file: a path relative to the root; every file when left out
 fn problems(session: Session, file?: string) is tool: `The problems of the program, or of one file: what the compiler, an editor, or a check would report` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `One line per [[Query.diagnosticsOf]] reading the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`, })
-    .add({ situation = `There are none`, behavior = `The text says no problems`, });
+    .add({
+      behavior = `One line per [[Query.diagnosticsOf]] reading the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`,
+    })
+    .add({ situation = `There are none`, behavior = `The text says no problems` });
 }
 
 /// name: an identifier, or an owner's identifier, a dot, and a member's name; a file path and a colon before it limits the search to that file
 fn find(session: Session, name: string) is tool: `Where things with a name are declared` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `One line per entity of [[Query.find]] reading the kind, the identifier, the file, the line, and the definition when there is one`, })
-    .add({ situation = `Nothing matches`, behavior = `The text says so and suggests elfie_outline`, });
+    .add({
+      behavior = `One line per entity of [[Query.find]] reading the kind, the identifier, the file, the line, and the definition when there is one`,
+    })
+    .add({ situation = `Nothing matches`, behavior = `The text says so and suggests elfie_outline` });
 }
 
 /// name: as elfie_find takes it
 fn entity(session: Session, name: string) is tool: `Everything known about the things with a name: definition, type, documentation, traits, members, criteria, tests, references, and source` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `For each entity of [[Query.find]], in order: the fields of [[Query.hoverOf]] with a heading each; the identifier of each trait in [[Entity.traits]]; each member's name, definition, and type; each of [[Entity.tests]] as input and expectation; the count of [[Binder.usagesOf]] its symbol with the file and line of each; then [[Query.sourceOf]] in a fenced block`, })
-    .add({ situation = `More than one entity matches`, behavior = `Each is separated by a rule and headed by its file, so the caller can narrow the name with a file path`, });
+    .add({
+      behavior = `For each entity of [[Query.find]], in order: the fields of [[Query.hoverOf]] with a heading each; the identifier of each trait in [[Entity.traits]]; each member's name, definition, and type; each of [[Entity.tests]] as input and expectation; the count of [[Binder.usagesOf]] its symbol with the file and line of each; then [[Query.sourceOf]] in a fenced block`,
+    })
+    .add({
+      situation = `More than one entity matches`,
+      behavior = `Each is separated by a rule and headed by its file, so the caller can narrow the name with a file path`,
+    });
 }
 
 /// name: as elfie_find takes it
 fn references(session: Session, name: string) is tool: `Every place things with a name are used` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `For each entity of [[Query.find]], one line per [[Binder.usagesOf]] its symbol reading the file, the line, the column, and the text of that line`, });
+    .add({
+      behavior = `For each entity of [[Query.find]], one line per [[Binder.usagesOf]] its symbol reading the file, the line, the column, and the text of that line`,
+    });
 }
 
 /// file: a path relative to the root
 fn outline(session: Session, file: string) is tool: `The declarations of one file, nested as written` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `[[Query.outlineOf]] as an indented list: two spaces per level, then the kind, the name, and the line`, })
-    .add({ situation = `The file is not in the program`, behavior = `An error saying so and listing the files that are`, });
+    .add({
+      behavior = `[[Query.outlineOf]] as an indented list: two spaces per level, then the kind, the name, and the line`,
+    })
+    .add({ situation = `The file is not in the program`, behavior = `An error saying so and listing the files that are` });
 }
 
 fn grammar(session: Session) is tool: `The grammar of Elfie: every terminal and every rule as EBNF, for an agent writing or reading Elfie` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `[[Grammar.terminalDocument]], a blank line, then [[Grammar.grammarDocument]]`, });
+    .add({ behavior = `[[Grammar.terminalDocument]], a blank line, then [[Grammar.grammarDocument]]` });
 }
 
 /// target: the identifier of one target; every target when left out
-fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in order, and why each needs generating` => ToolResult {
+fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in order, why each needs generating, and how they are batched` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `[[Generation.plan]] of the workspace with the source maps read from each target's output directory, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies`, })
-    .add({ situation = `[[target]] is set`, behavior = `Only that target's units, and an error naming the known targets when it is not one`, });
+    .add({
+      behavior = `[[Generation.plan]] of the workspace with the source maps read from each target's output directory, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
+    })
+    .add({
+      situation = `[[target]] is set`,
+      behavior = `Only that target's units, and an error naming the known targets when it is not one`,
+    });
 }
 
-/// unit: the stem of a unit, as elfie_units lists it
-/// target: the identifier of the unit's target; the only target when left out
-fn request(session: Session, unit: string, target?: string) is tool: `The full request for one unit: what to produce, where, and every criterion to satisfy` => ToolResult {
+/// batch: the identifier of a batch, as elfie_units lists it, or the stem of one of its units
+/// target: the identifier of the batch's target; the only target when left out
+fn request(session: Session, batch: string, target?: string) is tool: `The full request for one batch: what to produce, where, every criterion to satisfy, and how to report` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `[[Request.instructions]] of [[Generation.request]] for the unit, with the existing outputs read from disk and no previous source`, })
-    .add({ situation = `No unit has that stem, or the target is ambiguous`, behavior = `An error saying which`, });
+    .add({
+      behavior = `[[Request.instructions]] of [[Generation.request]] for the batch, with the existing outputs read from disk and no previous source`,
+    })
+    .add({
+      situation = `No batch has that identifier or holds a unit with that stem, or the target is ambiguous`,
+      behavior = `An error saying which`,
+    });
 }
 
 /// unit: the stem of a unit, as elfie_units lists it
 /// target: the identifier of the unit's target; the only target when left out
 fn check(session: Session, unit: string, target?: string) is tool: `Whether the outputs on disk satisfy the request for one unit, and what is wrong when they do not` => ToolResult {
   @acceptanceCriteria
-    .add({ behavior = `[[Generation.accept]] of the unit's request against the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk`, })
-    .add({ situation = `Accepted`, behavior = `The text says so and lists the outputs; nothing is written, the CLI records source maps`, })
-    .add({ situation = `Rejected`, behavior = `An error listing [[Verdict.problems]]`, });
+    .add({
+      behavior = `[[Generation.accept]] of the unit against the request of its batch and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk`,
+    })
+    .add({
+      situation = `Accepted`,
+      behavior = `The text says so and lists the outputs; nothing is written, the CLI records source maps`,
+    })
+    .add({ situation = `Rejected`, behavior = `An error listing [[Verdict.problems]]` });
 }

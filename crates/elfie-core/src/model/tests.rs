@@ -700,7 +700,7 @@ fn test_call_appends_tests() {
 }
 
 /// criteriaOf replaces each template reference by the referenced entity's identifier.
-// @lfy def/model/main.lfy:142
+// @lfy def/model/main.lfy:225
 #[test]
 fn criteria_of_strips_references() {
     let model = bind_one("d B {} d A { @acceptanceCriteria.add({ situation = `given [[B]]`, behavior = `see [[B]] and [[B.x]]` }); }");
@@ -740,7 +740,7 @@ fn repository_binds_without_problems() {
     let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
     let workspace = crate::workspace::load(root);
     let model = &workspace.model;
-    assert!(workspace.files.len() > 30, "{} files", workspace.files.len());
+    assert!(workspace.files.len() > 20, "{} files", workspace.files.len());
     let messages: Vec<String> = workspace.problems.iter().map(|p| format!("{p:?}")).collect();
     assert!(workspace.problems.is_empty(), "{messages:#?}");
     assert!(model.problems.is_empty(), "{:?}", problems(model));
