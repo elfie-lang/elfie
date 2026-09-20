@@ -275,3 +275,7 @@ unwritten pieces (cli, format, generation, lsp, mcp) were formatted with `elfie 
 - **A problem's stage is read from its node.** The compiler asked whether `Problem` should carry
   its origin; the loader only ever adds problems at `Use` nodes, so a problem at a `Use` is stage
   loader and any other is binder, and no field was added.
+- **The CLI's own files live in `elfie-requests` under the root**, not the output directory, and a
+  marker is only text that names a `.lfy` path; a marker naming a file outside the program is
+  ignored. Both came from the first mechanical acceptance, which read the compile log, the request
+  files, and test fixtures as claims about the program.

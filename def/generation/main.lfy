@@ -229,11 +229,15 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `The marker is rewritten in [[Verdict.outputs]] to name that entity, since a name survives edits and a line does not`,
     })
     .add({
-      situation = `An output holds a [[Marker]] naming a file that is not in the program, or a line of the unit's [[File.path]] beyond its last`,
+      situation = `An output holds a [[Marker]] naming a line of the unit's [[File.path]] beyond its last`,
       behavior = `Rejected with a problem naming the output line`,
     })
     .add({
       behavior = `An output may hold markers for other files of the program, because one output often mirrors several`,
+    })
+    .add({
+      situation = `An output holds a [[Marker]] naming a file that is not in the program`,
+      behavior = `The marker is ignored and not recorded; it is a fixture or prose, not a claim about the program`,
     })
     .add({
       situation = `An entity of the unit has no marker in any output naming it or a line its declaring node covers`,

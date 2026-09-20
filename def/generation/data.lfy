@@ -19,6 +19,9 @@ d Marker: `One place where generated code says where it came from` {
       behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, and then either a line (optionally a colon and a column) or the name of an entity of that file`,
     })
     .add({
+      behavior = `Text is read as a marker only when what follows @lfy and the space is a path ending in .lfy, a colon, and a number or an identifier path; anything else after @lfy is prose`,
+    })
+    .add({
       behavior = `The compiler is asked to write names, never lines, so that its markers survive edits that move lines; every line in a source map is derived from the model, never copied from the compiler`,
     });
 }

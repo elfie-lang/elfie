@@ -132,7 +132,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `While the compiler runs, its standard output and standard error are shown as they arrive, each line prefixed by the batch, and its standard output is also kept whole as the report`,
     })
     .add({
-      behavior = `Every progress line and report is appended to elfie-requests/compile.log under the output directory, so a run can be read after the fact`,
+      behavior = `Every progress line and report is appended to elfie-requests/compile.log under the root, never under an output directory, so a run can be read after the fact and no output is ever mistaken for the CLI's own files`,
     });
 
   // Running the compiler
@@ -157,11 +157,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The outcome is blocked`,
-      behavior = `The reason is printed and written to elfie-requests/<batch>.blocked.md under the output directory, and the compile stops`,
+      behavior = `The reason is printed and written to elfie-requests/<batch>.blocked.md under the root, and the compile stops`,
     })
     .add({
       situation = `The outcome is clarification`,
-      behavior = `The question is printed and written to elfie-requests/<batch>.question.md under the output directory, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file, which the next compile of the batch appends to its instructions`,
+      behavior = `The question is printed and written to elfie-requests/<batch>.question.md under the root, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file, which the next compile of the batch appends to its instructions`,
     })
     .add({
       situation = `The outcome is failed, or the command cannot be run`,
@@ -176,7 +176,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `elfie.json names no compiler`,
-      behavior = `The request of each batch is written to elfie-requests under the output directory, one file per batch named by its identifier, for a compiler run by hand; the code is success`,
+      behavior = `The request of each batch is written to elfie-requests under the root, one file per batch named by its identifier, for a compiler run by hand; the code is success`,
     })
     .add({
       situation = `compile with --accept`,
