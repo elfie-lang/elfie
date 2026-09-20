@@ -42,6 +42,7 @@ d Hover: `Everything an editor or agent shows for one entity` {
   $identifier: `The entity's name` = string;
   $definition: `[[Entity.definition]] with every template reference and execution resolved for the entity` = string | undefined;
   $type: `The identifier of [[Entity.type]], or the source text of the type when it is anonymous` = string | undefined;
+  $traits: `The identifier of each of [[Entity.traits]] in application order; builtin among them for a native thing` = string[];
   $documentation: `The text of the [[Documentation]] attached to the declaration, without the boundaries and with references kept as written` = string | undefined;
   $criteria: `[[Binder.criteriaOf]] the entity` = Criterion[];
 }

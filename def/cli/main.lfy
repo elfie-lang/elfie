@@ -11,6 +11,11 @@ use "../query/main" as Query;
 use "../workspace/data";
 use "../workspace/main" as Loader;
 use "./data";
+use "elfie/system/file" as Files;
+use "elfie/system/json" as Json;
+use "elfie/system/path";
+use "elfie/system/process" as Process;
+use "elfie/system/time" as Time;
 
 fn parse(arguments: string[]): `The invocation the arguments spell, or the usage error they make` => Invocation | string {
   @acceptanceCriteria
@@ -18,7 +23,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `The first argument that does not begin with a dash names the [[Command]]; none, or --help or -h anywhere, means help; --version means version`,
     })
     .add({
-      behavior = `--root followed by a directory, or --root= and the directory, sets [[Invocation.root]]; otherwise the root is the nearest directory at or above the current one holding elfie.json, or the current one`,
+      behavior = `--root followed by a directory, or --root= and the directory, sets [[Invocation.root]]; otherwise the root is the nearest directory at or above [[Process.currentDirectory]] where [[Files.exists]] finds elfie.json, or the current one`,
     })
     .add({
       behavior = `--tree followed by a file is read as the tree command with that file, so what the parser stage shipped keeps working`,
@@ -50,7 +55,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `It is printed to standard error with the help text and the code is usage`,
     })
     .add({
-      behavior = `--json on any command that prints results prints them as JSON lines instead of text, one object per result`,
+      behavior = `--json on any command that prints results prints them as JSON lines instead of text, one object per result, each [[Json.stringify]] on one line`,
     })
     .add({
       behavior = `A [[Diagnostic]] is printed as the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`,
@@ -68,7 +73,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `init`,
-      behavior = `Creates elfie.json in the root naming the project after the argument, or the directory, and creates the source directory; returns failure when elfie.json already exists`,
+      behavior = `[[Files.write]] of elfie.json in the root naming the project after the argument, or the directory, and [[Files.createDirectory]] of the source directory; returns failure when [[Files.exists]] finds elfie.json already`,
     });
 
   // check
@@ -82,7 +87,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `format`,
-      behavior = `Each file given, or every .lfy file under the source directory, is lexed, parsed, and replaced by [[Formatter.format]] of its tree when that differs`,
+      behavior = `Each file given, or every file of [[Files.list]] of the source directory, recursively, whose [[Path.extension]] is lfy, is [[Files.read]], lexed, parsed, and replaced by [[Files.write]] of [[Formatter.format]] of its tree when that differs`,
     })
     .add({
       situation = `format with --check`,
@@ -97,11 +102,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `tree`,
-      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value; an [[ErrorNode]] is printed with what it expected, and the code is problems when there is one`,
+      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value; an [[ErrorNode]] is printed with what it expected, and the code is problems when there is one`,
     })
     .add({
       situation = `tokens`,
-      behavior = `Prints [[Lexer.lex]] of the one file given, one token per line as its line, column, rule, and value`,
+      behavior = `Prints [[Lexer.lex]] of [[Files.read]] of the one file given, one token per line as its line, column, rule, and value`,
     });
 
   // compile
@@ -111,7 +116,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `[[Loader.load]] of the root; when any diagnostic is an error, they are printed and the code is problems, because the compiler is never handed a program with problems`,
     })
     .add({
-      behavior = `The source maps of each target are read from source-map.json in its output directory, dropping any whose output no longer exists, and [[Generation.plan]] is made with the stems given as arguments as the requested units; --all requests every unit and --target limits the plan to one target`,
+      behavior = `The source maps of each target are [[Json.parse]] of [[Files.read]] of source-map.json, [[Path.join]] to [[Target.outputDirectory]], none when the file is missing, dropping any whose output [[Files.exists]] no longer finds, and [[Generation.plan]] is made with the stems given as arguments as the requested units; --all requests every unit and --target limits the plan to one target`,
     })
     .add({
       situation = `compile with --dry-run`,
@@ -123,33 +128,33 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // same in a terminal, in a log, and as JSON lines for a script.
   @acceptanceCriteria
     .add({
-      behavior = `Every step of a compile prints one [[Progress]] line as it happens: the step, the batch and unit when there are any, done over total, the elapsed seconds, and the message; with --json each is one JSON object`,
+      behavior = `Every step of a compile prints one [[Progress]] line as it happens: the step, the batch and unit when there are any, done over total, [[Time.elapsed]] since the compile began, and the message; with --json each is [[Json.stringify]] of the [[Progress]] on one line`,
     })
     .add({
       behavior = `The first line is planned, with the count of units planned and of batches; the last is finished, with the count accepted, rejected, blocked, and failed`,
     })
     .add({
-      behavior = `While the compiler runs, its standard output and standard error are shown as they arrive, each line prefixed by the batch, and its standard output is also kept whole as the report`,
+      behavior = `While the compiler runs, each line [[Process.stream]] passes to its onLine is shown as it arrives, prefixed by the batch, and [[Process.Exit.stdout]] is the report`,
     })
     .add({
-      behavior = `Every progress line and report is appended to elfie-requests/compile.log under the root, never under an output directory, so a run can be read after the fact and no output is ever mistaken for the CLI's own files`,
+      behavior = `Every progress line and report is [[Files.append]] to elfie-requests/compile.log under the root, never under an output directory, so a run can be read after the fact and no output is ever mistaken for the CLI's own files`,
     });
 
   // Running the compiler
   @acceptanceCriteria
     .add({
-      behavior = `The compiler is the command elfie.json names under compiler; it is run once per batch in plan order with [[Request.instructions]] of [[Generation.request]] on its standard input, the root as its working directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS (the stems, space separated) in its environment`,
+      behavior = `The compiler is the command elfie.json names under compiler; it is [[Process.stream]] once per batch in plan order, with [[Request.instructions]] of [[Generation.request]] as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS (the stems, space separated) as its environment`,
     })
     .add({
-      behavior = `[[Request.previous]] holds, for each unit, the source at the last accepted generation when the root is a git repository and that source is recoverable from it`,
+      behavior = `[[Request.previous]] holds, for each unit, the source at the last accepted generation when the root is a git repository and that source is recoverable from it through [[Process.run]] of git`,
     })
     .add({
-      situation = `The command exits`,
-      behavior = `For each unit of the batch, [[Generation.accept]] runs on the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit; [[Generation.outcomeOf]] is read from the report and the verdicts`,
+      situation = `[[Process.stream]] returns its [[Process.Exit]]`,
+      behavior = `For each unit of the batch, [[Generation.accept]] runs on the files of [[Files.list]] of [[Target.outputDirectory]], recursively, whose [[Files.read]] text carries a [[Marker]] for the unit; [[Generation.outcomeOf]] is read from the report and the verdicts`,
     })
     .add({
       situation = `The outcome is accepted`,
-      behavior = `Each unit's [[Verdict.outputs]] are written back, its [[SourceMap]]s replace the unit's in source-map.json, and the batch counts as done`,
+      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back, its [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty, and the batch counts as done`,
     })
     .add({
       situation = `The outcome is rejected`,
@@ -157,14 +162,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The outcome is blocked`,
-      behavior = `The reason is printed and written to elfie-requests/<batch>.blocked.md under the root, and the compile stops`,
+      behavior = `The reason is printed and [[Files.write]] to elfie-requests/<batch>.blocked.md under the root, and the compile stops`,
     })
     .add({
       situation = `The outcome is clarification`,
-      behavior = `The question is printed and written to elfie-requests/<batch>.question.md under the root, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file, which the next compile of the batch appends to its instructions`,
+      behavior = `The question is printed and [[Files.write]] to elfie-requests/<batch>.question.md under the root, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file, which the next compile of the batch [[Files.read]] and appends to its instructions`,
     })
     .add({
-      situation = `The outcome is failed, or the command cannot be run`,
+      situation = `The outcome is failed, or [[Process.Exit.code]] is -1 because the command could not be started`,
       behavior = `The batch is run once more; a second failure stops the compile`,
     })
     .add({
@@ -176,11 +181,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `elfie.json names no compiler`,
-      behavior = `The request of each batch is written to elfie-requests under the root, one file per batch named by its identifier, for a compiler run by hand; the code is success`,
+      behavior = `The request of each batch is [[Files.write]] to elfie-requests under the root, one file per batch named by its identifier, for a compiler run by hand; the code is success`,
     })
     .add({
       situation = `compile with --accept`,
-      behavior = `No compiler is run; the outputs already on disk for each planned unit are checked with [[Generation.accept]], written back normalized, and recorded when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`,
+      behavior = `No compiler is run; the outputs already under [[Target.outputDirectory]] for each planned unit, found as when the command exits, are checked with [[Generation.accept]], written back normalized, and recorded when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`,
     });
 
   // lsp, mcp

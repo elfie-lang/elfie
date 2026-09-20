@@ -1,5 +1,9 @@
 use "../model/data";
 use "../workspace/data";
+use "elfie/prelude/builtin";
+use "elfie/system/path";
+use "elfie/system/time" as Time;
+use "elfie/target/target";
 
 enum Reason: `Why a unit needs generating` {
   fresh = `no output has been generated for it`,
@@ -33,15 +37,15 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   $hash: `SHA-256 of the source file's bytes when the output was accepted, as lowercase hex` = string;
   $signature: `SHA-256 of the unit's interface text, as interfaceOf spells it, when the output was accepted` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = object;
-  $generated: `When the output was accepted, as an RFC 3339 timestamp` = string;
+  $generated: `When the output was accepted: [[Time.Instant.rfc3339]] of [[Time.now]] at acceptance` = string;
   $markers: `Every [[Marker]] in the output, in output order, with lines derived` = Marker[];
 }
 
 d Unit: `The work the compiler does as one piece: one source file for one target` {
   $target: `What it is built for` = Target;
   $file: `The source file` = File;
-  $entities: `The entities of the file built for the target, in file order` = Entity[];
-  $stem: `[[File.path]] relative to the directory it was found under, without its extension; the target's guidance spells the output file from it` = string;
+  $entities: `The entities of the file built for the target, in file order; never an entity of the elfie package` = Entity[];
+  $stem: `[[Path.relative]] of [[File.path]] to the directory it was found under, without its extension; the target's guidance spells the output file from it` = string;
   $dependencies: `The units of the same target for the files this file uses, transitively through files that have no unit` = Unit[];
   $outputs: `The outputs the last accepted generation produced, from the target's source maps; empty when none` = SourceMap[];
   $reason: `Why it is planned; undefined when it is up to date` = Reason | undefined;
@@ -55,17 +59,17 @@ d Batch: `Planned units compiled together in one request, so shared context is s
 d Interface: `What a dependent unit may rely on from another unit's output` {
   $unit: `The unit` = Unit;
   $outputs: `The paths of its outputs` = string[];
-  $entities: `Its entities: each one's identifier, kind, definition, type, parameters and output as applicable` = Entity[];
+  $entities: `Its entities: each one's identifier, kind, definition, type, parameters and output as applicable; a type may name an entity of the elfie package by its identifier` = Entity[];
 }
 
 d Request: `Everything the compiler is handed to produce the outputs of one batch` {
   $batch: `The batch` = Batch;
-  $instructions: `The prompt: what to produce, where, the rules for producing it, and how to report the outcome` = string;
+  $instructions: `The prompt: what to produce, where, the rules for producing it, what of the standard library is [[builtin]] and never generated, and how to report the outcome` = string;
   $sources: `The text of each unit's source file, by [[File.path]]` = object;
   $previous: `The source text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = object;
   $existing: `The current text of each existing output of the batch, by path` = object;
   $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
-  $guidance: `Every criterion of [[Target.marker]] and of every trait it extends, in that order, resolved for the marker` = Criterion[];
+  $guidance: `Every criterion of [[Target.marker]], then of every trait it extends down to [[target]], nearest first, and of every trait applied to it with arguments, each resolved for the marker` = Criterion[];
   $nativeDependencies: `What the generated code may require from the target's ecosystem` = NativeDependency[];
 }
 

@@ -1,0 +1,9 @@
+/// The trait every native thing carries. The compiler performs a builtin itself while binding,
+/// and generated code reaches for the target's own runtime or standard library instead of a
+/// translation of a body.
+trait builtin: `Performed by the compiler at bind time and bound to the target's own runtime or standard library in generated code` {
+  where (`A data carrying the trait is generated for a target`) -> `Its instances are the target's native type for that data, and each member whose value is a signature is a native operation of that type`;
+  where (`A member of a data carrying the trait is written out in full`) -> `It is translated as written, in terms of the other members`;
+  where (`A fn carrying the trait is generated for a target`) -> `It is bound to the target's standard library as the target's guidance names it`;
+  where (`A trait body or a template needs the value of an operation of something carrying the trait at bind time`) -> `The binder evaluates the operation natively and uses the value`;
+}

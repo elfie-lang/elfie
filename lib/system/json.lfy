@@ -1,0 +1,80 @@
+use "../prelude/builtin";
+
+// Decision: every member test puts the receiver first in input, then the arguments.
+// Decision: parse is also the name of the function in ./time; a file that uses both aliases one
+// with use ... as.
+
+d Json is builtin: `A value that JSON can carry: an object, a list, a string, a number, a boolean, or null` {
+  /// key: the name of an entry of an object
+  $get: `The entry of an object under a key; undefined when the value is not an object or has no such entry` = (
+    key: string,
+  ) => .[key];
+  with Json$get {
+    @test(
+      { input = [{ a = 1 }, `a`], expect = 1 },
+      { input = [{ a = 1 }, `b`], expect = undefined },
+      { input = [[1, 2], `a`], expect = undefined },
+    );
+  }
+
+  /// path: keys and list indexes joined by dots, such as targets.rust.output or files.0.path
+  $at: `The value a dotted path reaches through nested objects and lists; undefined when any step is missing` = (
+    path: string,
+  ) => Json | undefined;
+  with Json$at {
+    where (`A step names a key and the value at that point is an object with that key`) -> `The walk continues into that entry`;
+    where (`A step is a whole number and the value at that point is a list with that index`) -> `The walk continues into that item`;
+    where (`A step fits neither, or the walk runs out of value`) -> `Returns undefined`;
+    where (`The path is empty`) -> `Returns the value itself`;
+    @test(
+      { input = [{ a = { b = [1, 2] } }, `a.b.1`], expect = 2 },
+      { input = [{ a = { b = [1, 2] } }, `a.c`], expect = undefined },
+      { input = [{ a = 1 }, `a.b`], expect = undefined },
+    );
+  }
+
+  $isObject: `Whether the value is an object` = () => boolean;
+  with Json$isObject {
+    where (`The value is an object, even an empty one`) -> `Returns true`;
+    where (`The value is a list, a string, a number, a boolean, or null`) -> `Returns false`;
+    @test({ input = [{ a = 1 }], expect = true }, { input = [[1]], expect = false }, { input = [null], expect = false });
+  }
+
+  $isList: `Whether the value is a list` = () => boolean;
+  with Json$isList {
+    where (`The value is a list, even an empty one`) -> `Returns true`;
+    where (`The value is an object, a string, a number, a boolean, or null`) -> `Returns false`;
+    @test(
+      { input = [[1]], expect = true },
+      { input = [{ a = 1 }], expect = false },
+      { input = [`[1]`], expect = false },
+    );
+  }
+}
+
+/// text: JSON text
+fn parse(text: string) is builtin: `The value JSON text carries; undefined when the text is not JSON` => Json | undefined {
+  where (`[[text]] is one JSON value, with any whitespace around it`) -> `Returns that value, with the keys of each object in the order the text gives them`;
+  where (`[[text]] is empty, is not JSON, or holds more than one value`) -> `Returns undefined`;
+  where (`An object repeats a key`) -> `The last one wins`;
+  @test(
+    { input = [`{"a": [1, 2], "b": null}`], expect = { a = [1, 2], b = null } },
+    { input = [` "text" `], expect = `text` },
+    { input = [`{"a": }`], expect = undefined },
+    { input = [``], expect = undefined },
+  );
+}
+
+/// value: what to write
+/// pretty: whether to indent it across lines
+fn stringify(value: Json, pretty: boolean = false) is builtin: `JSON text carrying a value` => string {
+  where (`[[pretty]] is false`) -> `Returns the value on one line with no spaces outside strings, and no newline at the end`;
+  where (`[[pretty]] is true`) -> `Returns one entry or item per line, indented by two spaces per level, a space after each colon, and a newline at the end; an empty object or list stays on one line`;
+  where (`The value holds an object`) -> `Its keys are written in insertion order`;
+  where (`The value holds a string`) -> `It is quoted with the escapes JSON requires and no others`;
+  @test(
+    { input = [{ a = [1, 2], b = `x` }], expect = `{"a":[1,2],"b":"x"}` },
+    { input = [{ a = [1] }, true], expect = `{\n  "a": [\n    1\n  ]\n}\n` },
+    { input = [{}, true], expect = `{}\n` },
+  );
+}

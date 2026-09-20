@@ -1,0 +1,16 @@
+/// The prelude: what every file of every project sees without a use of its own. It brings in
+/// the context layer every entity has, the kinds of declaration, the builtin trait, the value
+/// types the language is written in, and how criteria and tests are carried.
+use "./prelude/builtin";
+use "./prelude/entity";
+use "./prelude/trait";
+use "./prelude/fn";
+use "./prelude/kinds";
+use "./values/list";
+use "./values/string";
+use "./values/number";
+use "./values/object";
+use "./values/nullish";
+use "./values/template";
+use "./criteria/criterion";
+use "./criteria/testing";

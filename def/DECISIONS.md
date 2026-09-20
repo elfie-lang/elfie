@@ -279,3 +279,81 @@ unwritten pieces (cli, format, generation, lsp, mcp) were formatted with `elfie 
   marker is only text that names a `.lfy` path; a marker naming a file outside the program is
   ignored. Both came from the first mechanical acceptance, which read the compile log, the request
   files, and test fixtures as claims about the program.
+
+# Standard library (2026-09-20)
+
+The package `elfie`, rooted at `lib/`, declares what was previously only inside the binder or in
+prose: the context layer every entity has, the base data every value has, the system vocabulary
+the compiler's own definitions speak, and the target vocabulary. `elfie.json` registers it as a
+dependency for now; the workspace will load it implicitly once recompiled. Hash, git, and the
+LSP/MCP protocols are deliberately not part of this round.
+
+- **Members are the spelling for operations on a value.** An operation is a member whose value is
+  an inline function: `$map: \`...\` = (transform: function) => Any[];`. A body that is a type
+  expression is a signature (native for a `builtin` data, generated from criteria otherwise); a
+  body that is an expression or block is written out in full and translated as written. Nested
+  `fn`/`function` in a data body do not become members, so they are not used.
+- **Criteria and tests for a member live in `with X$member { ... }`** directly after the member.
+  The binder's definition already says a `With` whose current entity is the member attaches
+  criteria to it; the compiled binder does not yet do it (verified 2026-09-20 on a scratch
+  project: criteria=0 after such a block), so the next model compile must, and a test is added.
+  Member tests put the receiver first in `input`.
+- **`builtin` marks a whole declaration**, never a member: a trait on a member (`$x is t`) parses
+  but binds nothing, and `t.apply(X$x)` is refused because a scope-layer member is a symbol, not
+  an entity. A builtin data's instances are the target's native type and every signature member is
+  a native operation; a builtin fn is bound to the target's standard library.
+- **`Any`** (`d Any is builtin`) stands in where the language has no generics; callable parameters
+  are typed `function` because an inline function type cannot appear in a parameter's type.
+  Parameters still cannot carry descriptions; `///` lines of the form `name: text` describe them,
+  as `def/mcp` already does. The grammar change is the first item of the next round.
+- **Resolution rule the binder gains:** the context layer of an entity resolves in the members of
+  the prelude data for its kind (`Entity`, then `Trait` for a trait, `Function` for a fn or
+  function, `Enum`, `Member`, `Parameter`, `Module` likewise); the value layer resolves in the
+  entity's own members first, then in the base data's members whose value is a function (so
+  `rust.apply(global)` finds `Trait.apply`). A value of a primitive type resolves its members in
+  `String`, `Number`, `Boolean`, `Object`, `List` (any list), `Template`, and `Function`. The
+  `ContextProperty` enum goes away; `apply` stops being a special case in `bind`.
+- **The prelude is the scope of `lib/main.lfy`** (its own symbols and its imports): every file
+  scope's parent is that scope, except the files of the `elfie` package itself, which have none and
+  use each other explicitly. System and target files are not in the prelude and are used as
+  `use "elfie/system/path";`. The library is found through `lib` in `elfie.json`, else the
+  `ELFIE_LIB` environment variable, else the copy shipped with the compiler.
+- **The `elfie` package still gives no units.** Everything in it is builtin or written out in
+  Elfie; the target's guidance says what each builtin binds to and translates written-out members
+  where they are used. Compiling the library into a crate of its own is the round after this.
+- **`d Entity` in `def/model/data.lfy` extends the prelude's `Entity`** and keeps only the fields
+  the binder needs internally; likewise `FnEntity`/`TraitEntity`. Two `Entity`s would otherwise
+  shadow each other in every model file.
+- **The compiler's definitions name the library where they name an operation.** `def/workspace`,
+  `def/generation`, and `def/cli` use `elfie/system/*` and `elfie/target/*` explicitly and write
+  `[[Files.read]]`, `[[Path.relative]]`, `[[Json.stringify]]`, `[[Time.Instant.rfc3339]]`,
+  `[[Process.stream]]` instead of prose; SHA-256 stays prose because hashing is not in the
+  library. `elfie/system/file` is aliased (`Files`, `FileSystem`) because `File` is the
+  workspace's data; `json` and `time` are aliased because both declare `parse`. A member of an
+  aliased module's data is referenced nested, `[[Time.Instant.rfc3339]]`, and the binder checks it.
+- **Guidance is ordered nearest first.** `Request.guidance` is the marker's criteria, then those
+  of each extended trait transitively (rust, targetLanguage, target), each once, then those of
+  traits applied with arguments (`cratePerPrefix`, `modulePerFile`) with `{{...}}` evaluated from
+  those arguments. The compiled binder currently drops extended traits' criteria from
+  `criteriaOf` (verified with `elfie_entity rust`), so the next compile must close that gap.
+- **The binder learns a file's origin from `Source.origin`** (`program`, `library`, `prelude`):
+  the loader sets it; the prelude scope is the `prelude` file's scope, `program` files have it as
+  parent, `library` and `prelude` files have none. The model stays independent of `File.package`.
+- **The `elfie` package root is the first source given:** a dependency entry named `elfie`, then
+  `lib` in elfie.json, then `ELFIE_LIB`, then the copy the compiler was built with. A
+  `Target.marker` must be `target` or extend it transitively, or the target is left out with a
+  `LoadProblem`.
+- **Context names of another kind yield undefined, not a Problem:** `@parameters` on a data
+  resolves to `Function.parameters` and is undefined there, so `@parameters ?? @type` in
+  `Test.input` stays meaningful; a name in no kind data at all is still a Problem. `add` on
+  `@acceptanceCriteria` is the binder's own call, not a `List` member.
+- **Primitive values resolve every member of their base data** (`s.length`), while an entity's
+  value layer adds only the function members of its kind data (`t.apply`, never `t.identifier`).
+- **The model keeps `Criterion` (contributor as `Entity`) and `Test` as extensions of the
+  prelude's**, and overrides `Entity.acceptanceCriteria/traits/references` and
+  `FnEntity.parameters` where its records are richer; `ListEntity` and `ContextProperty` are gone.
+  `Hover.traits` carries an entity's trait identifiers so a native thing shows `builtin`.
+- **Tooling:** `scripts/refcheck.py` resolves package paths through `elfie.json` and scans every
+  package; a reference must start with a name, so `[[1, 2], x]` in a test is not one; a file that
+  declares nothing (the prelude) is exempt from unused-use checks. `scripts/compiler-prompt.md`
+  tells the compiler the library is a specification, never a unit.

@@ -1,3 +1,6 @@
+use "elfie/system/process" as Process;
+use "elfie/system/time" as Time;
+
 enum Command: `What the command line can do` {
   help = `help`,
   version = `version`,
@@ -11,7 +14,7 @@ enum Command: `What the command line can do` {
   mcp = `mcp`,
 }
 
-enum ExitCode: `What the process returns` {
+enum ExitCode: `What the process ends with, through [[Process.exit]]` {
   success: `Done, and nothing to report` = 0,
   problems: `Done, and problems were found or outputs rejected` = 1,
   usage: `The arguments could not be read` = 2,
@@ -45,6 +48,6 @@ d Progress: `One line of what a compile is doing, for a person or a script watch
   $unit: `The unit it concerns; undefined when it concerns a whole batch` = string | undefined;
   $done: `Units accepted so far` = number;
   $total: `Units planned` = number;
-  $elapsed: `Seconds since the compile began` = number;
+  $elapsed: `Seconds since the compile began, as [[Time.elapsed]] from its start gives them` = number;
   $message: `The detail: the reason a unit is planned, a problem, a question, or the count of batches` = string;
 }

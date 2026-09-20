@@ -1,0 +1,90 @@
+use "../prelude/builtin";
+
+// Decision: every member test puts the receiver first in input, then the arguments.
+// Decision: a command is one string for the platform shell, not a program and an argument list,
+// because the commands the compiler runs come from elfie.json and scripts as one line of text.
+
+d Exit is builtin: `What a finished command left` {
+  $code: `Its exit code; -1 when it ended by a signal or could not be started` = number;
+  $stdout: `Everything it wrote to standard output` = string;
+  $stderr: `Everything it wrote to standard error` = string;
+  $succeeded: `Whether it exited with 0` = () => .code == 0;
+  with Exit$succeeded {
+    @test(
+      { input = [{ code = 0, stdout = ``, stderr = `` }], expect = true },
+      { input = [{ code = 1, stdout = ``, stderr = `` }], expect = false },
+    );
+  }
+}
+
+/// command: the command line, for the platform shell
+/// input: its standard input; empty when left out
+/// directory: its working directory; the current one when left out
+/// environment: variables added to the inherited environment, by name; an entry replaces an inherited one
+fn run(command: string, input?: string, directory?: string, environment?: object) is builtin: `Runs a command through the platform shell and waits for it, capturing its output whole` => Exit {
+  where (`Any call`) -> `[[command]] is run by the platform shell (sh -c on Unix, cmd /C on Windows) and the call returns only when it has exited`;
+  where (`[[input]] is set`) -> `It is written to the command's standard input, which is then closed; when unset, the standard input is empty`;
+  where (`[[directory]] is set`) -> `The command runs with it as its working directory, relative to the current directory unless absolute; when unset, the current directory`;
+  where (`[[environment]] is set`) -> `Each of its entries is set in the command's environment on top of the inherited one; nothing is removed from the inherited environment`;
+  where (`The command exits`) -> `[[Exit.code]] is its code, and [[Exit.stdout]] and [[Exit.stderr]] hold everything it wrote, decoded as UTF-8`;
+  where (`The shell cannot be started, or [[directory]] does not exist`) -> `Returns an [[Exit]] with code -1 and the failure in [[Exit.stderr]]`;
+  @test(
+    { input = [`echo hi`], expect = { code = 0, stdout = `hi\n`, stderr = `` } },
+    { input = [`exit 3`], expect = Exit@like(`code 3`) },
+    { input = [`cat`, `hello`], expect = { code = 0, stdout = `hello`, stderr = `` } },
+    {
+      input = [`pwd`, undefined, string@like(`A directory that exists`)],
+      expect = Exit@like(`stdout naming that directory`),
+    },
+    {
+      input = [`echo $ELFIE_PROBE`, undefined, undefined, { ELFIE_PROBE = `1` }],
+      expect = { code = 0, stdout = `1\n`, stderr = `` },
+    },
+  );
+}
+
+/// command: the command line, for the platform shell
+/// input: its standard input; empty when left out
+/// directory: its working directory; the current one when left out
+/// environment: variables added to the inherited environment, by name; an entry replaces an inherited one
+/// onLine: called with each line as it arrives and a boolean that is true for standard error, false for standard output
+fn stream(command: string, input?: string, directory?: string, environment?: object, onLine?: function) is builtin: `Runs a command as run does, passing each line of its output to onLine as it arrives` => Exit {
+  where (`Any call`) -> `Behaves as [[run]] with the same arguments, and returns the same [[Exit]], its output still held whole`;
+  where (`[[onLine]] is set and the command writes a line to standard output or standard error`) -> `[[onLine]] is called with the line, without its line ending, and whether it came from standard error, before the call returns and in the order the lines arrived`;
+  where (`The command ends with an unfinished line`) -> `That text is passed to [[onLine]] as a line too`;
+  where (`[[onLine]] is unset`) -> `Behaves exactly as [[run]]`;
+  @test(
+    {
+      input = [`echo a; echo b >&2`, undefined, undefined, undefined, function@like(`One that records its arguments`)],
+      expect = Exit@like(
+        `code 0, stdout a and a newline, stderr b and a newline, and the function called with a and false, then b and true`,
+      ),
+    },
+    { input = [`echo hi`], expect = { code = 0, stdout = `hi\n`, stderr = `` } },
+  );
+}
+
+/// name: the variable's name
+fn environment(name: string) is builtin: `The value of an environment variable; undefined when it is not set` => string | undefined {
+  where (`[[name]] is set in the process's environment`) -> `Returns its value, even when empty`;
+  where (`[[name]] is not set`) -> `Returns undefined`;
+  @test(
+    { input = [`PATH`], expect = string@like(`The search path, not empty`) },
+    { input = [`ELFIE_NO_SUCH_VARIABLE`], expect = undefined },
+  );
+}
+
+fn currentDirectory() is builtin: `The process's working directory, as an absolute path` => string {
+  where (`Called`) -> `Returns the directory relative paths resolve against, absolute, with / as the separator`;
+  @test({ input = [], expect = string@like(`An absolute path of a directory that exists`) });
+}
+
+/// code: the exit code the process ends with
+fn exit(code: number) is builtin: `Ends the process with an exit code; never returns` => undefined {
+  @acceptanceCriteria
+    .add({
+      situation = `Called`,
+      behavior = `The process ends at once with [[code]]; standard output and standard error are flushed first, and nothing after the call runs`,
+      sideEffects = [`The process ends`],
+    });
+}

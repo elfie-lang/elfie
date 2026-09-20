@@ -1,0 +1,20 @@
+use "../prelude/builtin";
+
+// Decision: this file uses nothing from the prelude but builtin, because entity.lfy uses it and
+// a use cycle is a loader error; so the contributor is typed as object and Test lives here too.
+
+d Criterion is builtin: `One acceptance criterion: the situation it covers and the behavior required in it` {
+  $situation: `When it applies: one, several that must all hold, or none for always` = string | string[] | undefined;
+  $behavior: `What must happen: one, or several` = string | string[] | undefined;
+  $sideEffects: `What is written outside the value, when anything is` = string[] | undefined;
+  $contributor: `The entity whose body holds it, seen through its context layer: the entity itself or one of its traits` = object;
+  where (`An add call on an entity's acceptanceCriteria is bound with an object holding situation, behavior, or sideEffects`) -> `One criterion with those fields is appended to that entity's criteria, in the order the calls are written`;
+  where (`A where statement is bound`) -> `Its conditions are the situation and the expression after the arrow is the behavior; conditions joined by and give a list of situations that must all hold, conditions joined by or give one merged situation, and a negated group distributes the negation`;
+  where (`A criterion is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the criterion joins each entity the trait is applied to, after that entity's own`;
+  where (`A criterion is written in an entity's own body`) -> `The contributor is the entity itself`;
+}
+
+d Test is builtin: `One case an entity must satisfy: an input and what is expected of it` {
+  $input: `Input for the test: the argument list for a function, a value otherwise` = @parameters ?? @type;
+  $expect: `What is expected: the output for a function, a value otherwise` = @output ?? @type;
+}

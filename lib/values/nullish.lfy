@@ -1,0 +1,15 @@
+use "../prelude/builtin";
+
+// Decision: Nullish has no members; every operation on the absent is an operator, so this file is criteria only.
+
+d Nullish is builtin: `The absence of a value` {
+  where (`A value is undefined`) -> `It was never set: a missing key, an index out of range, a parameter left out, or a function that returned nothing`;
+  where (`A value is null`) -> `It was set to nothing on purpose`;
+  where (`a ?? b is evaluated`) -> `Yields a unless a is null or undefined, and then b; b is not evaluated otherwise`;
+  where (`a?.b is evaluated`) -> `Yields undefined when a is null or undefined, and a.b otherwise; the rest of the chain after it is skipped the same way`;
+  where (`A type is written T | undefined`) -> `The value is optional: it may be a T or left unset`;
+  where (`A parameter is written x?: T`) -> `Its type is T | undefined, and a caller may leave it out`;
+  where (`null or undefined is compared with ==`) -> `Each equals only itself: null == undefined is false`;
+  @test({ input = undefined, expect = undefined });
+  @test({ input = null, expect = null });
+}

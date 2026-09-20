@@ -1,0 +1,35 @@
+use "../prelude/builtin";
+use "./target";
+
+/// A target whose outputs are source code in one language. The extending trait says what each
+/// kind of declaration becomes and what each builtin of the standard library is bound to; this
+/// trait says that it must, and how the result is judged.
+trait targetLanguage extends target: `A target that is a programming language: every kind of declaration has a spelling in it` {
+  $language: `The language and edition, as its own tools name it` = string;
+  $fileExtension: `The extension of a source file of the language, without the dot` = string;
+  $nativeEcosystem: `The ecosystem native dependencies come from, as elfie.json spells it` = string;
+
+  // Kinds
+  where (`A d declaration is built`) -> `It becomes the type the extending trait says a data becomes, with one field or method per member, and its criteria are satisfied by that type`;
+  where (`A fn declaration is built`) -> `It becomes the function the extending trait says a fn becomes, whose body satisfies every criterion and test`;
+  where (`A function declaration is built`) -> `It is translated statement by statement into the extending trait's spelling of a function, with nothing added`;
+  where (`A trait declaration is built`) -> `It emits nothing of its own; the members it adds become fields or methods of each entity that carries it, and its criteria become that entity's`;
+  where (`A type or enum declaration is built`) -> `It becomes the nearest equivalent the extending trait names for a structural type or a set of named values`;
+  where (`An alias declaration is built`) -> `It becomes a second name for what it names, in the extending trait's spelling of one`;
+  where (`An external declaration is built`) -> `It is bound to what the native dependency it names provides, as the extending trait says`;
+  where (`A @test is built`) -> `It becomes one test in the language's own test framework, placed where the extending trait says`;
+  where (`An acceptance criterion can be checked mechanically`) -> `It becomes one test named after its entity, marked with the entity's name`;
+
+  // Standard library
+  where (`A data carrying [[builtin]] is used`) -> `Its instances are the native type the extending trait names for it, and each signature member is the native operation the extending trait names`;
+  where (`A fn carrying [[builtin]] is called`) -> `The call is the native function the extending trait names for it; the fn is never generated`;
+  where (`A member of a builtin data is written out in full`) -> `It is translated where it is used, or once into one shared module of the target that every unit may call`;
+  where (`The extending trait names no native binding for a builtin the unit uses`) -> `The compiler stops on that unit and names the builtin`;
+
+  // Dependencies
+  where (`The project's elfie.json names a native dependency of [[targetLanguage.nativeEcosystem]]`) -> `It is available to every output at the version named, and nothing outside elfie.json's native list is required`;
+
+  // Quality
+  where (`A unit's outputs are written`) -> `The code builds, its tests pass, and its lints are clean by the language's standard tools, with no warnings`;
+  where (`An output file is written`) -> `Its name ends in a dot and [[targetLanguage.fileExtension]]`;
+}

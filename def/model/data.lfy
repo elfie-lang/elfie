@@ -2,6 +2,10 @@ use "../grammar/rules/expression";
 use "../grammar/rules/statement";
 use "../lexer/data";
 use "../parser/data";
+use "elfie/criteria/criterion" as Criteria;
+use "elfie/prelude/entity" as Prelude;
+use "elfie/prelude/fn" as Functions;
+use "elfie/prelude/trait" as Traits;
 
 enum Layer: `The three layers of every entity, plus the two ways of pointing at an entity itself` {
   value = `value`,
@@ -12,20 +16,10 @@ enum Layer: `The three layers of every entity, plus the two ways of pointing at 
   previous = `the entity the previous statement declared`,
 }
 
-enum ContextProperty: `Every context property; a name after the context accessor must be one of these` {
-  identifier = `identifier`,
-  definition = `definition`,
-  _type = `type`,
-  acceptanceCriteria = `acceptanceCriteria`,
-  parameters = `parameters`,
-  output = `output`,
-  entities = `entities`,
-  extenders = `extenders`,
-  references = `references`,
-  like = `like`,
-  test = `test`,
-  tests = `tests`,
-  itemType = `itemType`,
+enum Origin: `Where a file comes from, which decides what its file scope's parent is` {
+  program = `program`,
+  library = `library`,
+  prelude = `prelude`,
 }
 
 enum SymbolKind: `What kind of declaration a symbol came from` {
@@ -59,7 +53,9 @@ d Symbol: `A name bound to an entity in one scope` {
 d Scope: `A region in which names resolve` {
   @acceptanceCriteria
     .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent` })
-    .add({ behavior = `A file scope has no parent and also holds the symbols its use statements import` })
+    .add({
+      behavior = `A file scope also holds the symbols its use statements import, after its own; its parent is the prelude scope, or none for a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
+    })
     .add({
       behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`,
     });
@@ -76,47 +72,40 @@ d Applied: `One trait on one entity` {
 
 // Context
 
-d Criterion: `One acceptance criterion as written, with the entity it came from` {
-  $situation: `situation` = string | string[] | undefined;
-  $behavior: `behavior` = string | string[] | undefined;
-  $sideEffects: `sideEffects` = string[] | undefined;
+// Decision: the prelude declares what every entity is seen as (Entity, Trait, Function,
+// Criterion, Test); the model extends those and keeps only what the binder needs internally,
+// overriding a member where its own record is richer than the prelude's. The model's names
+// shadow the prelude's in every file that uses this one, without a problem.
+
+/// The prelude's [[Criteria.Criterion]] with the contributor held as the entity itself, where
+/// the prelude types it as object.
+d Criterion extends Criteria.Criterion: `One acceptance criterion as written, with the entity it came from` {
   $contributor: `The entity whose body holds it: the entity itself or one of its traits` = Entity;
 }
 
-d Test: `One test` {
-  $input: `Input for the test (parameters for functions, value otherwise)` = @parameters ?? @type;
-  $expect: `Expected output for the test` = @output ?? @type;
-}
+/// The prelude's [[Criteria.Test]], declared here too for the files that take it from the model.
+d Test extends Criteria.Test: `One test, as the prelude declares it` {}
 
-d Entity: `A declared thing seen through its context layer` {
-  $identifier: `The declared name; undefined when anonymous` = string | undefined;
-  $definition: `The description provided for this entity` = string | undefined;
-  $type: `The declared or inferred type` = Entity | undefined;
-  $acceptanceCriteria: `Acceptance criteria specifying Own criteria first, then each trait's in application order` = Criterion[];
-  $traits: `Every trait applied to it, direct or inherited, in application order` = Applied[];
-  $references: `Every entity referenced via a [[Reference]] in definition, documentation, or value` = Usage[];
-
-  $like: `ContextProperty like: a prompt that describes an instance of [[.]]` = (prompt: string) => @type;
-  $test: `ContextProperty test: adds cases this entity must satisfy` = (...tests: Test[]) => @;
-  $tests: `ContextProperty tests: list of all added tests` = Test[];
+/// The prelude's [[Prelude.Entity]] with what the binder keeps: its criterion, applied trait,
+/// and usage records are richer than [[Prelude.Entity.acceptanceCriteria]],
+/// [[Prelude.Entity.traits]], and [[Prelude.Entity.references]], so those three are overridden.
+d Entity extends Prelude.Entity: `A declared thing seen through its context layer` {
+  $acceptanceCriteria: `Own criteria first, then each trait's in application order` = Criterion[];
+  $traits: `Every trait applied to it, direct or inherited, in application order, each with what applied it` = Applied[];
+  $references: `Every use of a [[Reference]] in its definition, documentation, or value` = Usage[];
 
   @acceptanceCriteria
     .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)` });
 }
 
-d ListEntity extends Entity: `A declared list seen through its context layer` {
-  $itemType: `What the list holds` = Entity;
+/// The prelude's [[Functions.Function]] with the parameters held as symbols, whose entities are
+/// [[Functions.Function.parameters]].
+d FnEntity extends Functions.Function: `A declared fn or function seen through its context layer` {
+  $parameters: `The symbols of its parameters, in declaration order` = Symbol[];
 }
 
-d FnEntity extends Entity: `A declared fn seen through its context layer` {
-  $parameters: `ContextProperty parameters: parameters` = Symbol[];
-  $output: `ContextProperty output: the declared return type` = Entity;
-}
-
-d TraitEntity extends Entity: `A declared trait seen through its context layer` {
-  $entities: `ContextProperty entities: everything the trait was applied to, directly or by inheritance` = Entity[];
-  $extenders: `ContextProperty extenders: every trait that names it in an [[ExtendsClause]]` = Entity[];
-}
+/// The prelude's [[Traits.Trait]], with nothing added.
+d TraitEntity extends Traits.Trait: `A declared trait seen through its context layer, as the prelude declares it` {}
 
 // Tracking
 
@@ -136,6 +125,7 @@ d Source: `One file to bind, with its [[Use]] statements already resolved` {
   $path: `The file's path, as [[Token.file]] holds it` = string;
   $tree: `The parse of the file` = Tree;
   $uses: `The path each [[Use]] in the tree refers to, in the order the uses appear; undefined where it refers to nothing` = (string | undefined)[];
+  $origin: `[[Origin.prelude]] for the main file of the package elfie, [[Origin.library]] for its other files, [[Origin.program]] for every other file` = Origin;
 }
 
 d Model: `The program, queryable` {

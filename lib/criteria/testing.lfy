@@ -1,0 +1,8 @@
+use "../prelude/entity";
+
+/// How the tests an entity carries, and the values its like describes, reach generated code.
+trait tested: `Carries tests that generated code must pass` {
+  where (`The entity has tests`) -> `Each of [[Entity.tests]] becomes one test of the target's test framework, calling the entity with the input and checking the result against the expect`;
+  where (`A test's input or expect is a call of [[Entity.like]] with a prompt`) -> `Any value the prompt describes satisfies it, and the generated test checks what the prose says rather than one fixed value`;
+  where (`Generated code runs`) -> `[[Entity.like]] is never executed at runtime; the compiler evaluates it and only the value it chose is written`;
+}

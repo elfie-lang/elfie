@@ -9,7 +9,7 @@ use "./data";
 
 trait scoped: `Owns a scope` {
   with Scope {
-    where (`A [[Node]] for {{@identifier}} is bound`) -> `A [[Scope]] is created whose parent is the scope of the nearest [[scoped]] ancestor, or null for [[SourceFile]], and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
+    where (`A [[Node]] for {{@identifier}} is bound`) -> `A [[Scope]] is created whose parent is the scope of the nearest [[scoped]] ancestor, or, for [[SourceFile]], the prelude scope or null as the binder's declare pass says, and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
   }
 }
 

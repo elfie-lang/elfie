@@ -1,0 +1,11 @@
+use "./builtin";
+use "./entity";
+use "./kinds";
+
+d Function is builtin extends Entity: `A fn or function seen through its context layer` {
+  $parameters: `Its parameters in declaration order` = Parameter[];
+  $output: `What the type after the arrow resolves to, or the inferred type of what it returns` = Entity;
+  $agentic: `Whether the body is generated from criteria (fn) rather than written (function)` = boolean;
+  where (`A test call is bound on its context`) -> `Each test's input is the argument list, one value per parameter in order, and its expect is what the call returns`;
+  where (`A documentation line above the declaration begins with a parameter's name and a colon`) -> `The rest of that line describes that parameter`;
+}

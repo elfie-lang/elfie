@@ -1,24 +1,68 @@
+use "elfie/target/language";
+use "elfie/target/layout";
+
 /// The Rust target: what the compiler produces for this repository. Applied to global, it
 /// marks every entity of every project file as built for Rust.
-trait rust: `Built as Rust 2024 in a Cargo workspace of crates` {
+trait rust extends targetLanguage, cratePerPrefix(
+  { lsp = "crates/elfie-lsp/src", mcp = "crates/elfie-mcp/src", cli = "crates/elfie-cli/src" },
+  "crates/elfie-core/src",
+), modulePerFile("", "rs"): `Built as Rust 2024 in a Cargo workspace of crates` {
+  .language = "Rust 2024";
+  .fileExtension = "rs";
+  .nativeEcosystem = "cargo";
+  .outputDirectory = "crates";
+  .markerComment = "//";
+
   // Layout
   @acceptanceCriteria
-    .add({ behavior = `A unit whose stem begins with lsp is written under crates/elfie-lsp/src, one beginning with mcp under crates/elfie-mcp/src, one beginning with cli under crates/elfie-cli/src, and every other unit under crates/elfie-core/src`, })
-    .add({ behavior = `Within that directory a stem of main gives mod.rs, or lib.rs for the crate root, or main.rs for the cli crate, and any other stem gives the stem plus .rs, with a mod declaration in the parent module`, })
-    .add({ behavior = `A marker is a line comment reading // @lfy followed by the source path relative to the repository root, a colon, and the line`, });
+    .add({
+      behavior = `Within its crate's directory a stem of main gives mod.rs, or lib.rs for the crate root, or main.rs for the cli crate`,
+    })
+    .add({
+      behavior = `A marker is a line comment reading // @lfy followed by the source path relative to the repository root, a colon, and the entity's name`,
+    });
 
   // Kinds
   @acceptanceCriteria
-    .add({ behavior = `A d declaration becomes a struct, or an enum when its members are alternatives; a type declaration a struct; an enum declaration an enum with a method giving each member's value`, })
-    .add({ behavior = `A fn declaration becomes a pub fn whose body satisfies every criterion and test; a function declaration is translated statement by statement`, })
-    .add({ behavior = `A trait declaration becomes nothing of its own; the members it adds become fields or methods of each entity that carries it, and its criteria become that entity's`, })
-    .add({ behavior = `An external declaration is bound to the crate its native dependency names`, })
-    .add({ behavior = `Every @test case becomes a #[test], and every acceptance criterion that a test can check becomes one, marked with the line of the criterion`, });
+    .add({
+      behavior = `A d declaration becomes a struct, or an enum when its members are alternatives; a type declaration a struct; an enum declaration an enum with a method giving each member's value`,
+    })
+    .add({
+      behavior = `A fn declaration becomes a pub fn whose body satisfies every criterion and test; a function declaration is translated statement by statement`,
+    })
+    .add({
+      behavior = `A trait declaration becomes nothing of its own; the members it adds become fields or methods of each entity that carries it, and its criteria become that entity's`,
+    })
+    .add({ behavior = `An external declaration is bound to the crate its native dependency names` })
+    .add({
+      behavior = `Every @test case becomes a #[test], and every acceptance criterion that a test can check becomes one, marked with the line of the criterion`,
+    });
+
+  // Standard library
+  @acceptanceCriteria
+    .add({
+      behavior = `List is Vec<T>; String is String, or &str where a value is only read; Boolean is bool; Nullish is Option<T>`,
+    })
+    .add({
+      behavior = `Number is f64, or usize where a criterion says the value counts things: a length, an index, a line, or a column`,
+    })
+    .add({
+      behavior = `Object is serde_json::Map where it holds JSON, and BTreeMap<String, _> where the use names the value type`,
+    })
+    .add({
+      behavior = `Path is std::path; the file functions are std::fs; Json is serde_json; run and stream are std::process::Command through sh -c`,
+    })
+    .add({
+      behavior = `Instant is std::time::SystemTime, formatted and parsed by hand as RFC 3339 the way now_rfc3339 in elfie-core does; chrono is not used`,
+    })
+    .add({
+      behavior = `A builtin fn or member is never generated, only called; a member of a builtin data written out in full is translated where it is used`,
+    });
 
   // Quality
   @acceptanceCriteria
-    .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings`, })
-    .add({ behavior = `Nothing outside the target's output directory is written`, });
+    .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })
+    .add({ behavior = `Nothing outside the target's output directory is written` });
 }
 
 rust.apply(global);

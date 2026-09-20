@@ -1,0 +1,36 @@
+use "../prelude/builtin";
+use "../prelude/entity";
+use "./list";
+
+// Decision: every member test puts the receiver first in input, then the operation's arguments.
+// Decision: a template resolves where it is written, so a member never takes a scope; text renders in the scope the template was bound in.
+
+d Template is builtin: `Text with references and evaluated expressions` {
+  where (`A template is written`) -> `Backticks hold text, references such as [[Template.references]] in double square brackets, and executions in double braces`;
+  where (`A reference names an entity, such as Name or Name.member`) -> `It resolves in the scope the template is written in, and check reports one that resolves to nothing`;
+  where (`An execution holds an expression`) -> `It is evaluated at bind time in the scope the template is written in`;
+  where (`Double brackets or braces are wanted as text`) -> `A backslash before them, such as \[[, keeps them as written`;
+  where (`A template holds neither a reference nor an execution`) -> `It is a string`;
+
+  $raw: `The text as written, references and executions included` = string;
+  with Template$raw {
+    @test({ input = [`a [[Template]] b`], expect = "a [[Template]] b" });
+    @test({ input = [`{{1 + 1}}`], expect = "{{1 + 1}}" });
+  }
+  $references: `Every entity a reference names, in order of appearance` = Entity[];
+  with Template$references {
+    where (`The same entity is referenced twice`) -> `It is listed twice`;
+    @test({
+      input = [`[[Template]] and [[Template.raw]]`],
+      expect = Entity[]@like(`The entity Template, then its member raw`),
+    });
+    @test({ input = [`plain`], expect = [] });
+  }
+  $text: `The rendered text` = () => string;
+  with Template$text {
+    where (`A reference is rendered`) -> `It becomes the referenced entity's identifier, or the owner's identifier, a dot, and the member's name`;
+    where (`An execution is rendered`) -> `It becomes its value's text, as [[List.join]] would write one item`;
+    @test({ input = [`see [[Template.raw]]`], expect = "see Template.raw" });
+    @test({ input = [`{{1 + 1}} items`], expect = "2 items" });
+  }
+}

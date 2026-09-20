@@ -9,7 +9,7 @@ d NativeDependency: `Something the generated code needs from the target's own ec
 
 d Package: `Elfie source loaded from outside the project` {
   $identifier: `The name a [[Use]] refers to it by` = string;
-  $root: `Its directory, relative to [[Workspace.root]]` = string;
+  $root: `Its directory, relative to [[Workspace.root]]; absolute for the package elfie when it is found outside the project` = string;
   $nativeDependencies: `What code generated from it requires` = NativeDependency[];
 }
 

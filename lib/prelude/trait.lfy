@@ -1,0 +1,29 @@
+use "./builtin";
+use "./entity";
+use "./kinds";
+
+// Decision: member tests put the receiver first in input.
+
+d Trait is builtin extends Entity: `A trait seen through its context layer: what carries it, what extends it, and how to apply it` {
+  $entities: `Everything the trait was applied to, directly or by inheritance, in file then application order` = Entity[];
+  $extenders: `Every trait that names it in an extends clause` = Trait[];
+  $apply: `Applies the trait to a target with arguments for its parameters, and returns the trait` = (
+    target: Any,
+    ...arguments: Any[],
+  ) => Trait;
+  with Trait$apply {
+    where (`The target is an entity`) -> `The trait is applied to it; when the target is a list of entities, to each of them`;
+    where (`The trait is applied to an entity`) -> `Its parameters are bound to the arguments; then the members of its body join the entity's scope, its value setters are evaluated as the entity's values, and its criteria are appended to the entity's acceptance criteria with the trait as their contributor, as the binder's apply pass says`;
+    where (`The target is global`) -> `Every entity of every file of the project carries the trait`;
+    where (`The trait has an extends clause`) -> `Each extended trait is applied to the target too, up the whole chain, with its arguments evaluated from the extending trait's parameters`;
+    @test({
+      input = [Trait@like(`a trait t with a member x of type string`), Entity@like(`a data A with no members`)],
+      expect = Trait@like(`t, with A among its entities and A now having the member x`),
+    });
+    @test({
+      input = [Trait@like(`a trait b that extends a trait a`), [Entity@like(`a data C`), Entity@like(`a data D`)]],
+      expect = Trait@like(`b, with C and D among its entities, both carrying a as well`),
+    });
+  }
+  where (`A with block naming another entity appears inside the trait's body`) -> `Its criteria are attached to that entity, once for each entity the trait is applied to, with the trait as their contributor`;
+}

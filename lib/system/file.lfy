@@ -1,0 +1,141 @@
+use "../prelude/builtin";
+use "./time";
+
+// Decision: every member test puts the receiver first in input, then the arguments.
+// Decision: there is no entity for the file as a whole to carry shared rules, so each fn says
+// them itself: a path is relative to the current directory unless it is absolute, and nothing
+// outside the path given is touched.
+
+d Stat is builtin: `What the file system knows about one path` {
+  $size: `Its size in bytes; 0 for a directory` = number;
+  $modified: `When its content last changed` = Instant;
+  $isDirectory: `Whether it is a directory rather than a file` = boolean;
+}
+
+/// path: the file to read, relative to the current directory unless absolute
+fn read(path: string) is builtin: `The text of a file; undefined when it cannot be read` => string | undefined {
+  where (`A file exists at [[path]] and can be read`) -> `Returns its whole content decoded as UTF-8`;
+  where (`Nothing is at [[path]], it is a directory, it cannot be read, or its bytes are not UTF-8`) -> `Returns undefined`;
+  where (`Any call`) -> `Nothing outside [[path]] is touched and nothing is written`;
+  @test(
+    { input = [string@like(`The path of a file holding hello`)], expect = `hello` },
+    { input = [string@like(`A path where nothing exists`)], expect = undefined },
+  );
+}
+
+/// path: the file to write, relative to the current directory unless absolute
+/// text: what the file holds afterwards
+fn write(path: string, text: string) is builtin: `Whether text was written as the whole content of a file` => boolean {
+  where (`A file exists at [[path]]`) -> `Its content is replaced by [[text]], encoded as UTF-8`;
+  where (`No file exists at [[path]]`) -> `It is created, with every missing directory above it`;
+  where (`The file or a directory above it cannot be created or written`) -> `Returns false, and whatever was written before the failure may remain`;
+  where (`Any call`) -> `Nothing outside [[path]] and the directories above it is touched`;
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns true when the file holds [[text]] afterwards`,
+      sideEffects = [`The file at [[path]] is written`],
+    });
+  @test(
+    { input = [string@like(`A path under a directory that exists`), `hello`], expect = true },
+    { input = [string@like(`A path under a directory that does not exist`), `hello`], expect = true },
+    { input = [string@like(`A path under a file, which cannot be a directory`), `hello`], expect = false },
+  );
+}
+
+/// path: the file to append to, relative to the current directory unless absolute
+/// text: what is added at the end
+fn append(path: string, text: string) is builtin: `Whether text was added to the end of a file` => boolean {
+  where (`A file exists at [[path]]`) -> `[[text]] is written after its content, encoded as UTF-8, and nothing before it changes`;
+  where (`No file exists at [[path]]`) -> `It is created holding [[text]], with every missing directory above it, as [[write]] would`;
+  where (`The file cannot be created or written`) -> `Returns false`;
+  where (`Any call`) -> `Nothing outside [[path]] and the directories above it is touched`;
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns true when [[text]] is at the end of the file afterwards`,
+      sideEffects = [`The file at [[path]] grows`],
+    });
+  @test(
+    { input = [string@like(`The path of a file holding a`), `b`], expect = boolean@like(`true, and the file holds ab`) },
+    { input = [string@like(`A path where nothing exists`), `b`], expect = boolean@like(`true, and the file holds b`) },
+  );
+}
+
+/// path: what to look for, relative to the current directory unless absolute
+fn exists(path: string) is builtin: `Whether something is at a path` => boolean {
+  where (`A file or a directory is at [[path]]`) -> `Returns true`;
+  where (`Nothing is at [[path]], or it cannot be looked at`) -> `Returns false`;
+  where (`Any call`) -> `Nothing is touched`;
+  @test(
+    { input = [string@like(`The path of a file`)], expect = true },
+    { input = [string@like(`The path of a directory`)], expect = true },
+    { input = [string@like(`A path where nothing exists`)], expect = false },
+  );
+}
+
+/// path: the directory to list, relative to the current directory unless absolute
+/// recursive: whether files in directories under it are listed too
+fn list(path: string, recursive: boolean = false) is builtin: `The files in a directory, as paths relative to it, sorted` => string[] {
+  where (`[[path]] is a directory`) -> `Returns the path of each file directly in it, relative to [[path]], in ascending text order; directories are not listed`;
+  where (`[[recursive]] is true`) -> `Files in every directory under [[path]] are included, each still relative to [[path]] with / between the segments, in the same order`;
+  where (`[[path]] is not a directory, or cannot be read`) -> `Returns an empty list`;
+  where (`Any call`) -> `Nothing outside [[path]] is touched and nothing is written`;
+  @test(
+    {
+      input = [string@like(`A directory holding b.lfy, a.lfy, and a directory sub holding c.lfy`)],
+      expect = [`a.lfy`, `b.lfy`],
+    },
+    { input = [string@like(`The same directory`), true], expect = [`a.lfy`, `b.lfy`, `sub/c.lfy`] },
+    { input = [string@like(`A path where nothing exists`)], expect = [] },
+  );
+}
+
+/// path: the directory to create, relative to the current directory unless absolute
+fn createDirectory(path: string) is builtin: `Whether a directory exists at a path afterwards` => boolean {
+  where (`No directory is at [[path]]`) -> `It is created, with every missing directory above it`;
+  where (`A directory is already at [[path]]`) -> `Nothing changes and the result is true`;
+  where (`A file is at [[path]], or a directory cannot be created`) -> `Returns false`;
+  where (`Any call`) -> `Nothing outside [[path]] and the directories above it is touched`;
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns true when a directory is at [[path]] afterwards`,
+      sideEffects = [`Directories are created`],
+    });
+  @test(
+    { input = [string@like(`A path two levels under a directory that exists`)], expect = true },
+    { input = [string@like(`The path of a directory that exists`)], expect = true },
+    { input = [string@like(`The path of a file`)], expect = false },
+  );
+}
+
+/// path: what to describe, relative to the current directory unless absolute
+fn stat(path: string) is builtin: `What the file system knows about a path; undefined when nothing is there` => Stat | undefined {
+  where (`A file or a directory is at [[path]]`) -> `Returns its [[Stat]]`;
+  where (`Nothing is at [[path]], or it cannot be looked at`) -> `Returns undefined`;
+  where (`Any call`) -> `Nothing is touched`;
+  @test(
+    {
+      input = [string@like(`The path of a file holding five bytes`)],
+      expect = Stat@like(`size 5, isDirectory false, modified when it was written`),
+    },
+    { input = [string@like(`The path of a directory`)], expect = Stat@like(`isDirectory true`) },
+    { input = [string@like(`A path where nothing exists`)], expect = undefined },
+  );
+}
+
+/// path: the file to remove, relative to the current directory unless absolute
+fn remove(path: string) is builtin: `Whether one file was removed` => boolean {
+  where (`A file is at [[path]]`) -> `It is removed and the result is true`;
+  where (`A directory is at [[path]]`) -> `Nothing changes and the result is false; a directory is never removed`;
+  where (`Nothing is at [[path]], or the file cannot be removed`) -> `Returns false`;
+  where (`Any call`) -> `Nothing outside [[path]] is touched`;
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns true when the file is gone because of this call`,
+      sideEffects = [`The file at [[path]] is deleted`],
+    });
+  @test(
+    { input = [string@like(`The path of a file`)], expect = true },
+    { input = [string@like(`The path of a directory`)], expect = false },
+    { input = [string@like(`A path where nothing exists`)], expect = false },
+  );
+}

@@ -1,0 +1,30 @@
+use "../criteria/criterion";
+use "./builtin";
+
+// Decision: member tests put the receiver first in input.
+
+d Entity is builtin: `What every declared thing is seen as through its context layer` {
+  $identifier: `The declared name; undefined when anonymous` = string | undefined;
+  $definition: `The description provided for it; undefined when there is none` = string | undefined;
+  $type: `The declared or inferred type; the entity itself for a data, trait, type, or enum` = Entity | undefined;
+  $acceptanceCriteria: `Its own criteria first, then each trait's in application order` = Criterion[];
+  $traits: `Every trait applied to it, direct or inherited, in application order` = Entity[];
+  $references: `Every entity referenced with a bracketed reference in its definition, documentation, or value` = Entity[];
+  $itemType: `What a list-typed entity holds; undefined otherwise` = Entity | undefined;
+  $like: `A value of its type that a prompt describes` = (prompt: string) => @type;
+  with Entity$like {
+    where (`Called with a prompt`) -> `Yields a value of [[Entity.type]] that the prompt describes, chosen by the compiler`;
+    @test({ input = [string, `the empty string`], expect = "" });
+  }
+  $test: `Adds cases the entity must satisfy, and returns the entity` = (...tests: Test[]) => @;
+  with Entity$test {
+    where (`Called with tests`) -> `Appends each argument to [[Entity.tests]] in order and yields the entity`;
+    @test({
+      input = [string, { input = "a", expect = "a" }],
+      expect = string@like(`string, with that one test as the last of its tests`),
+    });
+  }
+  $tests: `Every test added, in order` = Test[];
+  where (`The context accessor is followed by a name on any entity`) -> `The name resolves among these members, and the layer alone is the entity itself`;
+  where (`A bracketed reference appears in its definition, documentation, or value`) -> `The referenced entity is added to [[Entity.references]]`;
+}

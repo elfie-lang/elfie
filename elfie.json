@@ -3,6 +3,9 @@
   "source": "def",
   "output": "src",
   "dependencies": {
+    "elfie": {
+      "root": "lib"
+    },
     "rust": {
       "root": "targets/rust"
     }

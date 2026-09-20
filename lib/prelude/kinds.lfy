@@ -1,0 +1,22 @@
+use "./builtin";
+use "./entity";
+
+d Any is builtin: `Any value; the stand-in where the language has no generics` {}
+
+d Data is builtin extends Entity: `A d declaration seen through its context layer` {}
+d Type is builtin extends Entity: `A type declaration seen through its context layer` {}
+d Enum is builtin extends Entity: `An enum declaration seen through its context layer` {
+  $members: `Its named values in declaration order` = Entity[];
+}
+d Member is builtin extends Entity: `A member of a data or trait seen through its context layer` {
+  $owner: `The entity that declares it` = Entity;
+}
+d Parameter is builtin extends Entity: `A parameter of a function seen through its context layer` {
+  $optional: `Whether a call may leave it out` = boolean;
+  $defaultValue: `The value it takes when left out; undefined when there is none` = Any | undefined;
+  $spread: `Whether it takes the rest of the arguments as a list` = boolean;
+}
+d Variable is builtin extends Entity: `A const or let declaration seen through its context layer` {}
+d Module is builtin extends Entity: `A file brought in as one name seen through its context layer` {
+  $entities: `Every entity its file declares in its file scope` = Entity[];
+}

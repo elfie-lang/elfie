@@ -5,6 +5,16 @@ use "../grammar/traits";
 use "../parser/data";
 use "./data";
 use "./traits";
+use "elfie/criteria/criterion" as Criteria;
+use "elfie/prelude/entity" as Prelude;
+use "elfie/prelude/fn" as Functions;
+use "elfie/prelude/kinds" as Kinds;
+use "elfie/prelude/trait" as Traits;
+use "elfie/values/list" as Lists;
+use "elfie/values/number" as Numbers;
+use "elfie/values/object" as Objects;
+use "elfie/values/string" as Strings;
+use "elfie/values/template" as Templates;
 
 fn bind(sources: Source[]): `Build the model of a program from the resolved files of all of it` => Model {
   // Passes
@@ -28,6 +38,20 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       ],
     })
     .add({
+      behavior = [
+        `The prelude scope is the file scope of the [[Source]] whose [[Source.origin]] is [[Origin.prelude]]: its own symbols and the symbols its [[Use]]s import`,
+        `The parent of the file scope of every [[Source]] whose [[Source.origin]] is [[Origin.program]] is the prelude scope; the file scope of a [[Source]] whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]] has no parent`,
+      ],
+    })
+    .add({
+      situation = `No [[Source]] has [[Origin.prelude]] as its [[Source.origin]]`,
+      behavior = `No file scope has a parent, and a name only the prelude would give is found nowhere`,
+    })
+    .add({
+      situation = `A name declared in a file scope is also in the prelude scope`,
+      behavior = `The file's symbol shadows the prelude's throughout that file, and no [[Problem]] is added`,
+    })
+    .add({
       situation = `An [[ExpressionStatement]] in a data or trait body begins with [[Current]] using [[ScopeAccessor]]`,
       behavior = `It declares a member whose description is the [[Definition]] on it and whose type is the right side of its [[Assignment]]`,
     })
@@ -46,6 +70,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     .add({
       situation = `A scope belongs to a declaration, a [[With]], or any other node`,
       behavior = `Its current entity is, in the same order, the declared entity, the entity the [[With]] expression resolves to, or the parent scope's`,
+    })
+    .add({
+      situation = `The expression of a [[With]] is a [[Member]] using [[ScopeAccessor]], so it resolves to a member symbol`,
+      behavior = `The current entity of the scope the [[With]] owns is that member's entity, so criteria and tests inside the block attach to the member and not to the entity that declares it`,
     });
 
   // use
@@ -65,11 +93,8 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
   // Apply
   @acceptanceCriteria
     .add({
-      situation = [
-        `A [[Call]] whose left is a [[Member]] named apply on an expression that resolves to a trait is bound`,
-        `[[Member]] apply is bound on an expression that resolves to a trait`,
-      ],
-      behavior = `The trait is applied to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
+      situation = `A [[Call]] is bound whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
+      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
     })
     .add({
       situation = `An applied trait has an [[ExtendsClause]]`,
@@ -101,16 +126,27 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `It resolves to the first match walking from its scope outward`,
     })
     .add({
+      behavior = [
+        `The kind data of an entity is the prelude data for what it is: [[Prelude.Entity]] for every entity, and also [[Traits.Trait]] for a trait, [[Functions.Function]] for a fn or function, [[Kinds.Data]] for a data, [[Kinds.Type]] for a type, [[Kinds.Enum]] for an enum, [[Kinds.Member]] for a member, [[Kinds.Parameter]] for a parameter, [[Kinds.Variable]] for a variable, and [[Kinds.Module]] for a module`,
+        `The base data of a value is [[Strings.String]] for a string, [[Numbers.Number]] for a number, [[Numbers.Boolean]] for a boolean, [[Objects.Object]] for an object, [[Lists.List]] for any list, [[Templates.Template]] for a template, and [[Functions.Function]] for a function value`,
+      ],
+    })
+    .add({
       situation = [
         `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
       ],
       behavior = [
-        `With [[ValueAccessor]] or [[OptionalValueAccessor]], the [[MemberName]] resolves in the value of the left side: a module's symbols, an entity's members, or an object's keys`,
+        `With [[ValueAccessor]] or [[OptionalValueAccessor]], the [[MemberName]] resolves in the value of the left side: a module's symbols; an entity's own members first, then those members of its kind data whose value is a function; an object's keys, then the members of [[Objects.Object]]; or, for a value of any other base data, that data's members`,
         `With [[ScopeAccessor]], the [[MemberName]] resolves to the member symbol itself, or to the entity's scope when there is no name`,
-        `With [[ContextAccessor]], the [[MemberName]] must be the value of a [[ContextProperty]], not its name, and yields that property`,
+        `With [[ContextAccessor]], the [[MemberName]] resolves in the members of the entity's kind data and yields that member`,
+        `With [[ContextAccessor]], a [[MemberName]] that is a member of a kind data other than the entity's yields undefined for it, without a [[Problem]], so [[Criteria.Test.input]] can read [[Functions.Function.parameters]] of anything`,
         `With [[ParentScopeAccessor]], it yields the scope that contains the left side's scope, or undefined when there is none`,
         `A keyword is a valid [[MemberName]] in this position only`,
       ],
+    })
+    .add({
+      situation = `A [[Member]] named add is bound with [[ValueAccessor]] on [[Prelude.Entity.acceptanceCriteria]] reached with [[ContextAccessor]]`,
+      behavior = `It is the add call the criteria of [[Criteria.Criterion]] describe: it has no symbol and adds no [[Problem]]`,
     })
     .add({
       situation = `A [[Dereference]] is bound`,
@@ -152,17 +188,19 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `[[Entity.type]] is a list`,
-      behavior = `[[ListEntity.itemType]] is what that list holds, and is undefined otherwise`,
+      behavior = `[[Entity.itemType]] is what that list holds, and is undefined otherwise`,
     })
     .add({
       situation = `An add [[Call]] on the entity's context, or a [[Where]], is bound in its body or in a [[With]] whose current it is`,
       behavior = `One [[Criterion]] is appended to [[Entity.acceptanceCriteria]]`,
     })
     .add({
-      situation = `A test [[Call]] on the entity's context is bound`,
-      behavior = `Each of its arguments is appended to [[Entity.tests]] as one [[Test]]`,
+      situation = `A [[Call]] of [[Prelude.Entity.test]] on the entity's context is bound`,
+      behavior = `Each of its arguments is appended to [[Prelude.Entity.tests]] as one [[Test]]`,
     })
-    .add({ behavior = `[[Entity.like]] takes a prompt and yields a value of [[Entity.type]] that the prompt describes` });
+    .add({
+      behavior = `[[Prelude.Entity.like]] takes a prompt and yields a value of [[Entity.type]] that the prompt describes`,
+    });
 
   @test(
     {
@@ -191,6 +229,36 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     {
       input = [[Source@like(`a.lfy, parsed from: trait a {} trait b extends a {} d C is b {}`)]],
       expect = Model@like(`[[TraitEntity.entities]] of a holding C alone and [[TraitEntity.extenders]] of a holding b`),
+    },
+    {
+      input = [
+        [
+          Source@like(
+            `a.lfy, parsed from: d X { $m: \`d\` = string; with X$m { where (\`s\`) -> \`b\`; @test({ input = "a", expect = "a" }); } }`,
+          ),
+        ],
+      ],
+      expect = Model@like(
+        `The entity of member m of X carrying one [[Criterion]] whose situation is s and behavior is b, and one [[Test]]; X carrying no criteria and no tests; no problems`,
+      ),
+    },
+    {
+      input = [
+        [
+          Source@like(`lib/main.lfy of the package elfie, with [[Origin.prelude]], using ./prelude/entity`),
+          Source@like(`lib/prelude/entity.lfy, with [[Origin.library]], declaring d Entity with a member identifier`),
+          Source@like(`a.lfy, with [[Origin.program]], parsed from: d A {} const n = A@identifier; const e = Entity;`),
+        ],
+      ],
+      expect = Model@like(
+        `The [[Usage]] of Entity in a.lfy resolving to the prelude's symbol through the parent of a.lfy's file scope; the [[Usage]] of identifier resolving to that member of Entity; no problems`,
+      ),
+    },
+    {
+      input = [[Source@like(`a.lfy, with [[Origin.program]], parsed from: trait t {} d A {} t.apply(A);`)]],
+      expect = Model@like(
+        `apply resolving to [[Traits.Trait.apply]] through t's kind data; A carrying one [[Applied]] for t; no problems`,
+      ),
     },
   );
 

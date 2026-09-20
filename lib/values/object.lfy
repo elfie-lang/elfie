@@ -1,0 +1,46 @@
+use "../prelude/builtin";
+use "../prelude/kinds";
+
+// Decision: every member test puts the receiver first in input, then the operation's arguments.
+// Decision: keys are strings and keep the order they were first set in; every listing here follows that order.
+
+d Object is builtin: `Keys with values` {
+  where (`An object is written`) -> `Keys and values go in braces, each key set with =, such as { a = 1, b = "x" }`;
+  where (`An object is read with .key or .[key]`) -> `Yields the key's value, or undefined when the key is absent`;
+  where (`A for loop visits an object`) -> `(const k of obj) visits the keys, (const v in obj) the values, and (const v, k from obj) both`;
+
+  $keys: `The keys, in insertion order` = () => string[];
+  with Object$keys {
+    @test({ input = [{ b = 1, a = 2 }], expect = ["b", "a"] });
+    @test({ input = [{}], expect = [] });
+  }
+  $values: `The values, in insertion order` = () => Any[];
+  with Object$values {
+    @test({ input = [{ b = 1, a = 2 }], expect = [1, 2] });
+    @test({ input = [{}], expect = [] });
+  }
+  $entries: `Each key with its value as a two item list, in insertion order` = () => Any[][];
+  with Object$entries {
+    @test({ input = [{ a = 1 }], expect = [["a", 1]] });
+    @test({ input = [{}], expect = [] });
+  }
+  $get: `The value of the key, or undefined when absent` = (key: string) => .[key];
+  with Object$get {
+    @test({ input = [{ a = 1 }, "a"], expect = 1 });
+  }
+  $has: `Whether the key is present, whatever its value` = (key: string) => .keys().includes(key);
+  with Object$has {
+    @test({ input = [{ a = undefined }, "a"], expect = true });
+  }
+  $merge: `A new object with this object's keys and then the other's` = (other: object) => object;
+  with Object$merge {
+    where (`A key is in both`) -> `The other's value wins, and the key keeps its place from this object`;
+    where (`Called`) -> `Neither object is changed`;
+    @test({ input = [{ a = 1, b = 2 }, { b = 3, c = 4 }], expect = { a = 1, b = 3, c = 4 } });
+    @test({ input = [{}, { a = 1 }], expect = { a = 1 } });
+  }
+  $isEmpty: `Whether there are no keys` = () => .keys().length == 0;
+  with Object$isEmpty {
+    @test({ input = [{}], expect = true });
+  }
+}

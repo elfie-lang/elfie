@@ -8,13 +8,16 @@ a parameter or loop variable in scope, or -- per def/model/main.lfy -- the singl
 import re, sys, pathlib, collections
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-FILES = sorted((ROOT / 'def').rglob('*.lfy'))
+import json
+MANIFEST = json.loads((ROOT / 'elfie.json').read_text())
+PACKAGES = {name: ROOT / entry['root'] for name, entry in MANIFEST.get('dependencies', {}).items()}
+FILES = sorted(p for d in [ROOT / 'def', *PACKAGES.values()] for p in d.rglob('*.lfy'))
 
 DECL  = re.compile(r'^(?:ace\s+)?(?:d|trait|type|enum|fn|function|external|const|let)\s+(\w+)', re.M)
 IS    = re.compile(r'^(?:d|external)\s+\w+\s+(?:is|extends)\s+([^:{\n]+)', re.M)
 TEXT  = re.compile(r'^trait\s+(\w+)[^\n]*?\bextends\s+([^:{\n]+)', re.M)
 USE   = re.compile(r'^use\s+"([^"]+)"(?:\s+as\s+(\w+))?\s*;', re.M)
-REF   = re.compile(r'(?<!\\)\[\[([^\]\n]+)\]\]')
+REF   = re.compile(r'(?<!\\)\[\[(&?[A-Za-z_][^\]\n]*)\]\]')  # a reference starts with a name, so [[1, 2], x] in a test is not one
 PARM  = re.compile(r'(?:fn|function|trait)\s+\w*\(([^)]*)\)|\(([^)]*)\)\s*=>')
 LOOP  = re.compile(r'for\s*\(\s*(?:const|let)\s+(\w+)')
 
@@ -41,7 +44,12 @@ for f in FILES:
             rule_entities[m.group(1)] += 1
 
 def resolve(f, p):
-    base = (f.parent / p).resolve()
+    if p.startswith('.'):
+        base = (f.parent / p).resolve()
+    else:
+        head, _, rest = p.partition('/')
+        if head not in PACKAGES: return None
+        base = (PACKAGES[head] / rest).resolve() if rest else PACKAGES[head].resolve()
     for cand in (base.with_suffix('.lfy'), base / 'main.lfy'):
         if cand.exists(): return cand
     return None
@@ -59,6 +67,7 @@ for f in FILES:
         tgt = resolve(f, p)
         if tgt is None: bad_use.append((rel, p)); continue
         body = USE.sub('', texts[f])
+        if not DECL.search(texts[f]): continue   # a file that declares nothing only re-exports
         # an import is also used when it feeds @entities, or when it only applies components
         feeds = '@entities' in body or '.apply(' in texts[tgt]
         if alias:

@@ -14,6 +14,12 @@ use "../parser/data";
 use "../parser/traits";
 use "../workspace/data";
 use "./data";
+use "elfie/prelude/builtin";
+use "elfie/prelude/entity" as Prelude;
+use "elfie/values/list" as Lists;
+use "elfie/values/number" as Numbers;
+use "elfie/values/object" as Objects;
+use "elfie/values/string" as Strings;
 
 // Lookup Queries
 
@@ -146,7 +152,7 @@ fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, 
   // Which tokens
   @acceptanceCriteria
     .add({
-      behavior = `One [[SemanticToken]] per token that spells a declared name, a used name, or a context property; keywords, punctuation, strings, numbers, and comments get none`,
+      behavior = `One [[SemanticToken]] per token that spells a declared name or a used name, a member of a kind data after the [[ContextAccessor]] among them; keywords, punctuation, strings, numbers, and comments get none`,
     })
     .add({ behavior = `Tokens are in position order and never overlap` })
     .add({ situation = `[[file]] is not in [[Workspace.files]]`, behavior = `Returns an empty list` });
@@ -158,8 +164,8 @@ fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, 
     })
     .add({ situation = `The symbol is an alias`, behavior = `The type is that of the entity it is bound to` })
     .add({
-      situation = `The token names a context property after the context accessor`,
-      behavior = `The type is property`,
+      situation = `The token resolves to a member of a kind data or of a base data, as [[Binder.bind]] resolves the [[ContextAccessor]] and the [[ValueAccessor]], or names a member of a kind data other than the entity's`,
+      behavior = `The type is property, whatever the member's value is`,
     })
     .add({ situation = `The token resolves to nothing`, behavior = `The type is variable` })
     .add({
@@ -230,7 +236,14 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
     .add({
       behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`,
     })
-    .add({ behavior = `[[Hover.criteria]] is [[Binder.criteriaOf]] the entity` });
+    .add({
+      behavior = `[[Hover.traits]] is the identifier of each of [[Entity.traits]] in application order, so a native data or fn shows [[builtin]] among them`,
+    })
+    .add({ behavior = `[[Hover.criteria]] is [[Binder.criteriaOf]] the entity` })
+    .add({
+      situation = `[[entity]] is a member of a kind data or of a base data, reached after the [[ContextAccessor]] or a [[ValueAccessor]]`,
+      behavior = `It hovers as any member: kind [[SymbolKind.member]], its range in the library file that declares it, and its own definition and type`,
+    });
 }
 
 fn hoverAt(workspace: Workspace, file: string, position: Position): `Everything shown for the symbol at a position` => Hover | undefined {
@@ -265,7 +278,7 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
     })
     .add({
       situation = `The token is a [[ContextAccessor]]`,
-      behavior = `One completion of kind [[CompletionKind.context]] per [[ContextProperty]], labelled by its value`,
+      behavior = `One completion of kind [[CompletionKind.context]] per member of the kind data of the entity the left side resolves to, as [[Binder.bind]] resolves the [[ContextAccessor]]: those of [[Prelude.Entity]] for every entity, then those of the data for its kind; each labelled by the member's name, with the member's definition as [[Completion.detail]]`,
     })
     .add({
       situation = `The token is a [[ScopeAccessor]]`,
@@ -277,7 +290,7 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
     })
     .add({
       situation = `The token is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
-      behavior = `A module's symbols, an entity's members, an enum's keys, or an object's keys, as the left side is`,
+      behavior = `What [[Binder.bind]] would resolve the [[ValueAccessor]] in, as the left side is: a module's symbols; an entity's own members, then the members of its kind data whose value is a function; an enum's keys; an object's keys, then the members of [[Objects.Object]]; or, for a value that is a string, a number, or a list, the entity's own members and then every member of [[Strings.String]], [[Numbers.Number]], or [[Lists.List]]`,
     })
     .add({
       situation = `The token is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side resolves to nothing`,
@@ -315,7 +328,19 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
         `def/a.lfy`,
         Position@like(`just after the at sign`),
       ],
-      expect = Completion[]@like(`One per [[ContextProperty]] value, identifier and definition among them, no A or y`),
+      expect = Completion[]@like(
+        `One per member of [[Prelude.Entity]], identifier, definition, and like among them, each of kind [[CompletionKind.context]] with the member's definition as detail; no A or y`,
+      ),
+    },
+    {
+      input = [
+        Workspace@like(`One file a.lfy reading: const s = "x"; const y = s.`),
+        `def/a.lfy`,
+        Position@like(`just after the dot`),
+      ],
+      expect = Completion[]@like(
+        `One per member of [[Strings.String]], length and trim among them, each of kind [[SymbolKind.member]]; no s or y`,
+      ),
     },
     {
       input = [Workspace@like(`One file a.lfy reading: trait t {} d A is `), `def/a.lfy`, Position@like(`at the end`)],

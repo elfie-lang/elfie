@@ -5,6 +5,10 @@ use "../model/data";
 use "../model/main" as Binder;
 use "../parser/main" as Parser;
 use "./data";
+use "elfie/system/file" as FileSystem;
+use "elfie/system/path";
+use "elfie/system/process" as Process;
+use "elfie/target/target";
 
 fn load(root: string): `Load a project from disk and bind it` => Workspace {
   // Passes
@@ -31,11 +35,11 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       ],
     })
     .add({
-      situation = `An elfie.json cannot be read or is not an object`,
+      situation = `[[FileSystem.read]] of elfie.json under [[root]] is undefined, or its text is not a JSON object`,
       behavior = `A [[LoadProblem]] for it is added and every default above stands`,
     })
     .add({
-      situation = `[[root]] or [[Workspace.sourceDirectory]] does not exist`,
+      situation = `[[FileSystem.exists]] is false for [[root]], or for [[Workspace.sourceDirectory]] under it`,
       behavior = `A [[LoadProblem]] with no path is added and [[Workspace.files]] is empty`,
     });
 
@@ -43,16 +47,16 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   @acceptanceCriteria
     .add({
       behavior = [
-        `Every file under [[Workspace.sourceDirectory]] whose name ends in .lfy is in the program, with no [[File.package]]`,
+        `Every file [[FileSystem.list]] gives recursively under [[Workspace.sourceDirectory]] whose [[Path.extension]] is lfy is in the program, with no [[File.package]]`,
         `Every file a [[Use]] in a file of the program refers to is in the program`,
         `A file is in [[Workspace.files]] once, however many files use it`,
       ],
     })
     .add({
-      behavior = `[[File.path]] is the file's path relative to [[Workspace.root]], and [[File.tree]] is what [[Parser.parse]] gives for [[Lexer.lex]] of its text with that path as the file, satisfying [[SourceFile]]`,
+      behavior = `[[File.path]] is the file's path relative to [[Workspace.root]]: [[Path.join]] of the directory listed and the path [[FileSystem.list]] gave under it; [[File.tree]] is what [[Parser.parse]] gives for [[Lexer.lex]] of [[FileSystem.read]] of the file with that path as the file, satisfying [[SourceFile]]`,
     })
     .add({
-      situation = `A file cannot be read`,
+      situation = `[[FileSystem.read]] of a file is undefined`,
       behavior = `A [[LoadProblem]] for its path is added and it is left out of the program`,
     });
 
@@ -60,15 +64,17 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   @acceptanceCriteria
     .add({
       situation = `A [[Use]] names a path beginning with a dot`,
-      behavior = `It resolves relatively against the directory of the file that holds it`,
+      behavior = `It is [[Path.join]] of [[Path.parent]] of the file that holds it and the path, then [[Path.normalize]]`,
     })
     .add({
       situation = `A [[Use]] names a path beginning with anything else`,
-      behavior = `Its first segment names a [[Package]] and the rest resolves against that [[Package.root]]`,
+      behavior = `The first of its [[Path.segments]] names a [[Package]], and the path is [[Path.join]] of that [[Package.root]] and the remaining segments`,
     })
-    .add({ behavior = `A path resolves to the file at the path plus .lfy, or to main.lfy in a directory at the path` })
     .add({
-      situation = `Both a file at the path plus .lfy, and a main.lfy in a directory at the path exist`,
+      behavior = `A path resolves to the file at the path plus .lfy, or to [[Path.join]] of the path and main.lfy, whichever [[FileSystem.exists]] says is there`,
+    })
+    .add({
+      situation = `[[FileSystem.exists]] is true for both the path plus .lfy and [[Path.join]] of the path and main.lfy`,
       behavior = `The path plus .lfy is the one`,
     })
     .add({
@@ -88,15 +94,29 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   @acceptanceCriteria
     .add({ behavior = `Each dependency elfie.json names gives one [[Package]]` })
     .add({
-      behavior = `Every .lfy file under a [[Package.root]] is in the program and carries that package as its [[File.package]]`,
+      behavior = `Every file [[FileSystem.list]] gives recursively under a [[Package.root]] whose [[Path.extension]] is lfy is in the program and carries that package as its [[File.package]]`,
     })
     .add({
       behavior = `[[Package.nativeDependencies]] is what that package's own elfie.json names; a [[NativeDependency]] is recorded and never loaded`,
     })
     .add({ behavior = `[[Workspace.nativeDependencies]] is what the project's own elfie.json names, read the same way` })
     .add({
-      situation = `A [[Package.root]] does not exist`,
+      situation = `[[FileSystem.exists]] is false for a [[Package.root]]`,
       behavior = `A [[LoadProblem]] for it is added and no file of it is in the program`,
+    });
+
+  // The package elfie
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `The [[Package]] named elfie is in the program whether or not elfie.json names it, and its files are loaded as any other package's`,
+        `Its [[Package.root]] is the first of these that is given, never the next one when the given one is missing: the dependency entry elfie in elfie.json; the top level key lib in elfie.json, relative to [[root]]; the directory [[Process.environment]] gives for ELFIE_LIB; the copy of the library the compiler was built with, which the target's guidance says how it travels`,
+      ],
+    })
+    .add({
+      behavior = [
+        `[[Source.origin]] of the file main.lfy at that [[Package.root]] is [[Origin.prelude]], of every other file of that package [[Origin.library]], and of every file not in that package [[Origin.program]]`,
+      ],
     });
 
   // Targets
@@ -119,17 +139,23 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     .add({
       situation = `A target's identifier resolves to nothing, or to an entity that is not a trait`,
       behavior = `A [[LoadProblem]] for it is added and it is left out of [[Workspace.targets]]`,
+    })
+    .add({
+      situation = `A target's identifier resolves to a trait that is neither [[target]] of the package elfie nor among [[TraitEntity.extenders]] of [[target]], directly or through other extenders`,
+      behavior = `A [[LoadProblem]] naming the target and the trait is added and the target is left out of [[Workspace.targets]]`,
     });
 
   // Binding
   @acceptanceCriteria
-    .add({ behavior = `[[Workspace.model]] is [[Binder.bind]] of [[Workspace.files]], called once` });
+    .add({
+      behavior = `[[Workspace.model]] is [[Binder.bind]] of [[Workspace.files]], called once, with each file's [[Source.origin]] set as above so that the prelude scope is the file scope of the main file of the package elfie`,
+    });
 
   @test(
     {
       input = [string@like(`A root with an empty def directory and no elfie.json`)],
       expect = Workspace@like(
-        `[[Workspace.name]] from the directory, source directory def, output directory src, no files, no targets, and no problems`,
+        `[[Workspace.name]] from the directory, source directory def, output directory src, no files of the project, the files of the package elfie from the copy the compiler was built with, no targets, and no problems`,
       ),
     },
     {
@@ -152,6 +178,26 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
         `One file, one [[Problem]] at the [[Use]], and the [[Source.uses]] entry for it undefined`,
       ),
     },
+    {
+      input = [
+        string@like(
+          `A root whose elfie.json names no lib and no dependency elfie, loaded while [[Process.environment]] gives a directory holding the library for ELFIE_LIB`,
+        ),
+      ],
+      expect = Workspace@like(
+        `A [[Package]] elfie whose [[Package.root]] is that directory, every .lfy file under it in [[Workspace.files]] with that package, its main.lfy with [[Origin.prelude]] and the others with [[Origin.library]], and no problems`,
+      ),
+    },
+    {
+      input = [
+        string@like(
+          `A root whose elfie.json names a target t with package p and marker m, where p's main.lfy reads: trait m {}`,
+        ),
+      ],
+      expect = Workspace@like(
+        `No targets, and one [[LoadProblem]] naming t and m, because m does not extend [[target]]`,
+      ),
+    },
   );
 }
 
@@ -161,11 +207,14 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
     .add({ behavior = `[[workspace]] is left as it was and the result is a new [[Workspace]]` })
     .add({
       situation = `[[text]] is set`,
-      behavior = `The file at [[path]] is read as [[text]] instead of what is on disk`,
+      behavior = `The file at [[path]] is read as [[text]] instead of what [[FileSystem.read]] gives`,
     })
-    .add({ situation = `[[text]] is undefined`, behavior = `The file at [[path]] is read from disk again` })
     .add({
-      situation = `[[text]] is undefined and there is no file at [[path]] on disk`,
+      situation = `[[text]] is undefined`,
+      behavior = `The file at [[path]] is read with [[FileSystem.read]] again`,
+    })
+    .add({
+      situation = `[[text]] is undefined and [[FileSystem.exists]] is false for [[path]]`,
       behavior = `It leaves the program`,
     })
     .add({

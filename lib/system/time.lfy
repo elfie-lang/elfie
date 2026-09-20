@@ -1,0 +1,68 @@
+use "../prelude/builtin";
+
+// Decision: every member test puts the receiver first in input, then the arguments.
+// Decision: parse is also the name of the function in ./json; a file that uses both aliases one
+// with use ... as.
+
+d Instant is builtin: `A moment in time, to the millisecond, in UTC` {
+  $rfc3339: `The instant as an RFC 3339 timestamp` = () => string;
+  with Instant$rfc3339 {
+    where (`Any instant`) -> `Returns the date, a T, the time to the second, and a Z, as 2024-01-02T03:04:05Z; the milliseconds are dropped, never rounded up`;
+    @test(
+      { input = [parse(`2024-01-02T03:04:05.678Z`)], expect = `2024-01-02T03:04:05Z` },
+      { input = [parse(`2024-01-02T05:04:05+02:00`)], expect = `2024-01-02T03:04:05Z` },
+    );
+  }
+
+  $unix: `Seconds since 1970-01-01T00:00:00Z` = () => number;
+  with Instant$unix {
+    where (`Any instant`) -> `Returns whole seconds, the milliseconds dropped`;
+    @test(
+      { input = [parse(`1970-01-01T00:00:10Z`)], expect = 10 },
+      { input = [parse(`1970-01-01T00:00:10.900Z`)], expect = 10 },
+    );
+  }
+
+  /// other: the instant measured from
+  $since: `Seconds from other to this instant; negative when other is later` = (other: Instant) => number;
+  with Instant$since {
+    where (`Any two instants`) -> `Returns this instant's time minus other's, in seconds, milliseconds kept as a fraction`;
+    @test(
+      { input = [parse(`1970-01-01T00:00:10Z`), parse(`1970-01-01T00:00:00Z`)], expect = 10 },
+      { input = [parse(`1970-01-01T00:00:00Z`), parse(`1970-01-01T00:00:01.500Z`)], expect = -1.5 },
+    );
+  }
+
+  /// seconds: how far to move; negative moves back
+  $plus: `The instant seconds later` = (seconds: number) => Instant;
+  with Instant$plus {
+    where (`Any instant`) -> `Returns a new instant; this one is unchanged`;
+    @test(
+      { input = [parse(`1970-01-01T00:00:00Z`), 90], expect = parse(`1970-01-01T00:01:30Z`) },
+      { input = [parse(`1970-01-01T00:01:00Z`), -60], expect = parse(`1970-01-01T00:00:00Z`) },
+    );
+  }
+}
+
+fn now() is builtin: `The current moment, from the system clock` => Instant {
+  where (`Called`) -> `Returns the clock's time in UTC, to the millisecond, whatever the local time zone is`;
+  @test({ input = [], expect = Instant@like(`Within a second of the system clock`) });
+}
+
+/// text: an RFC 3339 timestamp, such as 2024-01-02T03:04:05Z or 2024-01-02T05:04:05.678+02:00
+fn parse(text: string) is builtin: `The instant a timestamp names; undefined when the text is not RFC 3339` => Instant | undefined {
+  where (`[[text]] is an RFC 3339 date-time with a Z or a numeric offset`) -> `Returns the instant it names, converted to UTC, with fractional seconds kept to the millisecond`;
+  where (`[[text]] is anything else, including a date alone or a time without an offset`) -> `Returns undefined`;
+  @test(
+    { input = [`2024-01-02T05:04:05+02:00`], expect = Instant@like(`2024-01-02T03:04:05Z`) },
+    { input = [`2024-01-02T03:04:05Z`], expect = Instant@like(`2024-01-02T03:04:05Z`) },
+    { input = [`2024-01-02`], expect = undefined },
+    { input = [`yesterday`], expect = undefined },
+  );
+}
+
+/// start: the instant measured from
+function elapsed(start: Instant): `Seconds since start` -> number {
+  @test({ input = [now()], expect = number@like(`Near zero and never negative`) });
+  return now().since(start);
+}

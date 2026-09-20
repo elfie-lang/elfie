@@ -1,0 +1,70 @@
+use "../prelude/builtin";
+
+// Decision: every member test puts the receiver first in input, then the operation's arguments.
+// Decision: one Number holds integers and fractions alike; nothing here distinguishes them but isInteger.
+
+d Number is builtin: `A number; integer or not` {
+  where (`A number is written`) -> `Decimal digits with an optional fraction, such as 1_000.5; underscores only group digits`;
+  where (`Numbers meet +, -, *, /, %, or **`) -> `The result is a number; / never truncates and % keeps the sign of the left side`;
+
+  $floor: `The greatest integer not above the number` = () => number;
+  with Number$floor {
+    @test({ input = [1.7], expect = 1 });
+    @test({ input = [-1.2], expect = -2 });
+  }
+  $ceil: `The least integer not below the number` = () => number;
+  with Number$ceil {
+    @test({ input = [1.2], expect = 2 });
+    @test({ input = [-1.7], expect = -1 });
+  }
+  $round: `The nearest integer, halves away from zero` = () => number;
+  with Number$round {
+    @test({ input = [2.5], expect = 3 });
+    @test({ input = [-2.5], expect = -3 });
+  }
+  $abs: `The number without its sign` = () => . < 0 ? -. : .;
+  with Number$abs {
+    @test({ input = [-3], expect = 3 });
+  }
+  $toString: `The number as text` = () => string;
+  with Number$toString {
+    where (`The number is an integer`) -> `No fraction is written`;
+    where (`The number has a fraction`) -> `The shortest decimal that reads back as the same number is written`;
+    @test({ input = [42], expect = "42" });
+    @test({ input = [0.1], expect = "0.1" });
+  }
+  $toFixed: `The number as text with exactly digits places after the point` = (digits: number) => string;
+  with Number$toFixed {
+    where (`The number has more places than digits`) -> `It is rounded, halves away from zero`;
+    @test({ input = [1.005, 2], expect = "1.01" });
+    @test({ input = [2, 1], expect = "2.0" });
+  }
+  $isInteger: `Whether the number has no fraction` = () => boolean;
+  with Number$isInteger {
+    @test({ input = [3], expect = true });
+    @test({ input = [3.5], expect = false });
+  }
+  $min: `The lesser of the number and the other` = (other: number) => . < other ? . : other;
+  with Number$min {
+    @test({ input = [3, 5], expect = 3 });
+  }
+  $max: `The greater of the number and the other` = (other: number) => . > other ? . : other;
+  with Number$max {
+    @test({ input = [3, 5], expect = 5 });
+  }
+  $clamp: `The number held between low and high` = (low: number, high: number) => .max(low).min(high);
+  with Number$clamp {
+    @test({ input = [12, 0, 10], expect = 10 });
+  }
+}
+
+d Boolean is builtin: `true or false` {
+  where (`Values meet &&, ||, or !`) -> `&& yields the left side when it is falsy and the right side otherwise; || yields the left side when it is truthy and the right side otherwise; ! yields true for a falsy value and false otherwise`;
+  where (`The left side of && or || decides the result`) -> `The right side is not evaluated`;
+  where (`A value is judged truthy or falsy`) -> `Only false, null, and undefined are falsy; 0, empty strings, and empty lists are truthy`;
+
+  $not: `The opposite` = () => !.;
+  with Boolean$not {
+    @test({ input = [true], expect = false });
+  }
+}

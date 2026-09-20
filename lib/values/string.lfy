@@ -1,0 +1,111 @@
+use "../prelude/builtin";
+
+// Decision: every member test puts the receiver first in input, then the operation's arguments.
+// Decision: lengths, indices, and slices count characters (Unicode scalar values), never bytes.
+
+d String is builtin: `Text` {
+  where (`A string is written`) -> `Double quotes take escapes such as \n, single quotes take none but \\ and \', and a template with no reference and no execution is a string too`;
+  where (`Two strings are added with +`) -> `They are concatenated`;
+  where (`Two strings are compared with <, <=, >, or >=`) -> `They order by code point, character by character`;
+
+  $length: `The count of characters` = number;
+  with String$length {
+    @test({ input = ["abc"], expect = 3 });
+    @test({ input = [""], expect = 0 });
+  }
+  $includes: `Whether the text occurs somewhere in the string` = (text: string) => boolean;
+  with String$includes {
+    @test({ input = ["hello", "ell"], expect = true });
+    @test({ input = ["hello", "z"], expect = false });
+  }
+  $startsWith: `Whether the string begins with the text` = (text: string) => boolean;
+  with String$startsWith {
+    @test({ input = ["hello", "he"], expect = true });
+    @test({ input = ["hello", "lo"], expect = false });
+  }
+  $endsWith: `Whether the string ends with the text` = (text: string) => boolean;
+  with String$endsWith {
+    @test({ input = ["hello", "lo"], expect = true });
+    @test({ input = ["hello", "he"], expect = false });
+  }
+  $trim: `The string without leading and trailing whitespace` = () => string;
+  with String$trim {
+    where (`Whitespace is removed`) -> `Spaces, tabs, and line breaks count; nothing inside the text is touched`;
+    @test({ input = ["  a b  "], expect = "a b" });
+    @test({ input = ["\n"], expect = "" });
+  }
+  $split: `The pieces between each occurrence of the separator, in order` = (separator: string = ",") => string[];
+  with String$split {
+    where (`The separator does not occur`) -> `Yields a list holding the whole string`;
+    where (`The separator is empty`) -> `Yields one piece per character`;
+    @test({ input = ["a,b,,c"], expect = ["a", "b", "", "c"] });
+    @test({ input = ["a b", " "], expect = ["a", "b"] });
+  }
+  $lines: `The lines of the string, split at each line feed` = () => .split("\n");
+  with String$lines {
+    @test({ input = ["a\nb"], expect = ["a", "b"] });
+  }
+  $replace: `The string with every occurrence of the text replaced` = (text: string, replacement: string) => string;
+  with String$replace {
+    where (`Occurrences are found`) -> `They are found left to right without overlapping, and the replacement is not searched again`;
+    @test({ input = ["a-b-c", "-", "+"], expect = "a+b+c" });
+    @test({ input = ["aaa", "aa", "b"], expect = "ba" });
+  }
+  $toUpperCase: `The string with each letter in upper case` = () => string;
+  with String$toUpperCase {
+    @test({ input = ["abc1"], expect = "ABC1" });
+    @test({ input = ["ß"], expect = "SS" });
+  }
+  $toLowerCase: `The string with each letter in lower case` = () => string;
+  with String$toLowerCase {
+    @test({ input = ["ABC1"], expect = "abc1" });
+    @test({ input = ["É"], expect = "é" });
+  }
+  $indexOf: `The index of the first occurrence of the text, or -1 when none` = (text: string) => number;
+  with String$indexOf {
+    @test({ input = ["hello", "l"], expect = 2 });
+    @test({ input = ["hello", "z"], expect = -1 });
+  }
+  $slice: `The characters from start up to but not including end, or to the end of the string` = (
+    start: number,
+    end?: number,
+  ) => string;
+  with String$slice {
+    where (`start or end is past the end`) -> `Only the characters that exist are taken, so the result can be empty`;
+    @test({ input = ["hello", 1, 3], expect = "el" });
+    @test({ input = ["hello", 3], expect = "lo" });
+  }
+  $isBlank: `Whether the string is empty or only whitespace` = () => .trim().length == 0;
+  with String$isBlank {
+    @test({ input = [" \t"], expect = true });
+  }
+  $repeat: `The string written count times in a row` = (count: number) => string;
+  with String$repeat {
+    @test({ input = ["ab", 3], expect = "ababab" });
+    @test({ input = ["ab", 0], expect = "" });
+  }
+  $padStart: `The string with the filler prepended until it is at least length characters` = (
+    length: number,
+    filler: string = " ",
+  ) => string;
+  with String$padStart {
+    where (`The filler is longer than the space left`) -> `Its start is used and the rest cut off`;
+    @test({ input = ["5", 3, "0"], expect = "005" });
+    @test({ input = ["abcd", 2], expect = "abcd" });
+  }
+  $padEnd: `The string with the filler appended until it is at least length characters` = (
+    length: number,
+    filler: string = " ",
+  ) => string;
+  with String$padEnd {
+    @test({ input = ["5", 3, "0"], expect = "500" });
+    @test({ input = ["ab", 4], expect = "ab  " });
+  }
+  $toNumber: `The number the string spells, or undefined when it spells none` = () => number | undefined;
+  with String$toNumber {
+    where (`The string is a decimal number, with an optional sign, fraction, and surrounding whitespace`) -> `Yields that number`;
+    where (`Anything else is in the string, or it is empty`) -> `Yields undefined`;
+    @test({ input = [" -1.5 "], expect = -1.5 });
+    @test({ input = ["1a"], expect = undefined });
+  }
+}

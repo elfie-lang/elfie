@@ -13,6 +13,11 @@ definition file compiled for one target. Produce its outputs and nothing else.
   `elfie_check <stem>` to see whether acceptance would pass before you finish.
 - When you are done, `cargo build -p <crate>`, `cargo test -p <crate>`, and
   `cargo clippy -p <crate>` must pass for the crate you wrote; run them.
+- The package `elfie` under `lib/` is the standard library: the context layer every entity has,
+  the base data every value has (`List`, `String`, `Path`, ...), and the target vocabulary. It is
+  a specification, never a unit: a `builtin` data or fn is bound to the native type or function
+  the target's guidance names and is only called; a library member written out in full is
+  translated where it is used. Read `lib/` files with `elfie_entity` like any other definition.
 - An ambiguous criterion, two criteria in conflict, or a name that resolves nowhere means no
   output: stop and report the problem, quoting the criterion, instead of guessing.
 - Do not commit. Print a short report of the files written and any decision you had to make.

@@ -1,0 +1,24 @@
+/// What every target package declares: one marker trait extending this one. The marker's
+/// criteria, in order, are the guidance the compiler receives with every request, so a target is
+/// a package and never a change to the compiler. The marker is identified by the target entry in
+/// elfie.json, which names the package and the trait; the trait takes no parameters.
+trait target: `What an entity carries to be built for one target, and what the target's package tells the compiler` {
+  $outputDirectory: `Where outputs go, relative to the root; the target entry in elfie.json overrides it` = string;
+  $markerComment: `How a line comment begins in the target's language, so a marker can be written` = string;
+
+  // Guidance
+  where (`The compiler is handed a request for a batch of units of the target`) -> `The criteria of the marker trait and of every trait it extends, in that order, are the guidance in the request, and the compiler treats each one as a rule of the target`;
+  where (`Two criteria of the guidance conflict, or one is ambiguous for the unit at hand`) -> `The compiler stops on that unit and quotes the criterion; it never guesses`;
+
+  // Selection
+  where (`The marker is applied to global`) -> `Every entity of every project file is built for the target`;
+  where (`The marker is applied to the entity of a file`) -> `Every entity declared in that file's scope is built for the target`;
+  where (`The marker is applied to one entity`) -> `That entity is built for the target`;
+  where (`An entity is declared in a file of a package`) -> `It is not built, however it is marked; a package is built by its own project`;
+
+  // Markers
+  where (`An item of a unit's output comes from an entity`) -> `It carries a line comment beginning with [[target.markerComment]], then @lfy, a space, the source path relative to the root, a colon, and the entity's name, as the generation stage's Marker describes; a member is named by its owner's identifier, a dot, and the member's name`;
+  where (`An entity of the unit has no marker in any output`) -> `The unit is rejected, so every entity built for the target is named at least once in the outputs`;
+  where (`A marker would name a line`) -> `It names the entity instead, because a name survives edits that move lines`;
+  where (`An output is written`) -> `Its path is under [[target.outputDirectory]] as elfie.json settles it; nothing outside that directory is written`;
+}

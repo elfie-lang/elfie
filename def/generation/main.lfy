@@ -4,6 +4,12 @@ use "../model/data";
 use "../model/main" as Binder;
 use "../workspace/data";
 use "./data";
+use "elfie/prelude/builtin";
+use "elfie/system/path";
+use "elfie/system/time" as Time;
+use "elfie/target/language";
+use "elfie/target/layout";
+use "elfie/target/target";
 
 // Decision: a unit is one source file for one target. Outputs and source maps are per file, a
 // declaration's scope is its file, and a smaller unit would make the compiler merge into a file it
@@ -17,6 +23,9 @@ fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may
     })
     .add({
       behavior = `After the line of a data, type, trait, or enum, one line per member or enum member it declares, in order: the member's name, definition, and type, since a dependent relies on those as much as on the declaration itself`,
+    })
+    .add({
+      behavior = `A type line spells an entity of the elfie package by its identifier alone, such as List or [[Path]], never by a path or a module name`,
     })
     .add({
       behavior = `A change that leaves every line the same, such as a new criterion or a moved line, leaves the text the same, so dependents are not regenerated for it`,
@@ -37,7 +46,11 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [])
       behavior = `It gives no unit; a package is compiled by its own project`,
     })
     .add({
-      behavior = `[[Unit.stem]] is [[File.path]] relative to [[Workspace.sourceDirectory]], without the .lfy extension`,
+      situation = `The [[File.package]] is the elfie package, the standard library`,
+      behavior = `It gives no unit even when [[Target.marker]] is applied to global, and none of its entities is ever in [[Unit.entities]]; a unit's [[Interface]] and [[Request.interfaces]] may still name its entities as types`,
+    })
+    .add({
+      behavior = `[[Unit.stem]] is [[Path.relative]] of [[File.path]] to [[Workspace.sourceDirectory]], without the .lfy extension`,
     });
 
   // Dependencies
@@ -135,7 +148,10 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
       behavior = `[[Request.interfaces]] holds one [[Interface]] per dependency of any unit of the batch that is not itself in the batch, each once, in dependency order`,
     })
     .add({
-      behavior = `[[Request.guidance]] is [[Binder.criteriaOf]] the [[Target.marker]], which already holds the criteria of every trait the marker extends`,
+      behavior = `[[Request.guidance]] is [[Binder.criteriaOf]] the [[Target.marker]], then of every trait it extends, transitively and nearest first, so a marker extending [[targetLanguage]] gives its own criteria, then those of [[targetLanguage]], then those of [[target]]; a trait reached twice contributes once, at its first place`,
+    })
+    .add({
+      behavior = `The guidance also holds the criteria of every trait applied to the marker with arguments, such as [[cratePerPrefix]] and [[modulePerFile]], in extends order after the marker's own, with each of their template values evaluated from those arguments; every template value of the guidance is evaluated for the marker's application`,
     })
     .add({
       behavior = `[[Request.nativeDependencies]] is [[Workspace.nativeDependencies]] followed by [[Package.nativeDependencies]] of [[Target.package]]`,
@@ -151,6 +167,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
         `Where the outputs go: under [[Target.outputDirectory]], spelled from each [[Unit.stem]] as the guidance says, at the paths in [[Unit.outputs]] when there are any`,
         `The guidance, then the native dependencies it may require, then each interface: the dependency's output paths and the identifier, kind, definition, and type of each of its entities, to be used by the names its outputs spell and never edited`,
         `Then, for each unit of the batch in order, a section with its source text and each of its entities with its kind and every criterion and test of [[Binder.criteriaOf]] and [[Entity.tests]] resolved for it`,
+        `That the data and fns of the standard library carrying [[builtin]] are bound to what the guidance names for them and never generated, and that a member of the library written out in full is translated where it is used`,
         `The rules for kinds: a [[DataDeclaration]] becomes a type; an [[AgentFunctionDeclaration]] becomes a function whose body satisfies every criterion and test; a [[FunctionDeclaration]] is translated statement by statement with nothing added; a [[TraitDeclaration]] emits nothing of its own, its members and criteria belong to each entity that carries it; a [[TypeDeclaration]] and [[EnumDeclaration]] become their nearest equivalents; an [[ExternalDeclaration]] is bound to what the guidance says; an [[Ace]] statement is evaluated during compilation and its results inlined where used; a [[Use]] is satisfied by the interfaces`,
         `That every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says, and never a line number`,
         `That each [[Test]] becomes one test, and each criterion that can be checked mechanically becomes one test named after its entity, placed where the guidance says`,
@@ -165,6 +182,19 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
       input = [Plan@like(`One batch of two units, b before a`), Batch@like(`b+1`), [], {}],
       expect = Request@like(
         `Instructions naming the target, listing b and a, quoting each one's entities with their criteria, no interfaces, no existing outputs, and the three report lines`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One batch of one unit, for a target whose marker is a trait rust extending [[targetLanguage]], with two criteria of its own and a template value in one of them`,
+        ),
+        Batch@like(`the batch`),
+        [],
+        {},
+      ],
+      expect = Request@like(
+        `Guidance holding rust's two criteria first, with the template value evaluated for rust, then every criterion of [[targetLanguage]], then every criterion of [[target]], and nothing twice`,
       ),
     },
   );
@@ -213,7 +243,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   @acceptanceCriteria
     .add({ situation = `[[outputs]] is empty`, behavior = `Rejected with a problem saying so` })
     .add({
-      situation = `An output's path is not under [[Target.outputDirectory]] of the unit's target`,
+      situation = `An output's path does not [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target`,
       behavior = `Rejected with a problem naming the path`,
     })
     .add({
@@ -247,7 +277,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of the unit's source, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, the time of acceptance, and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
+      behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of the unit's source, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
       behavior = `Whether an output builds or its tests pass is not checked here; the guidance says how, and the caller runs it`,
