@@ -16,6 +16,9 @@ fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may
       behavior = `One line per entity of [[Unit.entities]] in file order: its identifier, its kind, its definition, its type, and for a fn its parameters with their types and its output, each as [[Binder.criteriaOf]] would spell them`,
     })
     .add({
+      behavior = `After the line of a data, type, trait, or enum, one line per member or enum member it declares, in order: the member's name, definition, and type, since a dependent relies on those as much as on the declaration itself`,
+    })
+    .add({
       behavior = `A change that leaves every line the same, such as a new criterion or a moved line, leaves the text the same, so dependents are not regenerated for it`,
     });
 }
@@ -55,7 +58,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [])
       behavior = `[[Unit.outputs]] is every [[SourceMap]] in [[sourceMaps]] whose target and source are the unit's; the caller drops maps whose output no longer exists before calling`,
     })
     .add({
-      behavior = `[[Unit.reason]] is the first of these that holds: requested when [[File.path]] or [[Unit.stem]] is in [[requested]]; fresh when [[Unit.outputs]] is empty; changed when the SHA-256 of the file's text differs from [[SourceMap.hash]] of any output; dependency when any dependency is planned with a reason other than dependency, or when the hash of [[interfaceOf]] any dependency differs from what [[SourceMap.dependencies]] of the unit's outputs record for it, or records nothing for it; undefined otherwise`,
+      behavior = `[[Unit.reason]] is the first of these that holds: requested when [[File.path]] or [[Unit.stem]] is in [[requested]]; fresh when [[Unit.outputs]] is empty; changed when the SHA-256 of the file's text differs from [[SourceMap.hash]] of any output; dependency when the hash of [[interfaceOf]] any dependency differs from what [[SourceMap.dependencies]] of the unit's outputs record for it, or when they record nothing for it; undefined otherwise`,
     })
     .add({
       behavior = `A dependency that is planned only because of its own dependencies, and whose interface is unchanged, plans nothing beyond itself, so an edit inside one function body regenerates one unit`,
