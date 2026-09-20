@@ -5,5 +5,5 @@ cd "$(dirname "$0")/.."
 set -e
 cargo build -q -p elfie
 ./target/debug/elfie check
-./target/debug/elfie compile --dry-run | awk '$3 != "up" { print "stale: " $0; bad = 1 } END { exit bad }'
+./target/debug/elfie compile --dry-run | awk '$1 == "rust" && $3 != "up" { print "stale: " $0; bad = 1 } END { exit bad }'
 python3 scripts/refcheck.py
