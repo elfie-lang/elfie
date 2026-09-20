@@ -3,19 +3,19 @@
 use std::collections::BTreeMap;
 
 /// What the command line can do.
-// @lfy def/cli/data.lfy:1
+// @lfy def/cli/data.lfy:Command
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
-    Help,    // @lfy def/cli/data.lfy:2
-    Version, // @lfy def/cli/data.lfy:3
-    Init,    // @lfy def/cli/data.lfy:4
-    Check,   // @lfy def/cli/data.lfy:5
-    Format,  // @lfy def/cli/data.lfy:6
-    Tree,    // @lfy def/cli/data.lfy:7
-    Tokens,  // @lfy def/cli/data.lfy:8
-    Compile, // @lfy def/cli/data.lfy:9
-    Lsp,     // @lfy def/cli/data.lfy:10
-    Mcp,     // @lfy def/cli/data.lfy:11
+    Help,    // @lfy def/cli/data.lfy:Command.help
+    Version, // @lfy def/cli/data.lfy:Command.version
+    Init,    // @lfy def/cli/data.lfy:Command.init
+    Check,   // @lfy def/cli/data.lfy:Command.check
+    Format,  // @lfy def/cli/data.lfy:Command.format
+    Tree,    // @lfy def/cli/data.lfy:Command.tree
+    Tokens,  // @lfy def/cli/data.lfy:Command.tokens
+    Compile, // @lfy def/cli/data.lfy:Command.compile
+    Lsp,     // @lfy def/cli/data.lfy:Command.lsp
+    Mcp,     // @lfy def/cli/data.lfy:Command.mcp
 }
 
 impl Command {
@@ -69,18 +69,18 @@ impl Command {
     }
 }
 
-/// What the process returns.
-// @lfy def/cli/data.lfy:14
+/// What the process ends with, through [`std::process::exit`].
+// @lfy def/cli/data.lfy:ExitCode
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExitCode {
     /// Done, and nothing to report.
-    Success = 0, // @lfy def/cli/data.lfy:15
+    Success = 0, // @lfy def/cli/data.lfy:ExitCode.success
     /// Done, and problems were found or outputs rejected.
-    Problems = 1, // @lfy def/cli/data.lfy:16
+    Problems = 1, // @lfy def/cli/data.lfy:ExitCode.problems
     /// The arguments could not be read.
-    Usage = 2, // @lfy def/cli/data.lfy:17
+    Usage = 2, // @lfy def/cli/data.lfy:ExitCode.usage
     /// Something the command relies on failed.
-    Failure = 3, // @lfy def/cli/data.lfy:18
+    Failure = 3, // @lfy def/cli/data.lfy:ExitCode.failure
 }
 
 impl ExitCode {
@@ -90,18 +90,18 @@ impl ExitCode {
 }
 
 /// One parsed command line.
-// @lfy def/cli/data.lfy:21
+// @lfy def/cli/data.lfy:Invocation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Invocation {
     /// What to do.
-    pub command: Command, // @lfy def/cli/data.lfy:22
+    pub command: Command, // @lfy def/cli/data.lfy:Invocation.command
     /// The project directory.
-    pub root: String, // @lfy def/cli/data.lfy:23
+    pub root: String, // @lfy def/cli/data.lfy:Invocation.root
     /// The positional arguments after the command, in order.
-    pub arguments: Vec<String>, // @lfy def/cli/data.lfy:24
+    pub arguments: Vec<String>, // @lfy def/cli/data.lfy:Invocation.arguments
     /// Named options by name without their dashes; `None` for a flag, the text for a
     /// valued option.
-    pub options: BTreeMap<String, Option<String>>, // @lfy def/cli/data.lfy:25
+    pub options: BTreeMap<String, Option<String>>, // @lfy def/cli/data.lfy:Invocation.options
 }
 
 impl Invocation {
@@ -115,22 +115,22 @@ impl Invocation {
 }
 
 /// What a compile is doing, as progress reports it.
-// @lfy def/cli/data.lfy:28
+// @lfy def/cli/data.lfy:Step
 // Progress is defined here and printed by the compile command, which is not generated yet.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step {
-    Planned,       // @lfy def/cli/data.lfy:29
-    Requesting,    // @lfy def/cli/data.lfy:30
-    Compiling,     // @lfy def/cli/data.lfy:31
-    Checking,      // @lfy def/cli/data.lfy:32
-    Accepted,      // @lfy def/cli/data.lfy:33
-    Rejected,      // @lfy def/cli/data.lfy:34
-    Retrying,      // @lfy def/cli/data.lfy:35
-    Blocked,       // @lfy def/cli/data.lfy:36
-    Clarification, // @lfy def/cli/data.lfy:37
-    Failed,        // @lfy def/cli/data.lfy:38
-    Finished,      // @lfy def/cli/data.lfy:39
+    Planned,       // @lfy def/cli/data.lfy:Step.planned
+    Requesting,    // @lfy def/cli/data.lfy:Step.requesting
+    Compiling,     // @lfy def/cli/data.lfy:Step.compiling
+    Checking,      // @lfy def/cli/data.lfy:Step.checking
+    Accepted,      // @lfy def/cli/data.lfy:Step.accepted
+    Rejected,      // @lfy def/cli/data.lfy:Step.rejected
+    Retrying,      // @lfy def/cli/data.lfy:Step.retrying
+    Blocked,       // @lfy def/cli/data.lfy:Step.blocked
+    Clarification, // @lfy def/cli/data.lfy:Step.clarification
+    Failed,        // @lfy def/cli/data.lfy:Step.failed
+    Finished,      // @lfy def/cli/data.lfy:Step.finished
 }
 
 #[allow(dead_code)]
@@ -171,23 +171,24 @@ impl Step {
 }
 
 /// One line of what a compile is doing, for a person or a script watching.
-// @lfy def/cli/data.lfy:42
+// @lfy def/cli/data.lfy:Progress
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Progress {
     /// What is happening.
-    pub step: Step, // @lfy def/cli/data.lfy:43
+    pub step: Step, // @lfy def/cli/data.lfy:Progress.step
     /// The batch it concerns; `None` for the plan and the end.
-    pub batch: Option<String>, // @lfy def/cli/data.lfy:44
+    pub batch: Option<String>, // @lfy def/cli/data.lfy:Progress.batch
     /// The unit it concerns; `None` when it concerns a whole batch.
-    pub unit: Option<String>, // @lfy def/cli/data.lfy:45
+    pub unit: Option<String>, // @lfy def/cli/data.lfy:Progress.unit
     /// Units accepted so far.
-    pub done: usize, // @lfy def/cli/data.lfy:46
+    pub done: usize, // @lfy def/cli/data.lfy:Progress.done
     /// Units planned.
-    pub total: usize, // @lfy def/cli/data.lfy:47
-    /// Seconds since the compile began.
-    pub elapsed: f64, // @lfy def/cli/data.lfy:48
+    pub total: usize, // @lfy def/cli/data.lfy:Progress.total
+    /// Seconds since the compile began, as [`std::time::SystemTime::elapsed`] from its
+    /// start gives them.
+    pub elapsed: f64, // @lfy def/cli/data.lfy:Progress.elapsed
     /// The detail: the reason a unit is planned, a problem, a question, or the count of
     /// batches.
-    pub message: String, // @lfy def/cli/data.lfy:49
+    pub message: String, // @lfy def/cli/data.lfy:Progress.message
 }

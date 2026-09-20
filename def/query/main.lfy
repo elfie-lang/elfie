@@ -375,6 +375,10 @@ fn diagnosticsOf(workspace: Workspace, file?: string): `Every problem of the pro
       situation = `A [[Use]] without [[AsKeyword]] imports symbols of which none is used in the file, or one with [[AsKeyword]] whose module symbol is never used`,
       behavior = `A warning of stage binder at the [[Use]]`,
     })
+    .add({
+      situation = `The file holding the [[Use]] declares no symbol of its own, as the main file of the package elfie does`,
+      behavior = `It only re-exports what it uses, so no warning is given for any of its uses`,
+    })
     .add({ situation = `[[file]] is set`, behavior = `Only diagnostics whose range is in that file are returned` })
     .add({ behavior = `Diagnostics are in [[Workspace.files]] order, then by [[Range.start]], with elfie.json first` });
 

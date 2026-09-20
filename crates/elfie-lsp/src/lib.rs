@@ -1069,7 +1069,8 @@ fn severity(severity: query::Severity) -> lsp::DiagnosticSeverity {
 }
 
 /// A hover as markdown: a code line of the kind, identifier, a colon, and the type; then
-/// the definition; then the documentation; then each criterion as a list item reading its
+/// the definition; then the traits on one line when there are any, so a native thing shows
+/// `builtin`; then the documentation; then each criterion as a list item reading its
 /// situations then its behaviors.
 // @lfy def/lsp/main.lfy:serve
 fn hover_markdown(hover: &query::Hover) -> String {
@@ -1082,6 +1083,11 @@ fn hover_markdown(hover: &query::Hover) -> String {
     sections.push(format!("```elfie\n{code}\n```"));
     if let Some(definition) = hover.definition.as_deref().filter(|text| !text.is_empty()) {
         sections.push(definition.to_string());
+    }
+    // Decision: the traits are one line of their identifiers in application order, joined by
+    // a comma, with nothing around them; the criterion names no label.
+    if !hover.traits.is_empty() {
+        sections.push(hover.traits.join(", "));
     }
     if let Some(documentation) = hover
         .documentation
@@ -1346,13 +1352,14 @@ mod tests {
 
     // @lfy def/lsp/main.lfy:serve
     #[test]
-    fn hover_reads_code_line_definition_documentation_then_criteria() {
+    fn hover_reads_code_line_definition_traits_documentation_then_criteria() {
         let hover = query::Hover {
             range: Range::empty("def/a.lfy", Position::new(1, 0)),
             kind: elfie_core::model::SymbolKind::Data,
             identifier: "A".to_string(),
             definition: Some("An A".to_string()),
             ty: Some("Base".to_string()),
+            traits: vec!["builtin".to_string(), "tool".to_string()],
             documentation: Some("Doc line".to_string()),
             criteria: vec![
                 Criterion {
@@ -1368,11 +1375,12 @@ mod tests {
         };
         assert_eq!(
             hover_markdown(&hover),
-            "```elfie\ndata A: Base\n```\n\nAn A\n\nDoc line\n\n- It rains: Stay in; Read\n- Always"
+            "```elfie\ndata A: Base\n```\n\nAn A\n\nbuiltin, tool\n\nDoc line\n\n- It rains: Stay in; Read\n- Always"
         );
         let bare = query::Hover {
             definition: None,
             ty: None,
+            traits: Vec::new(),
             documentation: Some(String::new()),
             criteria: Vec::new(),
             ..hover

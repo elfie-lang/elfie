@@ -492,9 +492,11 @@ pub fn entity(session: &Session, name: &str) -> Result<String, String> {
                 out.push_str(&format!("- {}{from}\n", criterion_text(criterion)));
             }
         }
-        if !record.traits.is_empty() {
-            let names: Vec<String> = record.traits.iter().map(|applied| identifier_of(model, applied.entity)).collect();
-            out.push_str(&format!("\n## Traits\n{}\n", names.join(", ")));
+        // The identifier of each trait, as the hover spells them: every one of
+        // `Entity.traits` in application order, with `builtin` among them for a native
+        // thing. @lfy def/mcp/main.lfy:entity
+        if !hover.traits.is_empty() {
+            out.push_str(&format!("\n## Traits\n{}\n", hover.traits.join(", ")));
         }
         let members = model.members(id);
         if !members.is_empty() {
@@ -900,6 +902,14 @@ mod tests {
 
     use super::*;
 
+    /// The directory of the library a fixture carries, relative to its root.
+    const LIBRARY_ROOT: &str = "lib";
+    /// The library a fixture carries: the trait `target`, which a target's marker must
+    /// extend, in the prelude every file of the project sees.
+    const LIBRARY: &str = "trait target { }\n";
+    /// The manifest of a fixture: it names the library the fixture carries.
+    const LIBRARY_MANIFEST: &str = r#"{ "lib": "lib" }"#;
+
     /// A project directory under the system's temporary directory, removed when dropped.
     struct Fixture {
         root: PathBuf,
@@ -911,7 +921,14 @@ mod tests {
             let root = std::env::temp_dir().join(format!("elfie-mcp-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
             let _ = fs::remove_dir_all(&root);
             fs::create_dir_all(root.join("def")).unwrap();
-            Fixture { root }
+            let fixture = Fixture { root };
+            // Every fixture carries a library of its own and names it in its manifest, so
+            // that a test never reads the copy of the library the compiler was built
+            // with, whose files would be files of the program like any other.
+            fixture
+                .write(MANIFEST, LIBRARY_MANIFEST)
+                .write(&format!("{LIBRARY_ROOT}/main.lfy"), LIBRARY);
+            fixture
         }
 
         fn write(&self, path: &str, text: &str) -> &Fixture {
@@ -1035,7 +1052,7 @@ mod tests {
         assert!(session.workspace.file("def/b.lfy").is_none());
         assert_eq!(problems(&session, None).unwrap(), "no problems");
 
-        fixture.write("elfie.json", r#"{ "name": "renamed", "source": "src" }"#);
+        fixture.write("elfie.json", r#"{ "name": "renamed", "source": "src", "lib": "lib" }"#);
         fixture.write("src/c.lfy", "const c = 1;\n");
         session.refresh();
         assert_eq!(session.workspace.name, "renamed");
@@ -1070,6 +1087,17 @@ mod tests {
         let used = references(&session, "A").unwrap();
         assert_eq!(used, "def/a.lfy:3:10: const y = A;");
         assert_eq!(references(&session, "y").unwrap(), "y is never used");
+    }
+
+    // @lfy def/mcp/main.lfy:entity
+    #[test]
+    fn entity_lists_the_traits_it_carries() {
+        let fixture = Fixture::new();
+        fixture.write("def/a.lfy", "trait t: `A t` {}\nd A is t {}\n");
+        let session = fixture.session();
+        assert_eq!(problems(&session, None).unwrap(), "no problems");
+        let described = entity(&session, "A").unwrap();
+        assert!(described.contains("## Traits\nt\n"), "{described}");
     }
 
     // @lfy def/mcp/main.lfy:entity
@@ -1119,11 +1147,12 @@ mod tests {
                 "elfie.json",
                 r#"{
                     "name": "p",
+                    "lib": "lib",
                     "dependencies": { "rust": { "root": "targets/rust" } },
                     "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
                 }"#,
             )
-            .write("targets/rust/main.lfy", "trait rust: `Built as Rust` {}\nrust.apply(global);\n")
+            .write("targets/rust/main.lfy", "trait rust extends target: `Built as Rust` {}\nrust.apply(global);\n")
             .write("def/a.lfy", "use \"./b\";\nd A: `An A` { $b = B; }\n")
             .write("def/b.lfy", "d B {}\n");
         fixture

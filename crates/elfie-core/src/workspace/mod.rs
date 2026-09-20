@@ -18,7 +18,7 @@ use crate::grammar::rules::expression::Expression;
 use crate::grammar::rules::statement::Statement;
 use crate::grammar::terminals::literal::Literal;
 use crate::lexer::lex;
-use crate::model::{self, EntityId, Model, Problem, Source, SymbolKind};
+use crate::model::{self, EntityId, Model, Origin, Problem, Source, SymbolKind};
 use crate::parser::{Node, Tree, parse};
 
 /// The project layout file, at the root of the project and of every package.
@@ -37,8 +37,25 @@ const DEFAULT_OUTPUT_DIRECTORY: &str = "src"; // @lfy def/workspace/main.lfy:loa
 /// The file a directory resolves to, and the file whose scope a target marker is looked
 /// up in.
 const MAIN_FILE: &str = "main.lfy";
-/// The extension of a source file.
-const EXTENSION: &str = ".lfy";
+/// `Path::extension` of a source file.
+const EXTENSION: &str = "lfy"; // @lfy def/workspace/main.lfy:load
+/// The identifier of the package that holds the standard library: it is in the program
+/// whether or not `elfie.json` names it.
+const LIBRARY_PACKAGE: &str = "elfie"; // @lfy def/workspace/main.lfy:load
+/// The variable whose directory holds the library, read when neither the dependency entry
+/// `elfie` nor the top level key `lib` of `elfie.json` gives one.
+const LIBRARY_VARIABLE: &str = "ELFIE_LIB"; // @lfy def/workspace/main.lfy:load
+/// The copy of the library the compiler was built with.
+///
+/// Decision: the criterion leaves how this copy travels to the target's guidance, and the
+/// guidance of the target `rust` says nothing about it. This compile takes the only
+/// spelling that keeps `Package.root` a directory whose files are loaded as any other
+/// package's, and `Package.root` absolute when the library is found outside the project:
+/// the path of the library the crate was built beside, baked in at build time. A compiler
+/// carried away from that directory finds the library through `ELFIE_LIB` instead.
+const BUILT_IN_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../lib"); // @lfy def/workspace/main.lfy:load
+/// The trait of the package `elfie` that the marker of every target extends.
+const TARGET_TRAIT: &str = "target"; // @lfy def/workspace/main.lfy:load
 
 /// Load a project from disk and bind it.
 ///
@@ -48,7 +65,8 @@ const EXTENSION: &str = ".lfy";
 /// loads.
 // @lfy def/workspace/main.lfy:load
 pub fn load(root: &Path) -> Workspace {
-    load_with(root, BTreeMap::new())
+    // @lfy def/workspace/main.lfy:load
+    load_in(root, BTreeMap::new(), std::env::var(LIBRARY_VARIABLE).ok())
 }
 
 /// A workspace with one file read as something other than what is on disk.
@@ -73,7 +91,17 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
         Some(text) => overlays.insert(path.to_string(), text.to_string()), // @lfy def/workspace/main.lfy:change
         None => overlays.remove(path), // @lfy def/workspace/main.lfy:change
     };
-    load_with(&workspace.root, overlays) // @lfy def/workspace/main.lfy:change
+    // The library the workspace was loaded with is loaded again, so that a change gives
+    // what `load` of the same root gave: where `elfie.json` names the library the entry
+    // decides anyway, and where it does not, the directory this workspace found stands
+    // in for the one the environment gave.
+    // @lfy def/workspace/main.lfy:change
+    let library = workspace
+        .packages
+        .iter()
+        .find(|package| package.identifier == LIBRARY_PACKAGE)
+        .map(|package| package.root.clone());
+    load_in(&workspace.root, overlays, library) // @lfy def/workspace/main.lfy:change
 }
 
 /// Whether a change at `path` could reach the program: the path is a source file under
@@ -84,7 +112,7 @@ fn in_reach(workspace: &Workspace, path: &str) -> bool {
     // a package root is in the program too, so a change there must reach it as well; and
     // a path replaced earlier must be reachable so that giving it again can undo the
     // replacement.
-    let is_source = path.ends_with(EXTENSION);
+    let is_source = is_source(path);
     (is_source && under(path, &workspace.source_directory))
         || (is_source
             && workspace
@@ -100,9 +128,14 @@ fn in_reach(workspace: &Workspace, path: &str) -> bool {
 }
 
 /// [`load`] with the files in `overlays` read as the text given there instead of what is
-/// on disk.
+/// on disk, and `environment` standing for what the environment gives for `ELFIE_LIB`.
 // @lfy def/workspace/main.lfy:change
-fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
+// @lfy def/workspace/main.lfy:load
+fn load_in(
+    root: &Path,
+    overlays: BTreeMap<String, String>,
+    environment: Option<String>,
+) -> Workspace {
     let mut loader = Loader {
         root,
         overlays: &overlays,
@@ -129,7 +162,20 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
         .unwrap_or_else(|| DEFAULT_OUTPUT_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:load
 
     // Dependencies. @lfy def/workspace/main.lfy:load
-    let packages = loader.packages(manifest.as_ref());
+    let mut packages = loader.packages(manifest.as_ref());
+    // The package elfie is in the program whether or not elfie.json names it.
+    // @lfy def/workspace/main.lfy:load
+    let library = match packages
+        .iter()
+        .position(|package| package.identifier == LIBRARY_PACKAGE)
+    {
+        Some(library) => library,
+        None => {
+            let root = loader.library_root(manifest.as_ref(), environment);
+            packages.push(loader.package(LIBRARY_PACKAGE, &root));
+            packages.len() - 1
+        }
+    };
     let target_specs = loader.target_specs(manifest.as_ref());
     let native_dependencies = match &manifest {
         Some(manifest) => loader.native_dependencies(MANIFEST, manifest), // @lfy def/workspace/main.lfy:load
@@ -181,6 +227,8 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
                     .iter()
                     .map(|site| site.resolved.clone())
                     .collect(), // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load
+                origin: origin_of(&entry.path, entry.package, library, &packages[library].root),
             });
         }
     }
@@ -202,6 +250,8 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
 
     // Targets. @lfy def/workspace/main.lfy:load
     let mut targets = Vec::new();
+    // @lfy def/workspace/main.lfy:load
+    let target_trait = library_target(&model, &files, library);
     for spec in target_specs {
         let Some(package) = packages
             .iter()
@@ -224,6 +274,20 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
             .and_then(|scope| model.lookup(scope, &spec.marker))
             .and_then(|symbol| model.symbols.get(symbol));
         match symbol {
+            // @lfy def/workspace/main.lfy:load
+            Some(symbol)
+                if symbol.kind == SymbolKind::Trait
+                    && target_trait
+                        .is_some_and(|target| !extends_target(&model, target, symbol.entity)) =>
+            {
+                loader.problem(
+                    Some(&main),
+                    format!(
+                        "the target {} names the trait {:?}, which neither is the trait target of the package {LIBRARY_PACKAGE} nor extends it",
+                        spec.identifier, spec.marker
+                    ),
+                )
+            }
             Some(symbol) if symbol.kind == SymbolKind::Trait => targets.push(Target {
                 identifier: spec.identifier, // @lfy def/workspace/main.lfy:load
                 marker: symbol.entity,       // @lfy def/workspace/main.lfy:load
@@ -457,30 +521,60 @@ impl Loader<'_> {
                 );
                 continue;
             };
-            let root = trim_directory(root);
-            // @lfy def/workspace/main.lfy:load
-            // Checked here rather than in `discover`, which does not run when the root or
-            // the source directory is missing; a missing package root is reported either
-            // way.
-            if !self.root.join(&root).is_dir() {
-                self.problem(
-                    Some(&root),
-                    format!("the root of the package {identifier} does not exist"),
-                );
-            }
-            let native_dependencies = match self.manifest(&join(&root, MANIFEST)) {
-                Some(package_manifest) => {
-                    self.native_dependencies(&join(&root, MANIFEST), &package_manifest)
-                } // @lfy def/workspace/main.lfy:load
-                None => Vec::new(),
-            };
-            out.push(Package {
-                identifier: identifier.clone(),
-                root,
-                native_dependencies,
-            });
+            let package = self.package(identifier, root);
+            out.push(package);
         }
         out
+    }
+
+    /// One package at a root, with the native dependencies of its own `elfie.json`.
+    // @lfy def/workspace/main.lfy:load
+    fn package(&mut self, identifier: &str, root: &str) -> Package {
+        let root = trim_directory(root);
+        // @lfy def/workspace/main.lfy:load
+        // Checked here rather than in `discover`, which does not run when the root or
+        // the source directory is missing; a missing package root is reported either
+        // way.
+        if !self.root.join(&root).is_dir() {
+            self.problem(
+                Some(&root),
+                format!("the root of the package {identifier} does not exist"),
+            );
+        }
+        let native_dependencies = match self.manifest(&join(&root, MANIFEST)) {
+            Some(package_manifest) => {
+                self.native_dependencies(&join(&root, MANIFEST), &package_manifest)
+            } // @lfy def/workspace/main.lfy:load
+            None => Vec::new(),
+        };
+        Package {
+            identifier: identifier.to_string(),
+            root,
+            native_dependencies,
+        }
+    }
+
+    /// The root of the package `elfie` when `elfie.json` names no dependency for it: the
+    /// top level key `lib` relative to the root, the directory the environment gives for
+    /// `ELFIE_LIB`, or the copy of the library the compiler was built with — the first
+    /// of these that is given, never the next one when the given one is missing.
+    // @lfy def/workspace/main.lfy:load
+    fn library_root(
+        &mut self,
+        manifest: Option<&serde_json::Map<String, serde_json::Value>>,
+        environment: Option<String>,
+    ) -> String {
+        let named = match manifest.and_then(|manifest| manifest.get("lib")) {
+            Some(serde_json::Value::String(lib)) => Some(lib.clone()),
+            None => None,
+            Some(_) => {
+                self.problem(Some(MANIFEST), "\"lib\" is not a string".to_string());
+                None
+            }
+        };
+        named
+            .or(environment)
+            .unwrap_or_else(|| normalize(BUILT_IN_LIBRARY))
     }
 
     /// Each target `elfie.json` names, as spelled.
@@ -536,7 +630,7 @@ impl Loader<'_> {
         let mut out = BTreeSet::new();
         self.walk(directory, &mut out);
         for path in self.overlays.keys() {
-            if path.ends_with(EXTENSION) && under(path, directory) {
+            if is_source(path) && under(path, directory) {
                 out.insert(path.clone());
             }
         }
@@ -565,7 +659,8 @@ impl Loader<'_> {
             let path = join(directory, &name);
             if is_directory {
                 self.walk(&path, out);
-            } else if name.ends_with(EXTENSION) {
+            } else if is_source(&name) {
+                // @lfy def/workspace/main.lfy:load
                 out.insert(path);
             }
         }
@@ -735,7 +830,7 @@ impl Loader<'_> {
         };
         let base = normalize(&base);
         // @lfy def/workspace/main.lfy:load
-        let file = format!("{base}{EXTENSION}");
+        let file = format!("{base}.{EXTENSION}");
         if self.exists(&file) {
             return Ok(file); // @lfy def/workspace/main.lfy:load
         }
@@ -772,6 +867,58 @@ fn use_problems(model: &Model, recorded: &[UseProblem]) -> Vec<Problem> {
         });
     }
     out
+}
+
+/// The origin of one file: the prelude for the main file of the package `elfie`, the
+/// library for its other files, and the program for every file not in that package.
+// @lfy def/workspace/main.lfy:load
+fn origin_of(path: &str, package: Option<usize>, library: usize, root: &str) -> Origin {
+    if package != Some(library) {
+        return Origin::Program;
+    }
+    if path == join(root, MAIN_FILE) {
+        Origin::Prelude
+    } else {
+        Origin::Library
+    }
+}
+
+/// The trait `target` of the package `elfie`: the trait of that name declared in one of
+/// its files. `None` when the library in the program declares none, in which case there
+/// is nothing for a target's marker to extend and every marker stands.
+///
+/// Decision: the criterion names `target` of the package elfie, and the main file of the
+/// library does not bring it into the prelude, so it is found by its name among the
+/// entities the package's files declare rather than by a lookup in a scope.
+// @lfy def/workspace/main.lfy:load
+fn library_target(model: &Model, files: &[File], library: usize) -> Option<EntityId> {
+    let sources: HashSet<usize> = files
+        .iter()
+        .filter(|file| file.package == Some(library))
+        .map(|file| file.source)
+        .collect();
+    model.entities.iter().position(|entity| {
+        entity.is_trait()
+            && entity.identifier.as_deref() == Some(TARGET_TRAIT)
+            && entity.file.is_some_and(|file| sources.contains(&file))
+    })
+}
+
+/// Whether a trait is `target` itself, or among its extenders directly or through other
+/// extenders.
+// @lfy def/workspace/main.lfy:load
+fn extends_target(model: &Model, target: EntityId, marker: EntityId) -> bool {
+    let mut seen = HashSet::new();
+    let mut pending = vec![target];
+    while let Some(entity) = pending.pop() {
+        if entity == marker {
+            return true;
+        }
+        if seen.insert(entity) {
+            pending.extend(model.entities[entity].extenders().iter().copied());
+        }
+    }
+    false
 }
 
 /// The entities built for a target: everything the marker trait was applied to, every
@@ -1026,8 +1173,29 @@ fn directory_of(path: &str) -> &str {
     path.rsplit_once('/').map_or("", |(directory, _)| directory)
 }
 
-/// A path with every `.` dropped and every `..` applied to the segment before it.
+/// `Path::extension`: what follows the last dot of the last segment, without the dot;
+/// `None` when the name has no dot or only a leading one.
+// @lfy def/workspace/main.lfy:load
+fn extension(path: &str) -> Option<&str> {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    match name.rfind('.') {
+        Some(0) | None => None,
+        Some(dot) => Some(&name[dot + 1..]),
+    }
+}
+
+/// Whether a path names a file of the program: one whose extension is `lfy`.
+// @lfy def/workspace/main.lfy:load
+fn is_source(path: &str) -> bool {
+    extension(path) == Some(EXTENSION)
+}
+
+/// `Path::normalize`: a path with every `.` dropped and every `..` applied to the segment
+/// before it, never looking at the disk. An absolute path stays absolute, and `..` at the
+/// root is dropped because the root has no parent.
+// @lfy def/workspace/main.lfy:load
 fn normalize(path: &str) -> String {
+    let absolute = path.starts_with('/');
     let mut segments: Vec<&str> = Vec::new();
     for segment in path.split('/') {
         match segment {
@@ -1036,12 +1204,18 @@ fn normalize(path: &str) -> String {
                 Some(&last) if last != ".." => {
                     segments.pop();
                 }
+                _ if absolute => {}
                 _ => segments.push(".."),
             },
             segment => segments.push(segment),
         }
     }
-    segments.join("/")
+    let joined = segments.join("/");
+    match (absolute, joined.is_empty()) {
+        (true, _) => format!("/{joined}"),
+        (false, true) => ".".to_string(),
+        (false, false) => joined,
+    }
 }
 
 #[cfg(test)]
@@ -1051,6 +1225,12 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::*;
+
+    /// The directory of the library a fixture carries, relative to its root.
+    const LIBRARY_ROOT: &str = "lib";
+    /// The library a fixture carries: the trait `target`, which a target's marker must
+    /// extend, in the prelude every file of the project sees.
+    const LIBRARY: &str = "trait target { }\n";
 
     /// A project directory under the system's temporary directory, removed when dropped.
     struct Fixture {
@@ -1067,7 +1247,12 @@ mod tests {
             ));
             let _ = fs::remove_dir_all(&root);
             fs::create_dir_all(&root).unwrap();
-            Fixture { root }
+            let fixture = Fixture { root };
+            // Every fixture holds a library of its own, which [`Fixture::load`] names as
+            // the environment would, so that a test never reads the copy of the library
+            // the compiler was built with. @lfy def/workspace/main.lfy:load
+            fixture.write(&join(LIBRARY_ROOT, MAIN_FILE), LIBRARY);
+            fixture
         }
 
         /// A project with an empty `def` directory.
@@ -1093,8 +1278,11 @@ mod tests {
             self
         }
 
+        /// The project, loaded with the library the fixture carries standing in for the
+        /// one the environment names.
+        // @lfy def/workspace/main.lfy:load
         fn load(&self) -> Workspace {
-            load(&self.root)
+            load_in(&self.root, BTreeMap::new(), Some(LIBRARY_ROOT.to_string()))
         }
     }
 
@@ -1104,12 +1292,51 @@ mod tests {
         }
     }
 
-    fn paths(workspace: &Workspace) -> Vec<&str> {
+    /// A load with nothing in the environment, so that the library is the copy the
+    /// compiler was built with.
+    // @lfy def/workspace/main.lfy:load
+    fn load_built_in(root: &Path) -> Workspace {
+        load_in(root, BTreeMap::new(), None)
+    }
+
+    /// Whether a file came from the package `elfie`.
+    // @lfy def/workspace/main.lfy:load
+    fn is_library(workspace: &Workspace, file: &File) -> bool {
+        file.package
+            .is_some_and(|package| workspace.packages[package].identifier == LIBRARY_PACKAGE)
+    }
+
+    /// Every file of the program that the standard library did not bring, in bind order.
+    fn project(workspace: &Workspace) -> impl Iterator<Item = &File> {
         workspace
             .files
             .iter()
+            .filter(|file| !is_library(workspace, file))
+    }
+
+    fn paths(workspace: &Workspace) -> Vec<&str> {
+        project(workspace).map(|file| file.path.as_str()).collect()
+    }
+
+    /// Every file of the package `elfie`, in bind order.
+    // @lfy def/workspace/main.lfy:load
+    fn library_paths(workspace: &Workspace) -> Vec<&str> {
+        workspace
+            .files
+            .iter()
+            .filter(|file| is_library(workspace, file))
             .map(|file| file.path.as_str())
             .collect()
+    }
+
+    /// The package `elfie` of a workspace.
+    // @lfy def/workspace/main.lfy:load
+    fn library(workspace: &Workspace) -> &Package {
+        workspace
+            .packages
+            .iter()
+            .find(|package| package.identifier == LIBRARY_PACKAGE)
+            .expect("the package elfie is in the program")
     }
 
     fn load_problems(workspace: &Workspace) -> Vec<&LoadProblem> {
@@ -1165,7 +1392,9 @@ mod tests {
     #[test]
     fn an_empty_def_and_no_manifest_give_the_defaults() {
         let fixture = Fixture::empty();
-        let workspace = fixture.load();
+        // Nothing names a library, so it is the copy the compiler was built with.
+        // @lfy def/workspace/main.lfy:load
+        let workspace = load_built_in(&fixture.root);
         assert_eq!(workspace.root, fixture.root); // @lfy def/workspace/main.lfy:load
         assert_eq!(
             workspace.name,
@@ -1173,12 +1402,92 @@ mod tests {
         );
         assert_eq!(workspace.source_directory, "def");
         assert_eq!(workspace.output_directory, "src");
-        assert!(workspace.files.is_empty());
+        assert!(paths(&workspace).is_empty());
         assert!(workspace.targets.is_empty());
-        assert!(workspace.packages.is_empty());
         assert!(workspace.native_dependencies.is_empty());
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
         assert!(workspace.overlays.is_empty());
+        // The package elfie is in the program all the same, holding the files of that
+        // copy. @lfy def/workspace/main.lfy:load
+        assert_eq!(workspace.packages.len(), 1);
+        let library = library(&workspace);
+        assert_eq!(library.root, normalize(BUILT_IN_LIBRARY));
+        assert!(Path::new(&library.root).is_absolute());
+        let main = join(&library.root, MAIN_FILE);
+        assert!(library_paths(&workspace).contains(&main.as_str()));
+        assert!(library_paths(&workspace).len() > 1);
+    }
+
+    /// The library is the first source that is given, and a missing one is a problem
+    /// rather than a reason to try the next.
+    // @lfy def/workspace/main.lfy:load
+    #[test]
+    fn the_library_is_the_first_source_that_names_one() {
+        // The dependency entry elfie.
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{ "lib": "byKey", "dependencies": { "elfie": { "root": "byDependency" } } }"#,
+            )
+            .write("byDependency/main.lfy", LIBRARY)
+            .write("byKey/main.lfy", LIBRARY);
+        let workspace = fixture.load();
+        assert_eq!(library(&workspace).root, "byDependency");
+
+        // The top level key lib, relative to the root.
+        let fixture = Fixture::empty();
+        fixture
+            .write("elfie.json", r#"{ "lib": "byKey" }"#)
+            .write("byKey/main.lfy", LIBRARY);
+        let workspace = fixture.load();
+        assert_eq!(library(&workspace).root, "byKey");
+        assert_eq!(library_paths(&workspace), ["byKey/main.lfy"]);
+
+        // What the environment gives for ELFIE_LIB, when elfie.json names neither.
+        let fixture = Fixture::empty();
+        fixture.write("elfie.json", r#"{ "name": "named" }"#);
+        let workspace = fixture.load();
+        assert_eq!(library(&workspace).root, LIBRARY_ROOT);
+
+        // A given root that is missing is a problem, and the next source is not tried.
+        // @lfy def/workspace/main.lfy:load
+        let fixture = Fixture::empty();
+        fixture.write("elfie.json", r#"{ "lib": "gone" }"#);
+        let workspace = fixture.load();
+        assert_eq!(library(&workspace).root, "gone");
+        assert!(library_paths(&workspace).is_empty());
+        let problems = load_problems(&workspace);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(problems[0].path.as_deref(), Some("gone"));
+    }
+
+    /// The main file of the package elfie is the prelude, its other files are the
+    /// library, and every file outside it is the program.
+    // @lfy def/workspace/main.lfy:load
+    #[test]
+    fn the_library_gives_the_prelude_and_every_other_file_the_program() {
+        let fixture = Fixture::empty();
+        fixture
+            .write("def/main.lfy", "d Marked is target { }\n")
+            .write(&join(LIBRARY_ROOT, MAIN_FILE), LIBRARY)
+            .write("lib/values/list.lfy", "d List { }\n");
+        let workspace = fixture.load();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let origin = |path: &str| {
+            let file = workspace.file(path).expect("a file of the program");
+            workspace.origin(file)
+        };
+        assert_eq!(origin("lib/main.lfy"), Origin::Prelude);
+        assert_eq!(origin("lib/values/list.lfy"), Origin::Library);
+        assert_eq!(origin("def/main.lfy"), Origin::Program);
+        // The prelude scope is the file scope of that main file, so a project file sees
+        // what it declares without a use. @lfy def/workspace/main.lfy:load
+        let project = workspace.file("def/main.lfy").unwrap().source;
+        assert_eq!(
+            workspace.model.scopes[workspace.model.file_scopes[project]].parent,
+            Some(workspace.model.file_scopes[workspace.file("lib/main.lfy").unwrap().source])
+        );
     }
 
     // @lfy def/workspace/main.lfy:load
@@ -1190,7 +1499,7 @@ mod tests {
             .write("def/rules/main.lfy", "trait rule { }\n");
         let workspace = fixture.load();
         assert_eq!(paths(&workspace), ["def/rules/main.lfy", "def/main.lfy"]);
-        assert!(workspace.files.iter().all(|file| file.package.is_none()));
+        assert!(project(&workspace).all(|file| file.package.is_none()));
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
         assert_eq!(
             uses_of(&workspace, "def/main.lfy"),
@@ -1292,7 +1601,7 @@ mod tests {
     fn a_missing_root_or_source_directory_adds_a_problem_with_no_path() {
         let fixture = Fixture::new();
         let missing = fixture.root.join("nowhere");
-        let workspace = load(&missing);
+        let workspace = load_built_in(&missing);
         assert_eq!(workspace.root, missing);
         let problems = load_problems(&workspace);
         assert_eq!(problems.len(), 1, "{problems:?}");
@@ -1312,7 +1621,7 @@ mod tests {
         assert_eq!(problems[0].path, None);
         assert!(problems[0].message.contains("def"), "{}", problems[0]);
         assert!(workspace.files.is_empty());
-        assert_eq!(workspace.packages.len(), 1);
+        assert_eq!(workspace.packages.len(), 2);
     }
 
     // @lfy def/workspace/main.lfy:load
@@ -1336,8 +1645,8 @@ mod tests {
         for (index, file) in workspace.files.iter().enumerate() {
             assert_eq!(file.source, index);
             assert_eq!(workspace.model.sources[index].path, file.path);
-            assert!(file.package.is_none());
         }
+        assert!(project(&workspace).all(|file| file.package.is_none()));
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
@@ -1484,7 +1793,7 @@ mod tests {
             .write("def/e.lfy", "");
         let workspace = fixture.load();
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
-        assert_eq!(workspace.files.len(), 5);
+        assert_eq!(paths(&workspace).len(), 5);
         for file in &workspace.files {
             for used in uses_of(&workspace, &file.path).iter().flatten() {
                 assert!(
@@ -1532,7 +1841,7 @@ mod tests {
             .write("targets/rust/extra/thing.lfy", "")
             .write("targets/rust/elfie.json", r#"{ "native": [ { "identifier": "clap", "ecosystem": "cargo", "version": "4" } ] }"#);
         let workspace = fixture.load();
-        assert_eq!(workspace.packages.len(), 2);
+        assert_eq!(workspace.packages.len(), 3); // @lfy def/workspace/main.lfy:load
         let rust = workspace
             .packages
             .iter()
@@ -1609,7 +1918,7 @@ mod tests {
             .write("pkg/main.lfy", "");
         let workspace = fixture.load();
         assert!(workspace.native_dependencies.is_empty());
-        assert_eq!(workspace.packages.len(), 1);
+        assert_eq!(workspace.packages.len(), 2);
         assert!(workspace.packages[0].native_dependencies.is_empty());
         let problems = load_problems(&workspace);
         let mut paths: Vec<Option<&str>> = problems
@@ -1674,10 +1983,10 @@ mod tests {
                 }"#,
             )
             .write("def/main.lfy", "")
-            .write("targets/rust/main.lfy", "trait rust { }\n");
+            .write("targets/rust/main.lfy", "trait rust extends target { }\n");
         let workspace = fixture.load();
         // @lfy def/workspace/main.lfy:load
-        assert_eq!(workspace.packages.len(), 1);
+        assert_eq!(workspace.packages.len(), 2);
         assert!(workspace.file("targets/rust/main.lfy").is_some());
         let problems = load_problems(&workspace);
         // @lfy def/workspace/main.lfy:load
@@ -1705,7 +2014,7 @@ mod tests {
             .iter()
             .find(|target| target.identifier == "rust")
             .expect("the rust target");
-        assert_eq!(rust.package, 0);
+        assert_eq!(workspace.packages[rust.package].identifier, "rust");
         assert_eq!(rust.output_directory, "crates"); // @lfy def/workspace/main.lfy:load
         assert!(workspace.model.entities[rust.marker].is_trait()); // @lfy def/workspace/main.lfy:load
         let plain = workspace
@@ -1715,6 +2024,45 @@ mod tests {
             .expect("the plain target");
         assert_eq!(plain.output_directory, "generated"); // @lfy def/workspace/main.lfy:load
         assert_eq!(plain.marker, rust.marker);
+    }
+
+    /// A marker that is neither the trait `target` of the package elfie nor one of its
+    /// extenders is left out, however deep the chain of extenders runs.
+    // @lfy def/workspace/main.lfy:load
+    #[test]
+    fn a_marker_that_does_not_extend_target_is_left_out_with_a_problem() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{
+                    "dependencies": { "p": { "root": "p" } },
+                    "targets": {
+                        "t": { "package": "p", "marker": "m" },
+                        "deep": { "package": "p", "marker": "deep" },
+                        "itself": { "package": "p", "marker": "target" }
+                    }
+                }"#,
+            )
+            .write("def/main.lfy", "")
+            .write(
+                "p/main.lfy",
+                "trait m { }\ntrait near extends target { }\ntrait deep extends near { }\n",
+            );
+        let workspace = fixture.load();
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            workspace
+                .targets
+                .iter()
+                .map(|target| target.identifier.as_str())
+                .collect::<Vec<_>>(),
+            ["deep", "itself"]
+        );
+        let problems = load_problems(&workspace);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].message.contains(" t "), "{}", problems[0]);
+        assert!(problems[0].message.contains("\"m\""), "{}", problems[0]);
     }
 
     /// The entities built for a target.
@@ -1730,7 +2078,7 @@ mod tests {
                     "targets": { "rust": { "package": "rust", "marker": "rust" } }
                 }"#,
             )
-            .write("targets/rust/main.lfy", "trait rust { }\n")
+            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
             .write(
                 "def/main.lfy",
                 "use \"rust\";\nd Marked is rust { }\nd Plain { }\n",
@@ -1759,7 +2107,7 @@ mod tests {
                     "targets": { "rust": { "package": "rust", "marker": "rust" } }
                 }"#,
             )
-            .write("targets/rust/main.lfy", "trait rust { }\n")
+            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
             .write(
                 "def/marked.lfy",
                 "use \"rust\";\nrust.apply(.);\nd Plain { }\nd Other { }\n",
@@ -1790,7 +2138,10 @@ mod tests {
                     "targets": { "rust": { "package": "rust", "marker": "rust" } }
                 }"#,
             )
-            .write("targets/rust/main.lfy", "trait rust { }\nd Guidance { }\n")
+            .write(
+                "targets/rust/main.lfy",
+                "trait rust extends target { }\nd Guidance { }\n",
+            )
             .write(
                 "def/main.lfy",
                 "use \"rust\";\nrust.apply(global);\nd Plain { $member: `m` = string; }\nd Other { }\n",
@@ -1827,7 +2178,11 @@ mod tests {
                 .iter()
                 .map(|source| source.path.as_str())
                 .collect::<Vec<_>>(),
-            paths(&workspace)
+            workspace
+                .files
+                .iter()
+                .map(|file| file.path.as_str())
+                .collect::<Vec<_>>()
         );
         // @lfy def/workspace/data.lfy:Workspace.problems
         let load_count = workspace.load_problems().count();
@@ -1925,7 +2280,7 @@ mod tests {
                 .contains("replaced")
         );
         let restored = change(&replaced, "def/extra.lfy", None);
-        assert_eq!(restored.files.len(), 2);
+        assert_eq!(paths(&restored).len(), 2);
         assert_eq!(restored, fixture.load());
         assert!(restored.overlays.is_empty());
     }
@@ -2011,6 +2366,16 @@ mod tests {
         assert_eq!(normalize("def/lexer/../grammar/./main"), "def/grammar/main");
         assert_eq!(normalize("def/../../x"), "../x");
         assert_eq!(normalize("./a//b/"), "a/b");
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(normalize("/a/b/../c"), "/a/c");
+        assert_eq!(normalize("/../a"), "/a");
+        assert_eq!(normalize("a/.."), ".");
+        assert_eq!(extension("a/b.tar.gz"), Some("gz"));
+        assert_eq!(extension("a/b"), None);
+        assert_eq!(extension(".lfy"), None);
+        assert_eq!(extension("a.lfy/c"), None);
+        assert!(is_source("def/main.lfy"));
+        assert!(!is_source("def/notes.txt"));
         assert_eq!(join("def", "main.lfy"), "def/main.lfy");
         assert_eq!(join(".", "main.lfy"), "main.lfy");
         assert_eq!(join("def", ""), "def");

@@ -21,8 +21,8 @@ use crate::grammar::terminals::punctuation::Punctuation as P;
 use crate::grammar::{Entity as Rule, GrammarRule};
 use crate::lexer::Token;
 use crate::model::{
-    self, ContextProperty, EntityId, EntityKind, FileId, Layer, Model, NodeRef, ScopeId, SymbolId,
-    SymbolKind, TypeRef, Usage,
+    self, ContextProperty, EntityId, EntityKind, FileId, Layer, Model, NodeRef, Origin, ScopeId,
+    SymbolId, SymbolKind, TypeRef, Usage, Value,
 };
 use crate::parser::Node;
 use crate::parser::components::is_trivia;
@@ -32,6 +32,13 @@ use crate::workspace::{Workspace, WorkspaceProblem};
 const MANIFEST: &str = "elfie.json";
 /// The extension of a source file, dropped from path completions.
 const EXTENSION: &str = ".lfy";
+/// The data the prelude gives an entity for what it is; `Entity` covers every entity and
+/// the others only their own kind, as the binder reads them.
+// @lfy def/query/main.lfy:semanticTokensOf
+const KIND_DATA: [&str; 10] = [
+    "Entity", "Trait", "Function", "Data", "Type", "Enum", "Member", "Parameter", "Variable",
+    "Module",
+];
 
 /// What [`range_of`] takes: a node of a file's tree, or a token by its index into the
 /// file's tokens.
@@ -463,6 +470,118 @@ pub fn references_to(
     out
 }
 
+// ---- The prelude ------------------------------------------------------------------
+
+/// The data the prelude declares under a name, when the program has a prelude.
+// Decision: the binder reads the prelude through its own scope, so the queries find it
+// the same way: the file scope of the one source of [`Origin::Prelude`].
+// @lfy def/query/main.lfy:completionsAt
+fn prelude_data(model: &Model, name: &str) -> Option<EntityId> {
+    let file = model
+        .sources
+        .iter()
+        .position(|source| source.origin == Origin::Prelude)?;
+    let symbol = model.lookup_local(model.file_scopes[file], name)?;
+    let entity = model.symbols[symbol].entity;
+    matches!(model.entities[entity].kind, EntityKind::Data).then_some(entity)
+}
+
+/// The data the prelude gives an entity for what it is: `Entity`, which every entity is
+/// seen through, then the data for its own kind. An entity that resolved to nothing is
+/// still seen through `Entity`.
+// @lfy def/query/main.lfy:completionsAt
+fn kind_data(model: &Model, entity: Option<EntityId>) -> Vec<EntityId> {
+    let own = match entity.map(|entity| &model.entities[entity].kind) {
+        Some(EntityKind::Trait { .. }) => Some("Trait"),
+        Some(EntityKind::Fn { .. }) => Some("Function"),
+        Some(EntityKind::Data) => Some("Data"),
+        Some(EntityKind::Type) => Some("Type"),
+        Some(EntityKind::Enum) => Some("Enum"),
+        Some(EntityKind::Member) => Some("Member"),
+        Some(EntityKind::Parameter) => Some("Parameter"),
+        Some(EntityKind::Variable) => Some("Variable"),
+        Some(EntityKind::Module | EntityKind::File) => Some("Module"),
+        _ => None,
+    };
+    prelude_data(model, "Entity")
+        .into_iter()
+        .chain(own.and_then(|name| prelude_data(model, name)))
+        .collect()
+}
+
+/// The members of the kind data of an entity: those of `Entity` for every entity, then
+/// those of the data for its kind, each name once.
+// @lfy def/query/main.lfy:completionsAt
+fn kind_members(model: &Model, entity: Option<EntityId>) -> Vec<SymbolId> {
+    let mut out: Vec<SymbolId> = Vec::new();
+    for data in kind_data(model, entity) {
+        for symbol in member_symbols(model, data) {
+            let name = &model.symbols[symbol].name;
+            if !out.iter().any(|&seen| &model.symbols[seen].name == name) {
+                out.push(symbol);
+            }
+        }
+    }
+    out
+}
+
+/// The members of an entity's kind data whose value is a function: what the value layer
+/// of an entity adds to its own members.
+// @lfy def/query/main.lfy:completionsAt
+fn kind_function_members(model: &Model, entity: EntityId) -> Vec<SymbolId> {
+    kind_members(model, Some(entity))
+        .into_iter()
+        .filter(|&symbol| {
+            matches!(
+                model.entities[model.symbols[symbol].entity].ty,
+                Some(TypeRef::Function)
+            )
+        })
+        .collect()
+}
+
+/// Whether a name is a member of any kind data: one of another kind yields undefined for
+/// an entity, and is still a member and not a name of its own.
+// Decision: with no prelude the context layer gives every entity the properties
+// [`ContextProperty`] lists, as the binder falls back to them too.
+// @lfy def/query/main.lfy:semanticTokensOf
+fn is_kind_member(model: &Model, name: &str) -> bool {
+    if prelude_data(model, "Entity").is_none() {
+        return ContextProperty::lookup(name).is_some();
+    }
+    KIND_DATA.iter().any(|kind| {
+        prelude_data(model, kind)
+            .map(|data| member_symbols(model, data))
+            .is_some_and(|members| {
+                members
+                    .into_iter()
+                    .any(|symbol| model.symbols[symbol].name == name)
+            })
+    })
+}
+
+/// The data the prelude declares for a value of a type: what that value is. A template
+/// already has its data as its type and needs no entry.
+// @lfy def/query/main.lfy:completionsAt
+fn base_data(model: &Model, ty: &TypeRef) -> Option<EntityId> {
+    let name = match ty {
+        TypeRef::Primitive("string") => "String",
+        TypeRef::Primitive("number") => "Number",
+        TypeRef::Primitive("boolean") => "Boolean",
+        TypeRef::Primitive("object") => "Object",
+        TypeRef::Primitive("function") | TypeRef::Function => "Function",
+        TypeRef::List(_) => "List",
+        TypeRef::Literal(value) => match **value {
+            Value::String(_) => "String",
+            Value::Number(_) => "Number",
+            Value::Bool(_) => "Boolean",
+            _ => return None,
+        },
+        _ => return None,
+    };
+    prelude_data(model, name)
+}
+
 // ---- Hover ------------------------------------------------------------------------
 
 /// The kind of an entity: the kind of its symbol, and `member` when it is a member.
@@ -558,7 +677,11 @@ fn type_name(model: &Model, ty: &TypeRef) -> String {
 /// reference replaced by the referenced identifier; the type is the identifier of
 /// `Entity.type` or its source text; the documentation is the joined text of the
 /// documented nodes without their openers, closers, and one leading space per line; the
-/// criteria are `criteriaOf` the entity.
+/// criteria are `criteriaOf` the entity; the traits are the identifier of each of
+/// `Entity.traits` in application order, so a native data or fn shows `builtin` among
+/// them. A member of a kind data or of a base data, reached after the context accessor or
+/// a value accessor, hovers as any member: kind `member`, its range in the library file
+/// that declares it, and its own definition and type.
 // @lfy def/query/main.lfy:hoverOf
 pub fn hover_of(workspace: &Workspace, entity: EntityId) -> Hover {
     let model = &workspace.model;
@@ -585,6 +708,13 @@ pub fn hover_of(workspace: &Workspace, entity: EntityId) -> Hover {
         // are stripped to the referenced identifier here, as `criteriaOf` does.
         definition: e.definition.as_deref().map(model::strip_references), // @lfy def/query/main.lfy:hoverOf
         ty: e.ty.as_ref().map(|ty| type_name(model, ty)), // @lfy def/query/main.lfy:hoverOf
+        // A trait applied anonymously names nothing and is left out.
+        // @lfy def/query/main.lfy:hoverOf
+        traits: e
+            .traits
+            .iter()
+            .filter_map(|applied| model.entities[applied.entity].identifier.clone())
+            .collect(),
         documentation: node.and_then(|node| documentation_text(workspace, node)), // @lfy def/query/main.lfy:hoverOf
         criteria: model::criteria_of(model, entity), // @lfy def/query/main.lfy:hoverOf
     }
@@ -757,21 +887,66 @@ fn module_symbols(model: &Model, file: FileId) -> Vec<SymbolId> {
     model.scopes[model.file_scopes[file]].symbols.clone()
 }
 
+/// What an entity offers after a value accessor: its own members, then the members of
+/// its kind data whose value is a function.
+// @lfy def/query/main.lfy:completionsAt
+fn entity_members(model: &Model, entity: EntityId) -> Vec<SymbolId> {
+    let mut out = member_symbols(model, entity);
+    out.extend(kind_function_members(model, entity));
+    out
+}
+
+/// What a value offers after a value accessor: the entity's own members, then every
+/// member of the base data of its type.
+// Decision: the keys an object literal is written with declare no symbol, so the model
+// holds none to offer; the binder leaves a name the base data does not declare to the
+// object the same way, without a problem.
+// @lfy def/query/main.lfy:completionsAt
+fn value_members(model: &Model, entity: EntityId) -> Vec<SymbolId> {
+    let mut out = member_symbols(model, entity);
+    if let Some(ty) = &model.entities[entity].ty
+        && let Some(more) = type_members(model, ty)
+    {
+        out.extend(more);
+    }
+    out
+}
+
 /// What a type offers after a value accessor.
 fn type_members(model: &Model, ty: &TypeRef) -> Option<Vec<SymbolId>> {
     match ty {
         TypeRef::Entity(entity) => match model.entities[*entity].kind {
             EntityKind::File => Some(module_symbols(model, model.entities[*entity].file?)),
-            _ => Some(member_symbols(model, *entity)),
+            _ => Some(entity_members(model, *entity)),
         },
-        TypeRef::Predicate(entity) => Some(member_symbols(model, *entity)),
+        TypeRef::Predicate(entity) => Some(entity_members(model, *entity)),
         TypeRef::Union(items) => items.iter().find_map(|item| type_members(model, item)),
-        _ => None,
+        // A value of a base data offers that data's members.
+        // @lfy def/query/main.lfy:completionsAt
+        ty => base_data(model, ty).map(|data| member_symbols(model, data)),
     }
 }
 
-/// What the left side of a member access offers: a module's symbols, an entity's members,
-/// or an enum's keys; `None` when the left side resolves to nothing.
+/// The entity the left side of an accessor resolves to; `None` when it resolves to
+/// nothing.
+// @lfy def/query/main.lfy:completionsAt
+fn left_entity(model: &Model, left: NodeRef) -> Option<EntityId> {
+    let rule = model.info(left).rule;
+    if rule == E::Group.entity() {
+        let inner = child_nodes(model, left).into_iter().next()?;
+        return left_entity(model, inner);
+    }
+    let symbol = model
+        .usage_of(left)
+        .and_then(|usage| model.usages[usage].symbol)?;
+    Some(model.symbols[symbol].entity)
+}
+
+/// What the left side of a member access offers: a module's symbols; an entity's own
+/// members, then the members of its kind data whose value is a function; an enum's keys;
+/// or, for a value that is an object, a string, a number, or a list, the entity's own
+/// members then every member of `Object`, `String`, `Number`, or `List`. `None` when the
+/// left side resolves to nothing.
 // @lfy def/query/main.lfy:completionsAt
 fn left_members(model: &Model, left: NodeRef) -> Option<Vec<SymbolId>> {
     let rule = model.info(left).rule;
@@ -794,15 +969,15 @@ fn left_members(model: &Model, left: NodeRef) -> Option<Vec<SymbolId>> {
         | SymbolKind::Type
         | SymbolKind::Enum
         | SymbolKind::Function
-        | SymbolKind::AgentFunction => Some(member_symbols(model, symbol.entity)),
+        | SymbolKind::AgentFunction => Some(entity_members(model, symbol.entity)),
         SymbolKind::Alias | SymbolKind::External => match entity.kind {
             EntityKind::Data | EntityKind::Trait { .. } | EntityKind::Type | EntityKind::Enum => {
-                Some(member_symbols(model, symbol.entity))
+                Some(entity_members(model, symbol.entity))
             }
             EntityKind::File => Some(module_symbols(model, entity.file?)),
-            _ => entity.ty.as_ref().and_then(|ty| type_members(model, ty)),
+            _ => Some(value_members(model, symbol.entity)),
         },
-        _ => entity.ty.as_ref().and_then(|ty| type_members(model, ty)),
+        _ => Some(value_members(model, symbol.entity)),
     }
 }
 
@@ -970,7 +1145,9 @@ fn expression_begins_after(before: &Token) -> bool {
 /// nearer scope come before those from an enclosing scope, then file order, then
 /// keywords.
 ///
-/// After `@`: one completion of kind `context` per context property. After `$`: the
+/// After `@`: one completion of kind `context` per member of the kind data of the entity
+/// the left side resolves to, those of `Entity` for every entity then those of the data
+/// for its kind, each with the member's definition as its detail. After `$`: the
 /// members of the current entity of the scope holding the position (of the left side,
 /// when there is one). After `$&`: the members of the parent scope's current entity.
 /// After `.` or `?.`: what the left side offers, or nothing when it resolves to nothing.
@@ -1140,10 +1317,30 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
     match before_rule {
         // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ContextAccessor)) => {
-            out.extend(ContextProperty::ALL.into_iter().map(|property| Completion {
-                label: property.value().to_string(),
+            // The entity the left side resolves to, as the binder reads it; with no left
+            // side, the current entity of the scope the position is in.
+            let entity = match left_of_accessor() {
+                Some(left) => left_entity(model, left),
+                None => Some(model.scopes[scope].current),
+            };
+            let members = kind_members(model, entity);
+            if members.is_empty() {
+                // Decision: with no prelude there is no kind data to read, so the
+                // properties the context layer gives every entity are offered, as the
+                // binder falls back to them too.
+                out.extend(ContextProperty::ALL.into_iter().map(|property| Completion {
+                    label: property.value().to_string(),
+                    kind: OfferedKind::Completion(CompletionKind::Context),
+                    detail: None,
+                }));
+            }
+            out.extend(members.into_iter().map(|symbol| Completion {
+                label: model.symbols[symbol].name.clone(),
                 kind: OfferedKind::Completion(CompletionKind::Context),
-                detail: None,
+                detail: model.entities[model.symbols[symbol].entity]
+                    .definition
+                    .as_deref()
+                    .map(model::strip_references),
             }));
         }
         // @lfy def/query/main.lfy:completionsAt
@@ -1902,9 +2099,10 @@ fn with_modifier(set: &mut u32, modifier: TokenModifier) {
 
 /// Every name of a file, classified by meaning for an editor to color.
 ///
-/// One token per token that spells a declared name, a used name, or a context property;
-/// keywords, punctuation, strings, numbers, and comments get none. Tokens are in position
-/// order and never overlap; a file not in the program gives an empty list.
+/// One token per token that spells a declared name or a used name, a member of a kind
+/// data after the context accessor among them; keywords, punctuation, strings, numbers,
+/// and comments get none. Tokens are in position order and never overlap; a file not in
+/// the program gives an empty list.
 // @lfy def/query/main.lfy:semanticTokensOf
 pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToken> {
     let model = &workspace.model;
@@ -1980,13 +2178,13 @@ pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToke
                 }
                 token_type_of(model, symbol)
             }
-            // A context property is a property; anything else unresolved is a variable.
-            // @lfy def/query/main.lfy:semanticTokensOf
-            None if usage.layer == Layer::Context => {
-                let name = usage.name.as_deref().unwrap_or_default();
-                if ContextProperty::lookup(name).is_none() {
-                    with_modifier(&mut set, TokenModifier::Unresolved);
-                }
+            // A name that is a member of a kind data other than the entity's yields
+            // undefined for it and is still a property; anything else unresolved is a
+            // variable. @lfy def/query/main.lfy:semanticTokensOf
+            None if usage.layer == Layer::Context
+                && is_kind_member(model, usage.name.as_deref().unwrap_or_default()) =>
+            {
+                with_modifier(&mut set, TokenModifier::Unresolved); // @lfy def/query/main.lfy:semanticTokensOf
                 TokenType::Property
             }
             // @lfy def/query/main.lfy:semanticTokensOf
@@ -2049,6 +2247,34 @@ mod tests {
             let fixture = Fixture::new();
             fixture.write("def/a.lfy", text);
             fixture
+        }
+
+        /// A project with one file `def/a.lfy` and the project's own `lib` as the
+        /// package `elfie`, so that it has the prelude every program has.
+        // @lfy def/query/main.lfy:completionsAt
+        fn with_prelude(text: &str) -> Fixture {
+            let fixture = Fixture::one(text);
+            fixture.write(
+                "elfie.json",
+                r#"{ "dependencies": { "elfie": { "root": "lib" } } }"#,
+            );
+            let library = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../lib"));
+            fixture.copy(library, "lib");
+            fixture
+        }
+
+        /// Every `.lfy` file under a directory, copied in under a path of the fixture.
+        fn copy(&self, from: &Path, to: &str) -> &Fixture {
+            for entry in fs::read_dir(from).unwrap().filter_map(Result::ok) {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                let path = format!("{to}/{name}");
+                if entry.path().is_dir() {
+                    self.copy(&entry.path(), &path);
+                } else if name.ends_with(".lfy") {
+                    self.write(&path, &fs::read_to_string(entry.path()).unwrap());
+                }
+            }
+            self
         }
 
         fn write(&self, path: &str, text: &str) -> &Fixture {
@@ -2394,6 +2620,7 @@ mod tests {
         assert_eq!(hover.definition.as_deref(), Some("An A"));
         assert_eq!(hover.documentation.as_deref(), Some("Doc"));
         assert!(hover.criteria.is_empty());
+        assert!(hover.traits.is_empty());
         // The range covers the identifier of the declaration, not the token hovered.
         // @lfy def/query/main.lfy:hoverOf
         assert_eq!(hover.range, range(A, (2, 2), (2, 3)));
@@ -2441,16 +2668,58 @@ mod tests {
         assert_eq!(hover.range, Range::empty("", at(1, 0)));
     }
 
+    /// The names of the members the prelude's `Entity` declares.
+    fn entity_members_of(workspace: &Workspace) -> Vec<String> {
+        let model = &workspace.model;
+        let entity = prelude_data(model, "Entity").expect("the prelude declares Entity");
+        member_symbols(model, entity)
+            .into_iter()
+            .map(|symbol| model.symbols[symbol].name.clone())
+            .collect()
+    }
+
+    // @lfy def/query/main.lfy:hoverOf
+    #[test]
+    fn hover_names_the_traits_and_shows_a_member_of_a_kind_data_as_a_member() {
+        let text =
+            "trait t {}\nd A is t {}\nfn f(): `d` => number { @acceptanceCriteria.add({ behavior = `b` }); }\n";
+        let fixture = Fixture::with_prelude(text);
+        let ws = fixture.load();
+        // Every trait applied, in application order.
+        // @lfy def/query/main.lfy:hoverOf
+        assert_eq!(hover_of(&ws, find(&ws, "A")[0]).traits, ["t"]);
+        // A native data shows `builtin` among them.
+        // @lfy def/query/main.lfy:hoverOf
+        let string = find(&ws, "String");
+        assert_eq!(string.len(), 1);
+        assert_eq!(hover_of(&ws, string[0]).traits, ["builtin"]);
+        // A member of a kind data, reached after the context accessor, hovers as any
+        // member: its range is in the library file that declares it.
+        // @lfy def/query/main.lfy:hoverOf
+        let position = after(find_pos(text, "@acceptanceCriteria", 0), 1);
+        let hover = hover_at(&ws, A, position).unwrap();
+        assert_eq!(hover.kind, SymbolKind::Member);
+        assert_eq!(hover.identifier, "acceptanceCriteria");
+        assert_eq!(hover.range.file, "lib/prelude/entity.lfy");
+        assert_eq!(
+            hover.definition.as_deref(),
+            Some("Its own criteria first, then each trait's in application order")
+        );
+    }
+
     // @lfy def/query/main.lfy:completionsAt
     #[test]
-    fn after_the_context_accessor_every_context_property_is_offered() {
-        let fixture = Fixture::one("d A { $x = string; } const y = A@");
+    fn after_the_context_accessor_the_members_of_the_kind_data_are_offered() {
+        let fixture = Fixture::with_prelude("d A { $x = string; } const y = A@");
         let ws = fixture.load();
         let completions = completions_at(&ws, A, at(1, 33));
-        assert_eq!(completions.len(), ContextProperty::ALL.len());
         let names = labels(&completions);
+        // One per member of the prelude's `Entity`: the kind data of a data declares
+        // those and nothing more.
+        assert_eq!(names, entity_members_of(&ws));
         assert!(names.contains(&"identifier"));
         assert!(names.contains(&"definition"));
+        assert!(names.contains(&"like"));
         assert!(!names.contains(&"A"));
         assert!(!names.contains(&"y"));
         assert!(
@@ -2458,13 +2727,75 @@ mod tests {
                 .iter()
                 .all(|c| c.kind == OfferedKind::Completion(CompletionKind::Context))
         );
+        // Each carries the member's definition.
+        // @lfy def/query/main.lfy:completionsAt
+        assert_eq!(
+            completions[0].detail.as_deref(),
+            Some("The declared name; undefined when anonymous")
+        );
         // The typed prefix filters, case sensitive.
-        let fixture = Fixture::one("d A { $x = string; } const y = A@de");
+        let fixture = Fixture::with_prelude("d A { $x = string; } const y = A@de");
         let ws = fixture.load();
         assert_eq!(labels(&completions_at(&ws, A, at(1, 35))), ["definition"]);
-        let fixture = Fixture::one("d A { $x = string; } const y = A@De");
+        let fixture = Fixture::with_prelude("d A { $x = string; } const y = A@De");
         let ws = fixture.load();
         assert!(completions_at(&ws, A, at(1, 35)).is_empty());
+    }
+
+    // @lfy def/query/main.lfy:completionsAt
+    #[test]
+    fn after_a_value_accessor_a_string_offers_the_members_of_its_base_data() {
+        let text = "const s = \"x\"; const y = s.";
+        let fixture = Fixture::with_prelude(text);
+        let ws = fixture.load();
+        let completions = completions_at(&ws, A, at(1, text.chars().count()));
+        let names = labels(&completions);
+        let string = find(&ws, "String");
+        assert_eq!(string.len(), 1, "the prelude declares String once");
+        let members: Vec<String> = member_symbols(&ws.model, string[0])
+            .into_iter()
+            .map(|symbol| ws.model.symbols[symbol].name.clone())
+            .collect();
+        assert_eq!(names, members);
+        assert!(names.contains(&"length"));
+        assert!(names.contains(&"trim"));
+        assert!(!names.contains(&"s"));
+        assert!(!names.contains(&"y"));
+        assert!(
+            completions
+                .iter()
+                .all(|c| c.kind == OfferedKind::Symbol(SymbolKind::Member))
+        );
+    }
+
+    // @lfy def/query/main.lfy:completionsAt
+    #[test]
+    fn after_a_value_accessor_an_object_and_an_entity_offer_what_the_binder_resolves() {
+        let names = |text: &str| -> Vec<String> {
+            let fixture = Fixture::with_prelude(text);
+            let workspace = fixture.load();
+            let position = at(1, text.chars().count());
+            completions_at(&workspace, A, position)
+                .into_iter()
+                .map(|completion| completion.label)
+                .collect()
+        };
+        // An object offers the members of `Object`; the keys it is written with declare
+        // no symbol, so the model holds none.
+        let object = names("const o = { a = 1 }; const u = o.");
+        assert!(object.contains(&"keys".to_string()), "{object:?}");
+        assert!(object.contains(&"merge".to_string()), "{object:?}");
+        // An entity's own members, then the members of its kind data whose value is a
+        // function.
+        let entity = names("d A { $x = string; } const v = A.");
+        assert_eq!(entity[0], "x");
+        assert!(entity.contains(&"like".to_string()), "{entity:?}");
+        assert!(entity.contains(&"test".to_string()), "{entity:?}");
+        assert!(!entity.contains(&"identifier".to_string()), "{entity:?}");
+        // A list offers every member of `List`.
+        let list = names("const l: number[] = [1]; const w = l.");
+        assert!(list.contains(&"map".to_string()), "{list:?}");
+        assert!(list.contains(&"length".to_string()), "{list:?}");
     }
 
     // @lfy def/query/main.lfy:completionsAt
@@ -3152,7 +3483,7 @@ mod tests {
     #[test]
     fn semantic_tokens_mark_prose_context_properties_and_unresolved_names() {
         let text = "fn f(): `See [[g]]` => number { @acceptanceCriteria.add({ behavior = `b` }); }";
-        let fixture = Fixture::one(text);
+        let fixture = Fixture::with_prelude(text);
         let workspace = fixture.load();
         let tokens = semantic_tokens_of(&workspace, A);
         let names: Vec<(String, TokenType, Vec<TokenModifier>)> = tokens

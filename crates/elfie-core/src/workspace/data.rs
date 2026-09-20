@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
-use crate::model::{EntityId, Model, Problem, Source};
+use crate::model::{EntityId, Model, Origin, Problem, Source};
 use crate::parser::Tree;
 
 /// Something the generated code needs from the target's own ecosystem.
@@ -31,7 +31,8 @@ pub struct NativeDependency {
 pub struct Package {
     /// The name a `Use` refers to it by.
     pub identifier: String, // @lfy def/workspace/data.lfy:Package.identifier
-    /// Its directory, relative to [`Workspace::root`].
+    /// Its directory, relative to [`Workspace::root`]; absolute for the package `elfie`
+    /// when it is found outside the project.
     pub root: String, // @lfy def/workspace/data.lfy:Package.root
     /// What code generated from it requires.
     pub native_dependencies: Vec<NativeDependency>, // @lfy def/workspace/data.lfy:Package.nativeDependencies
@@ -178,6 +179,13 @@ impl Workspace {
     // @lfy def/workspace/main.lfy:load
     pub fn uses(&self, file: &File) -> &[Option<String>] {
         &self.source(file).uses
+    }
+
+    /// `File.origin`: [`Origin::Prelude`] for the main file of the package `elfie`,
+    /// [`Origin::Library`] for its other files, [`Origin::Program`] for every other file.
+    // @lfy def/workspace/main.lfy:load
+    pub fn origin(&self, file: &File) -> Origin {
+        self.source(file).origin
     }
 
     /// Every load problem, in the order it arose.

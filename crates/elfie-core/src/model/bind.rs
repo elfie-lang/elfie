@@ -29,7 +29,18 @@ pub(crate) struct Binder {
     pub evaluating: HashSet<EntityId>,
     /// The universe scope, holding `global`.
     pub universe: ScopeId,
+    /// The prelude scope, when a source has [`Origin::Prelude`].
+    // @lfy def/model/main.lfy:bind
+    pub prelude: Option<ScopeId>,
 }
+
+/// The data the prelude gives an entity for what it is; `Entity` covers every entity and
+/// the others only their own kind.
+// @lfy def/model/main.lfy:bind
+const KIND_DATA: [&str; 10] = [
+    "Entity", "Trait", "Function", "Data", "Type", "Enum", "Member", "Parameter", "Variable",
+    "Module",
+];
 
 /// What the left side of a member access resolves to.
 #[derive(Debug, Clone, PartialEq)]
@@ -38,7 +49,20 @@ pub(crate) enum Target {
     Entity(EntityId),
     /// Anything carrying the trait; members are looked up leniently.
     Predicate(EntityId),
+    /// A value of a base data: its members are that data's.
+    // @lfy def/model/main.lfy:bind
+    Base(EntityId),
     Unknown,
+}
+
+impl Target {
+    /// The entity a member name is read on, when the target is one.
+    fn entity(&self) -> Option<EntityId> {
+        match *self {
+            Target::Entity(entity) | Target::Predicate(entity) => Some(entity),
+            _ => None,
+        }
+    }
 }
 
 impl Binder {
@@ -91,6 +115,7 @@ impl Binder {
             cache: Default::default(),
             evaluating: Default::default(),
             universe: 0,
+            prelude: None,
         }
     }
 
@@ -225,8 +250,10 @@ impl Binder {
     // ---- Declare ------------------------------------------------------------------
 
     /// Each SourceFile is a file scope whose current entity is an anonymous entity for
-    /// the file.
+    /// the file. Its parent is settled by [`Binder::link_prelude`], once every file has
+    /// been declared.
     // @lfy def/model/main.lfy:bind
+    // @lfy def/model/traits.lfy:scoped
     pub fn declare_file(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let root = NodeRef { file, index: 0 };
@@ -237,6 +264,35 @@ impl Binder {
         self.model.file_entities.push(entity);
         for child in trees.children(root) {
             self.declare_node(child, scope);
+        }
+    }
+
+    /// A file scope's parent is the prelude scope, and none for a file whose origin is
+    /// the library or the prelude itself. Every file has been declared by now, so the
+    /// prelude's scope exists whatever order the files were given in. With no source of
+    /// [`Origin::Prelude`] no file scope has a parent, and a name only the prelude would
+    /// give is found nowhere.
+    // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/traits.lfy:scoped
+    pub fn link_prelude(&mut self) {
+        let trees = self.trees.clone();
+        let Some(prelude) = trees
+            .sources
+            .iter()
+            .position(|source| source.origin == Origin::Prelude)
+            .map(|file| self.model.file_scopes[file])
+        else {
+            return;
+        };
+        self.prelude = Some(prelude); // @lfy def/model/main.lfy:bind
+        for (file, source) in trees.sources.iter().enumerate() {
+            if source.origin != Origin::Program {
+                continue;
+            }
+            let scope = self.model.file_scopes[file];
+            self.model.scopes[scope].parent = Some(prelude);
         }
     }
 
@@ -555,7 +611,12 @@ impl Binder {
         if trees.is(node, E::Member) {
             let left = trees.left(node)?;
             let (accessor, name) = trees.accessor_and_name(node)?;
-            if !trees.token_is(node.file, accessor, P::ValueAccessor) {
+            // The value layer reads a member's value; the scope layer the member itself.
+            // Both name the same symbol.
+            // @lfy def/model/main.lfy:bind
+            if !trees.token_is(node.file, accessor, P::ValueAccessor)
+                && !trees.token_is(node.file, accessor, P::ScopeAccessor)
+            {
                 return None;
             }
             let name = trees.token(node.file, name?).value.clone();
@@ -570,6 +631,91 @@ impl Binder {
     pub fn member_symbol(&self, entity: EntityId, name: &str) -> Option<SymbolId> {
         let scope = self.model.entities[entity].scope?;
         self.model.lookup_local(scope, name)
+    }
+
+    // ---- Kinds and base data ------------------------------------------------------
+
+    /// The data the prelude declares under this name, when the program has a prelude.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn prelude_data(&self, name: &str) -> Option<EntityId> {
+        let prelude = self.prelude?;
+        let symbol = self.model.lookup_local(prelude, name)?;
+        let entity = self.model.symbols[symbol].entity;
+        matches!(self.model.entities[entity].kind, EntityKind::Data).then_some(entity)
+    }
+
+    /// The kind data of an entity: the prelude data for what it is, then `Entity`, which
+    /// every entity is seen through. A kind data extends `Entity`, so it holds those
+    /// members too; `Entity` is here for a program whose prelude declares only it.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn kind_data(&self, entity: EntityId) -> Vec<EntityId> {
+        let own = match self.model.entities[entity].kind {
+            EntityKind::Trait { .. } => Some("Trait"), // @lfy def/model/main.lfy:bind
+            EntityKind::Fn { .. } => Some("Function"), // @lfy def/model/main.lfy:bind
+            EntityKind::Data => Some("Data"),          // @lfy def/model/main.lfy:bind
+            EntityKind::Type => Some("Type"),          // @lfy def/model/main.lfy:bind
+            EntityKind::Enum => Some("Enum"),          // @lfy def/model/main.lfy:bind
+            EntityKind::Member => Some("Member"),      // @lfy def/model/main.lfy:bind
+            EntityKind::Parameter => Some("Parameter"), // @lfy def/model/main.lfy:bind
+            EntityKind::Variable => Some("Variable"),  // @lfy def/model/main.lfy:bind
+            EntityKind::Module | EntityKind::File => Some("Module"), // @lfy def/model/main.lfy:bind
+            _ => None,
+        };
+        own.and_then(|name| self.prelude_data(name))
+            .into_iter()
+            .chain(self.prelude_data("Entity")) // @lfy def/model/main.lfy:bind
+            .collect()
+    }
+
+    /// The member of an entity's kind data with this name.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn kind_member(&self, entity: EntityId, name: &str) -> Option<SymbolId> {
+        self.kind_data(entity)
+            .into_iter()
+            .find_map(|data| self.member_symbol(data, name))
+    }
+
+    /// Whether the name is a member of any kind data: one of another kind yields
+    /// undefined for this entity, without a problem.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn kind_member_anywhere(&self, name: &str) -> bool {
+        KIND_DATA.iter().any(|kind| {
+            self.prelude_data(kind)
+                .and_then(|data| self.member_symbol(data, name))
+                .is_some()
+        })
+    }
+
+    /// The member of an entity's kind data whose value is a function: what the value
+    /// layer of an entity adds to its own members.
+    // @lfy def/model/main.lfy:bind
+    fn kind_function_member(&self, entity: EntityId, name: &str) -> Option<SymbolId> {
+        let symbol = self.kind_member(entity, name)?;
+        let member = self.model.symbols[symbol].entity;
+        matches!(self.model.entities[member].ty, Some(TypeRef::Function)).then_some(symbol)
+    }
+
+    /// The base data of a value of this type: what the prelude declares for the kind of
+    /// value it is. A template's type is that data already, so it arrives here as an
+    /// entity and needs no entry.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn base_data(&self, ty: &TypeRef) -> Option<EntityId> {
+        let name = match ty {
+            TypeRef::Primitive("string") => "String", // @lfy def/model/main.lfy:bind
+            TypeRef::Primitive("number") => "Number", // @lfy def/model/main.lfy:bind
+            TypeRef::Primitive("boolean") => "Boolean", // @lfy def/model/main.lfy:bind
+            TypeRef::Primitive("object") => "Object", // @lfy def/model/main.lfy:bind
+            TypeRef::Primitive("function") | TypeRef::Function => "Function", // @lfy def/model/main.lfy:bind
+            TypeRef::List(_) => "List", // @lfy def/model/main.lfy:bind
+            TypeRef::Literal(value) => match **value {
+                Value::String(_) => "String",
+                Value::Number(_) => "Number",
+                Value::Bool(_) => "Boolean",
+                _ => return None,
+            },
+            _ => return None,
+        };
+        self.prelude_data(name)
     }
 
     /// TypeRef of a type expression node.
@@ -685,7 +831,13 @@ impl Binder {
             )));
         }
         if rule == E::Template.entity() {
-            return TypeRef::Literal(Box::new(Value::String(trees.raw(node))));
+            // A template's base data, when the prelude declares one; its value is its
+            // text, which is what it stands for without a prelude.
+            // @lfy def/model/main.lfy:bind
+            return match self.prelude_data("Template") {
+                Some(data) => TypeRef::Entity(data),
+                None => TypeRef::Literal(Box::new(Value::String(trees.raw(node)))),
+            };
         }
         if rule == E::Number.entity() {
             let text = trees.raw(node);
@@ -693,6 +845,11 @@ impl Binder {
         }
         if rule == E::Boolean.entity() {
             return TypeRef::Primitive("boolean");
+        }
+        // An object, whose keys are its own and whose members are the base data's.
+        // @lfy def/model/main.lfy:bind
+        if rule == E::Object.entity() {
+            return TypeRef::Primitive("object");
         }
         if rule == E::InlineFunction.entity() {
             return TypeRef::Function;
@@ -965,13 +1122,56 @@ impl Binder {
         };
         let layer =
             accessor_layer(trees.token(r.file, accessor).rule.expect("accessor")).expect("layer");
-        let target = trees
-            .left(r)
-            .map_or(Target::Unknown, |left| self.target_of(left));
         let name_text = name.map(|i| trees.token(r.file, i).value.clone());
+        // The add of `@acceptanceCriteria.add(...)` is the binder's own call, not a
+        // member of the list it reads: it has no symbol and adds no problem.
+        // @lfy def/model/main.lfy:bind
+        let target = if layer == Layer::Value && self.is_criteria_add(r, name_text.as_deref()) {
+            Target::Unknown
+        } else {
+            trees
+                .left(r)
+                .map_or(Target::Unknown, |left| self.target_of(left))
+        };
         let symbol = self.resolve_in(r, target, layer, name_text.as_deref(), false);
         let usage = self.add_usage(r, name_text, Some(name.unwrap_or(accessor)), layer, symbol);
         self.record_reference(r, usage);
+    }
+
+    /// Whether a member named `add` is read with the value accessor on the criteria of
+    /// an entity's context: `@acceptanceCriteria.add(...)`, or the `.add` of the chain
+    /// that follows it.
+    // @lfy def/model/main.lfy:bind
+    fn is_criteria_add(&self, r: NodeRef, name: Option<&str>) -> bool {
+        if name != Some("add") {
+            return false;
+        }
+        let trees = &self.trees;
+        let Some(mut node) = trees.left(r) else {
+            return false;
+        };
+        loop {
+            // The left of a later add in the chain is the call of the earlier one.
+            if trees.is(node, E::Call)
+                && let Some(callee) = trees.left(node)
+            {
+                node = callee;
+                continue;
+            }
+            let Some((accessor, Some(spelled))) = trees.accessor_and_name(node) else {
+                return false;
+            };
+            if trees.token_is(node.file, accessor, P::ContextAccessor) {
+                return trees.token(node.file, spelled).value == "acceptanceCriteria";
+            }
+            if trees.token(node.file, spelled).value == "add"
+                && let Some(left) = trees.left(node)
+            {
+                node = left;
+                continue;
+            }
+            return false;
+        }
     }
 
     /// Resolves a member name in a target through one layer, adding problems as the
@@ -987,8 +1187,21 @@ impl Binder {
         let name = name?;
         match layer {
             Layer::Context => {
-                // The MemberName must be the value of a ContextProperty.
+                // The MemberName resolves in the members of the entity's kind data and
+                // yields that member.
                 // @lfy def/model/main.lfy:bind
+                if let Some(entity) = target.entity()
+                    && let Some(symbol) = self.kind_member(entity, name)
+                {
+                    return Some(symbol);
+                }
+                // A MemberName that is a member of a kind data other than the entity's
+                // yields undefined for it, without a problem.
+                // @lfy def/model/main.lfy:bind
+                if self.kind_member_anywhere(name) {
+                    return None;
+                }
+                // With no prelude, the properties the context layer gives every entity.
                 if ContextProperty::lookup(name).is_none() {
                     self.problem(r, format!("{name} is not a context property"));
                 }
@@ -1005,9 +1218,17 @@ impl Binder {
                     symbol
                 }
                 Target::Entity(entity) => {
+                    // An entity's own members first, then those members of its kind data
+                    // whose value is a function.
+                    // @lfy def/model/main.lfy:bind
                     let symbol = self
                         .member_symbol(entity, name)
-                        .or_else(|| self.inherited_member(entity, name));
+                        .or_else(|| self.inherited_member(entity, name))
+                        .or_else(|| {
+                            (layer == Layer::Value)
+                                .then(|| self.kind_function_member(entity, name))
+                                .flatten()
+                        });
                     if symbol.is_none() {
                         let lenient = matches!(
                             self.model.entities[entity].kind,
@@ -1035,7 +1256,25 @@ impl Binder {
                 }
                 Target::Predicate(trait_entity) => self
                     .member_symbol(trait_entity, name)
-                    .or_else(|| self.inherited_member(trait_entity, name)),
+                    .or_else(|| self.inherited_member(trait_entity, name))
+                    .or_else(|| self.kind_function_member(trait_entity, name)),
+                // For a value of a base data, that data's members. An object's keys come
+                // first and are not known here, so a name the data does not declare is
+                // left to the object.
+                // @lfy def/model/main.lfy:bind
+                // @lfy def/model/main.lfy:bind
+                Target::Base(data) => {
+                    let symbol = self.member_symbol(data, name);
+                    let object = self.prelude_data("Object") == Some(data);
+                    if symbol.is_none() && !object {
+                        let what = self.model.entities[data]
+                            .identifier
+                            .clone()
+                            .unwrap_or_else(|| "the value".to_string());
+                        self.problem(r, format!("{what} has no member {name}"));
+                    }
+                    symbol
+                }
                 // The left side has no symbol either: the usage has no symbol and no
                 // second problem is added.
                 // @lfy def/model/main.lfy:bind
@@ -1176,7 +1415,9 @@ impl Binder {
                 }
                 Target::Unknown
             }
-            _ => Target::Unknown,
+            // A value of any other base data.
+            // @lfy def/model/main.lfy:bind
+            other => self.base_data(&other).map_or(Target::Unknown, Target::Base),
         }
     }
 

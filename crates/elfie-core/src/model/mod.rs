@@ -31,6 +31,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
     for file in 0..files {
         binder.declare_file(file); // @lfy def/model/main.lfy:bind
     }
+    binder.link_prelude(); // @lfy def/model/data.lfy:Scope
     for file in 0..files {
         binder.link_uses(file); // @lfy def/model/main.lfy:bind
     }

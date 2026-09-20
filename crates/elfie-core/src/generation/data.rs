@@ -142,7 +142,8 @@ pub struct SourceMap {
     /// For each dependency's source path, the [`SourceMap::signature`] the output was
     /// generated against.
     pub dependencies: BTreeMap<String, String>, // @lfy def/generation/data.lfy:SourceMap.dependencies
-    /// When the output was accepted, as an RFC 3339 timestamp.
+    /// When the output was accepted: the clock at acceptance as an RFC 3339 timestamp, as
+    /// [`now_rfc3339`](super::now_rfc3339) spells it.
     pub generated: String, // @lfy def/generation/data.lfy:SourceMap.generated
     /// Every marker in the output, in output order, with lines derived.
     pub markers: Vec<Marker>, // @lfy def/generation/data.lfy:SourceMap.markers
@@ -228,7 +229,8 @@ pub struct Unit {
     pub target: usize, // @lfy def/generation/data.lfy:Unit.target
     /// The source file, as an index into `Workspace::files`.
     pub file: usize, // @lfy def/generation/data.lfy:Unit.file
-    /// The entities of the file built for the target, in file order.
+    /// The entities of the file built for the target, in file order; never an entity of the
+    /// elfie package.
     pub entities: Vec<EntityId>, // @lfy def/generation/data.lfy:Unit.entities
     /// The file's path relative to the directory it was found under, without its
     /// extension; the target's guidance spells the output file from it.
@@ -264,7 +266,8 @@ pub struct Interface {
     /// The paths of its outputs.
     pub outputs: Vec<String>, // @lfy def/generation/data.lfy:Interface.outputs
     /// Its entities: each one's identifier, kind, definition, type, parameters and output
-    /// as applicable, as indices into `Model::entities`.
+    /// as applicable, as indices into `Model::entities`; a type may name an entity of the
+    /// elfie package by its identifier.
     pub entities: Vec<EntityId>, // @lfy def/generation/data.lfy:Interface.entities
 }
 
@@ -274,8 +277,8 @@ pub struct Interface {
 pub struct Request {
     /// The batch.
     pub batch: Batch, // @lfy def/generation/data.lfy:Request.batch
-    /// The prompt: what to produce, where, the rules for producing it, and how to report
-    /// the outcome.
+    /// The prompt: what to produce, where, the rules for producing it, what of the standard
+    /// library is `builtin` and never generated, and how to report the outcome.
     pub instructions: String, // @lfy def/generation/data.lfy:Request.instructions
     /// The text of each unit's source file, by the file's path.
     pub sources: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.sources
@@ -286,8 +289,9 @@ pub struct Request {
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
     /// One interface per dependency outside the batch, in dependency order, each once.
     pub interfaces: Vec<Interface>, // @lfy def/generation/data.lfy:Request.interfaces
-    /// Every criterion of the target's marker and of every trait it extends, in that
-    /// order, resolved for the marker.
+    /// Every criterion of the target's marker, then of every trait it extends down to
+    /// `target`, nearest first, and of every trait applied to it with arguments, each
+    /// resolved for the marker.
     pub guidance: Vec<Criterion>, // @lfy def/generation/data.lfy:Request.guidance
     /// What the generated code may require from the target's ecosystem.
     pub native_dependencies: Vec<NativeDependency>, // @lfy def/generation/data.lfy:Request.nativeDependencies

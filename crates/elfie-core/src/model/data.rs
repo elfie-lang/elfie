@@ -46,24 +46,51 @@ impl Layer {
     }
 }
 
+/// Where a file comes from, which decides what its file scope's parent is.
+// @lfy def/model/data.lfy:Origin
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Origin {
+    /// Every file but the package `elfie`.
+    #[default]
+    Program, // @lfy def/model/data.lfy:Origin.program
+    /// A file of the package `elfie` other than its main file.
+    Library, // @lfy def/model/data.lfy:Origin.library
+    /// The main file of the package `elfie`.
+    Prelude, // @lfy def/model/data.lfy:Origin.prelude
+}
+
+impl Origin {
+    /// The value of the enum member: how the origin is spelled.
+    pub fn value(self) -> &'static str {
+        match self {
+            Origin::Program => "program",
+            Origin::Library => "library",
+            Origin::Prelude => "prelude",
+        }
+    }
+}
+
 /// Every context property; a name after the context accessor must be one of these. A
 /// property is matched by its value, not its member name.
-// @lfy def/model/data.lfy:ContextProperty
+///
+/// The properties are the members the prelude gives every entity seen through its
+/// context layer: `Entity`, `Function`, and `Trait` of `lib/prelude`. That library is a
+/// specification and is never generated, so this enumeration of it carries no marker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContextProperty {
-    Identifier,         // @lfy def/model/data.lfy:ContextProperty.identifier
-    Definition,         // @lfy def/model/data.lfy:ContextProperty.definition
-    Type,               // @lfy def/model/data.lfy:ContextProperty._type
-    AcceptanceCriteria, // @lfy def/model/data.lfy:ContextProperty.acceptanceCriteria
-    Parameters,         // @lfy def/model/data.lfy:ContextProperty.parameters
-    Output,             // @lfy def/model/data.lfy:ContextProperty.output
-    Entities,           // @lfy def/model/data.lfy:ContextProperty.entities
-    Extenders,          // @lfy def/model/data.lfy:ContextProperty.extenders
-    References,         // @lfy def/model/data.lfy:ContextProperty.references
-    Like,               // @lfy def/model/data.lfy:ContextProperty.like
-    Test,               // @lfy def/model/data.lfy:ContextProperty.test
-    Tests,              // @lfy def/model/data.lfy:ContextProperty.tests
-    ItemType,           // @lfy def/model/data.lfy:ContextProperty.itemType
+    Identifier,
+    Definition,
+    Type,
+    AcceptanceCriteria,
+    Parameters,
+    Output,
+    Entities,
+    Extenders,
+    References,
+    Like,
+    Test,
+    Tests,
+    ItemType,
 }
 
 impl ContextProperty {
@@ -197,18 +224,20 @@ pub struct Symbol {
 }
 
 /// A region in which names resolve. Holds the symbols declared directly in it, in order,
-/// and knows its parent; a file scope has no parent and also holds the symbols its use
-/// statements import.
+/// and knows its parent; a file scope also holds the symbols its use statements import,
+/// after its own.
 // @lfy def/model/data.lfy:Scope
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
+    /// The enclosing scope; for a file scope, the prelude scope, and `None` for a file
+    /// whose [`Source::origin`] is [`Origin::Library`] or [`Origin::Prelude`].
     pub parent: Option<ScopeId>, // @lfy def/model/data.lfy:Scope
     /// The node that owns it.
     pub owner: NodeRef,
     pub file: FileId,
     /// The symbols declared directly in it, in order.
     pub symbols: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
-    /// The symbols its use statements import; only a file scope has any.
+    /// The symbols its use statements import, after its own; only a file scope has any.
     pub imports: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
     /// The current entity: what the value, context, and scope accessors reach without a
     /// left expression.
@@ -391,10 +420,8 @@ pub struct Entity {
     pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:TraitEntity.acceptanceCriteria
     /// Every trait applied to it, direct or inherited, in application order.
     pub traits: Vec<Applied>, // @lfy def/model/data.lfy:TraitEntity.traits
-    /// A declared list seen through its context layer: what the list holds, and `None`
-    /// when the type is not a list.
-    // @lfy def/model/data.lfy:ListEntity
-    pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:ListEntity.itemType
+    /// What a list-typed entity holds; `None` when the type is not a list.
+    pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:Entity.itemType
     /// Every entity referenced via a Reference in definition, documentation, or value.
     pub references: Vec<UsageId>, // @lfy def/model/data.lfy:TraitEntity.references
     /// ContextProperty tests: list of all added tests.
@@ -499,6 +526,9 @@ pub struct Source {
     /// The path each `Use` in the tree refers to, in the order the uses appear; `None`
     /// where it refers to nothing.
     pub uses: Vec<Option<String>>, // @lfy def/model/data.lfy:Source.uses
+    /// [`Origin::Prelude`] for the main file of the package `elfie`, [`Origin::Library`]
+    /// for its other files, [`Origin::Program`] for every other file.
+    pub origin: Origin, // @lfy def/model/data.lfy:Source.origin
 }
 
 /// The program, queryable. Answers every query of the model module for every file it

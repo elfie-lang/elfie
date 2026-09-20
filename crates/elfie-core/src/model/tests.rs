@@ -9,8 +9,16 @@ use crate::grammar::rules::statement::Statement as S;
 
 // ---- Helpers ------------------------------------------------------------------------
 
-/// `Source@like(`<path>, parsed from: <text>`)`, with one entry per `use` statement.
+/// `Source@like(`<path>, parsed from: <text>`)`, with one entry per `use` statement, from
+/// a file of the program.
 fn source(path: &str, text: &str, uses: &[Option<&str>]) -> Source {
+    source_from(path, text, uses, Origin::Program)
+}
+
+/// The same, for a file of the package `elfie`: its main file is the prelude, its others
+/// are the library.
+// @lfy def/model/main.lfy:bind
+fn source_from(path: &str, text: &str, uses: &[Option<&str>], origin: Origin) -> Source {
     let tokens =
         crate::lexer::lex(text, Some(path)).unwrap_or_else(|error| panic!("{path}: {error}"));
     let tree = crate::parser::parse(tokens, None);
@@ -23,12 +31,95 @@ fn source(path: &str, text: &str, uses: &[Option<&str>]) -> Source {
         path: path.to_string(),
         tree,
         uses: uses.iter().map(|u| u.map(str::to_string)).collect(),
+        origin,
     }
 }
 
 /// One file, `a.lfy`, bound alone.
 fn bind_one(text: &str) -> Model {
     bind(vec![source("a.lfy", text, &[])])
+}
+
+/// The files of a small package `elfie`, each before the files that use it: the kind
+/// data an entity is seen through and the base data a value is read through, brought in
+/// by the main file, which is the prelude.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+fn prelude() -> Vec<Source> {
+    let entity = source_from(
+        "lib/prelude/entity.lfy",
+        "d Entity { $identifier: `The declared name` = string | undefined; \
+         $type: `Its type` = Entity | undefined; \
+         $acceptanceCriteria: `Its criteria` = Entity[]; \
+         $like: `A value the prompt describes` = (prompt: string) => Entity; \
+         $test: `Adds cases` = (...tests: Entity[]) => Entity; }",
+        &[],
+        Origin::Library,
+    );
+    let kinds = source_from(
+        "lib/prelude/kinds.lfy",
+        "use \"./entity\"; d Data extends Entity {} \
+         d Trait extends Entity { $entities: `What carries it` = Entity[]; \
+         $apply: `Applies it` = (target: Entity) => Trait; } \
+         d Function extends Entity { $parameters: `Its parameters` = Entity[]; }",
+        &[Some("lib/prelude/entity.lfy")],
+        Origin::Library,
+    );
+    let values = source_from(
+        "lib/values/base.lfy",
+        "d String { $length: `How many characters` = number; $trim: `Without spaces` = () => string; } \
+         d List { $length: `How many items` = number; } \
+         d Object { $keys: `Its keys` = () => string[]; } \
+         d Template { $text: `The rendered text` = () => string; }",
+        &[],
+        Origin::Library,
+    );
+    let main = source_from(
+        "lib/main.lfy",
+        "use \"./prelude/entity\"; use \"./prelude/kinds\"; use \"./values/base\";",
+        &[
+            Some("lib/prelude/entity.lfy"),
+            Some("lib/prelude/kinds.lfy"),
+            Some("lib/values/base.lfy"),
+        ],
+        Origin::Prelude,
+    );
+    vec![entity, kinds, values, main]
+}
+
+/// The prelude, then one file `a.lfy` of the program.
+fn bind_with_prelude(text: &str) -> Model {
+    let mut sources = prelude();
+    sources.push(source("a.lfy", text, &[]));
+    bind(sources)
+}
+
+/// The entity of the prelude data `data`: what the prelude scope binds that name to.
+fn prelude_data(model: &Model, data: &str) -> EntityId {
+    let scope = model.file_scopes[model.file("lib/main.lfy").expect("a prelude")];
+    let symbol = model
+        .lookup_local(scope, data)
+        .unwrap_or_else(|| panic!("the prelude declares no {data}"));
+    model.symbols[symbol].entity
+}
+
+/// The member symbol named `name` of the prelude data `data`.
+fn prelude_member(model: &Model, data: &str, name: &str) -> SymbolId {
+    member(model, prelude_data(model, data), name)
+}
+
+/// Asserts that the node reads the member `name` of the prelude data `data`. A kind data
+/// that extends another holds a symbol of its own for each member it takes on, so it is
+/// the member entity that says which member was read.
+fn reads_member(model: &Model, r: NodeRef, data: &str, name: &str) {
+    let want = model.symbols[prelude_member(model, data, name)].entity;
+    let got = usage(model, r).symbol.map(|s| model.symbols[s].entity);
+    assert_eq!(
+        got,
+        Some(want),
+        "{:?} does not read {data}.{name}",
+        model.raw(r)
+    );
 }
 
 fn problems(model: &Model) -> Vec<String> {
@@ -232,6 +323,116 @@ fn test_extends_entities_and_extenders() {
     ));
 }
 
+/// A `with` on a member of a data attaches the block's criteria and tests to the member,
+/// not to the data that declares it.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_with_on_a_member_attaches_to_the_member() {
+    let model = bind_one(
+        "d X { $m: `d` = string; with X$m { where (`s`) -> `b`; @test({ input = \"a\", expect = \"a\" }); } }",
+    );
+    assert_clean(&model);
+    let x = entity(&model, "X");
+    let m = model.symbols[member(&model, x, "m")].entity;
+    // The member carries one criterion whose situation is s and behavior is b.
+    assert_eq!(
+        criteria_texts(&model, m),
+        [(
+            Some(vec!["s".to_string()]),
+            Some(vec!["b".to_string()]),
+            m
+        )]
+    );
+    // And one test.
+    assert_eq!(model.entities[m].tests.len(), 1);
+    assert_eq!(model.entities[m].tests[0].input_text, "\"a\"");
+    assert_eq!(model.entities[m].tests[0].expect_text, "\"a\"");
+    // X carries no criteria and no tests.
+    assert!(model.entities[x].acceptance_criteria.is_empty());
+    assert!(model.entities[x].tests.is_empty());
+}
+
+/// A program file sees the prelude through the parent of its file scope, and a name of
+/// the prelude resolves there.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_a_program_file_resolves_names_in_the_prelude() {
+    let entity_file = source_from(
+        "lib/prelude/entity.lfy",
+        "d Entity { $identifier: `The declared name` = string; }",
+        &[],
+        Origin::Library,
+    );
+    let main = source_from(
+        "lib/main.lfy",
+        "use \"./prelude/entity\";",
+        &[Some("lib/prelude/entity.lfy")],
+        Origin::Prelude,
+    );
+    let a = source("a.lfy", "d A {} const n = A@identifier; const e = Entity;", &[]);
+    let model = bind(vec![entity_file, main, a]);
+    assert_clean(&model);
+    let (library, prelude, program) = (
+        model.file("lib/prelude/entity.lfy").unwrap(),
+        model.file("lib/main.lfy").unwrap(),
+        model.file("a.lfy").unwrap(),
+    );
+    // The parent of a program file's scope is the prelude scope; a library file and the
+    // prelude itself have none.
+    assert_eq!(
+        model.scopes[model.file_scopes[program]].parent,
+        Some(model.file_scopes[prelude])
+    );
+    assert_eq!(model.scopes[model.file_scopes[prelude]].parent, None);
+    assert_eq!(model.scopes[model.file_scopes[library]].parent, None);
+    // The usage of Entity resolves to the prelude's symbol, which the prelude imports.
+    let declared = file_symbol(&model, library, "Entity");
+    assert_eq!(
+        model.scopes[model.file_scopes[prelude]].imports,
+        [declared]
+    );
+    assert_eq!(
+        usage(&model, node(&model, program, E::Name, "Entity")).symbol,
+        Some(declared)
+    );
+    // The usage of identifier resolves to that member of Entity.
+    let identifier = member(&model, model.symbols[declared].entity, "identifier");
+    let read = usage(&model, node(&model, program, E::Member, "A@identifier"));
+    assert_eq!(read.layer, Layer::Context);
+    assert_eq!(read.symbol, Some(identifier));
+}
+
+/// `t.apply(A)` resolves apply through t's kind data and applies the trait.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_apply_resolves_through_the_kind_data() {
+    let text = "trait t {} d A {} t.apply(A);";
+    // With a prelude, apply is the member of Trait the prelude declares.
+    let model = bind_with_prelude(text);
+    assert_clean(&model);
+    let program = model.file("a.lfy").unwrap();
+    let apply = prelude_member(&model, "Trait", "apply");
+    assert_eq!(
+        usage(&model, node(&model, program, E::Member, "t.apply")).symbol,
+        Some(apply)
+    );
+    let t = model.symbols[file_symbol(&model, program, "t")].entity;
+    let a = model.symbols[file_symbol(&model, program, "A")].entity;
+    assert_eq!(model.entities[a].traits.len(), 1);
+    assert_eq!(model.entities[a].traits[0].entity, t);
+    assert_eq!(entities_of(&model, t), vec![a]);
+    // Without one the call still applies the trait, and apply resolves to nothing.
+    let model = bind_one(text);
+    assert_clean(&model);
+    let (t, a) = (entity(&model, "t"), entity(&model, "A"));
+    assert_eq!(model.entities[a].traits.len(), 1);
+    assert_eq!(model.entities[a].traits[0].entity, t);
+    assert_eq!(
+        usage(&model, node(&model, 0, E::Member, "t.apply")).symbol,
+        None
+    );
+}
+
 // ---- Declare ------------------------------------------------------------------------
 
 /// Each SourceFile is a file scope whose current entity is an anonymous entity for the
@@ -282,6 +483,41 @@ fn block_scope_is_child_of_declaration_scope() {
     assert_eq!(p.len(), 2);
     assert_eq!(model.usage_of(p[0]), None);
     assert_eq!(usage(&model, p[1]).symbol, model.lookup_local(f_scope, "p"));
+}
+
+/// With no source of the prelude origin, no file scope has a parent and a name only the
+/// prelude would give is found nowhere.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn without_a_prelude_no_file_scope_has_a_parent() {
+    let library = source("lib/prelude/entity.lfy", "d Entity {}", &[]);
+    let a = source("a.lfy", "const e = Entity;", &[]);
+    let model = bind(vec![library, a]);
+    for &scope in &model.file_scopes {
+        assert_eq!(model.scopes[scope].parent, None);
+    }
+    let read = node(&model, model.file("a.lfy").unwrap(), E::Name, "Entity");
+    assert_eq!(usage(&model, read).symbol, None);
+    assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
+    assert_eq!(model.problems[0].node, read);
+}
+
+/// A name a file declares for itself shadows the prelude's throughout that file, and no
+/// problem is added.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_file_name_shadows_the_prelude_without_a_problem() {
+    let mut sources = prelude();
+    sources.push(source("a.lfy", "d Entity {} const e = Entity;", &[]));
+    let model = bind(sources);
+    assert_clean(&model);
+    let program = model.file("a.lfy").unwrap();
+    let own = file_symbol(&model, program, "Entity");
+    assert_ne!(model.symbols[own].entity, prelude_data(&model, "Entity"));
+    assert_eq!(
+        usage(&model, node(&model, program, E::Name, "Entity")).symbol,
+        Some(own)
+    );
 }
 
 /// A name declared twice in the same scope: a problem at the second, the first wins.
@@ -828,6 +1064,104 @@ fn unknown_context_property_is_a_problem() {
     );
 }
 
+/// The kind data of an entity gives the context layer its names, and the value layer the
+/// members of it whose value is a function.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
+    let model = bind_with_prelude(
+        "trait t {} d A { $m: `own` = string; } const i = A@identifier; const e = t@entities; \
+         const w = A@entities; const o = A.m; const p = t.apply; const q = t.entities;",
+    );
+    assert_clean(&model);
+    let file = model.file("a.lfy").unwrap();
+    // Entity gives every entity its identifier; Trait gives a trait its entities.
+    reads_member(
+        &model,
+        node(&model, file, E::Member, "A@identifier"),
+        "Entity",
+        "identifier",
+    );
+    reads_member(
+        &model,
+        node(&model, file, E::Member, "t@entities"),
+        "Trait",
+        "entities",
+    );
+    // A name of a kind data other than the entity's yields undefined, without a problem.
+    let other = usage(&model, node(&model, file, E::Member, "A@entities"));
+    assert_eq!(other.layer, Layer::Context);
+    assert_eq!(other.symbol, None);
+    // The value layer reads the entity's own members first.
+    let a = model.symbols[file_symbol(&model, file, "A")].entity;
+    assert_eq!(
+        usage(&model, node(&model, file, E::Member, "A.m")).symbol,
+        Some(member(&model, a, "m"))
+    );
+    // Then those members of the kind data whose value is a function, and no others.
+    reads_member(
+        &model,
+        node(&model, file, E::Member, "t.apply"),
+        "Trait",
+        "apply",
+    );
+    // A member of the kind data whose value is not a function is not one of them.
+    assert_eq!(
+        usage(&model, node(&model, file, E::Member, "t.entities")).symbol,
+        None
+    );
+}
+
+/// A value of a base data resolves that data's members; an object's keys are its own.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_value_resolves_the_members_of_its_base_data() {
+    let model = bind_with_prelude(
+        "const s = 'text'; const n = s.length; const t = s.trim(); const xs: string[] = []; \
+         const c = xs.length; const o = { a = 1 }; const k = o.keys(); const v = o.a; \
+         const p = `text`; const r = p.text();",
+    );
+    assert_clean(&model);
+    let file = model.file("a.lfy").unwrap();
+    let read = |raw: &str, data: &str, name: &str| {
+        reads_member(&model, node(&model, file, E::Member, raw), data, name);
+    };
+    read("s.length", "String", "length");
+    read("s.trim", "String", "trim");
+    read("xs.length", "List", "length");
+    read("o.keys", "Object", "keys");
+    read("p.text", "Template", "text");
+    // An object's keys come first and are not known here, so o.a is no problem.
+    assert_eq!(usage(&model, node(&model, file, E::Member, "o.a")).symbol, None);
+    // A name the base data does not declare is a problem.
+    let model = bind_with_prelude("const s = 'text'; const n = s.nope;");
+    assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
+    assert_eq!(
+        model.problems[0].node,
+        node(&model, model.file("a.lfy").unwrap(), E::Member, "s.nope")
+    );
+}
+
+/// The add of `@acceptanceCriteria.add(...)` is the binder's own call: no symbol, no
+/// problem, however long the chain.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn add_on_the_criteria_of_a_context_is_the_binders_own_call() {
+    let model = bind_with_prelude(
+        "d A { @acceptanceCriteria.add({ behavior = `one` }).add({ behavior = `two` }); }",
+    );
+    assert_clean(&model);
+    let file = model.file("a.lfy").unwrap();
+    for add in nodes(&model, file, E::Member, "@acceptanceCriteria.add") {
+        assert_eq!(usage(&model, add).symbol, None);
+    }
+    let a = model.symbols[file_symbol(&model, file, "A")].entity;
+    assert_eq!(model.entities[a].acceptance_criteria.len(), 2);
+}
+
 /// A Member with the value accessor on a data resolves to its member; with the scope
 /// accessor, to the member symbol itself.
 // @lfy def/model/main.lfy:bind
@@ -974,7 +1308,7 @@ fn type_of_a_declaration_is_itself() {
 }
 
 /// Entity.type from a type expression, a member's right side, or a value; a list type
-/// gives ListEntity.itemType.
+/// gives Entity.itemType.
 // @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
@@ -1054,7 +1388,7 @@ fn add_and_where_append_criteria() {
     );
 }
 
-/// A test call appends each argument as one Test.
+/// A call of Entity.test on the entity's context appends each argument as one Test.
 // @lfy def/model/main.lfy:bind
 #[test]
 fn test_call_appends_tests() {
@@ -1146,6 +1480,32 @@ fn repository_binds_without_problems() {
         .collect();
     assert!(workspace.problems.is_empty(), "{messages:#?}");
     assert!(model.problems.is_empty(), "{:?}", problems(model));
+
+    // The package elfie is in the program, so its main file is the prelude: a program
+    // file's scope has the prelude's as parent, and every apply of a trait resolves to
+    // the member of Trait the prelude declares.
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind
+    let components = model
+        .sources
+        .iter()
+        .position(|source| source.path.ends_with("model/components.lfy"))
+        .expect("the definitions declare the model's components");
+    assert!(model.scopes[model.file_scopes[components]].parent.is_some());
+    let apply = model.symbols[member(
+        model,
+        find_entity(model, "Trait", |e| e.kind == EntityKind::Data),
+        "apply",
+    )]
+    .entity;
+    let applies: Vec<Option<EntityId>> = model
+        .usages
+        .iter()
+        .filter(|usage| usage.node.file == components && usage.name.as_deref() == Some("apply"))
+        .map(|usage| usage.symbol.map(|s| model.symbols[s].entity))
+        .collect();
+    assert!(applies.len() > 10, "{} apply calls", applies.len());
+    assert!(applies.iter().all(|&read| read == Some(apply)), "{applies:?}");
 
     let rule = model
         .trait_named("rule")

@@ -650,6 +650,10 @@ impl Binder {
         let Some(&block) = children.iter().find(|&&c| trees.is(c, S::Block)) else {
             return;
         };
+        // The expression may be a Member using the scope accessor, which resolves to a
+        // member symbol: the block's criteria and tests then attach to the member and
+        // not to the entity that declares it.
+        // @lfy def/model/main.lfy:bind
         let target = match self.eval(expression, env) {
             Value::Entity(entity) => entity,
             _ => match self.resolve_name_node(expression) {
@@ -663,6 +667,9 @@ impl Binder {
         inner.target = target;
         if !env.in_trait {
             inner.current = target;
+            // Outside a trait the block's criteria are the target's own.
+            // @lfy def/model/main.lfy:bind
+            inner.contributor = target;
         }
         if let Some(scope) = self.model.scope_of(r) {
             inner.scope = scope;
@@ -1296,6 +1303,15 @@ impl Binder {
         match value {
             Value::Entity(entity) => {
                 let entity = *entity;
+                // A name that is a member of a kind data other than the entity's yields
+                // undefined for it, so `@parameters ?? @type` stays meaningful.
+                // @lfy def/model/main.lfy:bind
+                if self.prelude.is_some()
+                    && self.kind_member(entity, name).is_none()
+                    && self.kind_member_anywhere(name)
+                {
+                    return Value::Undefined;
+                }
                 match ContextProperty::lookup(name) {
                     Some(ContextProperty::Identifier) => self.model.entities[entity]
                         .identifier
@@ -1688,11 +1704,26 @@ impl Binder {
         }
     }
 
-    /// The entities an apply call targets: the first argument's entity, every item of an
-    /// alternationList, or every item a loop variable stands for.
+    /// The entities an apply call targets: the first argument's entity, every entity of
+    /// a list, every item of an alternationList, or every item a loop variable stands
+    /// for.
     fn apply_receivers(&mut self, first: NodeRef, env: &mut Env) -> Vec<EntityId> {
         let trees = self.trees.clone();
         let value = self.eval(first, env);
+        // A list of entities: each of them.
+        // @lfy def/model/main.lfy:bind
+        if let Value::List(items) = &value {
+            let entities: Vec<EntityId> = items
+                .iter()
+                .filter_map(|item| match item {
+                    Value::Entity(entity) => Some(*entity),
+                    _ => None,
+                })
+                .collect();
+            if !entities.is_empty() {
+                return entities;
+            }
+        }
         let entity = match value {
             Value::Entity(entity) => Some(entity),
             _ => self

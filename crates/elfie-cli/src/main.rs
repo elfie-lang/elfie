@@ -13,7 +13,7 @@ use std::io::{self, BufRead as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::{Command as Process, Stdio};
 use std::thread::JoinHandle;
-use std::time::Instant;
+use std::time::SystemTime;
 
 use elfie_core::generation::{
     self, Batch, Outcome, OutcomeKind, Output, Plan, Request, SourceMap, Unit, Verdict,
@@ -111,8 +111,8 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
 // @lfy def/cli/main.lfy:parse
 const OPTIONS_WITH_VALUES: [&str; 1] = ["target"];
 
-/// The nearest directory at or above the current one holding elfie.json, or the current
-/// one.
+/// The nearest directory at or above the current directory where elfie.json exists, or
+/// the current one.
 // @lfy def/cli/main.lfy:parse
 fn find_root(given: Option<&str>) -> String {
     if let Some(given) = given {
@@ -121,7 +121,7 @@ fn find_root(given: Option<&str>) -> String {
     let mut current = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let start = current.clone();
     loop {
-        if current.join("elfie.json").is_file() {
+        if current.join("elfie.json").exists() {
             return current.to_string_lossy().into_owned();
         }
         if !current.pop() {
@@ -489,11 +489,17 @@ fn json_of(progress: &Progress) -> serde_json::Value {
     })
 }
 
+/// Seconds since an instant, milliseconds kept as a fraction and never negative.
+// @lfy def/cli/main.lfy:main
+fn elapsed(start: SystemTime) -> f64 {
+    SystemTime::now().duration_since(start).map_or(0.0, |since| since.as_secs_f64())
+}
+
 /// Prints one [`Progress`] line per step as it happens and appends it to the log.
 // @lfy def/cli/main.lfy:main
 struct Reporter {
     json: bool,
-    started: Instant,
+    started: SystemTime,
     total: usize,
     done: usize,
     logs: Vec<PathBuf>,
@@ -502,7 +508,7 @@ struct Reporter {
 impl Reporter {
     // @lfy def/cli/main.lfy:main
     fn new(json: bool, total: usize, logs: Vec<PathBuf>) -> Reporter {
-        Reporter { json, started: Instant::now(), total, done: 0, logs }
+        Reporter { json, started: SystemTime::now(), total, done: 0, logs }
     }
 
     /// One line for one step, printed and logged.
@@ -514,7 +520,8 @@ impl Reporter {
             unit: unit.map(str::to_string),
             done: self.done,
             total: self.total,
-            elapsed: self.started.elapsed().as_secs_f64(),
+            // @lfy def/cli/main.lfy:main
+            elapsed: elapsed(self.started),
             message: message.to_string(),
         };
         let line = if self.json { json_of(&progress).to_string() } else { text_of(&progress) };
@@ -547,8 +554,8 @@ fn compiler_command(root: &Path) -> Option<String> {
     value.get("compiler")?.as_str().map(str::to_string)
 }
 
-/// The source maps of each target, read from source-map.json in its output directory,
-/// dropping any whose output no longer exists.
+/// The source maps of each target, read from source-map.json joined to its output
+/// directory, none when the file is missing, dropping any whose output no longer exists.
 // @lfy def/cli/main.lfy:main
 fn load_source_maps(workspace: &Workspace) -> Vec<SourceMap> {
     let mut maps = Vec::new();
@@ -559,7 +566,7 @@ fn load_source_maps(workspace: &Workspace) -> Vec<SourceMap> {
         }
         let path = workspace.root.join(&target.output_directory).join("source-map.json");
         for map in generation::read_source_maps(&path) {
-            if workspace.root.join(&map.output).is_file() {
+            if workspace.root.join(&map.output).exists() {
                 maps.push(map);
             }
         }
@@ -753,9 +760,18 @@ fn requests_directory(root: &Path) -> PathBuf {
     root.join("elfie-requests")
 }
 
-/// The compiler's output, shown as it arrives with each line prefixed by the batch; the
-/// standard output is also kept whole as the report. With --json it is shown on standard
-/// error, so that standard output stays one JSON object per line.
+/// What a finished command left: its code, -1 when it ended by a signal or could not be
+/// started, and everything it wrote, held whole.
+// @lfy def/cli/main.lfy:main
+struct Exit {
+    code: i32,
+    stdout: String,
+    stderr: String,
+}
+
+/// The compiler's output, each line shown as it arrives prefixed by the batch and kept
+/// whole. With --json it is shown on standard error, so that standard output stays one
+/// JSON object per line.
 // @lfy def/cli/main.lfy:main
 fn watch<R: io::Read + Send + 'static>(pipe: R, batch: &str, keep: bool, to_stdout: bool) -> JoinHandle<String> {
     let prefix = batch.to_string();
@@ -916,12 +932,12 @@ impl<'w> Run<'w> {
         request
     }
 
-    /// Runs the compiler once for one batch: the instructions on its standard input, the
-    /// root as its working directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS in its
-    /// environment. Its standard output is returned whole as the report.
+    /// Streams the compiler once for one batch: the instructions as its input, the root as
+    /// its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment. Its
+    /// standard output is the report. The code is -1 when the command could not be started.
     // @lfy def/cli/main.lfy:main
-    fn run_compiler(&self, command: &str, root: &Path, batch: &Batch, instructions: &str) -> io::Result<String> {
-        let mut child = Process::new("sh")
+    fn run_compiler(&self, command: &str, root: &Path, batch: &Batch, instructions: &str) -> Exit {
+        let spawned = Process::new("sh")
             .arg("-c")
             .arg(command)
             .current_dir(root)
@@ -931,22 +947,32 @@ impl<'w> Run<'w> {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn()?;
+            .spawn();
+        // The command could not be started: the code is -1 and the failure is the output.
+        // @lfy def/cli/main.lfy:main
+        let mut child = match spawned {
+            Ok(child) => child,
+            Err(error) => return Exit { code: -1, stdout: String::new(), stderr: error.to_string() },
+        };
         // @lfy def/cli/main.lfy:main
         let out = child.stdout.take().map(|pipe| watch(pipe, &batch.identifier, true, !self.json));
-        let err = child.stderr.take().map(|pipe| watch(pipe, &batch.identifier, false, false));
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(instructions.as_bytes())?;
+        let err = child.stderr.take().map(|pipe| watch(pipe, &batch.identifier, true, false));
+        if let Some(mut stdin) = child.stdin.take()
+            && let Err(error) = stdin.write_all(instructions.as_bytes())
+        {
+            self.reporter.append(&format!("the compiler command did not read its input: {error}"));
         }
-        let status = child.wait()?;
-        let report = out.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
-        if let Some(handle) = err {
-            let _ = handle.join();
-        }
+        let status = child.wait();
+        let stdout = out.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
+        let stderr = err.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
+        let status = match status {
+            Ok(status) => status,
+            Err(error) => return Exit { code: -1, stdout, stderr: error.to_string() },
+        };
         if !status.success() {
             self.reporter.append(&format!("the compiler command exited with {status}"));
         }
-        Ok(report)
+        Exit { code: status.code().unwrap_or(-1), stdout, stderr }
     }
 
     /// For each unit of the batch, `accept` runs on the files under the target's output
@@ -1031,20 +1057,21 @@ impl<'w> Run<'w> {
             attempt += 1;
             let step = if attempt == 1 { Step::Compiling } else { Step::Retrying };
             self.reporter.report(step, Some(&batch.identifier), None, command);
-            let outcome = match self.run_compiler(command, root, batch, &request.instructions) {
-                Ok(report) => {
-                    self.reporter.append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
-                    // @lfy def/cli/main.lfy:main
-                    let verdicts = self.verdicts_of(batch, &request);
-                    generation::outcome_of(&report, verdicts)
-                }
-                // The command cannot be run: the outcome is failed.
-                // @lfy def/cli/main.lfy:main
-                Err(error) => Outcome {
+            let exit = self.run_compiler(command, root, batch, &request.instructions);
+            // The code is -1 because the command could not be started: the outcome is failed.
+            // @lfy def/cli/main.lfy:main
+            let outcome = if exit.code == -1 {
+                Outcome {
                     kind: OutcomeKind::Failed,
-                    message: format!("the compiler command could not be run: {error}"),
+                    message: format!("the compiler command could not be run: {}", exit.stderr.trim()),
                     verdicts: Vec::new(),
-                },
+                }
+            } else {
+                let report = exit.stdout;
+                self.reporter.append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
+                // @lfy def/cli/main.lfy:main
+                let verdicts = self.verdicts_of(batch, &request);
+                generation::outcome_of(&report, verdicts)
             };
             match outcome.kind {
                 // Each unit's outputs are written back, its source maps replace the unit's,
@@ -1302,7 +1329,10 @@ mod tests {
                     "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
                 }"#,
             )
-            .write("targets/rust/main.lfy", "trait rust: `Built as Rust` {}\nrust.apply(global);\n")
+            .write(
+                "targets/rust/main.lfy",
+                "use \"elfie/target/target\";\n\ntrait rust extends target: `Built as Rust` {\n  .outputDirectory = \"out\";\n  .markerComment = \"//\";\n}\nrust.apply(global);\n",
+            )
     }
 
     // @lfy def/cli/main.lfy:parse
@@ -1395,11 +1425,12 @@ mod tests {
         fixture.write("def/a.lfy", "const y = z;\n");
         assert_eq!(fixture.run(&["check"]), ExitCode::Problems.code());
         let diagnostics = query::diagnostics_of(&workspace::load(&fixture.root), None);
-        assert_eq!(diagnostics.len(), 1);
-        let printed = format!(
-            "{}:{}:{}: {} {}",
-            diagnostics[0].range.file, diagnostics[0].range.start.line, diagnostics[0].range.start.column, diagnostics[0].stage, diagnostics[0].severity
-        );
+        // The standard library is part of the program, so only the project's own file is
+        // this file's to report on.
+        let mine: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.range.file == "def/a.lfy").collect();
+        assert_eq!(mine.len(), 1);
+        let printed =
+            format!("{}:{}:{}: {} {}", mine[0].range.file, mine[0].range.start.line, mine[0].range.start.column, mine[0].stage, mine[0].severity);
         // @lfy def/cli/main.lfy:main
         assert_eq!(printed, "def/a.lfy:1:10: binder error");
         // A file given as an argument narrows the diagnostics. @lfy def/cli/main.lfy:main

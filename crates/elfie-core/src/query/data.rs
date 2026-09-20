@@ -167,6 +167,9 @@ pub struct Hover {
     /// The identifier of `Entity.type`, or the source text of the type when it is
     /// anonymous.
     pub ty: Option<String>, // @lfy def/query/data.lfy:Hover.type
+    /// The identifier of each of `Entity.traits` in application order; `builtin` among
+    /// them for a native thing.
+    pub traits: Vec<String>, // @lfy def/query/data.lfy:Hover.traits
     /// The text of the `Documentation` attached to the declaration, without the
     /// boundaries and with references kept as written.
     pub documentation: Option<String>, // @lfy def/query/data.lfy:Hover.documentation

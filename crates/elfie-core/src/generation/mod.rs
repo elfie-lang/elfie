@@ -13,7 +13,7 @@
 //! outputs structurally, normalizes their markers, and gives them their source maps.
 //! Nothing here shells out.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::Write as _;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -26,7 +26,8 @@ use sha2::{Digest, Sha256};
 use unicode_ident::{is_xid_continue, is_xid_start};
 
 use crate::model::{
-    self, Criterion, Entity, EntityId, EntityKind, FileId, Model, NodeRef, SymbolKind,
+    self, Applied, AppliedSource, Criterion, Entity, EntityId, EntityKind, FileId, Model, NodeRef,
+    SymbolKind, Value,
 };
 use crate::workspace::{File, NativeDependency, Target, Workspace};
 
@@ -51,9 +52,10 @@ const BATCH_CHARACTERS: usize = 60_000;
 /// definition, its type, and for a fn its parameters with their types and its output —
 /// and, after the line of a data, type, trait, or enum, one line per member or enum
 /// member it declares, since a dependent relies on those as much as on the declaration
-/// itself. Nothing else is written: a change that leaves every line the same, such as a
-/// new criterion or a moved line, leaves the text the same, so dependents are not
-/// regenerated for it.
+/// itself. A type line spells an entity of the `elfie` package by its identifier alone,
+/// such as `List` or `Path`, never by a path or a module name. Nothing else is written: a
+/// change that leaves every line the same, such as a new criterion or a moved line, leaves
+/// the text the same, so dependents are not regenerated for it.
 // @lfy def/generation/main.lfy:interfaceOf
 pub fn interface_of(workspace: &Workspace, unit: &Unit) -> String {
     let model = &workspace.model;
@@ -104,7 +106,9 @@ fn members_of(model: &Model, entity: EntityId) -> Vec<EntityId> {
 
 /// One entity as an interface line: identifier, kind, definition, type, and for a fn its
 /// parameters with their types and its output. No line number is written, so the text
-/// depends on nothing but what a dependent may rely on.
+/// depends on nothing but what a dependent may rely on. A type is spelled by the
+/// identifier of the entity it names, wherever that entity was declared, so an entity of
+/// the `elfie` package reads `List` or `Path` and never a path or a module name.
 // @lfy def/generation/main.lfy:interfaceOf
 fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, indent: &str) {
     let record = &model.entities[entity];
@@ -150,7 +154,10 @@ fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, ind
 /// anonymous entity of its file does, or when `global` does; the last two select every
 /// entity declared in the file scope. Every file without a package that has at least one
 /// built entity for a target gives one unit holding those entities in file order; a file
-/// that has a package gives no unit, since a package is compiled by its own project.
+/// that has a package gives no unit, since a package is compiled by its own project. That
+/// holds for the `elfie` package, the standard library, even when the marker is applied to
+/// `global`: none of its entities is ever in a unit's entities, though a unit's interface
+/// may still name them as types.
 /// Units come in target order then file order, each after its dependencies. A unit's
 /// reason is the first of: requested, fresh, changed, dependency; `None` when it is up to
 /// date. The caller drops maps whose output no longer exists before calling.
@@ -501,9 +508,10 @@ fn source_text(workspace: &Workspace, file: &File) -> String {
 /// The sources are the joined raw text of each unit's tokens by path; `existing` is kept
 /// only where its path is among the outputs of a unit of the batch; there is one
 /// interface per dependency of the batch that is not itself in it; the guidance is every
-/// criterion of the target's marker; and the native dependencies are the workspace's
-/// followed by the target package's. The instructions quote every criterion and test
-/// already resolved, so a compiler with no access to the model can still work.
+/// criterion of the target's marker and of every trait it extends, as [`guidance_of`]
+/// gathers them; and the native dependencies are the workspace's followed by the target
+/// package's. The instructions quote every criterion and test already resolved, so a
+/// compiler with no access to the model can still work.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace, so the workspace is an extra first parameter.
 // @lfy def/generation/main.lfy:request
@@ -575,7 +583,7 @@ pub fn request(
             });
         }
     }
-    let guidance = model::criteria_of(model, target.marker); // @lfy def/generation/main.lfy:request
+    let guidance = guidance_of(model, target.marker); // @lfy def/generation/main.lfy:request
     // @lfy def/generation/main.lfy:request
     let native_dependencies: Vec<NativeDependency> = workspace
         .native_dependencies
@@ -611,6 +619,124 @@ pub fn request(
         guidance,
         native_dependencies,
     }
+}
+
+/// The guidance a target's marker gives: its own criteria, then those of every trait it
+/// extends, transitively and nearest first, so a marker extending `targetLanguage` gives
+/// its own criteria, then those of `targetLanguage`, then those of `target`. A trait
+/// reached twice contributes once, at its first place. A trait the marker extends with
+/// arguments, such as `cratePerPrefix` and `modulePerFile`, contributes in extends order
+/// after the marker's own, with each of its template values evaluated from those
+/// arguments; every template value of the guidance is evaluated for the marker's
+/// application.
+// Decision: a trait's own criteria keep a template value of its parameters as written,
+// since the parameters are unbound where the trait is declared; the value is substituted
+// here, where the application that bound them is known.
+// @lfy def/generation/main.lfy:request
+pub fn guidance_of(model: &Model, marker: EntityId) -> Vec<Criterion> {
+    let mut out: Vec<Criterion> = Vec::new();
+    let mut seen: Vec<EntityId> = vec![marker];
+    // Nearest first: each trait is visited a whole level after the trait that extends it.
+    // @lfy def/generation/main.lfy:request
+    let mut queue: VecDeque<(EntityId, Vec<(String, String)>)> =
+        VecDeque::from([(marker, Vec::new())]);
+    while let Some((entity, arguments)) = queue.pop_front() {
+        for mut criterion in model::criteria_of(model, entity) {
+            // @lfy def/generation/main.lfy:request
+            substitute(&mut criterion, &arguments);
+            out.push(criterion);
+        }
+        for applied in &model.entities[entity].traits {
+            if !matches!(applied.source, AppliedSource::Extends(_))
+                || seen.contains(&applied.entity)
+            {
+                continue; // @lfy def/generation/main.lfy:request
+            }
+            seen.push(applied.entity);
+            queue.push_back((applied.entity, arguments_of(model, applied, &arguments)));
+        }
+    }
+    out
+}
+
+/// The parameters of an applied trait bound to the text of the arguments it was applied
+/// with, in declaration order.
+// @lfy def/generation/main.lfy:request
+fn arguments_of(
+    model: &Model,
+    applied: &Applied,
+    outer: &[(String, String)],
+) -> Vec<(String, String)> {
+    model.entities[applied.entity]
+        .parameters()
+        .iter()
+        .enumerate()
+        .map(|(index, &symbol)| {
+            let text = match applied.values.get(index) {
+                Some(Value::Undefined) | None => {
+                    // An argument written in terms of the extending trait's own parameters
+                    // could not be evaluated where it stands; its text carries them, and
+                    // the application that bound them is the one outside.
+                    match applied.arguments.get(index) {
+                        Some(&node) => substitute_text(model.raw(node).trim(), outer),
+                        None => String::new(),
+                    }
+                }
+                Some(value) => model::value_text(model, value),
+            };
+            (model.symbols[symbol].name.clone(), text)
+        })
+        .collect()
+}
+
+/// A criterion with every template value of its texts substituted.
+// @lfy def/generation/main.lfy:request
+fn substitute(criterion: &mut Criterion, arguments: &[(String, String)]) {
+    if arguments.is_empty() {
+        return;
+    }
+    for texts in [
+        criterion.situation.as_mut(),
+        criterion.behavior.as_mut(),
+        criterion.side_effects.as_mut(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        for text in texts {
+            *text = substitute_text(text, arguments);
+        }
+    }
+}
+
+/// A text with each `{{name}}` naming one of the arguments replaced by its value, and
+/// every other template value left as written.
+// @lfy def/generation/main.lfy:request
+fn substitute_text(text: &str, arguments: &[(String, String)]) -> String {
+    if arguments.is_empty() || !text.contains("{{") {
+        return text.to_string();
+    }
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("{{") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let Some(end) = after.find("}}") else {
+            out.push_str("{{");
+            rest = after;
+            continue;
+        };
+        let inner = &after[..end];
+        match arguments.iter().find(|(name, _)| name == inner.trim()) {
+            Some((_, value)) => out.push_str(value),
+            None => {
+                let _ = write!(out, "{{{{{inner}}}}}");
+            }
+        }
+        rest = &after[end + 2..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The prompt: what to produce, where, the rules for producing it, and how to report the
@@ -690,7 +816,8 @@ fn instructions(
     out.push_str("## Guidance\n\n");
     let _ = writeln!(
         out,
-        "The target's marker `{}` gives this guidance for building against the target:\n",
+        "The target's marker `{}`, and every trait it extends, give this guidance for building \
+         against the target:\n",
         entity_name(model, target.marker)
     );
     if guidance.is_empty() {
@@ -781,6 +908,14 @@ fn instructions(
             write_entity(&mut out, model, entity);
         }
     }
+
+    // The standard library. @lfy def/generation/main.lfy:request
+    out.push_str("## The standard library\n\n");
+    out.push_str(
+        "The data and fns of the standard library that carry `builtin` are bound to what the guidance \
+         names for them, and are never generated: they are only called. A member of the standard \
+         library written out in full is translated where it is used.\n\n",
+    );
 
     // The rules for kinds. @lfy def/generation/main.lfy:request
     out.push_str("## Rules for kinds\n\n");
@@ -1416,7 +1551,7 @@ fn declaration_lines(model: &Model, entity: EntityId) -> Option<(usize, usize)> 
 /// anywhere in a line. A marker that names an entity has no line until one is derived.
 /// Text is read as a marker only when what follows is a path ending in `.lfy`, a colon,
 /// and a number or an identifier path; anything else after `@lfy` is prose.
-// @lfy def/generation/data.lfy:22
+// @lfy def/generation/data.lfy:Marker
 pub fn parse_markers(text: &str) -> Vec<Marker> {
     let mut out = Vec::new();
     for (index, line) in text.lines().enumerate() {
@@ -1436,7 +1571,7 @@ pub fn parse_markers(text: &str) -> Vec<Marker> {
 /// A marker from what follows `@lfy `: `path:line`, `path:line:column`, or `path:entity`.
 /// `None` when the path does not end in `.lfy`, or when what follows the colon is neither
 /// a number nor an identifier path: that text is prose, not a marker.
-// @lfy def/generation/data.lfy:22
+// @lfy def/generation/data.lfy:Marker
 fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
     // Decision: punctuation that closes a sentence or a comment after the marker is not
     // part of it.
@@ -1485,13 +1620,13 @@ fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
 }
 
 /// Whether text names a source file: a path ending in `.lfy`, with a name before it.
-// @lfy def/generation/data.lfy:22
+// @lfy def/generation/data.lfy:Marker
 fn is_source_path(path: &str) -> bool {
     path.len() > EXTENSION.len() && path.ends_with(EXTENSION)
 }
 
 /// Whether text is an identifier, or an owner's identifier, a dot, and a member's name.
-// @lfy def/generation/data.lfy:22
+// @lfy def/generation/data.lfy:Marker
 fn is_identifier_path(name: &str) -> bool {
     !name.is_empty()
         && name.split('.').all(|part| {
@@ -1720,6 +1855,28 @@ mod tests {
             fixture
         }
 
+        /// The same project with the standard library beside it: the package `elfie`
+        /// under `lib`, holding one data `Path` a project file may name as a type.
+        fn with_elfie_package() -> Fixture {
+            let fixture = Fixture::with_rust_target();
+            fixture
+                .write(
+                    "elfie.json",
+                    r#"{
+                        "output": "src",
+                        "dependencies": {
+                            "elfie": { "root": "lib" },
+                            "rust": { "root": "targets/rust" }
+                        },
+                        "targets": { "rust": { "package": "rust", "marker": "rust" } },
+                        "native": [ { "identifier": "serde_json", "ecosystem": "cargo", "version": "1" } ]
+                    }"#,
+                )
+                .write("lib/main.lfy", "d Path: `A path` {\n  $text = string;\n}\n")
+                .write("def/a.lfy", "use \"elfie\";\n\nd A {\n  $p = Path;\n}\n");
+            fixture
+        }
+
         fn write(&self, path: &str, text: &str) -> &Fixture {
             let disk = self.root.join(path);
             fs::create_dir_all(disk.parent().unwrap()).unwrap();
@@ -1892,9 +2049,44 @@ mod tests {
         );
     }
 
+    /// A type line names an entity of the `elfie` package by its identifier alone, such as
+    /// `List` or `Path`, never by a path or a module name.
+    // @lfy def/generation/main.lfy:interfaceOf
+    #[test]
+    fn a_type_of_the_elfie_package_is_spelled_by_its_identifier_alone() {
+        let fixture = Fixture::with_elfie_package();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let text = interface_of(&workspace, a);
+        assert!(text.contains("  - `p` (member) — type `Path`"), "{text}");
+        assert!(!text.contains("elfie"), "{text}");
+        assert!(!text.contains("lib/"), "{text}");
+    }
+
     // -----------------------------------------------------------------------------------
     // plan
     // -----------------------------------------------------------------------------------
+
+    /// The standard library is compiled by its own project, so none of its entities is
+    /// ever built, however the marker is applied; a unit's interface may still name them.
+    // @lfy def/generation/main.lfy:plan
+    #[test]
+    fn the_elfie_package_gives_no_unit_even_though_the_marker_is_applied_to_global() {
+        let fixture = Fixture::with_elfie_package();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        assert!(
+            workspace.file("lib/main.lfy").unwrap().package.is_some(),
+            "{:?}",
+            workspace.files
+        );
+        let plan = plan(&workspace, &[], &[]);
+        assert_eq!(plan.units.len(), 1, "{:?}", plan.units);
+        assert_eq!(plan.units[0].file, file_index(&workspace, "def/a.lfy"));
+        assert_eq!(names(&workspace, &plan.units[0].entities), ["A"]);
+    }
 
     // @lfy def/generation/main.lfy:plan
     #[test]
@@ -2260,6 +2452,7 @@ mod tests {
         assert!(request.interfaces.is_empty());
         // @lfy def/generation/main.lfy:request
         let marker = workspace.targets[0].marker;
+        // The marker extends nothing, so its own criteria are the whole guidance.
         assert_eq!(
             request.guidance,
             model::criteria_of(&workspace.model, marker)
@@ -2305,6 +2498,15 @@ mod tests {
         assert!(text.contains("`ELFIE: BLOCKED: `"), "{text}");
         assert!(text.contains("`ELFIE: CLARIFY: `"), "{text}");
         assert!(text.contains("agent server"), "{text}");
+        // The standard library is bound, never generated. @lfy def/generation/main.lfy:request
+        assert!(
+            text.contains("carry `builtin` are bound to what the guidance"),
+            "{text}"
+        );
+        assert!(
+            text.contains("written out in full is translated where it is used"),
+            "{text}"
+        );
         assert!(!text.contains("## Existing outputs"), "{text}");
 
         // The sections come in the definition's order. @lfy def/generation/main.lfy:request
@@ -2315,6 +2517,7 @@ mod tests {
             "## Native dependencies",
             "## Interfaces",
             "## The units to compile",
+            "## The standard library",
             "## Rules for kinds",
             "## Markers",
             "## Tests",
@@ -2357,6 +2560,74 @@ mod tests {
             text.contains("- Input `[\"y\"]` gives `B@like(`holding y`)`"),
             "{text}"
         );
+    }
+
+    /// A marker extending a chain of traits, one of them applied with arguments: the
+    /// guidance is the marker's own criteria, then those of every trait it extends,
+    /// nearest first, each trait once, with every template value evaluated.
+    // @lfy def/generation/main.lfy:request
+    #[test]
+    fn the_guidance_holds_the_markers_criteria_then_those_of_every_trait_it_extends() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write(
+                "targets/rust/main.lfy",
+                "trait target: `A target` {\n\
+                 \x20 where (`An output is written`) -> `Its path is under the output directory`;\n\
+                 }\n\n\
+                 trait layout(root: string) extends target: `A layout` {\n\
+                 \x20 where (`A unit is written`) -> `Its output is {{root}} then its stem`;\n\
+                 }\n\n\
+                 trait targetLanguage extends target: `A language` {\n\
+                 \x20 where (`A d declaration is built`) -> `It becomes a type`;\n\
+                 }\n\n\
+                 trait rust extends targetLanguage, layout(\"crates\"): `Rust` {\n\
+                 \x20 @acceptanceCriteria\n\
+                 \x20   .add({ behavior = `Each unit becomes one module named after its stem` })\n\
+                 \x20   .add({ behavior = `Outputs are built for {{@identifier}}` });\n\
+                 }\n\n\
+                 rust.apply(global);\n",
+            )
+            .write("def/a.lfy", "d A { $x = string; }\n");
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
+        let request = request(&workspace, &plan, &plan.batches[0], &[], &BTreeMap::new());
+        let behaviors: Vec<String> = request
+            .guidance
+            .iter()
+            .map(|criterion| criterion.behavior.clone().unwrap_or_default().join(" "))
+            .collect();
+        // The marker's own first, with its template value evaluated for the marker; then
+        // targetLanguage and layout, in extends order; then target, reached through both
+        // and contributing once. @lfy def/generation/main.lfy:request
+        assert_eq!(
+            behaviors,
+            [
+                "Each unit becomes one module named after its stem",
+                "Outputs are built for rust",
+                "It becomes a type",
+                "Its output is crates then its stem",
+                "Its path is under the output directory",
+            ],
+            "{:?}",
+            request.guidance
+        );
+        // Every criterion is quoted in the instructions, in that order.
+        let text = &request.instructions;
+        let positions: Vec<usize> = behaviors
+            .iter()
+            .map(|behavior| {
+                text.find(behavior.as_str())
+                    .unwrap_or_else(|| panic!("{behavior} is missing:\n{text}"))
+            })
+            .collect();
+        assert!(
+            positions.windows(2).all(|pair| pair[0] < pair[1]),
+            "{positions:?}"
+        );
+        assert!(!text.contains("{{root}}"), "{text}");
     }
 
     // @lfy def/generation/main.lfy:request
@@ -2801,7 +3072,7 @@ mod tests {
     // markers, hashes, source maps, timestamps
     // -----------------------------------------------------------------------------------
 
-    // @lfy def/generation/data.lfy:19
+    // @lfy def/generation/data.lfy:Marker.line
     #[test]
     fn markers_are_parsed_after_any_line_comment_opener() {
         let text = "// @LFY def/a.lfy:4\nfn x() {}\n# @LFY def/a.lfy:5:2\n-- @LFY def/a.lfy:6 -- more\n; @LFY def/a.lfy:7.\nnothing here\n/* @LFY def/a.lfy:8 */\n// @LFY def/a.lfy:Marker.file\n// @LFY nope\n// @LFY :3\n".replace("@LFY", "@lfy");
@@ -2839,7 +3110,7 @@ mod tests {
 
     /// Text is read as a marker only when what follows `@lfy` and the space is a path
     /// ending in `.lfy`, a colon, and a number or an identifier path.
-    // @lfy def/generation/data.lfy:22
+    // @lfy def/generation/data.lfy:Marker
     #[test]
     fn only_a_lfy_path_and_a_line_or_an_identifier_path_is_read_as_a_marker() {
         let prose = [
