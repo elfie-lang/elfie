@@ -21,11 +21,11 @@ use crate::parser::{Child, ErrorNode, Node, Tree};
 
 /// The column a line may reach before a bracketed list inside it is laid out one item per
 /// line.
-// @lfy def/format/main.lfy:44
+// @lfy def/format/main.lfy:format
 pub const MAX_WIDTH: usize = 120;
 
 /// The indentation of one enclosing block, object, type, or multi-line list.
-// @lfy def/format/main.lfy:30
+// @lfy def/format/main.lfy:format
 pub const INDENT: &str = "  ";
 
 /// The source of a tree, laid out the standard way.
@@ -36,9 +36,9 @@ pub const INDENT: &str = "  ";
 /// line ends with one line feed and the result ends with one. When [`Tree::errors`] is
 /// not empty the result is the source unchanged, because moving tokens the parser could
 /// not place would hide the error.
-// @lfy def/format/main.lfy:15
+// @lfy def/format/main.lfy:format
 pub fn format(tree: &Tree) -> String {
-    // @lfy def/format/main.lfy:26
+    // @lfy def/format/main.lfy:format
     if !tree.errors.is_empty() {
         return tree.raw(0, tree.tokens.len());
     }
@@ -50,7 +50,7 @@ pub fn format(tree: &Tree) -> String {
 /// What sits between the text written so far and the next token: nothing, one space, or a
 /// line break (with a blank line before it when `blank`). A line break always wins over a
 /// space, which is how trailing spaces never appear.
-// @lfy def/format/main.lfy:33
+// @lfy def/format/main.lfy:format
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pending {
     None,
@@ -94,7 +94,7 @@ const INDEX: Entity = Entity::Expression(Expression::Index);
 const ITEMS: Entity = Entity::Expression(Expression::Items);
 
 /// Whether the rule is one link of a `Call` and `Member` chain.
-// @lfy def/format/main.lfy:46
+// @lfy def/format/main.lfy:format
 fn is_link(rule: Entity) -> bool {
     matches!(rule, MEMBER | CALL | INDEX)
 }
@@ -125,10 +125,10 @@ fn closes_bracket(rule: Entity) -> bool {
 
 /// No space after `a`: after an opening bracket or boundary, inside a text body, after a
 /// prefix operator that is not a keyword, and after an accessor.
-// @lfy def/format/main.lfy:37
+// @lfy def/format/main.lfy:format
 fn glue_after(a: Tok) -> bool {
     match a.rule {
-        // @lfy def/format/main.lfy:38
+        // @lfy def/format/main.lfy:format
         Entity::Punctuation(Punctuation::GroupOpen | Punctuation::ListOpen) => true,
         Entity::Literal(Literal::ExecutionOpen | Literal::ReferenceOpen) => true,
         Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
@@ -156,7 +156,7 @@ fn glue_after(a: Tok) -> bool {
         ),
         // Decision: a keyword prefix operator (`await`, `in`, `of`, `from`) keeps the space a
         // keyword always has after it; the "no space" rule is for symbol operators.
-        // @lfy def/format/main.lfy:39
+        // @lfy def/format/main.lfy:format
         rule => a.parent.is_prefix() && !rule.is_keyword(),
     }
 }
@@ -164,10 +164,10 @@ fn glue_after(a: Tok) -> bool {
 /// No space before `b`: before a comma, semicolon, closing bracket or boundary, inside a
 /// text body, before the colon and question mark of a definition, and before the operator
 /// of a postfix operation that is not a keyword.
-// @lfy def/format/main.lfy:37
+// @lfy def/format/main.lfy:format
 fn glue_before(a: Tok, b: Tok) -> bool {
     match b.rule {
-        // @lfy def/format/main.lfy:38
+        // @lfy def/format/main.lfy:format
         Entity::Punctuation(
             Punctuation::Comma
             | Punctuation::Semicolon
@@ -215,7 +215,7 @@ fn glue_before(a: Tok, b: Tok) -> bool {
 
 /// Whether no space separates two consecutive tokens; every other pair is separated by
 /// one space, or by the line break the layout decided.
-// @lfy def/format/main.lfy:37
+// @lfy def/format/main.lfy:format
 fn glued(a: Tok, b: Tok) -> bool {
     glue_after(a) || glue_before(a, b)
 }
@@ -242,7 +242,7 @@ impl<'t> Formatter<'t> {
     // The text
 
     /// The result: every line ends with one line feed and so does the result.
-    // @lfy def/format/main.lfy:23
+    // @lfy def/format/main.lfy:format
     fn finish(mut self) -> String {
         if self.out.is_empty() {
             // Decision: a tree with no tokens formats to the empty text, which has no line
@@ -264,7 +264,7 @@ impl<'t> Formatter<'t> {
 
     /// The next token begins a new line, after a blank line when `blank`; a run of line
     /// breaks is one line break, and blank when any of them was.
-    // @lfy def/format/main.lfy:31
+    // @lfy def/format/main.lfy:format
     fn newline(&mut self, blank: bool) {
         if self.flat {
             self.space();
@@ -276,7 +276,7 @@ impl<'t> Formatter<'t> {
 
     /// Writes what is pending: a space, or a line feed (two for a blank line) and the
     /// indentation. Nothing precedes the first line.
-    // @lfy def/format/main.lfy:33
+    // @lfy def/format/main.lfy:format
     fn flush(&mut self) {
         match self.pending {
             Pending::None => {}
@@ -313,7 +313,7 @@ impl<'t> Formatter<'t> {
 
     /// Writes one token's text after the separator the rules give it: none when `glue`
     /// or when the pair is [`glued`], one space otherwise, unless a line break is pending.
-    // @lfy def/format/main.lfy:37
+    // @lfy def/format/main.lfy:format
     fn write(&mut self, text: &str, tok: Tok, glue: bool) {
         let glue = glue || self.last.is_none_or(|last| glued(last, tok));
         if !glue {
@@ -326,7 +326,7 @@ impl<'t> Formatter<'t> {
     }
 
     /// Writes the token at `index` as a child of `parent`, keeping its raw text.
-    // @lfy def/format/main.lfy:19
+    // @lfy def/format/main.lfy:format
     fn token(&mut self, index: usize, parent: Entity, position: usize) {
         self.token_glued(index, parent, position, false);
     }
@@ -346,7 +346,7 @@ impl<'t> Formatter<'t> {
     }
 
     /// A trivia token: a line break is counted, a space carries nothing.
-    // @lfy def/format/main.lfy:33
+    // @lfy def/format/main.lfy:format
     fn trivia_token(&mut self, index: usize) {
         if self.tree.tokens[index].rule == Some(NEW_LINE) {
             self.newlines += 1;
@@ -370,7 +370,7 @@ impl<'t> Formatter<'t> {
     /// source (a line break precedes it, or nothing does) it stays on its own line, after
     /// a blank line when `blank` allows one, and what follows begins a new line; sharing a
     /// line with code it stays at the end of that line after one space.
-    // @lfy def/format/main.lfy:32
+    // @lfy def/format/main.lfy:format
     fn comment(&mut self, node: &Node, blank: bool) {
         if self.flat {
             self.impossible = true;
@@ -383,7 +383,7 @@ impl<'t> Formatter<'t> {
             self.space();
         }
         self.flush();
-        // @lfy def/format/main.lfy:22
+        // @lfy def/format/main.lfy:format
         let text = self.tree.raw(node.start, node.end);
         self.out.push_str(&text);
         self.last = Some(Tok {
@@ -432,7 +432,7 @@ impl<'t> Formatter<'t> {
         match node.rule {
             Entity::Statement(Statement::Block) => self.block(node),
             Entity::Comment(Comment::Comment | Comment::Documentation) => self.comment(node, false),
-            // @lfy def/format/main.lfy:44
+            // @lfy def/format/main.lfy:format
             Entity::Expression(
                 Expression::Object
                 | Expression::Type
@@ -457,7 +457,7 @@ impl<'t> Formatter<'t> {
                 self.children(node, 0, open);
                 self.bracketed(node, open);
             }
-            // @lfy def/format/main.lfy:46
+            // @lfy def/format/main.lfy:format
             rule if is_link(rule) => self.chain(node),
             _ => self.children(node, 0, node.children.len()),
         }
@@ -523,7 +523,7 @@ impl<'t> Formatter<'t> {
     /// Statements in `node.children[from..to]`: each begins on its own line at the current
     /// indentation, a run of blank lines between two of them (or the comments between
     /// them) becomes one blank line, and no blank line precedes the first.
-    // @lfy def/format/main.lfy:30
+    // @lfy def/format/main.lfy:format
     fn statements(&mut self, node: &Node, from: usize, to: usize) {
         let mut first = true;
         for child in &node.children[from..to] {
@@ -535,12 +535,12 @@ impl<'t> Formatter<'t> {
                     first = false;
                 }
                 Child::Node(inner) if is_trivia(inner.rule) => {
-                    // @lfy def/format/main.lfy:32
+                    // @lfy def/format/main.lfy:format
                     self.comment(inner, !first);
                     first = false;
                 }
                 Child::Node(inner) => {
-                    // @lfy def/format/main.lfy:31
+                    // @lfy def/format/main.lfy:format
                     self.newline(!first && self.newlines >= 2);
                     self.node(inner);
                     first = false;
@@ -557,7 +557,7 @@ impl<'t> Formatter<'t> {
     /// A block opens on the line of its statement, holds its statements one level deeper,
     /// and its close stands alone on its own line; an empty block is the two braces
     /// together.
-    // @lfy def/format/main.lfy:40
+    // @lfy def/format/main.lfy:format
     fn block(&mut self, node: &Node) {
         let Some(close) = self.last_significant(node) else {
             return;
@@ -642,7 +642,7 @@ impl<'t> Formatter<'t> {
     /// or a comment between the brackets, or when the line would exceed [`MAX_WIDTH`]:
     /// then one item per line, each ending with a comma, the close on its own line.
     /// Otherwise it stays on one line and a trailing comma before the close is removed.
-    // @lfy def/format/main.lfy:44
+    // @lfy def/format/main.lfy:format
     fn bracketed(&mut self, node: &Node, open: usize) {
         let Some(close) = self.last_significant(node) else {
             return;
@@ -688,7 +688,7 @@ impl<'t> Formatter<'t> {
 
     /// Whether the list, laid out on one line from the current column, would run past
     /// [`MAX_WIDTH`] or cannot be laid out on one line at all.
-    // @lfy def/format/main.lfy:44
+    // @lfy def/format/main.lfy:format
     fn exceeds(&self, node: &Node, open: usize, close: usize) -> bool {
         let mut measurer = self.measurer();
         measurer.list(node, open, close, false);
@@ -700,7 +700,7 @@ impl<'t> Formatter<'t> {
     /// Lays out the entries after the open bracket and then the close, one item per line
     /// with a comma after each when `multiline`, on one line without a trailing comma
     /// otherwise.
-    // @lfy def/format/main.lfy:44
+    // @lfy def/format/main.lfy:format
     fn list(&mut self, node: &Node, open: usize, close: usize, multiline: bool) {
         let entries = self.entries(node, open, close);
         let parent = node.rule;
@@ -713,7 +713,7 @@ impl<'t> Formatter<'t> {
             match child {
                 Child::Token(index) if self.is_trivia_token(*index) => self.trivia_token(*index),
                 Child::Token(index) if self.tree.tokens[*index].rule == Some(COMMA) => {
-                    // @lfy def/format/main.lfy:45
+                    // @lfy def/format/main.lfy:format
                     if multiline || self.item_follows(&entries, at) {
                         self.token(*index, parent, 1);
                     }
@@ -761,7 +761,7 @@ impl<'t> Formatter<'t> {
     /// outermost link. When the source held a line break before a value accessor of the
     /// chain, each value accessor begins a new line indented one level below the line the
     /// chain begins on.
-    // @lfy def/format/main.lfy:46
+    // @lfy def/format/main.lfy:format
     fn chain(&mut self, node: &Node) {
         let mut links = Vec::new();
         let mut current = node;
@@ -855,7 +855,7 @@ impl<'t> Formatter<'t> {
     }
 
     /// Whether a `Member` link held a line break before its value accessor in the source.
-    // @lfy def/format/main.lfy:46
+    // @lfy def/format/main.lfy:format
     fn breaks(&self, link: &Node) -> bool {
         if link.rule != MEMBER {
             return false;
@@ -893,7 +893,7 @@ mod tests {
 
     /// The tokens that are neither space nor line break, as terminal and value, with the
     /// trailing commas the layout adds or removes left out.
-    // @lfy def/format/main.lfy:20
+    // @lfy def/format/main.lfy:format
     fn tokens_of(tree: &Tree) -> Vec<(Entity, String)> {
         let kept: Vec<&crate::lexer::Token> = tree
             .tokens
@@ -940,13 +940,13 @@ mod tests {
             .collect()
     }
 
-    // @lfy def/format/main.lfy:49
+    // @lfy def/format/main.lfy:format
     #[test]
     fn test_a_constant_declaration() {
         assert_eq!(formatted("const   x=1 ;"), "const x = 1;\n");
     }
 
-    // @lfy def/format/main.lfy:53
+    // @lfy def/format/main.lfy:format
     #[test]
     fn test_a_function_with_one_criterion() {
         assert_eq!(
@@ -955,7 +955,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:57
+    // @lfy def/format/main.lfy:format
     #[test]
     fn test_a_tree_with_errors_is_the_source_unchanged() {
         let tree = tree("const = 1;");
@@ -964,7 +964,7 @@ mod tests {
         assert_eq!(formatted("fn f( {\n  x"), "fn f( {\n  x");
     }
 
-    // @lfy def/format/main.lfy:20
+    // @lfy def/format/main.lfy:format
     #[test]
     fn the_definitions_keep_their_tokens_and_format_to_a_fixed_point() {
         let files = def_files();
@@ -992,20 +992,20 @@ mod tests {
                 tokens_of(&first),
                 "{path}: tokens changed"
             );
-            // @lfy def/format/main.lfy:21
+            // @lfy def/format/main.lfy:format
             let twice = format(&reparsed);
             assert!(
                 twice == once,
                 "{path}: not a fixed point:\n--- once\n{once}\n--- twice\n{twice}"
             );
-            // @lfy def/format/main.lfy:23
+            // @lfy def/format/main.lfy:format
             assert!(once.ends_with('\n') && !once.ends_with("\n\n"), "{path}");
             assert!(!once.contains('\r'), "{path}");
             assert!(!once.contains("\n\n\n"), "{path}");
         }
     }
 
-    // @lfy def/format/main.lfy:22
+    // @lfy def/format/main.lfy:format
     #[test]
     fn body_comment_and_documentation_text_is_kept_exactly() {
         let source = "/** Doc with [[ref]]\n   over lines **/\nconst x = `a\n  b {{ y }}  c`;  // trailing  \n/// line doc [[x]]\nconst z = /* in\nline */ 'it\\'s';\n";
@@ -1019,7 +1019,7 @@ mod tests {
         assert_eq!(formatted("const n = 1_000.5;"), "const n = 1_000.5;\n");
     }
 
-    // @lfy def/format/main.lfy:23
+    // @lfy def/format/main.lfy:format
     #[test]
     fn every_line_ends_with_one_line_feed_and_so_does_the_result() {
         assert_eq!(formatted("a;\r\nb;"), "a;\nb;\n");
@@ -1029,7 +1029,7 @@ mod tests {
         assert_eq!(formatted("// only a comment"), "// only a comment\n");
     }
 
-    // @lfy def/format/main.lfy:30
+    // @lfy def/format/main.lfy:format
     #[test]
     fn each_statement_begins_on_its_own_line_indented_per_enclosing_block() {
         assert_eq!(
@@ -1050,7 +1050,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:31
+    // @lfy def/format/main.lfy:format
     #[test]
     fn blank_lines_between_statements_become_one_and_inside_a_statement_are_removed() {
         assert_eq!(
@@ -1064,7 +1064,7 @@ mod tests {
         assert_eq!(formatted("x\n\n  .a()\n\n  .b();"), "x\n  .a()\n  .b();\n");
     }
 
-    // @lfy def/format/main.lfy:32
+    // @lfy def/format/main.lfy:format
     #[test]
     fn documentation_and_own_line_comments_keep_their_line_and_trailing_comments_their_end() {
         assert_eq!(
@@ -1082,7 +1082,7 @@ mod tests {
         assert_eq!(formatted("x\n  // why\n  .a();"), "x\n  // why\n  .a();\n");
     }
 
-    // @lfy def/format/main.lfy:33
+    // @lfy def/format/main.lfy:format
     #[test]
     fn trailing_spaces_are_removed_and_every_line_break_is_a_line_feed() {
         let out = formatted("const x = 1;   \r\n\t \r\nconst y = [\r\n  1,   \r\n];   ");
@@ -1090,7 +1090,7 @@ mod tests {
         assert!(out.lines().all(|line| !line.ends_with(' ')));
     }
 
-    // @lfy def/format/main.lfy:37
+    // @lfy def/format/main.lfy:format
     #[test]
     fn operators_are_spaced_by_their_category() {
         assert_eq!(formatted("x=a+b*-c;"), "x = a + b * -c;\n");
@@ -1128,7 +1128,7 @@ mod tests {
         assert_eq!(formatted("f(. , @ , $ , $&);"), "f(., @, $, $&);\n");
     }
 
-    // @lfy def/format/main.lfy:38
+    // @lfy def/format/main.lfy:format
     #[test]
     fn commas_and_colons_take_one_space_after_and_brackets_none_inside() {
         assert_eq!(formatted("f( a , b );"), "f(a, b);\n");
@@ -1157,7 +1157,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:39
+    // @lfy def/format/main.lfy:format
     #[test]
     fn a_keyword_and_a_group_close_before_a_block_open_take_one_space() {
         assert_eq!(formatted("if(a){}else{}"), "if (a) {} else {}\n");
@@ -1175,7 +1175,7 @@ mod tests {
         assert_eq!(formatted("enum E:`d`{a=1}"), "enum E: `d` { a = 1 }\n");
     }
 
-    // @lfy def/format/main.lfy:40
+    // @lfy def/format/main.lfy:format
     #[test]
     fn a_block_opens_on_its_line_and_closes_alone_or_is_two_braces() {
         assert_eq!(formatted("loop\n{\n}"), "loop {}\n");
@@ -1191,7 +1191,7 @@ mod tests {
         assert_eq!(formatted("f((a) => { b; });"), "f((a) => {\n  b;\n});\n");
     }
 
-    // @lfy def/format/main.lfy:44
+    // @lfy def/format/main.lfy:format
     #[test]
     fn a_list_with_a_line_break_or_too_long_becomes_one_item_per_line() {
         assert_eq!(formatted("x = [\n1, 2];"), "x = [\n  1,\n  2,\n];\n");
@@ -1226,7 +1226,7 @@ mod tests {
         assert_eq!(formatted("x = {\n  // c\n};"), "x = {\n  // c\n};\n");
     }
 
-    // @lfy def/format/main.lfy:45
+    // @lfy def/format/main.lfy:format
     #[test]
     fn a_list_on_one_line_loses_its_trailing_comma() {
         assert_eq!(formatted("x = [1, 2,];"), "x = [1, 2];\n");
@@ -1240,7 +1240,7 @@ mod tests {
         assert_eq!(formatted("match x { a -> 1, }"), "match x { a -> 1 }\n");
     }
 
-    // @lfy def/format/main.lfy:46
+    // @lfy def/format/main.lfy:format
     #[test]
     fn a_chain_with_a_line_break_before_an_accessor_puts_each_member_on_its_own_line() {
         assert_eq!(formatted("x.a().b();"), "x.a().b();\n");
@@ -1262,7 +1262,7 @@ mod tests {
         assert_eq!(formatted("x = a.b\n  ?.c;"), "x = a\n  .b\n  ?.c;\n");
     }
 
-    // @lfy def/format/main.lfy:26
+    // @lfy def/format/main.lfy:format
     #[test]
     fn a_tree_parsed_for_another_rule_is_laid_out_too() {
         let tokens = lex("a+b", None).unwrap();

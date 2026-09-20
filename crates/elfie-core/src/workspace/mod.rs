@@ -31,9 +31,9 @@ use crate::parser::{Node, Tree, parse};
 /// otherwise is a `LoadProblem` and the rest of the manifest still stands.
 const MANIFEST: &str = "elfie.json";
 /// `Workspace.sourceDirectory` when `elfie.json` gives none.
-const DEFAULT_SOURCE_DIRECTORY: &str = "def"; // @lfy def/workspace/main.lfy:29
+const DEFAULT_SOURCE_DIRECTORY: &str = "def"; // @lfy def/workspace/main.lfy:load
 /// `Workspace.outputDirectory` when `elfie.json` gives none.
-const DEFAULT_OUTPUT_DIRECTORY: &str = "src"; // @lfy def/workspace/main.lfy:30
+const DEFAULT_OUTPUT_DIRECTORY: &str = "src"; // @lfy def/workspace/main.lfy:load
 /// The file a directory resolves to, and the file whose scope a target marker is looked
 /// up in.
 const MAIN_FILE: &str = "main.lfy";
@@ -46,7 +46,7 @@ const EXTENSION: &str = ".lfy";
 /// then binds them once. `Workspace::root` is `root`. Loading never stops for a failure:
 /// every failure is a `LoadProblem` or a `Problem`, and the rest of the project still
 /// loads.
-// @lfy def/workspace/main.lfy:9
+// @lfy def/workspace/main.lfy:load
 pub fn load(root: &Path) -> Workspace {
     load_with(root, BTreeMap::new())
 }
@@ -61,23 +61,24 @@ pub fn load(root: &Path) -> Workspace {
 /// every file replaced this way holds what it was replaced with. A `path` that is neither
 /// under the source directory, nor under a package root, nor resolved to by a `Use` in the
 /// program gives back a workspace equal to `workspace`.
-// @lfy def/workspace/main.lfy:158
+// @lfy def/workspace/main.lfy:change
+// @lfy def/workspace/main.lfy:change
 pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspace {
-    // @lfy def/workspace/main.lfy:176
+    // @lfy def/workspace/main.lfy:change
     if !in_reach(workspace, path) {
         return workspace.clone();
     }
-    let mut overlays = workspace.overlays.clone(); // @lfy def/workspace/main.lfy:174
+    let mut overlays = workspace.overlays.clone(); // @lfy def/workspace/main.lfy:change
     match text {
-        Some(text) => overlays.insert(path.to_string(), text.to_string()), // @lfy def/workspace/main.lfy:164
-        None => overlays.remove(path), // @lfy def/workspace/main.lfy:166
+        Some(text) => overlays.insert(path.to_string(), text.to_string()), // @lfy def/workspace/main.lfy:change
+        None => overlays.remove(path), // @lfy def/workspace/main.lfy:change
     };
-    load_with(&workspace.root, overlays) // @lfy def/workspace/main.lfy:172
+    load_with(&workspace.root, overlays) // @lfy def/workspace/main.lfy:change
 }
 
 /// Whether a change at `path` could reach the program: the path is a source file under
 /// the source directory or a package root, a `Use` resolves to it, or it is replaced now.
-// @lfy def/workspace/main.lfy:176
+// @lfy def/workspace/main.lfy:change
 fn in_reach(workspace: &Workspace, path: &str) -> bool {
     // Decision: the definition names only the source directory and the uses. A file under
     // a package root is in the program too, so a change there must reach it as well; and
@@ -100,7 +101,7 @@ fn in_reach(workspace: &Workspace, path: &str) -> bool {
 
 /// [`load`] with the files in `overlays` read as the text given there instead of what is
 /// on disk.
-// @lfy def/workspace/main.lfy:172
+// @lfy def/workspace/main.lfy:change
 fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
     let mut loader = Loader {
         root,
@@ -109,40 +110,40 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
         use_problems: Vec::new(),
     };
 
-    // Layout. @lfy def/workspace/main.lfy:24
+    // Layout. @lfy def/workspace/main.lfy:load
     let manifest = loader.manifest(MANIFEST);
     let name = manifest
         .as_ref()
         .and_then(|manifest| manifest.get("name")?.as_str())
         .map(str::to_string)
-        .unwrap_or_else(|| directory_name(root)); // @lfy def/workspace/main.lfy:28
+        .unwrap_or_else(|| directory_name(root)); // @lfy def/workspace/main.lfy:load
     let source_directory = manifest
         .as_ref()
         .and_then(|manifest| manifest.get("source")?.as_str())
         .map(trim_directory)
-        .unwrap_or_else(|| DEFAULT_SOURCE_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:29
+        .unwrap_or_else(|| DEFAULT_SOURCE_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:load
     let output_directory = manifest
         .as_ref()
         .and_then(|manifest| manifest.get("output")?.as_str())
         .map(trim_directory)
-        .unwrap_or_else(|| DEFAULT_OUTPUT_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:30
+        .unwrap_or_else(|| DEFAULT_OUTPUT_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:load
 
-    // Dependencies. @lfy def/workspace/main.lfy:87
+    // Dependencies. @lfy def/workspace/main.lfy:load
     let packages = loader.packages(manifest.as_ref());
     let target_specs = loader.target_specs(manifest.as_ref());
     let native_dependencies = match &manifest {
-        Some(manifest) => loader.native_dependencies(MANIFEST, manifest), // @lfy def/workspace/main.lfy:96
+        Some(manifest) => loader.native_dependencies(MANIFEST, manifest), // @lfy def/workspace/main.lfy:load
         None => Vec::new(),
     };
 
-    // Discovery, use, and order. @lfy def/workspace/main.lfy:42
+    // Discovery, use, and order. @lfy def/workspace/main.lfy:load
     let mut sources = Vec::new();
     let mut files = Vec::new();
     if !root.is_dir() {
-        // @lfy def/workspace/main.lfy:38
+        // @lfy def/workspace/main.lfy:load
         loader.problem(None, format!("the root {} does not exist", root.display()));
     } else if !root.join(&source_directory).is_dir() {
-        // @lfy def/workspace/main.lfy:38
+        // @lfy def/workspace/main.lfy:load
         loader.problem(
             None,
             format!(
@@ -159,18 +160,18 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
         for (file, index) in cycles {
             let path = entries[file].path.clone();
             let spelled = entries[file].uses[index].spelled.clone();
-            // @lfy def/workspace/main.lfy:84
+            // @lfy def/workspace/main.lfy:load
             loader.use_problem(&path, index, spelled.as_deref(), "is part of a cycle");
         }
         for index in order {
             let entry = &entries[index];
             let Some(tree) = &entry.tree else { continue };
             files.push(File {
-                path: entry.path.clone(), // @lfy def/workspace/main.lfy:52
-                // @lfy def/workspace/main.lfy:46
-                // @lfy def/workspace/main.lfy:91
+                path: entry.path.clone(), // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load
                 package: entry.package,
-                source: sources.len(),    // @lfy def/workspace/main.lfy:21
+                source: sources.len(),    // @lfy def/workspace/main.lfy:load
             });
             sources.push(Source {
                 path: entry.path.clone(),
@@ -179,18 +180,18 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
                     .uses
                     .iter()
                     .map(|site| site.resolved.clone())
-                    .collect(), // @lfy def/workspace/main.lfy:21
+                    .collect(), // @lfy def/workspace/main.lfy:load
             });
         }
     }
 
-    // Binding, once. @lfy def/workspace/main.lfy:126
+    // Binding, once. @lfy def/workspace/main.lfy:load
     let mut model = model::bind(sources);
 
     // A use that resolves to nothing, and a use that is part of a cycle, are problems at
     // the `Use` itself, which only the bound model can point at.
-    // @lfy def/workspace/main.lfy:75
-    // @lfy def/workspace/main.lfy:84
+    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load
     let mut at_uses = use_problems(&model, &loader.use_problems);
     if !at_uses.is_empty() {
         model.problems.append(&mut at_uses);
@@ -199,7 +200,7 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
             .sort_by_key(|problem| (problem.node.file, problem.node.index));
     }
 
-    // Targets. @lfy def/workspace/main.lfy:102
+    // Targets. @lfy def/workspace/main.lfy:load
     let mut targets = Vec::new();
     for spec in target_specs {
         let Some(package) = packages
@@ -216,7 +217,7 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
             continue;
         };
         let main = join(&packages[package].root, MAIN_FILE);
-        // @lfy def/workspace/main.lfy:109
+        // @lfy def/workspace/main.lfy:load
         let symbol = model
             .file(&main)
             .and_then(|file| model.file_scopes.get(file).copied())
@@ -224,12 +225,12 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
             .and_then(|symbol| model.symbols.get(symbol));
         match symbol {
             Some(symbol) if symbol.kind == SymbolKind::Trait => targets.push(Target {
-                identifier: spec.identifier, // @lfy def/workspace/main.lfy:105
-                marker: symbol.entity,       // @lfy def/workspace/main.lfy:109
-                package,                     // @lfy def/workspace/main.lfy:107
-                output_directory: spec.output.unwrap_or_else(|| output_directory.clone()), // @lfy def/workspace/main.lfy:111
+                identifier: spec.identifier, // @lfy def/workspace/main.lfy:load
+                marker: symbol.entity,       // @lfy def/workspace/main.lfy:load
+                package,                     // @lfy def/workspace/main.lfy:load
+                output_directory: spec.output.unwrap_or_else(|| output_directory.clone()), // @lfy def/workspace/main.lfy:load
             }),
-            // @lfy def/workspace/main.lfy:120
+            // @lfy def/workspace/main.lfy:load
             Some(symbol) => loader.problem(
                 Some(&main),
                 format!(
@@ -247,7 +248,7 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
         }
     }
 
-    // @lfy def/workspace/data.lfy:41
+    // @lfy def/workspace/data.lfy:Workspace.problems
     let problems = loader
         .problems
         .into_iter()
@@ -256,7 +257,7 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
         .collect();
 
     Workspace {
-        root: root.to_path_buf(), // @lfy def/workspace/main.lfy:15
+        root: root.to_path_buf(), // @lfy def/workspace/main.lfy:load
         name,
         source_directory,
         output_directory,
@@ -271,7 +272,7 @@ fn load_with(root: &Path, overlays: BTreeMap<String, String>) -> Workspace {
 }
 
 /// One target as `elfie.json` spells it, before its marker is resolved.
-// @lfy def/workspace/main.lfy:105
+// @lfy def/workspace/main.lfy:load
 struct TargetSpec {
     identifier: String,
     package: String,
@@ -280,7 +281,7 @@ struct TargetSpec {
 }
 
 /// One `Use` of a file: what it spells and what it resolved to.
-// @lfy def/workspace/main.lfy:59
+// @lfy def/workspace/main.lfy:load
 struct UseSite {
     /// The path as written; `None` when the statement has no string.
     spelled: Option<String>,
@@ -290,7 +291,7 @@ struct UseSite {
 
 /// A problem at a `Use`, before the model can name the node: the file holding the use,
 /// the position of the use among that file's uses, and what and why.
-// @lfy def/workspace/main.lfy:75
+// @lfy def/workspace/main.lfy:load
 struct UseProblem {
     file: String,
     index: usize,
@@ -315,7 +316,7 @@ struct Loader<'a> {
     problems: Vec<LoadProblem>,
     /// Every problem at a `Use`, in the order it arose, waiting for the model to give it
     /// a node.
-    // @lfy def/workspace/main.lfy:75
+    // @lfy def/workspace/main.lfy:load
     use_problems: Vec<UseProblem>,
 }
 
@@ -331,7 +332,7 @@ impl Loader<'_> {
     /// in that file. Discovery runs before binding, so the node cannot be named yet;
     /// [`use_problems`] turns each of these into a `Problem` at the `Use` node once the
     /// model knows the nodes.
-    // @lfy def/workspace/main.lfy:75
+    // @lfy def/workspace/main.lfy:load
     fn use_problem(&mut self, file: &str, index: usize, spelled: Option<&str>, why: &str) {
         let message = match spelled {
             Some(spelled) => format!("use {spelled:?} {why}"),
@@ -359,7 +360,7 @@ impl Loader<'_> {
 
     /// The object of an `elfie.json`; `None` when there is none, or when it cannot be
     /// read or is not an object, which adds a problem.
-    // @lfy def/workspace/main.lfy:34
+    // @lfy def/workspace/main.lfy:load
     fn manifest(&mut self, path: &str) -> Option<serde_json::Map<String, serde_json::Value>> {
         let disk = self.root.join(path);
         if !disk.exists() {
@@ -386,7 +387,7 @@ impl Loader<'_> {
     }
 
     /// The native dependencies an `elfie.json` names under `"native"`.
-    // @lfy def/workspace/main.lfy:94
+    // @lfy def/workspace/main.lfy:load
     fn native_dependencies(
         &mut self,
         path: &str,
@@ -430,7 +431,7 @@ impl Loader<'_> {
 
     /// Each dependency `elfie.json` names gives one package, with the native
     /// dependencies of its own `elfie.json`.
-    // @lfy def/workspace/main.lfy:89
+    // @lfy def/workspace/main.lfy:load
     fn packages(
         &mut self,
         manifest: Option<&serde_json::Map<String, serde_json::Value>>,
@@ -457,7 +458,7 @@ impl Loader<'_> {
                 continue;
             };
             let root = trim_directory(root);
-            // @lfy def/workspace/main.lfy:98
+            // @lfy def/workspace/main.lfy:load
             // Checked here rather than in `discover`, which does not run when the root or
             // the source directory is missing; a missing package root is reported either
             // way.
@@ -470,7 +471,7 @@ impl Loader<'_> {
             let native_dependencies = match self.manifest(&join(&root, MANIFEST)) {
                 Some(package_manifest) => {
                     self.native_dependencies(&join(&root, MANIFEST), &package_manifest)
-                } // @lfy def/workspace/main.lfy:94
+                } // @lfy def/workspace/main.lfy:load
                 None => Vec::new(),
             };
             out.push(Package {
@@ -483,7 +484,7 @@ impl Loader<'_> {
     }
 
     /// Each target `elfie.json` names, as spelled.
-    // @lfy def/workspace/main.lfy:105
+    // @lfy def/workspace/main.lfy:load
     fn target_specs(
         &mut self,
         manifest: Option<&serde_json::Map<String, serde_json::Value>>,
@@ -529,7 +530,7 @@ impl Loader<'_> {
     }
 
     /// Every `.lfy` file under a directory, sorted by path, replaced files included.
-    // @lfy def/workspace/main.lfy:46
+    // @lfy def/workspace/main.lfy:load
     fn source_files(&mut self, directory: &str) -> Vec<String> {
         // Decision: discovery order within a directory is the sorted order of the paths.
         let mut out = BTreeSet::new();
@@ -572,23 +573,23 @@ impl Loader<'_> {
 
     /// Every file of the program: the source files, every package's files, and every
     /// file a `Use` refers to, each parsed with its uses resolved, in discovery order.
-    // @lfy def/workspace/main.lfy:42
+    // @lfy def/workspace/main.lfy:load
     fn discover(&mut self, source_directory: &str, packages: &[Package]) -> Vec<Entry> {
         let mut entries: Vec<Entry> = Vec::new();
         let mut seen: HashSet<String> = HashSet::new();
         let mut pending: Vec<(String, Option<usize>)> = Vec::new();
 
         for path in self.source_files(source_directory) {
-            enqueue(&mut seen, &mut pending, path, None); // @lfy def/workspace/main.lfy:48
+            enqueue(&mut seen, &mut pending, path, None); // @lfy def/workspace/main.lfy:load
         }
         for (id, package) in packages.iter().enumerate() {
             // A missing package root is already reported by `packages`; no file of it is
-            // in the program. @lfy def/workspace/main.lfy:98
+            // in the program. @lfy def/workspace/main.lfy:load
             if !self.root.join(&package.root).is_dir() {
                 continue;
             }
             for path in self.source_files(&package.root) {
-                enqueue(&mut seen, &mut pending, path, Some(id)); // @lfy def/workspace/main.lfy:91
+                enqueue(&mut seen, &mut pending, path, Some(id)); // @lfy def/workspace/main.lfy:load
             }
         }
 
@@ -597,7 +598,7 @@ impl Loader<'_> {
             let (path, package) = pending[next].clone();
             next += 1;
             let entry = self.load_file(&path, package, packages, |used| {
-                // @lfy def/workspace/main.lfy:47
+                // @lfy def/workspace/main.lfy:load
                 enqueue(
                     &mut seen,
                     &mut pending,
@@ -609,7 +610,7 @@ impl Loader<'_> {
         }
 
         // A file that could not be read is left out, so nothing may refer to it.
-        // @lfy def/workspace/main.lfy:55
+        // @lfy def/workspace/main.lfy:load
         let unreadable: BTreeSet<String> = entries
             .iter()
             .filter(|entry| entry.tree.is_none())
@@ -643,7 +644,7 @@ impl Loader<'_> {
 
     /// Read, lex, and parse one file and resolve its uses; `found` is told every path a
     /// use resolved to.
-    // @lfy def/workspace/main.lfy:52
+    // @lfy def/workspace/main.lfy:load
     fn load_file(
         &mut self,
         path: &str,
@@ -669,7 +670,7 @@ impl Loader<'_> {
             // Decision: the definition only names a file that cannot be read. A file whose
             // text `Lexer.lex` refuses cannot be turned into a `File` either, so it is
             // left out of the program the same way.
-            // @lfy def/workspace/main.lfy:55
+            // @lfy def/workspace/main.lfy:load
             Err(error) => {
                 self.problem(Some(path), format!("cannot be lexed: {error}"));
                 return unread(Vec::new());
@@ -690,7 +691,7 @@ impl Loader<'_> {
                         Some(used)
                     }
                     Err(why) => {
-                        // @lfy def/workspace/main.lfy:75
+                        // @lfy def/workspace/main.lfy:load
                         self.use_problem(
                             path,
                             index,
@@ -701,7 +702,7 @@ impl Loader<'_> {
                     }
                 },
                 // A `use` with no path at all: the parse recovered, but it names nothing.
-                // @lfy def/workspace/main.lfy:75
+                // @lfy def/workspace/main.lfy:load
                 None => {
                     self.use_problem(path, index, None, "");
                     None
@@ -718,13 +719,13 @@ impl Loader<'_> {
     }
 
     /// The file a use's path refers to, from the file at `from`.
-    // @lfy def/workspace/main.lfy:62
+    // @lfy def/workspace/main.lfy:load
     fn resolve(&self, from: &str, spelled: &str, packages: &[Package]) -> Result<String, String> {
         let base = if spelled.starts_with('.') {
-            // @lfy def/workspace/main.lfy:62
+            // @lfy def/workspace/main.lfy:load
             join(directory_of(from), spelled)
         } else {
-            // @lfy def/workspace/main.lfy:66
+            // @lfy def/workspace/main.lfy:load
             let (first, rest) = spelled.split_once('/').unwrap_or((spelled, ""));
             let package = packages
                 .iter()
@@ -733,10 +734,10 @@ impl Loader<'_> {
             join(&package.root, rest)
         };
         let base = normalize(&base);
-        // @lfy def/workspace/main.lfy:69
+        // @lfy def/workspace/main.lfy:load
         let file = format!("{base}{EXTENSION}");
         if self.exists(&file) {
-            return Ok(file); // @lfy def/workspace/main.lfy:72
+            return Ok(file); // @lfy def/workspace/main.lfy:load
         }
         let main = join(&base, MAIN_FILE);
         if self.exists(&main) {
@@ -748,7 +749,7 @@ impl Loader<'_> {
 
 /// Every recorded problem at a `Use` as a `Problem` at that `Use` node. A use in a file
 /// that is not in the program has no node, and is dropped.
-// @lfy def/workspace/main.lfy:75
+// @lfy def/workspace/main.lfy:load
 fn use_problems(model: &Model, recorded: &[UseProblem]) -> Vec<Problem> {
     let mut out = Vec::new();
     for problem in recorded {
@@ -777,18 +778,18 @@ fn use_problems(model: &Model, recorded: &[UseProblem]) -> Vec<Problem> {
 /// entity declared in the file scope of a file whose own entity carries the marker, and,
 /// when `global` carries the marker, every entity of every project file. Each entity
 /// appears once, in that order.
-// @lfy def/workspace/main.lfy:112
+// @lfy def/workspace/main.lfy:load
 pub fn entities_for(workspace: &Workspace, target: &Target) -> Vec<EntityId> {
     let model = &workspace.model;
     let mut out = Vec::new();
     let mut seen = HashSet::new();
-    // @lfy def/workspace/main.lfy:114
+    // @lfy def/workspace/main.lfy:load
     for entity in model::entities_of(model, target.marker) {
         if seen.insert(entity) {
             out.push(entity);
         }
     }
-    // @lfy def/workspace/main.lfy:115
+    // @lfy def/workspace/main.lfy:load
     for file in &workspace.files {
         let carries = model
             .file_entities
@@ -808,7 +809,7 @@ pub fn entities_for(workspace: &Workspace, target: &Target) -> Vec<EntityId> {
         }
     }
     // Every entity of a project file, not only the ones its file scope declares.
-    // @lfy def/workspace/main.lfy:116
+    // @lfy def/workspace/main.lfy:load
     if model.entities[model.global].has_trait(target.marker) {
         let project: HashSet<usize> = workspace
             .files
@@ -826,7 +827,7 @@ pub fn entities_for(workspace: &Workspace, target: &Target) -> Vec<EntityId> {
 }
 
 /// Add a file to the program once, however many files use it.
-// @lfy def/workspace/main.lfy:48
+// @lfy def/workspace/main.lfy:load
 fn enqueue(
     seen: &mut HashSet<String>,
     pending: &mut Vec<(String, Option<usize>)>,
@@ -861,7 +862,7 @@ fn package_of(path: &str, packages: &[Package]) -> Option<usize> {
 /// The files in an order that places every file after the files it uses, and every use
 /// that is part of a cycle as `(file, use index)`. Files in a cycle keep the order they
 /// were discovered in.
-// @lfy def/workspace/main.lfy:81
+// @lfy def/workspace/main.lfy:load
 fn order_by_uses(entries: &[Entry]) -> (Vec<usize>, Vec<(usize, usize)>) {
     let index: HashMap<&str, usize> = entries
         .iter()
@@ -893,7 +894,7 @@ fn order_by_uses(entries: &[Entry]) -> (Vec<usize>, Vec<(usize, usize)>) {
     // this order places every file after the files it uses.
     let mut order = Vec::with_capacity(entries.len());
     for mut component in components {
-        component.sort_unstable(); // @lfy def/workspace/main.lfy:84
+        component.sort_unstable(); // @lfy def/workspace/main.lfy:load
         order.extend(component);
     }
     let mut cycles = Vec::new();
@@ -971,7 +972,7 @@ fn strongly_connected(edges: &[Vec<Option<usize>>]) -> Vec<Vec<usize>> {
 }
 
 /// The name of a directory, for a project without a name in `elfie.json`.
-// @lfy def/workspace/main.lfy:28
+// @lfy def/workspace/main.lfy:load
 fn directory_name(root: &Path) -> String {
     let name = |path: &Path| {
         path.file_name()
@@ -1143,6 +1144,15 @@ mod tests {
         )
     }
 
+    /// The text a file of the program was read as, from the tokens it was lexed into.
+    fn text_of(workspace: &Workspace, path: &str) -> String {
+        let file = workspace
+            .file(path)
+            .unwrap_or_else(|| panic!("{path} is not in the program"));
+        let tree = workspace.tree(file);
+        tree.raw(0, tree.tokens.len())
+    }
+
     fn position(workspace: &Workspace, path: &str) -> usize {
         workspace
             .files
@@ -1151,12 +1161,12 @@ mod tests {
             .unwrap_or_else(|| panic!("{path} is not in the program"))
     }
 
-    // @lfy def/workspace/main.lfy:130
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn an_empty_def_and_no_manifest_give_the_defaults() {
         let fixture = Fixture::empty();
         let workspace = fixture.load();
-        assert_eq!(workspace.root, fixture.root); // @lfy def/workspace/main.lfy:15
+        assert_eq!(workspace.root, fixture.root); // @lfy def/workspace/main.lfy:load
         assert_eq!(
             workspace.name,
             fixture.root.file_name().unwrap().to_string_lossy()
@@ -1171,7 +1181,7 @@ mod tests {
         assert!(workspace.overlays.is_empty());
     }
 
-    // @lfy def/workspace/main.lfy:136
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_used_file_comes_before_the_file_that_uses_it() {
         let fixture = Fixture::empty();
@@ -1189,7 +1199,7 @@ mod tests {
         assert_eq!(uses_of(&workspace, "def/rules/main.lfy"), []);
     }
 
-    // @lfy def/workspace/main.lfy:144
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_cycle_keeps_discovery_order_and_flags_each_use() {
         let fixture = Fixture::empty();
@@ -1199,7 +1209,7 @@ mod tests {
         let workspace = fixture.load();
         assert_eq!(paths(&workspace), ["def/a.lfy", "def/b.lfy"]);
         assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
-        // One `Problem` at each `Use` of the cycle. @lfy def/workspace/main.lfy:84
+        // One `Problem` at each `Use` of the cycle. @lfy def/workspace/main.lfy:load
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 2, "{problems:?}");
         assert_eq!(at_use(&workspace, problems[0]), ("def/a.lfy", true));
@@ -1217,7 +1227,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:150
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_use_of_nothing_gives_a_problem_and_an_undefined_entry() {
         let fixture = Fixture::empty();
@@ -1225,7 +1235,7 @@ mod tests {
         let workspace = fixture.load();
         assert_eq!(paths(&workspace), ["def/main.lfy"]);
         assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
-        // One `Problem` at the `Use`. @lfy def/workspace/main.lfy:75
+        // One `Problem` at the `Use`. @lfy def/workspace/main.lfy:load
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
@@ -1239,7 +1249,7 @@ mod tests {
         assert_eq!(uses_of(&workspace, "def/main.lfy"), [None]);
     }
 
-    // @lfy def/workspace/main.lfy:28
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn the_manifest_names_the_layout() {
         let fixture = Fixture::new();
@@ -1257,7 +1267,7 @@ mod tests {
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    // @lfy def/workspace/main.lfy:34
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_bad_manifest_adds_a_problem_and_the_defaults_stand() {
         for text in ["{ not json", "[1, 2]", "\"a string\""] {
@@ -1277,7 +1287,7 @@ mod tests {
         }
     }
 
-    // @lfy def/workspace/main.lfy:38
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_missing_root_or_source_directory_adds_a_problem_with_no_path() {
         let fixture = Fixture::new();
@@ -1305,7 +1315,7 @@ mod tests {
         assert_eq!(workspace.packages.len(), 1);
     }
 
-    // @lfy def/workspace/main.lfy:48
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn every_lfy_file_under_the_source_directory_is_in_the_program_once() {
         let fixture = Fixture::empty();
@@ -1322,7 +1332,7 @@ mod tests {
             sorted,
             ["def/deep/inner.lfy", "def/deep/other.lfy", "def/main.lfy"]
         );
-        assert_eq!(workspace.files.len(), workspace.model.sources.len()); // @lfy def/workspace/main.lfy:21
+        assert_eq!(workspace.files.len(), workspace.model.sources.len()); // @lfy def/workspace/main.lfy:load
         for (index, file) in workspace.files.iter().enumerate() {
             assert_eq!(file.source, index);
             assert_eq!(workspace.model.sources[index].path, file.path);
@@ -1331,7 +1341,7 @@ mod tests {
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    // @lfy def/workspace/main.lfy:52
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_file_holds_the_parse_of_its_text_with_its_path_as_the_file() {
         let fixture = Fixture::empty();
@@ -1351,7 +1361,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:55
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_file_that_cannot_be_read_is_left_out_with_a_problem() {
         let fixture = Fixture::empty();
@@ -1368,14 +1378,14 @@ mod tests {
             "{problems:?}"
         );
         // Nothing in the program may refer to a file that is not in it, so the use of it
-        // resolves to nothing. @lfy def/workspace/main.lfy:75
+        // resolves to nothing. @lfy def/workspace/main.lfy:load
         assert_eq!(uses_of(&workspace, "def/main.lfy"), [None]);
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
     }
 
-    // @lfy def/workspace/main.lfy:62
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_dotted_use_resolves_against_the_directory_of_its_file() {
         let fixture = Fixture::empty();
@@ -1396,7 +1406,7 @@ mod tests {
         assert!(position(&workspace, "def/b/data.lfy") < position(&workspace, "def/a/main.lfy"));
     }
 
-    // @lfy def/workspace/main.lfy:66
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn an_undotted_use_names_a_package_and_resolves_against_its_root() {
         let fixture = Fixture::empty();
@@ -1425,7 +1435,7 @@ mod tests {
             [Some("targets/rust/guidance.lfy".to_string())]
         );
         assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
-        // @lfy def/workspace/main.lfy:75
+        // @lfy def/workspace/main.lfy:load
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
@@ -1441,7 +1451,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:69
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_path_resolves_to_the_file_or_else_to_main_in_the_directory() {
         let fixture = Fixture::empty();
@@ -1452,7 +1462,7 @@ mod tests {
             .write("def/only/main.lfy", "");
         let workspace = fixture.load();
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
-        // @lfy def/workspace/main.lfy:72
+        // @lfy def/workspace/main.lfy:load
         assert_eq!(
             uses_of(&workspace, "def/main.lfy"),
             [
@@ -1462,7 +1472,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:81
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn every_file_comes_after_the_files_it_uses() {
         let fixture = Fixture::empty();
@@ -1487,7 +1497,7 @@ mod tests {
         }
     }
 
-    // @lfy def/workspace/main.lfy:84
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_file_using_itself_is_a_cycle_of_one() {
         let fixture = Fixture::empty();
@@ -1502,7 +1512,7 @@ mod tests {
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
     }
 
-    // @lfy def/workspace/main.lfy:89
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn each_dependency_gives_a_package_whose_files_are_in_the_program() {
         let fixture = Fixture::empty();
@@ -1529,7 +1539,7 @@ mod tests {
             .position(|package| package.identifier == "rust")
             .unwrap();
         assert_eq!(workspace.packages[rust].root, "targets/rust");
-        // @lfy def/workspace/main.lfy:94
+        // @lfy def/workspace/main.lfy:load
         assert_eq!(
             workspace.packages[rust].native_dependencies,
             [NativeDependency {
@@ -1544,7 +1554,7 @@ mod tests {
             .position(|package| package.identifier == "gone")
             .unwrap();
         assert!(workspace.packages[gone].native_dependencies.is_empty());
-        // @lfy def/workspace/main.lfy:96
+        // @lfy def/workspace/main.lfy:load
         assert_eq!(
             workspace.native_dependencies,
             [
@@ -1560,7 +1570,7 @@ mod tests {
                 }
             ]
         );
-        // @lfy def/workspace/main.lfy:91
+        // @lfy def/workspace/main.lfy:load
         let mut sorted = paths(&workspace);
         sorted.sort_unstable();
         assert_eq!(
@@ -1583,13 +1593,13 @@ mod tests {
                 .package,
             Some(rust)
         );
-        // @lfy def/workspace/main.lfy:98
+        // @lfy def/workspace/main.lfy:load
         let problems = load_problems(&workspace);
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert_eq!(problems[0].path.as_deref(), Some("targets/gone"));
     }
 
-    // @lfy def/workspace/main.lfy:94
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_bad_native_entry_or_package_manifest_adds_a_problem() {
         let fixture = Fixture::empty();
@@ -1619,7 +1629,7 @@ mod tests {
     }
 
     /// A missing package root is reported even when nothing can be discovered.
-    // @lfy def/workspace/main.lfy:98
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_missing_package_root_is_a_problem_even_with_no_source_directory() {
         let fixture = Fixture::new();
@@ -1628,14 +1638,14 @@ mod tests {
             r#"{ "dependencies": { "gone": { "root": "packages/gone" } } }"#,
         );
         let workspace = fixture.load();
-        // @lfy def/workspace/main.lfy:38
+        // @lfy def/workspace/main.lfy:load
         assert!(workspace.files.is_empty());
         let problems = load_problems(&workspace);
         assert!(
             problems.iter().any(|problem| problem.path.is_none()),
             "{problems:?}"
         );
-        // @lfy def/workspace/main.lfy:98
+        // @lfy def/workspace/main.lfy:load
         assert!(
             problems
                 .iter()
@@ -1645,7 +1655,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:105
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn each_target_comes_from_a_package_with_a_marker_and_an_output_directory() {
         let fixture = Fixture::empty();
@@ -1666,11 +1676,11 @@ mod tests {
             .write("def/main.lfy", "")
             .write("targets/rust/main.lfy", "trait rust { }\n");
         let workspace = fixture.load();
-        // @lfy def/workspace/main.lfy:107
+        // @lfy def/workspace/main.lfy:load
         assert_eq!(workspace.packages.len(), 1);
         assert!(workspace.file("targets/rust/main.lfy").is_some());
         let problems = load_problems(&workspace);
-        // @lfy def/workspace/main.lfy:120
+        // @lfy def/workspace/main.lfy:load
         assert!(
             problems
                 .iter()
@@ -1696,19 +1706,19 @@ mod tests {
             .find(|target| target.identifier == "rust")
             .expect("the rust target");
         assert_eq!(rust.package, 0);
-        assert_eq!(rust.output_directory, "crates"); // @lfy def/workspace/main.lfy:111
-        assert!(workspace.model.entities[rust.marker].is_trait()); // @lfy def/workspace/main.lfy:109
+        assert_eq!(rust.output_directory, "crates"); // @lfy def/workspace/main.lfy:load
+        assert!(workspace.model.entities[rust.marker].is_trait()); // @lfy def/workspace/main.lfy:load
         let plain = workspace
             .targets
             .iter()
             .find(|target| target.identifier == "plain")
             .expect("the plain target");
-        assert_eq!(plain.output_directory, "generated"); // @lfy def/workspace/main.lfy:111
+        assert_eq!(plain.output_directory, "generated"); // @lfy def/workspace/main.lfy:load
         assert_eq!(plain.marker, rust.marker);
     }
 
     /// The entities built for a target.
-    // @lfy def/workspace/main.lfy:112
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn the_entities_built_for_a_target_are_the_marked_ones() {
         let fixture = Fixture::empty();
@@ -1731,13 +1741,13 @@ mod tests {
             .iter()
             .find(|target| target.identifier == "rust")
             .expect("the rust target");
-        // @lfy def/workspace/main.lfy:114
+        // @lfy def/workspace/main.lfy:load
         assert_eq!(names(&workspace, &entities_for(&workspace, target)), ["Marked"]);
     }
 
     /// When a file's own entity carries the marker, every entity declared in that file's
     /// scope is built.
-    // @lfy def/workspace/main.lfy:115
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_marked_file_builds_every_entity_of_its_file_scope() {
         let fixture = Fixture::empty();
@@ -1768,7 +1778,7 @@ mod tests {
     }
 
     /// When `global` carries the marker, every entity of every project file is built.
-    // @lfy def/workspace/main.lfy:116
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn global_carrying_the_marker_builds_every_entity_of_every_project_file() {
         let fixture = Fixture::empty();
@@ -1800,7 +1810,7 @@ mod tests {
         assert!(!built.contains(&"Guidance"), "{built:?}");
     }
 
-    // @lfy def/workspace/main.lfy:126
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn the_model_is_bound_from_the_files_once() {
         let fixture = Fixture::empty();
@@ -1819,7 +1829,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             paths(&workspace)
         );
-        // @lfy def/workspace/data.lfy:41
+        // @lfy def/workspace/data.lfy:Workspace.problems
         let load_count = workspace.load_problems().count();
         assert!(
             workspace.problems[..load_count]
@@ -1837,7 +1847,32 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:183
+    /// The same `path` names a different file in each workspace, because it is relative
+    /// to that workspace's own root and to nothing else.
+    // @lfy def/workspace/main.lfy:change
+    #[test]
+    fn a_change_path_is_relative_to_the_root_of_its_workspace() {
+        let one = Fixture::empty();
+        let two = Fixture::empty();
+        one.write("def/main.lfy", "")
+            .write("def/extra.lfy", "trait inOne { }\n");
+        two.write("def/main.lfy", "")
+            .write("def/extra.lfy", "trait inTwo { }\n");
+        for (fixture, on_disk) in [(&one, "inOne"), (&two, "inTwo")] {
+            let replaced = change(&fixture.load(), "def/extra.lfy", Some("trait replaced { }\n"));
+            assert!(text_of(&replaced, "def/extra.lfy").contains("replaced"));
+            // Reading it from disk again reads it under this workspace's root.
+            let restored = change(&replaced, "def/extra.lfy", None);
+            let expected = format!("trait {on_disk} {{ }}\n");
+            assert_eq!(text_of(&restored, "def/extra.lfy"), expected);
+        }
+        // An absolute path is not a path relative to the root, so it reaches nothing.
+        let loaded = one.load();
+        let absolute = one.root.join("def/extra.lfy").to_string_lossy().into_owned();
+        assert_eq!(change(&loaded, &absolute, Some("trait t { }\n")), loaded);
+    }
+
+    // @lfy def/workspace/main.lfy:change
     #[test]
     fn a_change_adds_a_file_read_as_the_given_text() {
         let fixture = Fixture::empty();
@@ -1848,7 +1883,7 @@ mod tests {
             "def/extra.lfy",
             Some("trait hasName { $name = string; }\n"),
         );
-        assert_eq!(before, fixture.load()); // @lfy def/workspace/main.lfy:161
+        assert_eq!(before, fixture.load()); // @lfy def/workspace/main.lfy:change
         let mut sorted = paths(&after);
         sorted.sort_unstable();
         assert_eq!(sorted, ["def/extra.lfy", "def/main.lfy"]);
@@ -1872,8 +1907,8 @@ mod tests {
         assert!(!fixture.root.join("def/extra.lfy").exists());
     }
 
-    // @lfy def/workspace/main.lfy:166
-    // @lfy def/workspace/main.lfy:190
+    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change
     #[test]
     fn a_change_to_nothing_reads_the_file_from_disk_again() {
         let fixture = Fixture::empty();
@@ -1895,7 +1930,7 @@ mod tests {
         assert!(restored.overlays.is_empty());
     }
 
-    // @lfy def/workspace/main.lfy:168
+    // @lfy def/workspace/main.lfy:change
     #[test]
     fn a_change_to_nothing_with_no_file_on_disk_leaves_the_program() {
         let fixture = Fixture::empty();
@@ -1915,7 +1950,7 @@ mod tests {
         assert_eq!(removed, loaded);
     }
 
-    // @lfy def/workspace/main.lfy:174
+    // @lfy def/workspace/main.lfy:change
     #[test]
     fn a_replacement_stands_until_the_same_path_is_given_again() {
         let fixture = Fixture::empty();
@@ -1933,7 +1968,7 @@ mod tests {
         let a = &third.model.sources[third.file("def/a.lfy").unwrap().source];
         assert!(a.tree.raw(0, a.tree.tokens.len()).contains("trait again"));
         assert_eq!(third.overlays.len(), 2);
-        // @lfy def/workspace/main.lfy:172
+        // @lfy def/workspace/main.lfy:change
         let expected = {
             fixture
                 .write("def/a.lfy", "trait again { }\n")
@@ -1945,7 +1980,7 @@ mod tests {
         assert_eq!(third.problems, expected.problems);
     }
 
-    // @lfy def/workspace/main.lfy:176
+    // @lfy def/workspace/main.lfy:change
     #[test]
     fn a_change_out_of_reach_gives_an_equal_workspace() {
         let fixture = Fixture::empty();

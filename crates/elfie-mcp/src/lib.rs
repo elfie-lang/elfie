@@ -13,7 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use elfie_core::generation::{self, Output, Plan, Request, SourceMap};
+use elfie_core::generation::{self, Batch, Output, Plan, Request, SourceMap};
 use elfie_core::model::{self, Criterion, EntityId, FileId, Model};
 use elfie_core::query::{self, Outline, Position, Range};
 use elfie_core::workspace::{self, Workspace};
@@ -86,7 +86,7 @@ fn stamps(workspace: &Workspace) -> BTreeMap<String, Stamp> {
 impl Session {
     /// A session whose workspace is the project at `root`, loaded, with every file of it
     /// stamped as read.
-    // @lfy def/mcp/main.lfy:19
+    // @lfy def/mcp/main.lfy:serve
     pub fn load(root: &Path) -> Session {
         let workspace = workspace::load(root);
         let seen = stamps(&workspace);
@@ -97,7 +97,7 @@ impl Session {
     /// time or size differs from what was seen is re-read through `workspace::change`
     /// with no text, a file that vanished the same way, and a changed `elfie.json` loads
     /// the workspace again.
-    // @lfy def/mcp/main.lfy:21
+    // @lfy def/mcp/main.lfy:serve
     pub fn refresh(&mut self) {
         let now = stamps(&self.workspace);
         if now.get(MANIFEST) != self.seen.get(MANIFEST) {
@@ -125,13 +125,13 @@ impl Session {
 // ---- the server -------------------------------------------------------------------
 
 /// The fns of this module that carry `tool`, in order, as the server lists them.
-// @lfy def/mcp/main.lfy:20
+// @lfy def/mcp/main.lfy:serve
 pub fn tools() -> Vec<Registered> {
     vec![
         Registered::new(
             "problems",
             "The problems of the program, or of one file: what the compiler, an editor, or a check would report",
-            vec![ToolArgument::new("file", "a path relative to the root; every file when left out", "string", false)], // @lfy def/mcp/main.lfy:32
+            vec![ToolArgument::new("file", "a path relative to the root; every file when left out", "string", false)], // @lfy def/mcp/main.lfy:problems
             |session, arguments| problems(session, arguments.optional("file")),
         ),
         Registered::new(
@@ -142,25 +142,25 @@ pub fn tools() -> Vec<Registered> {
                 "an identifier, or an owner's identifier, a dot, and a member's name; a file path and a colon before it limits the search to that file",
                 "string",
                 true,
-            )], // @lfy def/mcp/main.lfy:39
+            )], // @lfy def/mcp/main.lfy:find
             |session, arguments| find(session, arguments.string("name")?),
         ),
         Registered::new(
             "entity",
             "Everything known about the things with a name: definition, type, documentation, traits, members, criteria, tests, references, and source",
-            vec![ToolArgument::new("name", "as elfie_find takes it", "string", true)], // @lfy def/mcp/main.lfy:46
+            vec![ToolArgument::new("name", "as elfie_find takes it", "string", true)], // @lfy def/mcp/main.lfy:entity
             |session, arguments| entity(session, arguments.string("name")?),
         ),
         Registered::new(
             "references",
             "Every place things with a name are used",
-            vec![ToolArgument::new("name", "as elfie_find takes it", "string", true)], // @lfy def/mcp/main.lfy:53
+            vec![ToolArgument::new("name", "as elfie_find takes it", "string", true)], // @lfy def/mcp/main.lfy:references
             |session, arguments| references(session, arguments.string("name")?),
         ),
         Registered::new(
             "outline",
             "The declarations of one file, nested as written",
-            vec![ToolArgument::new("file", "a path relative to the root", "string", true)], // @lfy def/mcp/main.lfy:59
+            vec![ToolArgument::new("file", "a path relative to the root", "string", true)], // @lfy def/mcp/main.lfy:outline
             |session, arguments| outline(session, arguments.string("file")?),
         ),
         Registered::new(
@@ -171,25 +171,25 @@ pub fn tools() -> Vec<Registered> {
         ),
         Registered::new(
             "units",
-            "The units the compiler would produce, in order, and why each needs generating",
-            vec![ToolArgument::new("target", "the identifier of one target; every target when left out", "string", false)], // @lfy def/mcp/main.lfy:71
+            "The units the compiler would produce, in order, why each needs generating, and how they are batched",
+            vec![ToolArgument::new("target", "the identifier of one target; every target when left out", "string", false)], // @lfy def/mcp/main.lfy:units
             |session, arguments| units(session, arguments.optional("target")),
         ),
         Registered::new(
             "request",
-            "The full request for one unit: what to produce, where, and every criterion to satisfy",
+            "The full request for one batch: what to produce, where, every criterion to satisfy, and how to report",
             vec![
-                ToolArgument::new("unit", "the stem of a unit, as elfie_units lists it", "string", true), // @lfy def/mcp/main.lfy:78
-                ToolArgument::new("target", "the identifier of the unit's target; the only target when left out", "string", false), // @lfy def/mcp/main.lfy:79
+                ToolArgument::new("batch", "the identifier of a batch, as elfie_units lists it, or the stem of one of its units", "string", true), // @lfy def/mcp/main.lfy:request
+                ToolArgument::new("target", "the identifier of the batch's target; the only target when left out", "string", false), // @lfy def/mcp/main.lfy:request
             ],
-            |session, arguments| request(session, arguments.string("unit")?, arguments.optional("target")),
+            |session, arguments| request(session, arguments.string("batch")?, arguments.optional("target")),
         ),
         Registered::new(
             "check",
             "Whether the outputs on disk satisfy the request for one unit, and what is wrong when they do not",
             vec![
-                ToolArgument::new("unit", "the stem of a unit, as elfie_units lists it", "string", true), // @lfy def/mcp/main.lfy:86
-                ToolArgument::new("target", "the identifier of the unit's target; the only target when left out", "string", false), // @lfy def/mcp/main.lfy:87
+                ToolArgument::new("unit", "the stem of a unit, as elfie_units lists it", "string", true), // @lfy def/mcp/main.lfy:check
+                ToolArgument::new("target", "the identifier of the unit's target; the only target when left out", "string", false), // @lfy def/mcp/main.lfy:check
             ],
             |session, arguments| check(session, arguments.string("unit")?, arguments.optional("target")),
         ),
@@ -206,7 +206,7 @@ impl Server {
     // Decision: the definition loads the workspace on initialize; it is loaded when the
     // server is built, just before the initialize exchange, which the agent cannot tell
     // apart and which keeps the protocol library's handshake untouched.
-    // @lfy def/mcp/main.lfy:19
+    // @lfy def/mcp/main.lfy:serve
     fn new(root: &Path) -> Server {
         Server {
             session: Mutex::new(Session::load(root)),
@@ -215,7 +215,7 @@ impl Server {
     }
 
     /// One call: the session is refreshed, then the tool runs.
-    // @lfy def/mcp/main.lfy:21
+    // @lfy def/mcp/main.lfy:serve
     fn call(&self, request: &CallToolRequestParams) -> Result<CallToolResult, ErrorData> {
         let Some(registered) = traits::find(&self.tools, &request.name) else {
             return Err(ErrorData::invalid_params(format!("no tool named {}", request.name), None));
@@ -232,17 +232,17 @@ impl Server {
 
 impl ServerHandler for Server {
     /// Tools only: no resources and no prompts.
-    // @lfy def/mcp/main.lfy:20
+    // @lfy def/mcp/main.lfy:serve
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_protocol_version(ProtocolVersion::V_2025_06_18) // @lfy def/mcp/main.lfy:14
+            .with_protocol_version(ProtocolVersion::V_2025_06_18) // @lfy def/mcp/main.lfy:Protocol
             .with_server_info(Implementation::new("elfie", env!("CARGO_PKG_VERSION")))
             .with_instructions(
                 "The Elfie agent server. elfie_problems, elfie_find, elfie_entity, elfie_references, and elfie_outline read the program; elfie_grammar gives the language; elfie_units, elfie_request, and elfie_check drive compilation. Nothing here writes a file.",
             )
     }
 
-    // @lfy def/mcp/main.lfy:20
+    // @lfy def/mcp/main.lfy:serve
     async fn list_tools(
         &self,
         _request: Option<PaginatedRequestParams>,
@@ -251,7 +251,7 @@ impl ServerHandler for Server {
         Ok(ListToolsResult::with_all_items(traits::list(&self.tools)))
     }
 
-    // @lfy def/mcp/main.lfy:21
+    // @lfy def/mcp/main.lfy:serve
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
@@ -266,9 +266,9 @@ impl ServerHandler for Server {
 /// Speaks the protocol over standard input and output; nothing else is ever written to
 /// standard output, and logging goes to standard error. Returns 0 when standard input
 /// closes.
-// @lfy def/mcp/main.lfy:16
+// @lfy def/mcp/main.lfy:serve
 pub fn serve(root: Option<&Path>) -> i32 {
-    // @lfy def/mcp/main.lfy:19
+    // @lfy def/mcp/main.lfy:serve
     let root = match root {
         Some(root) => root.to_path_buf(),
         None => std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
@@ -282,7 +282,7 @@ pub fn serve(root: Option<&Path>) -> i32 {
     };
     runtime.block_on(async move {
         let server = Server::new(&root);
-        // @lfy def/mcp/main.lfy:18
+        // @lfy def/mcp/main.lfy:serve
         let running = match server.serve(rmcp::transport::stdio()).await {
             Ok(running) => running,
             // Decision: standard input closing before the agent initializes is the
@@ -293,7 +293,7 @@ pub fn serve(root: Option<&Path>) -> i32 {
                 return FAILURE;
             }
         };
-        // @lfy def/mcp/main.lfy:22
+        // @lfy def/mcp/main.lfy:serve
         match running.waiting().await {
             Ok(_) => 0,
             Err(error) => {
@@ -396,10 +396,10 @@ fn nothing_named(name: &str) -> String {
 /// The problems of the program, or of one file: what the compiler, an editor, or a check
 /// would report. One line per diagnostic reading the file, the line, the column, the
 /// stage, the severity, and the message; the text says so when there are none.
-// @lfy def/mcp/main.lfy:33
+// @lfy def/mcp/main.lfy:problems
 pub fn problems(session: &Session, file: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
-    let diagnostics = query::diagnostics_of(workspace, file); // @lfy def/mcp/main.lfy:35
+    let diagnostics = query::diagnostics_of(workspace, file); // @lfy def/mcp/main.lfy:problems
     if diagnostics.is_empty() {
         // Decision: a file that is neither in the program nor the manifest is more likely
         // misspelled than clean, so it is an error listing the files, as elfie_outline
@@ -408,9 +408,9 @@ pub fn problems(session: &Session, file: Option<&str>) -> Result<String, String>
             if file != MANIFEST && workspace.file(file).is_none() {
                 return Err(not_in_program(workspace, file));
             }
-            return Ok(format!("no problems in {file}")); // @lfy def/mcp/main.lfy:36
+            return Ok(format!("no problems in {file}")); // @lfy def/mcp/main.lfy:problems
         }
-        return Ok("no problems".to_string()); // @lfy def/mcp/main.lfy:36
+        return Ok("no problems".to_string()); // @lfy def/mcp/main.lfy:problems
     }
     let lines: Vec<String> = diagnostics
         .iter()
@@ -431,15 +431,15 @@ pub fn problems(session: &Session, file: Option<&str>) -> Result<String, String>
 
 /// Where things with a name are declared: one line per entity reading the kind, the
 /// identifier, the file, the line, and the definition when there is one.
-// @lfy def/mcp/main.lfy:40
+// @lfy def/mcp/main.lfy:find
 pub fn find(session: &Session, name: &str) -> Result<String, String> {
     let workspace = &session.workspace;
     let model = &workspace.model;
     let entities = query::find(workspace, name);
     if entities.is_empty() {
-        return Ok(nothing_named(name)); // @lfy def/mcp/main.lfy:43
+        return Ok(nothing_named(name)); // @lfy def/mcp/main.lfy:find
     }
-    // @lfy def/mcp/main.lfy:42
+    // @lfy def/mcp/main.lfy:find
     let lines: Vec<String> = entities
         .iter()
         .map(|&entity| {
@@ -455,7 +455,7 @@ pub fn find(session: &Session, name: &str) -> Result<String, String> {
 
 /// Everything known about the things with a name: for each entity, the hover fields with a
 /// heading each, its traits, members, tests, references, and source.
-// @lfy def/mcp/main.lfy:47
+// @lfy def/mcp/main.lfy:entity
 pub fn entity(session: &Session, name: &str) -> Result<String, String> {
     let workspace = &session.workspace;
     let model = &workspace.model;
@@ -466,12 +466,12 @@ pub fn entity(session: &Session, name: &str) -> Result<String, String> {
     let mut sections = Vec::new();
     for &id in &entities {
         let record = &model.entities[id];
-        let hover = query::hover_of(workspace, id, identifier_range(model, id));
+        let hover = query::hover_of(workspace, id);
         let mut out = String::new();
         // Each entity is headed by its file, so the caller can narrow the name with a
-        // file path. @lfy def/mcp/main.lfy:50
+        // file path. @lfy def/mcp/main.lfy:entity
         out.push_str(&format!("# {} {} ({})\n", hover.kind, hover.identifier, place_of(model, id)));
-        // The fields of the hover, a heading each. @lfy def/mcp/main.lfy:49
+        // The fields of the hover, a heading each. @lfy def/mcp/main.lfy:entity
         if let Some(definition) = &hover.definition {
             out.push_str(&format!("\n## Definition\n{definition}\n"));
         }
@@ -530,7 +530,7 @@ pub fn entity(session: &Session, name: &str) -> Result<String, String> {
         out.push_str(&format!("\n## Source\n```elfie\n{}\n```", query::source_of(workspace, id).trim_end()));
         sections.push(out);
     }
-    // More than one entity: each is separated by a rule. @lfy def/mcp/main.lfy:50
+    // More than one entity: each is separated by a rule. @lfy def/mcp/main.lfy:entity
     Ok(sections.join("\n\n---\n\n"))
 }
 
@@ -551,7 +551,7 @@ fn usage_place(model: &Model, usage: usize) -> (String, usize, usize) {
 
 /// Every place things with a name are used: for each entity, one line per usage of its
 /// symbol reading the file, the line, the column, and the text of that line.
-// @lfy def/mcp/main.lfy:54
+// @lfy def/mcp/main.lfy:references
 pub fn references(session: &Session, name: &str) -> Result<String, String> {
     let workspace = &session.workspace;
     let model = &workspace.model;
@@ -565,7 +565,7 @@ pub fn references(session: &Session, name: &str) -> Result<String, String> {
     for &id in &entities {
         let Some(symbol) = model.entities[id].symbol else { continue };
         for usage in model::usages_of(model, symbol) {
-            let (file, line, column) = usage_place(model, usage); // @lfy def/mcp/main.lfy:56
+            let (file, line, column) = usage_place(model, usage); // @lfy def/mcp/main.lfy:references
             let text = line_text(model, model.usages[usage].node.file, line);
             lines.push(format!("{file}:{line}:{column}: {text}"));
         }
@@ -579,7 +579,7 @@ pub fn references(session: &Session, name: &str) -> Result<String, String> {
 
 /// One outline and its children as an indented list: two spaces per level, then the
 /// kind, the name, and the line.
-// @lfy def/mcp/main.lfy:62
+// @lfy def/mcp/main.lfy:outline
 fn render_outline(items: &[Outline], depth: usize, out: &mut Vec<String>) {
     for item in items {
         // Decision: the line is the identifier's, so a documented declaration is listed
@@ -590,29 +590,29 @@ fn render_outline(items: &[Outline], depth: usize, out: &mut Vec<String>) {
 }
 
 /// The declarations of one file, nested as written.
-// @lfy def/mcp/main.lfy:60
+// @lfy def/mcp/main.lfy:outline
 pub fn outline(session: &Session, file: &str) -> Result<String, String> {
     let workspace = &session.workspace;
     if workspace.file(file).is_none() {
-        return Err(not_in_program(workspace, file)); // @lfy def/mcp/main.lfy:63
+        return Err(not_in_program(workspace, file)); // @lfy def/mcp/main.lfy:outline
     }
     let items = query::outline_of(workspace, file);
     if items.is_empty() {
         return Ok(format!("no declarations in {file}"));
     }
     let mut lines = Vec::new();
-    render_outline(&items, 0, &mut lines); // @lfy def/mcp/main.lfy:62
+    render_outline(&items, 0, &mut lines); // @lfy def/mcp/main.lfy:outline
     Ok(lines.join("\n"))
 }
 
 /// The grammar of Elfie: every terminal, a blank line, then every rule as EBNF.
-// @lfy def/mcp/main.lfy:66
+// @lfy def/mcp/main.lfy:grammar
 pub fn grammar(_session: &Session) -> Result<String, String> {
     Ok(format!(
         "{}\n\n{}",
         elfie_core::grammar::terminal_document(),
         elfie_core::grammar::grammar_document()
-    )) // @lfy def/mcp/main.lfy:68
+    )) // @lfy def/mcp/main.lfy:grammar
 }
 
 /// The source maps of each target, read from `source-map.json` in its output directory,
@@ -652,7 +652,7 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
 
 /// The files under the target's output directory that carry a marker for the unit's
 /// file, read from disk.
-// @lfy def/mcp/main.lfy:90
+// @lfy def/mcp/main.lfy:check
 fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> Vec<Output> {
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
@@ -680,7 +680,7 @@ fn known_targets(workspace: &Workspace) -> String {
 }
 
 /// An error naming the known targets when the target given is not one.
-// @lfy def/mcp/main.lfy:75
+// @lfy def/mcp/main.lfy:units
 fn check_target(workspace: &Workspace, target: Option<&str>) -> Result<(), String> {
     match target {
         Some(target) if !workspace.targets.iter().any(|known| known.identifier == target) => {
@@ -692,14 +692,14 @@ fn check_target(workspace: &Workspace, target: Option<&str>) -> Result<(), Strin
 
 /// The plan of the workspace with the source maps read from each target's output
 /// directory.
-// @lfy def/mcp/main.lfy:74
+// @lfy def/mcp/main.lfy:units
 fn plan_of(workspace: &Workspace) -> Plan {
     generation::plan(workspace, &load_source_maps(workspace), &[])
 }
 
 /// One unit as a line: the target, the stem, the reason or up to date, and the stems of
 /// its dependencies.
-// @lfy def/mcp/main.lfy:74
+// @lfy def/mcp/main.lfy:units
 fn unit_line(workspace: &Workspace, plan: &Plan, index: usize) -> String {
     let unit = &plan.units[index];
     let reason = unit.reason.map_or_else(|| "up to date".to_string(), |reason| reason.as_str().to_string());
@@ -707,14 +707,30 @@ fn unit_line(workspace: &Workspace, plan: &Plan, index: usize) -> String {
     format!("{} {} {reason} [{}]", workspace.targets[unit.target].identifier, unit.stem, dependencies.join(", "))
 }
 
-/// The units the compiler would produce, in order, and why each needs generating.
-// @lfy def/mcp/main.lfy:72
+/// The identifier of the target a batch's units are of; a batch holds units of one target.
+fn batch_target<'w>(workspace: &'w Workspace, plan: &Plan, batch: &Batch) -> &'w str {
+    match batch.units.first() {
+        Some(&unit) => workspace.targets[plan.units[unit].target].identifier.as_str(),
+        None => "",
+    }
+}
+
+/// One batch as a line: its identifier and the stems it holds.
+// @lfy def/mcp/main.lfy:units
+fn batch_line(plan: &Plan, batch: &Batch) -> String {
+    let stems: Vec<&str> = batch.units.iter().map(|&unit| plan.units[unit].stem.as_str()).collect();
+    format!("batch {} [{}]", batch.identifier, stems.join(", "))
+}
+
+/// The units the compiler would produce, in order, why each needs generating, and how
+/// they are batched.
+// @lfy def/mcp/main.lfy:units
 pub fn units(session: &Session, target: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
     check_target(workspace, target)?;
     let plan = plan_of(workspace);
-    // @lfy def/mcp/main.lfy:75
-    let lines: Vec<String> = (0..plan.units.len())
+    // @lfy def/mcp/main.lfy:units
+    let mut lines: Vec<String> = (0..plan.units.len())
         .filter(|&index| target.is_none_or(|target| workspace.targets[plan.units[index].target].identifier == target))
         .map(|index| unit_line(workspace, &plan, index))
         .collect();
@@ -724,12 +740,26 @@ pub fn units(session: &Session, target: Option<&str>) -> Result<String, String> 
             None => "no units".to_string(),
         });
     }
+    // Then one line per batch. Decision: a batch holds units of one target, so the
+    // target narrows the batches the same way it narrows the units; a blank line and the
+    // word batch keep the two lists apart, since a batch line has the shape of a unit's.
+    // @lfy def/mcp/main.lfy:units
+    let batches: Vec<String> = plan
+        .batches
+        .iter()
+        .filter(|batch| target.is_none_or(|target| batch_target(workspace, &plan, batch) == target))
+        .map(|batch| batch_line(&plan, batch))
+        .collect();
+    if !batches.is_empty() {
+        lines.push(String::new());
+        lines.extend(batches);
+    }
     Ok(lines.join("\n"))
 }
 
 /// The unit with a stem, in the target given or the only target it is in; an error
 /// saying which when no unit has that stem or the target is ambiguous.
-// @lfy def/mcp/main.lfy:84
+// @lfy def/mcp/main.lfy:check
 fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&str>) -> Result<usize, String> {
     check_target(workspace, target)?;
     let matches: Vec<usize> = (0..plan.units.len())
@@ -751,43 +781,97 @@ fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&
     }
 }
 
-/// The request for a unit, with the existing outputs read from disk and no previous
-/// source.
-// @lfy def/mcp/main.lfy:83
-fn request_of(workspace: &Workspace, plan: &Plan, index: usize) -> Request {
-    let existing: Vec<Output> = plan.units[index]
-        .outputs
+/// The batch with an identifier, or the one holding a unit with a stem, in the target
+/// given or the only target it is in; an error saying which when no batch has that
+/// identifier or holds a unit with that stem, or the target is ambiguous.
+// @lfy def/mcp/main.lfy:request
+fn resolve_batch(workspace: &Workspace, plan: &Plan, name: &str, target: Option<&str>) -> Result<usize, String> {
+    check_target(workspace, target)?;
+    let matches: Vec<usize> = (0..plan.batches.len())
+        .filter(|&index| {
+            let batch = &plan.batches[index];
+            let named = batch.identifier == name || batch.units.iter().any(|&unit| plan.units[unit].stem == name);
+            named && target.is_none_or(|target| batch_target(workspace, plan, batch) == target)
+        })
+        .collect();
+    match matches.as_slice() {
+        [] => Err(match target {
+            Some(target) => format!(
+                "no batch of the target {target} has the identifier {name} or holds a unit with the stem {name}; elfie_units lists them"
+            ),
+            None => format!(
+                "no batch has the identifier {name} or holds a unit with the stem {name}; elfie_units lists them"
+            ),
+        }),
+        [index] => Ok(*index),
+        many => {
+            let targets: Vec<&str> = many
+                .iter()
+                .map(|&index| batch_target(workspace, plan, &plan.batches[index]))
+                .collect();
+            Err(format!("the batch {name} is in more than one target ({}); name one with target", targets.join(", ")))
+        }
+    }
+}
+
+/// The request for a batch, with the existing outputs of its units read from disk and no
+/// previous source.
+// @lfy def/mcp/main.lfy:request
+fn request_for(workspace: &Workspace, plan: &Plan, batch: &Batch) -> Request {
+    let existing: Vec<Output> = batch
+        .units
         .iter()
+        .flat_map(|&unit| plan.units[unit].outputs.iter())
         .filter_map(|map| {
             fs::read_to_string(workspace.root.join(&map.output))
                 .ok()
                 .map(|text| Output { path: map.output.clone(), text })
         })
         .collect();
-    generation::request(workspace, plan, index, &existing, None)
+    generation::request(workspace, plan, batch, &existing, &BTreeMap::new())
 }
 
-/// The full request for one unit: what to produce, where, and every criterion to satisfy.
-// @lfy def/mcp/main.lfy:80
-pub fn request(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
+/// The request of the batch that holds a unit.
+// Decision: a unit that is up to date is in no batch, because only planned units are
+// batched; it is requested as a batch of its own, which is the request its batch would
+// be, so a check of an up-to-date unit answers rather than failing.
+// @lfy def/mcp/main.lfy:check
+fn request_of_unit(workspace: &Workspace, plan: &Plan, unit: usize) -> Request {
+    match plan.batches.iter().find(|batch| batch.units.contains(&unit)) {
+        Some(batch) => request_for(workspace, plan, batch),
+        None => request_for(
+            workspace,
+            plan,
+            &Batch {
+                units: vec![unit],
+                identifier: plan.units[unit].stem.clone(),
+            },
+        ),
+    }
+}
+
+/// The full request for one batch: what to produce, where, every criterion to satisfy,
+/// and how to report.
+// @lfy def/mcp/main.lfy:request
+pub fn request(session: &Session, batch: &str, target: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
     let plan = plan_of(workspace);
-    let index = resolve_unit(workspace, &plan, unit, target)?; // @lfy def/mcp/main.lfy:84
-    Ok(request_of(workspace, &plan, index).instructions) // @lfy def/mcp/main.lfy:83
+    let index = resolve_batch(workspace, &plan, batch, target)?; // @lfy def/mcp/main.lfy:request
+    Ok(request_for(workspace, &plan, &plan.batches[index]).instructions) // @lfy def/mcp/main.lfy:request
 }
 
 /// Whether the outputs on disk satisfy the request for one unit, and what is wrong when
 /// they do not. Nothing is written; the CLI records source maps.
-// @lfy def/mcp/main.lfy:88
+// @lfy def/mcp/main.lfy:check
 pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
     let plan = plan_of(workspace);
     let index = resolve_unit(workspace, &plan, unit, target)?;
-    let request = request_of(workspace, &plan, index);
-    let outputs = outputs_of(workspace, &plan, index); // @lfy def/mcp/main.lfy:90
-    let verdict = generation::accept(workspace, &plan, &request, &outputs);
+    let request = request_of_unit(workspace, &plan, index);
+    let outputs = outputs_of(workspace, &plan, index); // @lfy def/mcp/main.lfy:check
+    let verdict = generation::accept(workspace, &plan, &request, index, &outputs);
     if verdict.accepted {
-        // @lfy def/mcp/main.lfy:91
+        // @lfy def/mcp/main.lfy:check
         let mut text = format!(
             "accepted {} for {}: {} output{}",
             plan.units[index].stem,
@@ -801,7 +885,7 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
         text.push_str("\nnothing was written; the CLI records the source maps");
         Ok(text)
     } else {
-        // @lfy def/mcp/main.lfy:92
+        // @lfy def/mcp/main.lfy:check
         let mut text = format!("rejected {}:", plan.units[index].stem);
         for problem in &verdict.problems {
             text.push_str(&format!("\n  {problem}"));
@@ -860,7 +944,7 @@ mod tests {
         traits::call(registered, session, arguments.as_object().unwrap())
     }
 
-    // @lfy def/mcp/main.lfy:27
+    // @lfy def/mcp/main.lfy:serve
     #[test]
     fn the_tools_are_listed_and_problems_answers_with_the_binder_error() {
         let names: Vec<String> = tools().into_iter().map(|registered| registered.tool.name).collect();
@@ -896,7 +980,7 @@ mod tests {
         assert_eq!(result.text, text);
     }
 
-    // @lfy def/mcp/main.lfy:36
+    // @lfy def/mcp/main.lfy:problems
     #[test]
     fn problems_says_when_there_are_none() {
         let fixture = Fixture::new();
@@ -908,7 +992,7 @@ mod tests {
         assert!(error.contains("def/a.lfy"), "{error}");
     }
 
-    // @lfy def/mcp/traits.lfy:12
+    // @lfy def/mcp/traits.lfy:tool
     #[test]
     fn a_bad_argument_is_an_error_naming_it() {
         let fixture = Fixture::new();
@@ -923,13 +1007,13 @@ mod tests {
         let result = call(&session, "elfie_outline", serde_json::json!({ "file": 1 }));
         assert!(result.is_error);
         assert!(result.text.contains("file") && result.text.contains("string"), "{}", result.text);
-        // The fn fails: an error carrying the failure. @lfy def/mcp/traits.lfy:13
+        // The fn fails: an error carrying the failure. @lfy def/mcp/traits.lfy:tool
         let result = call(&session, "elfie_outline", serde_json::json!({ "file": "def/none.lfy" }));
         assert!(result.is_error);
         assert!(result.text.contains("def/a.lfy"), "{}", result.text);
     }
 
-    // @lfy def/mcp/main.lfy:21
+    // @lfy def/mcp/main.lfy:serve
     #[test]
     fn changed_vanished_and_new_files_are_reread_before_a_call() {
         let fixture = Fixture::new();
@@ -959,7 +1043,7 @@ mod tests {
         assert!(session.workspace.file("def/a.lfy").is_none());
     }
 
-    // @lfy def/mcp/main.lfy:42
+    // @lfy def/mcp/main.lfy:find
     #[test]
     fn find_entity_and_references_describe_a_declaration() {
         let fixture = Fixture::new();
@@ -970,9 +1054,9 @@ mod tests {
         assert_eq!(found, "data A def/a.lfy:2: An A");
         assert_eq!(find(&session, "def/a.lfy:A").unwrap(), found);
         let none = find(&session, "nothing").unwrap();
-        assert!(none.contains("elfie_outline"), "{none}"); // @lfy def/mcp/main.lfy:43
+        assert!(none.contains("elfie_outline"), "{none}"); // @lfy def/mcp/main.lfy:find
 
-        // @lfy def/mcp/main.lfy:49
+        // @lfy def/mcp/main.lfy:entity
         let described = entity(&session, "A").unwrap();
         assert!(described.starts_with("# data A (def/a.lfy:2)"), "{described}");
         assert!(described.contains("## Definition\nAn A"), "{described}");
@@ -982,13 +1066,13 @@ mod tests {
         assert!(described.contains("## Source\n```elfie\n/// Doc\nd A: `An A` { $x: `An x` = string; }\n```"), "{described}");
         assert!(!described.contains("\n---\n"));
 
-        // @lfy def/mcp/main.lfy:56
+        // @lfy def/mcp/main.lfy:references
         let used = references(&session, "A").unwrap();
         assert_eq!(used, "def/a.lfy:3:10: const y = A;");
         assert_eq!(references(&session, "y").unwrap(), "y is never used");
     }
 
-    // @lfy def/mcp/main.lfy:50
+    // @lfy def/mcp/main.lfy:entity
     #[test]
     fn several_entities_are_separated_by_a_rule_and_headed_by_their_file() {
         let fixture = Fixture::new();
@@ -1002,19 +1086,19 @@ mod tests {
         assert!(narrowed.contains("(def/b.lfy:1)"), "{narrowed}");
     }
 
-    // @lfy def/mcp/main.lfy:62
+    // @lfy def/mcp/main.lfy:outline
     #[test]
     fn outline_indents_declarations_or_lists_the_files() {
         let fixture = Fixture::new();
         fixture.write("def/a.lfy", "/// Doc\nd A { $x = string; }\nconst y = 1;\n");
         let session = fixture.session();
         assert_eq!(outline(&session, "def/a.lfy").unwrap(), "data A 2\n  member x 2\nvariable y 3");
-        // @lfy def/mcp/main.lfy:63
+        // @lfy def/mcp/main.lfy:outline
         let error = outline(&session, "def/zzz.lfy").unwrap_err();
         assert!(error.contains("def/zzz.lfy is not in the program") && error.contains("def/a.lfy"), "{error}");
     }
 
-    // @lfy def/mcp/main.lfy:68
+    // @lfy def/mcp/main.lfy:grammar
     #[test]
     fn grammar_holds_the_terminals_and_the_rules() {
         let fixture = Fixture::new();
@@ -1045,45 +1129,49 @@ mod tests {
         fixture
     }
 
-    // @lfy def/mcp/main.lfy:74
+    // @lfy def/mcp/main.lfy:units
     #[test]
-    fn units_lists_every_unit_or_one_targets() {
+    fn units_lists_every_unit_and_batch_or_one_targets() {
         let fixture = compiled_project();
         let session = fixture.session();
         assert_eq!(problems(&session, None).unwrap(), "no problems");
-        assert_eq!(units(&session, None).unwrap(), "rust b fresh []\nrust a fresh [b]");
-        assert_eq!(units(&session, Some("rust")).unwrap(), "rust b fresh []\nrust a fresh [b]");
-        // @lfy def/mcp/main.lfy:75
+        let listed = "rust b fresh []\nrust a fresh [b]\n\nbatch b+1 [b, a]";
+        assert_eq!(units(&session, None).unwrap(), listed);
+        assert_eq!(units(&session, Some("rust")).unwrap(), listed);
+        // @lfy def/mcp/main.lfy:units
         let error = units(&session, Some("go")).unwrap_err();
         assert!(error.contains("go is not a target") && error.contains("rust"), "{error}");
     }
 
-    // @lfy def/mcp/main.lfy:83
+    // @lfy def/mcp/main.lfy:request
     #[test]
-    fn request_gives_the_instructions_of_one_unit() {
+    fn request_gives_the_instructions_of_one_batch() {
         let fixture = compiled_project();
         let session = fixture.session();
-        let instructions = request(&session, "a", None).unwrap();
+        // A batch is named by its identifier or by the stem of one of its units.
+        let instructions = request(&session, "b+1", None).unwrap();
         assert!(instructions.contains("An A"), "{instructions}");
         assert!(instructions.contains("def/a.lfy"), "{instructions}");
+        assert!(instructions.contains("def/b.lfy"), "{instructions}");
+        assert_eq!(request(&session, "a", None).unwrap(), instructions);
         assert_eq!(request(&session, "a", Some("rust")).unwrap(), instructions);
-        // @lfy def/mcp/main.lfy:84
+        // @lfy def/mcp/main.lfy:request
         let error = request(&session, "c", None).unwrap_err();
-        assert!(error.contains("no unit has the stem c"), "{error}");
+        assert!(error.contains("no batch has the identifier c"), "{error}");
         let error = request(&session, "a", Some("go")).unwrap_err();
         assert!(error.contains("go is not a target"), "{error}");
     }
 
-    // @lfy def/mcp/main.lfy:90
+    // @lfy def/mcp/main.lfy:check
     #[test]
     fn check_reads_the_outputs_from_disk_and_writes_nothing() {
         let fixture = compiled_project();
         let session = fixture.session();
-        // Rejected: an error listing the problems. @lfy def/mcp/main.lfy:92
+        // Rejected: an error listing the problems. @lfy def/mcp/main.lfy:check
         let error = check(&session, "b", None).unwrap_err();
         assert!(error.starts_with("rejected b:"), "{error}");
         fixture.write("out/b.rs", "// @lfy def/b.lfy:1\npub struct B;\n");
-        // Accepted: the text says so and lists the outputs. @lfy def/mcp/main.lfy:91
+        // Accepted: the text says so and lists the outputs. @lfy def/mcp/main.lfy:check
         let text = check(&session, "b", None).unwrap();
         assert!(text.starts_with("accepted b for rust: 1 output\n  out/b.rs"), "{text}");
         assert!(!fixture.root.join("out/source-map.json").exists());

@@ -34,7 +34,7 @@ use crate::lexer::Token;
 use beginning::{Tables, is_expression_rule, is_operation, tables};
 
 /// The grammar document is the only grammar the parser knows: the EBNF of every rule.
-// @lfy def/parser/main.lfy:36
+// @lfy def/parser/main.lfy:parse
 pub fn grammar() -> String {
     crate::grammar::grammar_document()
 }
@@ -47,7 +47,7 @@ pub fn grammar() -> String {
 /// [`Statement::Statement`] to reparse one statement; [`Expression::Expression`] for a
 /// snippet. Tokens left over after the rule is satisfied become one error node at the end
 /// of the root.
-// @lfy def/parser/main.lfy:12
+// @lfy def/parser/main.lfy:parse
 pub fn parse(tokens: Vec<Token>, rule: Option<Entity>) -> Tree {
     parse_counting(tokens, rule).0
 }
@@ -55,7 +55,7 @@ pub fn parse(tokens: Vec<Token>, rule: Option<Entity>) -> Tree {
 /// [`parse`], also returning how often each rule was attempted per token index and
 /// minimum.
 pub(crate) fn parse_counting(tokens: Vec<Token>, rule: Option<Entity>) -> (Tree, HashMap<Key, usize>) {
-    let root_rule = rule.unwrap_or(Entity::File(File::SourceFile)); // @lfy def/parser/main.lfy:12
+    let root_rule = rule.unwrap_or(Entity::File(File::SourceFile)); // @lfy def/parser/main.lfy:parse
     let mut parser = Parser::new(&tokens);
     let root = parser.parse_root(root_rule);
     let attempts = std::mem::take(&mut parser.attempts);
@@ -64,10 +64,10 @@ pub(crate) fn parse_counting(tokens: Vec<Token>, rule: Option<Entity>) -> (Tree,
     let mut errors: Vec<ErrorNode> = root.errors().into_iter().cloned().collect();
     errors.sort_by_key(|error| error.start);
     let tree = Tree {
-        tokens,    // @lfy def/parser/main.lfy:16
+        tokens,    // @lfy def/parser/main.lfy:parse
         root_rule, // @lfy def/parser/data.lfy:26
-        root,      // @lfy def/parser/main.lfy:17
-        errors,    // @lfy def/parser/main.lfy:18
+        root,      // @lfy def/parser/main.lfy:parse
+        errors,    // @lfy def/parser/main.lfy:parse
     };
     (tree, attempts)
 }
@@ -136,7 +136,7 @@ impl Seq {
 
     /// The minimum an `Expression` element is parsed with: the operation's power inside a
     /// tail, and 0 in every other rule or after `GroupOpen` or `ListOpen`.
-    // @lfy def/parser/main.lfy:99
+    // @lfy def/parser/main.lfy:parse
     fn expression_min(&self) -> u8 {
         match self.tail_power {
             Some(power)
@@ -208,7 +208,7 @@ impl<'t> Parser<'t> {
     /// the open rule takes it as children, and tokens without a rule, each of which
     /// becomes an error node of one token expecting what the open rule expected. Yields
     /// the children they become and the index of the next token.
-    // @lfy def/parser/main.lfy:167
+    // @lfy def/parser/main.lfy:parse
     fn skip(&mut self, at: usize, admit: bool, expected: impl Fn() -> Vec<&'static str>) -> (Vec<Child>, usize) {
         self.skip_with(at, admit, true, expected)
     }
@@ -226,15 +226,15 @@ impl<'t> Parser<'t> {
         while at < self.tokens.len() {
             match self.tokens[at].rule {
                 None if !invalid => break,
-                // @lfy def/parser/main.lfy:57
+                // @lfy def/parser/main.lfy:parse
                 None => {
                     children.push(Child::Error(ErrorNode::new(at, at + 1, expected())));
                     at += 1;
                 }
                 Some(_) if !admit => break,
-                // @lfy def/grammar/terminals/comment.lfy:44
+                // @lfy def/grammar/terminals/comment.lfy:Documentation
                 Some(Entity::Space(Space::NewLine)) if !self.newline_is_trivia => break,
-                // @lfy def/parser/main.lfy:55
+                // @lfy def/parser/main.lfy:parse
                 Some(rule) if components::is_trivia(rule) => {
                     children.push(Child::Token(at));
                     at += 1;
@@ -284,7 +284,7 @@ impl<'t> Parser<'t> {
 
     /// Tries `rule` at `at` with `min` as the minimum binding power, at most once per
     /// token index and minimum.
-    // @lfy def/parser/main.lfy:19
+    // @lfy def/parser/main.lfy:parse
     fn parse_rule(&mut self, rule: Entity, at: usize, min: u8) -> Option<Parsed> {
         let key = (rule, at, min, self.newline_is_trivia);
         if let Some(hit) = self.memo.get(&key) {
@@ -292,16 +292,16 @@ impl<'t> Parser<'t> {
         }
         *self.attempts.entry(key).or_insert(0) += 1;
         let result = match rule.category() {
-            // @lfy def/parser/main.lfy:48
+            // @lfy def/parser/main.lfy:parse
             Category::Terminal(_) => (self.rule_at(at) == Some(rule)).then(|| Parsed {
                 child: Child::Token(at),
                 end: at + 1,
             }),
             Category::AlternationList(items) => self.parse_list(rule, items, at, min),
             Category::Prefix { .. } => self.parse_prefix(rule, at),
-            // @lfy def/parser/main.lfy:159
+            // @lfy def/parser/main.lfy:parse
             Category::Infix { .. } | Category::Postfix { .. } => None,
-            // @lfy def/parser/main.lfy:49
+            // @lfy def/parser/main.lfy:parse
             Category::Rule | Category::Statement | Category::Primary => self.parse_syntax(rule, at),
         };
         self.memo.insert(key, result.clone());
@@ -309,32 +309,32 @@ impl<'t> Parser<'t> {
     }
 
     /// An alternation list is satisfied by one of its items, which stands in its place.
-    // @lfy def/grammar/traits.lfy:87
+    // @lfy def/grammar/traits.lfy:alternationList
     fn parse_list(&mut self, rule: Entity, items: &'static [Entity], at: usize, min: u8) -> Option<Parsed> {
-        // @lfy def/parser/main.lfy:62
+        // @lfy def/parser/main.lfy:parse
         if rule == Entity::Expression(Expression::Expression) {
             return self.parse_expression(at, min, None, None);
         }
-        // @lfy def/parser/main.lfy:75
+        // @lfy def/parser/main.lfy:parse
         if items.iter().all(|&item| is_expression_rule(item)) {
             return self.parse_expression_alternation(items, at);
         }
-        // @lfy def/parser/main.lfy:61
+        // @lfy def/parser/main.lfy:parse
         let candidates = if rule == Entity::Statement(Statement::Statement) {
             STATEMENTS
         } else {
-            items // @lfy def/parser/main.lfy:69
+            items // @lfy def/parser/main.lfy:parse
         };
         self.try_candidates(candidates, at)
     }
 
     /// Tries the candidates the next token selects, each only when the one before it
     /// fails there.
-    // @lfy def/parser/main.lfy:71
+    // @lfy def/parser/main.lfy:parse
     fn try_candidates(&mut self, candidates: &[Entity], at: usize) -> Option<Parsed> {
         let terminal = self.rule_at(at)?;
         for candidate in self.tables.select(candidates, terminal) {
-            // @lfy def/parser/main.lfy:72
+            // @lfy def/parser/main.lfy:parse
             if let Some(parsed) = self.parse_rule(candidate, at, 0) {
                 return Some(parsed);
             }
@@ -344,11 +344,11 @@ impl<'t> Parser<'t> {
 
     /// A rule with a syntax is satisfied by a node whose children are what its elements
     /// produced, in order.
-    // @lfy def/parser/main.lfy:49
+    // @lfy def/parser/main.lfy:parse
     fn parse_syntax(&mut self, rule: Entity, at: usize) -> Option<Parsed> {
         let expr = rule.expression()?;
         // A NewLine inside a line documentation's TemplateReference is not trivia.
-        // @lfy def/grammar/terminals/comment.lfy:39
+        // @lfy def/grammar/terminals/comment.lfy:Documentation
         let line_documentation = rule == Entity::Comment(Comment::Documentation)
             && self.rule_at(at) == Some(Entity::Comment(Comment::LineDocumentationOpen));
         let saved = self.newline_is_trivia;
@@ -403,7 +403,7 @@ impl<'t> Parser<'t> {
     /// that has taken a token closes a failed required element with an error node and
     /// tries the remaining elements as if optional; anywhere else a failed element fails
     /// the sequence.
-    // @lfy def/parser/traits.lfy:40
+    // @lfy def/parser/traits.lfy:recoverable
     fn parse_elements(
         &mut self,
         elements: &[&Expr],
@@ -421,7 +421,7 @@ impl<'t> Parser<'t> {
             if seq.lenient {
                 continue;
             }
-            // @lfy def/parser/main.lfy:103
+            // @lfy def/parser/main.lfy:parse
             if seq.depth == 0
                 && seq.taken
                 && let Some(sync) = seq.sync
@@ -438,7 +438,7 @@ impl<'t> Parser<'t> {
                 }
                 continue;
             }
-            // @lfy def/parser/main.lfy:104
+            // @lfy def/parser/main.lfy:parse
             return None;
         }
         Some(pos)
@@ -483,7 +483,7 @@ impl<'t> Parser<'t> {
                 self.commit(node, seq, trivia, parsed.child);
                 Some(parsed.end)
             }
-            // @lfy def/parser/main.lfy:84
+            // @lfy def/parser/main.lfy:parse
             Expr::Optional(inner) => {
                 let at = self.peek(seq, pos);
                 // Whether the element is tried or skipped, what could continue here is
@@ -535,7 +535,7 @@ impl<'t> Parser<'t> {
     /// Another iteration is tried while the next token can begin the repeated element; an
     /// iteration that fails leaves its tokens and ends the repetition. A recoverable rule
     /// then decides how the repetition stops.
-    // @lfy def/parser/main.lfy:91
+    // @lfy def/parser/main.lfy:parse
     fn parse_repetition(
         &mut self,
         inner: &Expr,
@@ -561,7 +561,7 @@ impl<'t> Parser<'t> {
                     continue;
                 }
             }
-            // @lfy def/parser/traits.lfy:39
+            // @lfy def/parser/traits.lfy:recoverable
             let Some(sync) = seq.sync else {
                 return Some(pos);
             };
@@ -597,7 +597,7 @@ impl<'t> Parser<'t> {
 
     /// An alternation whose every alternative is an expression rule is satisfied by one
     /// expression; any other alternation by the alternative the next token selects.
-    // @lfy def/parser/main.lfy:63
+    // @lfy def/parser/main.lfy:parse
     fn parse_alternation(
         &mut self,
         alternatives: &[Expr],
@@ -615,7 +615,7 @@ impl<'t> Parser<'t> {
             .collect();
         let alternation = Expr::Alternation(alternatives.to_vec());
         seq.record(pos, || self.expected_at(&alternation, follow));
-        // @lfy def/parser/main.lfy:75
+        // @lfy def/parser/main.lfy:parse
         if let Some(items) = expression_rules {
             let expected = seq.take_pending(pos).unwrap_or_default();
             let (trivia, at) = self.probe(seq, pos, || expected.clone());
@@ -623,14 +623,14 @@ impl<'t> Parser<'t> {
             self.commit(node, seq, trivia, parsed.child);
             return Some(parsed.end);
         }
-        // @lfy def/parser/main.lfy:69
+        // @lfy def/parser/main.lfy:parse
         let at = self.peek(seq, pos);
         let terminal = self.rule_at(at)?;
         let selected: Vec<&Expr> = alternatives
             .iter()
             .filter(|alternative| self.tables.expr_can_begin(alternative, terminal))
             .collect();
-        // @lfy def/parser/main.lfy:73
+        // @lfy def/parser/main.lfy:parse
         let ordered: Vec<&Expr> = if selected.len() > 1 {
             let rules: Vec<Entity> = selected
                 .iter()
@@ -652,7 +652,7 @@ impl<'t> Parser<'t> {
             selected
         };
         for alternative in ordered {
-            // @lfy def/parser/main.lfy:72
+            // @lfy def/parser/main.lfy:parse
             if let Some(end) = self.parse_element(alternative, node, seq, pos, follow) {
                 return Some(end);
             }
@@ -664,9 +664,9 @@ impl<'t> Parser<'t> {
     /// lowest binding power among its infix and postfix alternatives (0 when it has none),
     /// beginning with one of its primary or prefix alternatives, and producing a node for
     /// one of the alternatives.
-    // @lfy def/parser/main.lfy:75
+    // @lfy def/parser/main.lfy:parse
     fn parse_expression_alternation(&mut self, items: &[Entity], at: usize) -> Option<Parsed> {
-        // @lfy def/parser/main.lfy:77
+        // @lfy def/parser/main.lfy:parse
         let min = items
             .iter()
             .filter(|&&item| is_operation(item))
@@ -674,14 +674,14 @@ impl<'t> Parser<'t> {
             .map(|binding| binding.precedence_value())
             .min()
             .map_or(0, |power| power - 1);
-        // @lfy def/parser/main.lfy:78
+        // @lfy def/parser/main.lfy:parse
         let begin_with: Vec<Entity> = items
             .iter()
             .copied()
             .filter(|item| item.is_primary() || item.is_prefix())
             .collect();
         let parsed = self.parse_expression(at, min, Some(&begin_with), Some(items))?;
-        // @lfy def/parser/main.lfy:79
+        // @lfy def/parser/main.lfy:parse
         match &parsed.child {
             Child::Node(node) if items.contains(&node.rule) => Some(parsed),
             _ => None,
@@ -703,11 +703,11 @@ impl<'t> Parser<'t> {
         let terminal = self.rule_at(at)?;
         let candidates: Vec<Entity> = match begin_with {
             Some(items) => items.to_vec(),
-            // @lfy def/parser/main.lfy:62
+            // @lfy def/parser/main.lfy:parse
             None => PRIMARIES.iter().chain(PREFIXES).copied().collect(),
         };
         let mut left = None;
-        // @lfy def/parser/main.lfy:170
+        // @lfy def/parser/main.lfy:parse
         for candidate in self.tables.select(&candidates, terminal) {
             if let Some(parsed) = self.parse_rule(candidate, at, 0) {
                 left = Some(parsed);
@@ -717,7 +717,7 @@ impl<'t> Parser<'t> {
         let mut left = left?;
         let tables = self.tables;
         loop {
-            // @lfy def/parser/main.lfy:173
+            // @lfy def/parser/main.lfy:parse
             let (trivia, next) = self.skip(left.end, true, || tables.operators_continuing(min, admitted));
             let Some(terminal) = self.rule_at(next) else {
                 break;
@@ -727,7 +727,7 @@ impl<'t> Parser<'t> {
             };
             let binding = operation.effective_binding().expect("checked by the grammar");
             let power = binding.precedence_value();
-            // @lfy def/parser/main.lfy:98
+            // @lfy def/parser/main.lfy:parse
             let applies = power > min || (power == min && binding.associativity == Some(Associativity::Right));
             if !applies {
                 break;
@@ -747,7 +747,7 @@ impl<'t> Parser<'t> {
     /// operator, and what follows: a right operand parsed with the operation's power as
     /// the minimum, or the postfix tail. Gives the left operand back when the operation
     /// cannot be satisfied.
-    // @lfy def/parser/main.lfy:173
+    // @lfy def/parser/main.lfy:parse
     fn parse_operation(
         &mut self,
         operation: Entity,
@@ -760,7 +760,7 @@ impl<'t> Parser<'t> {
         let mut rest = Node::open(operation, at);
         rest.children.push(Child::Token(at));
         let end = match operation.category() {
-            // @lfy def/parser/main.lfy:97
+            // @lfy def/parser/main.lfy:parse
             Category::Infix { .. } => {
                 let tables = self.tables;
                 let (between, operand) =
@@ -774,10 +774,10 @@ impl<'t> Parser<'t> {
                     None => return Err(left),
                 }
             }
-            // @lfy def/grammar/traits.lfy:119
+            // @lfy def/grammar/traits.lfy:postfix
             Category::Postfix { disallow_space, .. } => match self.tables.tail(operation) {
                 Some(tail) => {
-                    // @lfy def/grammar/traits.lfy:133
+                    // @lfy def/grammar/traits.lfy:postfix
                     if disallow_space {
                         let (between, next) = self.skip(at + 1, true, Vec::new);
                         let tail_begins = self
@@ -789,7 +789,7 @@ impl<'t> Parser<'t> {
                     }
                     let mut seq = Seq::new(operation);
                     seq.taken = true;
-                    seq.tail_power = Some(power); // @lfy def/grammar/traits.lfy:127
+                    seq.tail_power = Some(power); // @lfy def/grammar/traits.lfy:postfix
                     seq.previous = self.rule_at(at);
                     let elements = elements_of(tail);
                     match self.parse_elements(&elements, &mut rest, &mut seq, at + 1, &HashSet::new()) {
@@ -815,7 +815,7 @@ impl<'t> Parser<'t> {
 
     /// A prefix operation: the operator followed by an operand parsed with the operation's
     /// power as the minimum.
-    // @lfy def/grammar/traits.lfy:100
+    // @lfy def/grammar/traits.lfy:prefix
     fn parse_prefix(&mut self, rule: Entity, at: usize) -> Option<Parsed> {
         let Category::Prefix { disallow_space, .. } = rule.category() else {
             unreachable!()
@@ -827,13 +827,13 @@ impl<'t> Parser<'t> {
         let tables = self.tables;
         let (trivia, operand) =
             self.skip(at + 1, true, || tables.expected(Entity::Expression(Expression::Expression)));
-        // @lfy def/grammar/traits.lfy:108
+        // @lfy def/grammar/traits.lfy:prefix
         // Space, a line break, comments, or documentation between the operator and its
         // operand; a token without a rule is none of those.
         if disallow_space && trivia.iter().any(|child| !matches!(child, Child::Error(_))) {
             return None;
         }
-        // @lfy def/parser/main.lfy:97
+        // @lfy def/parser/main.lfy:parse
         let operand = self.parse_rule(Entity::Expression(Expression::Expression), operand, power)?;
         let mut node = Node::open(rule, at);
         node.children.push(Child::Token(at));
@@ -876,7 +876,7 @@ impl<'t> Parser<'t> {
     /// with anything left over as trailing trivia and one error node at its end. When the
     /// rule is an alternation list and tokens are left over or trivia precedes the item,
     /// the root is a node for the rule holding the trivia, the item, and the error node.
-    // @lfy def/parser/main.lfy:17
+    // @lfy def/parser/main.lfy:parse
     fn parse_root(&mut self, rule: Entity) -> Node {
         let len = self.tokens.len();
         let tables = self.tables;
@@ -892,7 +892,7 @@ impl<'t> Parser<'t> {
                 node.children.splice(0..0, leading);
                 node
             }
-            // @lfy def/parser/main.lfy:27
+            // @lfy def/parser/main.lfy:parse
             Some(Parsed {
                 child: Child::Node(node),
                 ..
@@ -906,7 +906,7 @@ impl<'t> Parser<'t> {
                         root.children.push(parsed.child);
                     }
                     None if at < len => {
-                        // @lfy def/parser/main.lfy:24
+                        // @lfy def/parser/main.lfy:parse
                         let expected = self.tables.expected(rule);
                         root.children.push(Child::Error(ErrorNode::new(at, len, expected)));
                         root.end = len;
@@ -916,7 +916,7 @@ impl<'t> Parser<'t> {
                 root
             }
         };
-        // @lfy def/parser/main.lfy:24
+        // @lfy def/parser/main.lfy:parse
         let (trailing, rest) = self.skip_with(root.end, true, false, Vec::new);
         root.children.extend(trailing);
         if rest < len {

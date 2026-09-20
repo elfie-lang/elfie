@@ -17,7 +17,7 @@ pub mod checks; // @lfy def/grammar/main.lfy:21
 pub mod ebnf;
 pub mod precedence; // @lfy def/grammar/main.lfy:1
 pub mod rules; // @lfy def/grammar/main.lfy:2
-pub mod terminals; // @lfy def/grammar/main.lfy:5
+pub mod terminals; // @lfy def/grammar/main.lfy:terminalDocument
 pub mod traits; // @lfy def/grammar/main.lfy:2
 
 pub use checks::{Check, Violation};
@@ -126,14 +126,14 @@ pub(crate) use {grammar_rules, literal_or_empty, some_or_none};
 /// Any rule of the grammar: the enum of the file it was declared in, wrapped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Entity {
-    Keyword(Keyword),         // @lfy def/grammar/main.lfy:7
-    Identifier(Identifier),   // @lfy def/grammar/main.lfy:6
-    Space(Space),             // @lfy def/grammar/main.lfy:10
+    Keyword(Keyword),         // @lfy def/grammar/main.lfy:terminalDocument
+    Identifier(Identifier),   // @lfy def/grammar/main.lfy:terminalDocument
+    Space(Space),             // @lfy def/grammar/main.lfy:terminalDocument
     Literal(Literal),         // @lfy def/grammar/main.lfy:1
-    Punctuation(Punctuation), // @lfy def/grammar/main.lfy:9
+    Punctuation(Punctuation), // @lfy def/grammar/main.lfy:terminalDocument
     Expression(Expression),   // @lfy def/grammar/main.lfy:2
-    Comment(Comment),         // @lfy def/grammar/main.lfy:5
-    Statement(Statement),     // @lfy def/grammar/main.lfy:4
+    Comment(Comment),         // @lfy def/grammar/main.lfy:terminalDocument
+    Statement(Statement),     // @lfy def/grammar/main.lfy:terminalDocument
     File(File),               // @lfy def/grammar/main.lfy:3
 }
 
@@ -228,17 +228,17 @@ pub fn rules() -> impl Iterator<Item = Entity> {
 }
 
 /// The EBNF of every terminal, one rule per line.
-// @lfy def/grammar/main.lfy:4
+// @lfy def/grammar/main.lfy:terminalDocument
 pub fn terminal_document() -> String {
-    let lines: Vec<&'static str> = Entity::terminals().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:6
-    lines.join("\n") // @lfy def/grammar/main.lfy:9
+    let lines: Vec<&'static str> = Entity::terminals().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:terminalDocument
+    lines.join("\n") // @lfy def/grammar/main.lfy:terminalDocument
 }
 
 /// The EBNF of every rule, one rule per line.
-// @lfy def/grammar/main.lfy:12
+// @lfy def/grammar/main.lfy:grammarDocument
 pub fn grammar_document() -> String {
-    let lines: Vec<&'static str> = rules().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:14
-    lines.join("\n") // @lfy def/grammar/main.lfy:18
+    let lines: Vec<&'static str> = rules().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:grammarDocument
+    lines.join("\n") // @lfy def/grammar/main.lfy:grammarDocument
 }
 
 /// The global acceptance criteria of the grammar: every [`Check`] holds for every rule,
@@ -297,7 +297,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/main.lfy:4
+    // @lfy def/grammar/main.lfy:terminalDocument
     #[test]
     fn the_terminal_document_lists_every_terminal_once_per_line() {
         let document = terminal_document();
@@ -319,7 +319,7 @@ mod tests {
         assert!(!document.contains("\nStatement ="));
     }
 
-    // @lfy def/grammar/main.lfy:12
+    // @lfy def/grammar/main.lfy:grammarDocument
     #[test]
     fn the_grammar_document_lists_every_rule_once_per_line() {
         let document = grammar_document();

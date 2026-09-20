@@ -3,7 +3,7 @@
 # standard input, with the Elfie agent server and permission to edit files and run cargo.
 # ELFIE_ROOT and ELFIE_UNIT are set by the caller; the root is the working directory.
 set -e
-echo "compiling ${ELFIE_UNIT:-?} with Claude Code" >&2
+echo "compiling batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
 exec claude -p \
   --permission-mode acceptEdits \
   --allowedTools "Read Edit Write Glob Grep Bash(cargo build:*) Bash(cargo test:*) Bash(cargo clippy:*) Bash(cargo fmt:*) mcp__elfie__*" \

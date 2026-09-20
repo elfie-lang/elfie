@@ -117,7 +117,7 @@ pub fn lex_condition(terminal: Entity) -> &'static [Mode] {
         Entity::Comment(Comment::BlockDocumentationBody) => &[Mode::BlockDocumentation], // @lfy def/lexer/modes.lfy:68
         Entity::Comment(Comment::LineDocumentationOpen) => &[Mode::Code], // @lfy def/lexer/modes.lfy:70
         Entity::Comment(Comment::LineDocumentationBody) => &[Mode::LineDocumentation], // @lfy def/lexer/modes.lfy:72
-        // @lfy def/lexer/main.lfy:107
+        // @lfy def/lexer/main.lfy:lex
         _ => IN_CODE,
     }
 }

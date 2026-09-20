@@ -6,7 +6,7 @@
 //! URIs to workspace paths and protocol positions to token positions at its edge, and
 //! nothing else. The protocol plumbing is the `tower-lsp` library, the external
 //! declaration `Protocol` of the definition.
-// @lfy def/lsp/main.lfy:11
+// @lfy def/lsp/main.lfy:Protocol
 
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{self, AssertUnwindSafe};
@@ -44,13 +44,13 @@ const NOTHING_DECLARED: &str = "nothing is declared here";
 /// Requests are answered in the order received; a request that fails inside the server
 /// yields an error response and the server goes on. Returns 0 when exit follows shutdown
 /// and 1 when exit arrives without it.
-// @lfy def/lsp/main.lfy:13
+// @lfy def/lsp/main.lfy:serve
 pub fn serve(root: Option<&Path>) -> i32 {
     let root = root.map(Path::to_path_buf);
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime,
         Err(error) => {
-            eprintln!("elfie lsp: the runtime could not start: {error}"); // @lfy def/lsp/main.lfy:15
+            eprintln!("elfie lsp: the runtime could not start: {error}"); // @lfy def/lsp/main.lfy:serve
             return 1;
         }
     };
@@ -58,7 +58,7 @@ pub fn serve(root: Option<&Path>) -> i32 {
 }
 
 /// [`serve`] over any pair of streams, so tests can drive the whole server in memory.
-// @lfy def/lsp/main.lfy:13
+// @lfy def/lsp/main.lfy:serve
 async fn serve_on<I, O>(input: I, output: O, root: Option<PathBuf>) -> i32
 where
     I: AsyncRead + Unpin,
@@ -69,7 +69,7 @@ where
     // Decision: one request is served at a time, so requests are answered in the order
     // received as the definition asks. This gives up `$/cancelRequest`, which no feature
     // here is slow enough to need.
-    // @lfy def/lsp/main.lfy:16
+    // @lfy def/lsp/main.lfy:serve
     Server::new(input, output, socket)
         .concurrency_level(1)
         .serve(service)
@@ -80,13 +80,13 @@ where
 /// The exit code: 0 when exit follows shutdown, 1 when exit arrives without it.
 // Decision: the input stream ending without an exit notification is treated as exit, so
 // an editor that dies leaves the same code its exit would have.
-// @lfy def/lsp/main.lfy:17
+// @lfy def/lsp/main.lfy:serve
 fn exit_code(shut_down: bool) -> i32 {
     if shut_down { 0 } else { 1 }
 }
 
 /// The language server: one editor's [`Session`] behind the protocol.
-// @lfy def/lsp/main.lfy:13
+// @lfy def/lsp/main.lfy:serve
 pub struct Backend {
     client: Client,
     shared: Arc<Shared>,
@@ -139,7 +139,7 @@ impl Backend {
     /// Answers a request from the session. A failure inside the query is an error response
     /// and the server goes on; before initialize there is no session and nothing is
     /// answered.
-    // @lfy def/lsp/main.lfy:16
+    // @lfy def/lsp/main.lfy:serve
     fn with_session<T>(&self, f: impl FnOnce(&Session) -> T) -> Result<Option<T>> {
         let guard = self.session();
         let Some(session) = guard.as_ref() else {
@@ -153,7 +153,7 @@ impl Backend {
 
     /// Answers a request on a document. A document outside the root, or not in the
     /// program, answers as if nothing were there.
-    // @lfy def/lsp/main.lfy:33
+    // @lfy def/lsp/main.lfy:serve
     fn with_document<T>(
         &self,
         uri: &Url,
@@ -184,7 +184,7 @@ impl Backend {
 
     /// Publishes the diagnostics of the workspace as it is at `generation`, as a task of
     /// its own so that a later change can drop it.
-    // @lfy def/lsp/main.lfy:31
+    // @lfy def/lsp/main.lfy:serve
     fn publish_later(&self, generation: u64) {
         let shared = self.shared.clone();
         let client = self.client.clone();
@@ -195,7 +195,7 @@ impl Backend {
     /// the root.
     // Decision: `elfie.json` is watched at every depth, not only at the root, because a
     // package's manifest inside the root changes the program just as the root's does.
-    // @lfy def/lsp/main.lfy:24
+    // @lfy def/lsp/main.lfy:serve
     fn register_watchers(&self) {
         let client = self.client.clone();
         tokio::spawn(async move {
@@ -222,7 +222,7 @@ impl Backend {
     /// text the editor sent. A document outside the root, or neither under the source
     /// directory nor used by a file in the program, gets nothing and one log message says
     /// why.
-    // @lfy def/lsp/main.lfy:27
+    // @lfy def/lsp/main.lfy:serve
     async fn document_changed(
         &self,
         uri: &Url,
@@ -281,10 +281,10 @@ impl Backend {
 /// published, and as empty for a file that left the program. A publication whose
 /// generation is no longer the latest is dropped, so only the latest workspace is
 /// published.
-// @lfy def/lsp/main.lfy:31
+// @lfy def/lsp/main.lfy:serve
 async fn publish(shared: Arc<Shared>, client: Client, generation: u64) {
     let mut published = shared.published.lock().await;
-    // @lfy def/lsp/main.lfy:32
+    // @lfy def/lsp/main.lfy:serve
     if shared.generation.load(Ordering::SeqCst) != generation {
         return;
     }
@@ -326,11 +326,11 @@ impl LanguageServer for Backend {
     /// says which; the response advertises hover, definition, references, completion,
     /// rename with prepare, document symbols, workspace symbols, document formatting, and
     /// full text document synchronization.
-    // @lfy def/lsp/main.lfy:20
+    // @lfy def/lsp/main.lfy:serve
     async fn initialize(&self, params: lsp::InitializeParams) -> Result<lsp::InitializeResult> {
         // Decision: the deprecated `rootUri` is consulted after the workspace folders and
         // before the current directory, because older clients send nothing else.
-        // @lfy def/lsp/main.lfy:21
+        // @lfy def/lsp/main.lfy:serve
         let root = self
             .shared
             .root
@@ -348,7 +348,7 @@ impl LanguageServer for Backend {
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| PathBuf::from("."));
         let root = std::path::absolute(&root).unwrap_or(root);
-        // @lfy def/lsp/main.lfy:22
+        // @lfy def/lsp/main.lfy:serve
         let encoding = negotiate(
             params
                 .capabilities
@@ -373,7 +373,7 @@ impl LanguageServer for Backend {
             encoding,
         });
         Ok(lsp::InitializeResult {
-            capabilities: capabilities(encoding), // @lfy def/lsp/main.lfy:23
+            capabilities: capabilities(encoding), // @lfy def/lsp/main.lfy:serve
             server_info: Some(lsp::ServerInfo {
                 name: "elfie".to_string(),
                 version: Some(env!("CARGO_PKG_VERSION").to_string()),
@@ -383,7 +383,7 @@ impl LanguageServer for Backend {
 
     /// After initialized, diagnostics are published for every file of the program, and
     /// the server registers for watched file changes.
-    // @lfy def/lsp/main.lfy:24
+    // @lfy def/lsp/main.lfy:serve
     async fn initialized(&self, _: lsp::InitializedParams) {
         if self.shared.dynamic_watch.load(Ordering::SeqCst) {
             self.register_watchers();
@@ -392,13 +392,13 @@ impl LanguageServer for Backend {
         self.publish_later(generation);
     }
 
-    // @lfy def/lsp/main.lfy:17
+    // @lfy def/lsp/main.lfy:serve
     async fn shutdown(&self) -> Result<()> {
         self.shared.shut_down.store(true, Ordering::SeqCst);
         Ok(())
     }
 
-    // @lfy def/lsp/main.lfy:27
+    // @lfy def/lsp/main.lfy:serve
     async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
         let document = params.text_document;
         let change = lsp::TextDocumentContentChangeEvent {
@@ -410,7 +410,7 @@ impl LanguageServer for Backend {
             .await;
     }
 
-    // @lfy def/lsp/main.lfy:27
+    // @lfy def/lsp/main.lfy:serve
     async fn did_change(&self, params: lsp::DidChangeTextDocumentParams) {
         self.document_changed(
             &params.text_document.uri,
@@ -423,7 +423,7 @@ impl LanguageServer for Backend {
 
     /// A document closed: the workspace becomes `change` of it with nothing, so the disk
     /// is read again.
-    // @lfy def/lsp/main.lfy:28
+    // @lfy def/lsp/main.lfy:serve
     async fn did_close(&self, params: lsp::DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
         let outcome = self.update(|session| {
@@ -442,7 +442,7 @@ impl LanguageServer for Backend {
     /// A watched `.lfy` file that is not open changed, appeared, or vanished: the
     /// workspace becomes `change` of it with nothing. `elfie.json` changed: the workspace
     /// is loaded again and every open document applied to it.
-    // @lfy def/lsp/main.lfy:29
+    // @lfy def/lsp/main.lfy:serve
     async fn did_change_watched_files(&self, params: lsp::DidChangeWatchedFilesParams) {
         let outcome = self.update(|session| {
             let mut reload = false;
@@ -455,9 +455,9 @@ impl LanguageServer for Backend {
                     .file_name()
                     .is_some_and(|name| name == MANIFEST)
                 {
-                    reload = true; // @lfy def/lsp/main.lfy:30
+                    reload = true; // @lfy def/lsp/main.lfy:serve
                 } else if path.ends_with(EXTENSION) && session.document(&path).is_none() {
-                    changed.push(path); // @lfy def/lsp/main.lfy:29
+                    changed.push(path); // @lfy def/lsp/main.lfy:serve
                 }
             }
             if reload {
@@ -481,7 +481,7 @@ impl LanguageServer for Backend {
     /// `hoverAt` as markdown: a code line of the kind, identifier, a colon, and the type;
     /// then the definition; then the documentation; then each criterion as a list item
     /// reading its situations then its behaviors.
-    // @lfy def/lsp/main.lfy:41
+    // @lfy def/lsp/main.lfy:serve
     async fn hover(&self, params: lsp::HoverParams) -> Result<Option<lsp::Hover>> {
         let at = params.text_document_position_params;
         self.with_document(&at.text_document.uri, |session, path, converter| {
@@ -498,7 +498,7 @@ impl LanguageServer for Backend {
     }
 
     /// `definitionOf` as one location.
-    // @lfy def/lsp/main.lfy:42
+    // @lfy def/lsp/main.lfy:serve
     async fn goto_definition(
         &self,
         params: lsp::GotoDefinitionParams,
@@ -513,7 +513,7 @@ impl LanguageServer for Backend {
     }
 
     /// `referencesTo` with the request's includeDeclaration.
-    // @lfy def/lsp/main.lfy:43
+    // @lfy def/lsp/main.lfy:serve
     async fn references(&self, params: lsp::ReferenceParams) -> Result<Option<Vec<lsp::Location>>> {
         let at = params.text_document_position;
         let include_declaration = params.context.include_declaration;
@@ -531,7 +531,7 @@ impl LanguageServer for Backend {
     }
 
     /// `completionsAt` with each kind mapped to the protocol's kinds.
-    // @lfy def/lsp/main.lfy:44
+    // @lfy def/lsp/main.lfy:serve
     async fn completion(
         &self,
         params: lsp::CompletionParams,
@@ -545,7 +545,7 @@ impl LanguageServer for Backend {
                     .into_iter()
                     .map(|completion| lsp::CompletionItem {
                         label: completion.label,
-                        kind: Some(completion_kind(&completion.kind)),
+                        kind: Some(completion_kind(completion.kind.value())),
                         detail: completion.detail,
                         ..Default::default()
                     })
@@ -556,7 +556,7 @@ impl LanguageServer for Backend {
 
     /// The range of the token under the position when `symbolAt` finds a symbol, and an
     /// error saying nothing is declared here otherwise.
-    // @lfy def/lsp/main.lfy:45
+    // @lfy def/lsp/main.lfy:serve
     async fn prepare_rename(
         &self,
         params: lsp::TextDocumentPositionParams,
@@ -578,7 +578,7 @@ impl LanguageServer for Backend {
 
     /// `renameAt` as one workspace edit with the edits grouped by file, or an error
     /// response carrying the reason it returned.
-    // @lfy def/lsp/main.lfy:46
+    // @lfy def/lsp/main.lfy:serve
     async fn rename(&self, params: lsp::RenameParams) -> Result<Option<lsp::WorkspaceEdit>> {
         let at = params.text_document_position;
         let outcome = self.with_document(&at.text_document.uri, |session, path, converter| {
@@ -610,7 +610,7 @@ impl LanguageServer for Backend {
 
     /// `outlineOf` nested as the protocol's document symbols, with kinds mapped as
     /// completion maps them.
-    // @lfy def/lsp/main.lfy:47
+    // @lfy def/lsp/main.lfy:serve
     async fn document_symbol(
         &self,
         params: lsp::DocumentSymbolParams,
@@ -630,7 +630,7 @@ impl LanguageServer for Backend {
     // Decision: each symbol's location is its whole declaration, documentation included,
     // as the protocol describes a symbol's location; the identifier alone is what document
     // symbols carry as their selection range.
-    // @lfy def/lsp/main.lfy:48
+    // @lfy def/lsp/main.lfy:serve
     async fn symbol(
         &self,
         params: lsp::WorkspaceSymbolParams,
@@ -650,9 +650,9 @@ impl LanguageServer for Backend {
     /// One edit replacing the whole document with `format` of its tree when that differs,
     /// no edits when it is the same, and no edits with a log message when the tree has
     /// errors.
-    // @lfy def/lsp/main.lfy:49
+    // @lfy def/lsp/main.lfy:serve
     /// `semanticTokensOf` encoded in the protocol's relative form.
-    // @lfy def/lsp/main.lfy:56
+    // @lfy def/lsp/main.lfy:serve
     async fn semantic_tokens_full(
         &self,
         params: lsp::SemanticTokensParams,
@@ -716,7 +716,7 @@ fn root_uri(params: &lsp::InitializeParams) -> Option<&Url> {
 
 /// The encoding agreed at initialization: utf-8 when the client offers it, utf-16
 /// otherwise.
-// @lfy def/lsp/main.lfy:22
+// @lfy def/lsp/main.lfy:serve
 fn negotiate(offered: Option<&[lsp::PositionEncodingKind]>) -> Encoding {
     let offers_utf8 = offered
         .unwrap_or_default()
@@ -729,7 +729,7 @@ fn negotiate(offered: Option<&[lsp::PositionEncodingKind]>) -> Encoding {
 }
 
 /// What the server advertises.
-// @lfy def/lsp/main.lfy:23
+// @lfy def/lsp/main.lfy:serve
 fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
     lsp::ServerCapabilities {
         position_encoding: Some(encoding.protocol()),
@@ -758,7 +758,7 @@ fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
         document_symbol_provider: Some(lsp::OneOf::Left(true)),
         workspace_symbol_provider: Some(lsp::OneOf::Left(true)),
         document_formatting_provider: Some(lsp::OneOf::Left(true)),
-        // @lfy def/lsp/main.lfy:24
+        // @lfy def/lsp/main.lfy:serve
         semantic_tokens_provider: Some(
             lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(lsp::SemanticTokensOptions {
                 legend: legend(),
@@ -773,7 +773,7 @@ fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
 
 /// The semantic tokens legend: the values of `TokenType` then of `TokenModifier`, each in
 /// enum order, so a client maps the custom types `data` and `trait` itself.
-// @lfy def/lsp/main.lfy:25
+// @lfy def/lsp/main.lfy:serve
 fn legend() -> lsp::SemanticTokensLegend {
     lsp::SemanticTokensLegend {
         token_types: TokenType::ALL.iter().map(|t| lsp::SemanticTokenType::new(t.value())).collect(),
@@ -785,7 +785,7 @@ fn legend() -> lsp::SemanticTokensLegend {
 /// difference from the token before, the start difference when on the same line or the
 /// start itself otherwise, the length in encoding units, the legend index of its type, and
 /// the modifiers as a bit set by legend index.
-// @lfy def/lsp/main.lfy:56
+// @lfy def/lsp/main.lfy:serve
 fn encode_tokens(tokens: &[SemanticToken], protocol: &[lsp::Range]) -> Vec<lsp::SemanticToken> {
     let mut out = Vec::with_capacity(tokens.len());
     let mut previous_line = 0;
@@ -820,7 +820,7 @@ fn watcher(pattern: &str) -> lsp::FileSystemWatcher {
 
 /// A document URI as a path relative to the root, with forward slashes; `None` when the
 /// document is outside the root.
-// @lfy def/lsp/main.lfy:37
+// @lfy def/lsp/main.lfy:serve
 fn relative_path(root: &Path, uri: &Url) -> Option<String> {
     let path = uri.to_file_path().ok()?;
     let relative = path
@@ -841,14 +841,14 @@ fn relative_path(root: &Path, uri: &Url) -> Option<String> {
 }
 
 /// A path relative to the root as a document URI.
-// @lfy def/lsp/main.lfy:37
+// @lfy def/lsp/main.lfy:serve
 fn uri_of(root: &Path, path: &str) -> Option<Url> {
     Url::from_file_path(root.join(path)).ok()
 }
 
 /// The count of code units of an encoding in the characters before a column of a line;
 /// one unit per character past the end of the line.
-// @lfy def/lsp/main.lfy:38
+// @lfy def/lsp/main.lfy:serve
 fn to_units(encoding: Encoding, line: &str, column: usize) -> usize {
     let mut units = 0;
     let mut chars = 0;
@@ -865,7 +865,7 @@ fn to_units(encoding: Encoding, line: &str, column: usize) -> usize {
 /// The column of the character that a count of code units of an encoding reaches on a
 /// line; a count inside a character gives that character's column, and one past the end
 /// of the line counts one character per unit.
-// @lfy def/lsp/main.lfy:38
+// @lfy def/lsp/main.lfy:serve
 fn from_units(encoding: Encoding, line: &str, character: usize) -> usize {
     let mut units = 0;
     let mut column = 0;
@@ -913,7 +913,7 @@ fn offset_of(text: &str, encoding: Encoding, position: lsp::Position) -> usize {
 // Decision: full synchronization is what is advertised, but a change that carries a range
 // anyway is reassembled into the full text rather than dropped, since the definition
 // says incremental changes would only be reassembled.
-// @lfy def/lsp/main.lfy:27
+// @lfy def/lsp/main.lfy:serve
 fn apply_change(
     text: &str,
     encoding: Encoding,
@@ -950,7 +950,7 @@ fn file_lines(session: &Session, file: &str) -> Vec<String> {
 /// Converts positions between the queries' terms and the protocol's for one session: a
 /// protocol line is the position's line minus one, and a protocol character is the count
 /// of the session's encoding's code units in the characters before the column.
-// @lfy def/lsp/main.lfy:38
+// @lfy def/lsp/main.lfy:serve
 struct Converter {
     encoding: Encoding,
     lines: HashMap<String, Vec<String>>,
@@ -973,7 +973,7 @@ impl Converter {
         lines.get(line).map(String::as_str).unwrap_or("")
     }
 
-    // @lfy def/lsp/main.lfy:38
+    // @lfy def/lsp/main.lfy:serve
     fn protocol_position(&mut self, session: &Session, file: &str, at: Position) -> lsp::Position {
         let line = at.line.saturating_sub(1);
         let encoding = self.encoding;
@@ -984,7 +984,7 @@ impl Converter {
         }
     }
 
-    // @lfy def/lsp/main.lfy:38
+    // @lfy def/lsp/main.lfy:serve
     fn query_position(&mut self, session: &Session, file: &str, at: lsp::Position) -> Position {
         let encoding = self.encoding;
         let text = self.line(session, file, at.line as usize);
@@ -995,7 +995,7 @@ impl Converter {
     }
 
     /// Every range sent is a `Range` converted this way.
-    // @lfy def/lsp/main.lfy:39
+    // @lfy def/lsp/main.lfy:serve
     fn range(&mut self, session: &Session, range: &Range) -> lsp::Range {
         lsp::Range {
             start: self.protocol_position(session, &range.file, range.start),
@@ -1003,7 +1003,7 @@ impl Converter {
         }
     }
 
-    // @lfy def/lsp/main.lfy:39
+    // @lfy def/lsp/main.lfy:serve
     fn location(&mut self, session: &Session, range: &Range) -> Option<lsp::Location> {
         let uri = uri_of(&session.workspace.root, &range.file)?;
         Some(lsp::Location {
@@ -1012,7 +1012,7 @@ impl Converter {
         })
     }
 
-    // @lfy def/lsp/main.lfy:31
+    // @lfy def/lsp/main.lfy:serve
     fn diagnostic(&mut self, session: &Session, diagnostic: &query::Diagnostic) -> lsp::Diagnostic {
         lsp::Diagnostic {
             range: self.range(session, &diagnostic.range),
@@ -1039,7 +1039,7 @@ fn by_file(diagnostics: Vec<query::Diagnostic>) -> BTreeMap<String, Vec<query::D
 
 /// What to publish: every file whose diagnostics differ from those last published, and
 /// an empty list for a file that left the program.
-// @lfy def/lsp/main.lfy:31
+// @lfy def/lsp/main.lfy:serve
 fn diagnostics_delta(
     published: &BTreeMap<String, Vec<query::Diagnostic>>,
     current: &BTreeMap<String, Vec<query::Diagnostic>>,
@@ -1071,7 +1071,7 @@ fn severity(severity: query::Severity) -> lsp::DiagnosticSeverity {
 /// A hover as markdown: a code line of the kind, identifier, a colon, and the type; then
 /// the definition; then the documentation; then each criterion as a list item reading its
 /// situations then its behaviors.
-// @lfy def/lsp/main.lfy:41
+// @lfy def/lsp/main.lfy:serve
 fn hover_markdown(hover: &query::Hover) -> String {
     let mut sections = Vec::new();
     let mut code = format!("{} {}", hover.kind, hover.identifier);
@@ -1106,7 +1106,7 @@ fn hover_markdown(hover: &query::Hover) -> String {
 /// One criterion as a list item: its situations, then its behaviors.
 // Decision: several situations or behaviors are joined by a semicolon, and the situations
 // are separated from the behaviors by a colon.
-// @lfy def/lsp/main.lfy:41
+// @lfy def/lsp/main.lfy:serve
 fn criterion_item(criterion: &Criterion) -> String {
     let situations = criterion
         .situation
@@ -1133,7 +1133,7 @@ fn criterion_item(criterion: &Criterion) -> String {
 /// data and type to Struct, trait to Interface, enum to Enum, function and agentFunction
 /// to Function, member to Field, variable and parameter to Variable, module to Module,
 /// anything else to Text.
-// @lfy def/lsp/main.lfy:44
+// @lfy def/lsp/main.lfy:serve
 fn completion_kind(kind: &str) -> lsp::CompletionItemKind {
     match kind {
         "keyword" => lsp::CompletionItemKind::KEYWORD,
@@ -1152,7 +1152,7 @@ fn completion_kind(kind: &str) -> lsp::CompletionItemKind {
 /// A symbol kind mapped as completion maps them.
 // Decision: the protocol has no Text or Keyword symbol kind, so what completion maps to
 // Text or Keyword is a String symbol.
-// @lfy def/lsp/main.lfy:47
+// @lfy def/lsp/main.lfy:serve
 fn symbol_kind(kind: &str) -> lsp::SymbolKind {
     match kind {
         "path" => lsp::SymbolKind::FILE,
@@ -1168,7 +1168,7 @@ fn symbol_kind(kind: &str) -> lsp::SymbolKind {
 }
 
 /// An outline entry nested as a document symbol.
-// @lfy def/lsp/main.lfy:47
+// @lfy def/lsp/main.lfy:serve
 #[allow(deprecated)]
 fn document_symbol(
     converter: &mut Converter,
@@ -1183,7 +1183,7 @@ fn document_symbol(
     lsp::DocumentSymbol {
         name: outline.name.clone(),
         detail: None,
-        kind: symbol_kind(&outline.kind),
+        kind: symbol_kind(outline.kind.as_str()),
         tags: None,
         deprecated: None,
         range: converter.range(session, &outline.range),
@@ -1193,12 +1193,12 @@ fn document_symbol(
 }
 
 /// A flattened outline entry as a workspace symbol.
-// @lfy def/lsp/main.lfy:48
+// @lfy def/lsp/main.lfy:serve
 #[allow(deprecated)]
 fn symbol_information(outline: &query::Outline, location: lsp::Location) -> lsp::SymbolInformation {
     lsp::SymbolInformation {
         name: outline.name.clone(),
-        kind: symbol_kind(&outline.kind),
+        kind: symbol_kind(outline.kind.as_str()),
         tags: None,
         deprecated: None,
         location,
@@ -1220,7 +1220,7 @@ mod tests {
 
     // Pure parts.
 
-    // @lfy def/lsp/main.lfy:38
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn columns_convert_to_code_units_and_back() {
         let line = "aé😀b";
@@ -1240,7 +1240,7 @@ mod tests {
         assert_eq!(from_units(Encoding::Utf8, "", 0), 0);
     }
 
-    // @lfy def/lsp/main.lfy:38
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn ranges_convert_through_the_session_lines() {
         let root = fixture(&[("def/a.lfy", "const x = 'é😀';\nconst y = x;\n")]);
@@ -1279,7 +1279,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 
-    // @lfy def/lsp/main.lfy:27
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn changes_with_a_range_are_reassembled_into_the_text() {
         let text = "const x = 1;\nconst y = 2;\n";
@@ -1310,7 +1310,7 @@ mod tests {
         assert_eq!(end_of("a\n", Encoding::Utf8), lsp::Position::new(1, 0));
     }
 
-    // @lfy def/lsp/main.lfy:37
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn uris_map_to_paths_relative_to_the_root_and_back() {
         let root = fixture(&[("def/a.lfy", "d A {}\n")]);
@@ -1324,7 +1324,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 
-    // @lfy def/lsp/main.lfy:22
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn utf8_is_agreed_only_when_offered() {
         assert_eq!(negotiate(None), Encoding::Utf16);
@@ -1344,12 +1344,12 @@ mod tests {
         assert_eq!(Encoding::Utf32.value(), "utf-32");
     }
 
-    // @lfy def/lsp/main.lfy:41
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn hover_reads_code_line_definition_documentation_then_criteria() {
         let hover = query::Hover {
             range: Range::empty("def/a.lfy", Position::new(1, 0)),
-            kind: "data".to_string(),
+            kind: elfie_core::model::SymbolKind::Data,
             identifier: "A".to_string(),
             definition: Some("An A".to_string()),
             ty: Some("Base".to_string()),
@@ -1380,7 +1380,7 @@ mod tests {
         assert_eq!(hover_markdown(&bare), "```elfie\ndata A\n```");
     }
 
-    // @lfy def/lsp/main.lfy:44
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn kinds_map_to_the_protocols_kinds() {
         let cases = [
@@ -1412,7 +1412,7 @@ mod tests {
         assert_eq!(symbol_kind("alias"), lsp::SymbolKind::STRING);
     }
 
-    // @lfy def/lsp/main.lfy:31
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn only_files_whose_diagnostics_changed_are_published() {
         let diagnostic = |file: &str, line: usize, message: &str| query::Diagnostic {
@@ -1443,7 +1443,7 @@ mod tests {
         assert!(diagnostics_delta(&current, &current).is_empty());
     }
 
-    // @lfy def/lsp/main.lfy:17
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn exit_follows_shutdown_with_zero_and_without_it_with_one() {
         assert_eq!(exit_code(true), 0);
@@ -1604,7 +1604,7 @@ mod tests {
         }
     }
 
-    // @lfy def/lsp/main.lfy:51
+    // @lfy def/lsp/main.lfy:serve
     #[tokio::test]
     async fn a_binder_error_is_published_after_initialized_and_exit_after_shutdown_is_zero() {
         let root = fixture(&[("def/a.lfy", "const y = z;\n")]);
@@ -1655,7 +1655,7 @@ mod tests {
         assert_eq!(editor.exit(true).await, 0);
     }
 
-    // @lfy def/lsp/main.lfy:17
+    // @lfy def/lsp/main.lfy:serve
     #[tokio::test]
     async fn exit_without_shutdown_is_one() {
         let root = fixture(&[("def/a.lfy", "d A {}\n")]);
@@ -1664,7 +1664,7 @@ mod tests {
         assert_eq!(editor.exit(false).await, 1);
     }
 
-    // @lfy def/lsp/main.lfy:55
+    // @lfy def/lsp/main.lfy:serve
     #[tokio::test]
     async fn definition_and_rename_cross_files() {
         let root = fixture(&[
@@ -1762,7 +1762,7 @@ mod tests {
         assert_eq!(editor.exit(true).await, 0);
     }
 
-    // @lfy def/lsp/main.lfy:49
+    // @lfy def/lsp/main.lfy:serve
     #[tokio::test]
     async fn formatting_replaces_the_whole_document_only_when_it_differs() {
         let root = fixture(&[("def/a.lfy", "d A {}\n")]);
@@ -1828,7 +1828,7 @@ mod tests {
         assert_eq!(editor.exit(true).await, 0);
     }
 
-    // @lfy def/lsp/main.lfy:56
+    // @lfy def/lsp/main.lfy:serve
     #[test]
     fn tokens_are_encoded_relative_to_the_one_before() {
         let range = |line, start, end| lsp::Range { start: lsp::Position::new(line, start), end: lsp::Position::new(line, end) };
@@ -1847,7 +1847,7 @@ mod tests {
         assert_eq!(legend.token_modifiers[4].as_str(), "scope");
     }
 
-    // @lfy def/lsp/main.lfy:24
+    // @lfy def/lsp/main.lfy:serve
     #[tokio::test]
     async fn semantic_tokens_are_served_for_a_document() {
         let root = fixture(&[("def/a.lfy", "d A {}\nconst y = A;\n")]);

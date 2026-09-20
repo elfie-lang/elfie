@@ -21,9 +21,8 @@ use crate::grammar::terminals::punctuation::Punctuation as P;
 use crate::grammar::{Entity as Rule, GrammarRule};
 use crate::lexer::Token;
 use crate::model::{
-    self, ContextProperty, EntityId, EntityKind, FileId, Model, NodeRef, ScopeId, SymbolId,
+    self, ContextProperty, EntityId, EntityKind, FileId, Layer, Model, NodeRef, ScopeId, SymbolId,
     SymbolKind, TypeRef, Usage,
-    Layer,
 };
 use crate::parser::Node;
 use crate::parser::components::is_trivia;
@@ -58,7 +57,7 @@ fn tokens(workspace: &Workspace, file: FileId) -> &[Token] {
 }
 
 /// The file of the program at a path relative to `Workspace.root`, as `File.path` is.
-// @lfy def/query/main.lfy:33
+// @lfy def/query/main.lfy:tokenAt
 fn file_of(workspace: &Workspace, path: &str) -> Option<FileId> {
     workspace.model.file(path)
 }
@@ -70,7 +69,7 @@ fn start_of(token: &Token) -> Position {
 
 /// The position just after the last character of a token's raw text, with every line
 /// break inside it ending a line, counted as the lexer counts.
-// @lfy def/query/main.lfy:27
+// @lfy def/query/main.lfy:rangeOf
 fn end_of(token: &Token) -> Position {
     let mut line = token.line;
     let mut column = token.column;
@@ -104,7 +103,7 @@ fn span(workspace: &Workspace, file: FileId, start: usize, end: usize) -> Range 
     let tokens = tokens(workspace, file);
     let path = workspace.model.sources[file].path.as_str();
     if start < end && end <= tokens.len() {
-        // @lfy def/query/main.lfy:25
+        // @lfy def/query/main.lfy:rangeOf
         let first = &tokens[start];
         return Range {
             file: first.file.to_string(),
@@ -112,7 +111,7 @@ fn span(workspace: &Workspace, file: FileId, start: usize, end: usize) -> Range 
             end: end_of(&tokens[end - 1]),
         };
     }
-    // @lfy def/query/main.lfy:28
+    // @lfy def/query/main.lfy:rangeOf
     let at = match tokens.get(start) {
         Some(token) => start_of(token),
         None => tokens.last().map_or(Position::new(1, 0), end_of),
@@ -126,7 +125,7 @@ fn span(workspace: &Workspace, file: FileId, start: usize, end: usize) -> Range 
 /// column, and `Range.end` is the position just after the last character of the last
 /// token covered. A node covering no token gives an empty range at the position the node
 /// would start at.
-// @lfy def/query/main.lfy:24
+// @lfy def/query/main.lfy:rangeOf
 pub fn range_of(workspace: &Workspace, file: FileId, node: NodeOrToken<'_>) -> Range {
     match node {
         NodeOrToken::Node(node) => span(workspace, file, node.start, node.end),
@@ -135,7 +134,7 @@ pub fn range_of(workspace: &Workspace, file: FileId, node: NodeOrToken<'_>) -> R
 }
 
 /// [`range_of`] for a node the model refers to.
-// @lfy def/query/main.lfy:24
+// @lfy def/query/main.lfy:rangeOf
 pub fn range_of_node(workspace: &Workspace, node: NodeRef) -> Range {
     let info = workspace.model.info(node);
     span(workspace, node.file, info.start, info.end)
@@ -152,9 +151,9 @@ fn is_real(model: &Model, node: NodeRef) -> bool {
 /// to the earlier token when that is an identifier or a keyword (a `MemberName` is one of
 /// those) and to the later token otherwise. A file not in the program, or a position past
 /// the end of the file, gives `None`.
-// @lfy def/query/main.lfy:32
+// @lfy def/query/main.lfy:tokenAt
 pub fn token_at(workspace: &Workspace, file: &str, position: Position) -> Option<usize> {
-    let file = file_of(workspace, file)?; // @lfy def/query/main.lfy:36
+    let file = file_of(workspace, file)?; // @lfy def/query/main.lfy:tokenAt
     let tokens = tokens(workspace, file);
     let mut previous: Option<usize> = None;
     for (index, token) in tokens.iter().enumerate() {
@@ -167,14 +166,16 @@ pub fn token_at(workspace: &Workspace, file: &str, position: Position) -> Option
         if position < start {
             break;
         }
+        // @lfy def/query/main.lfy:tokenAt
         if position < end_of(token) {
-            // @lfy def/query/main.lfy:35
+            // @lfy def/query/main.lfy:tokenAt
             if position == start
-                && previous.is_some_and(|p| is_name_token(&tokens[p]) && end_of(&tokens[p]) == position)
+                && previous
+                    .is_some_and(|p| is_name_token(&tokens[p]) && end_of(&tokens[p]) == position)
             {
                 return previous;
             }
-            return Some(index); // @lfy def/query/main.lfy:34
+            return Some(index); // @lfy def/query/main.lfy:tokenAt
         }
         previous = Some(index);
     }
@@ -182,7 +183,7 @@ pub fn token_at(workspace: &Workspace, file: &str, position: Position) -> Option
     // position exactly after a final identifier or keyword still belongs to it.
     match previous {
         Some(p) if is_name_token(&tokens[p]) && end_of(&tokens[p]) == position => Some(p),
-        _ => None, // @lfy def/query/main.lfy:36
+        _ => None, // @lfy def/query/main.lfy:tokenAt
     }
 }
 
@@ -202,14 +203,14 @@ fn nodes_covering(model: &Model, file: FileId, token: usize) -> Vec<NodeRef> {
 /// Every node covering a position, outermost first: the root of the file's tree, then a
 /// child of each node before it; the last holds [`token_at`] as a direct child. Empty
 /// when [`token_at`] gives nothing.
-// @lfy def/query/main.lfy:52
+// @lfy def/query/main.lfy:nodesAt
 pub fn nodes_at(workspace: &Workspace, file: &str, position: Position) -> Vec<NodeRef> {
     let Some(id) = file_of(workspace, file) else {
         return Vec::new();
     };
     match token_at(workspace, file, position) {
-        Some(index) => nodes_covering(&workspace.model, id, index), // @lfy def/query/main.lfy:54
-        None => Vec::new(),                                         // @lfy def/query/main.lfy:55
+        Some(index) => nodes_covering(&workspace.model, id, index), // @lfy def/query/main.lfy:nodesAt
+        None => Vec::new(),                                         // @lfy def/query/main.lfy:nodesAt
     }
 }
 
@@ -264,7 +265,7 @@ fn find_rule(model: &Model, chain: &[NodeRef], rule: Rule) -> Option<NodeRef> {
 
 /// The usage a `TemplateReference` makes: the first usage of a node inside its
 /// `Reference`.
-// @lfy def/query/main.lfy:61
+// @lfy def/query/main.lfy:symbolAt
 fn reference_usage(model: &Model, reference: NodeRef) -> Option<model::UsageId> {
     descendants(model, reference)
         .into_iter()
@@ -279,14 +280,14 @@ fn reference_usage(model: &Model, reference: NodeRef) -> Option<model::UsageId> 
 /// its `Reference`, so references in prose resolve like code. On the string of a `Use`:
 /// the module symbol the `Use` declares, or `None` when it has no `as`. Anything else
 /// gives `None`.
-// @lfy def/query/main.lfy:58
+// @lfy def/query/main.lfy:symbolAt
 pub fn symbol_at(workspace: &Workspace, file: &str, position: Position) -> Option<SymbolId> {
     let model = &workspace.model;
     let id = file_of(workspace, file)?;
     let index = token_at(workspace, file, position)?;
     let token = &tokens(workspace, id)[index];
     let chain = nodes_covering(model, id, index);
-    // @lfy def/query/main.lfy:60
+    // @lfy def/query/main.lfy:symbolAt
     if is_name_token(token) {
         for &node in chain.iter().rev() {
             if let Some(symbol) = model::resolve(model, node)
@@ -296,17 +297,17 @@ pub fn symbol_at(workspace: &Workspace, file: &str, position: Position) -> Optio
             }
         }
     }
-    // @lfy def/query/main.lfy:61
+    // @lfy def/query/main.lfy:symbolAt
     if let Some(reference) = find_rule(model, &chain, E::TemplateReference.entity()) {
         return reference_usage(model, reference).and_then(|usage| model.usages[usage].symbol);
     }
-    // @lfy def/query/main.lfy:62
+    // @lfy def/query/main.lfy:symbolAt
     if (token.is(L::DoubleQuoteBody) || token.is(L::SingleQuoteBody))
         && let Some(use_node) = find_rule(model, &chain, S::Use.entity())
     {
         return model.symbol_of(use_node);
     }
-    None // @lfy def/query/main.lfy:63
+    None // @lfy def/query/main.lfy:symbolAt
 }
 
 /// The file a `Use` resolved to in `Source.uses`, when it resolved.
@@ -323,7 +324,7 @@ fn use_target(workspace: &Workspace, use_node: NodeRef) -> Option<String> {
 
 /// The range that declares a symbol: the identifier that spells its name, or an empty
 /// range at line 1, column 0 of the used file for a module symbol.
-// @lfy def/query/main.lfy:77
+// @lfy def/query/main.lfy:definitionOf
 fn declaration_range(workspace: &Workspace, symbol: SymbolId) -> Option<Range> {
     let model = &workspace.model;
     let symbol = &model.symbols[symbol];
@@ -331,13 +332,17 @@ fn declaration_range(workspace: &Workspace, symbol: SymbolId) -> Option<Range> {
         return None;
     }
     if symbol.kind == SymbolKind::Module {
-        // @lfy def/query/main.lfy:78
+        // @lfy def/query/main.lfy:definitionOf
         if let Some(path) = use_target(workspace, symbol.node) {
             return Some(Range::empty(&path, Position::new(1, 0)));
         }
         // Decision: a module symbol whose `Use` resolved to nothing is declared where its
         // name is written.
     }
+    // The symbol's own node: an alias declares itself, not what it aliases, and a member
+    // added by a trait declares the member statement inside the trait body.
+    // @lfy def/query/main.lfy:definitionOf
+    // @lfy def/query/main.lfy:definitionOf
     Some(match symbol.name_token {
         Some(index) => span(workspace, symbol.node.file, index, index + 1),
         None => range_of_node(workspace, symbol.node),
@@ -350,13 +355,13 @@ fn declaration_range(workspace: &Workspace, symbol: SymbolId) -> Option<Range> {
 /// module symbol, or on the path of a `Use`, an empty range at line 1, column 0 of the
 /// file the `Use` resolved to. An alias gives its own declaration, not what it aliases; a
 /// member added by a trait gives the member statement inside the trait body.
-// @lfy def/query/main.lfy:76
+// @lfy def/query/main.lfy:definitionOf
 pub fn definition_of(workspace: &Workspace, file: &str, position: Position) -> Option<Range> {
     let model = &workspace.model;
     let id = file_of(workspace, file)?;
     if let Some(index) = token_at(workspace, file, position) {
         let chain = nodes_covering(model, id, index);
-        // @lfy def/query/main.lfy:78
+        // @lfy def/query/main.lfy:definitionOf
         if find_rule(model, &chain, E::StringLiteral.entity()).is_some()
             && let Some(use_node) = find_rule(model, &chain, S::Use.entity())
         {
@@ -364,7 +369,7 @@ pub fn definition_of(workspace: &Workspace, file: &str, position: Position) -> O
                 .map(|path| Range::empty(&path, Position::new(1, 0)));
         }
     }
-    let symbol = symbol_at(workspace, file, position)?; // @lfy def/query/main.lfy:81
+    let symbol = symbol_at(workspace, file, position)?; // @lfy def/query/main.lfy:definitionOf
     declaration_range(workspace, symbol)
 }
 
@@ -391,7 +396,7 @@ fn usages_of_declaration(model: &Model, symbol: SymbolId) -> Vec<model::UsageId>
 
 /// The range of a usage: the token that spells the name, or the accessor when the usage
 /// is of a layer itself, or the whole node when it has neither.
-// @lfy def/query/main.lfy:86
+// @lfy def/query/main.lfy:referencesTo
 fn usage_range(workspace: &Workspace, usage: &Usage) -> Range {
     match usage.token {
         Some(index) => span(workspace, usage.node.file, index, index + 1),
@@ -426,7 +431,7 @@ fn sort_ranges(workspace: &Workspace, ranges: &mut [Range]) {
 /// accessor when the usage is of a layer itself, in `Workspace.files` order then by
 /// start; with `include_declaration`, the range [`definition_of`] gives comes first.
 /// Empty when [`symbol_at`] gives nothing.
-// @lfy def/query/main.lfy:84
+// @lfy def/query/main.lfy:referencesTo
 pub fn references_to(
     workspace: &Workspace,
     file: &str,
@@ -435,17 +440,17 @@ pub fn references_to(
 ) -> Vec<Range> {
     let model = &workspace.model;
     let Some(symbol) = symbol_at(workspace, file, position) else {
-        return Vec::new(); // @lfy def/query/main.lfy:89
+        return Vec::new(); // @lfy def/query/main.lfy:referencesTo
     };
     let mut usages: Vec<Range> = usages_of_declaration(model, symbol)
         .into_iter()
         .map(|usage| usage_range(workspace, &model.usages[usage]))
         .collect();
-    sort_ranges(workspace, &mut usages); // @lfy def/query/main.lfy:88
+    sort_ranges(workspace, &mut usages); // @lfy def/query/main.lfy:referencesTo
     usages.dedup();
     let mut out = Vec::new();
     if include_declaration {
-        // @lfy def/query/main.lfy:87
+        // @lfy def/query/main.lfy:referencesTo
         if let Some(declaration) = declaration_range(workspace, symbol) {
             out.push(declaration);
         }
@@ -460,32 +465,46 @@ pub fn references_to(
 
 // ---- Hover ------------------------------------------------------------------------
 
-/// The kind of an entity that has no symbol, named after its `EntityKind`.
-fn entity_kind_name(kind: &EntityKind) -> &'static str {
-    match kind {
-        EntityKind::File => "file",
-        EntityKind::Global => "global",
-        EntityKind::Data => "data",
-        EntityKind::Type => "type",
-        EntityKind::Enum => "enum",
-        EntityKind::Fn { agent: true, .. } => "agentFunction",
-        EntityKind::Fn { agent: false, .. } => "function",
-        EntityKind::Trait { .. } => "trait",
-        EntityKind::Variable => "variable",
-        EntityKind::Alias => "alias",
-        EntityKind::External => "external",
-        EntityKind::Module => "module",
-        EntityKind::LoopVariable => "loopVariable",
-        EntityKind::Parameter => "parameter",
-        EntityKind::Member => "member",
-        EntityKind::EnumMember => "enumMember",
-        EntityKind::Anonymous => "anonymous",
+/// The kind of an entity: the kind of its symbol, and `member` when it is a member.
+// Decision: only the anonymous entity of a file declares no symbol of its own, and a file
+// is what a module symbol names, so it is reported as a module.
+// @lfy def/query/main.lfy:hoverOf
+fn kind_of(model: &Model, entity: EntityId) -> SymbolKind {
+    let e = &model.entities[entity];
+    if matches!(e.kind, EntityKind::Member) {
+        return SymbolKind::Member;
+    }
+    match e.symbol {
+        Some(symbol) => model.symbols[symbol].kind,
+        None => SymbolKind::Module,
+    }
+}
+
+/// The range that covers the identifier of an entity's declaration, as `declaring` finds
+/// it: the token that spells its name, the declaring node when it spells none.
+// Decision: `global` declares nothing in any file, so its range names no file, as
+// [`source_of`] gives it no text.
+// @lfy def/query/main.lfy:hoverOf
+fn identifier_range(workspace: &Workspace, entity: EntityId) -> Range {
+    let model = &workspace.model;
+    let e = &model.entities[entity];
+    if let Some(symbol) = e.symbol {
+        let s = &model.symbols[symbol];
+        if is_real(model, s.node)
+            && let Some(index) = s.name_token
+        {
+            return span(workspace, s.node.file, index, index + 1);
+        }
+    }
+    match e.node.filter(|&node| is_real(model, node)) {
+        Some(node) => range_of_node(workspace, node),
+        None => Range::empty("", Position::new(1, 0)),
     }
 }
 
 /// The text of one documentation node: its raw text without the opener and closer, each
 /// line without one leading space.
-// @lfy def/query/main.lfy:102
+// @lfy def/query/main.lfy:hoverOf
 fn documentation_of(workspace: &Workspace, file: FileId, node: &Node) -> String {
     let text = workspace.model.sources[file].tree.raw(node.start, node.end);
     let inner = text
@@ -502,7 +521,7 @@ fn documentation_of(workspace: &Workspace, file: FileId, node: &Node) -> String 
 
 /// The joined text of the documentation nodes of a declaring node; `None` when it has
 /// none.
-// @lfy def/query/main.lfy:102
+// @lfy def/query/main.lfy:hoverOf
 fn documentation_text(workspace: &Workspace, node: NodeRef) -> Option<String> {
     let tree_node = workspace.model.node(node);
     if tree_node.documentation.is_empty() {
@@ -520,7 +539,7 @@ fn documentation_text(workspace: &Workspace, node: NodeRef) -> Option<String> {
 }
 
 /// The identifier of a type, or its source text when it declares no name.
-// @lfy def/query/main.lfy:101
+// @lfy def/query/main.lfy:hoverOf
 fn type_name(model: &Model, ty: &TypeRef) -> String {
     match ty {
         TypeRef::Entity(entity) => model.entities[*entity]
@@ -531,52 +550,53 @@ fn type_name(model: &Model, ty: &TypeRef) -> String {
     }
 }
 
-/// Everything shown for one entity, at a range.
+/// Everything shown for one entity.
 ///
-/// The kind is that of the entity's symbol (`member` for a member); the identifier is
-/// `Entity.identifier`, or the first line of the declaring node when anonymous; the
-/// definition has every template reference replaced by the referenced identifier; the
-/// type is the identifier of `Entity.type` or its source text; the documentation is the
-/// joined text of the documented nodes without their openers, closers, and one leading
-/// space per line; the criteria are `criteriaOf` the entity.
-// @lfy def/query/main.lfy:95
-pub fn hover_of(workspace: &Workspace, entity: EntityId, range: Range) -> Hover {
+/// The range covers the identifier of the entity's declaration; the kind is that of the
+/// entity's symbol (`member` for a member); the identifier is `Entity.identifier`, or the
+/// first line of the declaring node when anonymous; the definition has every template
+/// reference replaced by the referenced identifier; the type is the identifier of
+/// `Entity.type` or its source text; the documentation is the joined text of the
+/// documented nodes without their openers, closers, and one leading space per line; the
+/// criteria are `criteriaOf` the entity.
+// @lfy def/query/main.lfy:hoverOf
+pub fn hover_of(workspace: &Workspace, entity: EntityId) -> Hover {
     let model = &workspace.model;
     let e = &model.entities[entity];
     let node = e.node.filter(|&node| is_real(model, node));
-    // @lfy def/query/main.lfy:98
-    let kind = match (&e.kind, e.symbol) {
-        (EntityKind::Member, _) => "member".to_string(),
-        (_, Some(symbol)) => model.symbols[symbol].kind.as_str().to_string(),
-        (kind, None) => entity_kind_name(kind).to_string(),
-    };
-    // @lfy def/query/main.lfy:99
+    // @lfy def/query/main.lfy:hoverOf
     let identifier = e.identifier.clone().unwrap_or_else(|| {
-        node.map(|node| model.raw(node).lines().next().unwrap_or("").trim().to_string())
-            .unwrap_or_default()
+        node.map(|node| {
+            model
+                .raw(node)
+                .lines()
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_default()
     });
     Hover {
-        range, // @lfy def/query/main.lfy:97
-        kind,
+        range: identifier_range(workspace, entity), // @lfy def/query/main.lfy:hoverOf
+        kind: kind_of(model, entity),               // @lfy def/query/main.lfy:hoverOf
         identifier,
         // Decision: the binder stores the definition with references as written, so they
         // are stripped to the referenced identifier here, as `criteriaOf` does.
-        definition: e.definition.as_deref().map(model::strip_references), // @lfy def/query/main.lfy:100
-        ty: e.ty.as_ref().map(|ty| type_name(model, ty)), // @lfy def/query/main.lfy:101
-        documentation: node.and_then(|node| documentation_text(workspace, node)), // @lfy def/query/main.lfy:102
-        criteria: model::criteria_of(model, entity), // @lfy def/query/main.lfy:103
+        definition: e.definition.as_deref().map(model::strip_references), // @lfy def/query/main.lfy:hoverOf
+        ty: e.ty.as_ref().map(|ty| type_name(model, ty)), // @lfy def/query/main.lfy:hoverOf
+        documentation: node.and_then(|node| documentation_text(workspace, node)), // @lfy def/query/main.lfy:hoverOf
+        criteria: model::criteria_of(model, entity), // @lfy def/query/main.lfy:hoverOf
     }
 }
 
 /// Everything shown for the symbol at a position: [`hover_of`] the entity of
-/// [`symbol_at`], at the range of the token under the position.
-// @lfy def/query/main.lfy:106
+/// [`symbol_at`].
+// @lfy def/query/main.lfy:hoverAt
 pub fn hover_at(workspace: &Workspace, file: &str, position: Position) -> Option<Hover> {
-    let symbol = symbol_at(workspace, file, position)?; // @lfy def/query/main.lfy:109
-    let id = file_of(workspace, file)?;
-    let index = token_at(workspace, file, position)?;
+    let symbol = symbol_at(workspace, file, position)?; // @lfy def/query/main.lfy:hoverAt
     let entity = workspace.model.symbols[symbol].entity;
-    Some(hover_of(workspace, entity, span(workspace, id, index, index + 1))) // @lfy def/query/main.lfy:108
+    Some(hover_of(workspace, entity)) // @lfy def/query/main.lfy:hoverAt
 }
 
 // ---- Completions ------------------------------------------------------------------
@@ -614,7 +634,7 @@ fn identifier_tail(text: &str) -> String {
 
 /// Every symbol visible from a scope: the nearer scope's first, each scope's own symbols
 /// then its imports, then `global`; one per name, the nearest winning.
-// @lfy def/query/main.lfy:117
+// @lfy def/query/main.lfy:completionsAt
 fn visible_symbols(model: &Model, scope: ScopeId) -> Vec<SymbolId> {
     let mut seen: HashSet<&str> = HashSet::new();
     let mut out = Vec::new();
@@ -641,7 +661,7 @@ fn symbol_completion(model: &Model, symbol: SymbolId) -> Completion {
     let symbol = &model.symbols[symbol];
     Completion {
         label: symbol.name.clone(),
-        kind: symbol.kind.as_str().to_string(),
+        kind: OfferedKind::Symbol(symbol.kind),
         detail: model.entities[symbol.entity]
             .definition
             .as_deref()
@@ -650,10 +670,11 @@ fn symbol_completion(model: &Model, symbol: SymbolId) -> Completion {
 }
 
 /// A keyword completion.
+// @lfy def/query/main.lfy:completionsAt
 fn keyword_completion(text: &str) -> Completion {
     Completion {
         label: text.to_string(),
-        kind: "keyword".to_string(),
+        kind: OfferedKind::Completion(CompletionKind::Keyword),
         detail: None,
     }
 }
@@ -690,7 +711,7 @@ fn first_element(syntax: &str) -> &str {
 }
 
 /// The keyword that begins each statement rule, in the order of the rules.
-// @lfy def/query/main.lfy:129
+// @lfy def/query/main.lfy:completionsAt
 fn statement_keywords() -> Vec<&'static str> {
     let mut out = Vec::new();
     for rule in STATEMENTS {
@@ -704,13 +725,13 @@ fn statement_keywords() -> Vec<&'static str> {
 }
 
 /// The primitive type keywords: what `PrimitiveType` lists.
-// @lfy def/query/main.lfy:128
+// @lfy def/query/main.lfy:completionsAt
 fn primitive_type_keywords() -> Vec<&'static str> {
     keywords_in(E::PrimitiveType.syntax())
 }
 
 /// The value keywords: true, false, null, and undefined.
-// @lfy def/query/main.lfy:130
+// @lfy def/query/main.lfy:completionsAt
 fn value_keywords() -> Vec<&'static str> {
     let mut out = keywords_in(E::Boolean.syntax());
     out.extend(keywords_in(E::Nullish.syntax()));
@@ -751,14 +772,16 @@ fn type_members(model: &Model, ty: &TypeRef) -> Option<Vec<SymbolId>> {
 
 /// What the left side of a member access offers: a module's symbols, an entity's members,
 /// or an enum's keys; `None` when the left side resolves to nothing.
-// @lfy def/query/main.lfy:123
+// @lfy def/query/main.lfy:completionsAt
 fn left_members(model: &Model, left: NodeRef) -> Option<Vec<SymbolId>> {
     let rule = model.info(left).rule;
     if rule == E::Group.entity() {
         let inner = child_nodes(model, left).into_iter().next()?;
         return left_members(model, inner);
     }
-    let symbol = model.usage_of(left).and_then(|usage| model.usages[usage].symbol)?;
+    let symbol = model
+        .usage_of(left)
+        .and_then(|usage| model.usages[usage].symbol)?;
     let symbol = &model.symbols[symbol];
     let entity = &model.entities[symbol.entity];
     match symbol.kind {
@@ -808,7 +831,7 @@ fn normalize(path: &str) -> String {
 
 /// The directories and the `.lfy` files without their extension under a directory of the
 /// project, sorted, each once.
-// @lfy def/query/main.lfy:125
+// @lfy def/query/main.lfy:completionsAt
 fn entries_under(workspace: &Workspace, directory: &str) -> Vec<Completion> {
     let disk = if directory.is_empty() {
         workspace.root.clone()
@@ -832,7 +855,7 @@ fn entries_under(workspace: &Workspace, directory: &str) -> Vec<Completion> {
         .into_iter()
         .map(|label| Completion {
             label,
-            kind: "path".to_string(),
+            kind: OfferedKind::Completion(CompletionKind::Path),
             detail: None,
         })
         .collect()
@@ -842,7 +865,7 @@ fn entries_under(workspace: &Workspace, directory: &str) -> Vec<Completion> {
 /// beginning with a dot, the entries under the directory the path names so far, relative
 /// to the file's directory; otherwise each package's identifier, then entries under its
 /// root the same way.
-// @lfy def/query/main.lfy:125
+// @lfy def/query/main.lfy:completionsAt
 fn path_completions(workspace: &Workspace, file: &str, typed: &str) -> (Vec<Completion>, String) {
     let (directory, prefix) = match typed.rfind('/') {
         Some(slash) => (&typed[..slash], &typed[slash + 1..]),
@@ -858,7 +881,9 @@ fn path_completions(workspace: &Workspace, file: &str, typed: &str) -> (Vec<Comp
             .iter()
             .find(|candidate| candidate.identifier == package)
         {
-            Some(package) => entries_under(workspace, &normalize(&format!("{}/{rest}", package.root))),
+            Some(package) => {
+                entries_under(workspace, &normalize(&format!("{}/{rest}", package.root)))
+            }
             None => Vec::new(),
         }
     } else {
@@ -867,7 +892,7 @@ fn path_completions(workspace: &Workspace, file: &str, typed: &str) -> (Vec<Comp
             .iter()
             .map(|package| Completion {
                 label: package.identifier.clone(),
-                kind: "path".to_string(),
+                kind: OfferedKind::Completion(CompletionKind::Path),
                 detail: None,
             })
             .collect()
@@ -956,7 +981,7 @@ fn expression_begins_after(before: &Token) -> bool {
 /// keywords. Where a statement can begin: every name visible, then the keyword that
 /// begins each statement. Where an expression can begin: every name visible, then the
 /// value keywords, then the primitive type keywords.
-// @lfy def/query/main.lfy:113
+// @lfy def/query/main.lfy:completionsAt
 pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> Vec<Completion> {
     let model = &workspace.model;
     let Some(id) = file_of(workspace, file) else {
@@ -965,7 +990,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
     let tokens = tokens(workspace, id);
 
     // The token the position is inside or just after, and the identifier characters
-    // typed before the position. @lfy def/query/main.lfy:116
+    // typed before the position. @lfy def/query/main.lfy:completionsAt
     let at = tokens
         .iter()
         .enumerate()
@@ -977,7 +1002,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
     let prefix_start = Position::new(position.line, position.column - prefix.chars().count());
 
     // The nearest token before the typed characters that is not trivia.
-    // @lfy def/query/main.lfy:116
+    // @lfy def/query/main.lfy:completionsAt
     let before = tokens
         .iter()
         .enumerate()
@@ -996,7 +1021,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
 
     let mut out: Vec<Completion> = Vec::new();
 
-    // Inside the string of a Use. @lfy def/query/main.lfy:125
+    // Inside the string of a Use. @lfy def/query/main.lfy:completionsAt
     let in_use_string = find_rule(model, &chain, S::Use.entity()).is_some()
         && find_rule(model, &chain, E::StringLiteral.entity()).is_some()
         && at.is_some_and(|index| {
@@ -1055,14 +1080,22 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
     };
     // The index of the nearest token before another that is not trivia.
     let previous_of = |index: usize| -> Option<usize> {
-        tokens[..index].iter().rposition(|token| !is_trivia_token(token))
+        tokens[..index]
+            .iter()
+            .rposition(|token| !is_trivia_token(token))
     };
     // Decision: a recoverable rule that fails past its trait uses (`d A is t, ` at the
     // end of a file) puts the comma in an error node, so when the tree does not say the
     // comma is in `TraitUses`, the tokens do: a run of names and commas back to `is` or
     // `extends` is a trait list.
     let in_trait_uses = before.is_some_and(|index| {
-        if find_rule(model, &nodes_covering(model, id, index), E::TraitUses.entity()).is_some() {
+        if find_rule(
+            model,
+            &nodes_covering(model, id, index),
+            E::TraitUses.entity(),
+        )
+        .is_some()
+        {
             return true;
         }
         let mut cursor = index;
@@ -1105,28 +1138,32 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
         );
 
     match before_rule {
-        // @lfy def/query/main.lfy:120
+        // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ContextAccessor)) => {
             out.extend(ContextProperty::ALL.into_iter().map(|property| Completion {
                 label: property.value().to_string(),
-                kind: "context".to_string(),
+                kind: OfferedKind::Completion(CompletionKind::Context),
                 detail: None,
             }));
         }
-        // @lfy def/query/main.lfy:121
+        // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ScopeAccessor)) => {
             // Decision: `$` after a left side (a Member) reaches that side's members, as
             // the value accessor does; alone it reaches the current entity's.
             match left_of_accessor() {
                 Some(left) => {
                     if let Some(members) = left_members(model, left) {
-                        out.extend(members.into_iter().map(|symbol| symbol_completion(model, symbol)));
+                        out.extend(
+                            members
+                                .into_iter()
+                                .map(|symbol| symbol_completion(model, symbol)),
+                        );
                     }
                 }
                 None => out.extend(members_of(model.scopes[scope].current)),
             }
         }
-        // @lfy def/query/main.lfy:122
+        // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ParentScopeAccessor)) => {
             // Decision: the parent of the scope is the nearest enclosing scope whose
             // current entity differs, since a block inside a declaration shares its
@@ -1141,17 +1178,23 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
                 parent = model.scopes[id].parent;
             }
         }
-        // @lfy def/query/main.lfy:123
+        // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ValueAccessor | P::OptionalValueAccessor)) => {
             if let Some(members) = left_of_accessor().and_then(|left| left_members(model, left)) {
-                out.extend(members.into_iter().map(|symbol| symbol_completion(model, symbol)));
+                out.extend(
+                    members
+                        .into_iter()
+                        .map(|symbol| symbol_completion(model, symbol)),
+                );
             }
-            // @lfy def/query/main.lfy:124
+            // @lfy def/query/main.lfy:completionsAt
         }
-        // @lfy def/query/main.lfy:125
-        Some(Rule::Keyword(K::IsKeyword | K::ExtendsKeyword)) => trait_names(model, scope, &mut out),
+        // @lfy def/query/main.lfy:completionsAt
+        Some(Rule::Keyword(K::IsKeyword | K::ExtendsKeyword)) => {
+            trait_names(model, scope, &mut out)
+        }
         Some(Rule::Punctuation(P::Comma)) if in_trait_uses => trait_names(model, scope, &mut out),
-        // @lfy def/query/main.lfy:126
+        // @lfy def/query/main.lfy:completionsAt
         _ if in_prose => {
             names(&mut out);
             if let Some(rule_trait) = model.trait_named("rule") {
@@ -1162,7 +1205,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
                         } else if let Some(identifier) = &e.identifier {
                             out.push(Completion {
                                 label: identifier.clone(),
-                                kind: entity_kind_name(&model.entities[entity].kind).to_string(),
+                                kind: OfferedKind::Symbol(kind_of(model, entity)),
                                 detail: e.definition.as_deref().map(model::strip_references),
                             });
                         }
@@ -1170,7 +1213,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
                 }
             }
         }
-        // @lfy def/query/main.lfy:127
+        // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::Colon)) if is_definition_colon => {
             out.extend(
                 visible_symbols(model, scope)
@@ -1178,23 +1221,34 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
                     .filter(|&symbol| {
                         matches!(
                             model.symbols[symbol].kind,
-                            SymbolKind::Data | SymbolKind::Type | SymbolKind::Enum | SymbolKind::Trait
+                            SymbolKind::Data
+                                | SymbolKind::Type
+                                | SymbolKind::Enum
+                                | SymbolKind::Trait
                         )
                     })
                     .map(|symbol| symbol_completion(model, symbol)),
             );
-            out.extend(primitive_type_keywords().into_iter().map(keyword_completion));
+            out.extend(
+                primitive_type_keywords()
+                    .into_iter()
+                    .map(keyword_completion),
+            );
         }
-        // @lfy def/query/main.lfy:129
+        // @lfy def/query/main.lfy:completionsAt
         _ if statement_begins_after(before_token) => {
             names(&mut out);
             out.extend(statement_keywords().into_iter().map(keyword_completion));
         }
-        // @lfy def/query/main.lfy:130
+        // @lfy def/query/main.lfy:completionsAt
         _ if before_token.is_some_and(expression_begins_after) => {
             names(&mut out);
             out.extend(value_keywords().into_iter().map(keyword_completion));
-            out.extend(primitive_type_keywords().into_iter().map(keyword_completion));
+            out.extend(
+                primitive_type_keywords()
+                    .into_iter()
+                    .map(keyword_completion),
+            );
         }
         _ => {}
     }
@@ -1203,7 +1257,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
 
 /// Every symbol of kind trait visible from a scope, plus the module symbols.
 // Decision: the traits come first, then the modules, each group in scope order.
-// @lfy def/query/main.lfy:125
+// @lfy def/query/main.lfy:completionsAt
 fn trait_names(model: &Model, scope: ScopeId, out: &mut Vec<Completion>) {
     let visible = visible_symbols(model, scope);
     for kind in [SymbolKind::Trait, SymbolKind::Module] {
@@ -1217,7 +1271,7 @@ fn trait_names(model: &Model, scope: ScopeId, out: &mut Vec<Completion>) {
 }
 
 /// Filters completions to the labels beginning with the typed prefix, each label once.
-// @lfy def/query/main.lfy:117
+// @lfy def/query/main.lfy:completionsAt
 fn finish(completions: Vec<Completion>, prefix: &str) -> Vec<Completion> {
     let mut seen: HashSet<String> = HashSet::new();
     completions
@@ -1235,12 +1289,13 @@ fn finish(completions: Vec<Completion>, prefix: &str) -> Vec<Completion> {
 /// `elfie.json` under the root when it has none. A token without a rule is an error of
 /// stage lexer at the token: invalid text, or the mode left open when the token has no
 /// text. An error node is an error of stage parser listing what was expected and what
-/// was found. A problem of the model is an error of stage binder at its node. A `Use`
+/// was found. A problem of the model is an error at its node, of stage loader when that
+/// node is a `Use` and of stage binder otherwise. A `Use`
 /// importing symbols of which none is used in the file, or naming a module never used, is
 /// a warning of stage binder at the `Use`. With `file` set, only that file's diagnostics
 /// are returned. Diagnostics are in `Workspace.files` order, then by start, with
 /// `elfie.json` first.
-// @lfy def/query/main.lfy:140
+// @lfy def/query/main.lfy:diagnosticsOf
 pub fn diagnostics_of(workspace: &Workspace, file: Option<&str>) -> Vec<Diagnostic> {
     let model = &workspace.model;
     let mut out = Vec::new();
@@ -1254,8 +1309,8 @@ pub fn diagnostics_of(workspace: &Workspace, file: Option<&str>) -> Vec<Diagnost
     for problem in &workspace.problems {
         match problem {
             WorkspaceProblem::Load(problem) => {
-                // @lfy def/query/main.lfy:142
-                let path = problem.path.as_deref().unwrap_or(MANIFEST); // @lfy def/query/main.lfy:143
+                // @lfy def/query/main.lfy:diagnosticsOf
+                let path = problem.path.as_deref().unwrap_or(MANIFEST); // @lfy def/query/main.lfy:diagnosticsOf
                 out.push(error(
                     Range::empty(path, Position::new(1, 0)),
                     Stage::Loader,
@@ -1263,9 +1318,21 @@ pub fn diagnostics_of(workspace: &Workspace, file: Option<&str>) -> Vec<Diagnost
                 ));
             }
             WorkspaceProblem::Bind(problem) => {
-                // @lfy def/query/main.lfy:146
+                // @lfy def/query/main.lfy:diagnosticsOf
                 if is_real(model, problem.node) {
-                    out.push(error(range_of_node(workspace, problem.node), Stage::Binder, problem.message.clone()));
+                    // Resolving uses and their cycles is the only problem loading adds,
+                    // so a problem at a `Use` came from the loader and any other from
+                    // the binder.
+                    let stage = if model.info(problem.node).rule == S::Use.entity() {
+                        Stage::Loader
+                    } else {
+                        Stage::Binder
+                    };
+                    out.push(error(
+                        range_of_node(workspace, problem.node),
+                        stage,
+                        problem.message.clone(),
+                    ));
                 }
             }
         }
@@ -1276,16 +1343,20 @@ pub fn diagnostics_of(workspace: &Workspace, file: Option<&str>) -> Vec<Diagnost
             if token.rule.is_some() {
                 continue;
             }
-            // @lfy def/query/main.lfy:144
+            // @lfy def/query/main.lfy:diagnosticsOf
             let message = if token.raw.is_empty() {
                 format!("the {} is left open at the end of the file", token.value)
             } else {
                 format!("invalid text {:?}", token.raw)
             };
-            out.push(error(span(workspace, id, index, index + 1), Stage::Lexer, message));
+            out.push(error(
+                span(workspace, id, index, index + 1),
+                Stage::Lexer,
+                message,
+            ));
         }
         for node in &source.tree.errors {
-            // @lfy def/query/main.lfy:145
+            // @lfy def/query/main.lfy:diagnosticsOf
             let found = source.tree.raw(node.start, node.end);
             let found = if found.is_empty() {
                 "the end of the file".to_string()
@@ -1297,34 +1368,46 @@ pub fn diagnostics_of(workspace: &Workspace, file: Option<&str>) -> Vec<Diagnost
             } else {
                 format!("expected {}, found {found}", node.expected.join(" or "))
             };
-            out.push(error(span(workspace, id, node.start, node.end), Stage::Parser, message));
+            out.push(error(
+                span(workspace, id, node.start, node.end),
+                Stage::Parser,
+                message,
+            ));
         }
         out.extend(unused_uses(workspace, id));
     }
 
-    // @lfy def/query/main.lfy:148
+    // @lfy def/query/main.lfy:diagnosticsOf
     if let Some(file) = file {
         out.retain(|diagnostic| diagnostic.range.file == file);
     }
-    // @lfy def/query/main.lfy:149
+    // @lfy def/query/main.lfy:diagnosticsOf
     out.sort_by(|a, b| diagnostic_key(workspace, a).cmp(&diagnostic_key(workspace, b)));
     out
 }
 
 /// The sort key of a diagnostic: `elfie.json` first, then `Workspace.files` order, then
 /// paths outside the program, then start.
-fn diagnostic_key<'d>(workspace: &Workspace, diagnostic: &'d Diagnostic) -> (usize, &'d str, Position, Position) {
+fn diagnostic_key<'d>(
+    workspace: &Workspace,
+    diagnostic: &'d Diagnostic,
+) -> (usize, &'d str, Position, Position) {
     let order = if diagnostic.range.file == MANIFEST {
         0
     } else {
         file_order(workspace, &diagnostic.range.file).saturating_add(1)
     };
-    (order, &diagnostic.range.file, diagnostic.range.start, diagnostic.range.end)
+    (
+        order,
+        &diagnostic.range.file,
+        diagnostic.range.start,
+        diagnostic.range.end,
+    )
 }
 
 /// A warning per `Use` of a file that imports symbols of which none is used in the file,
 /// or whose module symbol is never used.
-// @lfy def/query/main.lfy:147
+// @lfy def/query/main.lfy:diagnosticsOf
 fn unused_uses(workspace: &Workspace, file: FileId) -> Vec<Diagnostic> {
     let model = &workspace.model;
     let mut out = Vec::new();
@@ -1341,16 +1424,24 @@ fn unused_uses(workspace: &Workspace, file: FileId) -> Vec<Diagnostic> {
         let message = match model.symbol_of(use_node) {
             Some(symbol) => {
                 if model::usages_of(model, symbol).is_empty() {
-                    Some(format!("the module {} is never used", model.symbols[symbol].name))
+                    Some(format!(
+                        "the module {} is never used",
+                        model.symbols[symbol].name
+                    ))
                 } else {
                     None
                 }
             }
             None => {
-                let Some(used) = model.file(path) else { continue };
+                let Some(used) = model.file(path) else {
+                    continue;
+                };
                 let imported: HashSet<SymbolId> = module_symbols(model, used).into_iter().collect();
                 let any_used = model.usages.iter().any(|usage| {
-                    usage.node.file == file && usage.symbol.is_some_and(|symbol| imported.contains(&symbol))
+                    usage.node.file == file
+                        && usage
+                            .symbol
+                            .is_some_and(|symbol| imported.contains(&symbol))
                 });
                 if any_used {
                     None
@@ -1385,7 +1476,7 @@ fn is_outlined(kind: SymbolKind) -> bool {
 /// The outline of one declared symbol: its range covers the declaring node and its
 /// documentation, its selection range the identifier, and its children are the members
 /// declared in its body, then every declaration nested in its body, in order.
-// @lfy def/query/main.lfy:154
+// @lfy def/query/main.lfy:outlineOf
 fn outline_of_symbol(workspace: &Workspace, symbol: SymbolId) -> Outline {
     let model = &workspace.model;
     let s = &model.symbols[symbol];
@@ -1393,8 +1484,10 @@ fn outline_of_symbol(workspace: &Workspace, symbol: SymbolId) -> Outline {
     let start = node
         .documentation
         .first()
-        .map_or(node.start, |documentation| documentation.start.min(node.start));
-    let range = span(workspace, s.node.file, start, node.end); // @lfy def/query/main.lfy:156
+        .map_or(node.start, |documentation| {
+            documentation.start.min(node.start)
+        });
+    let range = span(workspace, s.node.file, start, node.end); // @lfy def/query/main.lfy:outlineOf
     let selection_range = match s.name_token {
         Some(index) => span(workspace, s.node.file, index, index + 1),
         None => range_of_node(workspace, s.node),
@@ -1402,21 +1495,24 @@ fn outline_of_symbol(workspace: &Workspace, symbol: SymbolId) -> Outline {
     let mut children = Vec::new();
     let mut listed: HashSet<SymbolId> = HashSet::new();
     // Members declared in the body itself; a member added by a trait is declared
-    // elsewhere and left out. @lfy def/query/main.lfy:155
+    // elsewhere and left out. @lfy def/query/main.lfy:outlineOf
     for member in model.members(s.entity) {
         let m = &model.symbols[member];
         let own = m.node.file == s.node.file
             && m.node != s.node
             && model.info(m.node).start >= node.start
             && model.info(m.node).end <= node.end;
-        if own && matches!(m.kind, SymbolKind::Member | SymbolKind::EnumMember) && listed.insert(member) {
+        if own
+            && matches!(m.kind, SymbolKind::Member | SymbolKind::EnumMember)
+            && listed.insert(member)
+        {
             children.push(outline_of_symbol(workspace, member));
         }
     }
     nested_declarations(workspace, s.node, &mut listed, &mut children);
     Outline {
         name: s.name.clone(),
-        kind: s.kind.as_str().to_string(),
+        kind: s.kind,
         range,
         selection_range,
         children,
@@ -1425,15 +1521,23 @@ fn outline_of_symbol(workspace: &Workspace, symbol: SymbolId) -> Outline {
 
 /// Every declaration nested below a node, in order, each with its own children; a node
 /// that declares something is not entered further.
-// @lfy def/query/main.lfy:155
-fn nested_declarations(workspace: &Workspace, node: NodeRef, listed: &mut HashSet<SymbolId>, out: &mut Vec<Outline>) {
+// @lfy def/query/main.lfy:outlineOf
+fn nested_declarations(
+    workspace: &Workspace,
+    node: NodeRef,
+    listed: &mut HashSet<SymbolId>,
+    out: &mut Vec<Outline>,
+) {
     let model = &workspace.model;
     for child in child_nodes(model, node) {
         match model.symbol_of(child) {
             Some(symbol) if listed.contains(&symbol) => {}
             Some(symbol)
                 if is_outlined(model.symbols[symbol].kind)
-                    && !matches!(model.symbols[symbol].kind, SymbolKind::Member | SymbolKind::EnumMember)
+                    && !matches!(
+                        model.symbols[symbol].kind,
+                        SymbolKind::Member | SymbolKind::EnumMember
+                    )
                     && model.symbols[symbol].node == child =>
             {
                 listed.insert(symbol);
@@ -1449,11 +1553,11 @@ fn nested_declarations(workspace: &Workspace, node: NodeRef, listed: &mut HashSe
 /// One outline per symbol declared in the file scope, in order, except module symbols
 /// and the symbols a `Use` imports; each holds the members of its body and every
 /// declaration nested in it. Empty for a file not in the program.
-// @lfy def/query/main.lfy:172
+// @lfy def/query/main.lfy:outlineOf
 pub fn outline_of(workspace: &Workspace, file: &str) -> Vec<Outline> {
     let model = &workspace.model;
     let Some(id) = file_of(workspace, file) else {
-        return Vec::new(); // @lfy def/query/main.lfy:157
+        return Vec::new(); // @lfy def/query/main.lfy:outlineOf
     };
     model.scopes[model.file_scopes[id]]
         .symbols
@@ -1466,7 +1570,7 @@ pub fn outline_of(workspace: &Workspace, file: &str) -> Vec<Outline> {
 
 /// The files of the program in the order `findSymbols` uses: files without a package
 /// first, then package files, each in `Workspace.files` order.
-// @lfy def/query/main.lfy:172
+// @lfy def/query/main.lfy:findSymbols
 fn files_in_search_order(workspace: &Workspace) -> Vec<FileId> {
     let own = workspace.files.iter().filter(|file| file.package.is_none());
     let packaged = workspace.files.iter().filter(|file| file.package.is_some());
@@ -1474,6 +1578,7 @@ fn files_in_search_order(workspace: &Workspace) -> Vec<FileId> {
 }
 
 /// Flattens an outline: each entry with its dotted name and no children.
+// @lfy def/query/main.lfy:findSymbols
 fn flatten(outline: &Outline, parent: Option<&str>, out: &mut Vec<Outline>) {
     let name = match parent {
         Some(parent) => format!("{parent}.{}", outline.name),
@@ -1481,7 +1586,7 @@ fn flatten(outline: &Outline, parent: Option<&str>, out: &mut Vec<Outline>) {
     };
     out.push(Outline {
         name: name.clone(),
-        kind: outline.kind.clone(),
+        kind: outline.kind,
         range: outline.range.clone(),
         selection_range: outline.selection_range.clone(),
         children: Vec::new(),
@@ -1495,7 +1600,7 @@ fn flatten(outline: &Outline, parent: Option<&str>, out: &mut Vec<Outline>) {
 /// outline of every file, flattened, a child named by its parent's name, a dot, and its
 /// own. An empty query gives every top level declaration. Files without a package come
 /// first, then package files, each in `Workspace.files` order.
-// @lfy def/query/main.lfy:180
+// @lfy def/query/main.lfy:findSymbols
 pub fn find_symbols(workspace: &Workspace, query: &str) -> Vec<Outline> {
     let query = query.to_lowercase();
     let mut out = Vec::new();
@@ -1503,7 +1608,7 @@ pub fn find_symbols(workspace: &Workspace, query: &str) -> Vec<Outline> {
         let path = workspace.model.sources[file].path.clone();
         for outline in outline_of(workspace, &path) {
             if query.is_empty() {
-                // @lfy def/query/main.lfy:163
+                // @lfy def/query/main.lfy:findSymbols
                 // Decision: flattened entries carry no children, so a top level entry
                 // is listed alone.
                 let mut top = outline.clone();
@@ -1513,7 +1618,10 @@ pub fn find_symbols(workspace: &Workspace, query: &str) -> Vec<Outline> {
             }
             let mut flat = Vec::new();
             flatten(&outline, None, &mut flat);
-            out.extend(flat.into_iter().filter(|entry| entry.name.to_lowercase().contains(&query)));
+            out.extend(
+                flat.into_iter()
+                    .filter(|entry| entry.name.to_lowercase().contains(&query)),
+            );
         }
     }
     out
@@ -1546,13 +1654,18 @@ fn declared_at(workspace: &Workspace, symbol: SymbolId) -> String {
 /// usage, references in templates and documentation included; for a module symbol only
 /// the name after `as` and its usages change. Edits are in `Workspace.files` order, then
 /// by start, and never overlap.
-// @lfy def/query/main.lfy:187
-pub fn rename_at(workspace: &Workspace, file: &str, position: Position, name: &str) -> Result<Vec<Edit>, String> {
+// @lfy def/query/main.lfy:renameAt
+pub fn rename_at(
+    workspace: &Workspace,
+    file: &str,
+    position: Position,
+    name: &str,
+) -> Result<Vec<Edit>, String> {
     let model = &workspace.model;
     let Some(symbol) = symbol_at(workspace, file, position) else {
-        return Err("nothing is declared here".to_string()); // @lfy def/query/main.lfy:189
+        return Err("nothing is declared here".to_string()); // @lfy def/query/main.lfy:renameAt
     };
-    // @lfy def/query/main.lfy:190
+    // @lfy def/query/main.lfy:renameAt
     if let Some(keyword) = K::from_text(name) {
         return Err(format!("{name} is a keyword ({})", keyword.identifier()));
     }
@@ -1567,9 +1680,13 @@ pub fn rename_at(workspace: &Workspace, file: &str, position: Position, name: &s
         return Err("the declaration spells no name that can be renamed".to_string());
     };
     let usages = usages_of_declaration(model, symbol);
-    // @lfy def/query/main.lfy:191
+    // @lfy def/query/main.lfy:renameAt
     let mut scopes: Vec<ScopeId> = vec![s.scope];
-    scopes.extend(usages.iter().map(|&usage| model.enclosing_scope(model.usages[usage].node)));
+    scopes.extend(
+        usages
+            .iter()
+            .map(|&usage| model.enclosing_scope(model.usages[usage].node)),
+    );
     for scope in scopes {
         if let Some(other) = model.lookup(scope, name) {
             return Err(format!(
@@ -1579,9 +1696,11 @@ pub fn rename_at(workspace: &Workspace, file: &str, position: Position, name: &s
         }
     }
     if model.entities[model.global].identifier.as_deref() == Some(name) {
-        return Err(format!("a symbol named {name} is already visible, declared by the program itself"));
+        return Err(format!(
+            "a symbol named {name} is already visible, declared by the program itself"
+        ));
     }
-    // @lfy def/query/main.lfy:192
+    // @lfy def/query/main.lfy:renameAt
     let mut edits = vec![Edit {
         range: span(workspace, s.node.file, name_token, name_token + 1),
         text: name.to_string(),
@@ -1600,13 +1719,18 @@ pub fn rename_at(workspace: &Workspace, file: &str, position: Position, name: &s
             });
         }
     }
-    // @lfy def/query/main.lfy:194
+    // @lfy def/query/main.lfy:renameAt
     edits.sort_by(|a, b| {
-        (file_order(workspace, &a.range.file), &a.range.file, a.range.start).cmp(&(
-            file_order(workspace, &b.range.file),
-            &b.range.file,
-            b.range.start,
-        ))
+        (
+            file_order(workspace, &a.range.file),
+            &a.range.file,
+            a.range.start,
+        )
+            .cmp(&(
+                file_order(workspace, &b.range.file),
+                &b.range.file,
+                b.range.start,
+            ))
     });
     edits.dedup();
     Ok(edits)
@@ -1618,15 +1742,18 @@ pub fn rename_at(workspace: &Workspace, file: &str, position: Position, name: &s
 /// dot, and a member's name; with a file path and a colon first, only that file's scope
 /// is searched. Every entity whose symbol is named that way in any file scope, or whose
 /// owner is, in the order [`find_symbols`] uses; empty when nothing matches.
-// @lfy def/query/main.lfy:208
+// @lfy def/query/main.lfy:find
 pub fn find(workspace: &Workspace, name: &str) -> Vec<EntityId> {
     let model = &workspace.model;
-    // @lfy def/query/main.lfy:211
+    // @lfy def/query/main.lfy:find
     let (files, name) = match name.split_once(':') {
-        Some((path, rest)) => (file_of(workspace, path).into_iter().collect::<Vec<_>>(), rest),
+        Some((path, rest)) => (
+            file_of(workspace, path).into_iter().collect::<Vec<_>>(),
+            rest,
+        ),
         None => (files_in_search_order(workspace), name),
     };
-    // @lfy def/query/main.lfy:209
+    // @lfy def/query/main.lfy:find
     let (owner, member) = match name.split_once('.') {
         Some((owner, member)) => (owner, Some(member)),
         None => (name, None),
@@ -1654,14 +1781,14 @@ pub fn find(workspace: &Workspace, name: &str) -> Vec<EntityId> {
             }
         }
     }
-    out // @lfy def/query/main.lfy:213
+    out // @lfy def/query/main.lfy:find
 }
 
 /// The text that declares an entity: the raw text of every token the declaring node
 /// covers, with the text of its documentation before it; the whole file for the anonymous
 /// entity of a file; the member statement inside the trait body for a member added by a
 /// trait.
-// @lfy def/query/main.lfy:216
+// @lfy def/query/main.lfy:sourceOf
 pub fn source_of(workspace: &Workspace, entity: EntityId) -> String {
     let model = &workspace.model;
     let e = &model.entities[entity];
@@ -1671,11 +1798,13 @@ pub fn source_of(workspace: &Workspace, entity: EntityId) -> String {
     };
     let tree = &model.sources[node.file].tree;
     if matches!(e.kind, EntityKind::File) {
-        return tree.raw(0, tree.tokens.len()); // @lfy def/query/main.lfy:218
+        return tree.raw(0, tree.tokens.len()); // @lfy def/query/main.lfy:sourceOf
     }
+    // A member added by a trait declares the member statement inside the trait body.
+    // @lfy def/query/main.lfy:sourceOf
     let tree_node = model.node(node);
     let mut out = String::new();
-    // @lfy def/query/main.lfy:217
+    // @lfy def/query/main.lfy:sourceOf
     for documentation in &tree_node.documentation {
         out.push_str(&tree.raw(documentation.start, documentation.end));
         out.push('\n');
@@ -1684,10 +1813,9 @@ pub fn source_of(workspace: &Workspace, entity: EntityId) -> String {
     out
 }
 
-
-/// The semantic token type of a symbol, by its kind; an alias or external by the entity
-/// it is bound to.
-// @lfy def/query/main.lfy:231
+/// The semantic token type of a symbol, by its kind; an alias by the entity it is bound
+/// to.
+// @lfy def/query/main.lfy:semanticTokensOf
 fn token_type_of(model: &Model, symbol: SymbolId) -> TokenType {
     let symbol = &model.symbols[symbol];
     match symbol.kind {
@@ -1698,11 +1826,13 @@ fn token_type_of(model: &Model, symbol: SymbolId) -> TokenType {
         SymbolKind::EnumMember => TokenType::EnumMember,
         SymbolKind::Function | SymbolKind::AgentFunction => TokenType::Function,
         SymbolKind::Parameter => TokenType::Parameter,
-        SymbolKind::Variable | SymbolKind::LoopVariable => TokenType::Variable,
+        SymbolKind::Variable | SymbolKind::LoopVariable | SymbolKind::External => {
+            TokenType::Variable
+        }
         SymbolKind::Member => TokenType::Property,
         SymbolKind::Module => TokenType::Namespace,
-        // @lfy def/query/main.lfy:232
-        SymbolKind::Alias | SymbolKind::External => match &model.entities[symbol.entity].kind {
+        // @lfy def/query/main.lfy:semanticTokensOf
+        SymbolKind::Alias => match &model.entities[symbol.entity].kind {
             EntityKind::Data => TokenType::Data,
             EntityKind::Trait { .. } => TokenType::Trait,
             EntityKind::Type => TokenType::Type,
@@ -1718,31 +1848,38 @@ fn token_type_of(model: &Model, symbol: SymbolId) -> TokenType {
 }
 
 /// Whether the entity a symbol is bound to was declared with `d` or `fn`.
-// @lfy def/query/main.lfy:240
+// @lfy def/query/main.lfy:semanticTokensOf
 fn is_agentic(model: &Model, symbol: SymbolId) -> bool {
     let entity = &model.entities[model.symbols[symbol].entity];
-    matches!(entity.kind, EntityKind::Data | EntityKind::Fn { agent: true, .. })
+    matches!(
+        entity.kind,
+        EntityKind::Data | EntityKind::Fn { agent: true, .. }
+    )
 }
 
 /// Whether a symbol is a variable declared with `const`.
-// @lfy def/query/main.lfy:241
+// @lfy def/query/main.lfy:semanticTokensOf
 fn is_readonly(model: &Model, symbol: SymbolId) -> bool {
     let symbol = &model.symbols[symbol];
     if symbol.kind != SymbolKind::Variable || !is_real(model, symbol.node) {
         return false;
     }
     let node = model.node(symbol.node);
-    node.token(K::ConstKeyword, model.tokens(symbol.node.file)).is_some()
+    node.token(K::ConstKeyword, model.tokens(symbol.node.file))
+        .is_some()
 }
 
 /// Whether a node lies inside a `TemplateReference`, a `TemplateExecution`, or
 /// `Documentation`.
-// @lfy def/query/main.lfy:243
+// @lfy def/query/main.lfy:semanticTokensOf
 fn in_prose(model: &Model, node: NodeRef) -> bool {
     let mut current = Some(node);
     while let Some(at) = current {
         let rule = model.info(at).rule;
-        if rule == E::TemplateReference.entity() || rule == E::TemplateExecution.entity() || rule == C::Documentation.entity() {
+        if rule == E::TemplateReference.entity()
+            || rule == E::TemplateExecution.entity()
+            || rule == C::Documentation.entity()
+        {
             return true;
         }
         current = model.parent(at);
@@ -1751,7 +1888,7 @@ fn in_prose(model: &Model, node: NodeRef) -> bool {
 }
 
 /// Modifiers as a set, given back in `TokenModifier` order with each at most once.
-// @lfy def/query/main.lfy:245
+// @lfy def/query/main.lfy:semanticTokensOf
 fn modifier_list(set: u32) -> Vec<TokenModifier> {
     TokenModifier::ALL
         .into_iter()
@@ -1768,41 +1905,48 @@ fn with_modifier(set: &mut u32, modifier: TokenModifier) {
 /// One token per token that spells a declared name, a used name, or a context property;
 /// keywords, punctuation, strings, numbers, and comments get none. Tokens are in position
 /// order and never overlap; a file not in the program gives an empty list.
-// @lfy def/query/main.lfy:223
+// @lfy def/query/main.lfy:semanticTokensOf
 pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToken> {
     let model = &workspace.model;
-    // @lfy def/query/main.lfy:227
+    // @lfy def/query/main.lfy:semanticTokensOf
     let Some(file_id) = file_of(workspace, file) else {
         return Vec::new();
     };
     // Keyed by token index, so the result is in position order and no two overlap.
-    // @lfy def/query/main.lfy:226
-    let mut found: std::collections::BTreeMap<usize, SemanticToken> = std::collections::BTreeMap::new();
+    // @lfy def/query/main.lfy:semanticTokensOf
+    let mut found: std::collections::BTreeMap<usize, SemanticToken> =
+        std::collections::BTreeMap::new();
     // Declarations.
-    // @lfy def/query/main.lfy:239
+    // @lfy def/query/main.lfy:semanticTokensOf
     for (id, symbol) in model.symbols.iter().enumerate() {
         if !is_real(model, symbol.node) || symbol.node.file != file_id {
             continue;
         }
-        let Some(token) = symbol.name_token else { continue };
+        let Some(token) = symbol.name_token else {
+            continue;
+        };
         if found.contains_key(&token) {
             continue;
         }
         let mut set = 0;
         with_modifier(&mut set, TokenModifier::Declaration);
         if is_agentic(model, id) {
-            with_modifier(&mut set, TokenModifier::Agentic); // @lfy def/query/main.lfy:240
+            with_modifier(&mut set, TokenModifier::Agentic); // @lfy def/query/main.lfy:semanticTokensOf
         }
         if is_readonly(model, id) {
-            with_modifier(&mut set, TokenModifier::Readonly); // @lfy def/query/main.lfy:241
+            with_modifier(&mut set, TokenModifier::Readonly); // @lfy def/query/main.lfy:semanticTokensOf
         }
         found.insert(
             token,
-            SemanticToken { range: span(workspace, file_id, token, token + 1), ty: token_type_of(model, id), modifiers: modifier_list(set) },
+            SemanticToken {
+                range: span(workspace, file_id, token, token + 1),
+                ty: token_type_of(model, id),
+                modifiers: modifier_list(set),
+            },
         );
     }
     // Usages.
-    // @lfy def/query/main.lfy:225
+    // @lfy def/query/main.lfy:semanticTokensOf
     for usage in &model.usages {
         if usage.node.file != file_id || usage.name.is_none() {
             continue;
@@ -1814,7 +1958,7 @@ pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToke
         let mut set = 0;
         let rule = model.info(usage.node).rule;
         let accessed = rule == E::Current.entity() || rule == E::Member.entity();
-        // @lfy def/query/main.lfy:242
+        // @lfy def/query/main.lfy:semanticTokensOf
         if accessed {
             match usage.layer {
                 Layer::Context => with_modifier(&mut set, TokenModifier::Context),
@@ -1824,7 +1968,7 @@ pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToke
             }
         }
         if in_prose(model, usage.node) {
-            with_modifier(&mut set, TokenModifier::Documentation); // @lfy def/query/main.lfy:243
+            with_modifier(&mut set, TokenModifier::Documentation); // @lfy def/query/main.lfy:semanticTokensOf
         }
         let ty = match usage.symbol {
             Some(symbol) => {
@@ -1837,7 +1981,7 @@ pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToke
                 token_type_of(model, symbol)
             }
             // A context property is a property; anything else unresolved is a variable.
-            // @lfy def/query/main.lfy:234
+            // @lfy def/query/main.lfy:semanticTokensOf
             None if usage.layer == Layer::Context => {
                 let name = usage.name.as_deref().unwrap_or_default();
                 if ContextProperty::lookup(name).is_none() {
@@ -1845,19 +1989,30 @@ pub fn semantic_tokens_of(workspace: &Workspace, file: &str) -> Vec<SemanticToke
                 }
                 TokenType::Property
             }
-            // @lfy def/query/main.lfy:235
+            // @lfy def/query/main.lfy:semanticTokensOf
             None => {
                 // A member of something the model does not know got no problem and is
                 // not a name of the program.
-                // @lfy def/query/main.lfy:236
-                if !model.problems.iter().any(|problem| problem.node == usage.node) {
+                // @lfy def/query/main.lfy:semanticTokensOf
+                if !model
+                    .problems
+                    .iter()
+                    .any(|problem| problem.node == usage.node)
+                {
                     continue;
                 }
-                with_modifier(&mut set, TokenModifier::Unresolved); // @lfy def/query/main.lfy:244
+                with_modifier(&mut set, TokenModifier::Unresolved); // @lfy def/query/main.lfy:semanticTokensOf
                 TokenType::Variable
             }
         };
-        found.insert(token, SemanticToken { range: span(workspace, file_id, token, token + 1), ty, modifiers: modifier_list(set) });
+        found.insert(
+            token,
+            SemanticToken {
+                range: span(workspace, file_id, token, token + 1),
+                ty,
+                modifiers: modifier_list(set),
+            },
+        );
     }
     found.into_values().collect()
 }
@@ -1958,24 +2113,36 @@ mod tests {
         workspace::load(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")))
     }
 
-    // @lfy def/query/main.lfy:24
+    // @lfy def/query/main.lfy:rangeOf
     #[test]
     fn a_range_runs_from_the_first_token_to_just_after_the_last() {
         let fixture = Fixture::one("/** Block\n doc **/\nd A {}\n");
         let ws = fixture.load();
         let id = ws.model.file(A).unwrap();
         // A token holding a line break ends on the next line.
-        assert_eq!(range_of(&ws, id, NodeOrToken::Token(1)), range(A, (1, 3), (2, 5)));
-        assert_eq!(range_of(&ws, id, NodeOrToken::Token(0)), range(A, (1, 0), (1, 3)));
+        assert_eq!(
+            range_of(&ws, id, NodeOrToken::Token(1)),
+            range(A, (1, 3), (2, 5))
+        );
+        assert_eq!(
+            range_of(&ws, id, NodeOrToken::Token(0)),
+            range(A, (1, 0), (1, 3))
+        );
         let root = &ws.model.sources[id].tree.root;
-        assert_eq!(range_of(&ws, id, NodeOrToken::Node(root)), range(A, (1, 0), (4, 0)));
+        assert_eq!(
+            range_of(&ws, id, NodeOrToken::Node(root)),
+            range(A, (1, 0), (4, 0))
+        );
         let declaration = root.find(S::DataDeclaration).unwrap();
-        assert_eq!(range_of(&ws, id, NodeOrToken::Node(declaration)), range(A, (3, 0), (3, 6)));
+        assert_eq!(
+            range_of(&ws, id, NodeOrToken::Node(declaration)),
+            range(A, (3, 0), (3, 6))
+        );
         let r = ws.model.node_ref(id, declaration).unwrap();
         assert_eq!(range_of_node(&ws, r), range(A, (3, 0), (3, 6)));
     }
 
-    // @lfy def/query/main.lfy:28
+    // @lfy def/query/main.lfy:rangeOf
     #[test]
     fn a_node_covering_no_token_gives_an_empty_range_where_it_would_start() {
         let fixture = Fixture::one("");
@@ -1983,17 +2150,23 @@ mod tests {
         let id = ws.model.file(A).unwrap();
         let root = &ws.model.sources[id].tree.root;
         assert_eq!(root.start, root.end);
-        assert_eq!(range_of(&ws, id, NodeOrToken::Node(root)), Range::empty(A, at(1, 0)));
+        assert_eq!(
+            range_of(&ws, id, NodeOrToken::Node(root)),
+            Range::empty(A, at(1, 0))
+        );
         // An empty error node at the end of the file sits after the last token.
         let fixture = Fixture::one("const y = A@");
         let ws = fixture.load();
         let id = ws.model.file(A).unwrap();
         let error = &ws.model.sources[id].tree.errors[0];
         assert_eq!(error.start, error.end);
-        assert_eq!(span(&ws, id, error.start, error.end), Range::empty(A, at(1, 12)));
+        assert_eq!(
+            span(&ws, id, error.start, error.end),
+            Range::empty(A, at(1, 12))
+        );
     }
 
-    // @lfy def/query/main.lfy:39
+    // @lfy def/query/main.lfy:tokenAt
     #[test]
     fn the_token_just_after_an_identifier_still_belongs_to_it() {
         let fixture = Fixture::one("const x = 1;");
@@ -2005,8 +2178,14 @@ mod tests {
         assert_eq!(token_at(&ws, A, at(1, 13)), None);
         assert_eq!(token_at(&ws, "def/none.lfy", at(1, 0)), None);
         // Inside a token, and after a keyword.
-        assert_eq!(token(&ws, 0, token_at(&ws, A, at(1, 2)).unwrap()).raw, "const");
-        assert_eq!(token(&ws, 0, token_at(&ws, A, at(1, 5)).unwrap()).raw, "const");
+        assert_eq!(
+            token(&ws, 0, token_at(&ws, A, at(1, 2)).unwrap()).raw,
+            "const"
+        );
+        assert_eq!(
+            token(&ws, 0, token_at(&ws, A, at(1, 5)).unwrap()).raw,
+            "const"
+        );
         // Between a space and a setter the later token wins.
         assert_eq!(token(&ws, 0, token_at(&ws, A, at(1, 8)).unwrap()).raw, "=");
         // Just after a number the later token wins; at the very end nothing does.
@@ -2018,7 +2197,7 @@ mod tests {
         assert_eq!(token(&ws, 0, token_at(&ws, A, at(1, 11)).unwrap()).raw, "y");
     }
 
-    // @lfy def/query/main.lfy:52
+    // @lfy def/query/main.lfy:nodesAt
     #[test]
     fn nodes_at_walks_from_the_root_down_to_the_node_holding_the_token() {
         let fixture = Fixture::one("d A {} const y: `See [[A]]` = 1;");
@@ -2026,7 +2205,10 @@ mod tests {
         let model = &ws.model;
         let position = find_pos("d A {} const y: `See [[A]]` = 1;", "A]]", 0);
         let nodes = nodes_at(&ws, A, position);
-        let rules: Vec<&str> = nodes.iter().map(|&r| model.info(r).rule.identifier()).collect();
+        let rules: Vec<&str> = nodes
+            .iter()
+            .map(|&r| model.info(r).rule.identifier())
+            .collect();
         assert_eq!(
             rules,
             [
@@ -2048,11 +2230,15 @@ mod tests {
         }
         let token = token_at(&ws, A, position).unwrap();
         let last = model.node(*nodes.last().unwrap());
-        assert!(last.children.iter().any(|child| child.as_token() == Some(token)));
+        assert!(
+            last.children
+                .iter()
+                .any(|child| child.as_token() == Some(token))
+        );
         assert!(nodes_at(&ws, A, at(9, 0)).is_empty());
     }
 
-    // @lfy def/query/main.lfy:65
+    // @lfy def/query/main.lfy:symbolAt
     #[test]
     fn a_name_in_code_and_in_a_template_reference_resolve_alike() {
         let text = "d A {} const y = A;";
@@ -2063,7 +2249,10 @@ mod tests {
         assert_eq!(ws.model.symbols[symbol].kind, SymbolKind::Data);
         // The declaration itself.
         assert_eq!(symbol_at(&ws, A, at(1, 2)), Some(symbol));
-        assert_eq!(symbol_at(&ws, A, find_pos(text, "y", 0)).map(|s| ws.model.symbols[s].name.clone()), Some("y".to_string()));
+        assert_eq!(
+            symbol_at(&ws, A, find_pos(text, "y", 0)).map(|s| ws.model.symbols[s].name.clone()),
+            Some("y".to_string())
+        );
         // Anything else.
         assert_eq!(symbol_at(&ws, A, find_pos(text, "const", 0)), None);
         assert_eq!(symbol_at(&ws, A, find_pos(text, "=", 0)), None);
@@ -2079,12 +2268,15 @@ mod tests {
         assert_eq!(symbol_at(&ws, A, find_pos(text, "]]", 0)), Some(symbol));
     }
 
-    // @lfy def/query/main.lfy:62
+    // @lfy def/query/main.lfy:symbolAt
     #[test]
     fn the_path_of_a_use_gives_its_module_symbol_or_nothing() {
         let fixture = Fixture::new();
         fixture
-            .write("def/a.lfy", "use \"./b\" as B;\nuse \"./b\";\nconst y = B.B;\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\" as B;\nuse \"./b\";\nconst y = B.B;\n",
+            )
             .write("def/b.lfy", "d B {}\n");
         let ws = fixture.load();
         let symbol = symbol_at(&ws, A, at(1, 6)).unwrap();
@@ -2096,10 +2288,13 @@ mod tests {
         assert_eq!(symbol_at(&ws, A, at(3, 10)), Some(symbol));
         let member = symbol_at(&ws, A, at(3, 12)).unwrap();
         assert_eq!(ws.model.symbols[member].kind, SymbolKind::Data);
-        assert_eq!(ws.model.sources[ws.model.symbols[member].node.file].path, "def/b.lfy");
+        assert_eq!(
+            ws.model.sources[ws.model.symbols[member].node.file].path,
+            "def/b.lfy"
+        );
     }
 
-    // @lfy def/query/main.lfy:76
+    // @lfy def/query/main.lfy:definitionOf
     #[test]
     fn definition_is_the_identifier_of_the_declaration() {
         let fixture = Fixture::new();
@@ -2109,26 +2304,47 @@ mod tests {
         let ws = fixture.load();
         assert!(ws.problems.is_empty(), "{:?}", ws.problems);
         // A data declared in another file.
-        assert_eq!(definition_of(&ws, A, at(3, 12)), Some(range("def/b.lfy", (1, 2), (1, 3))));
+        assert_eq!(
+            definition_of(&ws, A, at(3, 12)),
+            Some(range("def/b.lfy", (1, 2), (1, 3)))
+        );
         // The path of a Use, and a module symbol, give the used file.
-        assert_eq!(definition_of(&ws, A, at(1, 6)), Some(Range::empty("def/b.lfy", at(1, 0))));
-        assert_eq!(definition_of(&ws, A, at(2, 6)), Some(Range::empty("def/b.lfy", at(1, 0))));
-        assert_eq!(definition_of(&ws, A, at(3, 10)), Some(Range::empty("def/b.lfy", at(1, 0))));
+        assert_eq!(
+            definition_of(&ws, A, at(1, 6)),
+            Some(Range::empty("def/b.lfy", at(1, 0)))
+        );
+        assert_eq!(
+            definition_of(&ws, A, at(2, 6)),
+            Some(Range::empty("def/b.lfy", at(1, 0)))
+        );
+        assert_eq!(
+            definition_of(&ws, A, at(3, 10)),
+            Some(Range::empty("def/b.lfy", at(1, 0)))
+        );
         // An alias gives its own declaration.
-        assert_eq!(definition_of(&ws, A, at(4, 10)), Some(range(A, (3, 6), (3, 7))));
+        assert_eq!(
+            definition_of(&ws, A, at(4, 10)),
+            Some(range(A, (3, 6), (3, 7)))
+        );
         // A member added by a trait gives the statement in the trait body.
-        assert_eq!(definition_of(&ws, A, at(6, 18)), Some(range(A, (5, 11), (5, 12))));
+        assert_eq!(
+            definition_of(&ws, A, at(6, 18)),
+            Some(range(A, (5, 11), (5, 12)))
+        );
         // Nothing declared.
         assert_eq!(definition_of(&ws, A, at(4, 0)), None);
         assert_eq!(definition_of(&ws, A, at(20, 0)), None);
     }
 
-    // @lfy def/query/main.lfy:84
+    // @lfy def/query/main.lfy:referencesTo
     #[test]
     fn references_cover_every_usage_in_file_order() {
         let fixture = Fixture::new();
         fixture
-            .write("def/a.lfy", "use \"./b\";\nconst y = B;\nconst z: `Is [[B]]` = B;\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\";\nconst y = B;\nconst z: `Is [[B]]` = B;\n",
+            )
             .write("def/b.lfy", "d B {}\nconst x = B;\n");
         let ws = fixture.load();
         let with = references_to(&ws, A, at(2, 10), true);
@@ -2147,7 +2363,7 @@ mod tests {
         assert!(references_to(&ws, A, at(2, 0), true).is_empty());
     }
 
-    // @lfy def/query/main.lfy:86
+    // @lfy def/query/main.lfy:referencesTo
     #[test]
     fn references_to_a_trait_member_include_every_receiver() {
         let text = "trait t { $m = string; }\nd A is t { $n = A$m; $o = $m; }\n";
@@ -2157,28 +2373,34 @@ mod tests {
         let from_declaration = references_to(&ws, A, at(1, 11), true);
         assert_eq!(
             from_declaration,
-            [range(A, (1, 11), (1, 12)), range(A, (2, 18), (2, 19)), range(A, (2, 27), (2, 28))]
+            [
+                range(A, (1, 11), (1, 12)),
+                range(A, (2, 18), (2, 19)),
+                range(A, (2, 27), (2, 28))
+            ]
         );
         assert_eq!(references_to(&ws, A, at(2, 18), true), from_declaration);
     }
 
-    // @lfy def/query/main.lfy:110
+    // @lfy def/query/main.lfy:hoverAt
     #[test]
     fn hover_shows_kind_identifier_definition_and_documentation() {
         let text = "/// Doc\nd A: `An A` {} const y = A;";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
         let hover = hover_at(&ws, A, find_pos(text, "A;", 0)).unwrap();
-        assert_eq!(hover.kind, "data");
+        assert_eq!(hover.kind, SymbolKind::Data);
         assert_eq!(hover.identifier, "A");
         assert_eq!(hover.definition.as_deref(), Some("An A"));
         assert_eq!(hover.documentation.as_deref(), Some("Doc"));
         assert!(hover.criteria.is_empty());
-        assert_eq!(hover.range, range(A, (2, 25), (2, 26)));
+        // The range covers the identifier of the declaration, not the token hovered.
+        // @lfy def/query/main.lfy:hoverOf
+        assert_eq!(hover.range, range(A, (2, 2), (2, 3)));
         assert_eq!(hover_at(&ws, A, at(2, 12)), None);
     }
 
-    // @lfy def/query/main.lfy:95
+    // @lfy def/query/main.lfy:hoverOf
     #[test]
     fn hover_of_resolves_references_types_members_and_block_documentation() {
         let text = "/** Block\n doc **/\ntrait t { $m: `Of [[A]]` = string; }\nd A is t {}\nconst v: A = A;\nconst w = 1;\n";
@@ -2187,33 +2409,39 @@ mod tests {
         let model = &ws.model;
         assert!(ws.problems.is_empty(), "{:?}", ws.problems);
         let t = find(&ws, "t")[0];
-        let hover = hover_of(&ws, t, Range::empty(A, at(1, 0)));
-        assert_eq!(hover.kind, "trait");
+        let hover = hover_of(&ws, t);
+        assert_eq!(hover.kind, SymbolKind::Trait);
         assert_eq!(hover.documentation.as_deref(), Some("Block\ndoc"));
-        assert_eq!(hover.range, Range::empty(A, at(1, 0)));
+        // The identifier of the declaration, documentation excluded.
+        // @lfy def/query/main.lfy:hoverOf
+        assert_eq!(hover.range, range(A, (3, 6), (3, 7)));
         let m = find(&ws, "t.m")[0];
-        let hover = hover_of(&ws, m, Range::empty(A, at(1, 0)));
-        assert_eq!(hover.kind, "member");
+        let hover = hover_of(&ws, m);
+        assert_eq!(hover.kind, SymbolKind::Member);
         assert_eq!(hover.identifier, "m");
         assert_eq!(hover.definition.as_deref(), Some("Of A"));
         assert_eq!(hover.ty.as_deref(), Some("string"));
         assert_eq!(hover.documentation, None);
+        assert_eq!(hover.range, range(A, (3, 11), (3, 12)));
         let v = find(&ws, "v")[0];
-        let hover = hover_of(&ws, v, Range::empty(A, at(1, 0)));
-        assert_eq!(hover.kind, "variable");
+        let hover = hover_of(&ws, v);
+        assert_eq!(hover.kind, SymbolKind::Variable);
         assert_eq!(hover.ty.as_deref(), Some("A"));
         assert_eq!(hover.definition, None);
-        // The anonymous entity of the file is named by its first line.
-        let hover = hover_of(&ws, model.file_entities[0], Range::empty(A, at(1, 0)));
-        assert_eq!(hover.kind, "file");
+        // The anonymous entity of the file is named by its first line, and stands for
+        // the module the file is.
+        let hover = hover_of(&ws, model.file_entities[0]);
+        assert_eq!(hover.kind, SymbolKind::Module);
         assert_eq!(hover.identifier, "/** Block");
-        // The global entity has no node to read.
-        let hover = hover_of(&ws, model.global, Range::empty(A, at(1, 0)));
+        assert_eq!(hover.range.start, at(1, 0));
+        // The global entity has no node to read, so it names no file.
+        let hover = hover_of(&ws, model.global);
         assert_eq!(hover.identifier, "global");
         assert_eq!(hover.documentation, None);
+        assert_eq!(hover.range, Range::empty("", at(1, 0)));
     }
 
-    // @lfy def/query/main.lfy:133
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn after_the_context_accessor_every_context_property_is_offered() {
         let fixture = Fixture::one("d A { $x = string; } const y = A@");
@@ -2225,7 +2453,11 @@ mod tests {
         assert!(names.contains(&"definition"));
         assert!(!names.contains(&"A"));
         assert!(!names.contains(&"y"));
-        assert!(completions.iter().all(|c| c.kind == "context"));
+        assert!(
+            completions
+                .iter()
+                .all(|c| c.kind == OfferedKind::Completion(CompletionKind::Context))
+        );
         // The typed prefix filters, case sensitive.
         let fixture = Fixture::one("d A { $x = string; } const y = A@de");
         let ws = fixture.load();
@@ -2235,7 +2467,7 @@ mod tests {
         assert!(completions_at(&ws, A, at(1, 35)).is_empty());
     }
 
-    // @lfy def/query/main.lfy:137
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn after_is_every_visible_trait_is_offered() {
         let fixture = Fixture::one("trait t {} d A is ");
@@ -2243,19 +2475,25 @@ mod tests {
         let completions = completions_at(&ws, A, at(1, 18));
         assert_eq!(completions.len(), 1, "{completions:?}");
         assert_eq!(completions[0].label, "t");
-        assert_eq!(completions[0].kind, "trait");
+        assert_eq!(completions[0].kind, OfferedKind::Symbol(SymbolKind::Trait));
         // Also after a comma inside trait uses, and after extends; modules are offered too.
         let fixture = Fixture::new();
         fixture
-            .write("def/a.lfy", "use \"./b\" as B;\ntrait t {} trait u extends t, \nd A is t, ")
+            .write(
+                "def/a.lfy",
+                "use \"./b\" as B;\ntrait t {} trait u extends t, \nd A is t, ",
+            )
             .write("def/b.lfy", "");
         let ws = fixture.load();
         assert_eq!(labels(&completions_at(&ws, A, at(2, 30))), ["t", "u", "B"]);
         assert_eq!(labels(&completions_at(&ws, A, at(3, 10))), ["t", "u", "B"]);
-        assert_eq!(completions_at(&ws, A, at(3, 10))[2].kind, "module");
+        assert_eq!(
+            completions_at(&ws, A, at(3, 10))[2].kind,
+            OfferedKind::Symbol(SymbolKind::Module)
+        );
     }
 
-    // @lfy def/query/main.lfy:121
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn accessors_offer_members_of_what_they_reach() {
         let text = "d A { $x: `X` = string; $y = number; }\nenum E { one = 1, two = 2 }\nd B { $z = A.; $w = $; $v = $&; $u = E.; $t = q.; $s = A$; }\n";
@@ -2263,22 +2501,34 @@ mod tests {
         let ws = fixture.load();
         let value = completions_at(&ws, A, after(find_pos(text, "A.;", 0), 2));
         assert_eq!(labels(&value), ["x", "y"]);
-        assert_eq!(value[0].kind, "member");
+        assert_eq!(value[0].kind, OfferedKind::Symbol(SymbolKind::Member));
         assert_eq!(value[0].detail.as_deref(), Some("X"));
-        assert_eq!(labels(&completions_at(&ws, A, after(find_pos(text, "$;", 0), 1))), ["z", "w", "v", "u", "t", "s"]);
+        assert_eq!(
+            labels(&completions_at(&ws, A, after(find_pos(text, "$;", 0), 1))),
+            ["z", "w", "v", "u", "t", "s"]
+        );
         assert!(completions_at(&ws, A, after(find_pos(text, "$&;", 0), 2)).is_empty());
-        assert_eq!(labels(&completions_at(&ws, A, after(find_pos(text, "E.;", 0), 2))), ["one", "two"]);
+        assert_eq!(
+            labels(&completions_at(&ws, A, after(find_pos(text, "E.;", 0), 2))),
+            ["one", "two"]
+        );
         assert!(completions_at(&ws, A, after(find_pos(text, "q.;", 0), 2)).is_empty());
-        assert_eq!(labels(&completions_at(&ws, A, after(find_pos(text, "A$;", 0), 2))), ["x", "y"]);
+        assert_eq!(
+            labels(&completions_at(&ws, A, after(find_pos(text, "A$;", 0), 2))),
+            ["x", "y"]
+        );
         // At the top of a data the parent scope reaches the file's entity, which has no
         // members; a nested data reaches its owner's.
         let text = "d A { $x = string; d C { $y = $&; } }\n";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
-        assert_eq!(labels(&completions_at(&ws, A, after(find_pos(text, "$&;", 0), 2))), ["x"]);
+        assert_eq!(
+            labels(&completions_at(&ws, A, after(find_pos(text, "$&;", 0), 2))),
+            ["x"]
+        );
     }
 
-    // @lfy def/query/main.lfy:123
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn a_module_offers_its_own_symbols_after_the_value_accessor() {
         let fixture = Fixture::new();
@@ -2289,17 +2539,26 @@ mod tests {
         let ws = fixture.load();
         let completions = completions_at(&ws, A, at(2, 12));
         assert_eq!(labels(&completions), ["B", "k"]);
-        assert_eq!(completions[0].kind, "data");
-        assert_eq!(completions[1].kind, "variable");
+        assert_eq!(completions[0].kind, OfferedKind::Symbol(SymbolKind::Data));
+        assert_eq!(
+            completions[1].kind,
+            OfferedKind::Symbol(SymbolKind::Variable)
+        );
     }
 
-    // @lfy def/query/main.lfy:125
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn inside_the_string_of_a_use_paths_are_offered() {
         let fixture = Fixture::new();
         fixture
-            .write("elfie.json", r#"{ "dependencies": { "rust": { "root": "targets/rust" } } }"#)
-            .write("def/a.lfy", "use \"./\";\nuse \"\";\nuse \"rust/\";\nuse \"./sub/\";\nuse \"./s\";\n")
+            .write(
+                "elfie.json",
+                r#"{ "dependencies": { "rust": { "root": "targets/rust" } } }"#,
+            )
+            .write(
+                "def/a.lfy",
+                "use \"./\";\nuse \"\";\nuse \"rust/\";\nuse \"./sub/\";\nuse \"./s\";\n",
+            )
             .write("def/b.lfy", "")
             .write("def/sub/inner.lfy", "")
             .write("def/notes.txt", "")
@@ -2308,23 +2567,33 @@ mod tests {
         let ws = fixture.load();
         let dotted = completions_at(&ws, A, at(1, 7));
         assert_eq!(labels(&dotted), ["a", "b", "sub"]);
-        assert!(dotted.iter().all(|c| c.kind == "path"));
+        assert!(
+            dotted
+                .iter()
+                .all(|c| c.kind == OfferedKind::Completion(CompletionKind::Path))
+        );
         assert_eq!(labels(&completions_at(&ws, A, at(2, 5))), ["rust"]);
-        assert_eq!(labels(&completions_at(&ws, A, at(3, 10))), ["guidance", "main"]);
+        assert_eq!(
+            labels(&completions_at(&ws, A, at(3, 10))),
+            ["guidance", "main"]
+        );
         assert_eq!(labels(&completions_at(&ws, A, at(4, 11))), ["inner"]);
         // The last segment typed filters.
         assert_eq!(labels(&completions_at(&ws, A, at(5, 8))), ["sub"]);
     }
 
-    // @lfy def/query/main.lfy:126
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn inside_a_reference_names_then_rule_entities_are_offered() {
         let text = "trait rule {}\nd Identifier is rule {}\nd A: `See [[A]]` {}\n/// Docs [[y]]\nconst y = 1;\n";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
         let in_template = completions_at(&ws, A, after(find_pos(text, "[[A]]", 0), 2));
-        assert_eq!(labels(&in_template), ["rule", "Identifier", "A", "y", "global"]);
-        assert_eq!(in_template[1].kind, "data");
+        assert_eq!(
+            labels(&in_template),
+            ["rule", "Identifier", "A", "y", "global"]
+        );
+        assert_eq!(in_template[1].kind, OfferedKind::Symbol(SymbolKind::Data));
         // Typing a name inside a documentation reference filters the same list.
         let in_documentation = completions_at(&ws, A, after(find_pos(text, "[[y]]", 0), 3));
         assert_eq!(labels(&in_documentation), ["y"]);
@@ -2338,7 +2607,7 @@ mod tests {
         assert_eq!(labels(&far), ["Identifier"]);
     }
 
-    // @lfy def/query/main.lfy:127
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn after_the_colon_of_a_definition_types_are_offered() {
         let text = "d A {}\ntrait t {}\nenum E {}\ntype T {}\nconst v = 1;\nconst w: \nconst u: T = { k: };\n";
@@ -2347,13 +2616,18 @@ mod tests {
         let completions = completions_at(&ws, A, at(6, 9));
         assert_eq!(
             labels(&completions),
-            ["A", "t", "E", "T", "boolean", "number", "string", "object", "function", "trait"]
+            [
+                "A", "t", "E", "T", "boolean", "number", "string", "object", "function", "trait"
+            ]
         );
-        assert_eq!(completions[4].kind, "keyword");
+        assert_eq!(
+            completions[4].kind,
+            OfferedKind::Completion(CompletionKind::Keyword)
+        );
         assert!(!labels(&completions).contains(&"v"));
     }
 
-    // @lfy def/query/main.lfy:129
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn where_a_statement_begins_names_then_statement_keywords_are_offered() {
         let text = "d A {}\nconst v = 1;\nfunction f(p: string) { const q = 2; \n}\n";
@@ -2361,20 +2635,31 @@ mod tests {
         let ws = fixture.load();
         let top = completions_at(&ws, A, at(5, 0));
         let labels_top = labels(&top);
-        assert!(labels_top.starts_with(&["A", "v", "f", "global", "d", "fn", "function", "trait"]), "{labels_top:?}");
-        assert!(labels_top.contains(&"const") && labels_top.contains(&"let") && labels_top.contains(&"matchall"));
+        assert!(
+            labels_top.starts_with(&["A", "v", "f", "global", "d", "fn", "function", "trait"]),
+            "{labels_top:?}"
+        );
+        assert!(
+            labels_top.contains(&"const")
+                && labels_top.contains(&"let")
+                && labels_top.contains(&"matchall")
+        );
         assert!(!labels_top.contains(&"q"));
         assert!(!labels_top.contains(&"true"));
         // Inside the function, the nearer scope comes first.
         let inner = completions_at(&ws, A, at(3, 37));
-        assert!(labels(&inner).starts_with(&["q", "p", "A", "v", "f"]), "{:?}", labels(&inner));
+        assert!(
+            labels(&inner).starts_with(&["q", "p", "A", "v", "f"]),
+            "{:?}",
+            labels(&inner)
+        );
         // At the start of an empty file.
         let fixture = Fixture::one("");
         let ws = fixture.load();
         assert!(labels(&completions_at(&ws, A, at(1, 0))).contains(&"const"));
     }
 
-    // @lfy def/query/main.lfy:130
+    // @lfy def/query/main.lfy:completionsAt
     #[test]
     fn where_an_expression_begins_names_then_value_and_type_keywords_are_offered() {
         let text = "d A {}\nconst w = v + ;\nconst v = \n";
@@ -2383,10 +2668,31 @@ mod tests {
         let completions = completions_at(&ws, A, at(3, 10));
         assert_eq!(
             labels(&completions),
-            ["A", "w", "v", "global", "true", "false", "null", "undefined", "boolean", "number", "string", "object", "function", "trait"]
+            [
+                "A",
+                "w",
+                "v",
+                "global",
+                "true",
+                "false",
+                "null",
+                "undefined",
+                "boolean",
+                "number",
+                "string",
+                "object",
+                "function",
+                "trait"
+            ]
         );
-        assert_eq!(completions[4].kind, "keyword");
-        assert_eq!(labels(&completions_at(&ws, A, at(2, 14)))[..4], ["A", "w", "v", "global"]);
+        assert_eq!(
+            completions[4].kind,
+            OfferedKind::Completion(CompletionKind::Keyword)
+        );
+        assert_eq!(
+            labels(&completions_at(&ws, A, at(2, 14)))[..4],
+            ["A", "w", "v", "global"]
+        );
         // A typed prefix filters the names.
         assert_eq!(labels(&completions_at(&ws, A, at(2, 11))), ["v"]);
         // After a name nothing can begin.
@@ -2394,7 +2700,7 @@ mod tests {
         assert!(completions_at(&ws, "def/none.lfy", at(1, 0)).is_empty());
     }
 
-    // @lfy def/query/main.lfy:151
+    // @lfy def/query/main.lfy:diagnosticsOf
     #[test]
     fn an_undeclared_name_is_a_binder_error_at_the_name() {
         let fixture = Fixture::one("const y = z;");
@@ -2407,7 +2713,7 @@ mod tests {
         assert!(diagnostics[0].message.contains('z'));
     }
 
-    // @lfy def/query/main.lfy:155
+    // @lfy def/query/main.lfy:diagnosticsOf
     #[test]
     fn a_missing_name_is_a_parser_error_at_the_equals_sign() {
         let fixture = Fixture::one("const = 1;");
@@ -2417,24 +2723,45 @@ mod tests {
         assert_eq!(diagnostics[0].stage, Stage::Parser);
         assert_eq!(diagnostics[0].severity, Severity::Error);
         assert_eq!(diagnostics[0].range.start, at(1, 6));
-        assert!(diagnostics[0].message.contains("Identifier"), "{}", diagnostics[0].message);
-        assert!(diagnostics[0].message.contains('='), "{}", diagnostics[0].message);
+        assert!(
+            diagnostics[0].message.contains("Identifier"),
+            "{}",
+            diagnostics[0].message
+        );
+        assert!(
+            diagnostics[0].message.contains('='),
+            "{}",
+            diagnostics[0].message
+        );
         assert!(diagnostics_of(&ws, Some("def/other.lfy")).is_empty());
     }
 
-    // @lfy def/query/main.lfy:142
+    // @lfy def/query/main.lfy:diagnosticsOf
     #[test]
     fn load_problems_are_placed_at_the_top_of_their_path_or_of_the_manifest() {
         let fixture = Fixture::new();
         fixture
-            .write("elfie.json", r#"{ "dependencies": { "gone": { "root": "nowhere" } }, "targets": { "t": 3 } }"#)
+            .write(
+                "elfie.json",
+                r#"{ "dependencies": { "gone": { "root": "nowhere" } }, "targets": { "t": 3 } }"#,
+            )
             .write("def/a.lfy", "use \"./missing\";\n");
         let ws = fixture.load();
         let diagnostics = diagnostics_of(&ws, None);
-        assert!(diagnostics.iter().all(|d| d.stage == Stage::Loader && d.severity == Severity::Error), "{diagnostics:?}");
+        assert!(
+            diagnostics
+                .iter()
+                .all(|d| d.stage == Stage::Loader && d.severity == Severity::Error),
+            "{diagnostics:?}"
+        );
         let files: Vec<&str> = diagnostics.iter().map(|d| d.range.file.as_str()).collect();
         assert_eq!(files, ["elfie.json", "def/a.lfy", "nowhere"]);
-        assert!(diagnostics.iter().all(|d| d.range.is_empty() && d.range.start == at(1, 0)));
+        // Each `LoadProblem` sits at the top of its path; the unresolved `Use` is a
+        // `Problem` at its node, of stage loader because that node is a `Use`.
+        // @lfy def/query/main.lfy:diagnosticsOf
+        assert_eq!(diagnostics[0].range, Range::empty("elfie.json", at(1, 0)));
+        assert_eq!(diagnostics[1].range, range(A, (1, 0), (1, 16)));
+        assert_eq!(diagnostics[2].range, Range::empty("nowhere", at(1, 0)));
         // A problem with no path goes to elfie.json whether or not it exists.
         let ws = workspace::load(&fixture.root.join("absent"));
         let diagnostics = diagnostics_of(&ws, None);
@@ -2442,20 +2769,30 @@ mod tests {
         assert_eq!(diagnostics[0].range, Range::empty("elfie.json", at(1, 0)));
     }
 
-    // @lfy def/query/main.lfy:144
+    // @lfy def/query/main.lfy:diagnosticsOf
     #[test]
     fn invalid_text_and_an_open_mode_are_lexer_errors() {
         let fixture = Fixture::one("const y = 1;\nconst z = `open");
         let ws = fixture.load();
         let diagnostics = diagnostics_of(&ws, None);
-        let lexer: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.stage == Stage::Lexer).collect();
+        let lexer: Vec<&Diagnostic> = diagnostics
+            .iter()
+            .filter(|d| d.stage == Stage::Lexer)
+            .collect();
         assert_eq!(lexer.len(), 1, "{diagnostics:?}");
-        assert!(lexer[0].message.contains("template"), "{}", lexer[0].message);
+        assert!(
+            lexer[0].message.contains("template"),
+            "{}",
+            lexer[0].message
+        );
         assert_eq!(lexer[0].range, Range::empty(A, at(2, 15)));
         let fixture = Fixture::one("const y = 1 # 2;");
         let ws = fixture.load();
         let diagnostics = diagnostics_of(&ws, None);
-        let lexer: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.stage == Stage::Lexer).collect();
+        let lexer: Vec<&Diagnostic> = diagnostics
+            .iter()
+            .filter(|d| d.stage == Stage::Lexer)
+            .collect();
         assert_eq!(lexer.len(), 1, "{diagnostics:?}");
         assert!(lexer[0].message.contains("invalid"), "{}", lexer[0].message);
         assert!(lexer[0].message.contains('#'), "{}", lexer[0].message);
@@ -2467,12 +2804,15 @@ mod tests {
         assert_eq!(positions, sorted);
     }
 
-    // @lfy def/query/main.lfy:147
+    // @lfy def/query/main.lfy:diagnosticsOf
     #[test]
     fn an_unused_use_is_a_binder_warning() {
         let fixture = Fixture::new();
         fixture
-            .write("def/a.lfy", "use \"./b\";\nuse \"./c\" as C;\nuse \"./c\";\nconst z = C1;\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\";\nuse \"./c\" as C;\nuse \"./c\";\nconst z = C1;\n",
+            )
             .write("def/b.lfy", "d B {}\n")
             .write("def/c.lfy", "d C1 {}\n");
         let ws = fixture.load();
@@ -2484,47 +2824,81 @@ mod tests {
         let lines: Vec<usize> = warnings.iter().map(|d| d.range.start.line).collect();
         assert_eq!(lines, [1, 2], "{warnings:?}");
         assert!(warnings.iter().all(|d| d.stage == Stage::Binder));
-        assert!(warnings[0].message.contains("def/b.lfy"), "{}", warnings[0].message);
+        assert!(
+            warnings[0].message.contains("def/b.lfy"),
+            "{}",
+            warnings[0].message
+        );
         assert!(warnings[1].message.contains('C'), "{}", warnings[1].message);
         assert_eq!(warnings[0].range, range(A, (1, 0), (1, 10)));
     }
 
-    // @lfy def/query/main.lfy:152
+    // @lfy def/query/main.lfy:outlineOf
     #[test]
     fn the_outline_nests_members_then_declarations_and_skips_parameters() {
         let text = "use \"./b\" as B;\n/// Doc\nd A is t { $x = string; fn f(p: string) { const q = 1; } $y = number; }\ntrait t { $m = string; }\nenum E { one = 1 }\nfunction g(r: number) { for (const i in [1]) { const s = i; } }\n";
         let fixture = Fixture::new();
-        fixture.write("def/a.lfy", text).write("def/b.lfy", "d B {}\n");
+        fixture
+            .write("def/a.lfy", text)
+            .write("def/b.lfy", "d B {}\n");
         let ws = fixture.load();
         let outline = outline_of(&ws, A);
         let names: Vec<&str> = outline.iter().map(|o| o.name.as_str()).collect();
         assert_eq!(names, ["A", "t", "E", "g"]);
         let a = &outline[0];
-        assert_eq!(a.kind, "data");
+        assert_eq!(a.kind, SymbolKind::Data);
         let end = text.lines().nth(2).unwrap().chars().count();
         assert_eq!(a.range, range(A, (2, 0), (3, end)));
         assert_eq!(a.selection_range, range(A, (3, 2), (3, 3)));
-        let children: Vec<(&str, &str)> = a.children.iter().map(|o| (o.name.as_str(), o.kind.as_str())).collect();
-        assert_eq!(children, [("x", "member"), ("y", "member"), ("f", "agentFunction")]);
+        let children: Vec<(&str, &str)> = a
+            .children
+            .iter()
+            .map(|o| (o.name.as_str(), o.kind.as_str()))
+            .collect();
+        assert_eq!(
+            children,
+            [("x", "member"), ("y", "member"), ("f", "agentFunction")]
+        );
         let f = &a.children[2];
-        assert_eq!(f.children.iter().map(|o| o.name.as_str()).collect::<Vec<_>>(), ["q"]);
+        assert_eq!(
+            f.children
+                .iter()
+                .map(|o| o.name.as_str())
+                .collect::<Vec<_>>(),
+            ["q"]
+        );
         assert_eq!(outline[2].children[0].name, "one");
-        assert_eq!(outline[2].children[0].kind, "enumMember");
-        assert_eq!(outline[3].children.iter().map(|o| o.name.as_str()).collect::<Vec<_>>(), ["s"]);
+        assert_eq!(outline[2].children[0].kind, SymbolKind::EnumMember);
+        assert_eq!(
+            outline[3]
+                .children
+                .iter()
+                .map(|o| o.name.as_str())
+                .collect::<Vec<_>>(),
+            ["s"]
+        );
         assert!(outline_of(&ws, "def/none.lfy").is_empty());
     }
 
-    // @lfy def/query/main.lfy:160
+    // @lfy def/query/main.lfy:findSymbols
     #[test]
     fn find_symbols_flattens_dotted_names_across_files_own_first() {
         let fixture = Fixture::new();
         fixture
-            .write("elfie.json", r#"{ "dependencies": { "p": { "root": "pkg" } } }"#)
+            .write(
+                "elfie.json",
+                r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            )
             .write("def/a.lfy", "d Alpha { $beta = string; }\n")
             .write("def/b.lfy", "use \"./a\";\nconst gamma = Alpha;\n")
             .write("pkg/main.lfy", "d Beta {}\n");
         let ws = fixture.load();
-        let names = |query: &str| -> Vec<String> { find_symbols(&ws, query).into_iter().map(|o| o.name).collect() };
+        let names = |query: &str| -> Vec<String> {
+            find_symbols(&ws, query)
+                .into_iter()
+                .map(|o| o.name)
+                .collect()
+        };
         assert_eq!(names("beta"), ["Alpha.beta", "Beta"]);
         assert_eq!(names("ALPHA"), ["Alpha", "Alpha.beta"]);
         assert_eq!(names(""), ["Alpha", "gamma", "Beta"]);
@@ -2532,7 +2906,7 @@ mod tests {
         assert!(names("zzz").is_empty());
     }
 
-    // @lfy def/query/main.lfy:176
+    // @lfy def/query/main.lfy:renameAt
     #[test]
     fn a_rename_edits_the_declaration_the_reference_and_the_value() {
         let text = "d A {} const y: `See [[A]]` = A;";
@@ -2542,9 +2916,18 @@ mod tests {
         assert_eq!(
             edits,
             [
-                Edit { range: range(A, (1, 2), (1, 3)), text: "B".to_string() },
-                Edit { range: range(A, (1, 23), (1, 24)), text: "B".to_string() },
-                Edit { range: range(A, (1, 30), (1, 31)), text: "B".to_string() },
+                Edit {
+                    range: range(A, (1, 2), (1, 3)),
+                    text: "B".to_string()
+                },
+                Edit {
+                    range: range(A, (1, 23), (1, 24)),
+                    text: "B".to_string()
+                },
+                Edit {
+                    range: range(A, (1, 30), (1, 31)),
+                    text: "B".to_string()
+                },
             ]
         );
         // From a usage the edits are the same.
@@ -2558,7 +2941,7 @@ mod tests {
         assert_eq!(edits[1].range, range(A, (2, 10), (2, 11)));
     }
 
-    // @lfy def/query/main.lfy:211
+    // @lfy def/query/main.lfy:renameAt
     #[test]
     fn a_rename_to_a_keyword_or_a_captured_name_is_refused() {
         let text = "d A {} const y = A;";
@@ -2580,30 +2963,48 @@ mod tests {
         assert!(rename_at(&ws, A, at(1, 2), "C").is_ok());
     }
 
-    // @lfy def/query/main.lfy:173
+    // @lfy def/query/main.lfy:renameAt
     #[test]
     fn renaming_a_module_changes_the_name_after_as_and_its_usages_only() {
         let fixture = Fixture::new();
         fixture
-            .write("def/a.lfy", "use \"./b\" as B;\nconst y = B.B;\nalias K = B.B;\nconst z = K;\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\" as B;\nconst y = B.B;\nalias K = B.B;\nconst z = K;\n",
+            )
             .write("def/b.lfy", "d B {}\n");
         let ws = fixture.load();
         let edits = rename_at(&ws, A, at(1, 13), "M").unwrap();
         assert_eq!(
             edits,
             [
-                Edit { range: range(A, (1, 13), (1, 14)), text: "M".to_string() },
-                Edit { range: range(A, (2, 10), (2, 11)), text: "M".to_string() },
-                Edit { range: range(A, (3, 10), (3, 11)), text: "M".to_string() },
+                Edit {
+                    range: range(A, (1, 13), (1, 14)),
+                    text: "M".to_string()
+                },
+                Edit {
+                    range: range(A, (2, 10), (2, 11)),
+                    text: "M".to_string()
+                },
+                Edit {
+                    range: range(A, (3, 10), (3, 11)),
+                    text: "M".to_string()
+                },
             ]
         );
         // Renaming the data does not touch the alias's usages.
         let edits = rename_at(&ws, A, at(2, 12), "D").unwrap();
-        let files: Vec<(&str, Position)> = edits.iter().map(|e| (e.range.file.as_str(), e.range.start)).collect();
-        assert_eq!(files, [("def/b.lfy", at(1, 2)), (A, at(2, 12)), (A, at(3, 12))]);
+        let files: Vec<(&str, Position)> = edits
+            .iter()
+            .map(|e| (e.range.file.as_str(), e.range.start))
+            .collect();
+        assert_eq!(
+            files,
+            [("def/b.lfy", at(1, 2)), (A, at(2, 12)), (A, at(3, 12))]
+        );
     }
 
-    // @lfy def/query/main.lfy:208
+    // @lfy def/query/main.lfy:find
     #[test]
     fn find_takes_a_name_a_dotted_member_or_a_file_prefix() {
         let fixture = Fixture::new();
@@ -2625,7 +3026,7 @@ mod tests {
         assert!(find(&ws, "def/none.lfy:A").is_empty());
     }
 
-    // @lfy def/query/main.lfy:216
+    // @lfy def/query/main.lfy:sourceOf
     #[test]
     fn source_is_the_declaration_with_its_documentation_or_the_whole_file() {
         let text = "/// Doc\nd A: `An A` {}\ntrait t { $m = string; }\nd B is t {}\n";
@@ -2638,13 +3039,16 @@ mod tests {
         assert_eq!(source_of(&ws, model.global), "");
     }
 
-    // @lfy def/query/main.lfy:19
+    // @lfy def/query/main.lfy:rangeOf
     #[test]
     fn the_repository_answers_every_query_without_errors() {
         let ws = repository();
         assert!(ws.files.len() >= 38, "{}", ws.files.len());
         let diagnostics = diagnostics_of(&ws, None);
-        let errors: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.severity == Severity::Error).collect();
+        let errors: Vec<&Diagnostic> = diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .collect();
         assert!(errors.is_empty(), "{errors:?}");
         // Every diagnostic is in files order.
         let keys: Vec<_> = diagnostics.iter().map(|d| diagnostic_key(&ws, d)).collect();
@@ -2658,7 +3062,7 @@ mod tests {
         assert_eq!(names[0], "rangeOf");
         assert_eq!(names.len(), 16);
         assert!(names.contains(&"semanticTokensOf"));
-        assert!(outline.iter().all(|o| o.kind == "agentFunction"));
+        assert!(outline.iter().all(|o| o.kind == SymbolKind::AgentFunction));
         // Parameters are not outlined.
         assert!(outline[0].children.is_empty(), "{:?}", outline[0].children);
 
@@ -2667,25 +3071,32 @@ mod tests {
         let position = after(find_pos(&text, "workspace: Workspace", 0), 11);
         let hover = hover_at(&ws, main, position).unwrap();
         assert_eq!(hover.identifier, "Workspace");
-        assert_eq!(hover.kind, "data");
+        assert_eq!(hover.kind, SymbolKind::Data);
         assert!(hover.definition.is_some());
-        assert_eq!(definition_of(&ws, main, position).unwrap().file, "def/workspace/data.lfy");
+        assert_eq!(
+            definition_of(&ws, main, position).unwrap().file,
+            "def/workspace/data.lfy"
+        );
         assert!(references_to(&ws, main, position, false).len() > 15);
 
         // Hover on a criterion's reference in prose.
         let position = after(find_pos(&text, "[[Token.file]]", 0), 9);
         let hover = hover_at(&ws, main, position).unwrap();
         assert_eq!(hover.identifier, "file");
-        assert_eq!(hover.kind, "member");
+        assert_eq!(hover.kind, SymbolKind::Member);
 
         // The entity of rangeOf carries its criteria.
         let range_of_entity = find(&ws, "rangeOf");
         assert_eq!(range_of_entity.len(), 1);
-        let hover = hover_of(&ws, range_of_entity[0], Range::empty(main, at(1, 0)));
+        let hover = hover_of(&ws, range_of_entity[0]);
         assert_eq!(hover.criteria.len(), 4);
         assert!(source_of(&ws, range_of_entity[0]).starts_with("fn rangeOf("));
         assert_eq!(find(&ws, "def/lexer/data.lfy:Token.line").len(), 1);
-        assert!(find_symbols(&ws, "tokenAt").iter().any(|o| o.name == "tokenAt"));
+        assert!(
+            find_symbols(&ws, "tokenAt")
+                .iter()
+                .any(|o| o.name == "tokenAt")
+        );
 
         // Completions in the definition's own text.
         let position = after(find_pos(&text, "@acceptanceCriteria", 0), 1);
@@ -2694,7 +3105,7 @@ mod tests {
         assert!(labels(&completions_at(&ws, main, position)).contains(&"data"));
     }
 
-    // @lfy def/query/main.lfy:248
+    // @lfy def/query/main.lfy:semanticTokensOf
     #[test]
     fn semantic_tokens_classify_declarations_and_layers() {
         let text = "d A { $x: `d` = string; } const y = A$x;";
@@ -2705,7 +3116,11 @@ mod tests {
             .iter()
             .map(|t| {
                 let index = token_at(&workspace, A, t.range.start).unwrap();
-                (token(&workspace, 0, index).value.clone(), t.ty, t.modifiers.clone())
+                (
+                    token(&workspace, 0, index).value.clone(),
+                    t.ty,
+                    t.modifiers.clone(),
+                )
             })
             .collect();
         use TokenModifier::*;
@@ -2714,19 +3129,26 @@ mod tests {
             vec![
                 ("A".to_string(), TokenType::Data, vec![Declaration, Agentic]),
                 ("x".to_string(), TokenType::Property, vec![Declaration]),
-                ("y".to_string(), TokenType::Variable, vec![Declaration, Readonly]),
+                (
+                    "y".to_string(),
+                    TokenType::Variable,
+                    vec![Declaration, Readonly]
+                ),
                 ("A".to_string(), TokenType::Data, vec![Agentic]),
                 ("x".to_string(), TokenType::Property, vec![Scope]),
             ]
         );
         // In position order, never overlapping.
-        // @lfy def/query/main.lfy:226
+        // @lfy def/query/main.lfy:semanticTokensOf
         for pair in tokens.windows(2) {
-            assert!(pair[0].range.end <= pair[1].range.start || pair[0].range.end.line < pair[1].range.start.line);
+            assert!(
+                pair[0].range.end <= pair[1].range.start
+                    || pair[0].range.end.line < pair[1].range.start.line
+            );
         }
     }
 
-    // @lfy def/query/main.lfy:253
+    // @lfy def/query/main.lfy:semanticTokensOf
     #[test]
     fn semantic_tokens_mark_prose_context_properties_and_unresolved_names() {
         let text = "fn f(): `See [[g]]` => number { @acceptanceCriteria.add({ behavior = `b` }); }";
@@ -2737,23 +3159,39 @@ mod tests {
             .iter()
             .map(|t| {
                 let index = token_at(&workspace, A, t.range.start).unwrap();
-                (token(&workspace, 0, index).value.clone(), t.ty, t.modifiers.clone())
+                (
+                    token(&workspace, 0, index).value.clone(),
+                    t.ty,
+                    t.modifiers.clone(),
+                )
             })
             .collect();
         use TokenModifier::*;
         assert_eq!(
             names,
             vec![
-                ("f".to_string(), TokenType::Function, vec![Declaration, Agentic]),
-                ("g".to_string(), TokenType::Variable, vec![Documentation, Unresolved]),
-                ("acceptanceCriteria".to_string(), TokenType::Property, vec![Context]),
+                (
+                    "f".to_string(),
+                    TokenType::Function,
+                    vec![Declaration, Agentic]
+                ),
+                (
+                    "g".to_string(),
+                    TokenType::Variable,
+                    vec![Documentation, Unresolved]
+                ),
+                (
+                    "acceptanceCriteria".to_string(),
+                    TokenType::Property,
+                    vec![Context]
+                ),
             ]
         );
-        // @lfy def/query/main.lfy:227
+        // @lfy def/query/main.lfy:semanticTokensOf
         assert!(semantic_tokens_of(&workspace, "def/missing.lfy").is_empty());
     }
 
-    // @lfy def/query/main.lfy:225
+    // @lfy def/query/main.lfy:semanticTokensOf
     #[test]
     fn semantic_tokens_cover_the_repository_without_keywords() {
         let workspace = workspace::load(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")));
@@ -2763,10 +3201,26 @@ mod tests {
             let index = token_at(&workspace, "def/lexer/data.lfy", t.range.start).unwrap();
             let file = workspace.model.file("def/lexer/data.lfy").unwrap();
             let raw = &token(&workspace, file, index).raw;
-            assert!(raw.chars().all(|c| c.is_alphanumeric() || c == '_'), "{raw:?} is not a name");
+            assert!(
+                raw.chars().all(|c| c.is_alphanumeric() || c == '_'),
+                "{raw:?} is not a name"
+            );
         }
-        assert!(tokens.iter().any(|t| t.ty == TokenType::Data && t.modifiers.contains(&TokenModifier::Declaration)));
-        assert!(tokens.iter().any(|t| t.modifiers.contains(&TokenModifier::Documentation)));
-        assert!(tokens.iter().any(|t| t.modifiers.contains(&TokenModifier::Context)));
+        assert!(
+            tokens
+                .iter()
+                .any(|t| t.ty == TokenType::Data
+                    && t.modifiers.contains(&TokenModifier::Declaration))
+        );
+        assert!(
+            tokens
+                .iter()
+                .any(|t| t.modifiers.contains(&TokenModifier::Documentation))
+        );
+        assert!(
+            tokens
+                .iter()
+                .any(|t| t.modifiers.contains(&TokenModifier::Context))
+        );
     }
 }

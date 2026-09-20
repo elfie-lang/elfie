@@ -283,11 +283,11 @@ pub enum Becomes {
     Text(&'static str),
     /// "the character with that code": the character whose code the hex digits of the
     /// escape spell.
-    CharacterWithCode, // @lfy def/grammar/terminals/literal.lfy:36
+    CharacterWithCode, // @lfy def/grammar/terminals/literal.lfy:HexEscape
     /// "the character with that code point": the character whose code point the hex
     /// digits of the escape spell. When the digits are not a scalar value the text is
     /// kept as written.
-    CharacterWithCodePoint, // @lfy def/grammar/terminals/literal.lfy:37
+    CharacterWithCodePoint, // @lfy def/grammar/terminals/literal.lfy:UnicodeEscape
 }
 
 impl Becomes {
@@ -300,7 +300,7 @@ impl Becomes {
             Becomes::CharacterWithCode | Becomes::CharacterWithCodePoint => {
                 let digits = matched.trim_start_matches(|c: char| !c.is_ascii_hexdigit());
                 let code = u32::from_str_radix(digits, 16).ok()?;
-                // @lfy def/grammar/terminals/literal.lfy:41
+                // @lfy def/grammar/terminals/literal.lfy:UnicodeEscape
                 char::from_u32(code).map(|c| Cow::Owned(c.to_string()))
             }
         }
@@ -781,7 +781,7 @@ mod tests {
             Becomes::CharacterWithCodePoint.apply("\\u01F600"),
             Some(Cow::Owned("😀".to_owned()))
         );
-        // @lfy def/grammar/terminals/literal.lfy:41
+        // @lfy def/grammar/terminals/literal.lfy:UnicodeEscape
         assert_eq!(Becomes::CharacterWithCodePoint.apply("\\uD800"), None);
         assert_eq!(Becomes::CharacterWithCodePoint.apply("\\u110000"), None);
     }

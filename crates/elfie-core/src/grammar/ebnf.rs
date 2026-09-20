@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
             self.expect(")")?;
             return Ok(inner);
         }
-        // @lfy def/lexer/main.lfy:101
+        // @lfy def/lexer/main.lfy:lex
         if self.eat("[[") {
             let name = self.name()?;
             self.expect("]]")?;
@@ -266,7 +266,7 @@ pub enum Builtin {
     /// `XID_Continue` as defined by Unicode (`unicode-ident`).
     IdentifierContinue, // @lfy def/grammar/terminals/identifier.lfy:5
     /// Any UTF-8 scalar value.
-    Character, // @lfy def/grammar/terminals/literal.lfy:5
+    Character, // @lfy def/grammar/terminals/literal.lfy:Character
 }
 
 impl Builtin {

@@ -11,17 +11,17 @@ use std::time::SystemTime;
 use elfie_core::workspace::Workspace;
 
 /// One argument of a tool.
-// @lfy def/mcp/data.lfy:3
+// @lfy def/mcp/data.lfy:ToolArgument
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgument {
     /// As the parameter is named.
-    pub name: String, // @lfy def/mcp/data.lfy:4
+    pub name: String, // @lfy def/mcp/data.lfy:ToolArgument.name
     /// What it is for.
-    pub description: String, // @lfy def/mcp/data.lfy:5
+    pub description: String, // @lfy def/mcp/data.lfy:ToolArgument.description
     /// `string`, `number`, or `boolean`.
-    pub ty: String, // @lfy def/mcp/data.lfy:6
+    pub ty: String, // @lfy def/mcp/data.lfy:ToolArgument.type
     /// Whether a call must give it.
-    pub required: bool, // @lfy def/mcp/data.lfy:7
+    pub required: bool, // @lfy def/mcp/data.lfy:ToolArgument.required
 }
 
 impl ToolArgument {
@@ -37,25 +37,25 @@ impl ToolArgument {
 }
 
 /// One tool as the server lists it.
-// @lfy def/mcp/data.lfy:10
+// @lfy def/mcp/data.lfy:Tool
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tool {
     /// `elfie_` followed by the fn's identifier.
-    pub name: String, // @lfy def/mcp/data.lfy:11
+    pub name: String, // @lfy def/mcp/data.lfy:Tool.name
     /// The fn's definition.
-    pub description: String, // @lfy def/mcp/data.lfy:12
+    pub description: String, // @lfy def/mcp/data.lfy:Tool.description
     /// In parameter order.
-    pub arguments: Vec<ToolArgument>, // @lfy def/mcp/data.lfy:13
+    pub arguments: Vec<ToolArgument>, // @lfy def/mcp/data.lfy:Tool.arguments
 }
 
 /// What a call returns.
-// @lfy def/mcp/data.lfy:16
+// @lfy def/mcp/data.lfy:ToolResult
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolResult {
     /// Plain text for the agent to read.
-    pub text: String, // @lfy def/mcp/data.lfy:17
+    pub text: String, // @lfy def/mcp/data.lfy:ToolResult.text
     /// Whether the call failed.
-    pub is_error: bool, // @lfy def/mcp/data.lfy:18
+    pub is_error: bool, // @lfy def/mcp/data.lfy:ToolResult.isError
 }
 
 impl ToolResult {
@@ -92,12 +92,12 @@ impl From<Result<String, String>> for ToolResult {
 pub type Stamp = (Option<SystemTime>, u64);
 
 /// One agent's connection.
-// @lfy def/mcp/data.lfy:21
+// @lfy def/mcp/data.lfy:Session
 #[derive(Debug)]
 pub struct Session {
     /// The program as of the last call.
-    pub workspace: Workspace, // @lfy def/mcp/data.lfy:22
+    pub workspace: Workspace, // @lfy def/mcp/data.lfy:Session.workspace
     /// The modification time and size of every file of the program when it was last
     /// read, by path relative to the workspace root.
-    pub seen: BTreeMap<String, Stamp>, // @lfy def/mcp/data.lfy:23
+    pub seen: BTreeMap<String, Stamp>, // @lfy def/mcp/data.lfy:Session.seen
 }

@@ -27,7 +27,7 @@ pub(crate) struct Tables {
 
 impl Tables {
     /// The terminals `rule` can begin with.
-    // @lfy def/parser/main.lfy:159
+    // @lfy def/parser/main.lfy:parse
     pub fn first(&self, rule: Entity) -> &HashSet<Entity> {
         static EMPTY: OnceLock<HashSet<Entity>> = OnceLock::new();
         self.first
@@ -36,14 +36,14 @@ impl Tables {
     }
 
     /// Whether a token of `terminal` can be the first token `rule` covers.
-    // @lfy def/parser/main.lfy:163
+    // @lfy def/parser/main.lfy:parse
     pub fn can_begin(&self, rule: Entity, terminal: Entity) -> bool {
         self.first(rule).contains(&terminal)
     }
 
     /// The terminals `expr` can begin with, following references, every alternative, and
     /// every element that can be satisfied without taking a token.
-    // @lfy def/parser/main.lfy:164
+    // @lfy def/parser/main.lfy:parse
     pub fn first_of(&self, expr: &Expr) -> HashSet<Entity> {
         let mut out = HashSet::new();
         first_of(expr, &self.first, &mut out);
@@ -59,7 +59,7 @@ impl Tables {
     }
 
     /// The infix or postfix rule whose operator a token of `terminal` satisfies.
-    // @lfy def/parser/main.lfy:173
+    // @lfy def/parser/main.lfy:parse
     pub fn operation(&self, terminal: Entity) -> Option<Entity> {
         self.operations.get(&terminal).copied()
     }
@@ -67,7 +67,7 @@ impl Tables {
     /// The identifiers of the operator terminals whose operation would apply with `min`
     /// as the minimum binding power in force, among `admitted` operations when given, in
     /// load order.
-    // @lfy def/parser/main.lfy:98
+    // @lfy def/parser/main.lfy:parse
     pub fn operators_continuing(&self, min: u8, admitted: Option<&[Entity]>) -> Vec<&'static str> {
         let set: HashSet<Entity> = self
             .operations
@@ -103,7 +103,7 @@ impl Tables {
 
     /// The rules of `candidates` that can begin with `terminal`, in the order they are
     /// tried.
-    // @lfy def/parser/main.lfy:71
+    // @lfy def/parser/main.lfy:parse
     pub fn select(&self, candidates: &[Entity], terminal: Entity) -> Vec<Entity> {
         let selected: Vec<Entity> = candidates
             .iter()
@@ -143,7 +143,7 @@ fn first_of(expr: &Expr, first: &HashMap<Entity, HashSet<Entity>>, out: &mut Has
 }
 
 /// Whether the rule continues an expression rather than beginning one.
-// @lfy def/parser/main.lfy:159
+// @lfy def/parser/main.lfy:parse
 pub fn is_operation(rule: Entity) -> bool {
     rule.is_infix() || rule.is_postfix()
 }
@@ -164,7 +164,7 @@ fn operator_terminals(operator: Entity, out: &mut Vec<Entity>) {
 }
 
 /// The terminals each rule can begin with, as a fixed point over every rule's syntax.
-// @lfy def/parser/main.lfy:158
+// @lfy def/parser/main.lfy:parse
 fn compute_first() -> HashMap<Entity, HashSet<Entity>> {
     let mut first: HashMap<Entity, HashSet<Entity>> = HashMap::new();
     for rule in rules() {
@@ -175,7 +175,7 @@ fn compute_first() -> HashMap<Entity, HashSet<Entity>> {
     loop {
         let mut changed = false;
         for rule in rules() {
-            // @lfy def/parser/main.lfy:159
+            // @lfy def/parser/main.lfy:parse
             if rule.is_terminal() || is_operation(rule) {
                 continue;
             }
@@ -198,7 +198,7 @@ fn compute_first() -> HashMap<Entity, HashSet<Entity>> {
 
 /// A failure of the global acceptance criteria: a choice `triedBefore` does not decide, or
 /// an alternation the parser cannot select among.
-// @lfy def/parser/main.lfy:177
+// @lfy def/parser/main.lfy:parse
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Violation {
     /// The terminal at which the candidates collide.
@@ -228,7 +228,7 @@ impl fmt::Display for Violation {
 /// The global acceptance criteria of the parser, checked against the grammar and the
 /// components: every failing terminal or alternation is reported with the candidates it
 /// selects.
-// @lfy def/parser/main.lfy:177
+// @lfy def/parser/main.lfy:parse
 pub fn validate() -> Result<(), Vec<Violation>> {
     let first = compute_first();
     let mut violations = Vec::new();
@@ -244,14 +244,14 @@ pub fn validate() -> Result<(), Vec<Violation>> {
         }
     };
     for &terminal in &terminals {
-        // @lfy def/parser/main.lfy:180
+        // @lfy def/parser/main.lfy:parse
         let statements: Vec<Entity> = STATEMENTS
             .iter()
             .copied()
             .filter(|rule| first[rule].contains(&terminal))
             .collect();
         check_ordered(terminal, "Statement", statements, &mut violations);
-        // @lfy def/parser/main.lfy:181
+        // @lfy def/parser/main.lfy:parse
         let expressions: Vec<Entity> = PRIMARIES
             .iter()
             .chain(PREFIXES)
@@ -260,7 +260,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
             .collect();
         check_ordered(terminal, "Expression", expressions, &mut violations);
     }
-    // @lfy def/parser/main.lfy:182
+    // @lfy def/parser/main.lfy:parse
     for rule in rules().filter(|rule| !rule.is_terminal()) {
         let Some(expr) = rule.expression() else {
             continue;
@@ -286,7 +286,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 }
                 let mut candidates = Vec::new();
                 for &index in &selected {
-                    // @lfy def/parser/main.lfy:183
+                    // @lfy def/parser/main.lfy:parse
                     match &alternatives[index] {
                         Expr::Reference(name) => candidates.push(Entity::lookup(name).expect("resolved")),
                         other => violations.push(Violation {
@@ -332,7 +332,7 @@ fn assert_supported(operations: &HashMap<Entity, Entity>) -> Result<(), String> 
 
 /// The tables, built on first use. The grammar and the parser components are fixed at
 /// compile time, so a failure here is a defect in `def/` and is reported by panicking.
-// @lfy def/parser/main.lfy:186
+// @lfy def/parser/main.lfy:parse
 pub(crate) fn tables() -> &'static Tables {
     static TABLES: OnceLock<Tables> = OnceLock::new();
     TABLES.get_or_init(|| {
@@ -397,7 +397,7 @@ mod tests {
         Entity::Punctuation(rule)
     }
 
-    // @lfy def/parser/main.lfy:159
+    // @lfy def/parser/main.lfy:parse
     #[test]
     fn infix_and_postfix_rules_begin_with_no_terminal() {
         let tables = tables();
@@ -410,7 +410,7 @@ mod tests {
         assert!(!is_expression_rule(statement(Statement::Block)));
     }
 
-    // @lfy def/parser/main.lfy:160
+    // @lfy def/parser/main.lfy:parse
     #[test]
     fn other_rules_begin_with_the_terminals_their_syntax_reaches_first() {
         let tables = tables();
@@ -442,7 +442,7 @@ mod tests {
         );
     }
 
-    // @lfy def/parser/main.lfy:173
+    // @lfy def/parser/main.lfy:parse
     #[test]
     fn each_operator_terminal_continues_an_expression_with_one_rule() {
         let tables = tables();
@@ -459,7 +459,7 @@ mod tests {
         assert!(tables.tail(expression(Expression::AdditiveOperation)).is_none());
     }
 
-    // @lfy def/parser/main.lfy:71
+    // @lfy def/parser/main.lfy:parse
     #[test]
     fn selection_keeps_only_the_candidates_the_terminal_begins_in_tried_before_order() {
         let tables = tables();
@@ -483,7 +483,7 @@ mod tests {
         assert_eq!(tables.select(&expressions, punctuation(Punctuation::Semicolon)), vec![]);
     }
 
-    // @lfy def/parser/main.lfy:177
+    // @lfy def/parser/main.lfy:parse
     #[test]
     fn tried_before_orders_every_choice_the_grammar_presents() {
         assert_eq!(validate(), Ok(()));

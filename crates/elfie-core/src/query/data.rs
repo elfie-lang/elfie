@@ -5,16 +5,16 @@
 
 use std::fmt;
 
-use crate::model::Criterion;
+use crate::model::{Criterion, SymbolKind};
 
 /// A place in a file's text.
-// @lfy def/query/data.lfy:10
+// @lfy def/query/data.lfy:Position
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Position {
     /// The line, counting from 1 as `Token.line` does.
-    pub line: usize, // @lfy def/query/data.lfy:11
+    pub line: usize, // @lfy def/query/data.lfy:Position.line
     /// The column within the line, counting characters from 0 as `Token.column` does.
-    pub column: usize, // @lfy def/query/data.lfy:12
+    pub column: usize, // @lfy def/query/data.lfy:Position.column
 }
 
 impl Position {
@@ -30,15 +30,15 @@ impl fmt::Display for Position {
 }
 
 /// A run of text in one file.
-// @lfy def/query/data.lfy:15
+// @lfy def/query/data.lfy:Range
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Range {
     /// The file's path, as `Token.file` holds it.
-    pub file: String, // @lfy def/query/data.lfy:16
+    pub file: String, // @lfy def/query/data.lfy:Range.file
     /// Where it begins.
-    pub start: Position, // @lfy def/query/data.lfy:17
+    pub start: Position, // @lfy def/query/data.lfy:Range.start
     /// The position just after the last character; equal to `start` when empty.
-    pub end: Position, // @lfy def/query/data.lfy:18
+    pub end: Position, // @lfy def/query/data.lfy:Range.end
 }
 
 impl Range {
@@ -74,13 +74,13 @@ impl fmt::Display for Range {
 }
 
 /// How bad a diagnostic is.
-// @lfy def/query/data.lfy:21
+// @lfy def/query/data.lfy:Severity
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Severity {
-    Error,       // @lfy def/query/data.lfy:22
-    Warning,     // @lfy def/query/data.lfy:23
-    Information, // @lfy def/query/data.lfy:24
-    Hint,        // @lfy def/query/data.lfy:25
+    Error,       // @lfy def/query/data.lfy:Severity.error
+    Warning,     // @lfy def/query/data.lfy:Severity.warning
+    Information, // @lfy def/query/data.lfy:Severity.information
+    Hint,        // @lfy def/query/data.lfy:Severity.hint
 }
 
 impl Severity {
@@ -101,13 +101,13 @@ impl fmt::Display for Severity {
 }
 
 /// The stage that reported a diagnostic.
-// @lfy def/query/data.lfy:28
+// @lfy def/query/data.lfy:Stage
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Stage {
-    Loader, // @lfy def/query/data.lfy:29
-    Lexer,  // @lfy def/query/data.lfy:30
-    Parser, // @lfy def/query/data.lfy:31
-    Binder, // @lfy def/query/data.lfy:32
+    Loader, // @lfy def/query/data.lfy:Stage.loader
+    Lexer,  // @lfy def/query/data.lfy:Stage.lexer
+    Parser, // @lfy def/query/data.lfy:Stage.parser
+    Binder, // @lfy def/query/data.lfy:Stage.binder
 }
 
 impl Stage {
@@ -128,17 +128,17 @@ impl fmt::Display for Stage {
 }
 
 /// One problem, placed.
-// @lfy def/query/data.lfy:35
+// @lfy def/query/data.lfy:Diagnostic
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     /// Where it is.
-    pub range: Range, // @lfy def/query/data.lfy:36
+    pub range: Range, // @lfy def/query/data.lfy:Diagnostic.range
     /// How bad it is.
-    pub severity: Severity, // @lfy def/query/data.lfy:37
+    pub severity: Severity, // @lfy def/query/data.lfy:Diagnostic.severity
     /// Who reported it.
-    pub stage: Stage, // @lfy def/query/data.lfy:38
+    pub stage: Stage, // @lfy def/query/data.lfy:Diagnostic.stage
     /// What and why.
-    pub message: String, // @lfy def/query/data.lfy:39
+    pub message: String, // @lfy def/query/data.lfy:Diagnostic.message
 }
 
 impl fmt::Display for Diagnostic {
@@ -152,82 +152,147 @@ impl fmt::Display for Diagnostic {
 }
 
 /// Everything an editor or agent shows for one entity.
-// @lfy def/query/data.lfy:42
+// @lfy def/query/data.lfy:Hover
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hover {
-    /// The token the entity was found at; the identifier of its declaration when it was
-    /// found by name.
-    pub range: Range, // @lfy def/query/data.lfy:43
-    /// The kind of declaration, as `declaring` names it; `member` for a member.
-    pub kind: String, // @lfy def/query/data.lfy:44
+    /// The identifier of the entity's declaration, as `declaring` finds it.
+    pub range: Range, // @lfy def/query/data.lfy:Hover.range
+    /// The kind of the entity's symbol.
+    pub kind: SymbolKind, // @lfy def/query/data.lfy:Hover.kind
     /// The entity's name.
-    pub identifier: String, // @lfy def/query/data.lfy:45
+    pub identifier: String, // @lfy def/query/data.lfy:Hover.identifier
     /// `Entity.definition` with every template reference and execution resolved for the
     /// entity.
-    pub definition: Option<String>, // @lfy def/query/data.lfy:46
+    pub definition: Option<String>, // @lfy def/query/data.lfy:Hover.definition
     /// The identifier of `Entity.type`, or the source text of the type when it is
     /// anonymous.
-    pub ty: Option<String>, // @lfy def/query/data.lfy:47
+    pub ty: Option<String>, // @lfy def/query/data.lfy:Hover.type
     /// The text of the `Documentation` attached to the declaration, without the
     /// boundaries and with references kept as written.
-    pub documentation: Option<String>, // @lfy def/query/data.lfy:48
+    pub documentation: Option<String>, // @lfy def/query/data.lfy:Hover.documentation
     /// `criteriaOf` the entity.
-    pub criteria: Vec<Criterion>, // @lfy def/query/data.lfy:49
+    pub criteria: Vec<Criterion>, // @lfy def/query/data.lfy:Hover.criteria
+}
+
+/// What a completion offers when it does not name a declaration.
+// @lfy def/query/data.lfy:CompletionKind
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CompletionKind {
+    Keyword, // @lfy def/query/data.lfy:CompletionKind.keyword
+    Path,    // @lfy def/query/data.lfy:CompletionKind.path
+    Context, // @lfy def/query/data.lfy:CompletionKind.context
+}
+
+impl CompletionKind {
+    /// The value of the enum member: how the kind is spelled.
+    pub fn value(self) -> &'static str {
+        match self {
+            CompletionKind::Keyword => "keyword",
+            CompletionKind::Path => "path",
+            CompletionKind::Context => "context",
+        }
+    }
+}
+
+impl fmt::Display for CompletionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.value())
+    }
+}
+
+/// What a completion offers: the union `SymbolKind | CompletionKind` of
+/// [`Completion::kind`], which is the kind of the declaration the completion names, or
+/// what it offers when it names none.
+// @lfy def/query/data.lfy:Completion.kind
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OfferedKind {
+    /// The kind of the declaration the completion names.
+    Symbol(SymbolKind),
+    /// What it offers when it names no declaration.
+    Completion(CompletionKind),
+}
+
+impl OfferedKind {
+    /// How the kind is spelled, whichever side of the union it came from.
+    pub fn value(self) -> &'static str {
+        match self {
+            OfferedKind::Symbol(kind) => kind.as_str(),
+            OfferedKind::Completion(kind) => kind.value(),
+        }
+    }
+}
+
+impl From<SymbolKind> for OfferedKind {
+    fn from(kind: SymbolKind) -> OfferedKind {
+        OfferedKind::Symbol(kind)
+    }
+}
+
+impl From<CompletionKind> for OfferedKind {
+    fn from(kind: CompletionKind) -> OfferedKind {
+        OfferedKind::Completion(kind)
+    }
+}
+
+impl fmt::Display for OfferedKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.value())
+    }
 }
 
 /// One thing that could be typed at a position.
-// @lfy def/query/data.lfy:52
+// @lfy def/query/data.lfy:Completion
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Completion {
     /// What is shown and inserted.
-    pub label: String, // @lfy def/query/data.lfy:53
-    /// `keyword`, `path`, `context`, or the kind of declaration as `declaring` names it.
-    pub kind: String, // @lfy def/query/data.lfy:54
+    pub label: String, // @lfy def/query/data.lfy:Completion.label
+    /// What it offers.
+    pub kind: OfferedKind, // @lfy def/query/data.lfy:Completion.kind
     /// The definition, when there is one.
-    pub detail: Option<String>, // @lfy def/query/data.lfy:55
+    pub detail: Option<String>, // @lfy def/query/data.lfy:Completion.detail
 }
 
 /// One declaration in the outline of a file.
-// @lfy def/query/data.lfy:58
+// @lfy def/query/data.lfy:Outline
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Outline {
     /// The declared name.
-    pub name: String, // @lfy def/query/data.lfy:59
-    /// The kind of declaration, as `declaring` names it.
-    pub kind: String, // @lfy def/query/data.lfy:60
+    pub name: String, // @lfy def/query/data.lfy:Outline.name
+    /// The kind of the declaration.
+    pub kind: SymbolKind, // @lfy def/query/data.lfy:Outline.kind
     /// The whole declaration, its `Documentation` included.
-    pub range: Range, // @lfy def/query/data.lfy:61
+    pub range: Range, // @lfy def/query/data.lfy:Outline.range
     /// The identifier alone.
-    pub selection_range: Range, // @lfy def/query/data.lfy:62
+    pub selection_range: Range, // @lfy def/query/data.lfy:Outline.selectionRange
     /// Members and the declarations nested in its body, in order.
-    pub children: Vec<Outline>, // @lfy def/query/data.lfy:63
+    pub children: Vec<Outline>, // @lfy def/query/data.lfy:Outline.children
 }
 
 /// One replacement in one file.
-// @lfy def/query/data.lfy:66
+// @lfy def/query/data.lfy:Edit
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Edit {
     /// What is replaced.
-    pub range: Range, // @lfy def/query/data.lfy:67
+    pub range: Range, // @lfy def/query/data.lfy:Edit.range
     /// What replaces it.
-    pub text: String, // @lfy def/query/data.lfy:68
+    pub text: String, // @lfy def/query/data.lfy:Edit.text
 }
 
 /// What a semantic token stands for: the protocol's own kinds where one fits, and `data`
 /// and `trait` where Elfie has no equivalent there.
-// @lfy def/query/data.lfy:75
+// @lfy def/query/data.lfy:TokenType
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenType {
-    Namespace,  // @lfy def/query/data.lfy:76
-    Data,       // @lfy def/query/data.lfy:77
-    Trait,      // @lfy def/query/data.lfy:78
-    Type,       // @lfy def/query/data.lfy:79
-    Enum,       // @lfy def/query/data.lfy:80
-    EnumMember, // @lfy def/query/data.lfy:81
-    Function,   // @lfy def/query/data.lfy:82
-    Parameter,  // @lfy def/query/data.lfy:83
-    Variable,   // @lfy def/query/data.lfy:84
-    Property,   // @lfy def/query/data.lfy:85
+    Namespace,  // @lfy def/query/data.lfy:TokenType.namespace
+    Data,       // @lfy def/query/data.lfy:TokenType.data
+    Trait,      // @lfy def/query/data.lfy:TokenType._trait
+    Type,       // @lfy def/query/data.lfy:TokenType._type
+    Enum,       // @lfy def/query/data.lfy:TokenType._enum
+    EnumMember, // @lfy def/query/data.lfy:TokenType.enumMember
+    Function,   // @lfy def/query/data.lfy:TokenType._function
+    Parameter,  // @lfy def/query/data.lfy:TokenType.parameter
+    Variable,   // @lfy def/query/data.lfy:TokenType.variable
+    Property,   // @lfy def/query/data.lfy:TokenType.property
 }
 
 impl TokenType {
@@ -263,7 +328,10 @@ impl TokenType {
 
     /// The position in [`TokenType::ALL`], which is the legend index.
     pub fn index(self) -> usize {
-        TokenType::ALL.iter().position(|&t| t == self).expect("listed")
+        TokenType::ALL
+            .iter()
+            .position(|&t| t == self)
+            .expect("listed")
     }
 }
 
@@ -274,17 +342,17 @@ impl fmt::Display for TokenType {
 }
 
 /// What refines a semantic token.
-// @lfy def/query/data.lfy:88
+// @lfy def/query/data.lfy:TokenModifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenModifier {
-    Declaration,   // @lfy def/query/data.lfy:89
-    Agentic,       // @lfy def/query/data.lfy:90
-    Readonly,      // @lfy def/query/data.lfy:91
-    Context,       // @lfy def/query/data.lfy:92
-    Scope,         // @lfy def/query/data.lfy:93
-    Value,         // @lfy def/query/data.lfy:94
-    Documentation, // @lfy def/query/data.lfy:95
-    Unresolved,    // @lfy def/query/data.lfy:96
+    Declaration,   // @lfy def/query/data.lfy:TokenModifier.declaration
+    Agentic,       // @lfy def/query/data.lfy:TokenModifier.agentic
+    Readonly,      // @lfy def/query/data.lfy:TokenModifier.readonly
+    Context,       // @lfy def/query/data.lfy:TokenModifier.context
+    Scope,         // @lfy def/query/data.lfy:TokenModifier.scope
+    Value,         // @lfy def/query/data.lfy:TokenModifier.value
+    Documentation, // @lfy def/query/data.lfy:TokenModifier.documentation
+    Unresolved,    // @lfy def/query/data.lfy:TokenModifier.unresolved
 }
 
 impl TokenModifier {
@@ -315,7 +383,10 @@ impl TokenModifier {
 
     /// The position in [`TokenModifier::ALL`], which is the legend index and the bit.
     pub fn index(self) -> usize {
-        TokenModifier::ALL.iter().position(|&m| m == self).expect("listed")
+        TokenModifier::ALL
+            .iter()
+            .position(|&m| m == self)
+            .expect("listed")
     }
 }
 
@@ -326,22 +397,22 @@ impl fmt::Display for TokenModifier {
 }
 
 /// One name in a file, classified by what it resolves to.
-// @lfy def/query/data.lfy:99
+// @lfy def/query/data.lfy:SemanticToken
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SemanticToken {
     /// The token that spells the name.
-    pub range: Range, // @lfy def/query/data.lfy:100
+    pub range: Range, // @lfy def/query/data.lfy:SemanticToken.range
     /// What it stands for.
-    pub ty: TokenType, // @lfy def/query/data.lfy:101
+    pub ty: TokenType, // @lfy def/query/data.lfy:SemanticToken.type
     /// What refines it, in `TokenModifier` order; empty when nothing does.
-    pub modifiers: Vec<TokenModifier>, // @lfy def/query/data.lfy:102
+    pub modifiers: Vec<TokenModifier>, // @lfy def/query/data.lfy:SemanticToken.modifiers
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // @lfy def/query/data.lfy:18
+    // @lfy def/query/data.lfy:Range.end
     #[test]
     fn a_range_is_empty_when_its_end_is_its_start() {
         let at = Position::new(3, 4);
@@ -361,7 +432,7 @@ mod tests {
         assert_eq!(range.to_string(), "def/a.lfy:1:2-1:5");
     }
 
-    // @lfy def/query/data.lfy:21
+    // @lfy def/query/data.lfy:Severity
     #[test]
     fn severities_and_stages_spell_their_values() {
         assert_eq!(Severity::Error.to_string(), "error");
@@ -374,12 +445,54 @@ mod tests {
         assert_eq!(Stage::Binder.value(), "binder");
     }
 
-    // @lfy def/query/data.lfy:75
+    // @lfy def/query/data.lfy:CompletionKind
+    #[test]
+    fn a_completion_kind_comes_from_either_side_of_the_union() {
+        assert_eq!(CompletionKind::Keyword.to_string(), "keyword");
+        assert_eq!(CompletionKind::Path.value(), "path");
+        assert_eq!(CompletionKind::Context.value(), "context");
+        let named: OfferedKind = SymbolKind::Data.into();
+        let offered: OfferedKind = CompletionKind::Path.into();
+        assert_eq!(named.value(), "data");
+        assert_eq!(offered.to_string(), "path");
+        assert_ne!(named, offered);
+    }
+
+    // @lfy def/query/data.lfy:TokenType
     #[test]
     fn token_types_and_modifiers_keep_enum_order_and_values() {
-        assert_eq!(TokenType::ALL.iter().map(|t| t.value()).collect::<Vec<_>>(), ["namespace", "data", "trait", "type", "enum", "enumMember", "function", "parameter", "variable", "property"]);
+        assert_eq!(
+            TokenType::ALL.iter().map(|t| t.value()).collect::<Vec<_>>(),
+            [
+                "namespace",
+                "data",
+                "trait",
+                "type",
+                "enum",
+                "enumMember",
+                "function",
+                "parameter",
+                "variable",
+                "property"
+            ]
+        );
         assert_eq!(TokenType::Property.index(), 9);
-        assert_eq!(TokenModifier::ALL.iter().map(|m| m.value()).collect::<Vec<_>>(), ["declaration", "agentic", "readonly", "context", "scope", "value", "documentation", "unresolved"]);
+        assert_eq!(
+            TokenModifier::ALL
+                .iter()
+                .map(|m| m.value())
+                .collect::<Vec<_>>(),
+            [
+                "declaration",
+                "agentic",
+                "readonly",
+                "context",
+                "scope",
+                "value",
+                "documentation",
+                "unresolved"
+            ]
+        );
         assert_eq!(TokenModifier::Unresolved.index(), 7);
         assert_eq!(TokenType::Trait.to_string(), "trait");
         assert_eq!(TokenModifier::Scope.to_string(), "scope");

@@ -4,27 +4,27 @@ use elfie_core::workspace::Workspace;
 use tower_lsp::lsp_types::PositionEncodingKind;
 
 /// A file the editor holds open, whose text the editor owns until it closes it.
-// @lfy def/lsp/data.lfy:3
+// @lfy def/lsp/data.lfy:Document
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {
     /// Relative to `Workspace.root`.
-    pub path: String, // @lfy def/lsp/data.lfy:4
+    pub path: String, // @lfy def/lsp/data.lfy:Document.path
     /// The text as the editor last sent it.
-    pub text: String, // @lfy def/lsp/data.lfy:5
+    pub text: String, // @lfy def/lsp/data.lfy:Document.text
     /// The editor's version of the text, increasing with each change.
     // Decision: the definition types the version as a number; it is kept as the `i32` the
     // protocol carries so it can be handed back with the diagnostics of the document.
-    pub version: i32, // @lfy def/lsp/data.lfy:6
+    pub version: i32, // @lfy def/lsp/data.lfy:Document.version
 }
 
 /// How the client counts columns.
-// @lfy def/lsp/data.lfy:9
+// @lfy def/lsp/data.lfy:Encoding
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Encoding {
-    Utf8, // @lfy def/lsp/data.lfy:10
+    Utf8, // @lfy def/lsp/data.lfy:Encoding.utf8
     #[default]
-    Utf16, // @lfy def/lsp/data.lfy:11
-    Utf32, // @lfy def/lsp/data.lfy:12
+    Utf16, // @lfy def/lsp/data.lfy:Encoding.utf16
+    Utf32, // @lfy def/lsp/data.lfy:Encoding.utf32
 }
 
 impl Encoding {
@@ -57,15 +57,15 @@ impl Encoding {
 }
 
 /// One editor's connection.
-// @lfy def/lsp/data.lfy:15
+// @lfy def/lsp/data.lfy:Session
 #[derive(Debug, Clone)]
 pub struct Session {
     /// The program as the editor sees it, open documents included.
-    pub workspace: Workspace, // @lfy def/lsp/data.lfy:16
+    pub workspace: Workspace, // @lfy def/lsp/data.lfy:Session.workspace
     /// Every open document.
-    pub documents: Vec<Document>, // @lfy def/lsp/data.lfy:17
+    pub documents: Vec<Document>, // @lfy def/lsp/data.lfy:Session.documents
     /// The position encoding agreed at initialization.
-    pub encoding: Encoding, // @lfy def/lsp/data.lfy:18
+    pub encoding: Encoding, // @lfy def/lsp/data.lfy:Session.encoding
 }
 
 impl Session {

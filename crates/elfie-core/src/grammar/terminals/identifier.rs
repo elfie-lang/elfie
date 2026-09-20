@@ -9,19 +9,19 @@ grammar_rules! {
     /// the `unicode-ident` crate provides through the EBNF built-ins.
     pub enum Identifier {
         /// `external`: a character class the lexer already knows; never a token of its own.
-        IdentifierStart is [rule()] = "? XID_Start defined by Unicode / unicode-ident ?", // @lfy def/grammar/terminals/identifier.lfy:4
+        IdentifierStart is [rule()] = "? XID_Start defined by Unicode / unicode-ident ?", // @lfy def/grammar/terminals/identifier.lfy:IdentifierStart
         /// `external`: a character class the lexer already knows; never a token of its own.
-        IdentifierContinue is [rule()] = "? XID_Continue defined by Unicode / unicode-ident ?", // @lfy def/grammar/terminals/identifier.lfy:5
+        IdentifierContinue is [rule()] = "? XID_Continue defined by Unicode / unicode-ident ?", // @lfy def/grammar/terminals/identifier.lfy:IdentifierContinue
         /// When the text is a keyword, it is that keyword, not an identifier; see
         /// [`Identifier::keyword_of`].
-        Identifier is [terminal()]: "A name" = r#"( [[IdentifierStart]] | "_" ) , (: [[IdentifierContinue]] :)"#, // @lfy def/grammar/terminals/identifier.lfy:7
+        Identifier is [terminal()]: "A name" = r#"( [[IdentifierStart]] | "_" ) , (: [[IdentifierContinue]] :)"#, // @lfy def/grammar/terminals/identifier.lfy:Identifier
     }
 }
 
 impl Identifier {
     /// `where (The text is a Keyword) -> Is that keyword, not an identifier`: the keyword
     /// that text matched by the identifier rule is instead, if any.
-    // @lfy def/grammar/terminals/identifier.lfy:8
+    // @lfy def/grammar/terminals/identifier.lfy:Identifier
     pub fn keyword_of(text: &str) -> Option<Keyword> {
         Keyword::from_text(text)
     }
@@ -32,7 +32,7 @@ mod tests {
     use super::super::super::GrammarRule;
     use super::*;
 
-    // @lfy def/grammar/terminals/identifier.lfy:7
+    // @lfy def/grammar/terminals/identifier.lfy:Identifier
     #[test]
     fn identifiers_start_with_xid_start_or_underscore() {
         let identifier = Identifier::Identifier;
@@ -48,7 +48,7 @@ mod tests {
         assert!(!Identifier::IdentifierStart.is_terminal());
     }
 
-    // @lfy def/grammar/terminals/identifier.lfy:8
+    // @lfy def/grammar/terminals/identifier.lfy:Identifier
     #[test]
     fn text_that_is_a_keyword_is_that_keyword() {
         assert_eq!(Identifier::keyword_of("const"), Some(Keyword::ConstKeyword));

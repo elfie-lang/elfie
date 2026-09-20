@@ -11,7 +11,7 @@ use crate::grammar::{Entity as Rule, GrammarRule};
 use super::data::{Layer, SymbolKind};
 
 /// The rules carrying `scoped`: each owns a scope.
-// @lfy def/model/traits.lfy:10
+// @lfy def/model/traits.lfy:scoped
 // @lfy def/model/components.lfy:10
 pub fn is_scoped(rule: Rule) -> bool {
     [
@@ -44,7 +44,7 @@ pub fn accessor_layer(rule: Rule) -> Option<Layer> {
 }
 
 /// The layer a rule carrying `reading` reads, for the expression rules.
-// @lfy def/model/traits.lfy:16
+// @lfy def/model/traits.lfy:reading
 // @lfy def/model/components.lfy:28
 pub fn reading_layer(rule: Rule) -> Option<Layer> {
     Some(match rule {
@@ -80,7 +80,7 @@ pub fn declaring(rule: Rule) -> Option<(Rule, SymbolKind)> {
 }
 
 /// The rules a holder search never enters: `Parameters`, `Block`, `Object`, and `Type`.
-// @lfy def/model/traits.lfy:40
+// @lfy def/model/traits.lfy:declaring
 pub fn is_holder_barrier(rule: Rule) -> bool {
     rule == E::Parameters.entity() || rule == S::Block.entity() || rule == E::Object.entity() || rule == E::Type.entity()
 }

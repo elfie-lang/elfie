@@ -113,3 +113,81 @@ impl Invocation {
         self.options.get(name).and_then(|v| v.as_deref())
     }
 }
+
+/// What a compile is doing, as progress reports it.
+// @lfy def/cli/data.lfy:28
+// Progress is defined here and printed by the compile command, which is not generated yet.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Step {
+    Planned,       // @lfy def/cli/data.lfy:29
+    Requesting,    // @lfy def/cli/data.lfy:30
+    Compiling,     // @lfy def/cli/data.lfy:31
+    Checking,      // @lfy def/cli/data.lfy:32
+    Accepted,      // @lfy def/cli/data.lfy:33
+    Rejected,      // @lfy def/cli/data.lfy:34
+    Retrying,      // @lfy def/cli/data.lfy:35
+    Blocked,       // @lfy def/cli/data.lfy:36
+    Clarification, // @lfy def/cli/data.lfy:37
+    Failed,        // @lfy def/cli/data.lfy:38
+    Finished,      // @lfy def/cli/data.lfy:39
+}
+
+#[allow(dead_code)]
+impl Step {
+    /// The name of the step, as a progress line and a JSON object spell it.
+    pub fn name(self) -> &'static str {
+        match self {
+            Step::Planned => "planned",
+            Step::Requesting => "requesting",
+            Step::Compiling => "compiling",
+            Step::Checking => "checking",
+            Step::Accepted => "accepted",
+            Step::Rejected => "rejected",
+            Step::Retrying => "retrying",
+            Step::Blocked => "blocked",
+            Step::Clarification => "clarification",
+            Step::Failed => "failed",
+            Step::Finished => "finished",
+        }
+    }
+
+    /// The value of the enum member: what the step means.
+    pub fn value(self) -> &'static str {
+        match self {
+            Step::Planned => "the plan is made",
+            Step::Requesting => "a batch's request is being assembled",
+            Step::Compiling => "the compiler is running on a batch",
+            Step::Checking => "the outputs of a unit are being checked",
+            Step::Accepted => "a unit was accepted and recorded",
+            Step::Rejected => "a unit was rejected",
+            Step::Retrying => "the compiler is running a batch again with the problems",
+            Step::Blocked => "the compiler could not proceed",
+            Step::Clarification => "the compiler asked a question",
+            Step::Failed => "the compiler command failed",
+            Step::Finished => "the compile is over",
+        }
+    }
+}
+
+/// One line of what a compile is doing, for a person or a script watching.
+// @lfy def/cli/data.lfy:42
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Progress {
+    /// What is happening.
+    pub step: Step, // @lfy def/cli/data.lfy:43
+    /// The batch it concerns; `None` for the plan and the end.
+    pub batch: Option<String>, // @lfy def/cli/data.lfy:44
+    /// The unit it concerns; `None` when it concerns a whole batch.
+    pub unit: Option<String>, // @lfy def/cli/data.lfy:45
+    /// Units accepted so far.
+    pub done: usize, // @lfy def/cli/data.lfy:46
+    /// Units planned.
+    pub total: usize, // @lfy def/cli/data.lfy:47
+    /// Seconds since the compile began.
+    pub elapsed: f64, // @lfy def/cli/data.lfy:48
+    /// The detail: the reason a unit is planned, a problem, a question, or the count of
+    /// batches.
+    pub message: String, // @lfy def/cli/data.lfy:49
+}

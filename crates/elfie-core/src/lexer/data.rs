@@ -11,34 +11,34 @@ use super::modes::Mode;
 ///
 /// Joining the raw text of every token of a file in order reproduces the file exactly,
 /// and the column is based on the raw text in the original source, not the adjusted value.
-// @lfy def/lexer/data.lfy:3
+// @lfy def/lexer/data.lfy:Token
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     /// The grammar terminal whose syntax matched; `None` for text no terminal matched,
     /// which flags the token as invalid. [`Token::rule`] gives the terminal's EBNF form.
-    pub rule: Option<Entity>, // @lfy def/lexer/data.lfy:4
+    pub rule: Option<Entity>, // @lfy def/lexer/data.lfy:Token.rule
     /// The characters exactly as written.
-    pub raw: String, // @lfy def/lexer/data.lfy:5
+    pub raw: String, // @lfy def/lexer/data.lfy:Token.raw
     /// The characters after escapes are applied and number underscores are removed;
     /// equal to `raw` for every other token.
-    pub value: String, // @lfy def/lexer/data.lfy:6
+    pub value: String, // @lfy def/lexer/data.lfy:Token.value
     /// The file the token came from.
-    pub file: Arc<str>, // @lfy def/lexer/data.lfy:7
+    pub file: Arc<str>, // @lfy def/lexer/data.lfy:Token.file
     /// Line the token starts on, counting from 1.
-    pub line: usize, // @lfy def/lexer/data.lfy:8
+    pub line: usize, // @lfy def/lexer/data.lfy:Token.line
     /// Column the token starts at within its line, counting from 0.
-    pub column: usize, // @lfy def/lexer/data.lfy:9
+    pub column: usize, // @lfy def/lexer/data.lfy:Token.column
 }
 
 impl Token {
     /// `$rule` as the EBNF form of the terminal that matched.
-    // @lfy def/lexer/data.lfy:4
+    // @lfy def/lexer/data.lfy:Token.rule
     pub fn rule(&self) -> Option<Rule> {
         self.rule.map(GrammarRule::rule)
     }
 
     /// Whether the token is flagged as invalid: no terminal matched its text.
-    // @lfy def/lexer/data.lfy:15
+    // @lfy def/lexer/data.lfy:Token
     pub fn is_invalid(&self) -> bool {
         self.rule.is_none()
     }
@@ -51,7 +51,7 @@ impl Token {
 
 /// One entry of the [`ModeStack`]: a mode together with the terminal whose token opened
 /// it (`None` for the code mode the stack starts with).
-// @lfy def/lexer/data.lfy:21
+// @lfy def/lexer/data.lfy:ModeStack
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ModeEntry {
     pub mode: Mode,
@@ -60,7 +60,7 @@ pub struct ModeEntry {
 
 /// Which region of the source the lexer is in, innermost last. The entry at the top
 /// decides which terminals are candidates for the next token.
-// @lfy def/lexer/data.lfy:18
+// @lfy def/lexer/data.lfy:ModeStack
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModeStack {
     entries: Vec<ModeEntry>,
@@ -74,7 +74,7 @@ impl Default for ModeStack {
 
 impl ModeStack {
     /// A stack holding the code mode, which it never loses.
-    // @lfy def/lexer/data.lfy:20
+    // @lfy def/lexer/data.lfy:ModeStack
     pub fn new() -> Self {
         ModeStack {
             entries: vec![ModeEntry {
@@ -85,7 +85,7 @@ impl ModeStack {
     }
 
     /// A token opens a mode: the mode is pushed together with the rule that opened it.
-    // @lfy def/lexer/data.lfy:21
+    // @lfy def/lexer/data.lfy:ModeStack
     pub fn push(&mut self, mode: Mode, opener: Entity) {
         self.entries.push(ModeEntry {
             mode,
@@ -96,17 +96,17 @@ impl ModeStack {
     /// A token closes the mode at the top: the top entry is popped and returned. When
     /// `mode` is not at the top it is not a close and nothing changes. The code mode the
     /// stack starts with is never popped.
-    // @lfy def/lexer/data.lfy:22
+    // @lfy def/lexer/data.lfy:ModeStack
     pub fn pop(&mut self, mode: Mode) -> Option<ModeEntry> {
         if self.entries.len() > 1 && self.top().mode == mode {
-            self.entries.pop() // @lfy def/lexer/data.lfy:22
+            self.entries.pop() // @lfy def/lexer/data.lfy:ModeStack
         } else {
-            None // @lfy def/lexer/data.lfy:23
+            None // @lfy def/lexer/data.lfy:ModeStack
         }
     }
 
     /// The entry at the top of the stack.
-    // @lfy def/lexer/data.lfy:24
+    // @lfy def/lexer/data.lfy:ModeStack
     pub fn top(&self) -> &ModeEntry {
         self.entries.last().expect("the stack is never empty")
     }
@@ -153,7 +153,7 @@ mod tests {
         Entity::Literal(Literal::Backtick)
     }
 
-    // @lfy def/lexer/data.lfy:20
+    // @lfy def/lexer/data.lfy:ModeStack
     #[test]
     fn the_stack_starts_with_code_and_is_never_empty() {
         let mut stack = ModeStack::new();
@@ -164,7 +164,7 @@ mod tests {
         assert!(stack.open().is_empty());
     }
 
-    // @lfy def/lexer/data.lfy:21
+    // @lfy def/lexer/data.lfy:ModeStack
     #[test]
     fn opening_a_mode_pushes_it_with_its_opener() {
         let mut stack = ModeStack::new();
@@ -182,7 +182,7 @@ mod tests {
         assert_eq!(stack.open().len(), 2);
     }
 
-    // @lfy def/lexer/data.lfy:22
+    // @lfy def/lexer/data.lfy:ModeStack
     #[test]
     fn closing_pops_only_the_mode_at_the_top() {
         let mut stack = ModeStack::new();
@@ -197,7 +197,7 @@ mod tests {
         assert!(stack.is_only_code());
     }
 
-    // @lfy def/lexer/data.lfy:4
+    // @lfy def/lexer/data.lfy:Token.rule
     #[test]
     fn a_token_records_its_rule_or_is_invalid() {
         let token = Token {

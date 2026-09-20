@@ -22,15 +22,15 @@ pub type EntityId = usize;
 pub type UsageId = usize;
 
 /// The three layers of every entity, plus the two ways of pointing at an entity itself.
-// @lfy def/model/data.lfy:6
+// @lfy def/model/data.lfy:Layer
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Layer {
-    Value,       // @lfy def/model/data.lfy:7
-    Context,     // @lfy def/model/data.lfy:8
-    Scope,       // @lfy def/model/data.lfy:9
-    Parent,      // @lfy def/model/data.lfy:10
-    Dereference, // @lfy def/model/data.lfy:11
-    Previous,    // @lfy def/model/data.lfy:12
+    Value,       // @lfy def/model/data.lfy:Layer.value
+    Context,     // @lfy def/model/data.lfy:Layer.context
+    Scope,       // @lfy def/model/data.lfy:Layer.scope
+    Parent,      // @lfy def/model/data.lfy:Layer.parent
+    Dereference, // @lfy def/model/data.lfy:Layer.dereference
+    Previous,    // @lfy def/model/data.lfy:Layer.previous
 }
 
 impl Layer {
@@ -48,22 +48,22 @@ impl Layer {
 
 /// Every context property; a name after the context accessor must be one of these. A
 /// property is matched by its value, not its member name.
-// @lfy def/model/data.lfy:15
+// @lfy def/model/data.lfy:ContextProperty
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContextProperty {
-    Identifier,         // @lfy def/model/data.lfy:16
-    Definition,         // @lfy def/model/data.lfy:17
-    Type,               // @lfy def/model/data.lfy:18
-    AcceptanceCriteria, // @lfy def/model/data.lfy:19
-    Parameters,         // @lfy def/model/data.lfy:20
-    Output,             // @lfy def/model/data.lfy:21
-    Entities,           // @lfy def/model/data.lfy:22
-    Extenders,          // @lfy def/model/data.lfy:23
-    References,         // @lfy def/model/data.lfy:24
-    Like,               // @lfy def/model/data.lfy:25
-    Test,               // @lfy def/model/data.lfy:26
-    Tests,              // @lfy def/model/data.lfy:27
-    ItemType,           // @lfy def/model/data.lfy:28
+    Identifier,         // @lfy def/model/data.lfy:ContextProperty.identifier
+    Definition,         // @lfy def/model/data.lfy:ContextProperty.definition
+    Type,               // @lfy def/model/data.lfy:ContextProperty._type
+    AcceptanceCriteria, // @lfy def/model/data.lfy:ContextProperty.acceptanceCriteria
+    Parameters,         // @lfy def/model/data.lfy:ContextProperty.parameters
+    Output,             // @lfy def/model/data.lfy:ContextProperty.output
+    Entities,           // @lfy def/model/data.lfy:ContextProperty.entities
+    Extenders,          // @lfy def/model/data.lfy:ContextProperty.extenders
+    References,         // @lfy def/model/data.lfy:ContextProperty.references
+    Like,               // @lfy def/model/data.lfy:ContextProperty.like
+    Test,               // @lfy def/model/data.lfy:ContextProperty.test
+    Tests,              // @lfy def/model/data.lfy:ContextProperty.tests
+    ItemType,           // @lfy def/model/data.lfy:ContextProperty.itemType
 }
 
 impl ContextProperty {
@@ -104,7 +104,9 @@ impl ContextProperty {
 
     /// The property whose value is `name`.
     pub fn lookup(name: &str) -> Option<ContextProperty> {
-        ContextProperty::ALL.into_iter().find(|property| property.value() == name)
+        ContextProperty::ALL
+            .into_iter()
+            .find(|property| property.value() == name)
     }
 }
 
@@ -128,42 +130,44 @@ pub struct NodeInfo {
     pub path: Vec<u32>,
 }
 
-/// The kind of declaration a symbol came from, as `declaring` names it.
+/// What kind of declaration a symbol came from.
+// @lfy def/model/data.lfy:SymbolKind
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SymbolKind {
-    Data,
-    Trait,
-    Function,
-    AgentFunction,
-    Type,
-    Enum,
-    Variable,
-    Alias,
-    External,
-    Module,
-    LoopVariable,
-    Parameter,
-    Member,
-    EnumMember,
+    Data,          // @lfy def/model/data.lfy:SymbolKind.data
+    Trait,         // @lfy def/model/data.lfy:SymbolKind._trait
+    Type,          // @lfy def/model/data.lfy:SymbolKind._type
+    Enum,          // @lfy def/model/data.lfy:SymbolKind._enum
+    EnumMember,    // @lfy def/model/data.lfy:SymbolKind.enumMember
+    Function,      // @lfy def/model/data.lfy:SymbolKind._function
+    AgentFunction, // @lfy def/model/data.lfy:SymbolKind.agentFunction
+    Variable,      // @lfy def/model/data.lfy:SymbolKind.variable
+    LoopVariable,  // @lfy def/model/data.lfy:SymbolKind.loopVariable
+    Parameter,     // @lfy def/model/data.lfy:SymbolKind.parameter
+    Member,        // @lfy def/model/data.lfy:SymbolKind.member
+    Alias,         // @lfy def/model/data.lfy:SymbolKind._alias
+    External,      // @lfy def/model/data.lfy:SymbolKind._external
+    Module,        // @lfy def/model/data.lfy:SymbolKind._module
 }
 
 impl SymbolKind {
+    /// The value of the enum member: how the kind is spelled.
     pub fn as_str(self) -> &'static str {
         match self {
             SymbolKind::Data => "data",
             SymbolKind::Trait => "trait",
-            SymbolKind::Function => "function",
-            SymbolKind::AgentFunction => "agentFunction",
             SymbolKind::Type => "type",
             SymbolKind::Enum => "enum",
+            SymbolKind::EnumMember => "enumMember",
+            SymbolKind::Function => "function",
+            SymbolKind::AgentFunction => "agentFunction",
             SymbolKind::Variable => "variable",
-            SymbolKind::Alias => "alias",
-            SymbolKind::External => "external",
-            SymbolKind::Module => "module",
             SymbolKind::LoopVariable => "loopVariable",
             SymbolKind::Parameter => "parameter",
             SymbolKind::Member => "member",
-            SymbolKind::EnumMember => "enumMember",
+            SymbolKind::Alias => "alias",
+            SymbolKind::External => "external",
+            SymbolKind::Module => "module",
         }
     }
 }
@@ -175,44 +179,44 @@ impl fmt::Display for SymbolKind {
 }
 
 /// A name bound to an entity in one scope. Knows the node that declared it, the scope
-/// that holds it, and the kind of declaration it came from.
-// @lfy def/model/data.lfy:33
+/// that holds it, and its [`SymbolKind`].
+// @lfy def/model/data.lfy:Symbol
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Symbol {
     /// The name.
-    pub name: String, // @lfy def/model/data.lfy:34
+    pub name: String, // @lfy def/model/data.lfy:Symbol.name
     /// What the name is bound to; for an alias, the target's entity.
-    pub entity: EntityId, // @lfy def/model/data.lfy:35
-    pub kind: SymbolKind,       // @lfy def/model/data.lfy:38
+    pub entity: EntityId, // @lfy def/model/data.lfy:Symbol.entity
+    pub kind: SymbolKind, // @lfy def/model/data.lfy:Symbol
     /// The node that declared it.
-    pub node: NodeRef, // @lfy def/model/data.lfy:38
+    pub node: NodeRef, // @lfy def/model/data.lfy:Symbol
     /// The token that spells the name, when one does.
     pub name_token: Option<usize>,
     /// The scope that holds it.
-    pub scope: ScopeId, // @lfy def/model/data.lfy:38
+    pub scope: ScopeId, // @lfy def/model/data.lfy:Symbol
 }
 
 /// A region in which names resolve. Holds the symbols declared directly in it, in order,
 /// and knows its parent; a file scope has no parent and also holds the symbols its use
 /// statements import.
-// @lfy def/model/data.lfy:42
+// @lfy def/model/data.lfy:Scope
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
-    pub parent: Option<ScopeId>, // @lfy def/model/data.lfy:44
+    pub parent: Option<ScopeId>, // @lfy def/model/data.lfy:Scope
     /// The node that owns it.
     pub owner: NodeRef,
     pub file: FileId,
     /// The symbols declared directly in it, in order.
-    pub symbols: Vec<SymbolId>, // @lfy def/model/data.lfy:44
+    pub symbols: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
     /// The symbols its use statements import; only a file scope has any.
-    pub imports: Vec<SymbolId>, // @lfy def/model/data.lfy:44
+    pub imports: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
     /// The current entity: what the value, context, and scope accessors reach without a
     /// left expression.
-    pub current: EntityId, // @lfy def/model/data.lfy:47
+    pub current: EntityId, // @lfy def/model/data.lfy:Scope
 }
 
 /// What applied a trait: the clause or call, or the application it was inherited through.
-// @lfy def/model/data.lfy:56
+// @lfy def/model/data.lfy:Applied
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppliedSource {
     Is(NodeRef),
@@ -223,39 +227,41 @@ pub enum AppliedSource {
 }
 
 /// One trait on one entity.
-// @lfy def/model/data.lfy:51
+// @lfy def/model/data.lfy:Applied
 #[derive(Debug, Clone, PartialEq)]
 pub struct Applied {
     /// The trait.
-    pub entity: EntityId, // @lfy def/model/data.lfy:52
+    pub entity: EntityId, // @lfy def/model/data.lfy:Applied.entity
     /// Argument nodes, in order.
-    pub arguments: Vec<NodeRef>, // @lfy def/model/data.lfy:53
+    pub arguments: Vec<NodeRef>, // @lfy def/model/data.lfy:Applied.arguments
     /// The arguments evaluated where they were written, in order; a spread parameter
     /// takes the rest as one list.
     pub values: Vec<Value>,
-    pub source: AppliedSource, // @lfy def/model/data.lfy:56
+    pub source: AppliedSource, // @lfy def/model/data.lfy:Applied
 }
 
 /// One acceptance criterion as written, with the entity it came from. Texts are stored
 /// resolved for the entity that holds the criterion.
-// @lfy def/model/data.lfy:62
+// @lfy def/model/data.lfy:Criterion
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Criterion {
-    pub situation: Option<Vec<String>>,    // @lfy def/model/data.lfy:63
-    pub behavior: Option<Vec<String>>,     // @lfy def/model/data.lfy:64
-    pub side_effects: Option<Vec<String>>, // @lfy def/model/data.lfy:65
+    pub situation: Option<Vec<String>>, // @lfy def/model/data.lfy:Criterion.situation
+    pub behavior: Option<Vec<String>>,  // @lfy def/model/data.lfy:Criterion.behavior
+    pub side_effects: Option<Vec<String>>, // @lfy def/model/data.lfy:Criterion.sideEffects
     /// The entity whose body holds it: the entity itself or one of its traits.
-    pub contributor: EntityId, // @lfy def/model/data.lfy:66
+    pub contributor: EntityId, // @lfy def/model/data.lfy:Criterion.contributor
     /// The `add` call or `Where` statement it was written as.
     pub node: Option<NodeRef>,
 }
 
 /// One test.
-// @lfy def/model/data.lfy:69
+// @lfy def/model/data.lfy:Test
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Test {
-    pub input: Option<NodeRef>, // @lfy def/model/data.lfy:70
-    pub expect: Option<NodeRef>, // @lfy def/model/data.lfy:71
+    /// Input for the test (parameters for functions, value otherwise).
+    pub input: Option<NodeRef>, // @lfy def/model/data.lfy:Test.input
+    /// Expected output for the test.
+    pub expect: Option<NodeRef>, // @lfy def/model/data.lfy:Test.expect
     /// The source text of the input expression.
     pub input_text: String,
     /// The source text of the expectation.
@@ -336,24 +342,24 @@ pub enum EntityKind {
     Type,
     Enum,
     /// A declared fn or function seen through its context layer.
-    // @lfy def/model/data.lfy:94
+    // @lfy def/model/data.lfy:FnEntity
     Fn {
         /// ContextProperty parameters: parameters.
-        parameters: Vec<SymbolId>, // @lfy def/model/data.lfy:95
+        parameters: Vec<SymbolId>, // @lfy def/model/data.lfy:FnEntity.parameters
         /// ContextProperty output: the declared return type.
-        output: Option<TypeRef>, // @lfy def/model/data.lfy:96
+        output: Option<TypeRef>, // @lfy def/model/data.lfy:FnEntity.output
         /// Whether the implementation is generated (`fn`) rather than written (`function`).
         agent: bool,
     },
     /// A declared trait seen through its context layer.
-    // @lfy def/model/data.lfy:99
+    // @lfy def/model/data.lfy:TraitEntity
     Trait {
         parameters: Vec<SymbolId>,
         /// ContextProperty entities: everything the trait was applied to, directly or by
         /// inheritance.
-        entities: Vec<EntityId>, // @lfy def/model/data.lfy:100
+        entities: Vec<EntityId>, // @lfy def/model/data.lfy:TraitEntity.entities
         /// ContextProperty extenders: every trait that names it in an ExtendsClause.
-        extenders: Vec<EntityId>, // @lfy def/model/data.lfy:101
+        extenders: Vec<EntityId>, // @lfy def/model/data.lfy:TraitEntity.extenders
     },
     Variable,
     Alias,
@@ -369,36 +375,38 @@ pub enum EntityKind {
 
 /// A declared thing seen through its context layer. Knows its declaring node, its
 /// symbol, and the scope it owns (parameters, members, body).
-// @lfy def/model/data.lfy:74
+// @lfy def/model/data.lfy:Entity
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
-    /// ContextProperty identifier: the declared name; `None` when anonymous.
-    pub identifier: Option<String>, // @lfy def/model/data.lfy:75
-    /// ContextProperty definition: the description written after the colon, resolved.
-    pub definition: Option<String>, // @lfy def/model/data.lfy:76
+    /// The declared name; `None` when anonymous.
+    pub identifier: Option<String>, // @lfy def/model/data.lfy:TraitEntity.identifier
+    /// The description provided for this entity, resolved.
+    pub definition: Option<String>, // @lfy def/model/data.lfy:TraitEntity.definition
     /// The node of the string or template the definition was written as.
     pub definition_node: Option<NodeRef>,
-    /// ContextProperty _type: the declared or inferred type.
-    pub ty: Option<TypeRef>, // @lfy def/model/data.lfy:77
-    /// ContextProperty acceptanceCriteria: own criteria first, then each trait's in
+    /// The declared or inferred type.
+    pub ty: Option<TypeRef>, // @lfy def/model/data.lfy:TraitEntity.type
+    /// Acceptance criteria specifying own criteria first, then each trait's in
     /// application order.
-    pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:78
+    pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:TraitEntity.acceptanceCriteria
     /// Every trait applied to it, direct or inherited, in application order.
-    pub traits: Vec<Applied>, // @lfy def/model/data.lfy:79
-    /// ContextProperty itemType: what a list holds; `None` when the type is not a list.
-    pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:91
+    pub traits: Vec<Applied>, // @lfy def/model/data.lfy:TraitEntity.traits
+    /// A declared list seen through its context layer: what the list holds, and `None`
+    /// when the type is not a list.
+    // @lfy def/model/data.lfy:ListEntity
+    pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:ListEntity.itemType
     /// Every entity referenced via a Reference in definition, documentation, or value.
-    pub references: Vec<UsageId>, // @lfy def/model/data.lfy:80
+    pub references: Vec<UsageId>, // @lfy def/model/data.lfy:TraitEntity.references
     /// ContextProperty tests: list of all added tests.
-    pub tests: Vec<Test>, // @lfy def/model/data.lfy:84
+    pub tests: Vec<Test>, // @lfy def/model/data.lfy:TraitEntity.tests
     /// The value setters evaluated for it (`.name = value` in a trait or data body).
     pub values: Vec<(String, Value)>,
     pub kind: EntityKind,
     /// The declaring node; `None` for global.
-    pub node: Option<NodeRef>, // @lfy def/model/data.lfy:87
-    pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:87
+    pub node: Option<NodeRef>, // @lfy def/model/data.lfy:Entity
+    pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:Entity
     /// The scope it owns, when it owns one.
-    pub scope: Option<ScopeId>, // @lfy def/model/data.lfy:87
+    pub scope: Option<ScopeId>, // @lfy def/model/data.lfy:Entity
     pub file: Option<FileId>,
 }
 
@@ -446,52 +454,57 @@ impl Entity {
 
     /// The value a setter gave the name.
     pub fn value(&self, name: &str) -> Option<&Value> {
-        self.values.iter().rev().find(|(n, _)| n == name).map(|(_, v)| v)
+        self.values
+            .iter()
+            .rev()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| v)
     }
 }
 
 /// One use of a name or of an entity.
-// @lfy def/model/data.lfy:106
+// @lfy def/model/data.lfy:Usage
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Usage {
     /// The node that uses it.
-    pub node: NodeRef, // @lfy def/model/data.lfy:107
+    pub node: NodeRef, // @lfy def/model/data.lfy:Usage.node
     /// The name spelled after the accessor; `None` when the usage is of the layer itself.
-    pub name: Option<String>, // @lfy def/model/data.lfy:108
+    pub name: Option<String>, // @lfy def/model/data.lfy:Usage.name
     /// The token that spells the name, or the accessor when there is no name.
     pub token: Option<usize>,
     /// Which layer is read.
-    pub layer: Layer, // @lfy def/model/data.lfy:109
+    pub layer: Layer, // @lfy def/model/data.lfy:Usage.layer
     /// What it resolved to; `None` when unresolved.
-    pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:110
+    pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:Usage.symbol
 }
 
 /// Something that did not resolve; binding continues past it.
-// @lfy def/model/data.lfy:113
+// @lfy def/model/data.lfy:Problem
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Problem {
     /// Where.
-    pub node: NodeRef, // @lfy def/model/data.lfy:114
+    pub node: NodeRef, // @lfy def/model/data.lfy:Problem.node
     /// What and why.
-    pub message: String, // @lfy def/model/data.lfy:115
+    pub message: String, // @lfy def/model/data.lfy:Problem.message
 }
 
 /// One file to bind, with its `Use` statements already resolved.
-// @lfy def/model/data.lfy:118
+// @lfy def/model/data.lfy:Source
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Source {
     /// The file's path, as `Token.file` holds it.
-    pub path: String, // @lfy def/model/data.lfy:119
+    pub path: String, // @lfy def/model/data.lfy:Source.path
     /// The parse of the file.
-    pub tree: Tree, // @lfy def/model/data.lfy:120
+    pub tree: Tree, // @lfy def/model/data.lfy:Source.tree
     /// The path each `Use` in the tree refers to, in the order the uses appear; `None`
     /// where it refers to nothing.
-    pub uses: Vec<Option<String>>, // @lfy def/model/data.lfy:121
+    pub uses: Vec<Option<String>>, // @lfy def/model/data.lfy:Source.uses
 }
 
 /// The program, queryable. Answers every query of the model module for every file it
 /// was bound from and lists every problem in node order.
-// @lfy def/model/data.lfy:124
+// @lfy def/model/data.lfy:Model
+// @lfy def/model/data.lfy:Model
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Model {
     pub sources: Vec<Source>,
@@ -500,7 +513,7 @@ pub struct Model {
     pub entities: Vec<Entity>,
     pub usages: Vec<Usage>,
     /// Every problem in node order.
-    pub problems: Vec<Problem>, // @lfy def/model/data.lfy:127
+    pub problems: Vec<Problem>, // @lfy def/model/data.lfy:Model
     /// Per file, one entry per node in preorder.
     pub nodes: Vec<Vec<NodeInfo>>,
     /// The file scope of each file.
@@ -541,7 +554,10 @@ impl Model {
 
     /// The parent node of a node.
     pub fn parent(&self, r: NodeRef) -> Option<NodeRef> {
-        self.nodes[r.file][r.index].parent.map(|index| NodeRef { file: r.file, index })
+        self.nodes[r.file][r.index].parent.map(|index| NodeRef {
+            file: r.file,
+            index,
+        })
     }
 
     /// The tokens of a file.
@@ -670,4 +686,3 @@ impl fmt::Display for Problem {
         f.write_str(&self.message)
     }
 }
-

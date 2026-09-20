@@ -41,7 +41,7 @@ impl<'a> Arguments<'a> {
 pub type Call = fn(&Session, Arguments<'_>) -> Result<String, String>;
 
 /// One fn carrying `tool`: how the server lists it and how a call reaches it.
-// @lfy def/mcp/traits.lfy:8
+// @lfy def/mcp/traits.lfy:tool
 #[derive(Debug, Clone)]
 pub struct Registered {
     /// The tool as the server lists it.
@@ -53,7 +53,7 @@ pub struct Registered {
 impl Registered {
     /// The fn `identifier`, described by `definition`, with one argument per parameter that
     /// is not the session; it is listed as `elfie_` followed by the identifier.
-    // @lfy def/mcp/traits.lfy:9
+    // @lfy def/mcp/traits.lfy:tool
     pub fn new(identifier: &str, definition: &str, arguments: Vec<ToolArgument>, call: Call) -> Registered {
         Registered {
             tool: Tool {
@@ -69,14 +69,14 @@ impl Registered {
 /// The JSON schema of a tool's arguments: an object with one property per argument, typed
 /// as the parameter is and described by the fn's documentation line for it, and the
 /// arguments a call must give as `required`.
-// @lfy def/mcp/traits.lfy:9
+// @lfy def/mcp/traits.lfy:tool
 pub fn input_schema(tool: &Tool) -> JsonObject {
     let mut properties = serde_json::Map::new();
     let mut required = Vec::new();
     for argument in &tool.arguments {
         properties.insert(
             argument.name.clone(),
-            json!({ "type": argument.ty, "description": argument.description }), // @lfy def/mcp/traits.lfy:10
+            json!({ "type": argument.ty, "description": argument.description }), // @lfy def/mcp/traits.lfy:tool
         );
         if argument.required {
             required.push(Value::String(argument.name.clone()));
@@ -90,7 +90,7 @@ pub fn input_schema(tool: &Tool) -> JsonObject {
 }
 
 /// Every registered fn as the protocol lists a tool.
-// @lfy def/mcp/traits.lfy:9
+// @lfy def/mcp/traits.lfy:tool
 pub fn list(tools: &[Registered]) -> Vec<rmcp::model::Tool> {
     tools
         .iter()
@@ -105,7 +105,7 @@ pub fn list(tools: &[Registered]) -> Vec<rmcp::model::Tool> {
 }
 
 /// The registered fn a call names, when one does.
-// @lfy def/mcp/traits.lfy:11
+// @lfy def/mcp/traits.lfy:tool
 pub fn find<'t>(tools: &'t [Registered], name: &str) -> Option<&'t Registered> {
     tools.iter().find(|registered| registered.tool.name == name)
 }
@@ -122,7 +122,7 @@ fn is_of_type(value: &Value, ty: &str) -> bool {
 
 /// The arguments checked against the parameters: an argument that is missing, unknown, or
 /// of the wrong type is an error naming the argument. A `null` argument counts as left out.
-// @lfy def/mcp/traits.lfy:12
+// @lfy def/mcp/traits.lfy:tool
 pub fn check_arguments(tool: &Tool, arguments: &JsonObject) -> Result<(), String> {
     for name in arguments.keys() {
         if !tool.arguments.iter().any(|argument| &argument.name == name) {
@@ -148,15 +148,15 @@ pub fn check_arguments(tool: &Tool, arguments: &JsonObject) -> Result<(), String
 /// One call of a registered fn: the arguments are checked, the fn is called with the
 /// session and them, and what it returns is the result. A failure of the fn is an error
 /// carrying the failure, and the server goes on.
-// @lfy def/mcp/traits.lfy:11
+// @lfy def/mcp/traits.lfy:tool
 pub fn call(registered: &Registered, session: &Session, arguments: &JsonObject) -> ToolResult {
-    // @lfy def/mcp/traits.lfy:12
+    // @lfy def/mcp/traits.lfy:tool
     if let Err(message) = check_arguments(&registered.tool, arguments) {
         return ToolResult::error(message);
     }
     // Decision: "the fn fails" covers a panic as well as an `Err`, so a panic inside a tool
     // is caught and reported as the call's error rather than ending the connection.
-    // @lfy def/mcp/traits.lfy:13
+    // @lfy def/mcp/traits.lfy:tool
     let outcome = panic::catch_unwind(AssertUnwindSafe(|| (registered.call)(session, Arguments::new(arguments))));
     match outcome {
         Ok(result) => ToolResult::from(result),
@@ -191,7 +191,7 @@ mod tests {
         )
     }
 
-    // @lfy def/mcp/traits.lfy:9
+    // @lfy def/mcp/traits.lfy:tool
     #[test]
     fn a_registered_fn_is_listed_with_a_schema() {
         let registered = sample();
@@ -199,7 +199,7 @@ mod tests {
         let schema = input_schema(&registered.tool);
         assert_eq!(schema["type"], "object");
         assert_eq!(schema["properties"]["name"]["type"], "string");
-        assert_eq!(schema["properties"]["file"]["description"], "The file"); // @lfy def/mcp/traits.lfy:10
+        assert_eq!(schema["properties"]["file"]["description"], "The file"); // @lfy def/mcp/traits.lfy:tool
         assert_eq!(schema["required"], json!(["name"]));
         let listed = list(&[registered]);
         assert_eq!(listed.len(), 1);
@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(listed[0].description.as_deref(), Some("A sample"));
     }
 
-    // @lfy def/mcp/traits.lfy:12
+    // @lfy def/mcp/traits.lfy:tool
     #[test]
     fn arguments_are_checked_before_the_fn_is_called() {
         let tool = sample().tool;
