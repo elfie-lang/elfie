@@ -132,7 +132,7 @@ impl Binder {
 
     /// Adds a symbol to a scope; a second declaration of a name in the same scope is a
     /// problem and the first wins.
-    // @lfy def/model/main.lfy:33
+    // @lfy def/model/main.lfy:bind
     pub fn add_symbol(
         &mut self,
         scope: ScopeId,
@@ -184,7 +184,7 @@ impl Binder {
 
     /// Each SourceFile is a file scope whose current entity is an anonymous entity for
     /// the file.
-    // @lfy def/model/main.lfy:26
+    // @lfy def/model/main.lfy:bind
     pub fn declare_file(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let root = NodeRef { file, index: 0 };
@@ -199,7 +199,7 @@ impl Binder {
     }
 
     /// Every scoped node creates a scope and every declaring node a symbol and an entity.
-    // @lfy def/model/main.lfy:27
+    // @lfy def/model/main.lfy:bind
     fn declare_node(&mut self, r: NodeRef, enclosing: ScopeId) {
         let trees = self.trees.clone();
         let rule = trees.rule(r);
@@ -223,7 +223,7 @@ impl Binder {
         }
         if let Some((entity, kind, Some(name), name_token)) = declared {
             // A loop variable is added to the scope the For owns instead.
-            // @lfy def/model/traits.lfy:43
+            // @lfy def/model/traits.lfy:declaring
             let target = if kind == SymbolKind::LoopVariable {
                 if trees.is(r, S::ForFrom) { enclosing } else { scope }
             } else {
@@ -232,7 +232,7 @@ impl Binder {
             self.add_symbol(target, name, entity, kind, r, name_token);
         }
         // A member declared in a data or trait body.
-        // @lfy def/model/main.lfy:31
+        // @lfy def/model/main.lfy:bind
         if let Some(current) = trees.member_declaration(r) {
             let (_, name_token) = trees.accessor_and_name(current).expect("checked");
             let name_token = name_token.expect("checked");
@@ -244,7 +244,7 @@ impl Binder {
             }
         }
         // An ObjectKey in the Object of an EnumDeclaration declares an enum member.
-        // @lfy def/model/main.lfy:32
+        // @lfy def/model/main.lfy:bind
         if trees.is(r, E::ObjectKey)
             && trees.parent(r).is_some_and(|p| trees.is(p, E::Object))
             && trees.parent(r).and_then(|p| trees.parent(p)).is_some_and(|g| trees.is(g, S::EnumDeclaration))
@@ -261,7 +261,7 @@ impl Binder {
     }
 
     /// A Use refers to the Source its entry in Source.uses names.
-    // @lfy def/model/main.lfy:38
+    // @lfy def/model/main.lfy:bind
     pub fn link_uses(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let _ = file;
@@ -280,14 +280,14 @@ impl Binder {
             };
             if trees.has_token(use_node, K::AsKeyword) {
                 // The module symbol's entity is the used file's entity.
-                // @lfy def/model/main.lfy:40
+                // @lfy def/model/main.lfy:bind
                 if let Some(symbol) = self.model.symbol_of(use_node) {
                     let file_entity = self.model.file_entities[target];
                     self.model.symbols[symbol].entity = file_entity;
                 }
             } else {
                 // The used file's own symbols, not its imports, are visible.
-                // @lfy def/model/main.lfy:39
+                // @lfy def/model/main.lfy:bind
                 let own: Vec<SymbolId> = self.model.scopes[self.model.file_scopes[target]].symbols.clone();
                 let scope = self.model.file_scopes[file];
                 for symbol in own {
@@ -303,7 +303,7 @@ impl Binder {
 
     /// Entity.type and Entity.definition nodes for every entity of a file, from its
     /// declaration alone.
-    // @lfy def/model/main.lfy:90
+    // @lfy def/model/main.lfy:bind
     pub fn type_entities(&mut self, file: FileId) {
         let ids: Vec<EntityId> = (0..self.model.entities.len())
             .filter(|&e| self.model.entities[e].file == Some(file))
@@ -638,7 +638,7 @@ impl Binder {
     // ---- Resolve ------------------------------------------------------------------
 
     /// Every reading node of a file gets a Usage, resolved as the model says.
-    // @lfy def/model/main.lfy:64
+    // @lfy def/model/main.lfy:bind
     pub fn resolve_file(&mut self, file: FileId) {
         let root = NodeRef { file, index: 0 };
         self.resolve_node(root);
@@ -648,7 +648,7 @@ impl Binder {
         let trees = self.trees.clone();
         let rule = trees.rule(r);
         // A With runs its block with the entity its expression resolves to as current.
-        // @lfy def/model/main.lfy:34
+        // @lfy def/model/main.lfy:bind
         if rule == S::With.entity() {
             let children = trees.child_nodes(r);
             for &child in &children {
@@ -693,14 +693,14 @@ impl Binder {
             self.add_usage(r, Some(name), token, Layer::Value, symbol);
         } else if rule == E::Dereference.entity() {
             // A Dereference yields the entity its operand is bound to.
-            // @lfy def/model/main.lfy:75
+            // @lfy def/model/main.lfy:bind
             let operand = trees.child_nodes(r).into_iter().next();
             let symbol = operand.and_then(|o| self.model.usage_of(o)).and_then(|u| self.model.usages[u].symbol);
             let token = operand.and_then(|o| self.model.usage_of(o)).and_then(|u| self.model.usages[u].token);
             self.add_usage(r, operand.map(|o| trees.raw(o).trim().to_string()), token, Layer::Dereference, symbol);
         } else if rule == E::Previous.entity() {
             // A Previous yields the entity declared by the nearest earlier statement.
-            // @lfy def/model/main.lfy:76
+            // @lfy def/model/main.lfy:bind
             let symbol = self.previous_symbol(r);
             let token = trees.parts(r).into_iter().find_map(|p| match p {
                 Part::Token(i) => Some(i),
@@ -712,7 +712,7 @@ impl Binder {
             self.add_usage(r, None, token, Layer::Previous, symbol);
         } else if rule == S::AliasDeclaration.entity() {
             // An alias's symbol is bound to the target's entity.
-            // @lfy def/model/data.lfy:33
+            // @lfy def/model/data.lfy:Symbol
             if let Some(symbol) = self.model.symbol_of(r) {
                 let value = trees.child_nodes(r).into_iter().find(|&c| !trees.is(c, E::Declared));
                 if let Some(target) = value.and_then(|v| self.model.usage_of(v)).and_then(|u| self.model.usages[u].symbol) {
@@ -725,7 +725,7 @@ impl Binder {
 
     /// Sets the current entity of a scope and of every scope inside it that inherited the
     /// old one (a Block, For, or With), leaving the scopes of declarations alone.
-    // @lfy def/model/main.lfy:34
+    // @lfy def/model/main.lfy:bind
     fn set_current(&mut self, scope: ScopeId, entity: EntityId) {
         let old = self.model.scopes[scope].current;
         let mut updated = HashSet::new();
@@ -770,7 +770,7 @@ impl Binder {
 
     /// A Name resolves to the first match walking from its scope outward; inside a
     /// template, a name found nowhere resolves to the one rule entity with that name.
-    // @lfy def/model/main.lfy:64
+    // @lfy def/model/main.lfy:bind
     fn resolve_name(&mut self, r: NodeRef) {
         let trees = self.trees.clone();
         // The Name that spells a declared name is the declaration, not a usage.
@@ -786,6 +786,8 @@ impl Binder {
         if symbol.is_none() && self.in_template(r) {
             symbol = self.model.rule_entity(&name).and_then(|e| self.model.entities[e].symbol);
         }
+        // Nothing is found for a name: the Usage has no symbol and a Problem is added.
+        // @lfy def/model/main.lfy:bind
         if symbol.is_none() {
             self.problem(r, format!("{name} is not declared in scope"));
         }
@@ -794,7 +796,7 @@ impl Binder {
     }
 
     /// A Current is bound with the scope's current entity as the left side.
-    // @lfy def/model/main.lfy:66
+    // @lfy def/model/main.lfy:bind
     fn resolve_current(&mut self, r: NodeRef) {
         let trees = self.trees.clone();
         let Some((accessor, name)) = trees.accessor_and_name(r) else { return };
@@ -811,7 +813,7 @@ impl Binder {
     }
 
     /// A Member resolves its name in what its left side resolves to.
-    // @lfy def/model/main.lfy:66
+    // @lfy def/model/main.lfy:bind
     fn resolve_member(&mut self, r: NodeRef) {
         let trees = self.trees.clone();
         let Some((accessor, name)) = trees.accessor_and_name(r) else { return };
@@ -830,7 +832,7 @@ impl Binder {
         match layer {
             Layer::Context => {
                 // The MemberName must be the value of a ContextProperty.
-                // @lfy def/model/main.lfy:70
+                // @lfy def/model/main.lfy:bind
                 if ContextProperty::lookup(name).is_none() {
                     self.problem(r, format!("{name} is not a context property"));
                 }
@@ -862,6 +864,9 @@ impl Binder {
                     symbol
                 }
                 Target::Predicate(trait_entity) => self.member_symbol(trait_entity, name).or_else(|| self.inherited_member(trait_entity, name)),
+                // The name is the MemberName of a Member whose left side has no symbol
+                // either: no further Problem is added for it.
+                // @lfy def/model/main.lfy:bind
                 Target::Unknown => None,
             },
         }

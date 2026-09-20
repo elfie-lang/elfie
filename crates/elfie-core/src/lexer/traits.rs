@@ -10,7 +10,7 @@ use super::data::ModeStack;
 use super::modes::{self, Mode};
 
 /// `ace function inMode(modes)`: the top of the [`ModeStack`] is one of `modes`.
-// @lfy def/lexer/traits.lfy:4
+// @lfy def/lexer/traits.lfy:inMode
 pub fn in_mode(stack: &ModeStack, modes: &[Mode]) -> bool {
     modes.contains(&stack.top_mode())
 }
@@ -24,17 +24,17 @@ pub enum ModeBehavior {
     Opener {
         mode: Mode,
         when: Option<&'static [Mode]>,
-    }, // @lfy def/lexer/traits.lfy:13
+    }, // @lfy def/lexer/traits.lfy:modeOpener
     /// `modeCloser(mode)`: creating this token pops a mode.
-    Closer { mode: Mode }, // @lfy def/lexer/traits.lfy:20
+    Closer { mode: Mode }, // @lfy def/lexer/traits.lfy:modeCloser
     /// `modeToggle(mode, when?)`: the same boundary opens the mode and, seen again, closes
     /// it.
     Toggle {
         mode: Mode,
         when: Option<&'static [Mode]>,
-    }, // @lfy def/lexer/traits.lfy:27
+    }, // @lfy def/lexer/traits.lfy:modeToggle
     /// `appliedUntilNewLine(mode)`: the mode this token opens ends with the line.
-    AppliedUntilNewLine { mode: Mode }, // @lfy def/lexer/traits.lfy:35
+    AppliedUntilNewLine { mode: Mode }, // @lfy def/lexer/traits.lfy:appliedUntilNewLine
 }
 
 /// `when ?? Always`
@@ -44,17 +44,17 @@ fn holds(when: Option<&[Mode]>, stack: &ModeStack) -> bool {
 
 /// Applies every mode behavior of `terminal` once a token is created for it. Every
 /// condition is evaluated against the stack as it is when the token is created.
-// @lfy def/lexer/traits.lfy:14
+// @lfy def/lexer/traits.lfy:modeOpener
 pub fn on_token(terminal: Entity, stack: &mut ModeStack) {
     for behavior in modes::mode_behaviors(terminal) {
         match *behavior {
-            // @lfy def/lexer/traits.lfy:16
+            // @lfy def/lexer/traits.lfy:modeOpener
             ModeBehavior::Opener { mode, when } => {
                 if holds(when, stack) {
                     stack.push(mode, terminal);
                 }
             }
-            // @lfy def/lexer/traits.lfy:23
+            // @lfy def/lexer/traits.lfy:modeCloser
             ModeBehavior::Closer { mode } => {
                 if stack.top_mode() == mode {
                     stack.pop(mode);
@@ -63,10 +63,10 @@ pub fn on_token(terminal: Entity, stack: &mut ModeStack) {
             ModeBehavior::Toggle { mode, when } => {
                 let top = *stack.top();
                 if top.mode == mode && top.opener == Some(terminal) {
-                    // @lfy def/lexer/traits.lfy:30
+                    // @lfy def/lexer/traits.lfy:modeToggle
                     stack.pop(mode);
                 } else if top.mode != mode && holds(when, stack) {
-                    // @lfy def/lexer/traits.lfy:31
+                    // @lfy def/lexer/traits.lfy:modeToggle
                     stack.push(mode, terminal);
                 }
             }
@@ -77,7 +77,7 @@ pub fn on_token(terminal: Entity, stack: &mut ModeStack) {
 
 /// The mode at the top of the stack when it was opened by a terminal whose
 /// `appliedUntilNewLine` names that mode; such a mode ends with the line.
-// @lfy def/lexer/traits.lfy:37
+// @lfy def/lexer/traits.lfy:appliedUntilNewLine
 pub fn mode_ending_with_line(stack: &ModeStack) -> Option<Mode> {
     let top = stack.top();
     modes::mode_behaviors(top.opener?)
@@ -91,7 +91,7 @@ pub fn mode_ending_with_line(stack: &ModeStack) -> Option<Mode> {
 /// Applies `appliedUntilNewLine`: called when the next characters are a `NewLine` or the
 /// end of the source, before the line break is lexed, it pops every mode at the top that
 /// ends with the line.
-// @lfy def/lexer/traits.lfy:37
+// @lfy def/lexer/traits.lfy:appliedUntilNewLine
 pub fn before_line_break(stack: &mut ModeStack) {
     while let Some(mode) = mode_ending_with_line(stack) {
         stack.pop(mode);
@@ -112,7 +112,7 @@ mod tests {
         Entity::Comment(comment)
     }
 
-    // @lfy def/lexer/traits.lfy:4
+    // @lfy def/lexer/traits.lfy:inMode
     #[test]
     fn in_mode_looks_at_the_top_of_the_stack() {
         let mut stack = ModeStack::new();
@@ -123,7 +123,7 @@ mod tests {
         assert!(!in_mode(&stack, modes::IN_CODE));
     }
 
-    // @lfy def/lexer/traits.lfy:16
+    // @lfy def/lexer/traits.lfy:modeOpener
     #[test]
     fn an_opener_pushes_when_its_condition_holds() {
         let mut stack = ModeStack::new();
@@ -150,7 +150,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/traits.lfy:23
+    // @lfy def/lexer/traits.lfy:modeCloser
     #[test]
     fn a_closer_pops_only_when_its_mode_is_at_the_top() {
         let mut stack = ModeStack::new();
@@ -164,7 +164,7 @@ mod tests {
         assert_eq!(stack.modes(), vec![Mode::Code, Mode::Template]);
     }
 
-    // @lfy def/lexer/traits.lfy:30
+    // @lfy def/lexer/traits.lfy:modeToggle
     #[test]
     fn a_toggle_opens_its_mode_and_the_same_boundary_closes_it() {
         let single = literal(Literal::SingleQuote);
@@ -195,7 +195,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/traits.lfy:37
+    // @lfy def/lexer/traits.lfy:appliedUntilNewLine
     #[test]
     fn modes_applied_until_new_line_end_before_the_line_break() {
         let mut stack = ModeStack::new();

@@ -23,31 +23,31 @@ use crate::grammar::terminals::space::{self, Space};
 use crate::grammar::{self, Entity, GrammarRule};
 
 /// The file name used when none is given.
-// @lfy def/lexer/main.lfy:23
+// @lfy def/lexer/main.lfy:lex
 pub const ANONYMOUS_FILE: &str = "anonymous";
 
 /// `ace function matches(rule)`: the characters at `offset` match the rule's syntax.
 /// Yields the byte length of the longest such match.
-// @lfy def/lexer/main.lfy:11
+// @lfy def/lexer/main.lfy:matches
 fn matches(rule: Entity, source: &str, offset: usize) -> Option<usize> {
     rule.longest_match_at(source, offset)
 }
 
 /// The terminal document is the only grammar the lexer knows: the EBNF of every terminal.
-// @lfy def/lexer/main.lfy:99
+// @lfy def/lexer/main.lfy:lex
 pub fn terminals() -> String {
     grammar::terminal_document()
 }
 
 /// Every terminal the lexer considers, with its lex condition. Escapes are matched only
 /// as part of another terminal and can never be a token, so they are left out.
-// @lfy def/lexer/main.lfy:106
+// @lfy def/lexer/main.lfy:lex
 fn candidates() -> &'static [(Entity, &'static [Mode])] {
     static CANDIDATES: OnceLock<Vec<(Entity, &'static [Mode])>> = OnceLock::new();
     CANDIDATES.get_or_init(|| {
         Entity::terminals()
-            .filter(|terminal| !terminal.is_escape()) // @lfy def/lexer/main.lfy:114
-            .map(|terminal| (terminal, modes::lex_condition(terminal))) // @lfy def/lexer/main.lfy:107
+            .filter(|terminal| !terminal.is_escape()) // @lfy def/lexer/main.lfy:lex
+            .map(|terminal| (terminal, modes::lex_condition(terminal))) // @lfy def/lexer/main.lfy:lex
             .collect()
     })
 }
@@ -57,7 +57,7 @@ fn candidates() -> &'static [(Entity, &'static [Mode])] {
 pub enum LexError {
     /// Two terminals matched tokens of equal length and no other criteria specifies
     /// which wins.
-    // @lfy def/lexer/main.lfy:33
+    // @lfy def/lexer/main.lfy:lex
     AmbiguousMatch {
         file: Arc<str>,
         line: usize,
@@ -94,15 +94,15 @@ impl std::error::Error for LexError {}
 /// none is given. Text no terminal matches becomes a token without a rule, and a mode
 /// still open at the end of the source becomes a token without a rule or raw text whose
 /// value names the mode. The only error is a tie between two terminals.
-// @lfy def/lexer/main.lfy:19
+// @lfy def/lexer/main.lfy:lex
 pub fn lex(source: &str, file: Option<&str>) -> Result<Vec<Token>, LexError> {
     let mut lexer = Lexer {
         input: source,
         offset: 0,
-        line: 1,                                         // @lfy def/lexer/main.lfy:25
-        column: 0,                                       // @lfy def/lexer/main.lfy:26
-        file: Arc::from(file.unwrap_or(ANONYMOUS_FILE)), // @lfy def/lexer/main.lfy:22
-        stack: ModeStack::new(),                         // @lfy def/lexer/main.lfy:28
+        line: 1,                                         // @lfy def/lexer/main.lfy:lex
+        column: 0,                                       // @lfy def/lexer/main.lfy:lex
+        file: Arc::from(file.unwrap_or(ANONYMOUS_FILE)), // @lfy def/lexer/main.lfy:lex
+        stack: ModeStack::new(),                         // @lfy def/lexer/main.lfy:lex
         tokens: Vec::new(),
     };
     lexer.run()?;
@@ -126,29 +126,29 @@ fn at_line_break(rest: &str) -> bool {
 
 impl Lexer<'_> {
     /// Reads the source from start to end.
-    // @lfy def/lexer/main.lfy:21
+    // @lfy def/lexer/main.lfy:lex
     fn run(&mut self) -> Result<(), LexError> {
         while self.offset < self.input.len() {
             if at_line_break(&self.input[self.offset..]) {
-                // @lfy def/lexer/traits.lfy:37
+                // @lfy def/lexer/traits.lfy:appliedUntilNewLine
                 traits::before_line_break(&mut self.stack);
             }
             match self.candidate()? {
-                // @lfy def/lexer/main.lfy:107
+                // @lfy def/lexer/main.lfy:lex
                 Some((terminal, len)) => {
                     self.push(Some(terminal), len);
-                    traits::on_token(terminal, &mut self.stack); // @lfy def/lexer/traits.lfy:14
+                    traits::on_token(terminal, &mut self.stack); // @lfy def/lexer/traits.lfy:modeOpener
                 }
-                // @lfy def/lexer/main.lfy:121
+                // @lfy def/lexer/main.lfy:lex
                 None => {
                     let len = self.invalid_run();
                     self.push(None, len);
                 }
             }
         }
-        // @lfy def/lexer/traits.lfy:37
+        // @lfy def/lexer/traits.lfy:appliedUntilNewLine
         traits::before_line_break(&mut self.stack);
-        // @lfy def/lexer/main.lfy:52
+        // @lfy def/lexer/main.lfy:lex
         for entry in self.stack.open() {
             self.tokens.push(Token {
                 rule: None,
@@ -166,7 +166,7 @@ impl Lexer<'_> {
     /// terminal are applied.
     fn candidate_match(&self, terminal: Entity) -> Option<(Entity, usize)> {
         let len = matches(terminal, self.input, self.offset)?;
-        // @lfy def/grammar/terminals/comment.lfy:12
+        // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
         if terminal == Entity::Comment(Comment::BlockDocumentationOpen)
             && comment::block_documentation_open_is_block_comment_open(
                 &self.input[self.offset + len..],
@@ -181,7 +181,7 @@ impl Lexer<'_> {
     /// Matches every candidate terminal at `offset` and picks the token: the longest
     /// match; between a keyword and an identifier of the same text, the keyword. Any
     /// other tie is an error naming both terminals.
-    // @lfy def/lexer/main.lfy:29
+    // @lfy def/lexer/main.lfy:lex
     fn candidate(&self) -> Result<Option<(Entity, usize)>, LexError> {
         let mode = self.stack.top_mode();
         let mut best: Option<(Entity, usize)> = None;
@@ -194,13 +194,13 @@ impl Lexer<'_> {
                 continue;
             };
             match best {
-                // @lfy def/lexer/main.lfy:32
+                // @lfy def/lexer/main.lfy:lex
                 Some((_, longest)) if len < longest => {}
                 Some((current, longest)) if len == longest => {
                     if current == matched {
                         continue;
                     }
-                    // @lfy def/lexer/main.lfy:111
+                    // @lfy def/lexer/main.lfy:lex
                     let identifier = Entity::Identifier(Identifier::Identifier);
                     if current == identifier && matched.is_keyword() {
                         best = Some((matched, len));
@@ -215,7 +215,7 @@ impl Lexer<'_> {
             }
         }
         match (best, tie) {
-            // @lfy def/lexer/main.lfy:38
+            // @lfy def/lexer/main.lfy:lex
             (Some((first, len)), Some(second)) => Err(LexError::AmbiguousMatch {
                 file: Arc::clone(&self.file),
                 line: self.line,
@@ -231,7 +231,7 @@ impl Lexer<'_> {
 
     /// Byte length of the text from `offset` up to the next position where some terminal
     /// matches, which is where lexing continues.
-    // @lfy def/lexer/main.lfy:50
+    // @lfy def/lexer/main.lfy:lex
     fn invalid_run(&self) -> usize {
         let mode = self.stack.top_mode();
         let mut end = self.offset;
@@ -260,23 +260,23 @@ impl Lexer<'_> {
     }
 
     /// Creates the token for `rule` from the next `len` bytes and appends it.
-    // @lfy def/lexer/main.lfy:15
+    // @lfy def/lexer/main.lfy:push
     fn push(&mut self, rule: Option<Entity>, len: usize) {
-        let raw = &self.input[self.offset..self.offset + len]; // @lfy def/lexer/main.lfy:27
+        let raw = &self.input[self.offset..self.offset + len]; // @lfy def/lexer/main.lfy:lex
         self.tokens.push(Token {
             rule,
             raw: raw.to_owned(),
             value: value(rule, raw),
             file: Arc::clone(&self.file),
-            line: self.line,     // @lfy def/lexer/main.lfy:25
-            column: self.column, // @lfy def/lexer/main.lfy:26
+            line: self.line,     // @lfy def/lexer/main.lfy:lex
+            column: self.column, // @lfy def/lexer/main.lfy:lex
         });
         self.advance(len);
     }
 
     /// Consumes `len` bytes, tracking the 1-indexed line and the 0-indexed column in
     /// characters of the raw text.
-    // @lfy def/lexer/main.lfy:25
+    // @lfy def/lexer/main.lfy:lex
     fn advance(&mut self, len: usize) {
         for c in self.input[self.offset..self.offset + len].chars() {
             if c == '\n' {
@@ -292,16 +292,16 @@ impl Lexer<'_> {
 
 /// The value of a token: what the terminal's criteria say it should be, and the raw text
 /// for every terminal without such criteria.
-// @lfy def/lexer/main.lfy:40
+// @lfy def/lexer/main.lfy:lex
 fn value(rule: Option<Entity>, raw: &str) -> String {
     match rule {
-        // @lfy def/grammar/terminals/space.lfy:4
+        // @lfy def/grammar/terminals/space.lfy:NewLine
         Some(Entity::Space(Space::NewLine)) => space::NEW_LINE_VALUE.to_owned(),
-        // @lfy def/grammar/terminals/literal.lfy:14
+        // @lfy def/grammar/terminals/literal.lfy:NumberLiteral
         Some(Entity::Literal(Literal::NumberLiteral)) => literal::number_value(raw),
-        // @lfy def/grammar/traits.lfy:63
+        // @lfy def/grammar/traits.lfy:body
         Some(rule) if rule.is_body() => grammar::traits::body_value(rule, raw),
-        // @lfy def/lexer/main.lfy:46
+        // @lfy def/lexer/main.lfy:lex
         _ => raw.to_owned(),
     }
 }
@@ -358,13 +358,13 @@ mod tests {
         token.is(rule) && token.value == value
     }
 
-    // @lfy def/lexer/main.lfy:58
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn test_empty_source_gives_no_tokens() {
         assert_eq!(tokens(""), Vec::<Token>::new());
     }
 
-    // @lfy def/lexer/main.lfy:62
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn test_a_constant_declaration() {
         let tokens = tokens("const x = 1_0;");
@@ -379,7 +379,7 @@ mod tests {
         assert!(like(&tokens[7], Punctuation::Semicolon, ";"));
     }
 
-    // @lfy def/lexer/main.lfy:75
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn test_a_template_with_an_execution() {
         let tokens = tokens("`a {{b}} c`;");
@@ -394,7 +394,7 @@ mod tests {
         assert!(like(&tokens[7], Punctuation::Semicolon, ";"));
     }
 
-    // @lfy def/lexer/main.lfy:88
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn test_a_single_quoted_string_with_an_escaped_quote() {
         let tokens = tokens("'it\\'s'");
@@ -404,7 +404,7 @@ mod tests {
         assert!(like(&tokens[2], Literal::SingleQuote, "'"));
     }
 
-    // @lfy def/lexer/main.lfy:21
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn source_is_read_as_utf8_from_start_to_end() {
         let tokens = tokens("é ← 日本");
@@ -428,7 +428,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/main.lfy:22
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn file_is_recorded_on_every_token_and_defaults_to_anonymous() {
         assert!(
@@ -441,7 +441,7 @@ mod tests {
         assert_eq!(ANONYMOUS_FILE, "anonymous");
     }
 
-    // @lfy def/lexer/main.lfy:24
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn both_line_break_spellings_are_new_line_tokens_with_the_same_value() {
         let lf = tokens("a\nb");
@@ -464,7 +464,7 @@ mod tests {
         assert_eq!((cr[2].line, cr[2].column), (1, 2));
     }
 
-    // @lfy def/lexer/main.lfy:25
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn line_and_column_come_from_the_raw_text() {
         let tokens = tokens("ab cd\n  ef `x\ny` g");
@@ -496,7 +496,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/main.lfy:27
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn raw_is_the_original_text_and_value_is_adjusted_only_where_declared() {
         let tokens = tokens("\"a\\nb\"");
@@ -507,7 +507,7 @@ mod tests {
         assert_eq!(values("if x"), vec!["if", " ", "x"]);
     }
 
-    // @lfy def/lexer/main.lfy:28
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn a_new_mode_stack_is_created_for_each_call() {
         assert_eq!(tokens("`").len(), 2);
@@ -515,7 +515,7 @@ mod tests {
         assert_eq!(rules_of("}"), vec![punctuation(Punctuation::BlockClose)]);
     }
 
-    // @lfy def/lexer/main.lfy:29
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn candidates_depend_on_the_mode_at_the_top_of_the_stack() {
         // `{{` outside a template is two block opens.
@@ -581,7 +581,7 @@ mod tests {
         assert_eq!(values("// /* */ /** **/"), vec!["//", " /* */ /** **/"]);
     }
 
-    // @lfy def/lexer/main.lfy:32
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn the_longest_match_is_the_token() {
         assert_eq!(
@@ -646,7 +646,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/main.lfy:33
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn no_two_candidates_tie_on_the_terminal_document() {
         // Every fixed text of every terminal lexes to exactly that terminal in code.
@@ -679,7 +679,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/main.lfy:40
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn values_follow_the_criteria_of_their_terminals() {
         assert_eq!(values("\n"), vec!["\n"]);
@@ -725,7 +725,7 @@ mod tests {
         assert_eq!(values("/** d **/"), vec!["/**", " d ", "**/"]);
     }
 
-    // @lfy def/lexer/main.lfy:48
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn text_no_terminal_matches_is_one_invalid_token_up_to_the_next_match() {
         let tokens = tokens("ab\n c#");
@@ -783,7 +783,7 @@ mod tests {
         assert_eq!(rules_of("\\n"), vec![INVALID, IDENTIFIER]);
     }
 
-    // @lfy def/lexer/main.lfy:52
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn modes_left_open_at_the_end_become_invalid_tokens_naming_them() {
         for (source, open) in [
@@ -821,7 +821,7 @@ mod tests {
         assert!(tokens("(").iter().all(|t| !t.is_invalid()));
     }
 
-    // @lfy def/lexer/main.lfy:111
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn a_keyword_beats_an_identifier_of_the_same_text() {
         for &rule in crate::grammar::terminals::keyword::KEYWORDS {
@@ -843,7 +843,7 @@ mod tests {
         assert_eq!(rules_of("constant"), vec![IDENTIFIER]);
     }
 
-    // @lfy def/lexer/main.lfy:114
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn escapes_are_never_tokens() {
         for rule in tokens("\"\\n\\x41\\u0041\\\\\" `\\`\\{{`")
@@ -865,7 +865,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/main.lfy:100
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn the_lexer_matches_against_the_terminal_document_only() {
         let document = terminals();
@@ -876,7 +876,7 @@ mod tests {
         assert!(!document.contains("Expression ="));
     }
 
-    // @lfy def/grammar/terminals/comment.lfy:12
+    // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
     #[test]
     fn block_documentation_open_followed_by_a_slash_or_close_is_a_block_comment() {
         assert_eq!(
@@ -929,7 +929,7 @@ mod tests {
         assert_eq!(rules_of("`[[ // c ]]`")[3], punctuation(Punctuation::Slash));
     }
 
-    // @lfy def/lexer/traits.lfy:37
+    // @lfy def/lexer/traits.lfy:appliedUntilNewLine
     #[test]
     fn line_modes_end_before_the_line_break() {
         assert_eq!(
@@ -969,7 +969,7 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/main.lfy:21
+    // @lfy def/lexer/main.lfy:lex
     #[test]
     fn the_elfie_definitions_lex_start_to_finish_without_invalid_tokens() {
         for path in [

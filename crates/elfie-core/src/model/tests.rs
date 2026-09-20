@@ -92,7 +92,7 @@ fn criteria_texts(model: &Model, entity: EntityId) -> Vec<CriterionText> {
 // ---- The @test cases of bind --------------------------------------------------------
 
 /// A trait member joins the entity, `A.x` resolves to it, and the trait knows `A`.
-// @lfy def/model/main.lfy:98
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_trait_member_and_application() {
     let model = bind_one("trait t { $x: `d` = string; } d A is t {} const y = A.x;");
@@ -122,7 +122,7 @@ fn test_trait_member_and_application() {
 }
 
 /// A module symbol, a loop variable in the For scope, and a usage of the module.
-// @lfy def/model/main.lfy:102
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_module_symbol_and_loop_variable() {
     let main = source(
@@ -155,7 +155,7 @@ fn test_module_symbol_and_loop_variable() {
 }
 
 /// An unresolved name gives a usage without a symbol and one problem.
-// @lfy def/model/main.lfy:106
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_unresolved_name() {
     let model = bind_one("const y = z;");
@@ -169,8 +169,21 @@ fn test_unresolved_name() {
     assert_eq!(model.problems[0].node, z);
 }
 
+/// A Member whose left side already has no symbol adds no further problem.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn unresolved_member_chain_reports_one_problem() {
+    let model = bind_one("const y = z.foo;");
+    let z = node(&model, 0, E::Name, "z");
+    let chain = node(&model, 0, E::Member, "z.foo");
+    assert_eq!(usage(&model, z).symbol, None);
+    assert_eq!(usage(&model, chain).symbol, None);
+    assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
+    assert_eq!(model.problems[0].node, z);
+}
+
 /// An extending trait is an extender, not one of the entities.
-// @lfy def/model/main.lfy:110
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_extends_entities_and_extenders() {
     let model = bind_one("trait a {} trait b extends a {} d C is b {}");
@@ -191,7 +204,7 @@ fn test_extends_entities_and_extenders() {
 
 /// Each SourceFile is a file scope whose current entity is an anonymous entity for the
 /// file.
-// @lfy def/model/main.lfy:26
+// @lfy def/model/main.lfy:bind
 #[test]
 fn file_scope_current_is_the_anonymous_file_entity() {
     let model = bind_one("const x = 1;");
@@ -207,7 +220,7 @@ fn file_scope_current_is_the_anonymous_file_entity() {
 }
 
 /// A declaration's Block is the child of the declaration's own scope.
-// @lfy def/model/main.lfy:27
+// @lfy def/model/main.lfy:bind
 #[test]
 fn block_scope_is_child_of_declaration_scope() {
     let model = bind_one("d A { const inner = 1; } function f(p: string) { const q = p; }");
@@ -235,7 +248,7 @@ fn block_scope_is_child_of_declaration_scope() {
 }
 
 /// A name declared twice in the same scope: a problem at the second, the first wins.
-// @lfy def/model/main.lfy:33
+// @lfy def/model/main.lfy:bind
 #[test]
 fn duplicate_declaration_is_a_problem_and_the_first_wins() {
     let model = bind_one("const x = 1; d x {} const y = x;");
@@ -252,7 +265,7 @@ fn duplicate_declaration_is_a_problem_and_the_first_wins() {
 }
 
 /// An ObjectKey in an enum declares an enumMember; one in a plain object declares nothing.
-// @lfy def/model/main.lfy:32
+// @lfy def/model/main.lfy:bind
 #[test]
 fn object_key_declares_only_in_an_enum() {
     let model = bind_one("enum Color { red = 'r', blue = 'b' } const o = { key = 1 };");
@@ -272,7 +285,7 @@ fn object_key_declares_only_in_an_enum() {
 }
 
 /// `$x: `d` = string;` in a data body declares a member with that definition and type.
-// @lfy def/model/main.lfy:31
+// @lfy def/model/main.lfy:bind
 #[test]
 fn member_statement_declares_a_member() {
     let model = bind_one("d D { $x: `d` = string; $ys = number[]; }");
@@ -298,7 +311,7 @@ fn member_statement_declares_a_member() {
 }
 
 /// A scope's current entity: the declared entity, the With's entity, or the parent's.
-// @lfy def/model/main.lfy:34
+// @lfy def/model/main.lfy:bind
 #[test]
 fn scope_current_entity() {
     let model = bind_one("d A {} with A { const x = 1; } for (const i in [1]) { const j = i; }");
@@ -318,7 +331,7 @@ fn scope_current_entity() {
 // ---- Use ----------------------------------------------------------------------------
 
 /// Without `as`, the used file's own symbols, not its imports, are visible.
-// @lfy def/model/main.lfy:39
+// @lfy def/model/main.lfy:bind
 #[test]
 fn use_without_as_imports_own_symbols_only() {
     let c = source("c.lfy", "d C {}", &[]);
@@ -340,7 +353,7 @@ fn use_without_as_imports_own_symbols_only() {
 }
 
 /// With `as`, a Member on the module resolves in that file's symbols.
-// @lfy def/model/main.lfy:40
+// @lfy def/model/main.lfy:bind
 #[test]
 fn use_with_as_resolves_members_in_the_module() {
     let b = source("b.lfy", "d B {} trait tb {}", &[]);
@@ -365,7 +378,7 @@ fn use_with_as_resolves_members_in_the_module() {
 }
 
 /// A Use whose entry is undefined imports nothing and is not a problem.
-// @lfy def/model/main.lfy:38
+// @lfy def/model/main.lfy:bind
 #[test]
 fn use_of_nothing_imports_nothing() {
     let model = bind(vec![source("a.lfy", "use \"./missing\"; const x = 1;", &[None])]);
@@ -377,7 +390,7 @@ fn use_of_nothing_imports_nothing() {
 // ---- Apply --------------------------------------------------------------------------
 
 /// `X.apply(Y)` applies X to Y, and to every item of an alternationList.
-// @lfy def/model/main.lfy:44
+// @lfy def/model/main.lfy:bind
 #[test]
 fn apply_call_applies_the_trait() {
     let model = bind_one(
@@ -406,7 +419,7 @@ fn apply_call_applies_the_trait() {
 
 /// An extends chain applies every base with arguments evaluated from the extending
 /// trait's parameters.
-// @lfy def/model/main.lfy:45
+// @lfy def/model/main.lfy:bind
 #[test]
 fn extends_chain_applies_every_base() {
     let model = bind_one("trait a(s: string) { .v = s; } trait b(t: string) extends a(`x{{t}}y`) {} d C is b('m') {}");
@@ -422,7 +435,7 @@ fn extends_chain_applies_every_base() {
 
 /// The trait body's members, values, and criteria land on the receiver, with the trait
 /// as contributor.
-// @lfy def/model/main.lfy:47
+// @lfy def/model/main.lfy:bind
 #[test]
 fn applied_trait_body_lands_on_the_receiver() {
     let model = bind_one(
@@ -449,7 +462,7 @@ fn applied_trait_body_lands_on_the_receiver() {
 }
 
 /// Two applied traits declaring the same member: a problem, and the first wins.
-// @lfy def/model/main.lfy:54
+// @lfy def/model/main.lfy:bind
 #[test]
 fn two_traits_declaring_the_same_member_is_a_problem() {
     let model = bind_one("trait t1 { $m: `first` = string; } trait t2 { $m: `second` = number; } d A is t1, t2 {}");
@@ -465,7 +478,7 @@ fn two_traits_declaring_the_same_member_is_a_problem() {
 }
 
 /// TraitEntity.entities is in file order then application order.
-// @lfy def/model/main.lfy:57
+// @lfy def/model/main.lfy:bind
 #[test]
 fn trait_entities_in_file_then_application_order() {
     let b = source("b.lfy", "trait t {} d B2 is t {} d B1 is t {}", &[]);
@@ -482,7 +495,7 @@ fn trait_entities_in_file_then_application_order() {
 // ---- Resolve ------------------------------------------------------------------------
 
 /// A Dereference yields the entity its operand is bound to.
-// @lfy def/model/main.lfy:75
+// @lfy def/model/main.lfy:bind
 #[test]
 fn dereference_yields_the_symbol() {
     let model = bind_one("d X {} const y = &X;");
@@ -497,7 +510,7 @@ fn dereference_yields_the_symbol() {
 }
 
 /// A Previous yields the entity declared by the nearest earlier statement.
-// @lfy def/model/main.lfy:76
+// @lfy def/model/main.lfy:bind
 #[test]
 fn previous_yields_the_earlier_declaration() {
     let model = bind_one("d X {} const y = 1; const z = ^^; d W { const w = ^^; }");
@@ -515,7 +528,7 @@ fn previous_yields_the_earlier_declaration() {
 }
 
 /// A template reference resolves in scope, else to the one rule entity with that name.
-// @lfy def/model/main.lfy:77
+// @lfy def/model/main.lfy:bind
 #[test]
 fn template_reference_resolves_in_scope_or_to_the_rule() {
     let rules = source("r.lfy", "trait rule(syntax: string) {} d Foo is rule('x') {}", &[]);
@@ -540,7 +553,7 @@ fn template_reference_resolves_in_scope_or_to_the_rule() {
 }
 
 /// A context member name must be the value of a ContextProperty.
-// @lfy def/model/main.lfy:70
+// @lfy def/model/main.lfy:bind
 #[test]
 fn unknown_context_property_is_a_problem() {
     let model = bind_one("d X { const a = @identifier; const b = @nonsense; const c = X@type; }");
@@ -558,7 +571,7 @@ fn unknown_context_property_is_a_problem() {
 
 /// A Member with the value accessor on a data resolves to its member; with the scope
 /// accessor, to the member symbol itself.
-// @lfy def/model/main.lfy:68
+// @lfy def/model/main.lfy:bind
 #[test]
 fn member_on_data_resolves_to_its_member() {
     let model = bind_one("d D { $m: `x` = string; } const v = D.m; const s = D$m; const w = D.nope;");
@@ -576,7 +589,7 @@ fn member_on_data_resolves_to_its_member() {
 }
 
 /// A Name resolves to the first match walking outward.
-// @lfy def/model/main.lfy:64
+// @lfy def/model/main.lfy:bind
 #[test]
 fn name_resolves_to_the_nearest_scope() {
     let model = bind_one("const n = 1; function f(n: string) { const inner = n; } const outer = n;");
@@ -592,7 +605,7 @@ fn name_resolves_to_the_nearest_scope() {
 // ---- Properties ---------------------------------------------------------------------
 
 /// Entity.identifier, Entity.definition, FnEntity.parameters, and FnEntity.output.
-// @lfy def/model/main.lfy:84
+// @lfy def/model/main.lfy:bind
 #[test]
 fn identifier_definition_parameters_and_output() {
     let model = bind_one("d A: `about A` {} d B: 'about B' {} fn f(a: string, ...rest: number[]): `does f` => A {} function g() -> string { return 'x'; }");
@@ -619,7 +632,7 @@ fn identifier_definition_parameters_and_output() {
 }
 
 /// Entity.type is the entity itself for a data, trait, type, or enum declaration.
-// @lfy def/model/main.lfy:90
+// @lfy def/model/main.lfy:bind
 #[test]
 fn type_of_a_declaration_is_itself() {
     let model = bind_one("d A {} trait T {} type Ty { k = string, } enum En { a = 'a' }");
@@ -633,7 +646,7 @@ fn type_of_a_declaration_is_itself() {
 
 /// Entity.type from a type expression, a member's right side, or a value; a list type
 /// gives Entity.itemType.
-// @lfy def/model/main.lfy:91
+// @lfy def/model/main.lfy:bind
 #[test]
 fn type_and_item_type() {
     let model = bind_one("d A {} const xs: A[] = []; const n = 1; const s = 'text'; d D { $items = string[]; $one = A; }");
@@ -657,7 +670,7 @@ fn type_and_item_type() {
 }
 
 /// An add call or a Where appends one Criterion, in the body or in a With.
-// @lfy def/model/main.lfy:93
+// @lfy def/model/main.lfy:bind
 #[test]
 fn add_and_where_append_criteria() {
     let model = bind_one(
@@ -684,7 +697,7 @@ fn add_and_where_append_criteria() {
 }
 
 /// A test call appends each argument as one Test.
-// @lfy def/model/main.lfy:94
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_call_appends_tests() {
     let model = bind_one("d A { @test({ input = 1, expect = 'one' }, { input = [1, 2], expect = A@like(`two`) }); }");
@@ -700,7 +713,7 @@ fn test_call_appends_tests() {
 }
 
 /// criteriaOf replaces each template reference by the referenced entity's identifier.
-// @lfy def/model/main.lfy:225
+// @lfy def/model/main.lfy:criteriaOf
 #[test]
 fn criteria_of_strips_references() {
     let model = bind_one("d B {} d A { @acceptanceCriteria.add({ situation = `given [[B]]`, behavior = `see [[B]] and [[B.x]]` }); }");
@@ -734,7 +747,7 @@ fn object_field<'a>(value: &'a Value, key: &str) -> &'a Value {
 }
 
 /// The whole repository binds with zero problems, and its model reads as expected.
-// @lfy def/model/main.lfy:15
+// @lfy def/model/main.lfy:bind
 #[test]
 fn repository_binds_without_problems() {
     let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));

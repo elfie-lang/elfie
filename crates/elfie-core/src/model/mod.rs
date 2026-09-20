@@ -20,29 +20,29 @@ pub use data::*;
 /// (traits, members, criteria), resolve (usages, properties, templates). The sources are
 /// bound in the order given, which places every file after the files it uses. Binding
 /// never stops; every failure is a problem.
-// @lfy def/model/main.lfy:10
+// @lfy def/model/main.lfy:bind
 pub fn bind(sources: Vec<Source>) -> Model {
     let mut binder = bind::Binder::new(sources);
     let files = binder.trees.sources.len();
     for file in 0..files {
-        binder.declare_file(file); // @lfy def/model/main.lfy:23
+        binder.declare_file(file); // @lfy def/model/main.lfy:bind
     }
     for file in 0..files {
-        binder.link_uses(file); // @lfy def/model/main.lfy:37
+        binder.link_uses(file); // @lfy def/model/main.lfy:bind
     }
     for file in 0..files {
-        binder.type_entities(file); // @lfy def/model/main.lfy:81
+        binder.type_entities(file); // @lfy def/model/main.lfy:bind
     }
     for file in 0..files {
-        binder.apply_file(file); // @lfy def/model/main.lfy:43
+        binder.apply_file(file); // @lfy def/model/main.lfy:bind
     }
     for file in 0..files {
-        binder.resolve_file(file); // @lfy def/model/main.lfy:63
+        binder.resolve_file(file); // @lfy def/model/main.lfy:bind
     }
     binder.finish_definitions();
     let mut model = binder.model;
     // Own criteria first, then each trait's in application order.
-    // @lfy def/model/data.lfy:78
+    // @lfy def/model/data.lfy:Entity.acceptanceCriteria
     for (id, entity) in model.entities.iter_mut().enumerate() {
         entity.acceptance_criteria.sort_by_key(|criterion| criterion.contributor != id);
     }
@@ -57,7 +57,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
 impl bind::Binder {
     /// Entity.definition for every entity whose declaration gave one and whose body did
     /// not run.
-    // @lfy def/model/main.lfy:85
+    // @lfy def/model/main.lfy:bind
     fn finish_definitions(&mut self) {
         for entity in 0..self.model.entities.len() {
             if self.model.entities[entity].definition.is_some() {
@@ -82,23 +82,23 @@ impl bind::Binder {
 }
 
 /// The symbol a node uses or declares.
-// @lfy def/model/main.lfy:202
+// @lfy def/model/main.lfy:resolve
 pub fn resolve(model: &Model, node: NodeRef) -> Option<SymbolId> {
     if let Some(usage) = model.usage_of(node) {
-        return model.usages[usage].symbol; // @lfy def/model/main.lfy:204
+        return model.usages[usage].symbol; // @lfy def/model/main.lfy:resolve
     }
-    model.symbol_of(node) // @lfy def/model/main.lfy:205
+    model.symbol_of(node) // @lfy def/model/main.lfy:resolve
 }
 
 /// Everything that has a trait; empty when the entity is not a trait.
-// @lfy def/model/main.lfy:209
+// @lfy def/model/main.lfy:entitiesOf
 pub fn entities_of(model: &Model, trait_entity: EntityId) -> Vec<EntityId> {
     model.entities[trait_entity].entities().to_vec()
 }
 
 /// Every use of a symbol: every usage whose symbol is the target or an alias chain
 /// ending at it, in node order.
-// @lfy def/model/main.lfy:215
+// @lfy def/model/main.lfy:usagesOf
 pub fn usages_of(model: &Model, target: SymbolId) -> Vec<UsageId> {
     let entity = model.symbols[target].entity;
     let mut out: Vec<UsageId> = model
@@ -119,7 +119,7 @@ pub fn usages_of(model: &Model, target: SymbolId) -> Vec<UsageId> {
 /// Every criterion attached to an entity, with templates resolved for it: each
 /// reference is replaced by the referenced entity's identifier and each execution by
 /// its value.
-// @lfy def/model/main.lfy:222
+// @lfy def/model/main.lfy:criteriaOf
 pub fn criteria_of(model: &Model, entity: EntityId) -> Vec<Criterion> {
     model.entities[entity]
         .acceptance_criteria

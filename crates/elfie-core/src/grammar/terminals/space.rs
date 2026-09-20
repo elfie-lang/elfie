@@ -7,13 +7,13 @@ grammar_rules! {
     /// Whitespace terminals.
     pub enum Space {
         /// Value is always equal to `\n` regardless of raw text; see [`NEW_LINE_VALUE`].
-        NewLine is [terminal()]: "A line break" = "\"\n\" | \"\r\n\"", // @lfy def/grammar/terminals/space.lfy:3
-        Space is [terminal()]: "Various space characters" = "\" \" | \"\t\" | \"\u{000B}\" | \"\u{000C}\" | \"\u{0085}\" | \"\u{200E}\" | \"\u{200F}\" | \"\u{2028}\" | \"\u{2029}\"", // @lfy def/grammar/terminals/space.lfy:6
+        NewLine is [terminal()]: "A line break" = "\"\n\" | \"\r\n\"", // @lfy def/grammar/terminals/space.lfy:NewLine
+        Space is [terminal()]: "Various space characters" = "\" \" | \"\t\" | \"\u{000B}\" | \"\u{000C}\" | \"\u{0085}\" | \"\u{200E}\" | \"\u{200F}\" | \"\u{2028}\" | \"\u{2029}\"", // @lfy def/grammar/terminals/space.lfy:Space
     }
 }
 
 /// The value of every `NewLine` token, whichever spelling the raw text uses.
-// @lfy def/grammar/terminals/space.lfy:4
+// @lfy def/grammar/terminals/space.lfy:NewLine
 pub const NEW_LINE_VALUE: &str = "\n";
 
 #[cfg(test)]
@@ -21,7 +21,7 @@ mod tests {
     use super::super::super::GrammarRule;
     use super::*;
 
-    // @lfy def/grammar/terminals/space.lfy:3
+    // @lfy def/grammar/terminals/space.lfy:NewLine
     #[test]
     fn new_lines_are_lf_or_crlf() {
         assert_eq!(Space::NewLine.longest_match("\nx"), Some(1));
@@ -31,7 +31,7 @@ mod tests {
         assert_eq!(NEW_LINE_VALUE, "\n");
     }
 
-    // @lfy def/grammar/terminals/space.lfy:6
+    // @lfy def/grammar/terminals/space.lfy:Space
     #[test]
     fn every_space_character_matches_the_space_rule_alone() {
         for c in [

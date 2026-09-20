@@ -7,7 +7,7 @@ use crate::lexer::Token;
 
 /// One entry of [`Node::children`]: a node, an error node, or a token. A token is given
 /// by its index into [`Tree::tokens`], where the token itself lives.
-// @lfy def/parser/data.lfy:6
+// @lfy def/parser/data.lfy:ErrorNode.children
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Child {
     Node(Node),
@@ -61,21 +61,21 @@ impl Child {
 /// Joining the raw text of the tokens from `start` up to `end` reproduces the source the
 /// node covers, and each token below the node is reached through exactly one child. An
 /// `alternationList` rule has no node; the item that satisfied it stands in its place.
-// @lfy def/parser/data.lfy:4
+// @lfy def/parser/data.lfy:Node
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     /// The rule this node satisfies. [`Node::rule`] gives its EBNF form.
-    pub rule: Entity, // @lfy def/parser/data.lfy:5
+    pub rule: Entity, // @lfy def/parser/data.lfy:Node.rule
     /// Nodes and tokens in source order, trivia included.
-    pub children: Vec<Child>, // @lfy def/parser/data.lfy:6
+    pub children: Vec<Child>, // @lfy def/parser/data.lfy:ErrorNode.children
     /// Index of the first token covered, counting from 0 over [`Tree::tokens`].
-    pub start: usize, // @lfy def/parser/data.lfy:7
+    pub start: usize, // @lfy def/parser/data.lfy:ErrorNode.start
     /// Index after the last token covered.
-    pub end: usize, // @lfy def/parser/data.lfy:8
+    pub end: usize, // @lfy def/parser/data.lfy:ErrorNode.end
     /// `$documentation` of the `documented` trait: the `Documentation` nodes that precede
     /// this node with only trivia between; empty when there are none, and always empty
     /// for rules without the trait.
-    pub documentation: Vec<Node>, // @lfy def/parser/traits.lfy:32
+    pub documentation: Vec<Node>, // @lfy def/parser/traits.lfy:documented.documentation
 }
 
 impl Node {
@@ -91,7 +91,7 @@ impl Node {
     }
 
     /// `$rule` as the EBNF form of the rule this node satisfies.
-    // @lfy def/parser/data.lfy:5
+    // @lfy def/parser/data.lfy:Node.rule
     pub fn rule(&self) -> Rule {
         self.rule.rule()
     }
@@ -200,17 +200,17 @@ impl Node {
 }
 
 /// Tokens the parser could not fit into the open rule.
-// @lfy def/parser/data.lfy:19
+// @lfy def/parser/data.lfy:ErrorNode
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErrorNode {
     /// The tokens covered, each as [`Child::Token`], in source order.
-    pub children: Vec<Child>, // @lfy def/parser/data.lfy:6
+    pub children: Vec<Child>, // @lfy def/parser/data.lfy:ErrorNode.children
     /// Index of the first token covered.
-    pub start: usize, // @lfy def/parser/data.lfy:7
+    pub start: usize, // @lfy def/parser/data.lfy:ErrorNode.start
     /// Index after the last token covered.
-    pub end: usize, // @lfy def/parser/data.lfy:8
+    pub end: usize, // @lfy def/parser/data.lfy:ErrorNode.end
     /// Identifiers of what could have continued the open rule at `start`.
-    pub expected: Vec<&'static str>, // @lfy def/parser/data.lfy:21
+    pub expected: Vec<&'static str>, // @lfy def/parser/data.lfy:ErrorNode.expected
 }
 
 impl ErrorNode {
@@ -225,30 +225,30 @@ impl ErrorNode {
     }
 
     /// `$rule`: no rule is being satisfied due to the error.
-    // @lfy def/parser/data.lfy:20
+    // @lfy def/parser/data.lfy:ErrorNode.rule
     pub fn rule(&self) -> Option<Rule> {
         None
     }
 }
 
 /// The result of parsing one token list.
-// @lfy def/parser/data.lfy:24
+// @lfy def/parser/data.lfy:Tree
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tree {
     /// The tokens parsed, exactly as the lexer delivered them.
-    pub tokens: Vec<Token>, // @lfy def/parser/data.lfy:25
+    pub tokens: Vec<Token>, // @lfy def/parser/data.lfy:Tree.tokens
     /// The root rule that was being used to build the tree. [`Tree::root_rule`] gives its
     /// EBNF form.
-    pub root_rule: Entity, // @lfy def/parser/data.lfy:26
+    pub root_rule: Entity, // @lfy def/parser/data.lfy:Tree.rootRule
     /// The root node, covering every token.
-    pub root: Node, // @lfy def/parser/data.lfy:27
+    pub root: Node, // @lfy def/parser/data.lfy:Tree.root
     /// Every error node, if any, in the tree ordered by start.
-    pub errors: Vec<ErrorNode>, // @lfy def/parser/data.lfy:28
+    pub errors: Vec<ErrorNode>, // @lfy def/parser/data.lfy:Tree.errors
 }
 
 impl Tree {
     /// `$rootRule` as the EBNF form of the root rule.
-    // @lfy def/parser/data.lfy:26
+    // @lfy def/parser/data.lfy:Tree.rootRule
     pub fn root_rule(&self) -> Rule {
         self.root_rule.rule()
     }
@@ -326,7 +326,7 @@ mod tests {
     use crate::grammar::terminals::identifier::Identifier;
     use crate::lexer::lex;
 
-    // @lfy def/parser/data.lfy:19
+    // @lfy def/parser/data.lfy:ErrorNode
     #[test]
     fn an_error_node_covers_its_tokens_and_has_no_rule() {
         let error = ErrorNode::new(2, 5, vec!["Identifier"]);
@@ -338,7 +338,7 @@ mod tests {
         assert!(empty.children.is_empty());
     }
 
-    // @lfy def/parser/data.lfy:4
+    // @lfy def/parser/data.lfy:Node
     #[test]
     fn a_node_records_its_rule_children_and_range() {
         let tokens = lex("a b", None).unwrap();

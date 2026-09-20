@@ -33,7 +33,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `An [[ObjectKey]] is bound in the [[Object]] of an [[EnumDeclaration]]`,
-      behavior = `It declares a symbol of kind enumMember; an [[ObjectKey]] anywhere else declares nothing`,
+      behavior = `It declares a symbol of kind [[SymbolKind.enumMember]]; an [[ObjectKey]] anywhere else declares nothing`,
     })
     .add({
       situation = `A name is declared twice in the same scope`,
@@ -125,8 +125,11 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `It resolves in the scope the template is written in; a reference found nowhere resolves to the one [[rule]] entity with that identifier in any file`,
     })
     .add({
-      situation = `Nothing is found for a name`,
-      behavior = `The [[Usage]] has no symbol and a [[Problem]] is added`,
+      situation = [
+        `Nothing is found for a name`,
+        `The name is not the [[MemberName]] of a [[Member]] whose left side has no symbol either`,
+      ],
+      behavior = `The [[Usage]] has no symbol, and a [[Problem]] is added`,
     });
 
   // Properties

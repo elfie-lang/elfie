@@ -56,7 +56,7 @@ impl Binder {
 
     /// Runs the top level of a file: applies the traits of each declaration, runs each
     /// declaration's body, and executes every other statement.
-    // @lfy def/model/main.lfy:44
+    // @lfy def/model/main.lfy:bind
     pub fn apply_file(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let root = NodeRef { file, index: 0 };
@@ -160,13 +160,13 @@ impl Binder {
             self.model.entities[entity].definition = Some(text);
         }
         // applyingTraits: the IsClause of the declaration or its signature or Declared.
-        // @lfy def/model/traits.lfy:25
+        // @lfy def/model/traits.lfy:applyingTraits
         let clause_holder = trees.child(r, E::Signature).or_else(|| trees.child(r, E::Declared)).unwrap_or(r);
         if let Some(is_clause) = trees.child(clause_holder, E::IsClause) {
             self.apply_clause(entity, is_clause, false, env);
         }
         // applyingExtensions: the ExtendsClause.
-        // @lfy def/model/traits.lfy:32
+        // @lfy def/model/traits.lfy:applyingExtensions
         if let Some(extends) = trees.child(r, E::ExtendsClause) {
             self.apply_clause(entity, extends, true, env);
         }
@@ -261,7 +261,7 @@ impl Binder {
                 self.apply_trait(entity, target, arguments, values, source, extends);
             } else if extends {
                 // Data extending data includes its members.
-                // @lfy def/grammar/rules/expression.lfy:18
+                // @lfy def/grammar/rules/expression.lfy:ExtendsClause
                 self.include_members(entity, target, trait_use);
             } else {
                 self.problem(trait_use, format!("{} is not a trait", self.model.entities[target].identifier.clone().unwrap_or_default()));
@@ -284,7 +284,7 @@ impl Binder {
 
     /// A member declared in a trait joins the entity's scope; a second trait declaring
     /// the same member is a problem and the first wins.
-    // @lfy def/model/main.lfy:50
+    // @lfy def/model/main.lfy:bind
     fn join_member(&mut self, receiver: EntityId, member: SymbolId, at: NodeRef) {
         let scope = match self.model.entities[receiver].scope {
             Some(scope) => scope,
@@ -347,7 +347,7 @@ impl Binder {
     /// Applies a trait to an entity: records the application, applies the traits it
     /// extends with their arguments evaluated from its parameters, and runs its body for
     /// the receiver.
-    // @lfy def/model/main.lfy:44
+    // @lfy def/model/main.lfy:bind
     pub(crate) fn apply_trait(
         &mut self,
         receiver: EntityId,
@@ -363,7 +363,7 @@ impl Binder {
         let index = self.model.entities[receiver].traits.len();
         self.model.entities[receiver].traits.push(Applied { entity: trait_id, arguments, values: values.clone(), source });
         // The receiver joins the trait's entities, or its extenders.
-        // @lfy def/model/main.lfy:57
+        // @lfy def/model/main.lfy:bind
         if let EntityKind::Trait { entities, extenders, .. } = &mut self.model.entities[trait_id].kind {
             let list = if extends { extenders } else { entities };
             if !list.contains(&receiver) {
@@ -376,7 +376,7 @@ impl Binder {
         // The parameters of the trait bound to the arguments.
         let mut env = self.trait_env(receiver, trait_id, &values);
         // Each extended trait is applied too, up the whole chain.
-        // @lfy def/model/main.lfy:45
+        // @lfy def/model/main.lfy:bind
         let bases: Vec<(EntityId, Vec<NodeRef>)> = self.model.entities[trait_id]
             .traits
             .iter()
@@ -388,7 +388,7 @@ impl Binder {
             self.apply_trait(receiver, base, base_arguments, base_values, AppliedSource::Inherited(index), false);
         }
         // The trait body's members, value setters, and criteria, for the receiver.
-        // @lfy def/model/main.lfy:47
+        // @lfy def/model/main.lfy:bind
         let Some(trait_node) = self.model.entities[trait_id].node else { return };
         let trees = self.trees.clone();
         if let Some(block) = trees.child(trait_node, S::Block) {
@@ -466,7 +466,7 @@ impl Binder {
 
     /// A Where adds a criterion: the conditions are the situation, the expression the
     /// behavior.
-    // @lfy def/grammar/rules/statement.lfy:72
+    // @lfy def/grammar/rules/statement.lfy:Where
     fn exec_where(&mut self, r: NodeRef, env: &mut Env) {
         let trees = self.trees.clone();
         let Some(conditions) = trees.child(r, S::Conditions) else { return };
@@ -487,7 +487,7 @@ impl Binder {
 
     /// Conditions joined by "or" merge into one situation; conditions joined by "and" are
     /// a list of situations. A negated nested group distributes the negation.
-    // @lfy def/grammar/rules/statement.lfy:63
+    // @lfy def/grammar/rules/statement.lfy:Conditions
     fn conditions_text(&mut self, conditions: NodeRef, env: &mut Env) -> Vec<String> {
         let trees = self.trees.clone();
         let mut groups: Vec<Vec<String>> = vec![Vec::new()];
@@ -529,7 +529,7 @@ impl Binder {
     }
 
     /// A With runs the block with the name or member as the entity criteria attach to.
-    // @lfy def/grammar/rules/statement.lfy:54
+    // @lfy def/grammar/rules/statement.lfy:With
     fn exec_with(&mut self, r: NodeRef, env: &mut Env) {
         // A trait's own body is run without a receiver; its With blocks belong to each
         // application, so they are skipped here.
@@ -578,7 +578,7 @@ impl Binder {
     }
 
     /// A loop over one or more iterables, visited in order.
-    // @lfy def/grammar/rules/statement.lfy:42
+    // @lfy def/grammar/rules/statement.lfy:For
     fn exec_for(&mut self, r: NodeRef, env: &mut Env) {
         let trees = self.trees.clone();
         let Some(declared) = trees.child(r, E::Declared) else { return };
@@ -625,7 +625,7 @@ impl Binder {
             Value::Object(pairs) => pairs.into_iter().map(|(k, v)| if keys { Value::String(k) } else { v }).collect(),
             Value::Entity(entity) => {
                 // A module: its symbols' entities (in) or names (of).
-                // @lfy def/model/main.lfy:40
+                // @lfy def/model/main.lfy:bind
                 match self.model.entities[entity].scope {
                     Some(scope) => self.model.scopes[scope]
                         .symbols
@@ -1177,7 +1177,7 @@ impl Binder {
             match (&receiver, method.as_str()) {
                 (Value::Criteria(target), "add") => {
                     // An add Call on the entity's context appends one Criterion.
-                    // @lfy def/model/main.lfy:93
+                    // @lfy def/model/main.lfy:bind
                     let target = *target;
                     for argument in arguments {
                         let criterion = self.criterion_of(argument, env);
@@ -1188,7 +1188,7 @@ impl Binder {
                 }
                 (Value::Entity(trait_id), "apply") if self.model.entities[*trait_id].is_trait() => {
                     // The trait is applied to the entity the first argument resolves to.
-                    // @lfy def/model/main.lfy:44
+                    // @lfy def/model/main.lfy:bind
                     let trait_id = *trait_id;
                     if env.dry {
                         return Value::Undefined;
@@ -1251,7 +1251,7 @@ impl Binder {
         match function {
             Value::Tester(target) => {
                 // A test Call appends each argument as one Test.
-                // @lfy def/model/main.lfy:94
+                // @lfy def/model/main.lfy:bind
                 let target = if env.in_trait && target == env.current { env.target } else { target };
                 for argument in arguments {
                     let test = self.test_of(argument);
@@ -1288,7 +1288,7 @@ impl Binder {
             return Vec::new();
         };
         // An alternationList: every item.
-        // @lfy def/model/main.lfy:44
+        // @lfy def/model/main.lfy:bind
         if let Some(alternation) = self.model.trait_named("alternationList")
             && let Some(applied) = self.model.entities[entity].traits.iter().find(|a| a.entity == alternation).cloned()
         {

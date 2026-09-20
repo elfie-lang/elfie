@@ -28,6 +28,23 @@ enum ContextProperty: `Every context property; a name after the context accessor
   itemType = `itemType`,
 }
 
+enum SymbolKind: `What kind of declaration a symbol came from` {
+  data = `data`,
+  _trait = `trait`,
+  _type = `type`,
+  _enum = `enum`,
+  enumMember = `enumMember`,
+  _function = `function`,
+  agentFunction = `agentFunction`,
+  variable = `variable`,
+  loopVariable = `loopVariable`,
+  parameter = `parameter`,
+  member = `member`,
+  _alias = `alias`,
+  _external = `external`,
+  _module = `module`,
+}
+
 // Core
 
 d Symbol: `A name bound to an entity in one scope` {
@@ -35,7 +52,7 @@ d Symbol: `A name bound to an entity in one scope` {
   $entity: `What the name is bound to; for an alias, the target's entity` = Entity;
   @acceptanceCriteria
     .add({
-      behavior = `Knows the node that declared it, the scope that holds it, and the kind of declaration it came from`,
+      behavior = `Knows the node that declared it, the scope that holds it, and its [[SymbolKind]]`,
     });
 }
 
