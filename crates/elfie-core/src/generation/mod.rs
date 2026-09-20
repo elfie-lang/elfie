@@ -1830,35 +1830,11 @@ mod tests {
         }
 
         /// A project with one target `rust` whose marker `global` carries, an output
-        /// directory `src`, and an empty `def` directory.
+        /// directory `src`, and an empty `def` directory. The package `elfie` beside it
+        /// is the standard library every fixture is loaded against: its main file is the
+        /// prelude, so the trait `target` a marker must extend is in scope everywhere.
         fn with_rust_target() -> Fixture {
             let fixture = Fixture::new();
-            fixture
-                .write(
-                    "elfie.json",
-                    r#"{
-                        "output": "src",
-                        "dependencies": { "rust": { "root": "targets/rust" } },
-                        "targets": { "rust": { "package": "rust", "marker": "rust" } },
-                        "native": [ { "identifier": "serde_json", "ecosystem": "cargo", "version": "1" } ]
-                    }"#,
-                )
-                .write(
-                    "targets/rust/elfie.json",
-                    r#"{ "native": [ { "identifier": "sha2", "ecosystem": "cargo" } ] }"#,
-                )
-                .write(
-                    "targets/rust/main.lfy",
-                    "/// Built for Rust.\ntrait rust {\n  @acceptanceCriteria.add({ behavior = `Each unit becomes one module named after its stem` });\n}\nrust.apply(global);\n",
-                );
-            fs::create_dir_all(fixture.root.join("def")).unwrap();
-            fixture
-        }
-
-        /// The same project with the standard library beside it: the package `elfie`
-        /// under `lib`, holding one data `Path` a project file may name as a type.
-        fn with_elfie_package() -> Fixture {
-            let fixture = Fixture::with_rust_target();
             fixture
                 .write(
                     "elfie.json",
@@ -1872,7 +1848,25 @@ mod tests {
                         "native": [ { "identifier": "serde_json", "ecosystem": "cargo", "version": "1" } ]
                     }"#,
                 )
-                .write("lib/main.lfy", "d Path: `A path` {\n  $text = string;\n}\n")
+                .write("lib/main.lfy", LIBRARY)
+                .write(
+                    "targets/rust/elfie.json",
+                    r#"{ "native": [ { "identifier": "sha2", "ecosystem": "cargo" } ] }"#,
+                )
+                .write("targets/rust/main.lfy", RUST_TARGET);
+            fs::create_dir_all(fixture.root.join("def")).unwrap();
+            fixture
+        }
+
+        /// The same project whose standard library also holds one data `Path` a project
+        /// file may name as a type.
+        fn with_elfie_package() -> Fixture {
+            let fixture = Fixture::with_rust_target();
+            fixture
+                .write(
+                    "lib/main.lfy",
+                    &format!("{LIBRARY}\nd Path: `A path` {{\n  $text = string;\n}}\n"),
+                )
                 .write("def/a.lfy", "use \"elfie\";\n\nd A {\n  $p = Path;\n}\n");
             fixture
         }
@@ -1894,6 +1888,15 @@ mod tests {
             let _ = fs::remove_dir_all(&self.root);
         }
     }
+
+    /// The main file of the package `elfie`: the prelude. It declares the trait
+    /// `target`, which the loader requires every target's marker to extend, and no
+    /// criteria of its own, so a fixture's guidance is the marker's alone.
+    const LIBRARY: &str =
+        "trait target: `What an entity carries to be built for one target` {\n}\n";
+
+    /// The package of the target `rust`: one marker trait carried by `global`.
+    const RUST_TARGET: &str = "/// Built for Rust.\ntrait rust extends target {\n  @acceptanceCriteria.add({ behavior = `Each unit becomes one module named after its stem` });\n}\nrust.apply(global);\n";
 
     const A: &str = "use \"./b\";\n\n/// A record.\nd A: `An a` {\n  $b = B;\n}\n";
     const B: &str = "d B: `A b` {\n  $x = string;\n}\n\nfn make(x: string): `Makes a b` => B {\n  @acceptanceCriteria.add({ situation = `x is empty`, behavior = `the b holds x` });\n  @test({ input = [\"y\"], expect = B@like(`holding y`) });\n}\n";
@@ -2198,7 +2201,7 @@ mod tests {
     #[test]
     fn a_marker_nothing_carries_gives_no_units() {
         let fixture = a_and_b();
-        fixture.write("targets/rust/main.lfy", "trait rust { }\n");
+        fixture.write("targets/rust/main.lfy", "trait rust extends target { }\n");
         let workspace = fixture.load();
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
         assert_eq!(workspace.targets.len(), 1);
@@ -2212,7 +2215,7 @@ mod tests {
     fn an_entity_carrying_the_marker_itself_is_built() {
         let fixture = Fixture::with_rust_target();
         fixture
-            .write("targets/rust/main.lfy", "trait rust { }\n")
+            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
             .write(
                 "def/a.lfy",
                 "use \"rust\";\n\nd Marked is rust { $x = string; }\nd Plain { $y = string; }\n",
@@ -2572,13 +2575,13 @@ mod tests {
         fixture
             .write(
                 "targets/rust/main.lfy",
-                "trait target: `A target` {\n\
+                "trait base extends target: `A base` {\n\
                  \x20 where (`An output is written`) -> `Its path is under the output directory`;\n\
                  }\n\n\
-                 trait layout(root: string) extends target: `A layout` {\n\
+                 trait layout(root: string) extends base: `A layout` {\n\
                  \x20 where (`A unit is written`) -> `Its output is {{root}} then its stem`;\n\
                  }\n\n\
-                 trait targetLanguage extends target: `A language` {\n\
+                 trait targetLanguage extends base: `A language` {\n\
                  \x20 where (`A d declaration is built`) -> `It becomes a type`;\n\
                  }\n\n\
                  trait rust extends targetLanguage, layout(\"crates\"): `Rust` {\n\
@@ -2600,7 +2603,7 @@ mod tests {
             .map(|criterion| criterion.behavior.clone().unwrap_or_default().join(" "))
             .collect();
         // The marker's own first, with its template value evaluated for the marker; then
-        // targetLanguage and layout, in extends order; then target, reached through both
+        // targetLanguage and layout, in extends order; then base, reached through both
         // and contributing once. @lfy def/generation/main.lfy:request
         assert_eq!(
             behaviors,

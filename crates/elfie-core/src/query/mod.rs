@@ -1489,7 +1489,8 @@ fn finish(completions: Vec<Completion>, prefix: &str) -> Vec<Completion> {
 /// was found. A problem of the model is an error at its node, of stage loader when that
 /// node is a `Use` and of stage binder otherwise. A `Use`
 /// importing symbols of which none is used in the file, or naming a module never used, is
-/// a warning of stage binder at the `Use`. With `file` set, only that file's diagnostics
+/// a warning of stage binder at the `Use`, unless the file holding it declares no symbol
+/// of its own and so only re-exports. With `file` set, only that file's diagnostics
 /// are returned. Diagnostics are in `Workspace.files` order, then by start, with
 /// `elfie.json` first.
 // @lfy def/query/main.lfy:diagnosticsOf
@@ -1603,11 +1604,17 @@ fn diagnostic_key<'d>(
 }
 
 /// A warning per `Use` of a file that imports symbols of which none is used in the file,
-/// or whose module symbol is never used.
+/// or whose module symbol is never used. A file that declares no symbol of its own is
+/// there to re-export what it uses, so none of its uses is warned about.
 // @lfy def/query/main.lfy:diagnosticsOf
 fn unused_uses(workspace: &Workspace, file: FileId) -> Vec<Diagnostic> {
     let model = &workspace.model;
     let mut out = Vec::new();
+    // A file that declares no symbol of its own, as the main file of the package elfie
+    // does, only re-exports what it uses. @lfy def/query/main.lfy:diagnosticsOf
+    if model.scopes[model.file_scopes[file]].symbols.is_empty() {
+        return out;
+    }
     let uses: Vec<NodeRef> = model.nodes[file]
         .iter()
         .enumerate()
@@ -2229,6 +2236,11 @@ mod tests {
         root: PathBuf,
     }
 
+    /// What a fixture writes as `elfie.json`: the package `elfie` is the fixture's own
+    /// `lib`, which holds nothing until a test fills it. A test that writes its own
+    /// manifest names `"lib"` the same way.
+    const STUB_MANIFEST: &str = r#"{ "lib": "lib" }"#;
+
     impl Fixture {
         fn new() -> Fixture {
             static NEXT: AtomicUsize = AtomicUsize::new(0);
@@ -2239,7 +2251,14 @@ mod tests {
             ));
             let _ = fs::remove_dir_all(&root);
             fs::create_dir_all(root.join("def")).unwrap();
-            Fixture { root }
+            let fixture = Fixture { root };
+            // Every fixture holds a library of its own, which its `elfie.json` names, so
+            // that a test never reads the copy of the library the compiler was built
+            // with; [`Fixture::with_prelude`] puts the real one in its place.
+            // @lfy def/query/main.lfy:completionsAt
+            fixture.write("elfie.json", STUB_MANIFEST);
+            fixture.write("lib/main.lfy", "");
+            fixture
         }
 
         /// A project with one file `def/a.lfy`.
@@ -2884,7 +2903,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "dependencies": { "rust": { "root": "targets/rust" } } }"#,
+                r#"{ "lib": "lib", "dependencies": { "rust": { "root": "targets/rust" } } }"#,
             )
             .write(
                 "def/a.lfy",
@@ -2903,7 +2922,8 @@ mod tests {
                 .iter()
                 .all(|c| c.kind == OfferedKind::Completion(CompletionKind::Path))
         );
-        assert_eq!(labels(&completions_at(&ws, A, at(2, 5))), ["rust"]);
+        // Every package is offered, the package elfie every program has among them.
+        assert_eq!(labels(&completions_at(&ws, A, at(2, 5))), ["rust", "elfie"]);
         assert_eq!(
             labels(&completions_at(&ws, A, at(3, 10))),
             ["guidance", "main"]
@@ -3074,7 +3094,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "dependencies": { "gone": { "root": "nowhere" } }, "targets": { "t": 3 } }"#,
+                r#"{ "lib": "lib", "dependencies": { "gone": { "root": "nowhere" } }, "targets": { "t": 3 } }"#,
             )
             .write("def/a.lfy", "use \"./missing\";\n");
         let ws = fixture.load();
@@ -3164,6 +3184,26 @@ mod tests {
         assert_eq!(warnings[0].range, range(A, (1, 0), (1, 10)));
     }
 
+    // @lfy def/query/main.lfy:diagnosticsOf
+    #[test]
+    fn a_file_that_only_re_exports_is_never_warned_about() {
+        let fixture = Fixture::new();
+        fixture
+            .write("def/a.lfy", "use \"./b\";\nuse \"./c\";\n")
+            .write("def/b.lfy", "d B {}\n")
+            .write("def/c.lfy", "d C1 {}\n");
+        let ws = fixture.load();
+        // `def/a.lfy` declares nothing of its own, so neither of its uses is warned
+        // about although nothing in it uses what they import.
+        let diagnostics = diagnostics_of(&ws, None);
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+        // The main file of the package elfie is that same shape.
+        let fixture = Fixture::with_prelude("");
+        let ws = fixture.load();
+        let diagnostics = diagnostics_of(&ws, None);
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
     // @lfy def/query/main.lfy:outlineOf
     #[test]
     fn the_outline_nests_members_then_declarations_and_skips_parameters() {
@@ -3218,7 +3258,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+                r#"{ "lib": "lib", "dependencies": { "p": { "root": "pkg" } } }"#,
             )
             .write("def/a.lfy", "d Alpha { $beta = string; }\n")
             .write("def/b.lfy", "use \"./a\";\nconst gamma = Alpha;\n")
