@@ -272,3 +272,6 @@ unwritten pieces (cli, format, generation, lsp, mcp) were formatted with `elfie 
 - **Progress** is one line per step (planned, requesting, compiling, checking, accepted, ...) with
   done/total and elapsed seconds, as JSON with `--json`, with the compiler's own output streamed
   under the batch name and everything appended to `elfie-requests/compile.log`.
+- **A problem's stage is read from its node.** The compiler asked whether `Problem` should carry
+  its origin; the loader only ever adds problems at `Use` nodes, so a problem at a `Use` is stage
+  loader and any other is binder, and no field was added.
