@@ -36543,2260 +36543,6 @@
   },
   {
     "dependencies": {
-      "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
-      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
-      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
-      "def/model/data.lfy": "8ec260cfa835c6f231c007f7abf680d74ca2228d7e4afa6bc9640344b5843f2d",
-      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
-      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
-      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
-    },
-    "generated": "2026-09-21T04:18:23Z",
-    "hash": "9c2e48662586abd6a930ac37d4cfbbe007328426f90ec6c7814992c2cfa91b0a",
-    "markers": [
-      {
-        "column": null,
-        "end": 46,
-        "entity": "Plan",
-        "file": "def/generation/data.lfy",
-        "line": 154,
-        "outputLine": 24
-      },
-      {
-        "column": null,
-        "end": 49,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 47
-      },
-      {
-        "column": null,
-        "end": 66,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 50
-      },
-      {
-        "column": null,
-        "end": 71,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 67
-      },
-      {
-        "column": null,
-        "end": 73,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 72
-      },
-      {
-        "column": null,
-        "end": 82,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 74
-      },
-      {
-        "column": null,
-        "end": 89,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 83
-      },
-      {
-        "column": null,
-        "end": 119,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 90
-      },
-      {
-        "column": null,
-        "end": 171,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 120
-      },
-      {
-        "column": null,
-        "end": 178,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 172
-      },
-      {
-        "column": null,
-        "end": 183,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 179
-      },
-      {
-        "column": null,
-        "end": 194,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 184
-      },
-      {
-        "column": null,
-        "end": 201,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 195
-      },
-      {
-        "column": null,
-        "end": 216,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 202
-      },
-      {
-        "column": null,
-        "end": 218,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 217
-      },
-      {
-        "column": null,
-        "end": 232,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 219
-      },
-      {
-        "column": null,
-        "end": 246,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 233
-      },
-      {
-        "column": null,
-        "end": 308,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 247
-      },
-      {
-        "column": null,
-        "end": 334,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 309
-      },
-      {
-        "column": null,
-        "end": 349,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 335
-      },
-      {
-        "column": null,
-        "end": 371,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 350
-      },
-      {
-        "column": null,
-        "end": 383,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 372
-      },
-      {
-        "column": null,
-        "end": 429,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 384
-      },
-      {
-        "column": null,
-        "end": 438,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 430
-      },
-      {
-        "column": null,
-        "end": 447,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 439
-      },
-      {
-        "column": null,
-        "end": 471,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 448
-      },
-      {
-        "column": null,
-        "end": 480,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 472
-      },
-      {
-        "column": null,
-        "end": 490,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 481
-      },
-      {
-        "column": null,
-        "end": 524,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 491
-      },
-      {
-        "column": null,
-        "end": 549,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 525
-      },
-      {
-        "column": null,
-        "end": 558,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 550
-      },
-      {
-        "column": null,
-        "end": 571,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 559
-      },
-      {
-        "column": null,
-        "end": 593,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 572
-      },
-      {
-        "column": null,
-        "end": 594,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 594
-      },
-      {
-        "column": null,
-        "end": 642,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 595
-      },
-      {
-        "column": null,
-        "end": 647,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 643
-      },
-      {
-        "column": null,
-        "end": 652,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 648
-      },
-      {
-        "column": null,
-        "end": 660,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 653
-      },
-      {
-        "column": null,
-        "end": 671,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 661
-      },
-      {
-        "column": null,
-        "end": 700,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 672
-      },
-      {
-        "column": null,
-        "end": 721,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 701
-      },
-      {
-        "column": null,
-        "end": 751,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 722
-      },
-      {
-        "column": null,
-        "end": 768,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 752
-      },
-      {
-        "column": null,
-        "end": 790,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 769
-      },
-      {
-        "column": null,
-        "end": 822,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 791
-      },
-      {
-        "column": null,
-        "end": 838,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 823
-      },
-      {
-        "column": null,
-        "end": 864,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 839
-      },
-      {
-        "column": null,
-        "end": 897,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 865
-      },
-      {
-        "column": null,
-        "end": 919,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 898
-      },
-      {
-        "column": null,
-        "end": 927,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 920
-      },
-      {
-        "column": null,
-        "end": 940,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 928
-      },
-      {
-        "column": null,
-        "end": 962,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 941
-      },
-      {
-        "column": null,
-        "end": 969,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 963
-      },
-      {
-        "column": null,
-        "end": 1009,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 970
-      },
-      {
-        "column": null,
-        "end": 1015,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 1010
-      },
-      {
-        "column": null,
-        "end": 1031,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 1016
-      },
-      {
-        "column": null,
-        "end": 1150,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 1032
-      },
-      {
-        "column": null,
-        "end": 1162,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1151
-      },
-      {
-        "column": null,
-        "end": 1164,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1163
-      },
-      {
-        "column": null,
-        "end": 1178,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1165
-      },
-      {
-        "column": null,
-        "end": 1182,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1179
-      },
-      {
-        "column": null,
-        "end": 1189,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1183
-      },
-      {
-        "column": null,
-        "end": 1198,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1190
-      },
-      {
-        "column": null,
-        "end": 1226,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 1199
-      },
-      {
-        "column": null,
-        "end": 1241,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1227
-      },
-      {
-        "column": null,
-        "end": 1258,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1242
-      },
-      {
-        "column": null,
-        "end": 1268,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1259
-      },
-      {
-        "column": null,
-        "end": 1270,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1269
-      },
-      {
-        "column": null,
-        "end": 1286,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1271
-      },
-      {
-        "column": null,
-        "end": 1313,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1287
-      },
-      {
-        "column": null,
-        "end": 1354,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1314
-      },
-      {
-        "column": null,
-        "end": 1366,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1355
-      },
-      {
-        "column": null,
-        "end": 1370,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1367
-      },
-      {
-        "column": null,
-        "end": 1389,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1371
-      },
-      {
-        "column": null,
-        "end": 1402,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1390
-      },
-      {
-        "column": null,
-        "end": 1409,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1403
-      },
-      {
-        "column": null,
-        "end": 1421,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1410
-      },
-      {
-        "column": null,
-        "end": 1442,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1422
-      },
-      {
-        "column": null,
-        "end": 1482,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1443
-      },
-      {
-        "column": null,
-        "end": 1523,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1483
-      },
-      {
-        "column": null,
-        "end": 1532,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1524
-      },
-      {
-        "column": null,
-        "end": 1569,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 1533
-      },
-      {
-        "column": null,
-        "end": 1576,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1570
-      },
-      {
-        "column": null,
-        "end": 1585,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1577
-      },
-      {
-        "column": null,
-        "end": 1597,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1586
-      },
-      {
-        "column": null,
-        "end": 1603,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1598
-      },
-      {
-        "column": null,
-        "end": 1606,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1604
-      },
-      {
-        "column": null,
-        "end": 1619,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1607
-      },
-      {
-        "column": null,
-        "end": 1641,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 1620
-      },
-      {
-        "column": null,
-        "end": 1655,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1642
-      },
-      {
-        "column": null,
-        "end": 1661,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1656
-      },
-      {
-        "column": null,
-        "end": 1672,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1662
-      },
-      {
-        "column": null,
-        "end": 1685,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1673
-      },
-      {
-        "column": null,
-        "end": 1722,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1686
-      },
-      {
-        "column": null,
-        "end": 1728,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1723
-      },
-      {
-        "column": null,
-        "end": 1734,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1729
-      },
-      {
-        "column": null,
-        "end": 1747,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1735
-      },
-      {
-        "column": null,
-        "end": 1771,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1748
-      },
-      {
-        "column": null,
-        "end": 1788,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1772
-      },
-      {
-        "column": null,
-        "end": 1798,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1789
-      },
-      {
-        "column": null,
-        "end": 1809,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1799
-      },
-      {
-        "column": null,
-        "end": 1820,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1810
-      },
-      {
-        "column": null,
-        "end": 1838,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1821
-      },
-      {
-        "column": null,
-        "end": 1849,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1839
-      },
-      {
-        "column": null,
-        "end": 1860,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1850
-      },
-      {
-        "column": null,
-        "end": 1876,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1861
-      },
-      {
-        "column": null,
-        "end": 1887,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1877
-      },
-      {
-        "column": null,
-        "end": 1921,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1888
-      },
-      {
-        "column": null,
-        "end": 1935,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1922
-      },
-      {
-        "column": null,
-        "end": 1944,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1936
-      },
-      {
-        "column": null,
-        "end": 1957,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1945
-      },
-      {
-        "column": null,
-        "end": 1966,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1958
-      },
-      {
-        "column": null,
-        "end": 1979,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1967
-      },
-      {
-        "column": null,
-        "end": 2001,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 1980
-      },
-      {
-        "column": null,
-        "end": 2080,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 2002
-      },
-      {
-        "column": null,
-        "end": 2102,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 2081
-      },
-      {
-        "column": null,
-        "end": 2133,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 2103
-      },
-      {
-        "column": null,
-        "end": 2163,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 2134
-      },
-      {
-        "column": null,
-        "end": 2178,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2164
-      },
-      {
-        "column": null,
-        "end": 2186,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2179
-      },
-      {
-        "column": null,
-        "end": 2201,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2187
-      },
-      {
-        "column": null,
-        "end": 2211,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2202
-      },
-      {
-        "column": null,
-        "end": 2222,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2212
-      },
-      {
-        "column": null,
-        "end": 2243,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2223
-      },
-      {
-        "column": null,
-        "end": 2257,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2244
-      },
-      {
-        "column": null,
-        "end": 2271,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2258
-      },
-      {
-        "column": null,
-        "end": 2278,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2272
-      },
-      {
-        "column": null,
-        "end": 2290,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2279
-      },
-      {
-        "column": null,
-        "end": 2311,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2291
-      },
-      {
-        "column": null,
-        "end": 2330,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2312
-      },
-      {
-        "column": null,
-        "end": 2343,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2331
-      },
-      {
-        "column": null,
-        "end": 2350,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2344
-      },
-      {
-        "column": null,
-        "end": 2365,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2351
-      },
-      {
-        "column": null,
-        "end": 2387,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2366
-      },
-      {
-        "column": null,
-        "end": 2422,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 2388
-      },
-      {
-        "column": null,
-        "end": 2428,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 2423
-      },
-      {
-        "column": null,
-        "end": 2437,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 2429
-      },
-      {
-        "column": null,
-        "end": 2444,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 2438
-      },
-      {
-        "column": null,
-        "end": 2454,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 2445
-      },
-      {
-        "column": null,
-        "end": 2462,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 2455
-      },
-      {
-        "column": null,
-        "end": 2481,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 2463
-      },
-      {
-        "column": null,
-        "end": 2497,
-        "entity": "Marker",
-        "file": "def/generation/data.lfy",
-        "line": 15,
-        "outputLine": 2482
-      },
-      {
-        "column": null,
-        "end": 2512,
-        "entity": "Marker.end",
-        "file": "def/generation/data.lfy",
-        "line": 21,
-        "outputLine": 2498
-      },
-      {
-        "column": null,
-        "end": 2550,
-        "entity": "Marker",
-        "file": "def/generation/data.lfy",
-        "line": 15,
-        "outputLine": 2513
-      },
-      {
-        "column": null,
-        "end": 2564,
-        "entity": "Marker.entity",
-        "file": "def/generation/data.lfy",
-        "line": 18,
-        "outputLine": 2551
-      },
-      {
-        "column": null,
-        "end": 2570,
-        "entity": "Marker",
-        "file": "def/generation/data.lfy",
-        "line": 15,
-        "outputLine": 2565
-      },
-      {
-        "column": null,
-        "end": 2583,
-        "entity": "Marker",
-        "file": "def/generation/data.lfy",
-        "line": 15,
-        "outputLine": 2571
-      },
-      {
-        "column": null,
-        "end": 2596,
-        "entity": "SourceMap.hash",
-        "file": "def/generation/data.lfy",
-        "line": 41,
-        "outputLine": 2584
-      },
-      {
-        "column": null,
-        "end": 2614,
-        "entity": "SourceMap",
-        "file": "def/generation/data.lfy",
-        "line": 37,
-        "outputLine": 2597
-      },
-      {
-        "column": null,
-        "end": 2628,
-        "entity": "SourceMap",
-        "file": "def/generation/data.lfy",
-        "line": 37,
-        "outputLine": 2615
-      },
-      {
-        "column": null,
-        "end": 2921,
-        "entity": "SourceMap.generated",
-        "file": "def/generation/data.lfy",
-        "line": 44,
-        "outputLine": 2629
-      },
-      {
-        "column": null,
-        "end": 2931,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 2922
-      },
-      {
-        "column": null,
-        "end": 2945,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 2932
-      },
-      {
-        "column": null,
-        "end": 2971,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 2946
-      },
-      {
-        "column": null,
-        "end": 2998,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 2972
-      },
-      {
-        "column": null,
-        "end": 3018,
-        "entity": "interfaceOf",
-        "file": "def/generation/main.lfy",
-        "line": 22,
-        "outputLine": 2999
-      },
-      {
-        "column": null,
-        "end": 3035,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3019
-      },
-      {
-        "column": null,
-        "end": 3051,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3036
-      },
-      {
-        "column": null,
-        "end": 3054,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3052
-      },
-      {
-        "column": null,
-        "end": 3061,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3055
-      },
-      {
-        "column": null,
-        "end": 3067,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3062
-      },
-      {
-        "column": null,
-        "end": 3081,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3068
-      },
-      {
-        "column": null,
-        "end": 3086,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3082
-      },
-      {
-        "column": null,
-        "end": 3089,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3087
-      },
-      {
-        "column": null,
-        "end": 3112,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3090
-      },
-      {
-        "column": null,
-        "end": 3118,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3113
-      },
-      {
-        "column": null,
-        "end": 3136,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3119
-      },
-      {
-        "column": null,
-        "end": 3141,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3137
-      },
-      {
-        "column": null,
-        "end": 3151,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3142
-      },
-      {
-        "column": null,
-        "end": 3154,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3152
-      },
-      {
-        "column": null,
-        "end": 3171,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3155
-      },
-      {
-        "column": null,
-        "end": 3188,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3172
-      },
-      {
-        "column": null,
-        "end": 3196,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3189
-      },
-      {
-        "column": null,
-        "end": 3216,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3197
-      },
-      {
-        "column": null,
-        "end": 3218,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3217
-      },
-      {
-        "column": null,
-        "end": 3221,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3219
-      },
-      {
-        "column": null,
-        "end": 3244,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3222
-      },
-      {
-        "column": null,
-        "end": 3255,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3245
-      },
-      {
-        "column": null,
-        "end": 3262,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3256
-      },
-      {
-        "column": null,
-        "end": 3279,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3263
-      },
-      {
-        "column": null,
-        "end": 3313,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3280
-      },
-      {
-        "column": null,
-        "end": 3344,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3314
-      },
-      {
-        "column": null,
-        "end": 3376,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 3345
-      },
-      {
-        "column": null,
-        "end": 3387,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3377
-      },
-      {
-        "column": null,
-        "end": 3393,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3388
-      },
-      {
-        "column": null,
-        "end": 3395,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3394
-      },
-      {
-        "column": null,
-        "end": 3397,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3396
-      },
-      {
-        "column": null,
-        "end": 3405,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3398
-      },
-      {
-        "column": null,
-        "end": 3437,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3406
-      },
-      {
-        "column": null,
-        "end": 3440,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3438
-      },
-      {
-        "column": null,
-        "end": 3445,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3441
-      },
-      {
-        "column": null,
-        "end": 3456,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3446
-      },
-      {
-        "column": null,
-        "end": 3484,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3457
-      },
-      {
-        "column": null,
-        "end": 3512,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3485
-      },
-      {
-        "column": null,
-        "end": 3548,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3513
-      },
-      {
-        "column": null,
-        "end": 3577,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3549
-      },
-      {
-        "column": null,
-        "end": 3611,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3578
-      },
-      {
-        "column": null,
-        "end": 3631,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3612
-      },
-      {
-        "column": null,
-        "end": 3673,
-        "entity": "request",
-        "file": "def/generation/main.lfy",
-        "line": 142,
-        "outputLine": 3632
-      },
-      {
-        "column": null,
-        "end": 3677,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3674
-      },
-      {
-        "column": null,
-        "end": 3679,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3678
-      },
-      {
-        "column": null,
-        "end": 3682,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3680
-      },
-      {
-        "column": null,
-        "end": 3691,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3683
-      },
-      {
-        "column": null,
-        "end": 3709,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3692
-      },
-      {
-        "column": null,
-        "end": 3718,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3710
-      },
-      {
-        "column": null,
-        "end": 3769,
-        "entity": "outcomeOf",
-        "file": "def/generation/main.lfy",
-        "line": 206,
-        "outputLine": 3719
-      },
-      {
-        "column": null,
-        "end": 3790,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3770
-      },
-      {
-        "column": null,
-        "end": 3796,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3791
-      },
-      {
-        "column": null,
-        "end": 3814,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3797
-      },
-      {
-        "column": null,
-        "end": 3827,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3815
-      },
-      {
-        "column": null,
-        "end": 3847,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3828
-      },
-      {
-        "column": null,
-        "end": 3860,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3848
-      },
-      {
-        "column": null,
-        "end": 3883,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3861
-      },
-      {
-        "column": null,
-        "end": 3898,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3884
-      },
-      {
-        "column": null,
-        "end": 3916,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3899
-      },
-      {
-        "column": null,
-        "end": 3939,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3917
-      },
-      {
-        "column": null,
-        "end": 3964,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3940
-      },
-      {
-        "column": null,
-        "end": 3992,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3965
-      },
-      {
-        "column": null,
-        "end": 4016,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 3993
-      },
-      {
-        "column": null,
-        "end": 4082,
-        "entity": "accept",
-        "file": "def/generation/main.lfy",
-        "line": 244,
-        "outputLine": 4017
-      },
-      {
-        "column": null,
-        "end": 4089,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4083
-      },
-      {
-        "column": null,
-        "end": 4106,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4090
-      },
-      {
-        "column": null,
-        "end": 4112,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4107
-      },
-      {
-        "column": null,
-        "end": 4117,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4113
-      },
-      {
-        "column": null,
-        "end": 4123,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4118
-      },
-      {
-        "column": null,
-        "end": 4141,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4124
-      },
-      {
-        "column": null,
-        "end": 4147,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4142
-      },
-      {
-        "column": null,
-        "end": 4166,
-        "entity": "regionsOf",
-        "file": "def/generation/main.lfy",
-        "line": 326,
-        "outputLine": 4148
-      },
-      {
-        "column": null,
-        "end": 4174,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4167
-      },
-      {
-        "column": null,
-        "end": 4182,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4175
-      },
-      {
-        "column": null,
-        "end": 4195,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4183
-      },
-      {
-        "column": null,
-        "end": 4202,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4196
-      },
-      {
-        "column": null,
-        "end": 4211,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4203
-      },
-      {
-        "column": null,
-        "end": 4224,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4212
-      },
-      {
-        "column": null,
-        "end": 4226,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4225
-      },
-      {
-        "column": null,
-        "end": 4236,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4227
-      },
-      {
-        "column": null,
-        "end": 4242,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4237
-      },
-      {
-        "column": null,
-        "end": 4254,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4243
-      },
-      {
-        "column": null,
-        "end": 4257,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4255
-      },
-      {
-        "column": null,
-        "end": 4267,
-        "entity": "changes",
-        "file": "def/generation/main.lfy",
-        "line": 372,
-        "outputLine": 4258
-      },
-      {
-        "column": null,
-        "end": 4295,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4268
-      },
-      {
-        "column": null,
-        "end": 4298,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4296
-      },
-      {
-        "column": null,
-        "end": 4306,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4299
-      },
-      {
-        "column": null,
-        "end": 4310,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4307
-      },
-      {
-        "column": null,
-        "end": 4313,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4311
-      },
-      {
-        "column": null,
-        "end": 4317,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4314
-      },
-      {
-        "column": null,
-        "end": 4334,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4318
-      },
-      {
-        "column": null,
-        "end": 4349,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4335
-      },
-      {
-        "column": null,
-        "end": 4359,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4350
-      },
-      {
-        "column": null,
-        "end": 4393,
-        "entity": "review",
-        "file": "def/generation/main.lfy",
-        "line": 449,
-        "outputLine": 4360
-      },
-      {
-        "column": null,
-        "end": 4402,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4394
-      },
-      {
-        "column": null,
-        "end": 4408,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4403
-      },
-      {
-        "column": null,
-        "end": 4410,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4409
-      },
-      {
-        "column": null,
-        "end": 4418,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4411
-      },
-      {
-        "column": null,
-        "end": 4427,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4419
-      },
-      {
-        "column": null,
-        "end": 4431,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4428
-      },
-      {
-        "column": null,
-        "end": 4440,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4432
-      },
-      {
-        "column": null,
-        "end": 4449,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4441
-      },
-      {
-        "column": null,
-        "end": 4453,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4450
-      },
-      {
-        "column": null,
-        "end": 4464,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4454
-      },
-      {
-        "column": null,
-        "end": 4474,
-        "entity": "reviewOf",
-        "file": "def/generation/main.lfy",
-        "line": 488,
-        "outputLine": 4465
-      },
-      {
-        "column": null,
-        "end": 4495,
-        "entity": "Marker.line",
-        "file": "def/generation/data.lfy",
-        "line": 19,
-        "outputLine": 4475
-      },
-      {
-        "column": null,
-        "end": 4516,
-        "entity": "Marker.entity",
-        "file": "def/generation/data.lfy",
-        "line": 18,
-        "outputLine": 4496
-      },
-      {
-        "column": null,
-        "end": 4541,
-        "entity": "Marker",
-        "file": "def/generation/data.lfy",
-        "line": 15,
-        "outputLine": 4517
-      },
-      {
-        "column": null,
-        "end": 4570,
-        "entity": "Marker",
-        "file": "def/generation/data.lfy",
-        "line": 15,
-        "outputLine": 4542
-      },
-      {
-        "column": null,
-        "end": 4583,
-        "entity": "SourceMap.hash",
-        "file": "def/generation/data.lfy",
-        "line": 41,
-        "outputLine": 4571
-      },
-      {
-        "column": null,
-        "end": 4642,
-        "entity": "SourceMap",
-        "file": "def/generation/data.lfy",
-        "line": 37,
-        "outputLine": 4584
-      },
-      {
-        "column": null,
-        "end": 4681,
-        "entity": "SourceMap.generated",
-        "file": "def/generation/data.lfy",
-        "line": 44,
-        "outputLine": 4643
-      },
-      {
-        "column": null,
-        "end": 4687,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 4682
-      }
-    ],
-    "output": "crates/elfie-core/src/generation/mod.rs",
-    "signature": "488bf9cb01cbc9d8f64ecc7dd625fc34e88fcc0db76d3ce3a1f29c9b05934cba",
-    "source": "def/generation/main.lfy",
-    "target": "rust"
-  },
-  {
-    "dependencies": {
-      "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
-      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
-      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
-      "def/model/data.lfy": "8ec260cfa835c6f231c007f7abf680d74ca2228d7e4afa6bc9640344b5843f2d",
-      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
-      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
-      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
-    },
-    "generated": "2026-09-21T04:18:23Z",
-    "hash": "9c2e48662586abd6a930ac37d4cfbbe007328426f90ec6c7814992c2cfa91b0a",
-    "markers": [
-      {
-        "column": null,
-        "end": 6,
-        "entity": "format",
-        "file": "def/format/main.lfy",
-        "line": 15,
-        "outputLine": 6
-      },
-      {
-        "column": null,
-        "end": 7,
-        "entity": "plan",
-        "file": "def/generation/main.lfy",
-        "line": 38,
-        "outputLine": 7
-      },
-      {
-        "column": null,
-        "end": 8,
-        "entity": null,
-        "file": "def/grammar/main.lfy",
-        "line": 1,
-        "outputLine": 8
-      },
-      {
-        "column": null,
-        "end": 9,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 9
-      },
-      {
-        "column": null,
-        "end": 10,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 19,
-        "outputLine": 10
-      },
-      {
-        "column": null,
-        "end": 11,
-        "entity": "parse",
-        "file": "def/parser/main.lfy",
-        "line": 11,
-        "outputLine": 11
-      },
-      {
-        "column": null,
-        "end": 12,
-        "entity": "rangeOf",
-        "file": "def/query/main.lfy",
-        "line": 27,
-        "outputLine": 12
-      },
-      {
-        "column": null,
-        "end": 13,
-        "entity": "load",
-        "file": "def/workspace/main.lfy",
-        "line": 13,
-        "outputLine": 13
-      }
-    ],
-    "output": "crates/elfie-core/src/lib.rs",
-    "signature": "488bf9cb01cbc9d8f64ecc7dd625fc34e88fcc0db76d3ce3a1f29c9b05934cba",
-    "source": "def/generation/main.lfy",
-    "target": "rust"
-  },
-  {
-    "dependencies": {
       "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/model/data.lfy": "8ec260cfa835c6f231c007f7abf680d74ca2228d7e4afa6bc9640344b5843f2d",
@@ -46719,6 +44465,2260 @@
   },
   {
     "dependencies": {
+      "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "8ec260cfa835c6f231c007f7abf680d74ca2228d7e4afa6bc9640344b5843f2d",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
+      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
+    },
+    "generated": "2026-09-21T15:18:49Z",
+    "hash": "9c2e48662586abd6a930ac37d4cfbbe007328426f90ec6c7814992c2cfa91b0a",
+    "markers": [
+      {
+        "column": null,
+        "end": 46,
+        "entity": "Plan",
+        "file": "def/generation/data.lfy",
+        "line": 154,
+        "outputLine": 24
+      },
+      {
+        "column": null,
+        "end": 49,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 47
+      },
+      {
+        "column": null,
+        "end": 66,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 50
+      },
+      {
+        "column": null,
+        "end": 71,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 67
+      },
+      {
+        "column": null,
+        "end": 73,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 72
+      },
+      {
+        "column": null,
+        "end": 82,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 74
+      },
+      {
+        "column": null,
+        "end": 89,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 83
+      },
+      {
+        "column": null,
+        "end": 119,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 90
+      },
+      {
+        "column": null,
+        "end": 171,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 120
+      },
+      {
+        "column": null,
+        "end": 178,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 172
+      },
+      {
+        "column": null,
+        "end": 183,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 179
+      },
+      {
+        "column": null,
+        "end": 194,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 184
+      },
+      {
+        "column": null,
+        "end": 201,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 195
+      },
+      {
+        "column": null,
+        "end": 216,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 202
+      },
+      {
+        "column": null,
+        "end": 218,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 217
+      },
+      {
+        "column": null,
+        "end": 232,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 219
+      },
+      {
+        "column": null,
+        "end": 246,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 233
+      },
+      {
+        "column": null,
+        "end": 308,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 247
+      },
+      {
+        "column": null,
+        "end": 334,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 309
+      },
+      {
+        "column": null,
+        "end": 349,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 335
+      },
+      {
+        "column": null,
+        "end": 371,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 350
+      },
+      {
+        "column": null,
+        "end": 383,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 372
+      },
+      {
+        "column": null,
+        "end": 429,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 384
+      },
+      {
+        "column": null,
+        "end": 438,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 430
+      },
+      {
+        "column": null,
+        "end": 447,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 439
+      },
+      {
+        "column": null,
+        "end": 471,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 448
+      },
+      {
+        "column": null,
+        "end": 480,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 472
+      },
+      {
+        "column": null,
+        "end": 490,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 481
+      },
+      {
+        "column": null,
+        "end": 524,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 491
+      },
+      {
+        "column": null,
+        "end": 549,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 525
+      },
+      {
+        "column": null,
+        "end": 558,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 550
+      },
+      {
+        "column": null,
+        "end": 571,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 559
+      },
+      {
+        "column": null,
+        "end": 593,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 572
+      },
+      {
+        "column": null,
+        "end": 594,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 594
+      },
+      {
+        "column": null,
+        "end": 642,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 595
+      },
+      {
+        "column": null,
+        "end": 647,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 643
+      },
+      {
+        "column": null,
+        "end": 652,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 648
+      },
+      {
+        "column": null,
+        "end": 660,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 653
+      },
+      {
+        "column": null,
+        "end": 671,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 661
+      },
+      {
+        "column": null,
+        "end": 700,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 672
+      },
+      {
+        "column": null,
+        "end": 721,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 701
+      },
+      {
+        "column": null,
+        "end": 751,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 722
+      },
+      {
+        "column": null,
+        "end": 768,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 752
+      },
+      {
+        "column": null,
+        "end": 790,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 769
+      },
+      {
+        "column": null,
+        "end": 822,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 791
+      },
+      {
+        "column": null,
+        "end": 838,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 823
+      },
+      {
+        "column": null,
+        "end": 864,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 839
+      },
+      {
+        "column": null,
+        "end": 897,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 865
+      },
+      {
+        "column": null,
+        "end": 919,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 898
+      },
+      {
+        "column": null,
+        "end": 927,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 920
+      },
+      {
+        "column": null,
+        "end": 940,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 928
+      },
+      {
+        "column": null,
+        "end": 962,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 941
+      },
+      {
+        "column": null,
+        "end": 969,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 963
+      },
+      {
+        "column": null,
+        "end": 1009,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 970
+      },
+      {
+        "column": null,
+        "end": 1015,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 1010
+      },
+      {
+        "column": null,
+        "end": 1031,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 1016
+      },
+      {
+        "column": null,
+        "end": 1150,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 1032
+      },
+      {
+        "column": null,
+        "end": 1162,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1151
+      },
+      {
+        "column": null,
+        "end": 1164,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1163
+      },
+      {
+        "column": null,
+        "end": 1178,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1165
+      },
+      {
+        "column": null,
+        "end": 1182,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1179
+      },
+      {
+        "column": null,
+        "end": 1189,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1183
+      },
+      {
+        "column": null,
+        "end": 1198,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1190
+      },
+      {
+        "column": null,
+        "end": 1226,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 1199
+      },
+      {
+        "column": null,
+        "end": 1241,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1227
+      },
+      {
+        "column": null,
+        "end": 1258,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1242
+      },
+      {
+        "column": null,
+        "end": 1268,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1259
+      },
+      {
+        "column": null,
+        "end": 1270,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1269
+      },
+      {
+        "column": null,
+        "end": 1286,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1271
+      },
+      {
+        "column": null,
+        "end": 1313,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1287
+      },
+      {
+        "column": null,
+        "end": 1354,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1314
+      },
+      {
+        "column": null,
+        "end": 1366,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1355
+      },
+      {
+        "column": null,
+        "end": 1370,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1367
+      },
+      {
+        "column": null,
+        "end": 1389,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1371
+      },
+      {
+        "column": null,
+        "end": 1402,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1390
+      },
+      {
+        "column": null,
+        "end": 1409,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1403
+      },
+      {
+        "column": null,
+        "end": 1421,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1410
+      },
+      {
+        "column": null,
+        "end": 1442,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1422
+      },
+      {
+        "column": null,
+        "end": 1482,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1443
+      },
+      {
+        "column": null,
+        "end": 1523,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1483
+      },
+      {
+        "column": null,
+        "end": 1532,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1524
+      },
+      {
+        "column": null,
+        "end": 1569,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 1533
+      },
+      {
+        "column": null,
+        "end": 1576,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1570
+      },
+      {
+        "column": null,
+        "end": 1585,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1577
+      },
+      {
+        "column": null,
+        "end": 1597,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1586
+      },
+      {
+        "column": null,
+        "end": 1603,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1598
+      },
+      {
+        "column": null,
+        "end": 1606,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1604
+      },
+      {
+        "column": null,
+        "end": 1619,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1607
+      },
+      {
+        "column": null,
+        "end": 1641,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 1620
+      },
+      {
+        "column": null,
+        "end": 1655,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1642
+      },
+      {
+        "column": null,
+        "end": 1661,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1656
+      },
+      {
+        "column": null,
+        "end": 1672,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1662
+      },
+      {
+        "column": null,
+        "end": 1685,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1673
+      },
+      {
+        "column": null,
+        "end": 1722,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1686
+      },
+      {
+        "column": null,
+        "end": 1728,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1723
+      },
+      {
+        "column": null,
+        "end": 1734,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1729
+      },
+      {
+        "column": null,
+        "end": 1747,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1735
+      },
+      {
+        "column": null,
+        "end": 1771,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1748
+      },
+      {
+        "column": null,
+        "end": 1788,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1772
+      },
+      {
+        "column": null,
+        "end": 1798,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1789
+      },
+      {
+        "column": null,
+        "end": 1809,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1799
+      },
+      {
+        "column": null,
+        "end": 1820,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1810
+      },
+      {
+        "column": null,
+        "end": 1838,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1821
+      },
+      {
+        "column": null,
+        "end": 1849,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1839
+      },
+      {
+        "column": null,
+        "end": 1860,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1850
+      },
+      {
+        "column": null,
+        "end": 1876,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1861
+      },
+      {
+        "column": null,
+        "end": 1887,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1877
+      },
+      {
+        "column": null,
+        "end": 1921,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1888
+      },
+      {
+        "column": null,
+        "end": 1935,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1922
+      },
+      {
+        "column": null,
+        "end": 1944,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1936
+      },
+      {
+        "column": null,
+        "end": 1957,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1945
+      },
+      {
+        "column": null,
+        "end": 1966,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1958
+      },
+      {
+        "column": null,
+        "end": 1979,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1967
+      },
+      {
+        "column": null,
+        "end": 2001,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 1980
+      },
+      {
+        "column": null,
+        "end": 2080,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 2002
+      },
+      {
+        "column": null,
+        "end": 2102,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 2081
+      },
+      {
+        "column": null,
+        "end": 2133,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 2103
+      },
+      {
+        "column": null,
+        "end": 2163,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 2134
+      },
+      {
+        "column": null,
+        "end": 2178,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2164
+      },
+      {
+        "column": null,
+        "end": 2186,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2179
+      },
+      {
+        "column": null,
+        "end": 2201,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2187
+      },
+      {
+        "column": null,
+        "end": 2211,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2202
+      },
+      {
+        "column": null,
+        "end": 2222,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2212
+      },
+      {
+        "column": null,
+        "end": 2243,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2223
+      },
+      {
+        "column": null,
+        "end": 2257,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2244
+      },
+      {
+        "column": null,
+        "end": 2271,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2258
+      },
+      {
+        "column": null,
+        "end": 2278,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2272
+      },
+      {
+        "column": null,
+        "end": 2290,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2279
+      },
+      {
+        "column": null,
+        "end": 2311,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2291
+      },
+      {
+        "column": null,
+        "end": 2330,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2312
+      },
+      {
+        "column": null,
+        "end": 2343,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2331
+      },
+      {
+        "column": null,
+        "end": 2350,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2344
+      },
+      {
+        "column": null,
+        "end": 2365,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2351
+      },
+      {
+        "column": null,
+        "end": 2387,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2366
+      },
+      {
+        "column": null,
+        "end": 2422,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 2388
+      },
+      {
+        "column": null,
+        "end": 2428,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 2423
+      },
+      {
+        "column": null,
+        "end": 2437,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 2429
+      },
+      {
+        "column": null,
+        "end": 2444,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 2438
+      },
+      {
+        "column": null,
+        "end": 2454,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 2445
+      },
+      {
+        "column": null,
+        "end": 2462,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 2455
+      },
+      {
+        "column": null,
+        "end": 2481,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 2463
+      },
+      {
+        "column": null,
+        "end": 2497,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 15,
+        "outputLine": 2482
+      },
+      {
+        "column": null,
+        "end": 2512,
+        "entity": "Marker.end",
+        "file": "def/generation/data.lfy",
+        "line": 21,
+        "outputLine": 2498
+      },
+      {
+        "column": null,
+        "end": 2550,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 15,
+        "outputLine": 2513
+      },
+      {
+        "column": null,
+        "end": 2564,
+        "entity": "Marker.entity",
+        "file": "def/generation/data.lfy",
+        "line": 18,
+        "outputLine": 2551
+      },
+      {
+        "column": null,
+        "end": 2570,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 15,
+        "outputLine": 2565
+      },
+      {
+        "column": null,
+        "end": 2583,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 15,
+        "outputLine": 2571
+      },
+      {
+        "column": null,
+        "end": 2596,
+        "entity": "SourceMap.hash",
+        "file": "def/generation/data.lfy",
+        "line": 41,
+        "outputLine": 2584
+      },
+      {
+        "column": null,
+        "end": 2614,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 37,
+        "outputLine": 2597
+      },
+      {
+        "column": null,
+        "end": 2628,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 37,
+        "outputLine": 2615
+      },
+      {
+        "column": null,
+        "end": 2922,
+        "entity": "SourceMap.generated",
+        "file": "def/generation/data.lfy",
+        "line": 44,
+        "outputLine": 2629
+      },
+      {
+        "column": null,
+        "end": 2932,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 2923
+      },
+      {
+        "column": null,
+        "end": 2946,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 2933
+      },
+      {
+        "column": null,
+        "end": 2972,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 2947
+      },
+      {
+        "column": null,
+        "end": 2999,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 2973
+      },
+      {
+        "column": null,
+        "end": 3019,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 22,
+        "outputLine": 3000
+      },
+      {
+        "column": null,
+        "end": 3036,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3020
+      },
+      {
+        "column": null,
+        "end": 3052,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3037
+      },
+      {
+        "column": null,
+        "end": 3055,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3053
+      },
+      {
+        "column": null,
+        "end": 3062,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3056
+      },
+      {
+        "column": null,
+        "end": 3068,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3063
+      },
+      {
+        "column": null,
+        "end": 3082,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3069
+      },
+      {
+        "column": null,
+        "end": 3087,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3083
+      },
+      {
+        "column": null,
+        "end": 3090,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3088
+      },
+      {
+        "column": null,
+        "end": 3113,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3091
+      },
+      {
+        "column": null,
+        "end": 3119,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3114
+      },
+      {
+        "column": null,
+        "end": 3137,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3120
+      },
+      {
+        "column": null,
+        "end": 3142,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3138
+      },
+      {
+        "column": null,
+        "end": 3152,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3143
+      },
+      {
+        "column": null,
+        "end": 3155,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3153
+      },
+      {
+        "column": null,
+        "end": 3172,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3156
+      },
+      {
+        "column": null,
+        "end": 3189,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3173
+      },
+      {
+        "column": null,
+        "end": 3197,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3190
+      },
+      {
+        "column": null,
+        "end": 3217,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3198
+      },
+      {
+        "column": null,
+        "end": 3219,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3218
+      },
+      {
+        "column": null,
+        "end": 3222,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3220
+      },
+      {
+        "column": null,
+        "end": 3245,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3223
+      },
+      {
+        "column": null,
+        "end": 3256,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3246
+      },
+      {
+        "column": null,
+        "end": 3263,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3257
+      },
+      {
+        "column": null,
+        "end": 3280,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3264
+      },
+      {
+        "column": null,
+        "end": 3314,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3281
+      },
+      {
+        "column": null,
+        "end": 3345,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3315
+      },
+      {
+        "column": null,
+        "end": 3377,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 3346
+      },
+      {
+        "column": null,
+        "end": 3388,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3378
+      },
+      {
+        "column": null,
+        "end": 3394,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3389
+      },
+      {
+        "column": null,
+        "end": 3396,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3395
+      },
+      {
+        "column": null,
+        "end": 3398,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3397
+      },
+      {
+        "column": null,
+        "end": 3406,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3399
+      },
+      {
+        "column": null,
+        "end": 3438,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3407
+      },
+      {
+        "column": null,
+        "end": 3441,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3439
+      },
+      {
+        "column": null,
+        "end": 3446,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3442
+      },
+      {
+        "column": null,
+        "end": 3457,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3447
+      },
+      {
+        "column": null,
+        "end": 3485,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3458
+      },
+      {
+        "column": null,
+        "end": 3513,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3486
+      },
+      {
+        "column": null,
+        "end": 3549,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3514
+      },
+      {
+        "column": null,
+        "end": 3578,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3550
+      },
+      {
+        "column": null,
+        "end": 3612,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3579
+      },
+      {
+        "column": null,
+        "end": 3632,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3613
+      },
+      {
+        "column": null,
+        "end": 3674,
+        "entity": "request",
+        "file": "def/generation/main.lfy",
+        "line": 142,
+        "outputLine": 3633
+      },
+      {
+        "column": null,
+        "end": 3678,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3675
+      },
+      {
+        "column": null,
+        "end": 3680,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3679
+      },
+      {
+        "column": null,
+        "end": 3683,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3681
+      },
+      {
+        "column": null,
+        "end": 3692,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3684
+      },
+      {
+        "column": null,
+        "end": 3710,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3693
+      },
+      {
+        "column": null,
+        "end": 3719,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3711
+      },
+      {
+        "column": null,
+        "end": 3770,
+        "entity": "outcomeOf",
+        "file": "def/generation/main.lfy",
+        "line": 206,
+        "outputLine": 3720
+      },
+      {
+        "column": null,
+        "end": 3791,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3771
+      },
+      {
+        "column": null,
+        "end": 3797,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3792
+      },
+      {
+        "column": null,
+        "end": 3815,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3798
+      },
+      {
+        "column": null,
+        "end": 3828,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3816
+      },
+      {
+        "column": null,
+        "end": 3848,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3829
+      },
+      {
+        "column": null,
+        "end": 3861,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3849
+      },
+      {
+        "column": null,
+        "end": 3884,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3862
+      },
+      {
+        "column": null,
+        "end": 3899,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3885
+      },
+      {
+        "column": null,
+        "end": 3917,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3900
+      },
+      {
+        "column": null,
+        "end": 3940,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3918
+      },
+      {
+        "column": null,
+        "end": 3965,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3941
+      },
+      {
+        "column": null,
+        "end": 3993,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3966
+      },
+      {
+        "column": null,
+        "end": 4017,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 3994
+      },
+      {
+        "column": null,
+        "end": 4083,
+        "entity": "accept",
+        "file": "def/generation/main.lfy",
+        "line": 244,
+        "outputLine": 4018
+      },
+      {
+        "column": null,
+        "end": 4090,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4084
+      },
+      {
+        "column": null,
+        "end": 4107,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4091
+      },
+      {
+        "column": null,
+        "end": 4113,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4108
+      },
+      {
+        "column": null,
+        "end": 4118,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4114
+      },
+      {
+        "column": null,
+        "end": 4124,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4119
+      },
+      {
+        "column": null,
+        "end": 4142,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4125
+      },
+      {
+        "column": null,
+        "end": 4148,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4143
+      },
+      {
+        "column": null,
+        "end": 4167,
+        "entity": "regionsOf",
+        "file": "def/generation/main.lfy",
+        "line": 326,
+        "outputLine": 4149
+      },
+      {
+        "column": null,
+        "end": 4175,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4168
+      },
+      {
+        "column": null,
+        "end": 4183,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4176
+      },
+      {
+        "column": null,
+        "end": 4196,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4184
+      },
+      {
+        "column": null,
+        "end": 4203,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4197
+      },
+      {
+        "column": null,
+        "end": 4212,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4204
+      },
+      {
+        "column": null,
+        "end": 4225,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4213
+      },
+      {
+        "column": null,
+        "end": 4227,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4226
+      },
+      {
+        "column": null,
+        "end": 4237,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4228
+      },
+      {
+        "column": null,
+        "end": 4243,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4238
+      },
+      {
+        "column": null,
+        "end": 4255,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4244
+      },
+      {
+        "column": null,
+        "end": 4258,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4256
+      },
+      {
+        "column": null,
+        "end": 4268,
+        "entity": "changes",
+        "file": "def/generation/main.lfy",
+        "line": 372,
+        "outputLine": 4259
+      },
+      {
+        "column": null,
+        "end": 4296,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4269
+      },
+      {
+        "column": null,
+        "end": 4299,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4297
+      },
+      {
+        "column": null,
+        "end": 4307,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4300
+      },
+      {
+        "column": null,
+        "end": 4311,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4308
+      },
+      {
+        "column": null,
+        "end": 4314,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4312
+      },
+      {
+        "column": null,
+        "end": 4318,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4315
+      },
+      {
+        "column": null,
+        "end": 4335,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4319
+      },
+      {
+        "column": null,
+        "end": 4350,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4336
+      },
+      {
+        "column": null,
+        "end": 4360,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4351
+      },
+      {
+        "column": null,
+        "end": 4394,
+        "entity": "review",
+        "file": "def/generation/main.lfy",
+        "line": 449,
+        "outputLine": 4361
+      },
+      {
+        "column": null,
+        "end": 4403,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4395
+      },
+      {
+        "column": null,
+        "end": 4409,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4404
+      },
+      {
+        "column": null,
+        "end": 4411,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4410
+      },
+      {
+        "column": null,
+        "end": 4419,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4412
+      },
+      {
+        "column": null,
+        "end": 4428,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4420
+      },
+      {
+        "column": null,
+        "end": 4432,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4429
+      },
+      {
+        "column": null,
+        "end": 4441,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4433
+      },
+      {
+        "column": null,
+        "end": 4450,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4442
+      },
+      {
+        "column": null,
+        "end": 4454,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4451
+      },
+      {
+        "column": null,
+        "end": 4465,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4455
+      },
+      {
+        "column": null,
+        "end": 4475,
+        "entity": "reviewOf",
+        "file": "def/generation/main.lfy",
+        "line": 488,
+        "outputLine": 4466
+      },
+      {
+        "column": null,
+        "end": 4496,
+        "entity": "Marker.line",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 4476
+      },
+      {
+        "column": null,
+        "end": 4517,
+        "entity": "Marker.entity",
+        "file": "def/generation/data.lfy",
+        "line": 18,
+        "outputLine": 4497
+      },
+      {
+        "column": null,
+        "end": 4542,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 15,
+        "outputLine": 4518
+      },
+      {
+        "column": null,
+        "end": 4571,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 15,
+        "outputLine": 4543
+      },
+      {
+        "column": null,
+        "end": 4584,
+        "entity": "SourceMap.hash",
+        "file": "def/generation/data.lfy",
+        "line": 41,
+        "outputLine": 4572
+      },
+      {
+        "column": null,
+        "end": 4643,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 37,
+        "outputLine": 4585
+      },
+      {
+        "column": null,
+        "end": 4682,
+        "entity": "SourceMap.generated",
+        "file": "def/generation/data.lfy",
+        "line": 44,
+        "outputLine": 4644
+      },
+      {
+        "column": null,
+        "end": 4688,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 4683
+      }
+    ],
+    "output": "crates/elfie-core/src/generation/mod.rs",
+    "signature": "488bf9cb01cbc9d8f64ecc7dd625fc34e88fcc0db76d3ce3a1f29c9b05934cba",
+    "source": "def/generation/main.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "8ec260cfa835c6f231c007f7abf680d74ca2228d7e4afa6bc9640344b5843f2d",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
+      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
+    },
+    "generated": "2026-09-21T15:18:49Z",
+    "hash": "9c2e48662586abd6a930ac37d4cfbbe007328426f90ec6c7814992c2cfa91b0a",
+    "markers": [
+      {
+        "column": null,
+        "end": 6,
+        "entity": "format",
+        "file": "def/format/main.lfy",
+        "line": 15,
+        "outputLine": 6
+      },
+      {
+        "column": null,
+        "end": 7,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 38,
+        "outputLine": 7
+      },
+      {
+        "column": null,
+        "end": 8,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 1,
+        "outputLine": 8
+      },
+      {
+        "column": null,
+        "end": 9,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 9
+      },
+      {
+        "column": null,
+        "end": 10,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 19,
+        "outputLine": 10
+      },
+      {
+        "column": null,
+        "end": 11,
+        "entity": "parse",
+        "file": "def/parser/main.lfy",
+        "line": 11,
+        "outputLine": 11
+      },
+      {
+        "column": null,
+        "end": 12,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 12
+      },
+      {
+        "column": null,
+        "end": 13,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 13
+      }
+    ],
+    "output": "crates/elfie-core/src/lib.rs",
+    "signature": "488bf9cb01cbc9d8f64ecc7dd625fc34e88fcc0db76d3ce3a1f29c9b05934cba",
+    "source": "def/generation/main.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
       "def/cli/data.lfy": "60f275f2c6ebafd8b5ba2b055057f6fcfdad1d10e972e9ec3a71f159f0cbcbd8",
       "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
       "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
@@ -46733,7 +46733,7 @@
       "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
       "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
     },
-    "generated": "2026-09-21T15:00:14Z",
+    "generated": "2026-09-21T15:34:58Z",
     "hash": "03c4bb1f92941d9e1fd15f7639296f193b01a4536f6005ef5b4c8dbc4c35e0dc",
     "markers": [
       {

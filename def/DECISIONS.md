@@ -408,3 +408,15 @@ LSP/MCP protocols are deliberately not part of this round.
   (`$map = map;`), which puts those names in the prelude scope; a project declaration of the same
   name shadows them without a problem. `object` and `trait` are keywords, so such parameters are
   named `source` and `subject`. `Parameter.defaultValue` is an `Entity`.
+- **What the first verified compiles found (2026-09-20/21).** The verifier's first run over
+  the compiled repository gave 108 satisfied, 4 violated, 1 unverifiable: two contradictions in
+  `def/workspace/main.lfy` (an absent elfie.json was both a problem and not; a package file was
+  both in the program and out of `change`'s reach), one binder gap the library rewrite exposed
+  (`Trait.apply` became a reference to a fn, and only inline-function members counted as
+  function members), and one leniency the definition never allowed (an unresolved member on a
+  trait added no problem). All four were fixed in the definitions, not the code, and the next
+  compiles converged: model/main 61/0, workspace/main 47/0, generation/main 89/0, cli/main 63/0
+  (satisfied/violated). Two process rules came out of it: source maps are recorded only after
+  verification passes, so a batch the review rejects stays planned; and a batch compiled before a
+  later batch changes the binder or loader may need re-requesting, since its tests ran against
+  the earlier behavior (generation's stub-library fixture, twice now).

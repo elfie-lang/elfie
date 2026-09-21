@@ -2833,9 +2833,10 @@ mod tests {
 
     /// The main file of the package `elfie`: the prelude. It declares the trait
     /// `target`, which the loader requires every target's marker to extend, and no
-    /// criteria of its own, so a fixture's guidance is the marker's alone.
-    const LIBRARY: &str =
-        "trait target: `What an entity carries to be built for one target` {\n}\n";
+    /// criteria of its own, so a fixture's guidance is the marker's alone. It also
+    /// declares the kind data `Entity` and `Trait`, so that `rust.apply(global)` reads
+    /// `apply` as a member of the marker's kind rather than as a name nothing declares.
+    const LIBRARY: &str = "d Entity: `What every declared thing is seen as through its context layer` {\n}\n\nd Trait extends Entity: `A trait seen through its context layer` {\n  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;\n}\n\ntrait target: `What an entity carries to be built for one target` {\n}\n";
 
     /// The package of the target `rust`: one marker trait carried by `global`.
     const RUST_TARGET: &str = "/// Built for Rust.\ntrait rust extends target {\n  @acceptanceCriteria.add({ behavior = `Each unit becomes one module named after its stem` });\n}\nrust.apply(global);\n";
