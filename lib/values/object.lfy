@@ -1,29 +1,34 @@
 use "../prelude/builtin";
-use "../prelude/kinds";
 
 // Decision: every member test puts the receiver first in input, then the operation's arguments.
 // Decision: keys are strings and keep the order they were first set in; every listing here follows that order.
+// Decision: an object is generic over its values only, since its keys are always strings.
+// Decision: entries needs a pair type and a receiver of its own, so it is a top-level fn the
+// member refers to, with its tests on the fn; the parameter is named source because object is a
+// keyword. Pair is declared here because nothing else in the language is a tuple.
 
-d Object is builtin: `Keys with values` {
+d Pair<K, V>: `A key with its value` {
+  $key: `The key` = K;
+  $value: `The value` = V;
+}
+
+d Object<V> is builtin: `Keys with values` {
   where (`An object is written`) -> `Keys and values go in braces, each key set with =, such as { a = 1, b = "x" }`;
   where (`An object is read with .key or .[key]`) -> `Yields the key's value, or undefined when the key is absent`;
   where (`A for loop visits an object`) -> `(const k of obj) visits the keys, (const v in obj) the values, and (const v, k from obj) both`;
+  where (`A type is written object`) -> `It is an open [[Object]] whose values are not known`;
 
   $keys: `The keys, in insertion order` = () => string[];
   with Object$keys {
     @test({ input = [{ b = 1, a = 2 }], expect = ["b", "a"] });
     @test({ input = [{}], expect = [] });
   }
-  $values: `The values, in insertion order` = () => Any[];
+  $values: `The values, in insertion order` = () => V[];
   with Object$values {
     @test({ input = [{ b = 1, a = 2 }], expect = [1, 2] });
     @test({ input = [{}], expect = [] });
   }
-  $entries: `Each key with its value as a two item list, in insertion order` = () => Any[][];
-  with Object$entries {
-    @test({ input = [{ a = 1 }], expect = [["a", 1]] });
-    @test({ input = [{}], expect = [] });
-  }
+  $entries: `Each key with its value, in insertion order` = entries;
   $get: `The value of the key, or undefined when absent` = (key: string) => .[key];
   with Object$get {
     @test({ input = [{ a = 1 }, "a"], expect = 1 });
@@ -32,7 +37,7 @@ d Object is builtin: `Keys with values` {
   with Object$has {
     @test({ input = [{ a = undefined }, "a"], expect = true });
   }
-  $merge: `A new object with this object's keys and then the other's` = (other: object) => object;
+  $merge: `A new object with this object's keys and then the other's` = (other: Object<V>) => Object<V>;
   with Object$merge {
     where (`A key is in both`) -> `The other's value wins, and the key keeps its place from this object`;
     where (`Called`) -> `Neither object is changed`;
@@ -43,4 +48,12 @@ d Object is builtin: `Keys with values` {
   with Object$isEmpty {
     @test({ input = [{}], expect = true });
   }
+}
+
+/// source: the receiver
+fn entries<V>(source: Object<V>) => Pair<string, V>[] {
+  where (`The object has keys`) -> `Returns one [[Pair]] per key in insertion order, its key and its value`;
+  where (`The object is empty`) -> `Returns an empty list`;
+  @test({ input = [{ a = 1 }], expect = [{ key = "a", value = 1 }] });
+  @test({ input = [{}], expect = [] });
 }

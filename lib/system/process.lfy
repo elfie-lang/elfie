@@ -3,6 +3,8 @@ use "../prelude/builtin";
 // Decision: every member test puts the receiver first in input, then the arguments.
 // Decision: a command is one string for the platform shell, not a program and an argument list,
 // because the commands the compiler runs come from elfie.json and scripts as one line of text.
+// Decision: the test of stream passes a real inline function and says what it must have been
+// called with in the expectation, because there is no value of a function type to describe.
 
 d Exit is builtin: `What a finished command left` {
   $code: `Its exit code; -1 when it ended by a signal or could not be started` = number;
@@ -48,16 +50,22 @@ fn run(command: string, input?: string, directory?: string, environment?: object
 /// directory: its working directory; the current one when left out
 /// environment: variables added to the inherited environment, by name; an entry replaces an inherited one
 /// onLine: called with each line as it arrives and a boolean that is true for standard error, false for standard output
-fn stream(command: string, input?: string, directory?: string, environment?: object, onLine?: function) is builtin: `Runs a command as run does, passing each line of its output to onLine as it arrives` => Exit {
+fn stream(
+  command: string,
+  input?: string,
+  directory?: string,
+  environment?: object,
+  onLine?: (line: string, isError: boolean) => undefined,
+) is builtin: `Runs a command as run does, passing each line of its output to onLine as it arrives` => Exit {
   where (`Any call`) -> `Behaves as [[run]] with the same arguments, and returns the same [[Exit]], its output still held whole`;
   where (`[[onLine]] is set and the command writes a line to standard output or standard error`) -> `[[onLine]] is called with the line, without its line ending, and whether it came from standard error, before the call returns and in the order the lines arrived`;
   where (`The command ends with an unfinished line`) -> `That text is passed to [[onLine]] as a line too`;
   where (`[[onLine]] is unset`) -> `Behaves exactly as [[run]]`;
   @test(
     {
-      input = [`echo a; echo b >&2`, undefined, undefined, undefined, function@like(`One that records its arguments`)],
+      input = [`echo a; echo b >&2`, undefined, undefined, undefined, (line, isError) => undefined],
       expect = Exit@like(
-        `code 0, stdout a and a newline, stderr b and a newline, and the function called with a and false, then b and true`,
+        `code 0, stdout a and a newline, stderr b and a newline, and onLine called with a and false, then b and true`,
       ),
     },
     { input = [`echo hi`], expect = { code = 0, stdout = `hi\n`, stderr = `` } },

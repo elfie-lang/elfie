@@ -1,7 +1,8 @@
 use "./builtin";
 use "./entity";
 
-d Any is builtin: `Any value; the stand-in where the language has no generics` {}
+// Decision: a parameter's default is seen as the entity its expression is bound to, so a type
+// parameter's default type and a value parameter's default value are read the same way.
 
 d Data is builtin extends Entity: `A d declaration seen through its context layer` {}
 d Type is builtin extends Entity: `A type declaration seen through its context layer` {}
@@ -11,9 +12,9 @@ d Enum is builtin extends Entity: `An enum declaration seen through its context 
 d Member is builtin extends Entity: `A member of a data or trait seen through its context layer` {
   $owner: `The entity that declares it` = Entity;
 }
-d Parameter is builtin extends Entity: `A parameter of a function seen through its context layer` {
+d Parameter is builtin extends Entity: `A parameter of a function, or a type parameter of a declaration, seen through its context layer` {
   $optional: `Whether a call may leave it out` = boolean;
-  $defaultValue: `The value it takes when left out; undefined when there is none` = Any | undefined;
+  $defaultValue: `The entity of what it takes when left out; undefined when there is none` = Entity | undefined;
   $spread: `Whether it takes the rest of the arguments as a list` = boolean;
 }
 d Variable is builtin extends Entity: `A const or let declaration seen through its context layer` {}

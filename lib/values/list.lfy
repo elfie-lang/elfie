@@ -1,38 +1,40 @@
 use "../prelude/builtin";
-use "../prelude/kinds";
 use "./number";
 
 // Decision: every member test puts the receiver first in input, then the operation's arguments.
 // Decision: only push changes the receiver; every other operation leaves it as it was and returns a new value.
 // Decision: some and every are written with findIndex rather than find, so an item that is itself undefined counts.
+// Decision: map and reduce need a type parameter of their own and flat a receiver of List<List<T>>,
+// neither of which an inline function can declare, so each is a top-level fn taking the list first;
+// the member refers to it, and its criteria and tests live on the fn, receiver still first.
+// Decision: every predicate and transform receives the item and its index, so a member's own body
+// passes both along.
 
-d List is builtin: `An ordered sequence of values` {
+d List<T> is builtin: `An ordered sequence of values` {
   where (`A list is written`) -> `Items go in square brackets, such as [a, b]; ...a inside the brackets spreads a's items in place, such as [...a, ...b]`;
   where (`A list is indexed with .[i]`) -> `Yields the item at i counting from 0, or undefined when i is out of range`;
   where (`A list is indexed with a range .[a ... b]`) -> `Yields a new list of the items from a up to but not including b`;
   where (`A for loop visits a list`) -> `in visits the items, of the indices, and (const item, index from list) both`;
+  where (`A type is written T[]`) -> `It is [[List]] with T as its one type argument`;
 
   $length: `The count of items` = number;
   with List$length {
     @test({ input = [[1, 2, 3]], expect = 3 });
     @test({ input = [[]], expect = 0 });
   }
-  /// transform: (item, index) => the item's replacement
-  $map: `Each item transformed, in order` = (transform: function) => Any[];
-  with List$map {
-    @test({ input = [[1, 2], (x) => x + 1], expect = [2, 3] });
-    @test({ input = [[], (x) => x], expect = [] });
-  }
-  /// predicate: (item, index) => whether the item is kept
-  $filter: `The items the predicate accepts, in order` = (predicate: function) => Any[];
+  $map: `Each item transformed, in order` = map;
+  /// predicate: whether the item at the index is kept
+  $filter: `The items the predicate accepts, in order` = (predicate: (item: T, index: number) => boolean) => T[];
   with List$filter {
     @test({ input = [[1, 2, 3], (x) => x > 1], expect = [2, 3] });
     @test({ input = [[1, 2], (x) => false], expect = [] });
   }
-  /// predicate: (item) => whether the item is wanted
-  $find: `The first item the predicate accepts, or undefined when none` = (predicate: function) => {
-    for (const item in .) {
-      if (predicate(item)) {
+  /// predicate: whether the item at the index is wanted
+  $find: `The first item the predicate accepts, or undefined when none` = (
+    predicate: (item: T, index: number) => boolean,
+  ) => {
+    for (const item, index from .) {
+      if (predicate(item, index)) {
         return item;
       }
     }
@@ -42,19 +44,21 @@ d List is builtin: `An ordered sequence of values` {
     @test({ input = [[1, 2, 3], (x) => x > 1], expect = 2 });
     @test({ input = [[1, 2], (x) => x > 5], expect = undefined });
   }
-  /// predicate: (item) => whether the item is wanted
-  $findIndex: `The index of the first item the predicate accepts, or -1 when none` = (predicate: function) => number;
+  /// predicate: whether the item at the index is wanted
+  $findIndex: `The index of the first item the predicate accepts, or -1 when none` = (
+    predicate: (item: T, index: number) => boolean,
+  ) => number;
   with List$findIndex {
     @test({ input = [[1, 2, 3], (x) => x > 1], expect = 1 });
     @test({ input = [[1, 2], (x) => x > 5], expect = -1 });
   }
-  $includes: `Whether some item equals the value` = (value: Any) => boolean;
+  $includes: `Whether some item equals the value` = (value: T) => boolean;
   with List$includes {
     where (`Items are compared`) -> `Equality is that of ==: without casting`;
     @test({ input = [[1, 2], 2], expect = true });
     @test({ input = [[1, 2], "2"], expect = false });
   }
-  $indexOf: `The index of the first item equal to the value, or -1 when none` = (value: Any) => number;
+  $indexOf: `The index of the first item equal to the value, or -1 when none` = (value: T) => number;
   with List$indexOf {
     @test({ input = [["a", "b", "a"], "a"], expect = 0 });
     @test({ input = [["a"], "z"], expect = -1 });
@@ -65,18 +69,18 @@ d List is builtin: `An ordered sequence of values` {
     @test({ input = [[1, "b"], "-"], expect = "1-b" });
     @test({ input = [["a", "b"]], expect = "a,b" });
   }
-  $push: `Appends the item to the list itself and yields the new length` = (item: Any) => number;
+  $push: `Appends the item to the list itself and yields the new length` = (item: T) => number;
   with List$push {
     where (`Called`) -> `The receiver is changed in place: it gains the item at its end`;
     @test({ input = [[1], 2], expect = 2 });
     @test({ input = [[], "a"], expect = 1 });
   }
-  $concat: `The items of this list followed by the other's` = (other: Any[]) => Any[];
+  $concat: `The items of this list followed by the other's` = (other: T[]) => T[];
   with List$concat {
     @test({ input = [[1], [2, 3]], expect = [1, 2, 3] });
     @test({ input = [[], []], expect = [] });
   }
-  $slice: `The items from start up to but not including end, or to the end of the list` = (start: number, end?: number) => Any[];
+  $slice: `The items from start up to but not including end, or to the end of the list` = (start: number, end?: number) => T[];
   with List$slice {
     @test({ input = [[1, 2, 3], 1], expect = [2, 3] });
     @test({ input = [[1, 2, 3], 0, 2], expect = [1, 2] });
@@ -93,31 +97,32 @@ d List is builtin: `An ordered sequence of values` {
   with List$isEmpty {
     @test({ input = [[]], expect = true });
   }
-  /// compare: (a, b) => negative when a goes first, positive when b does, zero when either
-  $sort: `The items in order` = (compare?: function) => Any[];
+  /// compare: negative when a goes first, positive when b does, zero when either
+  $sort: `The items in order` = (compare?: (a: T, b: T) => number) => T[];
   with List$sort {
     where (`compare is left out`) -> `Numbers order numerically and strings by code point; items that are neither keep their order`;
     where (`Two items compare equal`) -> `They keep their order`;
     @test({ input = [[3, 1, 2]], expect = [1, 2, 3] });
     @test({ input = [["b", "a"], (a, b) => a < b ? 1 : -1], expect = ["b", "a"] });
   }
-  $reverse: `The items in the opposite order` = () => Any[];
+  $reverse: `The items in the opposite order` = () => T[];
   with List$reverse {
     @test({ input = [[1, 2, 3]], expect = [3, 2, 1] });
     @test({ input = [[]], expect = [] });
   }
-  $flat: `The items with each item that is a list replaced by its items, one level deep` = () => Any[];
-  with List$flat {
-    @test({ input = [[1, [2, [3]]]], expect = [1, 2, [3]] });
-    @test({ input = [[[], [1]]], expect = [1] });
-  }
-  /// predicate: (item) => whether the item counts
-  $some: `Whether the predicate accepts any item` = (predicate: function) => .findIndex(predicate) >= 0;
+  $flat: `The items of each item, one level deep` = flat;
+  /// predicate: whether the item at the index counts
+  $some: `Whether the predicate accepts any item` = (predicate: (item: T, index: number) => boolean) => .findIndex(
+    predicate,
+  ) >= 0;
   with List$some {
     @test({ input = [[1, 2], (x) => x > 1], expect = true });
   }
-  /// predicate: (item) => whether the item counts
-  $every: `Whether the predicate accepts every item` = (predicate: function) => .findIndex((item) => !predicate(item)) < 0;
+  /// predicate: whether the item at the index counts
+  $every: `Whether the predicate accepts every item` = (predicate: (item: T, index: number) => boolean) => .findIndex((
+    item,
+    index,
+  ) => !predicate(item, index)) < 0;
   with List$every {
     @test({ input = [[1, 2], (x) => x > 1], expect = false });
   }
@@ -131,11 +136,32 @@ d List is builtin: `An ordered sequence of values` {
   with List$unique {
     @test({ input = [[1, 2, 1, 3, 2]], expect = [1, 2, 3] });
   }
-  /// reducer: (accumulated, item, index) => the next accumulated value
-  $reduce: `One value built by folding the reducer over the items from initial` = (reducer: function, initial: Any) => Any;
-  with List$reduce {
-    where (`The list is empty`) -> `Yields initial without calling reducer`;
-    @test({ input = [[1, 2, 3], (sum, x) => sum + x, 0], expect = 6 });
-    @test({ input = [[], (sum, x) => sum + x, 5], expect = 5 });
-  }
+  $reduce: `One value built by folding the reducer over the items from initial` = reduce;
+}
+
+/// list: the receiver
+/// transform: the replacement of the item at the index
+fn map<T, U>(list: List<T>, transform: (item: T, index: number) => U) => List<U> {
+  where (`The list has items`) -> `Calls transform once per item with the item and its index, and returns the results in the same order`;
+  where (`The list is empty`) -> `Returns an empty list without calling transform`;
+  @test({ input = [[1, 2], (x) => x + 1], expect = [2, 3] });
+  @test({ input = [[], (x) => x], expect = [] });
+}
+
+/// list: the receiver, whose items are lists
+fn flat<T>(list: List<List<T>>) => List<T> {
+  where (`The list has items`) -> `Returns the items of each item in order, one level deep, so an item's own items that are lists stay lists`;
+  where (`The list is empty`) -> `Returns an empty list`;
+  @test({ input = [[[1], [2, [3]]]], expect = [1, 2, [3]] });
+  @test({ input = [[[], [1]]], expect = [1] });
+}
+
+/// list: the receiver
+/// reducer: the next accumulated value from the one so far and the item at the index
+/// initial: the accumulated value before the first item
+fn reduce<T, U>(list: List<T>, reducer: (accumulated: U, item: T, index: number) => U, initial: U) => U {
+  where (`The list has items`) -> `Calls reducer once per item in order, with what the previous call returned, initial for the first, and yields what the last call returned`;
+  where (`The list is empty`) -> `Yields initial without calling reducer`;
+  @test({ input = [[1, 2, 3], (sum, x) => sum + x, 0], expect = 6 });
+  @test({ input = [[], (sum, x) => sum + x, 5], expect = 5 });
 }

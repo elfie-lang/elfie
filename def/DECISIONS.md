@@ -401,3 +401,10 @@ LSP/MCP protocols are deliberately not part of this round.
   place is its contributor's file and the line its `add` call or `where` begins; the verification
   retry is its own once-more, separate from the structural retry; a twice-failed verifier run
   still rejects on any violated review it did parse.
+- **The library after generics.** `List<T>`, `Object<V>`, `Pair<K, V>`; `Any` is gone and no
+  parameter is typed `function` any more. An inline function cannot declare its own type
+  parameters, so a member whose result needs a fresh one (`map`, `reduce`, `flat`, `entries`,
+  `apply`) is a top-level generic `fn` in the same file with the member referring to it
+  (`$map = map;`), which puts those names in the prelude scope; a project declaration of the same
+  name shadows them without a problem. `object` and `trait` are keywords, so such parameters are
+  named `source` and `subject`. `Parameter.defaultValue` is an `Entity`.
