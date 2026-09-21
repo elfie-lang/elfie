@@ -1,42 +1,42 @@
 //! Compiled from `def/grammar/precedence.lfy`.
 
 /// Binding power of kinds of operations. A higher value binds tighter.
-// @lfy def/grammar/precedence.lfy:1
+// @lfy def/grammar/precedence.lfy:Level
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Level {
     /// Joining items together in a list
-    Joiner = 1, // @lfy def/grammar/precedence.lfy:2
+    Joiner = 1, // @lfy def/grammar/precedence.lfy:Level.joiner
     /// Assigning a value
-    Assignment = 2, // @lfy def/grammar/precedence.lfy:3
+    Assignment = 2, // @lfy def/grammar/precedence.lfy:Level.assignment
     /// Defining an item
-    Definition = 3, // @lfy def/grammar/precedence.lfy:4
+    Definition = 3, // @lfy def/grammar/precedence.lfy:Level.definition
     /// Coalescing values
-    Coalescence = 4, // @lfy def/grammar/precedence.lfy:5
-    LogicalAnd = 5, // @lfy def/grammar/precedence.lfy:6
-    BitwiseOr = 6,  // @lfy def/grammar/precedence.lfy:7
-    BitwiseXor = 7, // @lfy def/grammar/precedence.lfy:8
-    BitwiseAnd = 8, // @lfy def/grammar/precedence.lfy:9
+    Coalescence = 4, // @lfy def/grammar/precedence.lfy:Level.coalescence
+    LogicalAnd = 5, // @lfy def/grammar/precedence.lfy:Level.logicalAnd
+    BitwiseOr = 6,  // @lfy def/grammar/precedence.lfy:Level.bitwiseOr
+    BitwiseXor = 7, // @lfy def/grammar/precedence.lfy:Level.bitwiseXor
+    BitwiseAnd = 8, // @lfy def/grammar/precedence.lfy:Level.bitwiseAnd
     /// Equality checks between items
-    Equality = 9, // @lfy def/grammar/precedence.lfy:10
+    Equality = 9, // @lfy def/grammar/precedence.lfy:Level.equality
     /// Relation checks between items
-    Relational = 10, // @lfy def/grammar/precedence.lfy:11
+    Relational = 10, // @lfy def/grammar/precedence.lfy:Level.relational
     /// Extracting information from an item or value
-    Extraction = 11, // @lfy def/grammar/precedence.lfy:12
+    Extraction = 11, // @lfy def/grammar/precedence.lfy:Level.extraction
     /// Mathmatically additive
-    Additive = 12, // @lfy def/grammar/precedence.lfy:13
+    Additive = 12, // @lfy def/grammar/precedence.lfy:Level.additive
     /// Mathmatically multiplicative
-    Multiplicative = 13, // @lfy def/grammar/precedence.lfy:14
-    Exponentiation = 14, // @lfy def/grammar/precedence.lfy:15
+    Multiplicative = 13, // @lfy def/grammar/precedence.lfy:Level.multiplicative
+    Exponentiation = 14, // @lfy def/grammar/precedence.lfy:Level.exponentiation
     /// Wrapping a statement or expression in a behavior
-    Wrapper = 15, // @lfy def/grammar/precedence.lfy:16
-    Unary = 16,     // @lfy def/grammar/precedence.lfy:17
+    Wrapper = 15, // @lfy def/grammar/precedence.lfy:Level.wrapper
+    Unary = 16,     // @lfy def/grammar/precedence.lfy:Level.unary
     /// Accesses of value, context, or scope information
-    Access = 17, // @lfy def/grammar/precedence.lfy:18
+    Access = 17, // @lfy def/grammar/precedence.lfy:Level.access
     /// Reference or dereferences
-    Reference = 18, // @lfy def/grammar/precedence.lfy:19
+    Reference = 18, // @lfy def/grammar/precedence.lfy:Level.reference
     /// Grouping for controlled precedence
-    Group = 19, // @lfy def/grammar/precedence.lfy:20
+    Group = 19, // @lfy def/grammar/precedence.lfy:Level.group
 }
 
 impl Level {
@@ -98,7 +98,7 @@ impl Level {
 mod tests {
     use super::*;
 
-    // @lfy def/grammar/precedence.lfy:1
+    // @lfy def/grammar/precedence.lfy:Level
     #[test]
     fn levels_are_numbered_one_through_nineteen_in_order() {
         assert_eq!(Level::ALL.len(), 19);
