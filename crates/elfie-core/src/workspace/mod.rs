@@ -107,10 +107,9 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
 /// the source directory or a package root, a `Use` resolves to it, or it is replaced now.
 // @lfy def/workspace/main.lfy:change
 fn in_reach(workspace: &Workspace, path: &str) -> bool {
-    // Decision: the definition names only the source directory and the uses. A file under
-    // a package root is in the program too, so a change there must reach it as well; and
-    // a path replaced earlier must be reachable so that giving it again can undo the
-    // replacement.
+    // Decision: the definition names the source directory, the root of a package in the
+    // program, and the uses. A path replaced earlier is in reach too, so that giving it
+    // again can undo the replacement.
     let is_source = is_source(path);
     (is_source && under(path, &workspace.source_directory))
         || (is_source
@@ -422,7 +421,11 @@ impl Loader<'_> {
     }
 
     /// The object of an `elfie.json`; `None` when there is none, or when it cannot be
-    /// read or is not an object, which adds a problem.
+    /// read or is not an object.
+    ///
+    /// A manifest is optional: where none exists no problem is added and every default
+    /// stands. One that exists but cannot be read, or whose text is not a JSON object, is
+    /// a problem, and every default stands all the same.
     // @lfy def/workspace/main.lfy:load
     fn manifest(&mut self, path: &str) -> Option<serde_json::Map<String, serde_json::Value>> {
         let disk = self.root.join(path);
@@ -1575,6 +1578,30 @@ mod tests {
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
+    /// A manifest is optional: where no `elfie.json` exists under the root, every default
+    /// stands and no problem is added.
+    // @lfy def/workspace/main.lfy:load
+    #[test]
+    fn no_manifest_is_no_problem_and_the_defaults_stand() {
+        let fixture = Fixture::empty();
+        fixture.write("def/main.lfy", "");
+        assert!(!fixture.root.join(MANIFEST).exists());
+        let workspace = fixture.load();
+        assert_eq!(
+            workspace.name,
+            fixture.root.file_name().unwrap().to_string_lossy()
+        );
+        assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
+        assert_eq!(workspace.output_directory, DEFAULT_OUTPUT_DIRECTORY);
+        assert_eq!(paths(&workspace), ["def/main.lfy"]);
+        assert!(workspace.native_dependencies.is_empty());
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        // A package whose root holds no `elfie.json` of its own is no problem either.
+        // @lfy def/workspace/main.lfy:load
+        assert!(!fixture.root.join(LIBRARY_ROOT).join(MANIFEST).exists());
+        assert!(library(&workspace).native_dependencies.is_empty());
+    }
+
     // @lfy def/workspace/main.lfy:load
     #[test]
     fn a_bad_manifest_adds_a_problem_and_the_defaults_stand() {
@@ -2358,6 +2385,36 @@ mod tests {
         let changed = change(&loaded, "elsewhere/thing.lfy", Some("trait t { }\n"));
         assert_ne!(changed, loaded);
         assert_eq!(changed.overlays.len(), 1);
+    }
+
+    /// A file under the root of a package in the program is in reach of a change, as much
+    /// as one under the source directory.
+    // @lfy def/workspace/main.lfy:change
+    #[test]
+    fn a_change_under_a_package_root_reaches_the_program() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            )
+            .write("def/main.lfy", "")
+            .write("pkg/main.lfy", "");
+        let loaded = fixture.load();
+        let changed = change(&loaded, "pkg/extra.lfy", Some("trait inPackage { }\n"));
+        assert_ne!(changed, loaded);
+        let added = changed.file("pkg/extra.lfy").expect("the added file");
+        assert_eq!(
+            added
+                .package
+                .map(|package| changed.packages[package].identifier.as_str()),
+            Some("p")
+        );
+        // The package `elfie` is a package of the program too.
+        let changed = change(&loaded, "lib/extra.lfy", Some("trait inLibrary { }\n"));
+        assert_ne!(changed, loaded);
+        let added = changed.file("lib/extra.lfy").expect("the added file");
+        assert_eq!(changed.origin(added), Origin::Library);
     }
 
     #[test]

@@ -425,9 +425,12 @@ fn test_apply_resolves_through_the_kind_data() {
     assert_eq!(model.entities[a].traits.len(), 1);
     assert_eq!(model.entities[a].traits[0].entity, t);
     assert_eq!(entities_of(&model, t), vec![a]);
-    // Without one the call still applies the trait, and apply resolves to nothing.
+    // Without one the call still applies the trait, and apply resolves to nothing: the
+    // kind data is empty for want of a prelude, so the name is found nowhere and that is
+    // a problem like any other.
+    // @lfy def/model/main.lfy:bind
     let model = bind_one(text);
-    assert_clean(&model);
+    assert_eq!(problems(&model), vec!["t.apply: t has no member apply"]);
     let (t, a) = (entity(&model, "t"), entity(&model, "A"));
     assert_eq!(model.entities[a].traits.len(), 1);
     assert_eq!(model.entities[a].traits[0].entity, t);
@@ -905,7 +908,16 @@ fn apply_call_applies_the_trait() {
          d P is rule('p') {} d Q is rule('q') {} d Alt is alternationList(P, Q) {} \
          trait marker {} marker.apply(Alt);",
     );
-    assert_clean(&model);
+    // No prelude declares Trait here, so apply itself is found nowhere and says so; the
+    // call applies the trait all the same.
+    // @lfy def/model/main.lfy:bind
+    assert_eq!(
+        problems(&model),
+        vec![
+            "X.apply: X has no member apply",
+            "marker.apply: marker has no member apply",
+        ]
+    );
     let (x, y) = (entity(&model, "X"), entity(&model, "Y"));
     assert_eq!(model.entities[y].traits.len(), 1);
     let applied = &model.entities[y].traits[0];
@@ -937,7 +949,7 @@ fn apply_call_applies_the_trait() {
 #[test]
 fn extends_chain_applies_every_base() {
     let model = bind_one(
-        "trait a(s: string) { .v = s; } trait b(t: string) extends a(`x{{t}}y`) {} d C is b('m') {}",
+        "trait a(s: string) { $v: `the value` = string; .v = s; } trait b(t: string) extends a(`x{{t}}y`) {} d C is b('m') {}",
     );
     assert_clean(&model);
     let (a, b, c) = (
@@ -977,7 +989,7 @@ fn extends_chain_applies_every_base() {
 #[test]
 fn applied_trait_body_lands_on_the_receiver() {
     let model = bind_one(
-        "trait t(n: number) { $m: `member` = string; .k = n; @acceptanceCriteria.add({ behavior = `B {{n}}` }); where (`S`) -> `W`; } \
+        "trait t(n: number) { $m: `member` = string; $k: `the value` = number; .k = n; @acceptanceCriteria.add({ behavior = `B {{n}}` }); where (`S`) -> `W`; } \
          d A is t(2) { @acceptanceCriteria.add({ behavior = `own` }); }",
     );
     assert_clean(&model);
@@ -1075,7 +1087,9 @@ fn trait_entities_in_file_then_application_order() {
         &[Some("b.lfy")],
     );
     let model = bind(vec![b, a]);
-    assert_clean(&model);
+    // Nothing but the apply these files bind without a prelude, which is found nowhere.
+    // @lfy def/model/main.lfy:bind
+    assert_eq!(problems(&model), vec!["t.apply: t has no member apply"]);
     let t = model.symbols[file_symbol(&model, 0, "t")].entity;
     let ids = |name: &str| model.symbols[model.lookup(model.file_scopes[1], name).unwrap()].entity;
     assert_eq!(entities_of(&model, t), vec![ids("B2"), ids("B1"), ids("A")]);
@@ -1339,7 +1353,10 @@ fn member_on_data_resolves_to_its_member() {
 // @lfy def/model/main.lfy:bind
 #[test]
 fn parent_scope_accessor_yields_the_containing_scope() {
-    let model = bind_one("const v = 1; trait t { .p = A$&; .r = (&v)$&; } d A is t {}");
+    let model = bind_one(
+        "const v = 1; d Scope {} trait t { $p: `the scope around A` = Scope; \
+         $r: `the scope around a variable` = Scope; .p = A$&; .r = (&v)$&; } d A is t {}",
+    );
     assert_clean(&model);
     let a = entity(&model, "A");
     assert_eq!(
@@ -1368,8 +1385,9 @@ fn a_member_of_an_unresolved_name_is_not_a_second_problem() {
 }
 
 /// Nothing found for a name is a problem whatever the left side is: a trait, a data, a
-/// module, a predicate, or a value. What a predicate reads includes the members of the
-/// traits the entities carrying it carry, so a name one of them has is found.
+/// module, a predicate, or a value, and even when no prelude is bound so the entity's
+/// kind data is empty. What a predicate reads includes the members of the traits the
+/// entities carrying it carry, so a name one of them has is found.
 // @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
@@ -1410,6 +1428,19 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
             "v.nope: String has no member nope",
             "x.nope: t has no member nope",
         ]
+    );
+    // With no prelude bound the kind data of every entity is empty, so a name only the
+    // prelude would give is found nowhere; it is a problem there too, a trait no more
+    // lenient than a data.
+    // @lfy def/model/main.lfy:bind
+    let model = bind_one("trait t {} d A is t {} const p = t.nope; const q = A.nope;");
+    assert_eq!(
+        problems(&model),
+        vec!["t.nope: t has no member nope", "A.nope: A has no member nope"]
+    );
+    assert_eq!(
+        usage(&model, node(&model, 0, E::Member, "t.nope")).symbol,
+        None
     );
 }
 

@@ -19,8 +19,9 @@ use elfie_core::generation::{
     self, Batch, Outcome, OutcomeKind, Output, Plan, Request, Review, ReviewReport, ReviewStatus, SourceMap, Unit,
     Verdict,
 };
-use elfie_core::lexer::lex;
-use elfie_core::parser::parse;
+use elfie_core::grammar::GrammarRule as _;
+use elfie_core::lexer::{Token, lex};
+use elfie_core::parser::{Child, ErrorNode, Node, Tree, parse};
 use elfie_core::query::{self, Diagnostic, Severity};
 use elfie_core::workspace::{self, Workspace};
 
@@ -399,6 +400,90 @@ fn read_one_file(invocation: &Invocation) -> Result<(String, String), ExitCode> 
     }
 }
 
+/// The identifier of the terminal that matched a token, or `invalid` for text none did.
+// @lfy def/cli/main.lfy:main
+fn rule_name(token: &Token) -> &'static str {
+    token.rule.map_or("invalid", |rule| rule.identifier())
+}
+
+/// Where an error node begins, as the line and column of its first token.
+// @lfy def/cli/main.lfy:main
+fn error_position(tree: &Tree, error: &ErrorNode) -> (usize, usize) {
+    let token = tree.tokens.get(error.start).or(tree.tokens.last());
+    token.map_or((0, 0), |token| (token.line, token.column))
+}
+
+/// One node, error node, or token of the tree as a JSON object, then its children: the
+/// depth it sits at, what it is, and what the text form gives for it — a node its rule and
+/// its token range, an error node what it expected and where, a token its rule and its
+/// value.
+// @lfy def/cli/main.lfy:main
+fn node_json(tree: &Tree, node: &Node, depth: usize, out: &mut Vec<String>) {
+    let value = serde_json::json!({
+        "depth": depth,
+        "kind": "node",
+        "rule": node.rule.identifier(),
+        "start": node.start,
+        "end": node.end,
+    });
+    out.push(value.to_string());
+    for child in &node.children {
+        match child {
+            Child::Node(child) => node_json(tree, child, depth + 1, out),
+            // An error node is given with what it expected, as the text form gives it.
+            // @lfy def/cli/main.lfy:main
+            Child::Error(error) => {
+                let (line, column) = error_position(tree, error);
+                let value = serde_json::json!({
+                    "depth": depth + 1,
+                    "kind": "error",
+                    "start": error.start,
+                    "end": error.end,
+                    "line": line,
+                    "column": column,
+                    "expected": error.expected,
+                    "value": tree.raw(error.start, error.end),
+                });
+                out.push(value.to_string());
+            }
+            Child::Token(index) => {
+                let token = tree.token(*index);
+                let value = serde_json::json!({
+                    "depth": depth + 1,
+                    "kind": "token",
+                    "rule": rule_name(token),
+                    "value": token.raw,
+                });
+                out.push(value.to_string());
+            }
+        }
+    }
+}
+
+/// The lines the tree command prints: one node or token per line indented by depth, a
+/// node as its rule and its token range, a token as its rule and its value, then every
+/// error with what it expected. With --json each result is one JSON object on one line
+/// instead of the text.
+// @lfy def/cli/main.lfy:main
+fn tree_lines(tree: &Tree, path: &str, json: bool) -> Vec<String> {
+    let mut lines = Vec::new();
+    // @lfy def/cli/main.lfy:main
+    if json {
+        node_json(tree, &tree.root, 0, &mut lines);
+        return lines;
+    }
+    lines.extend(tree.render().lines().map(str::to_string));
+    for error in &tree.errors {
+        let (line, column) = error_position(tree, error);
+        lines.push(format!(
+            "error at {path}:{line}:{column}: expected [{}] but found {:?}",
+            error.expected.join(", "),
+            tree.raw(error.start, error.end)
+        ));
+    }
+    lines
+}
+
 /// Prints the parse of the one file given, one node or token per line, and the errors;
 /// the code is problems when there is one.
 // @lfy def/cli/main.lfy:main
@@ -416,14 +501,35 @@ fn tree(invocation: &Invocation) -> ExitCode {
     };
     let tree = parse(tokens, None);
     let mut out = io::BufWriter::new(io::stdout().lock());
-    let _ = out.write_all(tree.render().as_bytes());
-    for error in &tree.errors {
-        let token = tree.tokens.get(error.start).or(tree.tokens.last());
-        let (line, column) = token.map_or((0, 0), |t| (t.line, t.column));
-        let _ = writeln!(out, "error at {path}:{line}:{column}: expected [{}] but found {:?}", error.expected.join(", "), tree.raw(error.start, error.end));
+    // @lfy def/cli/main.lfy:main
+    for line in tree_lines(&tree, &path, invocation.flag("json")) {
+        let _ = writeln!(out, "{line}");
     }
     let _ = out.flush();
     if tree.errors.is_empty() { ExitCode::Success } else { ExitCode::Problems }
+}
+
+/// The lines the tokens command prints: one token per line as its line, column, rule, and
+/// value. With --json each token is one JSON object on one line instead of the text.
+// @lfy def/cli/main.lfy:main
+fn token_lines(tokens: &[Token], json: bool) -> Vec<String> {
+    tokens
+        .iter()
+        .map(|token| {
+            // @lfy def/cli/main.lfy:main
+            if json {
+                let value = serde_json::json!({
+                    "line": token.line,
+                    "column": token.column,
+                    "rule": rule_name(token),
+                    "value": token.value,
+                });
+                value.to_string()
+            } else {
+                format!("{}:{}\t{}\t{:?}", token.line, token.column, rule_name(token), token.value)
+            }
+        })
+        .collect()
 }
 
 /// Prints the tokens of the one file given, one per line as line, column, rule, and
@@ -442,12 +548,9 @@ fn tokens(invocation: &Invocation) -> ExitCode {
         }
     };
     let mut out = io::BufWriter::new(io::stdout().lock());
-    for token in &tokens {
-        let rule = token.rule.map_or("invalid", |rule| {
-            use elfie_core::grammar::GrammarRule;
-            rule.identifier()
-        });
-        let _ = writeln!(out, "{}:{}\t{rule}\t{:?}", token.line, token.column, token.value);
+    // @lfy def/cli/main.lfy:main
+    for line in token_lines(&tokens, invocation.flag("json")) {
+        let _ = writeln!(out, "{line}");
     }
     let _ = out.flush();
     ExitCode::Success
@@ -847,7 +950,9 @@ fn watch<R: io::Read + Send + 'static>(pipe: R, batch: &str, keep: bool, to_stdo
 }
 
 /// What one compile is doing: the plan, the source maps as they are recorded, the counts
-/// the finished line reports, and the units a stopped batch took down with it.
+/// the finished line reports, and the units a stopped batch took down with it. The maps a
+/// batch earns are held beside these until nothing has violated what was asked; only then
+/// do they replace the units' here and reach the disk.
 // @lfy def/cli/main.lfy:main
 struct Run<'w> {
     workspace: &'w Workspace,
@@ -868,8 +973,8 @@ struct Run<'w> {
     blocked: usize,
     failed: usize,
     stopped: BTreeSet<usize>,
-    /// The units accepted and recorded, so that a unit recorded again after a review sent
-    /// its batch back to the compiler is counted once.
+    /// The units accepted and written back, so that a unit accepted again after a review
+    /// sent its batch back to the compiler is counted once.
     // @lfy def/cli/main.lfy:main
     recorded: BTreeSet<usize>,
     incomplete: Vec<String>,
@@ -1059,10 +1164,11 @@ impl<'w> Run<'w> {
         verdicts
     }
 
-    /// One unit's outputs written back, its source maps replacing the unit's, and the unit
-    /// counted as done.
+    /// One unit's outputs written back and the unit counted as done. The source maps
+    /// [`generation::accept`] derived replace the unit's in the list held for the batch;
+    /// nothing reaches source-map.json until that list is recorded.
     // @lfy def/cli/main.lfy:main
-    fn record(&mut self, unit: usize, verdict: &Verdict) -> io::Result<()> {
+    fn write_back(&mut self, unit: usize, verdict: &Verdict, held: &mut Vec<SourceMap>) -> io::Result<()> {
         for output in &verdict.outputs {
             let path = self.workspace.root.join(&output.path);
             if let Some(parent) = path.parent() {
@@ -1072,9 +1178,9 @@ impl<'w> Run<'w> {
         }
         let target = self.workspace.targets[self.plan.units[unit].target].identifier.clone();
         let source = self.workspace.files[self.plan.units[unit].file].path.clone();
-        self.maps.retain(|map| !(map.target == target && map.source == source));
-        self.maps.extend(verdict.source_maps.iter().cloned());
-        // A unit recorded again, because its reviews sent its batch back to the compiler,
+        held.retain(|map| !(map.target == target && map.source == source));
+        held.extend(verdict.source_maps.iter().cloned());
+        // A unit accepted again, because its reviews sent its batch back to the compiler,
         // is counted once. @lfy def/cli/main.lfy:main
         if self.recorded.insert(unit) {
             self.accepted += 1;
@@ -1083,12 +1189,15 @@ impl<'w> Run<'w> {
         Ok(())
     }
 
-    /// Every unit of an accepted batch recorded, and the source maps saved.
+    /// Every unit of an accepted batch written back, and the source maps its verdicts
+    /// earned held beside the recorded ones: the verifier is pointed at them, and they are
+    /// recorded only once nothing has violated what was asked.
     // @lfy def/cli/main.lfy:main
-    fn record_batch(&mut self, batch: &Batch, verdicts: &[Verdict]) {
+    fn hold_batch(&mut self, batch: &Batch, verdicts: &[Verdict]) -> Vec<SourceMap> {
+        let mut held = self.maps.clone();
         for (&unit, verdict) in batch.units.iter().zip(verdicts) {
             let stem = self.plan.units[unit].stem.clone();
-            if let Err(error) = self.record(unit, verdict) {
+            if let Err(error) = self.write_back(unit, verdict, &mut held) {
                 eprintln!("{stem}: {error}");
                 self.worsen(ExitCode::Failure);
                 continue;
@@ -1096,6 +1205,14 @@ impl<'w> Run<'w> {
             let written = format!("{} outputs", verdict.outputs.len());
             self.reporter.report(Step::Accepted, Some(&batch.identifier), Some(&stem), &written);
         }
+        held
+    }
+
+    /// The held source maps recorded: they replace the units' in source-map.json, written
+    /// as JSON pretty.
+    // @lfy def/cli/main.lfy:main
+    fn record_maps(&mut self, held: Vec<SourceMap>) {
+        self.maps = held;
         if let Err(error) = save_source_maps(self.workspace, &self.maps) {
             eprintln!("source-map.json: {error}");
             self.worsen(ExitCode::Failure);
@@ -1119,9 +1236,11 @@ impl<'w> Run<'w> {
         rejected
     }
 
-    /// A batch whose units were accepted and recorded, and whose reviews then violated what
-    /// was asked: the acceptance was structural, and the review retracts it, so the
-    /// finished line and the code count the units as rejected rather than accepted.
+    /// A batch whose units were accepted and written back, and whose reviews then violated
+    /// what was asked: the acceptance was structural, and the review retracts it, so the
+    /// finished line and the code count the units as rejected rather than accepted. Its
+    /// held source maps are dropped rather than recorded, so its outputs stay on disk as
+    /// they are and the unit stays planned.
     // @lfy def/cli/main.lfy:main
     fn unrecord(&mut self, batch: &Batch) {
         for unit in &batch.units {
@@ -1160,14 +1279,14 @@ impl<'w> Run<'w> {
     /// that run fails too its problems are printed as a failed progress line and the batch
     /// is verified with the reviews parsed from it as if its report had been complete.
     // @lfy def/cli/main.lfy:main
-    fn review_batch(&mut self, batch: &Batch, command: &str, root: &Path, progress: bool) -> ReviewReport {
+    fn review_batch(&mut self, batch: &Batch, command: &str, root: &Path, progress: bool, maps: &[SourceMap]) -> ReviewReport {
         if progress {
             self.reporter.report(Step::Verifying, Some(&batch.identifier), None, command);
         }
-        // The source maps are the ones just recorded, so every criterion can be pointed at
-        // the region of output that claims to satisfy it.
+        // The source maps are the ones `accept` derived, held but not yet recorded, so
+        // every criterion can be pointed at the region of output that claims to satisfy it.
         // @lfy def/cli/main.lfy:main
-        let request = generation::review(self.workspace, &self.plan, batch, &self.maps);
+        let request = generation::review(self.workspace, &self.plan, batch, maps);
         let mut report = ReviewReport::default();
         for attempt in 1..=2 {
             // @lfy def/cli/main.lfy:main
@@ -1198,17 +1317,18 @@ impl<'w> Run<'w> {
         report
     }
 
-    /// A batch whose units were accepted and recorded is verified, and the problems of its
-    /// violated reviews are what it is rejected with; nothing verifies it with --no-verify
-    /// or with no verifier named, and an unverifiable review is counted and never rejects.
+    /// A batch whose units were accepted by `accept` is verified against the source maps it
+    /// derived, held but not yet recorded, and the problems of its violated reviews are what
+    /// it is rejected with; nothing verifies it with --no-verify or with no verifier named,
+    /// and an unverifiable review is counted and never rejects.
     // @lfy def/cli/main.lfy:main
-    fn verify_batch(&mut self, batch: &Batch, root: &Path) -> Option<Vec<String>> {
+    fn verify_batch(&mut self, batch: &Batch, root: &Path, held: &[SourceMap]) -> Option<Vec<String>> {
         // @lfy def/cli/main.lfy:main
         if self.no_verify {
             return None;
         }
         let command = self.verifier.clone()?;
-        let report = self.review_batch(batch, &command, root, true);
+        let report = self.review_batch(batch, &command, root, true, held);
         // One reviewed line follows, whose message is the counts of satisfied, violated,
         // and unverifiable reviews. @lfy def/cli/main.lfy:main
         let counts = counts_of(&report.reviews);
@@ -1262,19 +1382,22 @@ impl<'w> Run<'w> {
                 generation::outcome_of(&report, verdicts)
             };
             match outcome.kind {
-                // Each unit's outputs are written back, its source maps replace the unit's,
-                // and the batch is verified, or counts as done when nothing verifies it.
+                // Each unit's outputs are written back and its source maps are held, and the
+                // batch is verified; no review violated, or nothing verifying it, records
+                // the held source maps and the batch is done.
                 // @lfy def/cli/main.lfy:main
                 OutcomeKind::Accepted => {
-                    self.record_batch(batch, &outcome.verdicts);
+                    let held = self.hold_batch(batch, &outcome.verdicts);
                     // @lfy def/cli/main.lfy:main
-                    let Some(problems) = self.verify_batch(batch, root) else {
+                    let Some(problems) = self.verify_batch(batch, root, &held) else {
+                        self.record_maps(held);
                         break;
                     };
                     // A violated review is handled as a rejected outcome is: the problems
                     // are printed and the batch is run once more with them appended to the
-                    // instructions; a violated review then stops the batch as rejected.
-                    // @lfy def/cli/main.lfy:main
+                    // instructions; a violated review then stops the batch as rejected, and
+                    // the held source maps are dropped rather than recorded, so the unit
+                    // stays planned. @lfy def/cli/main.lfy:main
                     for problem in &problems {
                         self.reporter.report(Step::Rejected, Some(&batch.identifier), None, problem);
                     }
@@ -1347,35 +1470,43 @@ impl<'w> Run<'w> {
     }
 
     /// No compiler is run; the outputs already on disk are checked, written back
-    /// normalized, and recorded when accepted. A batch whose units were all accepted and
-    /// recorded is verified like any other, since no compiler runs there is nothing to run
-    /// again, so a violated review rejects the batch at once.
+    /// normalized, and recorded when accepted. A batch whose units were all accepted is
+    /// verified like any other against the source maps held for it; since no compiler runs
+    /// there is nothing to run again, so a violated review rejects the batch at once and
+    /// those maps are never recorded.
     // @lfy def/cli/main.lfy:main
     fn accept_on_disk(&mut self, batch: &Batch, root: &Path) {
         let request = self.request_of(batch);
         let verdicts = self.verdicts_of(batch, &request);
         let accepted: Vec<Verdict> = verdicts.iter().filter(|v| v.accepted).cloned().collect();
+        let mut held = self.maps.clone();
         if !accepted.is_empty() {
             let only = Batch {
                 units: batch.units.iter().copied().zip(&verdicts).filter(|(_, v)| v.accepted).map(|(unit, _)| unit).collect(),
                 identifier: batch.identifier.clone(),
             };
-            self.record_batch(&only, &accepted);
+            held = self.hold_batch(&only, &accepted);
         }
         let rejected = self.report_rejections(batch, &verdicts);
         if rejected > 0 {
+            // What was accepted is recorded all the same, so a compiler that worked through
+            // the agent server has its work recorded. @lfy def/cli/main.lfy:main
+            self.record_maps(held);
             self.rejected += rejected;
             self.worsen(ExitCode::Problems);
             return;
         }
         // @lfy def/cli/main.lfy:main
-        if let Some(problems) = self.verify_batch(batch, root) {
+        if let Some(problems) = self.verify_batch(batch, root, &held) {
             for problem in &problems {
                 self.reporter.report(Step::Rejected, Some(&batch.identifier), None, problem);
             }
             self.unrecord(batch);
             self.worsen(ExitCode::Problems);
             self.stop(batch);
+        } else {
+            // @lfy def/cli/main.lfy:main
+            self.record_maps(held);
         }
     }
 
@@ -1557,6 +1688,9 @@ fn verify(invocation: &Invocation) -> ExitCode {
     let reporter = Reporter::new(json, total, log_paths(root));
     let mut run = Run::new(&workspace, plan, maps, reporter, invocation);
     let verifier = verifier_command(root);
+    // The source maps already recorded are what the verifier is pointed at here: verify
+    // compiles nothing, so there are none to hold. @lfy def/cli/main.lfy:main
+    let recorded = run.maps.clone();
     for index in batches {
         let batch = run.plan.batches[index].clone();
         // With no verifier named, the review request of each batch is written for a
@@ -1567,7 +1701,7 @@ fn verify(invocation: &Invocation) -> ExitCode {
         };
         // The verifier is run exactly as compile runs it after acceptance, a failed run
         // being run once more the same way. @lfy def/cli/main.lfy:main
-        let report = run.review_batch(&batch, &command, root, false);
+        let report = run.review_batch(&batch, &command, root, false, &recorded);
         // Each review is printed as its status, the file, a colon, the line, the entity, a
         // colon, and the note. @lfy def/cli/main.lfy:main
         for review in &report.reviews {
@@ -1693,6 +1827,10 @@ mod tests {
     /// A verifier writing one violated review of `def/a.lfy` line 3 for A, then the end
     /// line.
     const VIOLATED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"violated\",\"evidence\":\"crates/a/src/a.rs:4-6\",\"note\":\"returns 0 for an empty list\"}'\necho 'ELFIE: REVIEWED'\n";
+
+    /// A verifier writing one violated review of `def/a.lfy` line 3 for A whose evidence
+    /// names the output under src, then the end line.
+    const VIOLATED_IN_SRC: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"violated\",\"evidence\":\"src/a.rs:4-6\",\"note\":\"returns 0 for an empty list\"}'\necho 'ELFIE: REVIEWED'\n";
 
     /// A verifier writing one satisfied review of `def/a.lfy` line 3 for A and no end line.
     const UNENDED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\n";
@@ -1859,6 +1997,60 @@ mod tests {
         assert_eq!(run(&["tokens".to_string(), path]), ExitCode::Success.code());
         // Neither takes more than one file. @lfy def/cli/main.lfy:main
         assert_eq!(run(&["tree".to_string()]), ExitCode::Usage.code());
+    }
+
+    /// With --json tree and tokens print their results as JSON lines instead of text, one
+    /// object per result.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn json_prints_one_object_per_result() {
+        let source = "const x = 1;\n";
+        let tokens = lex(source, Some("def/a.lfy")).unwrap();
+        // One object per token, each on one line. @lfy def/cli/main.lfy:main
+        let text = token_lines(&tokens, false);
+        let objects = token_lines(&tokens, true);
+        assert_eq!(objects.len(), tokens.len());
+        assert_eq!(objects.len(), text.len());
+        assert_ne!(objects, text);
+        let first: serde_json::Value = serde_json::from_str(&objects[0]).unwrap();
+        assert_eq!(first["line"], tokens[0].line);
+        assert_eq!(first["column"], tokens[0].column);
+        assert_eq!(first["rule"], rule_name(&tokens[0]));
+        assert_eq!(first["value"], tokens[0].value);
+        // One object per node or token of the tree. @lfy def/cli/main.lfy:main
+        let tree = parse(tokens, None);
+        let text = tree_lines(&tree, "def/a.lfy", false);
+        let objects = tree_lines(&tree, "def/a.lfy", true);
+        assert_ne!(objects, text);
+        let parsed: Vec<serde_json::Value> =
+            objects.iter().map(|line| serde_json::from_str(line).unwrap()).collect();
+        assert_eq!(parsed[0]["kind"], "node");
+        assert_eq!(parsed[0]["depth"], 0);
+        assert_eq!(parsed[0]["rule"], tree.root.rule.identifier());
+        assert_eq!(parsed[0]["start"], 0);
+        assert_eq!(parsed[0]["end"], tree.tokens.len());
+        let leaves: Vec<&serde_json::Value> = parsed.iter().filter(|value| value["kind"] == "token").collect();
+        assert_eq!(leaves.len(), tree.tokens.len(), "every token is one object");
+        assert_eq!(leaves[0]["value"], tree.tokens[0].raw);
+        assert_eq!(leaves[0]["rule"], rule_name(&tree.tokens[0]));
+        // An error node is given with what it expected, as the text form gives it.
+        // @lfy def/cli/main.lfy:main
+        let broken = parse(lex("const x = ;\n", Some("def/a.lfy")).unwrap(), None);
+        assert!(tree_lines(&broken, "def/a.lfy", false).iter().any(|line| line.starts_with("error at def/a.lfy:")));
+        let errors: Vec<serde_json::Value> = tree_lines(&broken, "def/a.lfy", true)
+            .iter()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .filter(|value: &serde_json::Value| value["kind"] == "error")
+            .collect();
+        assert_eq!(errors.len(), broken.errors.len());
+        assert_eq!(errors[0]["expected"], serde_json::json!(broken.errors[0].expected));
+        assert_eq!(errors[0]["line"], error_position(&broken, &broken.errors[0]).0);
+        // The commands themselves take the flag. @lfy def/cli/main.lfy:main
+        let fixture = Fixture::new();
+        fixture.write("def/a.lfy", source);
+        let path = relative(Path::new(""), &fixture.root.join("def/a.lfy"));
+        assert_eq!(run(&["tokens".to_string(), path.clone(), "--json".to_string()]), ExitCode::Success.code());
+        assert_eq!(run(&["tree".to_string(), path, "--json".to_string()]), ExitCode::Success.code());
     }
 
     /// Compile with --dry-run prints one unit with reason fresh and one batch holding it,
@@ -2215,6 +2407,14 @@ mod tests {
         // @lfy def/cli/main.lfy:main
         assert!(fixture.read("elfie-requests/a.reviews.json").contains("violated"));
         assert!(log.contains("0 units accepted, 1 rejected"), "{log}");
+        // Its source maps are not recorded, so its outputs stay on disk and the unit stays
+        // planned. @lfy def/cli/main.lfy:main
+        assert!(fixture.root.join("out/a.rs").exists(), "the outputs stay on disk");
+        assert!(!fixture.root.join("out/source-map.json").exists(), "nothing is recorded");
+        let workspace = workspace::load(&fixture.root);
+        let plan = generation::plan(&workspace, &load_source_maps(&workspace), &[]);
+        assert_eq!(plan.units.len(), 1);
+        assert!(plan.units[0].reason.is_some(), "the unit stays planned");
     }
 
     /// A verifier whose report does not end is run once more; its problems are then printed
@@ -2237,7 +2437,7 @@ mod tests {
     }
 
     /// With --no-verify no verifier runs, nothing is reviewed, no reviews file is written,
-    /// and the batch is done when its units are accepted and recorded.
+    /// and the batch is done and its source maps recorded when its units are accepted.
     // @lfy def/cli/main.lfy:main
     #[test]
     fn no_verify_runs_no_verifier() {
@@ -2247,6 +2447,8 @@ mod tests {
         assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
         assert!(!fixture.root.join("verifications.txt").exists(), "no verifier ran");
         assert!(!fixture.root.join("elfie-requests/a.reviews.json").exists(), "nothing is reviewed");
+        // The source maps are recorded all the same. @lfy def/cli/main.lfy:main
+        assert!(fixture.read("out/source-map.json").contains("\"out/a.rs\""));
         // A project naming no verifier is the same. @lfy def/cli/main.lfy:main
         let plain = Fixture::new();
         a_compiler_and_a_verifier(&plain, VIOLATED).write(
@@ -2271,6 +2473,9 @@ mod tests {
         a_compiler_and_a_verifier(&fixture, SATISFIED);
         assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
         assert_eq!(lines_of(&fixture, "attempts.txt"), 1);
+        // No review was violated, so the held source maps were recorded and the batch was
+        // done. @lfy def/cli/main.lfy:main
+        assert!(fixture.read("out/source-map.json").contains("\"out/a.rs\""));
         let _ = fs::remove_file(fixture.root.join("elfie-requests/a.reviews.json"));
         // @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["verify", "a"]), ExitCode::Success.code());
@@ -2286,6 +2491,34 @@ mod tests {
         fixture.write("verifier.sh", SATISFIED);
         assert_eq!(fixture.run(&["verify", "b"]), ExitCode::Success.code());
         assert!(!fixture.root.join("elfie-requests/b.reviews.json").exists(), "nothing was reviewed for b");
+    }
+
+    /// Verify on a unit already recorded, whose review is violated, prints that review and
+    /// the counts, writes the reviews, runs no compiler, and returns problems.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn verify_returns_problems_for_a_violated_review() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED);
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+        // The output for a is recorded in source-map.json. @lfy def/cli/main.lfy:main
+        assert!(fixture.read("out/source-map.json").contains("\"out/a.rs\""));
+        let _ = fs::remove_file(fixture.root.join("elfie-requests/a.reviews.json"));
+        fixture.write("verifier.sh", VIOLATED_IN_SRC);
+        // The code is problems when any review is violated. @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["verify", "a"]), ExitCode::Problems.code());
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "no compiler is run");
+        // elfie-requests/a.reviews.json holds the review. @lfy def/cli/main.lfy:main
+        let reviews = fixture.read("elfie-requests/a.reviews.json");
+        assert!(reviews.contains("returns 0 for an empty list"), "{reviews}");
+        assert!(reviews.contains("src/a.rs:4-6"), "{reviews}");
+        // It is printed as violated, the file, a colon, the line, the entity, a colon, and
+        // the note, then the counts. @lfy def/cli/main.lfy:main
+        let report = generation::review_of(
+            "{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"violated\",\"evidence\":\"src/a.rs:4-6\",\"note\":\"returns 0 for an empty list\"}\nELFIE: REVIEWED\n",
+        );
+        assert_eq!(review_text(&report.reviews[0]), "violated def/a.lfy:3 A: returns 0 for an empty list");
+        assert_eq!(counts_text(counts_of(&report.reviews)), "0 satisfied, 1 violated, 0 unverifiable");
     }
 
     /// With no verifier named, the review request of each batch is written to

@@ -1843,19 +1843,12 @@ impl Binder {
     }
 
     /// Nothing was found for a name read on an entity: the usage has no symbol and a
-    /// problem is added, whatever the left side is, because being lenient here would hide
-    /// a misspelled member behind a silent undefined. The one exception is the trait of a
-    /// program with no prelude: a trait is the entity whose value layer is all kind data,
-    /// so with none of it a name only the prelude would give is found nowhere and nothing
-    /// was misspelled.
+    /// problem is added, whatever the left side is, and even when no prelude is bound so
+    /// the entity's kind data is empty, because being lenient here would hide a misspelled
+    /// member behind a silent undefined.
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
     fn no_member(&mut self, r: NodeRef, entity: EntityId, name: &str, current: bool) {
-        if matches!(self.model.entities[entity].kind, EntityKind::Trait { .. })
-            && self.kind_data(entity).is_empty()
-        {
-            return;
-        }
         let owner = self.model.entities[entity]
             .identifier
             .clone()
