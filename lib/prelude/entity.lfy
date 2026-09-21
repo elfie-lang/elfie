@@ -7,6 +7,8 @@ d Entity is builtin: `What every declared thing is seen as through its context l
   $identifier: `The declared name; undefined when anonymous` = string | undefined;
   $definition: `The description provided for it; undefined when there is none` = string | undefined;
   $type: `The declared or inferred type; the entity itself for a data, trait, type, or enum` = Entity | undefined;
+  $typeParameters: `The type parameters the declaration lists, in order; empty when none` = Entity[];
+  $typeArguments: `The arguments the type was written with when it is generic, in order; empty otherwise` = Entity[];
   $acceptanceCriteria: `Its own criteria first, then each trait's in application order` = Criterion[];
   $traits: `Every trait applied to it, direct or inherited, in application order` = Entity[];
   $references: `Every entity referenced with a bracketed reference in its definition, documentation, or value` = Entity[];

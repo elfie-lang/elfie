@@ -3,8 +3,11 @@ use "../lexer/data";
 use "../model/data";
 use "../model/main" as Binder;
 use "../workspace/data";
+use "../workspace/main" as Loader;
 use "./data";
 use "elfie/prelude/builtin";
+use "elfie/system/file" as Files;
+use "elfie/system/json" as Json;
 use "elfie/system/path";
 use "elfie/system/time" as Time;
 use "elfie/target/language";
@@ -280,6 +283,9 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of the unit's source, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
+      behavior = `[[Marker.end]] of each marker is derived as the line before [[Marker.outputLine]] of the next marker in the same output, or the last line of the output for the last marker, so the regions of an output partition it from its first marker on`,
+    })
+    .add({
       behavior = `Whether an output builds or its tests pass is not checked here; the guidance says how, and the caller runs it`,
     });
 
@@ -291,7 +297,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
         [Output@like(`One file under the output directory with a marker a.lfy:A and one a.lfy:B`)],
       ],
       expect = Verdict@like(
-        `Accepted, one source map with two markers whose lines are those of A and B, the output unchanged`,
+        `Accepted, one source map with two markers whose lines are those of A and B, the first ending on the line before the second and the second on the last line of the output, the output unchanged`,
       ),
     },
     {
@@ -309,6 +315,218 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
         [Output@like(`One file with a marker a.lfy:3`)],
       ],
       expect = Verdict@like(`Accepted, and the output in [[Verdict.outputs]] reads a.lfy:A instead`),
+    },
+  );
+}
+
+// Mapped output access
+
+/// name: an identifier, or an owner's identifier, a dot, and a member's name
+/// target: the identifier of one target; every target when left out
+fn regionsOf(workspace: Workspace, sourceMaps: SourceMap[], name: string, target?: string): `Every region of generated output that came from one entity` => Marker[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns every [[Marker]] of every [[SourceMap]] in [[sourceMaps]] whose [[Marker.entity]] is [[name]], source map by source map in [[sourceMaps]] order and within one in [[SourceMap.markers]] order, which is output order`,
+    })
+    .add({
+      behavior = `A marker whose [[Marker.entity]] is [[name]], a dot, and a member's name is included too, in the same order, since a member's region is part of its owner's code`,
+    })
+    .add({
+      behavior = `A marker that names a line rather than an entity is included when [[Marker.file]] declares the entity named [[name]] in [[workspace]] and [[Marker.line]] falls inside its declaring node`,
+    })
+    .add({
+      situation = `[[target]] is set`,
+      behavior = `Only markers of source maps whose [[SourceMap.target]] is [[target]]`,
+    })
+    .add({ situation = `Nothing matches`, behavior = `Returns an empty list` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a data A with a member x and a fn f`),
+        [
+          SourceMap@like(
+            `For output src/a.rs with markers a.lfy:A on line 3, a.lfy:A.x on line 9, and a.lfy:f on line 20`,
+          ),
+          SourceMap@like(`For output src/tests.rs with a marker a.lfy:f on line 1 and a.lfy:A on line 12`),
+        ],
+        `A`,
+      ],
+      expect = [
+        Marker@like(`src/a.rs line 3 for A, ending on 8`),
+        Marker@like(`src/a.rs line 9 for A.x, ending on 19`),
+        Marker@like(`src/tests.rs line 12 for A, ending on the last line`),
+      ],
+    },
+    {
+      input = [Workspace@like(`The same project`), [SourceMap@like(`The same two source maps`)], `A.x`],
+      expect = [Marker@like(`src/a.rs line 9 for A.x only`)],
+    },
+    { input = [Workspace@like(`The same project`), [SourceMap@like(`The same two source maps`)], `B`], expect = [] },
+  );
+}
+
+// Decision: a change is found by binding the previous text through the loader and comparing entities,
+// never by diffing lines, so a reformatted or reordered file whose entities read the same gives none.
+/// previous: the text of the unit's file when its outputs were last accepted; undefined when they never were
+fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `What differs for each entity of a unit between its file as last accepted and as it is now` => Change[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `The file as it was is bound as [[Loader.change]] of [[workspace]] with [[File.path]] of [[Unit.file]] and [[previous]], and its entities are compared with [[Unit.entities]] by name: the identifier, or the owner's identifier, a dot, and a member's name; a member is compared as an entity of its own, under its owner`,
+    })
+    .add({
+      situation = `[[previous]] is undefined`,
+      behavior = `One [[Change]] of kind [[ChangeKind.added]] per entity of the unit, in file order, and nothing else`,
+    })
+    .add({
+      situation = `A name is declared now and was not before`,
+      behavior = `One [[Change]] of kind [[ChangeKind.added]]`,
+    })
+    .add({
+      situation = `A name was declared before and is not now`,
+      behavior = `One [[Change]] of kind [[ChangeKind.removed]]`,
+    })
+    .add({
+      situation = `A name is declared on both sides`,
+      behavior = [
+        `One [[Change]] per kind that differs, in the order [[ChangeKind]] declares them:`,
+        `[[ChangeKind.definition]] when [[Entity.definition]] differs`,
+        `[[ChangeKind.declaredType]] when the type of the entity, spelled as [[interfaceOf]] spells it, differs`,
+        `[[ChangeKind.signature]] when a fn's parameters, their types, or its output, spelled as [[interfaceOf]] spells them, differ`,
+        `[[ChangeKind.criteria]] when the count of [[Binder.criteriaOf]] differs, or the text of any criterion differs from the one at the same place`,
+        `[[ChangeKind.tests]] when [[Entity.tests]] differ in count, or any test's input or expectation differs from the one at the same place`,
+        `[[ChangeKind.body]] when the joined [[Token.raw]] of the tokens the declaring node covers differs once its definition, type, parameters, output, criteria, tests, whitespace, and comments are left out`,
+      ],
+    })
+    .add({
+      behavior = `The changes are in file order: the order of [[Unit.entities]], with a removed entity placed after the last entity that preceded it in the previous file and is still declared, or first when none is`,
+    })
+    .add({
+      behavior = `[[Change.detail]] is one line saying what differs, quoting the old and the new when each is under 80 characters and naming them otherwise, such as the count of criteria before and after or the name of the parameter that differs`,
+    });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a data A and a fn f`),
+        Unit@like(`The unit of a.lfy`),
+        undefined,
+      ],
+      expect = [Change@like(`A added`), Change@like(`f added`)],
+    },
+    {
+      input = [
+        Workspace@like(
+          `def holds a.lfy declaring a data A defined as a thing and a fn f taking x: string and y: number`,
+        ),
+        Unit@like(`The unit of a.lfy`),
+        string@like(`a.lfy as it was: A defined as a value and f taking only x: string`),
+      ],
+      expect = [
+        Change@like(`A, definition, detail quoting a value and a thing`),
+        Change@like(`f, signature, detail naming the added parameter y`),
+      ],
+    },
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a fn f with three criteria and a data B`),
+        Unit@like(`The unit of a.lfy`),
+        string@like(`a.lfy as it was: a data A, then f with two of those criteria, and B with one more member`),
+      ],
+      expect = [
+        Change@like(`A removed`),
+        Change@like(`f, criteria, detail reading 2 criteria before and 3 now`),
+        Change@like(`B.old, removed`),
+      ],
+    },
+  );
+}
+
+// Independent verification
+
+// Decision: the verifier is handed the regions already excerpted, so it reads exactly what a criterion
+// is about, and its protocol allows no edits: a review says where and why, never how to fix.
+fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a verifier is handed to check the outputs of one batch against every criterion and test` => ReviewRequest {
+  @acceptanceCriteria
+    .add({ behavior = `[[ReviewRequest.batch]] is [[batch]]` })
+    .add({
+      behavior = `A criterion's place is the file of its [[Criterion.contributor]] relative to [[Workspace.root]], a colon, and the line its add call or where statement begins on; a test's place is its entity's file the same way and the line its object begins on`,
+    })
+    .add({
+      behavior = [
+        `[[ReviewRequest.instructions]] says, in this order:`,
+        `A heading naming [[Batch.identifier]] and the target`,
+        `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each criterion of [[Binder.criteriaOf]] on one line prefixed by its place, then each of [[Entity.tests]] as input and expectation on one line prefixed by its place`,
+        `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines of the output in a fenced block; when the output cannot be read, a line saying so instead`,
+        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys file, line, entity, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server may be called for regions the request leaves out; and that the report ends with one line reading ELFIE: REVIEWED`,
+      ],
+    });
+
+  @test(
+    {
+      input = [
+        Plan@like(
+          `One batch of one unit, a.lfy for target rust, whose entity A has two criteria on lines 4 and 7 and one test on line 10`,
+        ),
+        Batch@like(`a`),
+        [SourceMap@like(`For rust and src/a.rs from a.lfy, with one marker a.lfy:A on line 1 ending on line 30`)],
+      ],
+      expect = ReviewRequest@like(
+        `Instructions headed a and rust; A with its definition, two criterion lines prefixed def/a.lfy:4 and def/a.lfy:7, one test line prefixed def/a.lfy:10; one region src/a.rs:1-30 with the file's thirty lines in a fenced block; then the protocol naming the six keys and the three statuses and ending with ELFIE: REVIEWED`,
+      ),
+    },
+    {
+      input = [Plan@like(`The same plan`), Batch@like(`a`), []],
+      expect = ReviewRequest@like(
+        `The same instructions with no region for A, so the verifier can only find A's criteria unverifiable`,
+      ),
+    },
+  );
+}
+
+/// report: everything the verifier wrote to standard output
+fn reviewOf(report: string): `What a verifier found, read mechanically from its report` => ReviewReport {
+  @acceptanceCriteria
+    .add({
+      behavior = `The end line is the last line of [[report]] reading ELFIE: REVIEWED, with any whitespace around it; lines after it are ignored`,
+    })
+    .add({
+      behavior = `Each line before the end line that [[Json.parse]] reads as an object with exactly the keys file, line, entity, status, evidence, and note, whose line is a number and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order`,
+    })
+    .add({
+      situation = `Two such lines have the same file, line, and entity`,
+      behavior = `Only the last is kept, at its own place`,
+    })
+    .add({
+      behavior = `Every other line before the end line that is not blank and does not begin with # is in [[ReviewReport.problems]] as written, in report order`,
+    })
+    .add({
+      situation = `There is no end line`,
+      behavior = `Every line is read as above and [[ReviewReport.problems]] ends with a line reading: the report did not end`,
+    });
+
+  @test(
+    {
+      input = [
+        `# reading src/a.rs\n{"file":"def/a.lfy","line":4,"entity":"A","status":"satisfied","evidence":"src/a.rs:1-30","note":"the field is there"}\n{"file":"def/a.lfy","line":7,"entity":"A","status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined instead of an empty list"}\nELFIE: REVIEWED`,
+      ],
+      expect = ReviewReport@like(`Two reviews, satisfied then violated, and no problems`),
+    },
+    {
+      input = [
+        `{"file":"def/a.lfy","line":4,"entity":"A","status":"maybe","evidence":"","note":"unsure"}\nI think it is fine.\n{"file":"def/a.lfy","line":7,"entity":"A","status":"unverifiable","evidence":"","note":"no region"}\nELFIE: REVIEWED`,
+      ],
+      expect = ReviewReport@like(
+        `One review, unverifiable at line 7, and two problems: the line whose status is maybe, and the prose line`,
+      ),
+    },
+    {
+      input = [
+        `{"file":"def/a.lfy","line":4,"entity":"A","status":"satisfied","evidence":"","note":"first"}\n{"file":"def/a.lfy","line":4,"entity":"A","status":"violated","evidence":"src/a.rs:3-3","note":"second"}`,
+      ],
+      expect = ReviewReport@like(
+        `One review, violated with note second, and one problem reading: the report did not end`,
+      ),
     },
   );
 }

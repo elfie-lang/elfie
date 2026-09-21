@@ -36,5 +36,6 @@ triedBefore.apply(Block, ExpressionStatement);
 triedBefore.apply(FunctionDeclaration, ExpressionStatement);
 triedBefore.apply(TraitDeclaration, ExpressionStatement);
 triedBefore.apply(Object, Type);
+triedBefore.apply(TypeValue, TypeGroup);
 triedBefore.apply(InlineFunction, Group);
 triedBefore.apply(ConditionGroup, Group);

@@ -18,7 +18,11 @@ d Marker: `One place where generated code says where it came from` {
   $entity: `The name the marker spells, when it names an entity: the identifier, or the owner's identifier, a dot, and a member's name; undefined when it names a line` = string | undefined;
   $line: `The source line: as spelled, or derived from [[Marker.entity]] as the first line of that entity's declaration` = number;
   $column: `The source column, counting from 0; undefined when the marker names a whole line or an entity` = number | undefined;
+  $end: `The last output line of the region the marker begins: the line before the next marker in the same output, or the last line of the output` = number;
   @acceptanceCriteria
+    .add({
+      behavior = `A marker's region is the output lines from [[Marker.outputLine]] through [[Marker.end]], inclusive; the regions of one output never overlap and together cover every line from its first marker to its last line, so every generated line after the first marker belongs to exactly one marker`,
+    })
     .add({
       behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, and then either a line (optionally a colon and a column) or the name of an entity of that file`,
     })
@@ -38,7 +42,7 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   $signature: `SHA-256 of the unit's interface text, as interfaceOf spells it, when the output was accepted` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = object;
   $generated: `When the output was accepted: [[Time.Instant.rfc3339]] of [[Time.now]] at acceptance` = string;
-  $markers: `Every [[Marker]] in the output, in output order, with lines derived` = Marker[];
+  $markers: `Every [[Marker]] in the output, in output order, with [[Marker.line]] and [[Marker.end]] derived` = Marker[];
 }
 
 d Unit: `The work the compiler does as one piece: one source file for one target` {
@@ -73,6 +77,11 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
   $nativeDependencies: `What the generated code may require from the target's ecosystem` = NativeDependency[];
 }
 
+d ReviewRequest: `Everything a verifier is handed to check the outputs of one batch against what was asked` {
+  $batch: `The batch` = Batch;
+  $instructions: `The prompt: every criterion and test of the batch with its place, every region generated for each entity, and how to report` = string;
+}
+
 d Output: `One file the compiler produced` {
   $path: `Relative to [[Workspace.root]]` = string;
   $text: `Its content` = string;
@@ -97,6 +106,49 @@ d Verdict: `Whether outputs are accepted for one unit` {
   $problems: `What failed and why, one per failure; empty when accepted` = string[];
   $sourceMaps: `One per accepted output; empty when rejected` = SourceMap[];
   $outputs: `Each accepted output with its markers normalized to the name form, for the caller to write back; empty when rejected` = Output[];
+}
+
+enum ChangeKind: `What differs for one entity between a unit's file as last accepted and as it is now` {
+  added = `the entity is declared now and was not before`,
+  removed = `the entity was declared before and is not now`,
+  definition = `its definition differs`,
+  declaredType = `its type differs, as interfaceOf spells it`,
+  signature = `its parameters or its output differ`,
+  criteria = `its criteria differ in count or in the text of any`,
+  tests = `its tests differ`,
+  body = `anything else in the text of its declaration differs`,
+}
+
+d Change: `One difference for one entity between a unit's file as last accepted and as it is now` {
+  $entity: `The identifier, or the owner's identifier, a dot, and a member's name` = string;
+  $kind: `What differs` = ChangeKind;
+  $detail: `What changed, in one line, quoting the old and the new when they are short` = string;
+}
+
+enum ReviewStatus: `What a verifier found for one criterion or test` {
+  satisfied = `the output does what it says`,
+  violated = `the output does something else`,
+  unverifiable = `no output can be checked against it`,
+}
+
+// Decision: a review names its criterion by file and line and quotes nothing, because a criterion has
+// no name and the definition file is the one place its text lives.
+d Review: `A verifier's finding for one criterion or test` {
+  $file: `The definition file the criterion or test is written in, relative to [[Workspace.root]]` = string;
+  $line: `The line the criterion or test begins on` = number;
+  $entity: `The identifier, or the owner's identifier, a dot, and a member's name, of the entity it belongs to` = string;
+  $status: `What was found` = ReviewStatus;
+  $evidence: `The output path and line range it was checked against, such as crates/elfie-core/src/x.rs:120-134; empty when none` = string;
+  $note: `Why, in one line; for a violated one, what the code does instead` = string;
+  @acceptanceCriteria
+    .add({
+      behavior = `A verifier writes a review as one JSON object on one line with exactly the keys file, line, entity, status, evidence, and note, and ends its report with a line reading ELFIE: REVIEWED`,
+    });
+}
+
+d ReviewReport: `Everything a verifier found for one batch, read mechanically from its report` {
+  $reviews: `Each review, in report order, one per file, line, and entity` = Review[];
+  $problems: `The lines of the verifier's output that were neither a review nor the end line` = string[];
 }
 
 d Plan: `Every unit of a workspace, which need generating, and how they are batched` {

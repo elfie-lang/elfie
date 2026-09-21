@@ -8,6 +8,8 @@ use "../workspace/data";
 use "../workspace/main" as Loader;
 use "./data";
 use "./traits";
+use "elfie/system/file" as Files;
+use "elfie/system/process" as Process;
 
 // Decision: the agent server never writes a file. During compilation the agent writes the outputs
 // itself and asks the server to check them, so one path exists for writing and the CLI owns it.
@@ -34,7 +36,7 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
     {
       input = [string@like(`A root whose def holds a.lfy reading: const y = z;`)],
       expect = number@like(
-        `A tools/list answer naming elfie_problems, elfie_find, elfie_entity, elfie_references, elfie_outline, elfie_grammar, elfie_units, elfie_request, and elfie_check; a call of elfie_problems answering with one binder error at z`,
+        `A tools/list answer naming elfie_problems, elfie_find, elfie_entity, elfie_references, elfie_outline, elfie_grammar, elfie_units, elfie_request, elfie_check, elfie_output, elfie_source, elfie_changes, and elfie_review; a call of elfie_problems answering with one binder error at z`,
       ),
     },
   );
@@ -129,4 +131,66 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
       behavior = `The text says so and lists the outputs; nothing is written, the CLI records source maps`,
     })
     .add({ situation = `Rejected`, behavior = `An error listing [[Verdict.problems]]` });
+}
+
+// Decision: the source maps every tool below reads come from each target's output directory, as
+// elfie_units reads them, so what a tool answers is what the last acceptance recorded, never a guess
+// from the text on disk.
+/// name: as elfie_find takes it
+/// target: the identifier of one target; every target when left out
+fn output(session: Session, name: string, target?: string) is tool: `Where the generated code for one entity is: every region of every output that came from it, with its text` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `For each [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]], with the source maps read as elfie_units reads them: a line reading the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then the [[Files.read]] text of those lines of the output in a fenced block`,
+    })
+    .add({ situation = `Nothing is generated for [[name]]`, behavior = `The text says so` })
+    .add({
+      situation = `[[target]] is set and is not a known target`,
+      behavior = `An error naming the known targets`,
+    });
+}
+
+/// file: the path of an output file, relative to the root
+/// line: a line of that file, counting from 1
+fn source(session: Session, file: string, line: number) is tool: `Where one line of generated code came from: the definition file, the entity, and its line` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The [[Marker]] of the [[SourceMap]] whose [[SourceMap.output]] is [[file]] whose region covers [[line]], that is whose [[Marker.outputLine]] is at most [[line]] and whose [[Marker.end]] is at least [[line]]: a line reading [[Marker.file]], a colon, [[Marker.line]], and then [[Marker.entity]] when it names one`,
+    })
+    .add({
+      situation = `A criterion of that entity, as [[Binder.criteriaOf]] gives it, begins on [[Marker.line]]`,
+      behavior = `Its text follows on the next line`,
+    })
+    .add({
+      situation = `No source map has [[file]] as its output, or [[line]] is before its first marker`,
+      behavior = `The text says no source map covers the line`,
+    });
+}
+
+/// unit: the stem of a unit, as elfie_units lists it
+fn changes(session: Session, unit: string) is tool: `What differs for each entity of a unit since its outputs were last accepted` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Generation.changes]] of the unit with that stem, of the first target in [[Workspace.targets]] order that has one, with the previous text recovered as the command line recovers [[Request.previous]]: the source at the last accepted generation, through [[Process.run]] of git when the root is a repository and that source is in it; one line per [[Change]] reading [[Change.entity]], [[Change.kind]], and [[Change.detail]]`,
+    })
+    .add({ situation = `[[Unit.outputs]] is empty`, behavior = `The text says no previous output` })
+    .add({
+      situation = `The unit has outputs and the previous text cannot be recovered`,
+      behavior = `The text says so first, then every entity as added, as [[Generation.changes]] gives with undefined`,
+    })
+    .add({ situation = `Nothing differs`, behavior = `The text says no changes` })
+    .add({ situation = `No unit has that stem`, behavior = `An error saying so` });
+}
+
+/// batch: the identifier of a batch, as elfie_units lists it, or the stem of one of its units
+/// target: the identifier of the batch's target; the only target when left out
+fn review(session: Session, batch: string, target?: string) is tool: `The full review request for one batch: every criterion and test with the regions generated for its entities, and how to report` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with the source maps read as elfie_units reads them, so a verifier session can fetch its own request`,
+    })
+    .add({
+      situation = `No batch has that identifier or holds a unit with that stem, or the target is ambiguous`,
+      behavior = `An error saying which`,
+    });
 }

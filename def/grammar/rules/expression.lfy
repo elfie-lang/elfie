@@ -26,7 +26,16 @@ d SpreadParameter is rule(`[[Spread]] , [[Name]] , (/ [[DefinitionClause]] /) , 
 d Parameters is rule(
   `[[GroupOpen]] , (/ ( ( [[Parameter]] , (: [[Comma]] , [[Parameter]] :) , (/ [[Comma]] , [[SpreadParameter]] /) ) | [[SpreadParameter]] ) , (/ [[Comma]] /) /) , [[GroupClose]]`,
 ): `A parameter list` {}
-d Signature is rule(`(/ [[Identifier]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)`): `A function's name, parameters, traits, and definition` {}
+d TypeParameter is rule(
+  `[[Identifier]] , (/ [[ExtendsKeyword]] , [[TypeExpression]] /) , (/ [[PlainSetter]] , [[TypeExpression]] /)`,
+): `A name a declaration is generic over, with the type it must extend and its default` {}
+d TypeParameters is rule(`[[LessThan]] , {{listOf(`[[TypeParameter]]`)}} , [[GreaterThan]]`): `The type parameters of a declaration, right after its identifier` {}
+d TypeArguments is rule(`[[LessThan]] , {{listOf(`[[TypeExpression]]`)}} , [[GreaterThan]]`): `The type arguments of a generic in a type position` {}
+d Signature is rule(
+  `(/ [[Identifier]] /) , (/ [[TypeParameters]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)`,
+): `A function's name, type parameters, parameters, traits, and definition` {
+  where (`The source is fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;`) -> `The [[Signature]] is map with the [[TypeParameters]] T and U and two [[Parameter]] items: list typed as the [[TypeItem]] List with the [[TypeArguments]] T, and transform typed as the [[FunctionType]] from item of T to U; the return type is List with the [[TypeArguments]] U`;
+}
 d Items is rule(`(/ {{listOf(`[[Expression]]`)}} /)`): `Zero or more comma separated expressions` {}
 d Arguments is rule(`[[GroupOpen]] , [[Items]] , [[GroupClose]]`): `A parenthesized list` {}
 d Reference is rule(`( [[Name]] | [[Current]] | [[Dereference]] | [[Member]] | [[Index]] ) `): `A reference chain` {}
@@ -41,11 +50,20 @@ d TypeValue is alternationList(
   Object,
   List,
   TypePredicate,
+  FunctionType,
   Reference,
 ): `A type value` {}
+d FunctionType is rule(`[[Parameters]] , [[DoubleArrowRight]] , [[TypeExpression]]`): `The type of a function: its parameters and what it returns` {}
+d TypeGroup is rule(`[[GroupOpen]] , [[TypeExpression]] , [[GroupClose]]`): `A parenthesized type` {
+  where (`[[GroupClose]] is followed by [[DoubleArrowRight]]`) -> `Rule cannot be a match; the parentheses are the [[Parameters]] of a [[FunctionType]]`;
+}
 d TypeItem is rule(
-  `( [[TypeValue]] | ( [[GroupOpen]] , [[TypeExpression]] , [[GroupClose]] ) ) , (/ [[ListOpen]] , [[ListClose]] /)`,
-): `A type, or an array of it` {}
+  `( [[TypeValue]] | [[TypeGroup]] ) , (/ [[TypeArguments]] /) , (/ [[ListOpen]] , [[ListClose]] /)`,
+): `A type with its type arguments, or an array of it` {
+  where (`[[TypeArguments]] follow anything but a [[Reference]]`) -> `Reported after parsing`;
+  where (`[[ListOpen]] and [[ListClose]] follow`) -> `The type is the standard library's List with the type before them as its one type argument: T[] is the same type as List<T>`;
+  where (`The source is x: List<List<T>>`) -> `The [[TypeItem]] List with the [[TypeArguments]] holding the [[TypeItem]] List with the [[TypeArguments]] T; the two [[GreaterThan]] tokens close one list each`;
+}
 d TypeExpression is rule(
   `(/ [[BitwiseOr]] | [[Ampersand]] /) , [[TypeItem]] , (: ( [[BitwiseOr]] | [[Ampersand]] ) , [[TypeItem]] :)`,
 ): `An expression in a type position` {}
@@ -125,6 +143,21 @@ d Call is postfix(GroupOpen, `[[Items]] , [[GroupClose]]`): `Calls the left expr
 d Traits is postfix(IsKeyword, `[[TraitUses]]`): `Whether traits are applied to the left expression` {}
 d Definition is postfix(Colon, `[[Expression]]`): `Attaches a description or type to the declared left expression` {}
 d Cast is postfix(AsKeyword, `[[TypeExpression]]`): `A value read as a type` {}
+d Generic is postfix(LessThan, `{{listOf(`[[TypeExpression]]`)}} , [[GreaterThan]]`), binding(
+  Level.access,
+): `The left expression with type arguments, in an expression position` {
+  where (`The token after [[GreaterThan]] that is not [[Space]], [[NewLine]], [[Comment]], or [[Documentation]] is not one of [[Semicolon]], [[Comma]], [[GroupClose]], [[ListClose]], [[BlockClose]], [[PlainSetter]], [[GroupOpen]], [[ValueAccessor]], [[ListOpen]], [[BitwiseOr]], [[Ampersand]], or [[DoubleArrowRight]]`) -> `Rule cannot be a match; [[RelationalOperation]] is the parse of the [[LessThan]]`;
+  where (`[[GreaterThanOrEqual]] follows the arguments`) -> `Rule cannot be a match, because the longest match lexes the two characters as one token: List<T>=x compares, it does not assign`;
+  where (`The left expression is parsed to satisfy [[Reference]]`) -> `Rule cannot be a match; in a type position the arguments are the [[TypeArguments]] of the [[TypeItem]]`;
+  @acceptanceCriteria
+    .add({
+      behavior = `Binds as [[Member]] and [[Index]] do, so a + f<T>(x) reads as a + (f<T>(x)) and x.f<T>(y) reads as ((x.f)<T>)(y)`,
+    });
+  where (`The source is $items = List<T>;`) -> `An [[Assignment]] whose right side is the [[Generic]] of the [[Name]] List with the type argument T, because [[Semicolon]] follows the [[GreaterThan]]`;
+  where (`The source is f<string>(x)`) -> `A [[Call]] whose left expression is the [[Generic]] of f with the type argument string, because [[GroupOpen]] follows the [[GreaterThan]]`;
+  where (`The source is a < b`) -> `A [[RelationalOperation]], because no [[GreaterThan]] follows b`;
+  where (`The source is a < b > c`) -> `Two [[RelationalOperation]] nodes reading as (a < b) > c, because the [[Identifier]] c follows the [[GreaterThan]]`;
+}
 d Conditional is postfix(QuestionMark, `[[Expression]] , [[Colon]] , [[Expression]]`), binding(
   Level.definition,
   'right',

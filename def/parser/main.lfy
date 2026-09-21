@@ -123,6 +123,14 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     .add({
       situation = `An [[Expression]] is an element of a rule that is not an operation, or follows [[GroupOpen]] or [[ListOpen]]`,
       behavior = `It is parsed with minimum 0`,
+    })
+    .add({
+      situation = `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
+      behavior = `The postfix rule is tried first, its own criteria included, and the infix rule only when the postfix rule is no match there`,
+    })
+    .add({
+      situation = `A criterion of an operation makes it no match when the expression is parsed for a particular rule, as [[Generic]] is no match for [[Reference]]`,
+      behavior = `An attempt for that rule is distinct from an attempt at the same token index and minimum for another rule`,
     });
 
   // Errors
@@ -157,6 +165,18 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       input = [Token[]@like(`The lexing of: x : T = 1`), Expression],
       expect = Tree@like(
         `An [[Assignment]] root whose left side is the [[Definition]] of x as T and whose right side is 1, because [[Definition]] binds tighter than a [[GrammarTraits.setter]]`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a < b > c`), Expression],
+      expect = Tree@like(
+        `A [[RelationalOperation]] root whose left operand is the [[RelationalOperation]] of a and b and whose right operand is c, because the identifier c cannot follow a [[Generic]]; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: f<string>(x)`), Expression],
+      expect = Tree@like(
+        `A [[Call]] root whose left operand is the [[Generic]] of f with the one type argument string and whose [[Items]] hold x; no errors`,
       ),
     },
     {

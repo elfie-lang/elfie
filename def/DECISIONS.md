@@ -357,3 +357,47 @@ LSP/MCP protocols are deliberately not part of this round.
   package; a reference must start with a name, so `[[1, 2], x]` in a test is not one; a file that
   declares nothing (the prelude) is exempt from unused-use checks. `scripts/compiler-prompt.md`
   tells the compiler the library is a specification, never a unit.
+
+# Generics, mapped output access, independent verification (2026-09-20)
+
+- **Criteria are never named.** A review, a rejection, or a problem says `<file>:<line>` and
+  quotes the criterion. Names would not be unique, would be one more thing to keep in sync, and a
+  criterion that needs a name to be understood is the thing to fix. Consequence: no coverage
+  tool per criterion; coverage stays per entity, and a verifier's reviews are keyed by file, line,
+  and entity.
+- **Type parameters.** `TypeParameter`, `TypeParameters`, `TypeArguments`, `FunctionType` in type
+  position, and a `Generic` postfix in expression position with a lookahead (the `>` must be
+  followed by `;`, `,`, `)`, `]`, `}`, `=`, `(`, `.`, `[`, `|`, `&`, or `=>`), so that a member's
+  type `= List<T>;` parses while `a < b > c` stays relational. `T[]` is sugar for `List<T>`,
+  `Entity.itemType` is the first argument of `List`, display prefers `T[]`. The binder substitutes
+  positionally and infers nothing else; an argument-count mismatch is a Problem. `Any` and the
+  `function` stand-in leave the library in the round after the grammar compiles, since the current
+  binary cannot parse angle brackets and the library must bind throughout.
+- **Regions are markers with an end.** `Marker.end` is the line before the next marker in the same
+  output, or the last line; derived at acceptance, never written by the compiler. A separate
+  region type was rejected as a second copy of the same fact.
+- **Entity-level changes are computed by rebinding the previous text** through the workspace's
+  `change`, then comparing entities by identifier: kinds added, removed, definition, type,
+  signature, criteria, tests, body. Mechanical, and what the compiler and verifier read instead of
+  whole files.
+- **Verification is a second command.** `elfie.json` names a `verifier` beside `compiler`; it runs
+  after structural acceptance with the review request on stdin, read-only tools, no access to the
+  generator's report. One JSON line per criterion and test: file, line, entity, status
+  (satisfied, violated, unverifiable), evidence, note; end line `ELFIE: REVIEWED`. A violated
+  review rejects the batch with `failure at <file>:<line>: <note> (<evidence>)` and the existing
+  retry-once rule applies; unverifiable never rejects; `--no-verify` and a missing `verifier` skip
+  it. `elfie verify <stem>` runs it standalone.
+- **MCP gains `output`, `source`, `changes`, `review`**, all read-only: generated regions by
+  entity, the definition line behind a generated line, the entity-level diff since acceptance, and
+  the verifier's own request. Resources stay out; four tools keep the surface exact.
+- **Writers' decisions folded in:** `ChangeKind.type` is spelled `declaredType` because `type` is
+  a keyword and cannot name an enum member; `TypeGroup` is its own rule because `FunctionType`
+  and a parenthesized type share a first token, and `triedBefore.apply(TypeValue, TypeGroup)`
+  orders them; `Generic` binds at the access level and is tried before `RelationalOperation` at
+  the same token; a type parameter's kind data is `Kinds.Parameter` (its default in
+  `defaultValue`), so `kinds.lfy` did not grow; a generic reference is "the declaration seen with
+  arguments", an entity whose type is the declaration; `Hover.owner` names the declaration a type
+  parameter or member belongs to; type spelling is centralized in `Query.typeTextOf`; a criterion's
+  place is its contributor's file and the line its `add` call or `where` begins; the verification
+  retry is its own once-more, separate from the structural retry; a twice-failed verifier run
+  still rejects on any violated review it did parse.

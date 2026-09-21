@@ -65,7 +65,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `help`,
-      behavior = `Prints every command with one line of description and the global options, and returns success`,
+      behavior = `Prints every command of [[Command]], verify among them, with one line of description and the global options, --no-verify among them, and returns success`,
     })
     .add({ situation = `version`, behavior = `Prints the version of the executable and returns success` });
 
@@ -154,7 +154,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The outcome is accepted`,
-      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back, its [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty, and the batch counts as done`,
+      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back, its [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty, and the batch is verified, or counts as done when nothing verifies it`,
     })
     .add({
       situation = `The outcome is rejected`,
@@ -188,6 +188,69 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `No compiler is run; the outputs already under [[Target.outputDirectory]] for each planned unit, found as when the command exits, are checked with [[Generation.accept]], written back normalized, and recorded when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`,
     });
 
+  // Verifying
+  // Decision: the verifier is a second agent that never writes, run after acceptance so that the
+  // source maps exist and every criterion can be pointed at the region of output that claims to
+  // satisfy it; a compiler judging its own work is not a check, and a review that names no
+  // line of output is not evidence.
+  @acceptanceCriteria
+    .add({
+      situation = `A batch's units are accepted and recorded, elfie.json names a verifier, and --no-verify is not given`,
+      behavior = `A verifying progress line is printed, then the verifier, the command elfie.json names under verifier, is [[Process.stream]] once for the batch with [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, and the source maps as just recorded as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment, as the compiler is; each line it writes is shown as it arrives prefixed by the batch, and [[Process.Exit.stdout]] whole is read by [[Generation.reviewOf]]`,
+    })
+    .add({
+      behavior = `[[ReviewReport.reviews]] is [[Files.write]] as [[Json.stringify]] pretty to elfie-requests/<batch>.reviews.json under the root, replacing an earlier file, and one reviewed progress line follows, whose message is the counts of satisfied, violated, and unverifiable reviews`,
+    })
+    .add({
+      situation = `No review is violated`,
+      behavior = `The batch is done; an unverifiable review is counted in the reviewed line and never rejects`,
+    })
+    .add({
+      situation = `Some review is violated`,
+      behavior = `The batch is rejected with one problem per violated review reading failure at, a space, [[Review.file]], a colon, [[Review.line]], a colon, a space, [[Review.note]], a space, and [[Review.evidence]] in parentheses; it is handled as a rejected outcome is: the problems are printed and the batch is run once more with them appended to the instructions, even when it was already run once more for a rejected outcome`,
+    })
+    .add({
+      situation = `The batch run again for violated reviews is accepted and recorded`,
+      behavior = `The verifier runs on it again the same way; a violated review then stops the batch as rejected, which the finished line and the code count as a rejection`,
+    })
+    .add({
+      situation = `[[ReviewReport.problems]] is not empty, no line of [[Process.Exit.stdout]] reads ELFIE: REVIEWED, or [[Process.Exit.code]] is -1`,
+      behavior = `The verifier run failed: it is run once more; when that run fails too, its problems are printed as a failed progress line, and the batch is verified with the reviews parsed from that run as if its report had been complete`,
+    })
+    .add({
+      situation = `compile with --no-verify, or elfie.json names no verifier`,
+      behavior = `No verifier runs, nothing is reviewed, no reviews file is written, and a batch is done when its units are accepted and recorded`,
+    })
+    .add({
+      behavior = `verifying and reviewed are [[Progress]] lines like every other step, so --json prints each as [[Json.stringify]] of the [[Progress]]; every line of the verifier's output and its report are [[Files.append]] to elfie-requests/compile.log as the compiler's are`,
+    });
+
+  // verify
+  // Decision: verify is compile without the compiler: the same plan, the same review request, the
+  // same verifier, so a person can ask for an opinion on outputs already recorded.
+  @acceptanceCriteria
+    .add({
+      situation = `verify`,
+      behavior = `[[Loader.load]] of the root and the source maps read as compile reads them, any error diagnostic printed and ending with problems; then [[Generation.plan]] with every stem given as a requested unit or, with no stem, with every unit whose [[Unit.outputs]] is not empty requested; --target limits the plan to one target; nothing is compiled and no output is written`,
+    })
+    .add({
+      situation = `A stem given names a unit whose [[Unit.outputs]] is empty`,
+      behavior = `It is printed as having nothing to review and left out, and the code does not change for it`,
+    })
+    .add({
+      behavior = `For each batch of [[Plan.batches]] holding a requested unit, in plan order, [[Generation.review]] of the plan, the batch, and the source maps is built and the verifier is run, its output shown and logged, its report read by [[Generation.reviewOf]], and elfie-requests/<batch>.reviews.json written, exactly as compile does after acceptance, a failed run being run once more the same way`,
+    })
+    .add({
+      behavior = `Each review is printed as its status, a space, [[Review.file]], a colon, [[Review.line]], a space, [[Review.entity]], a colon, a space, and [[Review.note]]; after each batch one line gives the counts of satisfied, violated, and unverifiable; with --json each review is [[Json.stringify]] of the [[Review]] on one line`,
+    })
+    .add({
+      behavior = `The code is problems when any review is violated, failure when the verifier could not be started, and success otherwise`,
+    })
+    .add({
+      situation = `elfie.json names no verifier`,
+      behavior = `The review request of each batch is [[Files.write]] to elfie-requests under the root, named by the batch identifier with the extension .review.md, for a verifier run by hand; the code is success`,
+    });
+
   // lsp, mcp
   @acceptanceCriteria
     .add({ situation = `lsp`, behavior = `Returns [[Lsp.serve]] of the root` })
@@ -212,6 +275,60 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         ],
       ],
       expect = number@like(`0, after printing one unit with reason fresh and one batch holding it`),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--root`,
+          string@like(
+            `A root with one target, def/a.lfy declaring A with a criterion on line 3, a compiler that writes an output with a marker for A and ends with ELFIE: DONE, and a verifier that writes one review of def/a.lfy line 3 for A with status violated, evidence crates/a/src/a.rs:4-6, and note returns 0 for an empty list, then ELFIE: REVIEWED`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `1, after a reviewed line counting 0 satisfied, 1 violated, 0 unverifiable, the problem failure at def/a.lfy:3: returns 0 for an empty list (crates/a/src/a.rs:4-6), a retrying line, the compiler run a second time with that problem appended to its instructions, the verifier run a second time, and the batch rejected`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--root`,
+          string@like(
+            `The same root with a verifier that writes one review of def/a.lfy line 3 for A with status satisfied and no ELFIE: REVIEWED line`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after the verifier ran twice, a failed line for its second report, a reviewed line counting 1 satisfied, 0 violated, 0 unverifiable, and elfie-requests/a.reviews.json holding that review`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--no-verify`,
+          `--root`,
+          string@like(`The same root`),
+        ],
+      ],
+      expect = number@like(`0, after the compiler ran once, no verifier ran, and no reviews file was written`),
+    },
+    {
+      input = [
+        [
+          `verify`,
+          `a`,
+          `--root`,
+          string@like(
+            `The same root with the output for a recorded in source-map.json and a verifier that writes one review of def/a.lfy line 3 for A with status satisfied and note covered by a test, then ELFIE: REVIEWED`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after printing satisfied def/a.lfy:3 A: covered by a test, then 1 satisfied, 0 violated, 0 unverifiable, with no compiler run`,
+      ),
     },
   );
 }

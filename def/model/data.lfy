@@ -33,6 +33,7 @@ enum SymbolKind: `What kind of declaration a symbol came from` {
   variable = `variable`,
   loopVariable = `loopVariable`,
   parameter = `parameter`,
+  typeParameter = `typeParameter`,
   member = `member`,
   _alias = `alias`,
   _external = `external`,

@@ -53,6 +53,12 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
       behavior = `One space between a keyword and what follows it, and between a closing [[GroupClose]] and a [[BlockOpen]]`,
     })
     .add({
+      behavior = `The [[LessThan]] and [[GreaterThan]] of [[TypeParameters]], [[TypeArguments]], and [[Generic]] are brackets, not operators: no space after the [[LessThan]] and none before the [[GreaterThan]]; [[TypeParameters]] attach to the [[Identifier]] before them and [[TypeArguments]] and [[Generic]] to the expression before them without a space`,
+    })
+    .add({
+      behavior = `A [[FunctionType]] is laid out as its [[Parameters]] are, then one space, the [[DoubleArrowRight]], one space, and the type`,
+    })
+    .add({
       behavior = `A [[Block]] opens on the line of its statement and its close stands alone on its own line; an empty [[Block]] is the two braces together`,
     });
 
@@ -65,6 +71,10 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
     .add({
       situation = `Otherwise`,
       behavior = `It stays on one line and a trailing [[Comma]] before the close is removed`,
+    })
+    .add({
+      situation = `[[TypeParameters]], [[TypeArguments]], or the arguments of a [[Generic]] would make the line exceed 120 characters`,
+      behavior = `They are multi-line like [[Arguments]]: one item per line, each ending with a [[Comma]], the [[GreaterThan]] on its own line; otherwise they stay on one line whatever the source held`,
     })
     .add({
       situation = `A chain of [[Call]] and [[Member]] on one left side, such as add on acceptanceCriteria, held a [[NewLine]] before an accessor in the source`,
@@ -83,6 +93,10 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
     {
       input = [Tree@like(`The parse of: const = 1;`)],
       expect = `const = 1;`,
+    },
+    {
+      input = [Tree@like(`The parse of: fn map < T,U >(list:List< T >,transform:( item:T )=>U)=>List<U>;`)],
+      expect = `fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;\n`,
     },
   );
 }

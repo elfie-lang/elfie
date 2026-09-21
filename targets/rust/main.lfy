@@ -59,6 +59,21 @@ trait rust extends targetLanguage, cratePerPrefix(
       behavior = `A builtin fn or member is never generated, only called; a member of a builtin data written out in full is translated where it is used`,
     });
 
+  // Generics
+  @acceptanceCriteria
+    .add({
+      behavior = `A declaration with type parameters becomes a generic item with the same parameters, in the same order and with the same names`,
+    })
+    .add({
+      behavior = `An extends constraint on a type parameter becomes a trait bound when the target has a trait matching the constraint's data or trait; otherwise the bound is dropped and a comment on the item names the constraint`,
+    })
+    .add({
+      behavior = `List<T> and T[] are Vec<T>; a type argument that is a primitive maps as the standard library section says`,
+    })
+    .add({
+      behavior = `A parameter whose type is a function type (A) => B is impl Fn(A) -> B; a member of a data whose type is a function type is Box<dyn Fn(A) -> B>`,
+    });
+
   // Quality
   @acceptanceCriteria
     .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })

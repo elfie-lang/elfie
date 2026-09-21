@@ -16,6 +16,7 @@ use "../workspace/data";
 use "./data";
 use "elfie/prelude/builtin";
 use "elfie/prelude/entity" as Prelude;
+use "elfie/prelude/kinds" as Kinds;
 use "elfie/values/list" as Lists;
 use "elfie/values/number" as Numbers;
 use "elfie/values/object" as Objects;
@@ -162,6 +163,10 @@ fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, 
     .add({
       behavior = `[[SemanticToken.type]] follows the kind of the symbol the token declares or resolves to: the [[TokenType]] of the same name where there is one; [[SymbolKind.agentFunction]] gives [[TokenType._function]]; [[SymbolKind.loopVariable]] and [[SymbolKind._external]] give [[TokenType.variable]]; [[SymbolKind.member]] gives [[TokenType.property]]; [[SymbolKind._module]] gives [[TokenType.namespace]]`,
     })
+    .add({
+      situation = `The token declares or resolves to a symbol of kind [[SymbolKind.typeParameter]]`,
+      behavior = `The type is [[TokenType.typeParameter]] wherever the name appears, in the [[TypeParameters]] that lists it, in a type position, and in an expression alike; declaration is among the modifiers of the token in the [[TypeParameter]] alone`,
+    })
     .add({ situation = `The symbol is an alias`, behavior = `The type is that of the entity it is bound to` })
     .add({
       situation = `The token resolves to a member of a kind data or of a base data, as [[Binder.bind]] resolves the [[ContextAccessor]] and the [[ValueAccessor]], or names a member of a kind data other than the entity's`,
@@ -213,10 +218,69 @@ fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, 
         `f as function with declaration and agentic; g as variable with documentation and unresolved; acceptanceCriteria as property with context; no token for add, since it is not a name in the program`,
       ),
     },
+    {
+      input = [
+        Workspace@like(`One file a.lfy reading: d Box<T> { $item: \`d\` = T; } const b = Box<string>;`),
+        `def/a.lfy`,
+      ],
+      expect = SemanticToken[]@like(
+        `Box as data with declaration and agentic; T as typeParameter with declaration; item as property with declaration; T as typeParameter with no modifiers; b as variable with declaration and readonly; Box as data with agentic; no token for string`,
+      ),
+    },
   );
 }
 
 // Hover Queries
+
+fn typeTextOf(workspace: Workspace, entity: Entity | undefined): `How a type is spelled wherever a query shows one` => string | undefined {
+  @acceptanceCriteria
+    .add({ situation = `[[entity]] is undefined`, behavior = `Returns undefined` })
+    .add({
+      behavior = `A declaration, or a primitive, is spelled by its identifier; a type parameter by its name; a type that declares no name by the source text of its type expression`,
+    })
+    .add({
+      situation = `[[entity]] has [[Entity.typeArguments]]`,
+      behavior = `The identifier, then a less-than sign, then each argument spelled the same way, joined by a comma and a space, then a greater-than sign`,
+    })
+    .add({
+      situation = `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
+      behavior = `The argument spelled the same way, then square brackets, so the sugar wins in display; the argument is parenthesized first when it is a function type or a union or intersection`,
+    })
+    .add({
+      situation = `[[entity]] is the entity of a [[FunctionType]]`,
+      behavior = `A parenthesized list of its parameters, each as its name, a colon, a space, and its type spelled the same way, with a question mark after the name of an optional one and three dots before a spread one, joined by a comma and a space, then a space, a double arrow, a space, and [[FnEntity.output]] spelled the same way`,
+    })
+    .add({
+      situation = `A member's type is read on a left side with [[Entity.typeArguments]]`,
+      behavior = `What is spelled is the type after the substitution [[Binder.bind]] describes, so item of a Box of string spells string`,
+    });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`One file a.lfy reading: d Box<T> {} const b = Box<string>;`),
+        Entity@like(`The type of b`),
+      ],
+      expect = `Box<string>`,
+    },
+    {
+      input = [
+        Workspace@like(
+          `One file a.lfy reading: d Box<T> { $items: \`d\` = T[]; $map: \`e\` = (transform: (item: T) => T) => T[]; }`,
+        ),
+        Entity@like(`The type of the parameter transform`),
+      ],
+      expect = `(item: T) => T`,
+    },
+    {
+      input = [
+        Workspace@like(`One file a.lfy reading: d Box<T> { $items: \`d\` = T[]; }`),
+        Entity@like(`The type of the member items`),
+      ],
+      expect = `T[]`,
+    },
+  );
+}
 
 fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one entity` => Hover {
   @acceptanceCriteria
@@ -230,8 +294,9 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
     .add({
       behavior = `[[Hover.definition]] is [[Entity.definition]] with each [[TemplateReference]] replaced by the referenced identifier and each [[TemplateExecution]] by its value`,
     })
+    .add({ behavior = `[[Hover.type]] is [[typeTextOf]] [[Entity.type]]` })
     .add({
-      behavior = `[[Hover.type]] is the identifier of [[Entity.type]], or the source text of the type expression when it declares no name`,
+      behavior = `[[Hover.owner]] is the identifier of the declaration whose [[TypeParameters]] lists a type parameter, or [[Kinds.Member.owner]] of a member, and undefined for anything else`,
     })
     .add({
       behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`,
@@ -243,6 +308,10 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
     .add({
       situation = `[[entity]] is a member of a kind data or of a base data, reached after the [[ContextAccessor]] or a [[ValueAccessor]]`,
       behavior = `It hovers as any member: kind [[SymbolKind.member]], its range in the library file that declares it, and its own definition and type`,
+    })
+    .add({
+      situation = `[[entity]] is a type parameter`,
+      behavior = `[[Hover.kind]] is [[SymbolKind.typeParameter]], [[Hover.type]] is [[typeTextOf]] its constraint, the type after its [[ExtendsKeyword]], or undefined when it has none, [[Hover.owner]] is the declaration that lists it, and [[Hover.definition]], [[Hover.traits]], and [[Hover.criteria]] are empty`,
     });
 }
 
@@ -259,6 +328,14 @@ fn hoverAt(workspace: Workspace, file: string, position: Position): `Everything 
         Position@like(`on the A after the equals sign`),
       ],
       expect = Hover@like(`kind data, identifier A, definition An A, documentation Doc, no criteria`),
+    },
+    {
+      input = [
+        Workspace@like(`One file a.lfy reading: d Item {} d Box<T extends Item> { $item: \`d\` = T; }`),
+        `def/a.lfy`,
+        Position@like(`on the T after the equals sign`),
+      ],
+      expect = Hover@like(`kind typeParameter, identifier T, type Item, owner Box, no definition, no criteria`),
     },
   );
 }
@@ -297,7 +374,7 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
       behavior = `No completions`,
     })
     .add({
-      situation = `The token is an [[IsKeyword]], an [[ExtendsKeyword]], or a [[Comma]] inside [[TraitUses]]`,
+      situation = `The token is an [[IsKeyword]], the [[ExtendsKeyword]] of an [[ExtendsClause]], or a [[Comma]] inside [[TraitUses]]`,
       behavior = `Every symbol of kind [[SymbolKind._trait]] visible from the position, plus the module symbols`,
     })
     .add({
@@ -309,8 +386,12 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
       behavior = `Every name visible from the position, then every [[rule]] entity's identifier, because a reference found nowhere resolves to a rule`,
     })
     .add({
-      situation = `The token is the [[Colon]] of a [[DefinitionClause]] or [[Definition]]`,
-      behavior = `Every symbol of kind [[SymbolKind.data]], [[SymbolKind._type]], [[SymbolKind._enum]], or [[SymbolKind._trait]] visible from the position, then the primitive type keywords`,
+      situation = `The token is the [[Colon]] of a [[DefinitionClause]] or [[Definition]], the [[LessThan]] or a [[Comma]] of [[TypeArguments]] or of [[Generic]], or the [[ExtendsKeyword]] or [[PlainSetter]] of a [[TypeParameter]]`,
+      behavior = `A type is offered: every symbol of kind [[SymbolKind.data]], [[SymbolKind._type]], [[SymbolKind._enum]], [[SymbolKind._trait]], or [[SymbolKind.typeParameter]] visible from the position, then the primitive type keywords`,
+    })
+    .add({
+      situation = `A type parameter is visible from the position and a type is offered anywhere above or below`,
+      behavior = `The type parameter is among the completions, of kind [[SymbolKind.typeParameter]]`,
     })
     .add({
       situation = `A [[Statement]] can begin at the position`,
@@ -345,6 +426,16 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
     {
       input = [Workspace@like(`One file a.lfy reading: trait t {} d A is `), `def/a.lfy`, Position@like(`at the end`)],
       expect = Completion[]@like(`t alone, of kind trait`),
+    },
+    {
+      input = [
+        Workspace@like(`One file a.lfy reading: d Item {} d Box<T> { $pair: \`d\` = Box<`),
+        `def/a.lfy`,
+        Position@like(`just after the less-than sign`),
+      ],
+      expect = Completion[]@like(
+        `T of kind typeParameter, Item and Box of kind data, then the primitive type keywords; no pair`,
+      ),
     },
   );
 }

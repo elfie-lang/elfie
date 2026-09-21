@@ -54,5 +54,6 @@
       "version": "4"
     }
   ],
-  "compiler": "scripts/compile-unit.sh"
+  "compiler": "scripts/compile-unit.sh",
+  "verifier": "scripts/verify-unit.sh"
 }

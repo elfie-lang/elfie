@@ -9,8 +9,12 @@ definition file compiled for one target. Produce its outputs and nothing else.
 - Every `@test` case becomes a `#[test]`; every acceptance criterion a test can check becomes
   one, marked with the criterion's line.
 - Use the `elfie` MCP tools for anything the request leaves out: `elfie_entity` for a
-  definition, `elfie_references` for uses, `elfie_grammar` for the language, and
-  `elfie_check <stem>` to see whether acceptance would pass before you finish.
+  definition, `elfie_references` for uses, `elfie_grammar` for the language, `elfie_changes
+  <stem>` for what changed in a unit since its output was accepted, `elfie_output <name>` for the
+  generated region of an entity, `elfie_source <file> <line>` for the definition behind a
+  generated line, and `elfie_check <stem>` to see whether acceptance would pass before you finish.
+- A rejection may carry `failure at <file>:<line>: <why>` lines from an independent reviewer that
+  read your output against that criterion; fix the code, not the review.
 - When you are done, `cargo build -p <crate>`, `cargo test -p <crate>`, and
   `cargo clippy -p <crate>` must pass for the crate you wrote; run them.
 - The package `elfie` under `lib/` is the standard library: the context layer every entity has,

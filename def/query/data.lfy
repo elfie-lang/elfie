@@ -41,7 +41,8 @@ d Hover: `Everything an editor or agent shows for one entity` {
   $kind: `The kind of the entity's symbol` = SymbolKind;
   $identifier: `The entity's name` = string;
   $definition: `[[Entity.definition]] with every template reference and execution resolved for the entity` = string | undefined;
-  $type: `The identifier of [[Entity.type]], or the source text of the type when it is anonymous` = string | undefined;
+  $type: `[[Entity.type]] spelled as it is written: an identifier, a generic with its arguments, T[] for a list, a function type with its parameters and output, a type parameter by its name; undefined when there is none` = string | undefined;
+  $owner: `The identifier of the declaration that lists a type parameter or declares a member; undefined for anything else` = string | undefined;
   $traits: `The identifier of each of [[Entity.traits]] in application order; builtin among them for a native thing` = string[];
   $documentation: `The text of the [[Documentation]] attached to the declaration, without the boundaries and with references kept as written` = string | undefined;
   $criteria: `[[Binder.criteriaOf]] the entity` = Criterion[];
@@ -83,6 +84,7 @@ enum TokenType: `What a semantic token stands for; the protocol's own kinds wher
   enumMember = `enumMember`,
   _function = `function`,
   parameter = `parameter`,
+  typeParameter = `typeParameter`,
   variable = `variable`,
   property = `property`,
 }

@@ -81,7 +81,7 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
   @acceptanceCriteria
     .add({
       situation = `hover`,
-      behavior = `[[Query.hoverAt]] as markdown: a code line of the kind, identifier, a colon, and the type; then the definition; then the traits of [[Hover.traits]] on one line when there are any, so a native thing shows builtin; then the documentation; then each criterion as a list item reading its situations then its behaviors`,
+      behavior = `[[Query.hoverAt]] as markdown: a code line of the kind, identifier, a colon, and the type, then the owner of [[Hover.owner]] in parentheses when there is one; then the definition; then the traits of [[Hover.traits]] on one line when there are any, so a native thing shows builtin; then the documentation; then each criterion as a list item reading its situations then its behaviors`,
     })
     .add({ situation = `definition`, behavior = `[[Query.definitionOf]] as one location` })
     .add({ situation = `references`, behavior = `[[Query.referencesTo]] with the request's includeDeclaration` })

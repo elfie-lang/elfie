@@ -7,8 +7,10 @@ use "./expression";
 // Declarations
 
 d DataDeclaration is statement(
-  `[[AgentDataKeyword]] , [[Identifier]] , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )`,
-): `A data structure whose implementation is generated from its criteria` {}
+  `[[AgentDataKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )`,
+): `A data structure whose implementation is generated from its criteria` {
+  where (`The source is d List<T>;`) -> `A [[DataDeclaration]] of List whose [[TypeParameters]] hold the one [[TypeParameter]] T`;
+}
 d AgentFunctionDeclaration is statement(
   `[[AgentFunctionKeyword]] , [[Signature]] , (/ [[DoubleArrowRight]] , [[TypeExpression]] /) , ( [[Block]] | [[Semicolon]] )`,
 ): `A function whose implementation is generated from its criteria` {}
@@ -16,9 +18,11 @@ d FunctionDeclaration is statement(
   `[[FunctionKeyword]] , [[Signature]] , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[Block]]`,
 ): `A function written out in full` {}
 d TraitDeclaration is statement(
-  `[[TraitKeyword]] , [[Identifier]] , (/ [[Parameters]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , [[Block]]`,
+  `[[TraitKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[Parameters]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , [[Block]]`,
 ): `A reusable component` {}
-d TypeDeclaration is statement(`[[TypeKeyword]] , [[Declared]] , [[Type]]`): `A structural type` {}
+d TypeDeclaration is statement(
+  `[[TypeKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , [[Type]]`,
+): `A structural type` {}
 d EnumDeclaration is statement(`[[EnumKeyword]] , [[Declared]] , [[Object]]`): `A set of named values` {}
 d VariableDeclaration is statement(
   `( [[ConstKeyword]] | [[LetKeyword]] ) , [[Declared]] , (/ [[PlainSetter]] , [[Expression]] /) , [[Semicolon]]`,
