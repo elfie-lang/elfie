@@ -483,13 +483,10 @@ pub fn problems(session: &Session, file: Option<&str>) -> Result<String, String>
     let workspace = &session.workspace;
     let diagnostics = query::diagnostics_of(workspace, file); // @lfy def/mcp/main.lfy:problems
     if diagnostics.is_empty() {
-        // Decision: a file that is neither in the program nor the manifest is more likely
-        // misspelled than clean, so it is an error listing the files, as elfie_outline
-        // reports one.
+        // Decision: the criterion answers this situation with text, not a failure, and it
+        // names no exception for a file outside the program, so a name that matches
+        // nothing is answered the same way; elfie_outline is the tool that lists the files.
         if let Some(file) = file {
-            if file != MANIFEST && workspace.file(file).is_none() {
-                return Err(not_in_program(workspace, file));
-            }
             return Ok(format!("no problems in {file}")); // @lfy def/mcp/main.lfy:problems
         }
         return Ok("no problems".to_string()); // @lfy def/mcp/main.lfy:problems
@@ -559,6 +556,9 @@ pub fn entity(session: &Session, name: &str) -> Result<String, String> {
         }
         if let Some(ty) = &hover.ty {
             out.push_str(&format!("\n## Type\n{ty}\n"));
+        }
+        if let Some(owner) = &hover.owner {
+            out.push_str(&format!("\n## Owner\n{owner}\n"));
         }
         if let Some(documentation) = &hover.documentation {
             out.push_str(&format!("\n## Documentation\n{documentation}\n"));
@@ -1184,8 +1184,15 @@ mod tests {
     /// The directory of the library a fixture carries, relative to its root.
     const LIBRARY_ROOT: &str = "lib";
     /// The library a fixture carries: the trait `target`, which a target's marker must
-    /// extend, in the prelude every file of the project sees.
-    const LIBRARY: &str = "trait target { }\n";
+    /// extend, in the prelude every file of the project sees. It also declares the kind
+    /// data `Entity` and `Trait`, so that a target package's `rust.apply(global)` reads
+    /// `apply` as a member of the marker's kind rather than as a name nothing declares.
+    const LIBRARY: &str = concat!(
+        "d Entity: `What every declared thing is seen as through its context layer` {\n}\n\n",
+        "d Trait extends Entity: `A trait seen through its context layer` {\n",
+        "  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;\n}\n\n",
+        "trait target { }\n"
+    );
     /// The manifest of a fixture: it names the library the fixture carries.
     const LIBRARY_MANIFEST: &str = r#"{ "lib": "lib" }"#;
 
@@ -1291,8 +1298,9 @@ mod tests {
         let session = fixture.session();
         assert_eq!(problems(&session, None).unwrap(), "no problems");
         assert_eq!(problems(&session, Some("def/a.lfy")).unwrap(), "no problems in def/a.lfy");
-        let error = problems(&session, Some("def/b.lfy")).unwrap_err();
-        assert!(error.contains("def/a.lfy"), "{error}");
+        // A file the program does not hold has no problems either, and is answered with
+        // text rather than a failure. @lfy def/mcp/main.lfy:problems
+        assert_eq!(problems(&session, Some("def/b.lfy")).unwrap(), "no problems in def/b.lfy");
     }
 
     // @lfy def/mcp/traits.lfy:tool
@@ -1384,6 +1392,20 @@ mod tests {
         assert_eq!(problems(&session, None).unwrap(), "no problems");
         let described = entity(&session, "A").unwrap();
         assert!(described.contains("## Traits\nt\n"), "{described}");
+    }
+
+    // Every field of the hover has a heading, `Hover.owner` among them: a member found as
+    // `A.x` is headed by the declaration that declares it.
+    // @lfy def/mcp/main.lfy:entity
+    #[test]
+    fn entity_names_the_owner_of_a_member() {
+        let fixture = Fixture::new();
+        fixture.write("def/a.lfy", "d A { $x: `An x` = string; }\n");
+        let session = fixture.session();
+        let described = entity(&session, "A.x").unwrap();
+        assert!(described.contains("## Owner\nA\n"), "{described}");
+        // A declaration that nothing owns has no such heading.
+        assert!(!entity(&session, "A").unwrap().contains("## Owner"));
     }
 
     // @lfy def/mcp/main.lfy:entity
