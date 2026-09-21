@@ -177,7 +177,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         `Nothing is found for a name`,
         `The name is not the [[MemberName]] of a [[Member]] whose left side has no symbol either`,
       ],
-      behavior = `The [[Usage]] has no symbol, and a [[Problem]] is added, whatever the left side is: a trait, a data, a module, a predicate, or a value; being lenient here would hide a misspelled member behind a silent undefined`,
+      behavior = `The [[Usage]] has no symbol, and a [[Problem]] is added, whatever the left side is: a trait, a data, a module, a predicate, or a value, and even when no prelude is bound so the entity's kind data is empty; being lenient here would hide a misspelled member behind a silent undefined`,
     });
 
   // Properties

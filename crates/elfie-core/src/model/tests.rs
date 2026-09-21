@@ -56,11 +56,15 @@ fn prelude() -> Vec<Source> {
         &[],
         Origin::Library,
     );
+    // `Trait.apply` is a member whose value is a reference to a fn declaration, as the
+    // standard library writes it; `Entity.like` is one written as an inline function.
+    // @lfy def/model/main.lfy:bind
     let kinds = source_from(
         "lib/prelude/kinds.lfy",
         "use \"./entity\"; d Data extends Entity {} \
          d Trait extends Entity { $entities: `What carries it` = Entity[]; \
-         $apply: `Applies it` = (target: Entity) => Trait; } \
+         $apply: `Applies it` = apply; } \
+         fn apply(subject: Trait, target: Entity): `Applies a trait` => Trait {} \
          d Function extends Entity { $parameters: `Its parameters` = Entity[]; }",
         &[Some("lib/prelude/entity.lfy")],
         Origin::Library,
@@ -1204,9 +1208,9 @@ fn unknown_context_property_is_a_problem() {
 fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     let model = bind_with_prelude(
         "trait t {} d A { $m: `own` = string; } const i = A@identifier; const e = t@entities; \
-         const w = A@entities; const o = A.m; const p = t.apply; const q = t.entities;",
+         const w = A@entities; const o = A.m; const p = t.apply; const l = A.like; \
+         const q = t.entities;",
     );
-    assert_clean(&model);
     let file = model.file("a.lfy").unwrap();
     // Entity gives every entity its identifier; Trait gives a trait its entities.
     reads_member(
@@ -1231,18 +1235,28 @@ fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
         usage(&model, node(&model, file, E::Member, "A.m")).symbol,
         Some(member(&model, a, "m"))
     );
-    // Then those members of the kind data whose value is a function, and no others.
+    // Then those members of the kind data whose value is a function, whether a reference
+    // to a fn declaration, as `Trait.apply` is, or an inline function, as `Entity.like`
+    // is.
+    // @lfy def/model/main.lfy:bind
     reads_member(
         &model,
         node(&model, file, E::Member, "t.apply"),
         "Trait",
         "apply",
     );
-    // A member of the kind data whose value is not a function is not one of them.
-    assert_eq!(
-        usage(&model, node(&model, file, E::Member, "t.entities")).symbol,
-        None
+    reads_member(
+        &model,
+        node(&model, file, E::Member, "A.like"),
+        "Entity",
+        "like",
     );
+    // A member of the kind data whose value is not a function is not one of them, and,
+    // the left side being a trait no more lenient than any other, that is a problem.
+    // @lfy def/model/main.lfy:bind
+    let entities = node(&model, file, E::Member, "t.entities");
+    assert_eq!(usage(&model, entities).symbol, None);
+    assert_eq!(problems(&model), vec!["t.entities: t has no member entities"]);
 }
 
 /// A value of a base data resolves that data's members; an object's keys are its own.
@@ -1351,6 +1365,52 @@ fn a_member_of_an_unresolved_name_is_not_a_second_problem() {
     let deeper = node(&model, 0, E::Member, "z.deeper");
     assert_eq!(usage(&model, deeper).name.as_deref(), Some("deeper"));
     assert_eq!(usage(&model, deeper).symbol, None);
+}
+
+/// Nothing found for a name is a problem whatever the left side is: a trait, a data, a
+/// module, a predicate, or a value. What a predicate reads includes the members of the
+/// traits the entities carrying it carry, so a name one of them has is found.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
+    let mut sources = prelude();
+    sources.push(source("m.lfy", "d Far {}", &[]));
+    sources.push(source(
+        "a.lfy",
+        "use \"./m\" as M; trait t {} trait u { $only: `on u` = string; } d A is t, u {} \
+         const v = 'text'; const p = t.nope; const q = A.nope; const r = M.nope; \
+         const w = v.nope; const x: is t = A; const ok = x.only; const bad = x.nope;",
+        &[Some("m.lfy")],
+    ));
+    let model = bind(sources);
+    let file = model.file("a.lfy").unwrap();
+    // A name a carrier of the trait has is found: `x` is one of the entities carrying t,
+    // and A, the one of them, carries u as well, so the member u declares is read.
+    // @lfy def/model/main.lfy:bind
+    let u = model.symbols[file_symbol(&model, file, "u")].entity;
+    assert_eq!(
+        usage(&model, node(&model, file, E::Member, "x.only")).symbol,
+        Some(member(&model, u, "only"))
+    );
+    // Every other left side is read strictly, a predicate no less than a data.
+    for raw in ["t.nope", "A.nope", "M.nope", "v.nope", "x.nope"] {
+        assert_eq!(
+            usage(&model, node(&model, file, E::Member, raw)).symbol,
+            None,
+            "{raw}"
+        );
+    }
+    assert_eq!(
+        problems(&model),
+        vec![
+            "t.nope: t has no member nope",
+            "A.nope: A has no member nope",
+            "M.nope: the module declares no nope",
+            "v.nope: String has no member nope",
+            "x.nope: t has no member nope",
+        ]
+    );
 }
 
 /// A Name resolves to the first match walking outward.
@@ -1542,6 +1602,54 @@ fn type_and_item_type() {
         model.problems[0].node,
         node(&model, program, E::TypeArguments, "<string>")
     );
+}
+
+/// The type of a variable declared from a list value is a list of what the value holds,
+/// so it reads the members of List and has that item type.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_list_value_has_the_type_of_a_list() {
+    let model = bind_with_prelude(
+        "d A {} const xs = [1, 2]; const n = xs.length; const many = ['text', A]; \
+         const spread = [...xs, 3]; const empty = [];",
+    );
+    assert_clean(&model);
+    let file = model.file("a.lfy").unwrap();
+    let ty = |name: &str| {
+        model.entities[model.symbols[file_symbol(&model, file, name)].entity]
+            .ty
+            .clone()
+    };
+    let item = |name: &str| {
+        model.entities[model.symbols[file_symbol(&model, file, name)].entity]
+            .item_type
+            .clone()
+    };
+    // A list of numbers is a list of number: the items are values of that kind, not the
+    // one value each was written as.
+    // @lfy def/model/main.lfy:bind
+    assert_eq!(
+        ty("xs"),
+        Some(TypeRef::List(Box::new(TypeRef::Primitive("number"))))
+    );
+    assert_eq!(item("xs"), Some(TypeRef::Primitive("number")));
+    // Its base data is List, so the members of List are read on it.
+    reads_member(&model, node(&model, file, E::Member, "xs.length"), "List", "length");
+    // Items of more than one type are a union of them, each written once; a spread holds
+    // what the list it spreads holds.
+    // @lfy def/model/main.lfy:bind
+    let a = model.symbols[file_symbol(&model, file, "A")].entity;
+    assert_eq!(
+        item("many"),
+        Some(TypeRef::Union(vec![
+            TypeRef::Primitive("string"),
+            TypeRef::Entity(a)
+        ]))
+    );
+    assert_eq!(item("spread"), Some(TypeRef::Primitive("number")));
+    // An empty list is a list all the same, of nothing the model can read.
+    assert!(matches!(ty("empty"), Some(TypeRef::List(_))));
 }
 
 /// Entity.typeParameters is empty for a declaration without them, and Entity.typeArguments

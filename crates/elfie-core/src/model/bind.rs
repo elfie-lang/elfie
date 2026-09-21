@@ -266,6 +266,48 @@ impl Binder {
             .or_else(|| self.model.lookup_local(self.universe, name))
     }
 
+    /// The same, for a name written at `node`: the member a declaration declares is not
+    /// among the names its own value sees, so the value of `Trait$apply` is the fn
+    /// `apply` the file declares and not the member being declared.
+    // @lfy def/model/main.lfy:bind
+    fn lookup_at(&self, node: NodeRef, scope: ScopeId, name: &str) -> Option<SymbolId> {
+        let found = self.lookup(scope, name)?;
+        if !self.declares_at(node, found) {
+            return Some(found);
+        }
+        let mut current = Some(scope);
+        while let Some(id) = current {
+            let scope = &self.model.scopes[id];
+            if let Some(&symbol) = scope
+                .symbols
+                .iter()
+                .chain(scope.imports.iter())
+                .find(|&&symbol| symbol != found && self.model.symbols[symbol].name == name)
+            {
+                return Some(symbol);
+            }
+            current = scope.parent;
+        }
+        self.model.lookup_local(self.universe, name)
+    }
+
+    /// Whether the symbol is the member whose own declaration the node stands in.
+    // @lfy def/model/main.lfy:bind
+    fn declares_at(&self, node: NodeRef, symbol: SymbolId) -> bool {
+        let symbol = &self.model.symbols[symbol];
+        if symbol.kind != SymbolKind::Member || symbol.node.file != node.file {
+            return false;
+        }
+        let mut current = Some(node);
+        while let Some(at) = current {
+            if at == symbol.node {
+                return true;
+            }
+            current = self.trees.parent(at);
+        }
+        false
+    }
+
     pub fn current_of(&self, r: NodeRef) -> EntityId {
         let scope = self.model.enclosing_scope(r);
         self.model.scopes[scope].current
@@ -724,7 +766,7 @@ impl Binder {
             && (trees.token(first.file, name).value == "entities"
                 || trees.token(first.file, name).value == "extenders")
             && let Some(left) = trees.left(first)
-            && let Some(symbol) = self.resolve_name_node(left)
+            && let Some(symbol) = self.iterable_symbol(for_node, left)
         {
             let entity = self.model.symbols[symbol].entity;
             return Some(TypeRef::Predicate(entity));
@@ -735,12 +777,28 @@ impl Binder {
         }
     }
 
+    /// The symbol the left of a For's iterable names, read as if the loop variable were
+    /// not declared yet: `for (const rule in rule@entities)` iterates what the trait
+    /// `rule` the enclosing scope names carries, because a loop variable's type is what
+    /// is being worked out here and cannot be its own.
+    // @lfy def/model/main.lfy:bind
+    fn iterable_symbol(&self, for_node: NodeRef, left: NodeRef) -> Option<SymbolId> {
+        let symbol = self.resolve_name_node(left)?;
+        if Some(symbol) != self.model.symbol_of(for_node) {
+            return Some(symbol);
+        }
+        let name = self.trees.name(left)?;
+        let scope = self.model.scope_of(for_node)?;
+        let outer = self.model.scopes[scope].parent?;
+        self.lookup(outer, &name)
+    }
+
     /// The symbol a Name node names, looked up statically.
     pub fn resolve_name_node(&self, node: NodeRef) -> Option<SymbolId> {
         let trees = &self.trees;
         if trees.is(node, E::Name) {
             let name = trees.name(node)?;
-            return self.lookup(self.model.enclosing_scope(node), &name);
+            return self.lookup_at(node, self.model.enclosing_scope(node), &name);
         }
         if trees.is(node, E::Member) {
             let left = trees.left(node)?;
@@ -826,7 +884,22 @@ impl Binder {
     fn kind_function_member(&self, entity: EntityId, name: &str) -> Option<SymbolId> {
         let symbol = self.kind_member(entity, name)?;
         let member = self.model.symbols[symbol].entity;
-        matches!(self.model.entities[member].ty, Some(TypeRef::Function)).then_some(symbol)
+        let ty = self.model.entities[member].ty.as_ref()?;
+        self.is_function_value(ty).then_some(symbol)
+    }
+
+    /// Whether what a member is written as is a function: an inline function, or a
+    /// reference to a fn or function declaration, as `Trait.apply` is. Both read as a
+    /// function type, and an inline function that owns a fn entity as that entity.
+    // @lfy def/model/main.lfy:bind
+    fn is_function_value(&self, ty: &TypeRef) -> bool {
+        match ty {
+            TypeRef::Function => true,
+            TypeRef::Entity(entity) => {
+                matches!(self.model.entities[*entity].kind, EntityKind::Fn { .. })
+            }
+            _ => false,
+        }
     }
 
     /// The base data of a value of this type: what the prelude declares for the kind of
@@ -1028,6 +1101,11 @@ impl Binder {
                     }
                     SymbolKind::Alias | SymbolKind::External => TypeRef::Entity(entity),
                     SymbolKind::Module => TypeRef::Entity(entity),
+                    // A name that refers to a fn or function declaration is a function,
+                    // whether or not the type pass has reached that declaration yet, so
+                    // the value of a member written as one is a function.
+                    // @lfy def/model/main.lfy:bind
+                    SymbolKind::Function | SymbolKind::AgentFunction => TypeRef::Function,
                     // A name of a type parameter yields the type parameter's entity, not
                     // what it must extend.
                     // @lfy def/model/main.lfy:bind
@@ -1140,6 +1218,32 @@ impl Binder {
         if rule == E::Object.entity() {
             return TypeRef::Primitive("object");
         }
+        // A list value is a list of what it holds: the types of its items, the same one
+        // written once, so the value of a variable declared from one reads `List` and
+        // its item type.
+        // @lfy def/model/main.lfy:bind
+        // @lfy def/model/main.lfy:bind
+        if rule == E::List.entity() {
+            // The items of a list are written as one `Items` node inside the brackets.
+            // @lfy def/grammar/rules/expression.lfy:Items
+            let written = match trees.child(node, E::Items) {
+                Some(items) => trees.child_nodes(items),
+                None => trees.child_nodes(node),
+            };
+            let mut items: Vec<TypeRef> = Vec::new();
+            for item in written {
+                let ty = self.item_type_from_expression(item);
+                if !items.contains(&ty) {
+                    items.push(ty);
+                }
+            }
+            let item = match items.len() {
+                0 => TypeRef::Unknown(trees.raw(node)),
+                1 => items.into_iter().next().expect("one"),
+                _ => TypeRef::Union(items),
+            };
+            return TypeRef::List(Box::new(item));
+        }
         if rule == E::InlineFunction.entity() {
             return TypeRef::Function;
         }
@@ -1162,6 +1266,36 @@ impl Binder {
             }
         }
         TypeRef::Unknown(trees.raw(node))
+    }
+
+    /// What one item of a list value holds: the item itself, or, for a spread, what the
+    /// list it spreads holds. A list holds values of the item's kind rather than the one
+    /// value written, so a literal item is read as the primitive it is one of.
+    // @lfy def/model/main.lfy:bind
+    fn item_type_from_expression(&mut self, item: NodeRef) -> TypeRef {
+        let trees = self.trees.clone();
+        let ty = if trees.is(item, E::SpreadOperation) {
+            match trees
+                .child_nodes(item)
+                .into_iter()
+                .next()
+                .map(|inner| self.type_from_expression(inner))
+            {
+                Some(TypeRef::List(inner)) => *inner,
+                _ => TypeRef::Unknown(trees.raw(item)),
+            }
+        } else {
+            self.type_from_expression(item)
+        };
+        match ty {
+            TypeRef::Literal(value) => match *value {
+                Value::String(_) => TypeRef::Primitive("string"),
+                Value::Number(_) => TypeRef::Primitive("number"),
+                Value::Bool(_) => TypeRef::Primitive("boolean"),
+                other => TypeRef::Literal(Box::new(other)),
+            },
+            other => other,
+        }
     }
 
     /// The anonymous function entity a FunctionType node owns: the current entity of the
@@ -1506,7 +1640,7 @@ impl Binder {
         let Some(name) = trees.name(r) else { return };
         let token = trees.name_token(r);
         let scope = self.model.enclosing_scope(r);
-        let mut symbol = self.lookup(scope, &name);
+        let mut symbol = self.lookup_at(r, scope, &name);
         if symbol.is_none() && self.in_template(r) {
             symbol = self
                 .model
@@ -1663,34 +1797,25 @@ impl Binder {
                                 .flatten()
                         });
                     if symbol.is_none() {
-                        let lenient = matches!(
-                            self.model.entities[entity].kind,
-                            EntityKind::Trait { .. }
-                                | EntityKind::External
-                                | EntityKind::Alias
-                                | EntityKind::Parameter
-                                | EntityKind::Variable
-                                | EntityKind::LoopVariable
-                        ) || self.model.entities[entity].scope.is_none();
-                        if !lenient {
-                            let owner = self.model.entities[entity]
-                                .identifier
-                                .clone()
-                                .unwrap_or_else(|| "the current entity".to_string());
-                            let what = if current {
-                                "the current entity"
-                            } else {
-                                owner.as_str()
-                            };
-                            self.problem(r, format!("{what} has no member {name}"));
-                        }
+                        self.no_member(r, entity, name, current);
                     }
                     symbol
                 }
-                Target::Predicate(trait_entity) => self
-                    .member_symbol(trait_entity, name)
-                    .or_else(|| self.inherited_member(trait_entity, name))
-                    .or_else(|| self.kind_function_member(trait_entity, name)),
+                // Anything with the trait: the trait's members, what it extends, and the
+                // function members of its kind data. A name found in none of them is a
+                // problem here as well, a predicate being no more lenient than a data.
+                // @lfy def/model/main.lfy:bind
+                Target::Predicate(trait_entity) => {
+                    let symbol = self
+                        .member_symbol(trait_entity, name)
+                        .or_else(|| self.inherited_member(trait_entity, name))
+                        .or_else(|| self.kind_function_member(trait_entity, name))
+                        .or_else(|| self.carried_member(trait_entity, name));
+                    if symbol.is_none() {
+                        self.no_member(r, trait_entity, name, false);
+                    }
+                    symbol
+                }
                 // For a value of a base data, that data's members. An object's keys come
                 // first and are not known here, so a name the data does not declare is
                 // left to the object.
@@ -1717,12 +1842,85 @@ impl Binder {
         }
     }
 
-    /// A member reached through the traits an entity carries or extends.
+    /// Nothing was found for a name read on an entity: the usage has no symbol and a
+    /// problem is added, whatever the left side is, because being lenient here would hide
+    /// a misspelled member behind a silent undefined. The one exception is the trait of a
+    /// program with no prelude: a trait is the entity whose value layer is all kind data,
+    /// so with none of it a name only the prelude would give is found nowhere and nothing
+    /// was misspelled.
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind
+    fn no_member(&mut self, r: NodeRef, entity: EntityId, name: &str, current: bool) {
+        if matches!(self.model.entities[entity].kind, EntityKind::Trait { .. })
+            && self.kind_data(entity).is_empty()
+        {
+            return;
+        }
+        let owner = self.model.entities[entity]
+            .identifier
+            .clone()
+            .unwrap_or_else(|| "the current entity".to_string());
+        let what = if current {
+            "the current entity"
+        } else {
+            owner.as_str()
+        };
+        self.problem(r, format!("{what} has no member {name}"));
+    }
+
+    /// A member of anything that carries a trait: a value that `is t` is one of the
+    /// entities `t` was applied to, so a name `t` itself does not spell is looked for
+    /// among the traits those entities carry as well — `precedence` on a rule that is
+    /// also `binding`, `lexCondition` on a terminal that is also `candidateInModes`. A
+    /// name no carrier has is found nowhere, and is a problem like any other.
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind
+    fn carried_member(&self, trait_entity: EntityId, name: &str) -> Option<SymbolId> {
+        let EntityKind::Trait { entities, .. } = &self.model.entities[trait_entity].kind else {
+            return None;
+        };
+        let mut seen = vec![trait_entity];
+        for &carrier in entities {
+            for applied in &self.model.entities[carrier].traits {
+                if seen.contains(&applied.entity) {
+                    continue;
+                }
+                seen.push(applied.entity);
+                if let Some(symbol) = self.member_symbol(applied.entity, name) {
+                    return Some(symbol);
+                }
+            }
+        }
+        None
+    }
+
+    /// A member reached through the traits an entity carries or extends, up the whole
+    /// chain: what a trait extends is applied too, so its members are reached as well.
+    // @lfy def/model/main.lfy:bind
     fn inherited_member(&self, entity: EntityId, name: &str) -> Option<SymbolId> {
-        for applied in &self.model.entities[entity].traits {
-            if let Some(symbol) = self.member_symbol(applied.entity, name) {
+        let mut seen = vec![entity];
+        let mut pending: Vec<EntityId> = self.model.entities[entity]
+            .traits
+            .iter()
+            .map(|applied| applied.entity)
+            .collect();
+        let mut next = 0;
+        while next < pending.len() {
+            let carried = pending[next];
+            next += 1;
+            if seen.contains(&carried) {
+                continue;
+            }
+            seen.push(carried);
+            if let Some(symbol) = self.member_symbol(carried, name) {
                 return Some(symbol);
             }
+            pending.extend(
+                self.model.entities[carried]
+                    .traits
+                    .iter()
+                    .map(|applied| applied.entity),
+            );
         }
         None
     }

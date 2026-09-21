@@ -189,29 +189,30 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     });
 
   // Verifying
-  // Decision: the verifier is a second agent that never writes, run after acceptance so that the
-  // source maps exist and every criterion can be pointed at the region of output that claims to
-  // satisfy it; a compiler judging its own work is not a check, and a review that names no
+  // Decision: the verifier is a second agent that never writes, run after structural acceptance,
+  // with the source maps accept derived but before they are recorded, so that every criterion can
+  // be pointed at the region of output that claims to satisfy it and a batch the review rejects
+  // stays planned; a compiler judging its own work is not a check, and a review that names no
   // line of output is not evidence.
   @acceptanceCriteria
     .add({
-      situation = `A batch's units are accepted and recorded, elfie.json names a verifier, and --no-verify is not given`,
-      behavior = `A verifying progress line is printed, then the verifier, the command elfie.json names under verifier, is [[Process.stream]] once for the batch with [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, and the source maps as just recorded as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment, as the compiler is; each line it writes is shown as it arrives prefixed by the batch, and [[Process.Exit.stdout]] whole is read by [[Generation.reviewOf]]`,
+      situation = `A batch's units are accepted by [[Generation.accept]], elfie.json names a verifier, and --no-verify is not given`,
+      behavior = `A verifying progress line is printed, then the verifier, the command elfie.json names under verifier, is [[Process.stream]] once for the batch with [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, and the source maps [[Generation.accept]] derived, held but not yet recorded, as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment, as the compiler is; each line it writes is shown as it arrives prefixed by the batch, and [[Process.Exit.stdout]] whole is read by [[Generation.reviewOf]]`,
     })
     .add({
       behavior = `[[ReviewReport.reviews]] is [[Files.write]] as [[Json.stringify]] pretty to elfie-requests/<batch>.reviews.json under the root, replacing an earlier file, and one reviewed progress line follows, whose message is the counts of satisfied, violated, and unverifiable reviews`,
     })
     .add({
       situation = `No review is violated`,
-      behavior = `The batch is done; an unverifiable review is counted in the reviewed line and never rejects`,
+      behavior = `The held source maps are recorded and the batch is done; an unverifiable review is counted in the reviewed line and never rejects`,
     })
     .add({
       situation = `Some review is violated`,
       behavior = `The batch is rejected with one problem per violated review reading failure at, a space, [[Review.file]], a colon, [[Review.line]], a colon, a space, [[Review.note]], a space, and [[Review.evidence]] in parentheses; it is handled as a rejected outcome is: the problems are printed and the batch is run once more with them appended to the instructions, even when it was already run once more for a rejected outcome`,
     })
     .add({
-      situation = `The batch run again for violated reviews is accepted and recorded`,
-      behavior = `The verifier runs on it again the same way; a violated review then stops the batch as rejected, which the finished line and the code count as a rejection`,
+      situation = `The batch run again for violated reviews is accepted`,
+      behavior = `The verifier runs on it again the same way; a violated review then stops the batch as rejected, which the finished line and the code count as a rejection, and its source maps are not recorded, so its outputs stay on disk and the unit stays planned`,
     })
     .add({
       situation = `[[ReviewReport.problems]] is not empty, no line of [[Process.Exit.stdout]] reads ELFIE: REVIEWED, or [[Process.Exit.code]] is -1`,
@@ -219,7 +220,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `compile with --no-verify, or elfie.json names no verifier`,
-      behavior = `No verifier runs, nothing is reviewed, no reviews file is written, and a batch is done when its units are accepted and recorded`,
+      behavior = `No verifier runs, nothing is reviewed, no reviews file is written, and a batch is done and its source maps recorded when its units are accepted`,
     })
     .add({
       behavior = `verifying and reviewed are [[Progress]] lines like every other step, so --json prints each as [[Json.stringify]] of the [[Progress]]; every line of the verifier's output and its report are [[Files.append]] to elfie-requests/compile.log as the compiler's are`,
