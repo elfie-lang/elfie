@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
-pub mod data; // @lfy def/workspace/main.lfy:7
+pub mod data; // @lfy def/workspace/data.lfy:Workspace
 
 pub use data::*;
 
@@ -79,7 +79,6 @@ pub fn load(root: &Path) -> Workspace {
 /// every file replaced this way holds what it was replaced with. A `path` that is neither
 /// under the source directory, nor under a package root, nor resolved to by a `Use` in the
 /// program gives back a workspace equal to `workspace`.
-// @lfy def/workspace/main.lfy:change
 // @lfy def/workspace/main.lfy:change
 pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspace {
     // @lfy def/workspace/main.lfy:change

@@ -11,6 +11,9 @@
 //! with every criterion and test already resolved so that a compiler with no access to
 //! the model can still work; [`outcome_of`] reads how a run ended; [`accept`] checks
 //! outputs structurally, normalizes their markers, and gives them their source maps.
+//! [`regions_of`] finds the generated regions one entity's name owns, [`changes`] what
+//! differs for each entity of a unit since its outputs were accepted, [`review`] what an
+//! independent verifier is handed, and [`review_of`] what it found.
 //! Nothing here shells out.
 
 use std::collections::{BTreeMap, HashSet, VecDeque};
@@ -18,17 +21,22 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub mod data; // @lfy def/generation/main.lfy:6
+pub mod data; // @lfy def/generation/data.lfy:Plan
 
 pub use data::*;
 
 use sha2::{Digest, Sha256};
 use unicode_ident::{is_xid_continue, is_xid_start};
 
+use crate::grammar::Entity as Rule;
+use crate::grammar::rules::expression::Expression;
+use crate::grammar::rules::statement::Statement;
 use crate::model::{
     self, Applied, AppliedSource, Criterion, Entity, EntityId, EntityKind, FileId, Model, NodeRef,
     SymbolKind, Value,
 };
+use crate::parser::Child;
+use crate::parser::components::is_trivia;
 use crate::workspace::{File, NativeDependency, Target, Workspace};
 
 /// The extension of a source file.
@@ -1210,8 +1218,9 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
 /// declaration is rewritten to name that entity, since a name survives edits and a line
 /// does not. A marker naming a file that is not in the program is ignored and not
 /// recorded: it is a fixture or prose, not a claim about the program. Otherwise accepted,
-/// with one source map per output. Whether an output builds or its tests pass is not
-/// checked here; the guidance says how, and the caller runs it.
+/// with one source map per output, each marker carrying the end of the region it begins.
+/// Whether an output builds or its tests pass is not checked here; the guidance says how,
+/// and the caller runs it.
 // Decision: the definition passes the request and the unit; a plan here does not own its
 // workspace, so the workspace and the plan are extra first parameters and the unit is
 // given as its index into the plan.
@@ -1254,6 +1263,10 @@ pub fn accept(
             ));
         }
         let mut markers = Vec::new();
+        // [`parse_markers`] derives each marker's end as the line before the output line
+        // of the next marker in the same output, or the last line of the output for the
+        // last one, so the regions of an output partition it from its first marker on.
+        // @lfy def/generation/main.lfy:accept
         for marker in parse_markers(&output.text) {
             // @lfy def/generation/main.lfy:accept
             if let Some(marker) = resolve_marker(
@@ -1542,6 +1555,918 @@ fn declaration_lines(model: &Model, entity: EntityId) -> Option<(usize, usize)> 
 }
 
 // ---------------------------------------------------------------------------------------
+// regionsOf
+// ---------------------------------------------------------------------------------------
+
+/// Every region of generated output that came from one entity.
+///
+/// `name` is an identifier, or an owner's identifier, a dot, and a member's name; `target`
+/// is the identifier of one target, or `None` for every target. The markers come source map
+/// by source map in the order they are given, and within one in the order of its markers,
+/// which is output order. A marker whose entity is `name`, a dot, and a member's name comes
+/// too, since a member's region is part of its owner's code, and a marker that names a line
+/// rather than an entity comes when its file declares the entity named `name` and the line
+/// falls inside its declaring node. Nothing matching gives an empty list.
+// @lfy def/generation/main.lfy:regionsOf
+pub fn regions_of(
+    workspace: &Workspace,
+    source_maps: &[SourceMap],
+    name: &str,
+    target: Option<&str>,
+) -> Vec<Marker> {
+    // @lfy def/generation/main.lfy:regionsOf
+    matching_regions(workspace, source_maps, name, target)
+        .into_iter()
+        .map(|(_, marker)| marker.clone())
+        .collect()
+}
+
+/// Every region one name owns, each with the source map that holds it, so that a caller
+/// that needs the output path has it; [`regions_of`] is this without the source maps.
+// @lfy def/generation/main.lfy:regionsOf
+fn matching_regions<'m>(
+    workspace: &Workspace,
+    source_maps: &'m [SourceMap],
+    name: &str,
+    target: Option<&str>,
+) -> Vec<(&'m SourceMap, &'m Marker)> {
+    let model = &workspace.model;
+    // A member's region is part of its owner's code, so `A` owns `A.x` too.
+    let member = format!("{name}.");
+    let mut out: Vec<(&SourceMap, &Marker)> = Vec::new();
+    for map in source_maps {
+        // @lfy def/generation/main.lfy:regionsOf
+        if target.is_some_and(|target| map.target != target) {
+            continue;
+        }
+        for marker in &map.markers {
+            let matched = match &marker.entity {
+                // @lfy def/generation/main.lfy:regionsOf
+                Some(entity) => entity == name || entity.starts_with(&member),
+                // A marker that names a line belongs to the entity whose declaration
+                // covers it. @lfy def/generation/main.lfy:regionsOf
+                None => covers_named(model, &marker.file, name, marker.line),
+            };
+            if matched {
+                out.push((map, marker));
+            }
+        }
+    }
+    out
+}
+
+/// Whether a file of the program declares an entity of this name whose declaring node
+/// covers a line.
+// @lfy def/generation/main.lfy:regionsOf
+fn covers_named(model: &Model, path: &str, name: &str, line: usize) -> bool {
+    let Some(source) = model.file(path) else {
+        return false;
+    };
+    named_entities(model, source, &[])
+        .iter()
+        .filter(|(candidate, _)| candidate == name)
+        .any(|&(_, entity)| {
+            declaration_lines(model, entity)
+                .is_some_and(|(first, last)| (first..=last).contains(&line))
+        })
+}
+
+// ---------------------------------------------------------------------------------------
+// changes
+// ---------------------------------------------------------------------------------------
+
+/// What a change of kind added says, and what one of kind removed says.
+const ADDED: &str = "it is declared now and was not in the file the outputs were generated from";
+const REMOVED: &str = "it was declared in the file the outputs were generated from and is not now";
+/// How long a text may be for a detail to quote it rather than name it.
+// @lfy def/generation/main.lfy:changes
+const DETAIL_LIMIT: usize = 80;
+
+/// What differs for each entity of a unit between its file as last accepted and as it is
+/// now.
+///
+/// `previous` is the text of the unit's file when its outputs were last accepted, and
+/// `None` when they never were, which makes every entity of the unit an addition. The file
+/// as it was is bound through [`change`](crate::workspace::change) and its entities are
+/// compared with the unit's by name — the identifier, or the owner's identifier, a dot, and
+/// a member's name — so a reformatted or reordered file whose entities read the same gives
+/// no change at all.
+// Decision: a change is found by binding the previous text through the loader and comparing
+// entities, never by diffing lines.
+// @lfy def/generation/main.lfy:changes
+pub fn changes(workspace: &Workspace, unit: &Unit, previous: Option<&str>) -> Vec<Change> {
+    let model = &workspace.model;
+    let path = workspace.files[unit.file].path.clone();
+    let now = entity_table(model, &unit.entities);
+    let Some(previous) = previous else {
+        // @lfy def/generation/main.lfy:changes
+        return unit
+            .entities
+            .iter()
+            .map(|&entity| Change {
+                entity: entity_name(model, entity),
+                kind: ChangeKind::Added,
+                detail: ADDED.to_string(),
+            })
+            .collect();
+    };
+    // @lfy def/generation/main.lfy:changes
+    let before = crate::workspace::change(workspace, &path, Some(previous));
+    let was = entity_table(
+        &before.model,
+        &previous_entities(
+            &before,
+            &workspace.targets[unit.target].identifier,
+            &path,
+        ),
+    );
+
+    // File order: the order of the unit's entities, with a removed entity after the last
+    // entity that preceded it before and is still declared, or first when none is.
+    // @lfy def/generation/main.lfy:changes
+    let mut anchor: Option<String> = None;
+    let mut removed: Vec<(Option<String>, String)> = Vec::new();
+    for (name, _) in &was {
+        if now.iter().any(|(candidate, _)| candidate == name) {
+            anchor = Some(name.clone());
+        } else {
+            removed.push((anchor.clone(), name.clone()));
+        }
+    }
+    let mut order: Vec<String> = removed
+        .iter()
+        .filter(|(place, _)| place.is_none())
+        .map(|(_, name)| name.clone())
+        .collect();
+    for (name, _) in &now {
+        order.push(name.clone());
+        for (place, name) in removed
+            .iter()
+            .filter(|(place, _)| place.as_deref() == Some(name.as_str()))
+        {
+            let _ = place;
+            order.push(name.clone());
+        }
+    }
+
+    let mut out: Vec<Change> = Vec::new();
+    for name in order {
+        let new = now
+            .iter()
+            .find(|(candidate, _)| candidate == &name)
+            .map(|&(_, entity)| entity);
+        let old = was
+            .iter()
+            .find(|(candidate, _)| candidate == &name)
+            .map(|&(_, entity)| entity);
+        match (old, new) {
+            // @lfy def/generation/main.lfy:changes
+            (None, Some(_)) => out.push(Change {
+                entity: name,
+                kind: ChangeKind::Added,
+                detail: ADDED.to_string(),
+            }),
+            // @lfy def/generation/main.lfy:changes
+            (Some(_), None) => out.push(Change {
+                entity: name,
+                kind: ChangeKind::Removed,
+                detail: REMOVED.to_string(),
+            }),
+            // @lfy def/generation/main.lfy:changes
+            (Some(old), Some(new)) => {
+                out.extend(differences(&name, &before.model, old, model, new));
+            }
+            (None, None) => {}
+        }
+    }
+    out
+}
+
+/// Every entity of a unit and every member it declares, in file order, each with the name
+/// it is compared by: the identifier, or the owner's identifier, a dot, and the member's
+/// name.
+// @lfy def/generation/main.lfy:changes
+fn entity_table(model: &Model, entities: &[EntityId]) -> Vec<(String, EntityId)> {
+    let mut out: Vec<(String, EntityId)> = Vec::new();
+    let push = |name: String, entity: EntityId, out: &mut Vec<(String, EntityId)>| {
+        if !out.iter().any(|(candidate, _)| candidate == &name) {
+            out.push((name, entity));
+        }
+    };
+    for &entity in entities {
+        let name = entity_name(model, entity);
+        // A member is compared as an entity of its own, under its owner, so the owner
+        // comes first and its members follow it.
+        push(name.clone(), entity, &mut out);
+        for member in members_of(model, entity) {
+            if let Some(member_name) = &model.entities[member].identifier {
+                push(format!("{name}.{member_name}"), member, &mut out);
+            }
+        }
+    }
+    out
+}
+
+/// The entities the file at a path gives for a target in a workspace bound from the
+/// previous text; none when the file or the target is not in it.
+// @lfy def/generation/main.lfy:changes
+fn previous_entities(before: &Workspace, target: &str, path: &str) -> Vec<EntityId> {
+    let Some(file) = before.file(path) else {
+        return Vec::new();
+    };
+    let Some(target) = before
+        .targets
+        .iter()
+        .find(|candidate| candidate.identifier == target)
+    else {
+        return Vec::new();
+    };
+    built_entities(&before.model, file.source, target.marker)
+}
+
+/// One change per kind that differs for a name declared on both sides, in the order
+/// [`ChangeKind`] declares them.
+// @lfy def/generation/main.lfy:changes
+fn differences(
+    name: &str,
+    was: &Model,
+    old: EntityId,
+    now: &Model,
+    new: EntityId,
+) -> Vec<Change> {
+    let mut out: Vec<Change> = Vec::new();
+
+    // @lfy def/generation/main.lfy:changes
+    let old_definition = was.entities[old].definition.clone().unwrap_or_default();
+    let new_definition = now.entities[new].definition.clone().unwrap_or_default();
+    if old_definition != new_definition {
+        out.push(Change {
+            entity: name.to_string(),
+            kind: ChangeKind::Definition,
+            detail: detail("the definition", &old_definition, &new_definition),
+        });
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    let old_type = type_spelling(was, old);
+    let new_type = type_spelling(now, new);
+    if old_type != new_type {
+        out.push(Change {
+            entity: name.to_string(),
+            kind: ChangeKind::DeclaredType,
+            detail: detail("the type", &old_type, &new_type),
+        });
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    let old_parameters = parameter_spellings(was, old);
+    let new_parameters = parameter_spellings(now, new);
+    let old_output = output_spelling(was, old);
+    let new_output = output_spelling(now, new);
+    if old_parameters != new_parameters || old_output != new_output {
+        out.push(Change {
+            entity: name.to_string(),
+            kind: ChangeKind::Signature,
+            detail: signature_detail(
+                &old_parameters,
+                &new_parameters,
+                &old_output,
+                &new_output,
+            ),
+        });
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    let old_criteria = criteria_texts(was, old);
+    let new_criteria = criteria_texts(now, new);
+    if old_criteria != new_criteria {
+        out.push(Change {
+            entity: name.to_string(),
+            kind: ChangeKind::Criteria,
+            detail: list_detail("criteria", "criterion", &old_criteria, &new_criteria),
+        });
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    let old_tests = test_texts(was, old);
+    let new_tests = test_texts(now, new);
+    if old_tests != new_tests {
+        out.push(Change {
+            entity: name.to_string(),
+            kind: ChangeKind::Tests,
+            detail: list_detail("tests", "test", &old_tests, &new_tests),
+        });
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    let old_body = body_text(was, old);
+    let new_body = body_text(now, new);
+    if old_body != new_body {
+        out.push(Change {
+            entity: name.to_string(),
+            kind: ChangeKind::Body,
+            detail: detail("the body", &old_body, &new_body),
+        });
+    }
+
+    out
+}
+
+/// One line saying what differs: the old and the new quoted when each is short, and their
+/// lengths named otherwise.
+// @lfy def/generation/main.lfy:changes
+fn detail(what: &str, old: &str, new: &str) -> String {
+    let (before, after) = (old.chars().count(), new.chars().count());
+    if before < DETAIL_LIMIT && after < DETAIL_LIMIT {
+        format!("{what} was `{old}` and is now `{new}`")
+    } else {
+        format!("{what} differs: {before} characters before and {after} now")
+    }
+}
+
+/// One line naming which parameter or output differs.
+// @lfy def/generation/main.lfy:changes
+fn signature_detail(
+    old: &[(String, String)],
+    new: &[(String, String)],
+    old_output: &str,
+    new_output: &str,
+) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    for (name, ty) in new {
+        match old.iter().find(|(candidate, _)| candidate == name) {
+            None => parts.push(format!("the parameter {name} was added")),
+            Some((_, was)) if was != ty => {
+                parts.push(detail(&format!("the parameter {name}"), was, ty));
+            }
+            Some(_) => {}
+        }
+    }
+    for (name, _) in old {
+        if !new.iter().any(|(candidate, _)| candidate == name) {
+            parts.push(format!("the parameter {name} was removed"));
+        }
+    }
+    if parts.is_empty() && old.len() == new.len() {
+        let names: Vec<&str> = new.iter().map(|(name, _)| name.as_str()).collect();
+        parts.push(format!("the parameters are in another order: {}", names.join(", ")));
+    }
+    if old_output != new_output {
+        parts.push(detail("the output", old_output, new_output));
+    }
+    parts.join("; ")
+}
+
+/// One line naming how two lists of texts differ: their counts when those differ, and the
+/// first item that differs otherwise.
+// @lfy def/generation/main.lfy:changes
+fn list_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> String {
+    if old.len() != new.len() {
+        return format!("{} {plural} before and {} now", old.len(), new.len());
+    }
+    for (index, (was, is)) in old.iter().zip(new).enumerate() {
+        if was != is {
+            return detail(&format!("{singular} {}", index + 1), was, is);
+        }
+    }
+    format!("the {plural} differ")
+}
+
+/// The type of an entity, as `interfaceOf` spells it; empty when it has none.
+// @lfy def/generation/main.lfy:changes
+fn type_spelling(model: &Model, entity: EntityId) -> String {
+    match &model.entities[entity].ty {
+        Some(ty) => model::type_text(model, ty),
+        None => String::new(),
+    }
+}
+
+/// The parameters of a fn with their types, as `interfaceOf` spells them.
+// @lfy def/generation/main.lfy:changes
+fn parameter_spellings(model: &Model, entity: EntityId) -> Vec<(String, String)> {
+    model.entities[entity]
+        .parameters()
+        .iter()
+        .map(|&symbol| {
+            let symbol = &model.symbols[symbol];
+            (symbol.name.clone(), type_spelling(model, symbol.entity))
+        })
+        .collect()
+}
+
+/// The output of a fn, as `interfaceOf` spells it; empty when it has none.
+// @lfy def/generation/main.lfy:changes
+fn output_spelling(model: &Model, entity: EntityId) -> String {
+    match model.entities[entity].output() {
+        Some(output) => model::type_text(model, output),
+        None => String::new(),
+    }
+}
+
+/// Every criterion of an entity as one line, in order.
+// @lfy def/generation/main.lfy:changes
+fn criteria_texts(model: &Model, entity: EntityId) -> Vec<String> {
+    model::criteria_of(model, entity)
+        .iter()
+        .map(|criterion| {
+            let mut text = String::new();
+            write_criterion(&mut text, criterion);
+            text.trim().to_string()
+        })
+        .collect()
+}
+
+/// Every test of an entity as its input and its expectation on one line, in order.
+// @lfy def/generation/main.lfy:changes
+fn test_texts(model: &Model, entity: EntityId) -> Vec<String> {
+    model.entities[entity]
+        .tests
+        .iter()
+        .map(|test| {
+            format!(
+                "{} gives {}",
+                test.input_text.trim(),
+                test.expect_text.trim()
+            )
+        })
+        .collect()
+}
+
+/// The text of an entity's declaration once its definition, type, parameters, output,
+/// criteria, tests, whitespace, and comments are left out: the raw text of the tokens its
+/// declaring node covers, with every excluded range and every trivium dropped.
+// Decision: a member declares nothing but its name, its definition, and its type, so once
+// those are left out nothing of it remains and its body never differs; and the members a
+// data, type, trait, or enum declares are left out of its body, since each is compared as
+// an entity of its own under it.
+// @lfy def/generation/main.lfy:changes
+fn body_text(model: &Model, entity: EntityId) -> String {
+    let record = &model.entities[entity];
+    if matches!(
+        record.kind,
+        EntityKind::Member | EntityKind::EnumMember | EntityKind::Parameter
+    ) {
+        return String::new();
+    }
+    let Some(node) = record.node else {
+        return String::new();
+    };
+    let (start, end) = {
+        let info = model.info(node);
+        (info.start, info.end)
+    };
+    let mut excluded: Vec<(usize, usize)> = Vec::new();
+    if let Some(definition) = record.definition_node {
+        exclude(model, node, definition, &mut excluded);
+    }
+    // The parameters, with the commas and the parentheses that hold them, so that a
+    // parameter added or removed is a change of signature alone; the declared type of a
+    // type declaration and the output of a fn, which the declaration holds as a type
+    // expression of its own; and the definition of a signature.
+    for child in child_nodes(model, node) {
+        match model.info(child).rule {
+            Rule::Expression(Expression::TypeExpression)
+            | Rule::Expression(Expression::Type)
+            | Rule::Expression(Expression::Parameters) => {
+                exclude(model, node, child, &mut excluded);
+            }
+            Rule::Expression(Expression::Signature) => {
+                for part in child_nodes(model, child) {
+                    if matches!(
+                        model.info(part).rule,
+                        Rule::Expression(Expression::Parameters)
+                            | Rule::Expression(Expression::DefinitionClause)
+                    ) {
+                        exclude(model, node, part, &mut excluded);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    for member in members_of(model, entity) {
+        if let Some(member) = model.entities[member].node {
+            exclude(model, node, member, &mut excluded);
+        }
+    }
+    for criterion in &record.acceptance_criteria {
+        if let Some(statement) = criterion.node.and_then(|it| statement_in(model, node, it)) {
+            exclude(model, node, statement, &mut excluded);
+        }
+    }
+    for test in &record.tests {
+        for part in [test.input, test.expect].into_iter().flatten() {
+            if let Some(statement) = statement_in(model, node, part) {
+                exclude(model, node, statement, &mut excluded);
+            }
+        }
+    }
+    let mut out = String::new();
+    for (index, token) in model.tokens(node.file).iter().enumerate().take(end).skip(start) {
+        if excluded
+            .iter()
+            .any(|&(first, last)| (first..last).contains(&index))
+        {
+            continue;
+        }
+        if token.rule.is_some_and(is_trivia) {
+            continue;
+        }
+        out.push_str(&token.raw);
+    }
+    out
+}
+
+/// Leave the tokens of a node out of a body, when it falls inside the declaration.
+// @lfy def/generation/main.lfy:changes
+fn exclude(
+    model: &Model,
+    declaration: NodeRef,
+    node: NodeRef,
+    out: &mut Vec<(usize, usize)>,
+) {
+    if node.file != declaration.file {
+        return;
+    }
+    let (start, end) = {
+        let info = model.info(declaration);
+        (info.start, info.end)
+    };
+    let info = model.info(node);
+    if info.start >= start && info.end <= end {
+        out.push((info.start, info.end));
+    }
+}
+
+/// The statement of a declaration's body that holds a node: the ancestor whose parent is
+/// the declaration or a block of it. `None` when the node is not inside the declaration.
+// @lfy def/generation/main.lfy:changes
+fn statement_in(model: &Model, declaration: NodeRef, node: NodeRef) -> Option<NodeRef> {
+    if node.file != declaration.file {
+        return None;
+    }
+    let (start, end) = {
+        let info = model.info(declaration);
+        (info.start, info.end)
+    };
+    let info = model.info(node);
+    if info.start < start || info.end > end {
+        return None;
+    }
+    let mut current = node;
+    while let Some(parent) = model.parent(current) {
+        if parent == declaration {
+            return Some(current);
+        }
+        let info = model.info(parent);
+        if info.start < start || info.end > end {
+            return Some(current);
+        }
+        if info.rule == Rule::Statement(Statement::Block) {
+            return Some(current);
+        }
+        current = parent;
+    }
+    Some(current)
+}
+
+/// The nodes a node holds as children, in source order.
+// @lfy def/generation/main.lfy:changes
+fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
+    model
+        .node(node)
+        .children
+        .iter()
+        .filter_map(|child| match child {
+            Child::Node(child) => model.node_ref(node.file, child),
+            _ => None,
+        })
+        .collect()
+}
+
+// ---------------------------------------------------------------------------------------
+// review
+// ---------------------------------------------------------------------------------------
+
+/// Everything a verifier is handed to check the outputs of one batch against every
+/// criterion and test.
+///
+/// The instructions name the batch and the target, then quote every criterion and test of
+/// every entity of every unit with its place — the file of its contributor relative to the
+/// workspace root, a colon, and the line its `add` call, `where` statement, or test object
+/// begins on — then excerpt every region [`regions_of`] finds for those entities in the
+/// target's source maps, then give the verifier protocol.
+// Decision: the verifier is handed the regions already excerpted, so it reads exactly what a
+// criterion is about, and its protocol allows no edits: a review says where and why, never
+// how to fix.
+// Decision: the definition passes the plan and the batch; a plan here does not own its
+// workspace, so the workspace is an extra first parameter.
+// @lfy def/generation/main.lfy:review
+pub fn review(
+    workspace: &Workspace,
+    plan: &Plan,
+    batch: &Batch,
+    source_maps: &[SourceMap],
+) -> ReviewRequest {
+    let model = &workspace.model;
+    let target = batch
+        .units
+        .first()
+        .map(|&index| workspace.targets[plan.units[index].target].identifier.as_str())
+        .unwrap_or_default();
+    let mut out = String::new();
+
+    // A heading naming the batch and the target. @lfy def/generation/main.lfy:review
+    let _ = writeln!(
+        out,
+        "# Reviewing the batch `{}` for the target `{}`\n",
+        batch.identifier, target
+    );
+
+    // Every criterion and test of every entity, with its place.
+    // @lfy def/generation/main.lfy:review
+    out.push_str("## What was asked\n\n");
+    for &index in &batch.units {
+        let unit = &plan.units[index];
+        let file = &workspace.files[unit.file];
+        let _ = writeln!(out, "### `{}` (stem `{}`)\n", file.path, unit.stem);
+        if unit.entities.is_empty() {
+            out.push_str("The unit has no entities.\n\n");
+        }
+        for &entity in &unit.entities {
+            write_review_entity(&mut out, workspace, entity);
+        }
+    }
+
+    // Then the regions generated for each of those entities.
+    // @lfy def/generation/main.lfy:review
+    out.push_str("## What was generated\n\n");
+    for &index in &batch.units {
+        for &entity in &plan.units[index].entities {
+            let name = entity_name(model, entity);
+            let _ = writeln!(out, "### `{name}`\n");
+            write_regions(&mut out, workspace, source_maps, &name, target);
+        }
+    }
+
+    // The verifier protocol. @lfy def/generation/main.lfy:review
+    out.push_str(PROTOCOL);
+
+    ReviewRequest {
+        batch: batch.clone(),
+        instructions: out,
+    }
+}
+
+/// One entity of a unit for a verifier: its name, its definition, then each criterion and
+/// each test on one line prefixed by its place.
+// @lfy def/generation/main.lfy:review
+fn write_review_entity(out: &mut String, workspace: &Workspace, entity: EntityId) {
+    let model = &workspace.model;
+    let record = &model.entities[entity];
+    let _ = writeln!(
+        out,
+        "#### `{}` ({})\n",
+        entity_name(model, entity),
+        kind_text(record)
+    );
+    if let Some(definition) = &record.definition {
+        let _ = writeln!(out, "Definition: {definition}\n");
+    }
+    out.push_str("Criteria:\n");
+    let criteria = model::criteria_of(model, entity);
+    if criteria.is_empty() {
+        out.push_str("(none)\n");
+    }
+    for criterion in &criteria {
+        let mut text = String::new();
+        write_criterion(&mut text, criterion);
+        // @lfy def/generation/main.lfy:review
+        let _ = writeln!(
+            out,
+            "{} — {}",
+            criterion_place(model, criterion, entity),
+            text.trim().trim_start_matches("- ")
+        );
+    }
+    out.push('\n');
+    out.push_str("Tests:\n");
+    if record.tests.is_empty() {
+        out.push_str("(none)\n");
+    }
+    for test in &record.tests {
+        // @lfy def/generation/main.lfy:review
+        let _ = writeln!(
+            out,
+            "{} — Input `{}` gives `{}`",
+            test_place(model, test, entity),
+            test.input_text.trim(),
+            test.expect_text.trim()
+        );
+    }
+    out.push('\n');
+}
+
+/// Where a criterion is written: the file of its contributor relative to the workspace
+/// root, a colon, and the line its `add` call or `where` statement begins on.
+// @lfy def/generation/main.lfy:review
+fn criterion_place(model: &Model, criterion: &Criterion, entity: EntityId) -> String {
+    let node = criterion.node.or(model.entities[criterion.contributor].node);
+    place(model, node, criterion.contributor, entity, node.map(|node| add_line(model, node)))
+}
+
+/// Where a test is written: its entity's file and the line its object begins on.
+// @lfy def/generation/main.lfy:review
+fn test_place(model: &Model, test: &model::Test, entity: EntityId) -> String {
+    let node = test
+        .input
+        .or(test.expect)
+        .map(|node| object_of(model, node))
+        .or(model.entities[entity].node);
+    place(model, node, entity, entity, node.map(|node| line_of(model, node)))
+}
+
+/// A place: the path of the file a node is in, a colon, and a line. The owner's file
+/// stands in where there is no node, and the entity's own file where the owner has none.
+// @lfy def/generation/main.lfy:review
+fn place(
+    model: &Model,
+    node: Option<NodeRef>,
+    owner: EntityId,
+    entity: EntityId,
+    line: Option<usize>,
+) -> String {
+    let file = node
+        .map(|node| node.file)
+        .or(model.entities[owner].file)
+        .or(model.entities[entity].file);
+    match file {
+        Some(file) => format!("{}:{}", model.sources[file].path, line.unwrap_or(1)),
+        None => "unknown:1".to_string(),
+    }
+}
+
+/// The line an `add` call's own text begins on: the line of the object it was called with,
+/// so that each `add` of a chain has a line of its own, and the line the node begins on for
+/// a `where` statement, which is called with nothing.
+// @lfy def/generation/main.lfy:review
+fn add_line(model: &Model, node: NodeRef) -> usize {
+    for child in child_nodes(model, node) {
+        match model.info(child).rule {
+            Rule::Expression(Expression::Object) => return line_of(model, child),
+            Rule::Expression(Expression::Arguments) => {
+                for argument in child_nodes(model, child) {
+                    if model.info(argument).rule == Rule::Expression(Expression::Object) {
+                        return line_of(model, argument);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    line_of(model, node)
+}
+
+/// The object a node is written inside, or the node itself when it is in none.
+// @lfy def/generation/main.lfy:review
+fn object_of(model: &Model, node: NodeRef) -> NodeRef {
+    let mut current = node;
+    while let Some(parent) = model.parent(current) {
+        if model.info(parent).rule == Rule::Expression(Expression::Object) {
+            return parent;
+        }
+        current = parent;
+    }
+    node
+}
+
+/// The source line a node begins on, counting from 1.
+// @lfy def/generation/main.lfy:review
+fn line_of(model: &Model, node: NodeRef) -> usize {
+    model.first_token(node).map_or(1, |token| token.line)
+}
+
+/// Every region generated for one name in the target's source maps: the output path, the
+/// line range, and the text of those lines in a fenced block.
+// @lfy def/generation/main.lfy:review
+fn write_regions(
+    out: &mut String,
+    workspace: &Workspace,
+    source_maps: &[SourceMap],
+    name: &str,
+    target: &str,
+) {
+    let regions = matching_regions(workspace, source_maps, name, Some(target));
+    if regions.is_empty() {
+        out.push_str("No region of any output was generated for it.\n\n");
+        return;
+    }
+    for (map, marker) in regions {
+        let _ = writeln!(out, "`{}:{}-{}`\n", map.output, marker.output_line, marker.end);
+        // @lfy def/generation/main.lfy:review
+        match std::fs::read_to_string(workspace.root.join(&map.output)) {
+            Ok(text) => {
+                let lines: Vec<&str> = text.lines().collect();
+                let last = marker.end.min(lines.len());
+                let first = marker.output_line.saturating_sub(1).min(last);
+                out.push_str("```\n");
+                for line in &lines[first..last] {
+                    out.push_str(line);
+                    out.push('\n');
+                }
+                out.push_str("```\n\n");
+            }
+            Err(error) => {
+                let _ = writeln!(out, "The output could not be read: {error}.\n");
+            }
+        }
+    }
+}
+
+/// What a verifier is told about its own work: that it examines and never edits, what it
+/// writes for each criterion and each test, and how its report ends.
+// @lfy def/generation/main.lfy:review
+const PROTOCOL: &str = "\
+## How to review
+
+You examine and never edit: you change no file, and you propose no code.
+
+Write one JSON object on one line per criterion and per test, with exactly the keys \
+`file`, `line`, `entity`, `status`, `evidence`, and `note`:
+
+- `file` and `line` are the place the criterion or test is quoted with above, and `entity` \
+  is the name it was quoted under.
+- `status` is `satisfied` when the code does what the criterion says, `violated` when it \
+  does something else, or `unverifiable` when no region can be checked against it. A \
+  criterion no region can be checked against is unverifiable, never violated.
+- `evidence` is the output path and the line range you read, such as \
+  `crates/elfie-core/src/x.rs:120-134`, and empty when you read none.
+- `note` is one line saying why and, for a violated one, what the code does instead.
+
+The tools of the agent server may be called for regions this request leaves out.
+
+End your report with exactly one line reading `ELFIE: REVIEWED`.
+";
+
+// ---------------------------------------------------------------------------------------
+// reviewOf
+// ---------------------------------------------------------------------------------------
+
+/// What a verifier found, read mechanically from its report.
+///
+/// The end line is the last line reading `ELFIE: REVIEWED`, with any whitespace around it;
+/// lines after it are ignored. Each line before it that reads as one review object is one
+/// review, in report order, and of two with the same file, line, and entity only the last
+/// is kept, at its own place. Every other line that is not blank and does not begin with
+/// `#` is a problem, as written. With no end line every line is read the same way and the
+/// problems end with a line saying the report did not end.
+// @lfy def/generation/main.lfy:reviewOf
+pub fn review_of(report: &str) -> ReviewReport {
+    /// What the problems end with when the report has no end line.
+    const UNENDED: &str = "the report did not end";
+
+    let lines: Vec<&str> = report.lines().collect();
+    // @lfy def/generation/main.lfy:reviewOf
+    let end = lines.iter().rposition(|line| line.trim() == REVIEWED);
+    let body = match end {
+        Some(index) => &lines[..index],
+        None => &lines[..],
+    };
+    let mut reviews: Vec<Review> = Vec::new();
+    let mut problems: Vec<String> = Vec::new();
+    for line in body {
+        // @lfy def/generation/main.lfy:reviewOf
+        let read = serde_json::from_str::<serde_json::Value>(line)
+            .ok()
+            .as_ref()
+            .and_then(Review::from_json);
+        match read {
+            Some(review) => {
+                // @lfy def/generation/main.lfy:reviewOf
+                reviews.retain(|kept| {
+                    kept.file != review.file
+                        || kept.line != review.line
+                        || kept.entity != review.entity
+                });
+                reviews.push(review);
+            }
+            None => {
+                let text = line.trim_start();
+                // @lfy def/generation/main.lfy:reviewOf
+                if !text.trim_end().is_empty() && !text.starts_with('#') {
+                    problems.push((*line).to_string());
+                }
+            }
+        }
+    }
+    if end.is_none() {
+        // @lfy def/generation/main.lfy:reviewOf
+        problems.push(UNENDED.to_string());
+    }
+    ReviewReport { reviews, problems }
+}
+
+// ---------------------------------------------------------------------------------------
 // markers, hashes, source maps, timestamps
 // ---------------------------------------------------------------------------------------
 
@@ -1550,10 +2475,13 @@ fn declaration_lines(model: &Model, entity: EntityId) -> Option<(usize, usize)> 
 /// comment opener of the target's language, whatever that is, so `@lfy ` is matched
 /// anywhere in a line. A marker that names an entity has no line until one is derived.
 /// Text is read as a marker only when what follows is a path ending in `.lfy`, a colon,
-/// and a number or an identifier path; anything else after `@lfy` is prose.
+/// and a number or an identifier path; anything else after `@lfy` is prose. Each marker's
+/// end is derived as the line before the output line of the next marker, or the last line
+/// of the output for the last marker, so the regions partition the output from its first
+/// marker on.
 // @lfy def/generation/data.lfy:Marker
 pub fn parse_markers(text: &str) -> Vec<Marker> {
-    let mut out = Vec::new();
+    let mut out: Vec<Marker> = Vec::new();
     for (index, line) in text.lines().enumerate() {
         let mut rest = line;
         while let Some(position) = rest.find(MARKER_PREFIX) {
@@ -1565,12 +2493,23 @@ pub fn parse_markers(text: &str) -> Vec<Marker> {
             rest = after;
         }
     }
+    // Decision: a marker sharing its output line with the next one ends on the line before
+    // both, which is a region covering nothing, so that line still belongs to exactly one
+    // marker. @lfy def/generation/data.lfy:Marker.end
+    let last_line = text.lines().count();
+    for index in 0..out.len() {
+        out[index].end = match out.get(index + 1) {
+            Some(next) => next.output_line.saturating_sub(1),
+            None => last_line,
+        };
+    }
     out
 }
 
 /// A marker from what follows `@lfy `: `path:line`, `path:line:column`, or `path:entity`.
 /// `None` when the path does not end in `.lfy`, or when what follows the colon is neither
-/// a number nor an identifier path: that text is prose, not a marker.
+/// a number nor an identifier path: that text is prose, not a marker. Its end is its own
+/// output line until [`parse_markers`] derives it from the marker that follows.
 // @lfy def/generation/data.lfy:Marker
 fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
     // Decision: punctuation that closes a sentence or a comment after the marker is not
@@ -1590,6 +2529,7 @@ fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
             entity: None,
             line,
             column: Some(column),
+            end: output_line,
         });
     }
     let path = match first {
@@ -1606,6 +2546,7 @@ fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
             entity: None,
             line,
             column: None,
+            end: output_line,
         }),
         // @lfy def/generation/data.lfy:Marker.entity
         Err(_) if is_identifier_path(last) => Some(Marker {
@@ -1614,6 +2555,7 @@ fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
             entity: Some(last.to_string()),
             line: 0,
             column: None,
+            end: output_line,
         }),
         Err(_) => None,
     }
@@ -2868,6 +3810,16 @@ mod tests {
                 .collect::<Vec<_>>(),
             [(Some("A".to_string()), 4), (Some("B".to_string()), 8)]
         );
+        // The first region ends on the line before the second marker, and the second on
+        // the last line of the output, so the two partition it from the first marker on.
+        // @lfy def/generation/main.lfy:accept
+        assert_eq!(
+            map.markers
+                .iter()
+                .map(|marker| (marker.output_line, marker.end))
+                .collect::<Vec<_>>(),
+            [(1, 3), (4, 5)]
+        );
         // The source map round-trips through the plan: the unit is now up to date.
         let plan = super::plan(&workspace, &verdict.source_maps, &[]);
         assert_eq!(plan.units[index].reason, None);
@@ -3072,6 +4024,451 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------------------
+    // regionsOf
+    // -----------------------------------------------------------------------------------
+
+    /// `def/a.lfy` declaring a data `A` with a member `x` on lines 1 to 3, and a fn `f`
+    /// from line 5 on.
+    const A_WITH_A_MEMBER_AND_A_FN: &str = "d A: `An a` {\n  $x = string;\n}\n\nfn f(): `Does it` => string {\n  @acceptanceCriteria.add({ behavior = `it does` });\n}\n";
+
+    fn a_with_a_member_and_a_fn() -> Fixture {
+        let fixture = Fixture::with_rust_target();
+        fixture.write("def/a.lfy", A_WITH_A_MEMBER_AND_A_FN);
+        fixture
+    }
+
+    /// One marker naming an entity.
+    fn entity_marker(output_line: usize, entity: &str, line: usize, end: usize) -> Marker {
+        Marker {
+            output_line,
+            file: "def/a.lfy".to_string(),
+            entity: Some(entity.to_string()),
+            line,
+            column: None,
+            end,
+        }
+    }
+
+    /// The two source maps of the definition's tests: `src/a.rs` with `A`, `A.x`, and `f`,
+    /// and `src/tests.rs` with `f` and `A`.
+    fn two_source_maps() -> Vec<SourceMap> {
+        let map = |output: &str, markers: Vec<Marker>| SourceMap {
+            target: "rust".to_string(),
+            output: output.to_string(),
+            source: "def/a.lfy".to_string(),
+            hash: source_hash("x"),
+            signature: source_hash("i"),
+            dependencies: BTreeMap::new(),
+            generated: "2026-09-18T10:00:00Z".to_string(),
+            markers,
+        };
+        vec![
+            map(
+                "src/a.rs",
+                vec![
+                    entity_marker(3, "A", 1, 8),
+                    entity_marker(9, "A.x", 2, 19),
+                    entity_marker(20, "f", 5, 40),
+                ],
+            ),
+            map(
+                "src/tests.rs",
+                vec![entity_marker(1, "f", 5, 11), entity_marker(12, "A", 1, 30)],
+            ),
+        ]
+    }
+
+    /// Every region of an owner, and of every member of it, in source map then output
+    /// order.
+    // @lfy def/generation/main.lfy:regionsOf
+    #[test]
+    fn the_regions_of_a_name_hold_its_own_and_those_of_its_members_in_output_order() {
+        let fixture = a_with_a_member_and_a_fn();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let maps = two_source_maps();
+        // @lfy def/generation/main.lfy:regionsOf
+        let regions = regions_of(&workspace, &maps, "A", None);
+        assert_eq!(
+            regions
+                .iter()
+                .map(|marker| (marker.entity.clone(), marker.output_line, marker.end))
+                .collect::<Vec<_>>(),
+            [
+                (Some("A".to_string()), 3, 8),
+                (Some("A.x".to_string()), 9, 19),
+                (Some("A".to_string()), 12, 30),
+            ]
+        );
+    }
+
+    /// A member's own name gives its region alone, and a name nothing was generated for
+    /// gives none.
+    // @lfy def/generation/main.lfy:regionsOf
+    #[test]
+    fn a_members_name_gives_its_region_alone_and_an_unknown_name_gives_none() {
+        let fixture = a_with_a_member_and_a_fn();
+        let workspace = fixture.load();
+        let maps = two_source_maps();
+        // @lfy def/generation/main.lfy:regionsOf
+        let regions = regions_of(&workspace, &maps, "A.x", None);
+        assert_eq!(regions.len(), 1, "{regions:?}");
+        assert_eq!(regions[0].output_line, 9);
+        assert_eq!(regions[0].entity.as_deref(), Some("A.x"));
+        // @lfy def/generation/main.lfy:regionsOf
+        assert!(regions_of(&workspace, &maps, "B", None).is_empty());
+    }
+
+    /// A marker that names a line belongs to the entity whose declaration covers it, and
+    /// a target keeps only the source maps of that target.
+    // @lfy def/generation/main.lfy:regionsOf
+    #[test]
+    fn a_line_marker_inside_a_declaration_and_a_target_narrow_the_regions() {
+        let fixture = a_with_a_member_and_a_fn();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let line_marker = |output_line: usize, line: usize| Marker {
+            output_line,
+            file: "def/a.lfy".to_string(),
+            entity: None,
+            line,
+            column: None,
+            end: output_line,
+        };
+        let mut maps = two_source_maps();
+        maps[0].markers = vec![line_marker(1, 2), line_marker(2, 5), line_marker(3, 99)];
+        maps[1].target = "other".to_string();
+        // Line 2 falls inside A's declaration; line 5 inside f's; line 99 in nothing.
+        // @lfy def/generation/main.lfy:regionsOf
+        let regions = regions_of(&workspace, &maps, "A", Some("rust"));
+        assert_eq!(regions.len(), 1, "{regions:?}");
+        assert_eq!(regions[0].output_line, 1);
+        assert_eq!(regions_of(&workspace, &maps, "f", Some("rust")).len(), 1);
+        // The source map of another target is left out when a target is given.
+        // @lfy def/generation/main.lfy:regionsOf
+        let mut maps = two_source_maps();
+        maps[1].target = "other".to_string();
+        assert_eq!(regions_of(&workspace, &maps, "A", None).len(), 3);
+        assert_eq!(regions_of(&workspace, &maps, "A", Some("rust")).len(), 2);
+        assert_eq!(regions_of(&workspace, &maps, "A", Some("other")).len(), 1);
+    }
+
+    // -----------------------------------------------------------------------------------
+    // changes
+    // -----------------------------------------------------------------------------------
+
+    fn change_kinds(changes: &[Change]) -> Vec<(&str, ChangeKind)> {
+        changes
+            .iter()
+            .map(|change| (change.entity.as_str(), change.kind))
+            .collect()
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    #[test]
+    fn without_a_previous_file_every_entity_of_the_unit_is_an_addition() {
+        let fixture = a_with_a_member_and_a_fn();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        // @lfy def/generation/main.lfy:changes
+        let changes = changes(&workspace, unit, None);
+        assert_eq!(
+            change_kinds(&changes),
+            [("A", ChangeKind::Added), ("f", ChangeKind::Added)]
+        );
+    }
+
+    // @lfy def/generation/main.lfy:changes
+    #[test]
+    fn a_new_definition_and_a_new_parameter_are_a_definition_and_a_signature() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/a.lfy",
+            "d A: `a thing` {\n  $x = string;\n}\n\nfn f(x: string, y: number): `Does it` => string {\n  @acceptanceCriteria.add({ behavior = `it does` });\n}\n",
+        );
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        let previous = "d A: `a value` {\n  $x = string;\n}\n\nfn f(x: string): `Does it` => string {\n  @acceptanceCriteria.add({ behavior = `it does` });\n}\n";
+        // @lfy def/generation/main.lfy:changes
+        let changes = changes(&workspace, unit, Some(previous));
+        assert_eq!(
+            change_kinds(&changes),
+            [("A", ChangeKind::Definition), ("f", ChangeKind::Signature)],
+            "{changes:?}"
+        );
+        // @lfy def/generation/main.lfy:changes
+        assert!(changes[0].detail.contains("a value"), "{:?}", changes[0]);
+        assert!(changes[0].detail.contains("a thing"), "{:?}", changes[0]);
+        assert_eq!(changes[1].detail, "the parameter y was added");
+    }
+
+    /// A removed entity comes after the last entity that preceded it before and is still
+    /// declared, a member is compared as an entity of its own under its owner, and the
+    /// detail of a change of criteria names the count before and the count now.
+    // @lfy def/generation/main.lfy:changes
+    #[test]
+    fn a_removed_entity_a_removed_member_and_a_new_criterion_are_read_in_file_order() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/a.lfy",
+            "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` })\n    .add({ behavior = `three` });\n}\n\nd B {\n  $x = string;\n}\n",
+        );
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        let previous = "d A;\n\nfn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n\nd B {\n  $x = string;\n  $old = number;\n}\n";
+        // @lfy def/generation/main.lfy:changes
+        let changes = changes(&workspace, unit, Some(previous));
+        // @lfy def/generation/main.lfy:changes
+        assert_eq!(
+            change_kinds(&changes),
+            [
+                ("A", ChangeKind::Removed),
+                ("f", ChangeKind::Criteria),
+                ("B.old", ChangeKind::Removed),
+            ],
+            "{changes:?}"
+        );
+        // @lfy def/generation/main.lfy:changes
+        assert_eq!(changes[1].detail, "2 criteria before and 3 now");
+    }
+
+    /// A file whose entities read the same after a comment, a reordering of nothing, and
+    /// whitespace gives no change at all; a statement of a written body gives one.
+    // @lfy def/generation/main.lfy:changes
+    #[test]
+    fn whitespace_and_comments_give_no_change_and_a_new_statement_is_a_body() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/a.lfy",
+            "// a comment\nd A {\n  $x = string;\n}\n\nfunction g(x: number): `Doubles` -> number {\n  return x * 2;\n}\n",
+        );
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        // @lfy def/generation/main.lfy:changes
+        let same = "d A {\n\n  $x   = string;\n}\n\nfunction g(x: number): `Doubles` -> number {\n  return x * 2;\n}\n";
+        assert!(changes(&workspace, unit, Some(same)).is_empty());
+        // @lfy def/generation/main.lfy:changes
+        let other = "d A {\n  $x = string;\n}\n\nfunction g(x: number): `Doubles` -> number {\n  return x * 3;\n}\n";
+        let changes = changes(&workspace, unit, Some(other));
+        assert_eq!(change_kinds(&changes), [("g", ChangeKind::Body)], "{changes:?}");
+    }
+
+    // -----------------------------------------------------------------------------------
+    // review
+    // -----------------------------------------------------------------------------------
+
+    // @lfy def/generation/main.lfy:review
+    #[test]
+    fn a_review_request_quotes_every_criterion_with_its_place_and_excerpts_every_region() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/a.lfy",
+            "d A: `An a` {\n  @acceptanceCriteria\n    .add({ behavior = `the first` })\n    .add({ behavior = `the second` });\n  @test({ input = 1, expect = 2 });\n}\n",
+        );
+        fixture.write("src/a.rs", "one\ntwo\nthree\nfour\n");
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let batch = Batch {
+            units: vec![index],
+            identifier: "a".to_string(),
+        };
+        let maps = vec![SourceMap {
+            target: "rust".to_string(),
+            output: "src/a.rs".to_string(),
+            source: "def/a.lfy".to_string(),
+            hash: source_hash("x"),
+            signature: source_hash("i"),
+            dependencies: BTreeMap::new(),
+            generated: "2026-09-18T10:00:00Z".to_string(),
+            markers: vec![entity_marker(1, "A", 1, 4)],
+        }];
+        let request = review(&workspace, &plan, &batch, &maps);
+        // @lfy def/generation/main.lfy:review
+        assert_eq!(request.batch, batch);
+        let text = &request.instructions;
+        // The heading names the batch and the target. @lfy def/generation/main.lfy:review
+        assert!(
+            text.contains("# Reviewing the batch `a` for the target `rust`"),
+            "{text}"
+        );
+        assert!(text.contains("#### `A` (data: DataDeclaration)"), "{text}");
+        assert!(text.contains("Definition: An a"), "{text}");
+        // Each criterion of a chain has a place of its own, on the line its `add` begins
+        // on. @lfy def/generation/main.lfy:review
+        assert!(text.contains("def/a.lfy:3 — the first"), "{text}");
+        assert!(text.contains("def/a.lfy:4 — the second"), "{text}");
+        // A test's place is the line its object begins on.
+        // @lfy def/generation/main.lfy:review
+        assert!(text.contains("def/a.lfy:5 — Input `1` gives `2`"), "{text}");
+        // The region, with the lines of the output in a fenced block.
+        // @lfy def/generation/main.lfy:review
+        assert!(text.contains("`src/a.rs:1-4`"), "{text}");
+        assert!(text.contains("```\none\ntwo\nthree\nfour\n```"), "{text}");
+        // The protocol: the six keys, the three statuses, and the end line.
+        // @lfy def/generation/main.lfy:review
+        for part in [
+            "examine and never edit",
+            "`file`, `line`, `entity`, `status`, `evidence`, and `note`",
+            "`satisfied`",
+            "`violated`",
+            "`unverifiable`",
+            "unverifiable, never violated",
+            "agent server",
+            "`ELFIE: REVIEWED`",
+        ] {
+            assert!(text.contains(part), "{part} is missing:\n{text}");
+        }
+    }
+
+    /// With no source map for the batch the verifier is given the same instructions with
+    /// no region, so it can only find the criteria unverifiable.
+    // @lfy def/generation/main.lfy:review
+    #[test]
+    fn a_review_request_without_a_source_map_holds_no_region() {
+        let fixture = a_with_a_member_and_a_fn();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let batch = Batch {
+            units: vec![index],
+            identifier: "a".to_string(),
+        };
+        let request = review(&workspace, &plan, &batch, &[]);
+        let text = &request.instructions;
+        assert!(text.contains("def/a.lfy:6 — it does"), "{text}");
+        // @lfy def/generation/main.lfy:review
+        assert!(
+            text.contains("No region of any output was generated for it."),
+            "{text}"
+        );
+        assert!(text.contains("`ELFIE: REVIEWED`"), "{text}");
+    }
+
+    /// An output a source map names but that cannot be read gives a line saying so
+    /// instead of a fenced block.
+    // @lfy def/generation/main.lfy:review
+    #[test]
+    fn a_region_whose_output_cannot_be_read_says_so() {
+        let fixture = a_with_a_member_and_a_fn();
+        let workspace = fixture.load();
+        assert_bound(&workspace);
+        let plan = plan(&workspace, &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let batch = Batch {
+            units: vec![index],
+            identifier: "a".to_string(),
+        };
+        let maps = two_source_maps();
+        let request = review(&workspace, &plan, &batch, &maps);
+        assert!(
+            request
+                .instructions
+                .contains("The output could not be read:"),
+            "{}",
+            request.instructions
+        );
+    }
+
+    // -----------------------------------------------------------------------------------
+    // reviewOf
+    // -----------------------------------------------------------------------------------
+
+    fn review_line(line: usize, status: &str, evidence: &str, note: &str) -> String {
+        format!(
+            "{{\"file\":\"def/a.lfy\",\"line\":{line},\"entity\":\"A\",\"status\":\"{status}\",\
+             \"evidence\":\"{evidence}\",\"note\":\"{note}\"}}"
+        )
+    }
+
+    // @lfy def/generation/main.lfy:reviewOf
+    #[test]
+    fn a_report_of_two_reviews_and_a_comment_gives_two_reviews_and_no_problems() {
+        let report = format!(
+            "# reading src/a.rs\n{}\n{}\n{REVIEWED}",
+            review_line(4, "satisfied", "src/a.rs:1-30", "the field is there"),
+            review_line(7, "violated", "src/a.rs:12-18", "it returns undefined"),
+        );
+        let found = review_of(&report);
+        // @lfy def/generation/main.lfy:reviewOf
+        assert_eq!(found.reviews.len(), 2, "{found:?}");
+        assert_eq!(found.reviews[0].status, ReviewStatus::Satisfied);
+        assert_eq!(found.reviews[0].line, 4);
+        assert_eq!(found.reviews[0].evidence, "src/a.rs:1-30");
+        assert_eq!(found.reviews[1].status, ReviewStatus::Violated);
+        // @lfy def/generation/main.lfy:reviewOf
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+        // Lines after the end line are ignored. @lfy def/generation/main.lfy:reviewOf
+        let found = review_of(&format!("{report}\nand that is all"));
+        assert_eq!(found.reviews.len(), 2);
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+    }
+
+    /// A line whose status names no member of `ReviewStatus` is no review, and neither is
+    /// prose; both are problems, as written.
+    // @lfy def/generation/main.lfy:reviewOf
+    #[test]
+    fn a_line_that_is_no_review_is_a_problem_as_written() {
+        let report = format!(
+            "{}\nI think it is fine.\n{}\n{REVIEWED}",
+            review_line(4, "maybe", "", "unsure"),
+            review_line(7, "unverifiable", "", "no region"),
+        );
+        let found = review_of(&report);
+        // @lfy def/generation/main.lfy:reviewOf
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.reviews[0].line, 7);
+        assert_eq!(found.reviews[0].status, ReviewStatus::Unverifiable);
+        // @lfy def/generation/main.lfy:reviewOf
+        assert_eq!(
+            found.problems,
+            [review_line(4, "maybe", "", "unsure"), "I think it is fine.".to_string()]
+        );
+    }
+
+    /// Of two reviews of the same file, line, and entity only the last is kept, at its own
+    /// place, and a report that never ends says so.
+    // @lfy def/generation/main.lfy:reviewOf
+    #[test]
+    fn the_last_review_of_a_place_is_kept_and_an_unended_report_says_so() {
+        let report = format!(
+            "{}\n{}",
+            review_line(4, "satisfied", "", "first"),
+            review_line(4, "violated", "src/a.rs:3-3", "second"),
+        );
+        let found = review_of(&report);
+        // @lfy def/generation/main.lfy:reviewOf
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.reviews[0].status, ReviewStatus::Violated);
+        assert_eq!(found.reviews[0].note, "second");
+        // @lfy def/generation/main.lfy:reviewOf
+        assert_eq!(found.problems, ["the report did not end"]);
+        // An empty report ends with nothing either.
+        assert_eq!(
+            review_of(""),
+            ReviewReport {
+                reviews: Vec::new(),
+                problems: vec!["the report did not end".to_string()],
+            }
+        );
+        // The end line stands with whitespace around it.
+        // @lfy def/generation/main.lfy:reviewOf
+        let found = review_of(&format!("  {REVIEWED}  "));
+        assert!(found.reviews.is_empty());
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+    }
+
+    // -----------------------------------------------------------------------------------
     // markers, hashes, source maps, timestamps
     // -----------------------------------------------------------------------------------
 
@@ -3080,21 +4477,22 @@ mod tests {
     fn markers_are_parsed_after_any_line_comment_opener() {
         let text = "// @LFY def/a.lfy:4\nfn x() {}\n# @LFY def/a.lfy:5:2\n-- @LFY def/a.lfy:6 -- more\n; @LFY def/a.lfy:7.\nnothing here\n/* @LFY def/a.lfy:8 */\n// @LFY def/a.lfy:Marker.file\n// @LFY nope\n// @LFY :3\n".replace("@LFY", "@lfy");
         let markers = parse_markers(&text);
-        let marker = |output_line, line, column| Marker {
+        let marker = |output_line, line, column, end| Marker {
             output_line,
             file: "def/a.lfy".to_string(),
             entity: None,
             line,
             column,
+            end,
         };
         assert_eq!(
             markers,
             [
-                marker(1, 4, None),
-                marker(3, 5, Some(2)),
-                marker(4, 6, None),
-                marker(5, 7, None),
-                marker(7, 8, None),
+                marker(1, 4, None, 2),
+                marker(3, 5, Some(2), 3),
+                marker(4, 6, None, 4),
+                marker(5, 7, None, 6),
+                marker(7, 8, None, 7),
                 // @lfy def/generation/data.lfy:Marker.entity
                 Marker {
                     output_line: 8,
@@ -3102,6 +4500,7 @@ mod tests {
                     entity: Some("Marker.file".to_string()),
                     line: 0,
                     column: None,
+                    end: 10,
                 },
             ]
         );
@@ -3109,6 +4508,33 @@ mod tests {
         assert_eq!(markers[0].spelling(), "@lfy def/a.lfy:4");
         assert_eq!(markers[5].spelling(), "@lfy def/a.lfy:Marker.file");
         assert!(parse_markers("").is_empty());
+    }
+
+    /// A marker's region is its output line through its end, inclusive; the regions of one
+    /// output never overlap and together cover every line from its first marker to its
+    /// last line, so every generated line after the first marker belongs to exactly one
+    /// marker.
+    // @lfy def/generation/data.lfy:Marker
+    #[test]
+    fn marker_regions_partition_an_output_from_its_first_marker_on() {
+        let text =
+            "one\n// @LFY def/a.lfy:A\ntwo\nthree\n// @LFY def/a.lfy:B // @LFY def/a.lfy:C\nfour\n"
+                .replace("@LFY", "@lfy");
+        let markers = parse_markers(&text);
+        let regions: Vec<(usize, usize)> = markers
+            .iter()
+            .map(|marker| (marker.output_line, marker.end))
+            .collect();
+        // The two markers of line 5 share it: the first ends before it and covers nothing.
+        assert_eq!(regions, [(2, 4), (5, 4), (5, 6)]);
+        for line in 1..=text.lines().count() {
+            let owners = markers.iter().filter(|marker| marker.covers(line)).count();
+            assert_eq!(
+                owners,
+                usize::from(line >= markers[0].output_line),
+                "line {line}"
+            );
+        }
     }
 
     /// Text is read as a marker only when what follows `@lfy` and the space is a path
@@ -3180,6 +4606,7 @@ mod tests {
                         entity: Some("A".to_string()),
                         line: 4,
                         column: None,
+                        end: 8,
                     },
                     Marker {
                         output_line: 9,
@@ -3187,6 +4614,7 @@ mod tests {
                         entity: None,
                         line: 5,
                         column: Some(2),
+                        end: 12,
                     },
                 ],
             },

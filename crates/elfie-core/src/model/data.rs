@@ -171,6 +171,7 @@ pub enum SymbolKind {
     Variable,      // @lfy def/model/data.lfy:SymbolKind.variable
     LoopVariable,  // @lfy def/model/data.lfy:SymbolKind.loopVariable
     Parameter,     // @lfy def/model/data.lfy:SymbolKind.parameter
+    TypeParameter, // @lfy def/model/data.lfy:SymbolKind.typeParameter
     Member,        // @lfy def/model/data.lfy:SymbolKind.member
     Alias,         // @lfy def/model/data.lfy:SymbolKind._alias
     External,      // @lfy def/model/data.lfy:SymbolKind._external
@@ -191,6 +192,7 @@ impl SymbolKind {
             SymbolKind::Variable => "variable",
             SymbolKind::LoopVariable => "loopVariable",
             SymbolKind::Parameter => "parameter",
+            SymbolKind::TypeParameter => "typeParameter",
             SymbolKind::Member => "member",
             SymbolKind::Alias => "alias",
             SymbolKind::External => "external",

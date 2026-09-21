@@ -16,7 +16,8 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Outcome, OutcomeKind, Output, Plan, Request, SourceMap, Unit, Verdict,
+    self, Batch, Outcome, OutcomeKind, Output, Plan, Request, Review, ReviewReport, ReviewStatus, SourceMap, Unit,
+    Verdict,
 };
 use elfie_core::lexer::lex;
 use elfie_core::parser::parse;
@@ -153,6 +154,8 @@ pub fn run(arguments: &[String]) -> u8 {
         Command::Tokens => tokens(&invocation),
         Command::Compile => compile(&invocation),
         // @lfy def/cli/main.lfy:main
+        Command::Verify => verify(&invocation),
+        // @lfy def/cli/main.lfy:main
         Command::Lsp => ExitCode::from_code(elfie_lsp::serve(Some(Path::new(&invocation.root)))),
         // @lfy def/cli/main.lfy:main
         Command::Mcp => ExitCode::from_code(elfie_mcp::serve(Some(Path::new(&invocation.root)))),
@@ -196,11 +199,12 @@ fn help_text() -> String {
     for command in Command::ALL {
         out.push_str(&format!("  {:<8} {}\n", command.value(), command.description()));
     }
-    out.push_str("\noptions:\n  --root <dir>   The project directory (default: the nearest elfie.json above the current directory)\n  --json         Print results as JSON lines\n  --help, -h     Print this help\n  --version      Print the version\n");
+    out.push_str("\noptions:\n  --root <dir>   The project directory (default: the nearest elfie.json above the current directory)\n  --json         Print results as JSON lines\n  --no-verify    Do not run the verifier on a batch whose units were accepted\n  --help, -h     Print this help\n  --version      Print the version\n");
     out
 }
 
-/// Prints every command with one line of description and the global options.
+/// Prints every command, verify among them, with one line of description and the global
+/// options, --no-verify among them.
 // @lfy def/cli/main.lfy:main
 fn help() -> ExitCode {
     print!("{}", help_text());
@@ -546,12 +550,25 @@ impl Reporter {
 
 // ---- compile ----------------------------------------------------------------------
 
+/// The command elfie.json names under a key, when it names one.
+// @lfy def/cli/main.lfy:main
+fn manifest_command(root: &Path, key: &str) -> Option<String> {
+    let text = fs::read_to_string(root.join("elfie.json")).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+    value.get(key)?.as_str().map(str::to_string)
+}
+
 /// The manifest's `compiler` command, when it names one.
 // @lfy def/cli/main.lfy:main
 fn compiler_command(root: &Path) -> Option<String> {
-    let text = fs::read_to_string(root.join("elfie.json")).ok()?;
-    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
-    value.get("compiler")?.as_str().map(str::to_string)
+    manifest_command(root, "compiler")
+}
+
+/// The manifest's `verifier` command, when it names one: the second agent, which reads the
+/// outputs and never writes.
+// @lfy def/cli/main.lfy:main
+fn verifier_command(root: &Path) -> Option<String> {
+    manifest_command(root, "verifier")
 }
 
 /// The source maps of each target, read from source-map.json joined to its output
@@ -760,6 +777,43 @@ fn requests_directory(root: &Path) -> PathBuf {
     root.join("elfie-requests")
 }
 
+/// The problems of an attempt appended to its instructions, so that the batch is run once
+/// more knowing what was wrong.
+// @lfy def/cli/main.lfy:main
+fn append_problems(request: &mut Request, problems: &[String]) {
+    request.instructions.push_str("\n\n## Problems with the previous attempt\n\n");
+    for problem in problems {
+        request.instructions.push_str(&format!("- {problem}\n"));
+    }
+}
+
+/// One problem per violated review: `failure at`, the file, a colon, the line, a colon, the
+/// note, and the evidence in parentheses.
+// @lfy def/cli/main.lfy:main
+fn problem_of(review: &Review) -> String {
+    format!("failure at {}:{}: {} ({})", review.file, review.line, review.note, review.evidence)
+}
+
+/// One review as the verify command prints it: the status, the file, a colon, the line, the
+/// entity, a colon, and the note.
+// @lfy def/cli/main.lfy:main
+fn review_text(review: &Review) -> String {
+    format!("{} {}:{} {}: {}", review.status, review.file, review.line, review.entity, review.note)
+}
+
+/// The counts of satisfied, violated, and unverifiable reviews, in that order.
+// @lfy def/cli/main.lfy:main
+fn counts_of(reviews: &[Review]) -> (usize, usize, usize) {
+    let count = |status| reviews.iter().filter(|review| review.status == status).count();
+    (count(ReviewStatus::Satisfied), count(ReviewStatus::Violated), count(ReviewStatus::Unverifiable))
+}
+
+/// The counts as one line.
+// @lfy def/cli/main.lfy:main
+fn counts_text((satisfied, violated, unverifiable): (usize, usize, usize)) -> String {
+    format!("{satisfied} satisfied, {violated} violated, {unverifiable} unverifiable")
+}
+
 /// What a finished command left: its code, -1 when it ended by a signal or could not be
 /// started, and everything it wrote, held whole.
 // @lfy def/cli/main.lfy:main
@@ -802,12 +856,22 @@ struct Run<'w> {
     reporter: Reporter,
     json: bool,
     continuing: bool,
+    /// The command elfie.json names under `verifier`; nothing verifies a batch without one.
+    // @lfy def/cli/main.lfy:main
+    verifier: Option<String>,
+    /// --no-verify: no verifier runs and nothing is reviewed.
+    // @lfy def/cli/main.lfy:main
+    no_verify: bool,
     halted: bool,
     accepted: usize,
     rejected: usize,
     blocked: usize,
     failed: usize,
     stopped: BTreeSet<usize>,
+    /// The units accepted and recorded, so that a unit recorded again after a review sent
+    /// its batch back to the compiler is counted once.
+    // @lfy def/cli/main.lfy:main
+    recorded: BTreeSet<usize>,
     incomplete: Vec<String>,
     code: ExitCode,
 }
@@ -822,12 +886,16 @@ impl<'w> Run<'w> {
             reporter,
             json: invocation.flag("json"),
             continuing: invocation.flag("continue"),
+            // @lfy def/cli/main.lfy:main
+            verifier: verifier_command(&workspace.root),
+            no_verify: invocation.flag("no-verify"),
             halted: false,
             accepted: 0,
             rejected: 0,
             blocked: 0,
             failed: 0,
             stopped: BTreeSet::new(),
+            recorded: BTreeSet::new(),
             incomplete: Vec::new(),
             code: ExitCode::Success,
         }
@@ -932,11 +1000,12 @@ impl<'w> Run<'w> {
         request
     }
 
-    /// Streams the compiler once for one batch: the instructions as its input, the root as
-    /// its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment. Its
-    /// standard output is the report. The code is -1 when the command could not be started.
+    /// Streams one agent, the compiler or the verifier, once for one batch: the
+    /// instructions as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH,
+    /// and ELFIE_UNITS (the stems, space separated) as its environment. Its standard output
+    /// is the report. The code is -1 when the command could not be started.
     // @lfy def/cli/main.lfy:main
-    fn run_compiler(&self, command: &str, root: &Path, batch: &Batch, instructions: &str) -> Exit {
+    fn run_agent(&self, command: &str, root: &Path, batch: &Batch, instructions: &str, what: &str) -> Exit {
         let spawned = Process::new("sh")
             .arg("-c")
             .arg(command)
@@ -960,7 +1029,7 @@ impl<'w> Run<'w> {
         if let Some(mut stdin) = child.stdin.take()
             && let Err(error) = stdin.write_all(instructions.as_bytes())
         {
-            self.reporter.append(&format!("the compiler command did not read its input: {error}"));
+            self.reporter.append(&format!("the {what} command did not read its input: {error}"));
         }
         let status = child.wait();
         let stdout = out.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
@@ -970,7 +1039,7 @@ impl<'w> Run<'w> {
             Err(error) => return Exit { code: -1, stdout, stderr: error.to_string() },
         };
         if !status.success() {
-            self.reporter.append(&format!("the compiler command exited with {status}"));
+            self.reporter.append(&format!("the {what} command exited with {status}"));
         }
         Exit { code: status.code().unwrap_or(-1), stdout, stderr }
     }
@@ -1005,8 +1074,12 @@ impl<'w> Run<'w> {
         let source = self.workspace.files[self.plan.units[unit].file].path.clone();
         self.maps.retain(|map| !(map.target == target && map.source == source));
         self.maps.extend(verdict.source_maps.iter().cloned());
-        self.accepted += 1;
-        self.reporter.done = self.accepted;
+        // A unit recorded again, because its reviews sent its batch back to the compiler,
+        // is counted once. @lfy def/cli/main.lfy:main
+        if self.recorded.insert(unit) {
+            self.accepted += 1;
+            self.reporter.done = self.accepted;
+        }
         Ok(())
     }
 
@@ -1046,18 +1119,133 @@ impl<'w> Run<'w> {
         rejected
     }
 
-    /// Runs the compiler on one batch, at most twice, and acts on the outcome.
+    /// A batch whose units were accepted and recorded, and whose reviews then violated what
+    /// was asked: the acceptance was structural, and the review retracts it, so the
+    /// finished line and the code count the units as rejected rather than accepted.
+    // @lfy def/cli/main.lfy:main
+    fn unrecord(&mut self, batch: &Batch) {
+        for unit in &batch.units {
+            if self.recorded.remove(unit) {
+                self.accepted = self.accepted.saturating_sub(1);
+                self.rejected += 1;
+            }
+        }
+        self.reporter.done = self.accepted;
+    }
+
+    /// The reviews of one batch as one JSON array, written to
+    /// `elfie-requests/<batch>.reviews.json` under the root, replacing an earlier file.
+    // @lfy def/cli/main.lfy:main
+    fn write_reviews(&mut self, batch: &Batch, reviews: &[Review]) {
+        let value = serde_json::Value::Array(reviews.iter().map(Review::to_json).collect());
+        let text = format!("{}\n", serde_json::to_string_pretty(&value).unwrap_or_default());
+        self.write_note(batch, "reviews.json", &text);
+    }
+
+    /// The review request of a batch written for a verifier run by hand.
+    // @lfy def/cli/main.lfy:main
+    fn write_review_request(&mut self, batch: &Batch) {
+        let request = generation::review(self.workspace, &self.plan, batch, &self.maps);
+        if let Some(path) = self.write_note(batch, "review.md", &request.instructions)
+            && !self.json
+        {
+            println!("wrote {}", relative(&self.workspace.root, &path));
+        }
+    }
+
+    /// The verifier run once for one batch, its output shown as it arrives and logged, its
+    /// report read, and its reviews written. A run that failed — its problems are not
+    /// empty, so no line of its output read `ELFIE: REVIEWED` or some line was neither a
+    /// review nor a heading, or the command could not be started — is run once more; when
+    /// that run fails too its problems are printed as a failed progress line and the batch
+    /// is verified with the reviews parsed from it as if its report had been complete.
+    // @lfy def/cli/main.lfy:main
+    fn review_batch(&mut self, batch: &Batch, command: &str, root: &Path, progress: bool) -> ReviewReport {
+        if progress {
+            self.reporter.report(Step::Verifying, Some(&batch.identifier), None, command);
+        }
+        // The source maps are the ones just recorded, so every criterion can be pointed at
+        // the region of output that claims to satisfy it.
+        // @lfy def/cli/main.lfy:main
+        let request = generation::review(self.workspace, &self.plan, batch, &self.maps);
+        let mut report = ReviewReport::default();
+        for attempt in 1..=2 {
+            // @lfy def/cli/main.lfy:main
+            let exit = self.run_agent(command, root, batch, &request.instructions, "verifier");
+            self.reporter
+                .append(&format!("--- the review of {} (attempt {attempt}) ---\n{}", batch.identifier, exit.stdout));
+            report = generation::review_of(&exit.stdout);
+            if exit.code == -1 {
+                report
+                    .problems
+                    .insert(0, format!("the verifier command could not be run: {}", exit.stderr.trim()));
+            }
+            // @lfy def/cli/main.lfy:main
+            if report.problems.is_empty() {
+                break;
+            }
+            if attempt == 2 {
+                for problem in &report.problems.clone() {
+                    self.reporter.report(Step::Failed, Some(&batch.identifier), None, problem);
+                }
+                if exit.code == -1 {
+                    self.failed += 1;
+                    self.worsen(ExitCode::Failure);
+                }
+            }
+        }
+        self.write_reviews(batch, &report.reviews);
+        report
+    }
+
+    /// A batch whose units were accepted and recorded is verified, and the problems of its
+    /// violated reviews are what it is rejected with; nothing verifies it with --no-verify
+    /// or with no verifier named, and an unverifiable review is counted and never rejects.
+    // @lfy def/cli/main.lfy:main
+    fn verify_batch(&mut self, batch: &Batch, root: &Path) -> Option<Vec<String>> {
+        // @lfy def/cli/main.lfy:main
+        if self.no_verify {
+            return None;
+        }
+        let command = self.verifier.clone()?;
+        let report = self.review_batch(batch, &command, root, true);
+        // One reviewed line follows, whose message is the counts of satisfied, violated,
+        // and unverifiable reviews. @lfy def/cli/main.lfy:main
+        let counts = counts_of(&report.reviews);
+        self.reporter.report(Step::Reviewed, Some(&batch.identifier), None, &counts_text(counts));
+        // @lfy def/cli/main.lfy:main
+        if counts.1 == 0 {
+            return None;
+        }
+        Some(
+            report
+                .reviews
+                .iter()
+                .filter(|review| review.status == ReviewStatus::Violated)
+                .map(problem_of)
+                .collect(),
+        )
+    }
+
+    /// Runs the compiler on one batch, at most twice, and acts on the outcome; a batch
+    /// whose reviews violate what was asked is run once more beyond that.
     // @lfy def/cli/main.lfy:main
     fn compile_batch(&mut self, batch: &Batch, command: &str, root: &Path) {
         let stems = stems_of(&self.plan, batch, " ");
         self.reporter.report(Step::Requesting, Some(&batch.identifier), None, &stems);
         let mut request = self.request_of(batch);
         let mut attempt = 0;
+        // The batch is run once more for a rejected outcome, and once more for violated
+        // reviews even when it was already run once more for a rejected outcome.
+        // @lfy def/cli/main.lfy:main
+        let mut retried_for_rejection = false;
+        let mut retried_for_reviews = false;
+        let mut retried_for_failure = false;
         loop {
             attempt += 1;
             let step = if attempt == 1 { Step::Compiling } else { Step::Retrying };
             self.reporter.report(step, Some(&batch.identifier), None, command);
-            let exit = self.run_compiler(command, root, batch, &request.instructions);
+            let exit = self.run_agent(command, root, batch, &request.instructions, "compiler");
             // The code is -1 because the command could not be started: the outcome is failed.
             // @lfy def/cli/main.lfy:main
             let outcome = if exit.code == -1 {
@@ -1075,29 +1263,45 @@ impl<'w> Run<'w> {
             };
             match outcome.kind {
                 // Each unit's outputs are written back, its source maps replace the unit's,
-                // and the batch counts as done.
+                // and the batch is verified, or counts as done when nothing verifies it.
                 // @lfy def/cli/main.lfy:main
                 OutcomeKind::Accepted => {
                     self.record_batch(batch, &outcome.verdicts);
-                    break;
+                    // @lfy def/cli/main.lfy:main
+                    let Some(problems) = self.verify_batch(batch, root) else {
+                        break;
+                    };
+                    // A violated review is handled as a rejected outcome is: the problems
+                    // are printed and the batch is run once more with them appended to the
+                    // instructions; a violated review then stops the batch as rejected.
+                    // @lfy def/cli/main.lfy:main
+                    for problem in &problems {
+                        self.reporter.report(Step::Rejected, Some(&batch.identifier), None, problem);
+                    }
+                    if retried_for_reviews {
+                        self.unrecord(batch);
+                        self.worsen(ExitCode::Problems);
+                        self.stop(batch);
+                        break;
+                    }
+                    retried_for_reviews = true;
+                    append_problems(&mut request, &problems);
                 }
                 // The problems are printed, and the batch is run once more with them
                 // appended to the instructions; a second rejection stops the compile.
                 // @lfy def/cli/main.lfy:main
                 OutcomeKind::Rejected => {
                     let rejected = self.report_rejections(batch, &outcome.verdicts);
-                    if attempt >= 2 {
+                    if retried_for_rejection {
                         self.rejected += rejected;
                         self.worsen(ExitCode::Problems);
                         self.stop(batch);
                         break;
                     }
-                    request.instructions.push_str("\n\n## Problems with the previous attempt\n\n");
-                    for verdict in &outcome.verdicts {
-                        for problem in &verdict.problems {
-                            request.instructions.push_str(&format!("- {problem}\n"));
-                        }
-                    }
+                    retried_for_rejection = true;
+                    let problems: Vec<String> =
+                        outcome.verdicts.iter().flat_map(|verdict| verdict.problems.iter().cloned()).collect();
+                    append_problems(&mut request, &problems);
                 }
                 // The reason is printed and written, and the compile stops.
                 // @lfy def/cli/main.lfy:main
@@ -1130,21 +1334,24 @@ impl<'w> Run<'w> {
                 OutcomeKind::Failed => {
                     self.reporter.report(Step::Failed, Some(&batch.identifier), None, &outcome.message);
                     eprintln!("{}", outcome.message);
-                    if attempt >= 2 {
+                    if retried_for_failure {
                         self.failed += 1;
                         self.worsen(ExitCode::Failure);
                         self.stop(batch);
                         break;
                     }
+                    retried_for_failure = true;
                 }
             }
         }
     }
 
     /// No compiler is run; the outputs already on disk are checked, written back
-    /// normalized, and recorded when accepted.
+    /// normalized, and recorded when accepted. A batch whose units were all accepted and
+    /// recorded is verified like any other, since no compiler runs there is nothing to run
+    /// again, so a violated review rejects the batch at once.
     // @lfy def/cli/main.lfy:main
-    fn accept_on_disk(&mut self, batch: &Batch) {
+    fn accept_on_disk(&mut self, batch: &Batch, root: &Path) {
         let request = self.request_of(batch);
         let verdicts = self.verdicts_of(batch, &request);
         let accepted: Vec<Verdict> = verdicts.iter().filter(|v| v.accepted).cloned().collect();
@@ -1159,6 +1366,16 @@ impl<'w> Run<'w> {
         if rejected > 0 {
             self.rejected += rejected;
             self.worsen(ExitCode::Problems);
+            return;
+        }
+        // @lfy def/cli/main.lfy:main
+        if let Some(problems) = self.verify_batch(batch, root) {
+            for problem in &problems {
+                self.reporter.report(Step::Rejected, Some(&batch.identifier), None, problem);
+            }
+            self.unrecord(batch);
+            self.worsen(ExitCode::Problems);
+            self.stop(batch);
         }
     }
 
@@ -1190,6 +1407,31 @@ impl<'w> Run<'w> {
     }
 }
 
+/// Every error diagnostic of the program printed; whether there was one.
+// @lfy def/cli/main.lfy:main
+fn print_errors(workspace: &Workspace, json: bool) -> bool {
+    let diagnostics = query::diagnostics_of(workspace, None);
+    let errors: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.severity == Severity::Error).collect();
+    for diagnostic in &errors {
+        print_diagnostic(diagnostic, json);
+    }
+    !errors.is_empty()
+}
+
+/// The target --target limits the plan to, when it names a known one.
+// @lfy def/cli/main.lfy:main
+fn target_named(workspace: &Workspace, invocation: &Invocation) -> Result<Option<String>, ExitCode> {
+    let Some(name) = invocation.option("target") else {
+        return Ok(None);
+    };
+    if !workspace.targets.iter().any(|known| known.identifier == name) {
+        let known: Vec<&str> = workspace.targets.iter().map(|t| t.identifier.as_str()).collect();
+        eprintln!("{name} is not a target; the targets are: {}", known.join(", "));
+        return Err(ExitCode::Usage);
+    }
+    Ok(Some(name.to_string()))
+}
+
 /// Plans the units, runs the compiler on each batch in plan order, and records what it
 /// produced.
 // @lfy def/cli/main.lfy:main
@@ -1199,12 +1441,7 @@ fn compile(invocation: &Invocation) -> ExitCode {
     let json = invocation.flag("json");
     // The compiler is never handed a program with problems.
     // @lfy def/cli/main.lfy:main
-    let diagnostics = query::diagnostics_of(&workspace, None);
-    let errors: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.severity == Severity::Error).collect();
-    if !errors.is_empty() {
-        for diagnostic in errors {
-            print_diagnostic(diagnostic, json);
-        }
+    if print_errors(&workspace, json) {
         return ExitCode::Problems;
     }
     // @lfy def/cli/main.lfy:main
@@ -1214,14 +1451,10 @@ fn compile(invocation: &Invocation) -> ExitCode {
         let every: Vec<String> = plan.units.iter().map(|unit| unit.stem.clone()).collect();
         plan = generation::plan(&workspace, &maps, &every);
     }
-    let target = invocation.option("target").map(str::to_string);
-    if let Some(name) = &target
-        && !workspace.targets.iter().any(|known| &known.identifier == name)
-    {
-        let known: Vec<&str> = workspace.targets.iter().map(|t| t.identifier.as_str()).collect();
-        eprintln!("{name} is not a target; the targets are: {}", known.join(", "));
-        return ExitCode::Usage;
-    }
+    let target = match target_named(&workspace, invocation) {
+        Ok(target) => target,
+        Err(code) => return code,
+    };
     // @lfy def/cli/main.lfy:main
     if invocation.flag("dry-run") {
         return dry_run(&workspace, &plan, target.as_deref(), json);
@@ -1255,7 +1488,7 @@ fn compile(invocation: &Invocation) -> ExitCode {
             continue;
         }
         if accept_only {
-            run.accept_on_disk(&batch); // @lfy def/cli/main.lfy:main
+            run.accept_on_disk(&batch, root); // @lfy def/cli/main.lfy:main
         } else if let Some(command) = &compiler {
             run.compile_batch(&batch, command, root); // @lfy def/cli/main.lfy:main
         } else {
@@ -1263,6 +1496,104 @@ fn compile(invocation: &Invocation) -> ExitCode {
         }
     }
     run.finish();
+    run.code
+}
+
+// ---- verify -----------------------------------------------------------------------
+
+/// Verify is compile without the compiler: the same plan, the same review request, the same
+/// verifier, so a person can ask for an opinion on outputs already recorded. Nothing is
+/// compiled and no output is written.
+// @lfy def/cli/main.lfy:main
+fn verify(invocation: &Invocation) -> ExitCode {
+    let root = Path::new(&invocation.root);
+    let workspace = workspace::load(root);
+    let json = invocation.flag("json");
+    // @lfy def/cli/main.lfy:main
+    if print_errors(&workspace, json) {
+        return ExitCode::Problems;
+    }
+    // The source maps are read as compile reads them. @lfy def/cli/main.lfy:main
+    let maps = load_source_maps(&workspace);
+    let target = match target_named(&workspace, invocation) {
+        Ok(target) => target,
+        Err(code) => return code,
+    };
+    let known = generation::plan(&workspace, &maps, &[]);
+    // Every stem given as a requested unit or, with no stem, every unit whose outputs are
+    // not empty. @lfy def/cli/main.lfy:main
+    let mut requested: Vec<String> = Vec::new();
+    if invocation.arguments.is_empty() {
+        requested.extend(known.units.iter().filter(|unit| !unit.outputs.is_empty()).map(|unit| unit.stem.clone()));
+    } else {
+        for stem in &invocation.arguments {
+            // A stem naming a unit whose outputs are empty is printed as having nothing to
+            // review and left out, and the code does not change for it.
+            // @lfy def/cli/main.lfy:main
+            match known.units.iter().find(|unit| &unit.stem == stem) {
+                Some(unit) if !unit.outputs.is_empty() => requested.push(stem.clone()),
+                _ => println!("{stem}: nothing to review"),
+            }
+        }
+    }
+    if requested.is_empty() {
+        if !json {
+            println!("nothing to review");
+        }
+        return ExitCode::Success;
+    }
+    let plan = generation::plan(&workspace, &maps, &requested);
+    let wanted: BTreeSet<&str> = requested.iter().map(String::as_str).collect();
+    // Each batch of the plan holding a requested unit, in plan order.
+    // @lfy def/cli/main.lfy:main
+    let batches: Vec<usize> = (0..plan.batches.len())
+        .filter(|&index| {
+            let batch = &plan.batches[index];
+            target.as_deref().is_none_or(|name| batch_target(&workspace, &plan, batch) == name)
+                && batch.units.iter().any(|&unit| wanted.contains(plan.units[unit].stem.as_str()))
+        })
+        .collect();
+    let total: usize = batches.iter().map(|&index| plan.batches[index].units.len()).sum();
+    let reporter = Reporter::new(json, total, log_paths(root));
+    let mut run = Run::new(&workspace, plan, maps, reporter, invocation);
+    let verifier = verifier_command(root);
+    for index in batches {
+        let batch = run.plan.batches[index].clone();
+        // With no verifier named, the review request of each batch is written for a
+        // verifier run by hand and the code is success. @lfy def/cli/main.lfy:main
+        let Some(command) = verifier.clone() else {
+            run.write_review_request(&batch);
+            continue;
+        };
+        // The verifier is run exactly as compile runs it after acceptance, a failed run
+        // being run once more the same way. @lfy def/cli/main.lfy:main
+        let report = run.review_batch(&batch, &command, root, false);
+        // Each review is printed as its status, the file, a colon, the line, the entity, a
+        // colon, and the note. @lfy def/cli/main.lfy:main
+        for review in &report.reviews {
+            if json {
+                println!("{}", review.to_json());
+            } else {
+                println!("{}", review_text(review));
+            }
+        }
+        // After each batch one line gives the counts of satisfied, violated, and
+        // unverifiable. @lfy def/cli/main.lfy:main
+        let counts = counts_of(&report.reviews);
+        if json {
+            println!(
+                "{}",
+                serde_json::json!({ "satisfied": counts.0, "violated": counts.1, "unverifiable": counts.2 })
+            );
+        } else {
+            println!("{}", counts_text(counts));
+        }
+        // The code is problems when any review is violated, failure when the verifier could
+        // not be started, and success otherwise. @lfy def/cli/main.lfy:main
+        if counts.1 > 0 {
+            run.worsen(ExitCode::Problems);
+        }
+    }
     run.code
 }
 
@@ -1335,6 +1666,46 @@ mod tests {
             )
     }
 
+    /// A project with one target, `def/a.lfy` declaring A with a criterion on line 3, a
+    /// compiler that writes an output with a marker for A and ends with `ELFIE: DONE`, and
+    /// the verifier given.
+    // @lfy def/cli/main.lfy:main
+    fn a_compiler_and_a_verifier<'f>(fixture: &'f Fixture, verifier: &str) -> &'f Fixture {
+        one_target(fixture)
+            .write("def/a.lfy", "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list` });\n}\n")
+            .write(
+                "compiler.sh",
+                "#!/bin/sh\ncat >> \"$ELFIE_ROOT/instructions.txt\"\necho compile >> \"$ELFIE_ROOT/attempts.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho 'ELFIE: DONE'\n",
+            )
+            .write("verifier.sh", verifier)
+            .write(
+                "elfie.json",
+                r#"{
+                    "name": "p",
+                    "dependencies": { "rust": { "root": "targets/rust" } },
+                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
+                    "compiler": "sh compiler.sh",
+                    "verifier": "sh verifier.sh"
+                }"#,
+            )
+    }
+
+    /// A verifier writing one violated review of `def/a.lfy` line 3 for A, then the end
+    /// line.
+    const VIOLATED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"violated\",\"evidence\":\"crates/a/src/a.rs:4-6\",\"note\":\"returns 0 for an empty list\"}'\necho 'ELFIE: REVIEWED'\n";
+
+    /// A verifier writing one satisfied review of `def/a.lfy` line 3 for A and no end line.
+    const UNENDED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\n";
+
+    /// A verifier writing one satisfied review of `def/a.lfy` line 3 for A, then the end
+    /// line.
+    const SATISFIED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho 'ELFIE: REVIEWED'\n";
+
+    /// How many lines a file the fixture wrote holds; none when it was never written.
+    fn lines_of(fixture: &Fixture, path: &str) -> usize {
+        fs::read_to_string(fixture.root.join(path)).map_or(0, |text| text.lines().count())
+    }
+
     // @lfy def/cli/main.lfy:parse
     #[test]
     fn check_with_no_arguments_parses() {
@@ -1389,8 +1760,9 @@ mod tests {
         assert_eq!(run(&["frobnicate".to_string()]), ExitCode::Usage.code());
     }
 
-    /// Help prints every command with one line of description and the global options, and
-    /// version prints the version; both return success.
+    /// Help prints every command of [`Command`], verify among them, with one line of
+    /// description and the global options, --no-verify among them, and version prints the
+    /// version; both return success.
     // @lfy def/cli/main.lfy:main
     #[test]
     fn help_and_version_return_success() {
@@ -1399,7 +1771,8 @@ mod tests {
             assert!(text.contains(command.value()), "{text}");
             assert!(text.contains(command.description()), "{text}");
         }
-        assert!(text.contains("--root") && text.contains("--json"), "{text}");
+        assert!(text.contains(Command::Verify.value()), "{text}");
+        assert!(text.contains("--root") && text.contains("--json") && text.contains("--no-verify"), "{text}");
         assert_eq!(help(), ExitCode::Success);
         // @lfy def/cli/main.lfy:main
         assert_eq!(version(), ExitCode::Success);
@@ -1782,5 +2155,160 @@ mod tests {
         assert_eq!(run.code, ExitCode::Failure);
         assert_eq!(run.failed, 1);
         assert!(run.halted);
+    }
+
+    /// A review is printed as its status, the file, a colon, the line, the entity, a colon,
+    /// and the note; a violated one becomes one problem reading failure at, the file, a
+    /// colon, the line, a colon, the note, and the evidence in parentheses.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn a_review_is_printed_and_a_violated_one_becomes_a_problem() {
+        let review = Review {
+            file: "def/a.lfy".to_string(),
+            line: 3,
+            entity: "A".to_string(),
+            status: ReviewStatus::Satisfied,
+            evidence: "out/a.rs:1-2".to_string(),
+            note: "covered by a test".to_string(),
+        };
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(review_text(&review), "satisfied def/a.lfy:3 A: covered by a test");
+        let violated = Review {
+            status: ReviewStatus::Violated,
+            evidence: "crates/a/src/a.rs:4-6".to_string(),
+            note: "returns 0 for an empty list".to_string(),
+            ..review.clone()
+        };
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(problem_of(&violated), "failure at def/a.lfy:3: returns 0 for an empty list (crates/a/src/a.rs:4-6)");
+        // An unverifiable review is counted and never rejects. @lfy def/cli/main.lfy:main
+        let unverifiable = Review { status: ReviewStatus::Unverifiable, ..review.clone() };
+        let counts = counts_of(&[review, violated, unverifiable]);
+        assert_eq!(counts, (1, 1, 1));
+        assert_eq!(counts_text(counts), "1 satisfied, 1 violated, 1 unverifiable");
+    }
+
+    /// A violated review rejects the batch: the problem is printed, the batch is run once
+    /// more with it appended to the instructions, the verifier runs again, and a violated
+    /// review then stops the batch as rejected.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn a_violated_review_sends_the_batch_back_and_then_rejects_it() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, VIOLATED);
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+        // The compiler and the verifier each ran twice. @lfy def/cli/main.lfy:main
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 2);
+        assert_eq!(lines_of(&fixture, "verifications.txt"), 2);
+        let log = fixture.read("elfie-requests/compile.log");
+        // A reviewed line counting 0 satisfied, 1 violated, 0 unverifiable.
+        // @lfy def/cli/main.lfy:main
+        assert!(log.contains("reviewed a 1/1"), "{log}");
+        assert!(log.contains("0 satisfied, 1 violated, 0 unverifiable"), "{log}");
+        // The problem, then a retrying line. @lfy def/cli/main.lfy:main
+        assert!(log.contains("failure at def/a.lfy:3: returns 0 for an empty list (crates/a/src/a.rs:4-6)"), "{log}");
+        assert!(log.contains("retrying a"), "{log}");
+        // The compiler was run a second time with that problem appended to its
+        // instructions. @lfy def/cli/main.lfy:main
+        assert!(fixture.read("instructions.txt").contains("failure at def/a.lfy:3"));
+        // The reviews are written, and the batch counts as a rejection.
+        // @lfy def/cli/main.lfy:main
+        assert!(fixture.read("elfie-requests/a.reviews.json").contains("violated"));
+        assert!(log.contains("0 units accepted, 1 rejected"), "{log}");
+    }
+
+    /// A verifier whose report does not end is run once more; its problems are then printed
+    /// as a failed line and the batch is verified with the reviews parsed from that run as
+    /// if its report had been complete.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn a_verifier_whose_report_does_not_end_is_run_once_more() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, UNENDED);
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+        assert_eq!(lines_of(&fixture, "verifications.txt"), 2, "the verifier ran twice");
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
+        let log = fixture.read("elfie-requests/compile.log");
+        // @lfy def/cli/main.lfy:main
+        assert!(log.contains("failed a"), "{log}");
+        assert!(log.contains("1 satisfied, 0 violated, 0 unverifiable"), "{log}");
+        // The reviews of that run are written all the same. @lfy def/cli/main.lfy:main
+        assert!(fixture.read("elfie-requests/a.reviews.json").contains("covered by a test"));
+    }
+
+    /// With --no-verify no verifier runs, nothing is reviewed, no reviews file is written,
+    /// and the batch is done when its units are accepted and recorded.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn no_verify_runs_no_verifier() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, VIOLATED);
+        assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
+        assert!(!fixture.root.join("verifications.txt").exists(), "no verifier ran");
+        assert!(!fixture.root.join("elfie-requests/a.reviews.json").exists(), "nothing is reviewed");
+        // A project naming no verifier is the same. @lfy def/cli/main.lfy:main
+        let plain = Fixture::new();
+        a_compiler_and_a_verifier(&plain, VIOLATED).write(
+            "elfie.json",
+            r#"{
+                "name": "p",
+                "dependencies": { "rust": { "root": "targets/rust" } },
+                "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
+                "compiler": "sh compiler.sh"
+            }"#,
+        );
+        assert_eq!(plain.run(&["compile"]), ExitCode::Success.code());
+        assert!(!plain.root.join("verifications.txt").exists());
+        assert!(!plain.root.join("elfie-requests/a.reviews.json").exists());
+    }
+
+    /// Verify runs the verifier on the outputs already recorded and compiles nothing.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn verify_reviews_what_is_recorded_without_compiling() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED);
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 1);
+        let _ = fs::remove_file(fixture.root.join("elfie-requests/a.reviews.json"));
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["verify", "a"]), ExitCode::Success.code());
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "no compiler is run");
+        let reviews = fixture.read("elfie-requests/a.reviews.json");
+        assert!(reviews.contains("covered by a test"), "{reviews}");
+        // A violated review makes the code problems. @lfy def/cli/main.lfy:main
+        fixture.write("verifier.sh", VIOLATED);
+        assert_eq!(fixture.run(&["verify"]), ExitCode::Problems.code());
+        // A stem naming a unit whose outputs are empty is left out, and the code does not
+        // change for it. @lfy def/cli/main.lfy:main
+        fixture.write("def/b.lfy", "d B {}\n");
+        fixture.write("verifier.sh", SATISFIED);
+        assert_eq!(fixture.run(&["verify", "b"]), ExitCode::Success.code());
+        assert!(!fixture.root.join("elfie-requests/b.reviews.json").exists(), "nothing was reviewed for b");
+    }
+
+    /// With no verifier named, the review request of each batch is written to
+    /// elfie-requests named by the batch identifier with the extension .review.md, and the
+    /// code is success.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn verify_with_no_verifier_writes_the_review_requests() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED);
+        assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
+        fixture.write(
+            "elfie.json",
+            r#"{
+                "name": "p",
+                "dependencies": { "rust": { "root": "targets/rust" } },
+                "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
+                "compiler": "sh compiler.sh"
+            }"#,
+        );
+        assert_eq!(fixture.run(&["verify"]), ExitCode::Success.code());
+        let request = fixture.read("elfie-requests/a.review.md");
+        assert!(request.contains("def/a.lfy"), "{request}");
+        assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "nothing is compiled");
     }
 }

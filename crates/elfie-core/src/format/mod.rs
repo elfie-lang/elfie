@@ -5,7 +5,7 @@
 //! belongs to; the tokens themselves are copied verbatim, only the trivia between them is
 //! decided here. It is its own module because both the command line and the language
 //! server format, and neither should own the rules.
-// @lfy def/format/main.lfy:11
+// @lfy def/format/main.lfy:format
 
 use crate::grammar::rules::expression::Expression;
 use crate::grammar::rules::file::File;
@@ -88,15 +88,27 @@ struct Formatter<'t> {
 const NEW_LINE: Entity = Entity::Space(Space::NewLine);
 const COMMA: Entity = Entity::Punctuation(Punctuation::Comma);
 const BLOCK_OPEN: Entity = Entity::Punctuation(Punctuation::BlockOpen);
+const LESS_THAN: Entity = Entity::Punctuation(Punctuation::LessThan);
+const GREATER_THAN: Entity = Entity::Punctuation(Punctuation::GreaterThan);
 const MEMBER: Entity = Entity::Expression(Expression::Member);
 const CALL: Entity = Entity::Expression(Expression::Call);
 const INDEX: Entity = Entity::Expression(Expression::Index);
 const ITEMS: Entity = Entity::Expression(Expression::Items);
+const TYPE_PARAMETERS: Entity = Entity::Expression(Expression::TypeParameters);
+const TYPE_ARGUMENTS: Entity = Entity::Expression(Expression::TypeArguments);
+const GENERIC: Entity = Entity::Expression(Expression::Generic);
 
 /// Whether the rule is one link of a `Call` and `Member` chain.
 // @lfy def/format/main.lfy:format
 fn is_link(rule: Entity) -> bool {
     matches!(rule, MEMBER | CALL | INDEX)
+}
+
+/// Whether the rule holds its items between a `LessThan` and a `GreaterThan` that are
+/// brackets rather than ordering operators.
+// @lfy def/format/main.lfy:format
+fn is_angled(rule: Entity) -> bool {
+    matches!(rule, TYPE_PARAMETERS | TYPE_ARGUMENTS | GENERIC)
 }
 
 /// Whether the rule is an accessor.
@@ -130,6 +142,10 @@ fn glue_after(a: Tok) -> bool {
     match a.rule {
         // @lfy def/format/main.lfy:format
         Entity::Punctuation(Punctuation::GroupOpen | Punctuation::ListOpen) => true,
+        // The `LessThan` of type parameters and type arguments is a bracket, not an
+        // ordering operator, so nothing separates it from the first item.
+        // @lfy def/format/main.lfy:format
+        LESS_THAN if is_angled(a.parent) => true,
         Entity::Literal(Literal::ExecutionOpen | Literal::ReferenceOpen) => true,
         Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
             a.position == 0
@@ -174,6 +190,10 @@ fn glue_before(a: Tok, b: Tok) -> bool {
             | Punctuation::GroupClose
             | Punctuation::ListClose,
         ) => true,
+        // Type parameters attach to the identifier before them and type arguments to the
+        // expression before them, and their `GreaterThan` closes them like a bracket.
+        // @lfy def/format/main.lfy:format
+        LESS_THAN | GREATER_THAN if is_angled(b.parent) => true,
         Entity::Literal(Literal::ExecutionClose | Literal::ReferenceClose) => true,
         Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
             b.position > 0
@@ -207,7 +227,9 @@ fn glue_before(a: Tok, b: Tok) -> bool {
                 b.parent,
                 Entity::Expression(Expression::Call | Expression::Arguments)
             ) || (b.parent == Entity::Expression(Expression::Parameters)
-                && a.rule == Entity::Identifier(Identifier::Identifier))
+                && (a.rule == Entity::Identifier(Identifier::Identifier)
+                    // @lfy def/format/main.lfy:format
+                    || (a.rule == GREATER_THAN && is_angled(a.parent))))
         }
         _ => false,
     }
@@ -438,9 +460,25 @@ impl<'t> Formatter<'t> {
                 | Expression::Type
                 | Expression::List
                 | Expression::Arguments
-                | Expression::Parameters,
+                | Expression::Parameters
+                // @lfy def/format/main.lfy:format
+                | Expression::TypeParameters
+                | Expression::TypeArguments,
             ) => {
                 let open = self.first_significant(node).unwrap_or(0);
+                self.children(node, 0, open);
+                self.bracketed(node, open);
+            }
+            // The type arguments of a `Generic` follow the expression they apply to.
+            // @lfy def/format/main.lfy:format
+            GENERIC => {
+                let open = node
+                    .children
+                    .iter()
+                    .position(|child| {
+                        matches!(child, Child::Token(index) if self.tree.tokens[*index].rule == Some(LESS_THAN))
+                    })
+                    .unwrap_or(0);
                 self.children(node, 0, open);
                 self.bracketed(node, open);
             }
@@ -642,6 +680,10 @@ impl<'t> Formatter<'t> {
     /// or a comment between the brackets, or when the line would exceed [`MAX_WIDTH`]:
     /// then one item per line, each ending with a comma, the close on its own line.
     /// Otherwise it stays on one line and a trailing comma before the close is removed.
+    ///
+    /// Type parameters, type arguments, and the arguments of a `Generic` go multi-line
+    /// the same way, but only for length: whatever the source held between the
+    /// `LessThan` and the `GreaterThan`, they stay on one line while they fit.
     // @lfy def/format/main.lfy:format
     fn bracketed(&mut self, node: &Node, open: usize) {
         let Some(close) = self.last_significant(node) else {
@@ -679,10 +721,15 @@ impl<'t> Formatter<'t> {
         let hugs = matches!(node.rule, CALL | Entity::Expression(Expression::Arguments))
             && items.len() == 1
             && self.ends_with_bracket(items[0]);
-        let multiline = !self.flat
-            && (comment
-                || (!items.is_empty()
-                    && (line_break || (!hugs && self.exceeds(node, open, close)))));
+        let multiline = if is_angled(node.rule) {
+            // @lfy def/format/main.lfy:format
+            !self.flat && !items.is_empty() && self.exceeds(node, open, close)
+        } else {
+            !self.flat
+                && (comment
+                    || (!items.is_empty()
+                        && (line_break || (!hugs && self.exceeds(node, open, close)))))
+        };
         self.list(node, open, close, multiline);
     }
 
@@ -966,6 +1013,15 @@ mod tests {
 
     // @lfy def/format/main.lfy:format
     #[test]
+    fn test_a_generic_signature() {
+        assert_eq!(
+            formatted("fn map < T,U >(list:List< T >,transform:( item:T )=>U)=>List<U>;"),
+            "fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;\n"
+        );
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
     fn the_definitions_keep_their_tokens_and_format_to_a_fixed_point() {
         let files = def_files();
         assert!(files.len() > 30, "{}", files.len());
@@ -1177,6 +1233,42 @@ mod tests {
 
     // @lfy def/format/main.lfy:format
     #[test]
+    fn the_angles_of_type_parameters_and_type_arguments_are_brackets() {
+        assert_eq!(formatted("fn f < T >(a: T);"), "fn f<T>(a: T);\n");
+        assert_eq!(
+            formatted("d Box < T extends thing = string > {}"),
+            "d Box<T extends thing = string> {}\n"
+        );
+        assert_eq!(
+            formatted("const x : List < List < T > > = y;"),
+            "const x: List<List<T>> = y;\n"
+        );
+        assert_eq!(formatted("x = f < T >(a);"), "x = f<T>(a);\n");
+        assert_eq!(formatted("x = a.f < T > (a);"), "x = a.f<T>(a);\n");
+        assert_eq!(formatted("x = T [];"), "x = T[];\n");
+        // An ordering operator keeps the spaces of an infix operator.
+        assert_eq!(formatted("x = a<b;"), "x = a < b;\n");
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
+    fn a_function_type_is_its_parameters_then_the_arrow_and_the_type() {
+        assert_eq!(
+            formatted("const y : ( a:string )=>number = f;"),
+            "const y: (a: string) => number = f;\n"
+        );
+        assert_eq!(
+            formatted("type T { a = ( )=>number }"),
+            "type T { a = () => number }\n"
+        );
+        assert_eq!(
+            formatted("fn f(g: (a: T, ...b: U) => (c: T) => U);"),
+            "fn f(g: (a: T, ...b: U) => (c: T) => U);\n"
+        );
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
     fn a_block_opens_on_its_line_and_closes_alone_or_is_two_braces() {
         assert_eq!(formatted("loop\n{\n}"), "loop {}\n");
         assert_eq!(formatted("loop { break; }"), "loop {\n  break;\n}\n");
@@ -1238,6 +1330,28 @@ mod tests {
             "type T { a = string }\n"
         );
         assert_eq!(formatted("match x { a -> 1, }"), "match x { a -> 1 }\n");
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
+    fn type_parameters_and_arguments_go_one_per_line_only_when_the_line_is_too_long() {
+        // A line break in the source does not wrap them.
+        assert_eq!(formatted("fn f<\n  T,\n  U\n>(a: T);"), "fn f<T, U>(a: T);\n");
+        assert_eq!(formatted("const x: List<\n  T\n> = y;"), "const x: List<T> = y;\n");
+        assert_eq!(formatted("x = f<\n  T,\n>(a);"), "x = f<T>(a);\n");
+        let long = "T".repeat(60);
+        assert_eq!(
+            formatted(&format!("fn f<{long}, {long}2>(a: T);")),
+            format!("fn f<\n  {long},\n  {long}2,\n>(a: T);\n")
+        );
+        assert_eq!(
+            formatted(&format!("const x: List<{long}, {long}2> = y;")),
+            format!("const x: List<\n  {long},\n  {long}2,\n> = y;\n")
+        );
+        assert_eq!(
+            formatted(&format!("x = f<{long}, {long}2>(a);")),
+            format!("x = f<\n  {long},\n  {long}2,\n>(a);\n")
+        );
     }
 
     // @lfy def/format/main.lfy:format

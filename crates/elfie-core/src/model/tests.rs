@@ -433,6 +433,102 @@ fn test_apply_resolves_through_the_kind_data() {
     );
 }
 
+/// A type parameter is a symbol of the scope its declaration owns, with what it extends
+/// as its type and the type after its setter as its default.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_type_parameter_of_a_declaration() {
+    let model = bind_one("d Item {} d Box<T extends Item = string> { $item: `x` = T; }");
+    assert_clean(&model);
+    // Symbols Item and Box in the file scope.
+    assert_eq!(names(&model, model.file_scopes[0]), ["Item", "Box"]);
+    let item = entity(&model, "Item");
+    let boxed = entity(&model, "Box");
+    // A symbol T of kind typeParameter in the scope Box owns, beside its members.
+    let box_scope = model.entities[boxed].scope.expect("a data owns a scope");
+    assert_eq!(names(&model, box_scope), ["T", "item"]);
+    let t = model.lookup_local(box_scope, "T").expect("a symbol T");
+    assert_eq!(model.symbols[t].kind, SymbolKind::TypeParameter);
+    // Entity.typeParameters of Box holds T's entity alone.
+    let t = model.symbols[t].entity;
+    assert_eq!(model.type_parameters(boxed), vec![t]);
+    // Its type is Item, its default is string, and it is optional and never a spread.
+    assert_eq!(model.entities[t].ty, Some(TypeRef::Entity(item)));
+    assert_eq!(
+        model.entities[t].value("defaultValue"),
+        Some(&Value::Type(Box::new(TypeRef::Primitive("string"))))
+    );
+    assert_eq!(model.entities[t].value("optional"), Some(&Value::Bool(true)));
+    assert_eq!(model.entities[t].value("spread"), Some(&Value::Bool(false)));
+    // The member item has T's entity as its type.
+    let member_item = model.symbols[member(&model, boxed, "item")].entity;
+    assert_eq!(model.entities[member_item].ty, Some(TypeRef::Entity(t)));
+}
+
+/// A declaration seen with type arguments, the substitution a member read on it gets, and
+/// the item type a list argument gives.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_a_declaration_seen_with_type_arguments() {
+    let model = bind_one(
+        "d Box<T> { $item: `x` = T; $items: `y` = T[]; } const b = Box<string>; const i = b.item; const j = b.items;",
+    );
+    assert_clean(&model);
+    let boxed = entity(&model, "Box");
+    // The type of b is Box seen with one type argument, string.
+    let Some(TypeRef::Entity(seen)) = model.entities[entity(&model, "b")].ty else {
+        panic!("b has no entity type");
+    };
+    assert_eq!(model.entities[seen].identifier.as_deref(), Some("Box"));
+    assert_eq!(model.entities[seen].ty, Some(TypeRef::Entity(boxed)));
+    assert_eq!(
+        model.type_arguments(seen),
+        vec![TypeRef::Primitive("string")]
+    );
+    assert_eq!(model.type_parameters(seen), model.type_parameters(boxed));
+    // The usage of item on b resolves to Box's member, and i has type string.
+    let read = node(&model, 0, E::Member, "b.item");
+    assert_eq!(usage(&model, read).symbol, Some(member(&model, boxed, "item")));
+    assert_eq!(
+        model.entities[entity(&model, "i")].ty,
+        Some(TypeRef::Primitive("string"))
+    );
+    // j has type List of string, so its item type is string.
+    let j = &model.entities[entity(&model, "j")];
+    assert_eq!(
+        j.ty,
+        Some(TypeRef::List(Box::new(TypeRef::Primitive("string"))))
+    );
+    assert_eq!(j.item_type, Some(TypeRef::Primitive("string")));
+    // The member items of Box itself keeps its type, List of T.
+    let t = model.type_parameters(boxed)[0];
+    let items = model.symbols[member(&model, boxed, "items")].entity;
+    assert_eq!(
+        model.entities[items].ty,
+        Some(TypeRef::List(Box::new(TypeRef::Entity(t))))
+    );
+}
+
+/// More type arguments than the declaration has type parameters is one problem at the
+/// arguments, and the entity is bound with the arguments as written.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_too_many_type_arguments_is_a_problem() {
+    let model = bind_one("d Box<T> {} const b = Box<string, number>;");
+    let Some(TypeRef::Entity(seen)) = model.entities[entity(&model, "b")].ty else {
+        panic!("b has no entity type");
+    };
+    assert_eq!(
+        model.type_arguments(seen),
+        vec![TypeRef::Primitive("string"), TypeRef::Primitive("number")]
+    );
+    assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
+    assert_eq!(
+        model.problems[0].node,
+        node(&model, 0, E::Generic, "Box<string, number>")
+    );
+}
+
 // ---- Declare ------------------------------------------------------------------------
 
 /// Each SourceFile is a file scope whose current entity is an anonymous entity for the
@@ -535,6 +631,41 @@ fn duplicate_declaration_is_a_problem_and_the_first_wins() {
     assert_eq!(model.symbols[x].kind, SymbolKind::Variable);
     assert_eq!(names(&model, model.file_scopes[0]), ["x", "y"]);
     assert_eq!(usage(&model, node(&model, 0, E::Name, "x")).symbol, Some(x));
+}
+
+/// A type parameter of a declaration is a symbol of the scope that declaration owns,
+/// beside its parameters and members, so the name is visible throughout the declaration.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
+    let model = bind_one(
+        "d Item {} fn take<T extends Item>(p: T): `d` => T { const q = p; } \
+         trait held<U>: `d` { $u: `d` = U; } type Pair<V> { f = V, }",
+    );
+    assert_clean(&model);
+    for (name, spelled) in [("take", "T"), ("held", "U"), ("Pair", "V")] {
+        let scope = model.entities[entity(&model, name)]
+            .scope
+            .unwrap_or_else(|| panic!("{name} owns no scope"));
+        assert_eq!(names(&model, scope)[0], spelled, "{name}");
+        let symbol = model.lookup_local(scope, spelled).expect("a symbol");
+        assert_eq!(model.symbols[symbol].kind, SymbolKind::TypeParameter, "{name}");
+    }
+    // It is visible in the parameters, the output, and the body of the declaration, and
+    // it is not one of FnEntity.parameters.
+    let take = entity(&model, "take");
+    let t = model.type_parameters(take)[0];
+    let parameters: Vec<&str> = model.entities[take]
+        .parameters()
+        .iter()
+        .map(|&s| model.symbols[s].name.as_str())
+        .collect();
+    assert_eq!(parameters, ["p"]);
+    let p = model.symbols[model.entities[take].parameters()[0]].entity;
+    assert_eq!(model.entities[p].ty, Some(TypeRef::Entity(t)));
+    assert_eq!(model.entities[take].output(), Some(&TypeRef::Entity(t)));
+    // Its kind data is the one a parameter is seen through.
+    assert_eq!(model.entities[t].kind, EntityKind::Parameter);
 }
 
 /// An ObjectKey in an enum declares an enumMember; one in a plain object declares nothing.
@@ -1244,6 +1375,45 @@ fn name_resolves_to_the_nearest_scope() {
     assert_eq!(usages_of(&model, global).len(), 1);
 }
 
+/// A Name that resolves to a type parameter is a usage of the value layer like any name,
+/// and what it yields as a type is the type parameter's entity.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_name_of_a_type_parameter_yields_the_parameter() {
+    let model = bind_one("d Item {} d Box<T extends Item> { $item: `x` = T; }");
+    assert_clean(&model);
+    let boxed = entity(&model, "Box");
+    let t = model.type_parameters(boxed)[0];
+    let read = usage(&model, node(&model, 0, E::Name, "T"));
+    assert_eq!(read.layer, Layer::Value);
+    assert_eq!(read.symbol.map(|s| model.symbols[s].entity), Some(t));
+    // Not Item, which is only what it must extend.
+    let item = model.symbols[member(&model, boxed, "item")].entity;
+    assert_eq!(model.entities[item].ty, Some(TypeRef::Entity(t)));
+    assert_ne!(
+        model.entities[item].ty,
+        Some(TypeRef::Entity(entity(&model, "Item")))
+    );
+}
+
+/// A member read on a left side whose type is a type parameter resolves in what the
+/// parameter extends; with no extends clause nothing resolves and nothing is reported.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_member_on_a_type_parameter_reads_what_it_extends() {
+    let model = bind_one(
+        "d Item { $n: `d` = string; } \
+         fn take<T extends Item>(p: T): `d` => string { const q = p.n; } \
+         fn loose<U>(p: U): `d` => string { const q = p.n; }",
+    );
+    assert_clean(&model);
+    let reads = nodes(&model, 0, E::Member, "p.n");
+    assert_eq!(reads.len(), 2);
+    let n = member(&model, entity(&model, "Item"), "n");
+    assert_eq!(usage(&model, reads[0]).symbol, Some(n));
+    assert_eq!(usage(&model, reads[1]).symbol, None);
+}
+
 // ---- Properties ---------------------------------------------------------------------
 
 /// Entity.identifier, Entity.definition, FnEntity.parameters, and FnEntity.output.
@@ -1307,8 +1477,9 @@ fn type_of_a_declaration_is_itself() {
     }
 }
 
-/// Entity.type from a type expression, a member's right side, or a value; a list type
-/// gives Entity.itemType.
+/// Entity.type from a type expression, a member's right side, or a value; Entity.itemType
+/// is the first of the type arguments of the type when that type is the standard
+/// library's List, for a bare List and a list value included.
 // @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
@@ -1339,6 +1510,152 @@ fn type_and_item_type() {
     let one = &model.entities[model.symbols[member(&model, d, "one")].entity];
     assert_eq!(one.ty, Some(TypeRef::Entity(a)));
     assert_eq!(one.item_type, None);
+    // A bare List, with no argument, has no item type; List of one argument is spelled
+    // as a list, so it is the same type as the brackets give.
+    // @lfy def/model/main.lfy:bind
+    let mut sources = prelude();
+    sources.push(source(
+        "a.lfy",
+        "const bare: List = 1; const of_string: List<string> = 1; const sugared: string[] = [];",
+        &[],
+    ));
+    let model = bind(sources);
+    let list = prelude_data(&model, "List");
+    let program = model.file("a.lfy").unwrap();
+    let bare = model.symbols[file_symbol(&model, program, "bare")].entity;
+    assert_eq!(model.entities[bare].ty, Some(TypeRef::Entity(list)));
+    assert_eq!(model.entities[bare].item_type, None);
+    let of_string = model.symbols[file_symbol(&model, program, "of_string")].entity;
+    assert_eq!(
+        model.entities[of_string].ty,
+        model.entities[model.symbols[file_symbol(&model, program, "sugared")].entity].ty
+    );
+    assert_eq!(
+        model.entities[of_string].item_type,
+        Some(TypeRef::Primitive("string"))
+    );
+    // This prelude's List lists no type parameter, so the one argument is an arity
+    // problem; the type is bound with the argument as written all the same.
+    // @lfy def/model/main.lfy:bind
+    assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
+    assert_eq!(
+        model.problems[0].node,
+        node(&model, program, E::TypeArguments, "<string>")
+    );
+}
+
+/// Entity.typeParameters is empty for a declaration without them, and Entity.typeArguments
+/// is empty for a declaration used without any.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_declaration_without_type_parameters_has_none() {
+    let model = bind_one("d Plain { $x: `d` = string; } const p: Plain = 1; fn f(): `d` => Plain {}");
+    assert_clean(&model);
+    let plain = entity(&model, "Plain");
+    assert!(model.type_parameters(plain).is_empty());
+    assert!(model.type_arguments(plain).is_empty());
+    // A Reference without arguments yields the declaration itself.
+    assert_eq!(
+        model.entities[entity(&model, "p")].ty,
+        Some(TypeRef::Entity(plain))
+    );
+    assert!(model.type_arguments(entity(&model, "p")).is_empty());
+}
+
+/// A FunctionType yields an anonymous function entity whose parameters are declared in the
+/// scope it owns and whose output is the type after its arrow, and a member read on a
+/// left side with type arguments substitutes through both.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_function_type_is_an_anonymous_function_entity() {
+    let model = bind_one("type Pair<T> { f = (item: T) => T, } const p: Pair<string> = 1; const q = p.f;");
+    assert_clean(&model);
+    let pair = entity(&model, "Pair");
+    let t = model.type_parameters(pair)[0];
+    // The FunctionType owns a scope holding its parameters, and is an anonymous Fn.
+    let function_type = node(&model, 0, E::FunctionType, "(item: T) => T");
+    let scope = model.scope_of(function_type).expect("a FunctionType owns a scope");
+    assert_eq!(names(&model, scope), ["item"]);
+    let anonymous = model.scopes[scope].current;
+    assert_eq!(model.entities[anonymous].identifier, None);
+    assert!(matches!(
+        model.entities[anonymous].kind,
+        EntityKind::Fn { agent: false, .. }
+    ));
+    let item = model.symbols[model.entities[anonymous].parameters()[0]].entity;
+    assert_eq!(model.entities[item].ty, Some(TypeRef::Entity(t)));
+    assert_eq!(model.entities[anonymous].output(), Some(&TypeRef::Entity(t)));
+    // Read on a Pair of string, the parameters and the output are substituted.
+    let Some(TypeRef::Entity(read)) = model.entities[entity(&model, "q")].ty else {
+        panic!("q has no entity type");
+    };
+    assert_ne!(read, anonymous, "the substitution is a copy, not the declaration");
+    let substituted = model.symbols[model.entities[read].parameters()[0]].entity;
+    assert_eq!(
+        model.entities[substituted].ty,
+        Some(TypeRef::Primitive("string"))
+    );
+    assert_eq!(
+        model.entities[read].output(),
+        Some(&TypeRef::Primitive("string"))
+    );
+}
+
+/// A declaration seen with type arguments carries the declaration's identifier,
+/// definition, members, criteria, and type parameters, and its type is the declaration.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_declaration_seen_with_arguments_carries_the_declarations_own() {
+    let model = bind_one(
+        "trait t {} d Box<T> is t: `a box` { $item: `d` = T; where (`s`) -> `b`; } const b = Box<string>;",
+    );
+    assert_clean(&model);
+    let boxed = entity(&model, "Box");
+    let Some(TypeRef::Entity(seen)) = model.entities[entity(&model, "b")].ty else {
+        panic!("b has no entity type");
+    };
+    assert_eq!(model.entities[seen].identifier.as_deref(), Some("Box"));
+    assert_eq!(model.entities[seen].definition.as_deref(), Some("a box"));
+    assert_eq!(criteria_texts(&model, seen), criteria_texts(&model, boxed));
+    assert!(!criteria_texts(&model, seen).is_empty());
+    assert!(model.entities[seen].has_trait(entity(&model, "t")));
+    assert_eq!(model.members(seen), model.members(boxed));
+    assert_eq!(model.type_parameters(seen), model.type_parameters(boxed));
+    assert_eq!(model.entities[seen].ty, Some(TypeRef::Entity(boxed)));
+    // The declaration itself is used without arguments, so it has none.
+    assert!(model.type_arguments(boxed).is_empty());
+}
+
+/// A member read on a left side with type arguments substitutes through nested arguments,
+/// and a parameter with no argument at its position stays itself.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_member_read_substitutes_through_nested_arguments() {
+    let model = bind_one(
+        "d Pair<A, B> {} d Box<T> { $p: `d` = Pair<T, number>; } const b = Box<string>; const c = b.p;",
+    );
+    assert_clean(&model);
+    let pair = entity(&model, "Pair");
+    let Some(TypeRef::Entity(read)) = model.entities[entity(&model, "c")].ty else {
+        panic!("c has no entity type");
+    };
+    assert_eq!(model.generic_base(read), pair);
+    assert_eq!(
+        model.type_arguments(read),
+        vec![TypeRef::Primitive("string"), TypeRef::Primitive("number")]
+    );
+    // The member of Box itself keeps the parameter.
+    let t = model.type_parameters(entity(&model, "Box"))[0];
+    let declared = model.symbols[member(&model, entity(&model, "Box"), "p")].entity;
+    let Some(TypeRef::Entity(declared)) = model.entities[declared].ty else {
+        panic!("the member has no entity type");
+    };
+    assert_eq!(
+        model.type_arguments(declared),
+        vec![TypeRef::Entity(t), TypeRef::Primitive("number")]
+    );
 }
 
 /// An add call or a Where appends one Criterion, in the body or in a With.

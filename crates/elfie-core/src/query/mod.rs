@@ -7,7 +7,9 @@
 
 use std::collections::HashSet;
 
-pub mod data; // @lfy def/query/main.lfy:16
+// The directory holds this module file and the output of `def/query/data.lfy`, which it
+// declares as a submodule; the declaration comes from the layout, not from an entity.
+pub mod data;
 
 pub use data::*;
 
@@ -30,6 +32,13 @@ use crate::workspace::{Workspace, WorkspaceProblem};
 
 /// The project layout file, where a load problem without a path is placed.
 const MANIFEST: &str = "elfie.json";
+/// The members of `Kinds.Parameter` that say how a parameter may be left out or takes the
+/// rest, as the binder fills them in.
+// @lfy def/query/main.lfy:typeTextOf
+const OPTIONAL: &str = "optional";
+/// See [`OPTIONAL`].
+// @lfy def/query/main.lfy:typeTextOf
+const SPREAD: &str = "spread";
 /// The extension of a source file, dropped from path completions.
 const EXTENSION: &str = ".lfy";
 /// The data the prelude gives an entity for what it is; `Entity` covers every entity and
@@ -657,16 +666,155 @@ fn documentation_text(workspace: &Workspace, node: NodeRef) -> Option<String> {
     Some(text.trim_end().to_string())
 }
 
-/// The identifier of a type, or its source text when it declares no name.
-// @lfy def/query/main.lfy:hoverOf
-fn type_name(model: &Model, ty: &TypeRef) -> String {
+/// How a type is spelled wherever a query shows one.
+///
+/// A declaration, or a primitive, is spelled by its identifier; a type parameter by its
+/// name; a type that declares no name by the source text of its type expression. A
+/// declaration seen with type arguments is its identifier, then its arguments spelled the
+/// same way between angle brackets; a list is the item spelled the same way then square
+/// brackets, so the sugar wins in display; the entity of a `FunctionType` is its
+/// parameters between parentheses, then a double arrow, then its output.
+// Decision: the model spells a type as a `TypeRef`, so `Entity.type` is handed over as
+// one; `TypeRef::Entity` is the entity the definition names, and every other case is a
+// type that declares no entity of its own.
+// @lfy def/query/main.lfy:typeTextOf
+pub fn type_text_of(workspace: &Workspace, ty: Option<&TypeRef>) -> Option<String> {
+    let ty = ty?; // @lfy def/query/main.lfy:typeTextOf
+    Some(type_text(&workspace.model, ty))
+}
+
+/// [`type_text_of`] for a type the model holds.
+// @lfy def/query/main.lfy:typeTextOf
+fn type_text(model: &Model, ty: &TypeRef) -> String {
     match ty {
-        TypeRef::Entity(entity) => model.entities[*entity]
-            .identifier
-            .clone()
-            .unwrap_or_else(|| model::type_text(model, ty)),
-        _ => model::type_text(model, ty),
+        // @lfy def/query/main.lfy:typeTextOf
+        TypeRef::Entity(entity) => entity_type_text(model, *entity),
+        // The sugar wins in display, and `List<T>` is already read as a list; a function
+        // type, a union, or an intersection is parenthesized before the brackets.
+        // @lfy def/query/main.lfy:typeTextOf
+        TypeRef::List(item) => {
+            let text = type_text(model, item);
+            if is_parenthesized(model, item) {
+                format!("({text})[]")
+            } else {
+                format!("{text}[]")
+            }
+        }
+        TypeRef::Union(items) => items
+            .iter()
+            .map(|item| type_text(model, item))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        // A primitive, a predicate, a literal, and a type the model could not read
+        // further are spelled as the model spells them.
+        // @lfy def/query/main.lfy:typeTextOf
+        ty => model::type_text(model, ty),
     }
+}
+
+/// Whether a type is wrapped in parentheses before the square brackets of a list: a
+/// function type or a union.
+// @lfy def/query/main.lfy:typeTextOf
+fn is_parenthesized(model: &Model, ty: &TypeRef) -> bool {
+    match ty {
+        TypeRef::Union(_) | TypeRef::Function => true,
+        TypeRef::Entity(entity) => is_function_type(model, *entity),
+        _ => false,
+    }
+}
+
+/// Whether an entity is the entity of a `FunctionType`: a function that declares no name.
+// @lfy def/query/main.lfy:typeTextOf
+fn is_function_type(model: &Model, entity: EntityId) -> bool {
+    let e = &model.entities[entity];
+    e.identifier.is_none() && matches!(e.kind, EntityKind::Fn { .. })
+}
+
+/// How an entity in a type position is spelled.
+// @lfy def/query/main.lfy:typeTextOf
+fn entity_type_text(model: &Model, entity: EntityId) -> String {
+    // @lfy def/query/main.lfy:typeTextOf
+    if is_function_type(model, entity) {
+        return function_type_text(model, entity);
+    }
+    let e = &model.entities[entity];
+    let arguments = model.type_arguments(entity);
+    match &e.identifier {
+        // @lfy def/query/main.lfy:typeTextOf
+        Some(identifier) if !arguments.is_empty() => format!(
+            "{identifier}<{}>",
+            arguments
+                .iter()
+                .map(|argument| type_text(model, argument))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        // A declaration, a primitive the prelude declares, and a type parameter are all
+        // spelled by the name they were declared with.
+        // @lfy def/query/main.lfy:typeTextOf
+        Some(identifier) => identifier.clone(),
+        // @lfy def/query/main.lfy:typeTextOf
+        None => match e.node.filter(|&node| is_real(model, node)) {
+            Some(node) => model.raw(node).trim().to_string(),
+            None => model::type_text(model, &TypeRef::Entity(entity)),
+        },
+    }
+}
+
+/// The entity of a `FunctionType`, spelled as it is written.
+// @lfy def/query/main.lfy:typeTextOf
+fn function_type_text(model: &Model, entity: EntityId) -> String {
+    let e = &model.entities[entity];
+    let parameters = e
+        .parameters()
+        .iter()
+        .map(|&symbol| {
+            let s = &model.symbols[symbol];
+            let p = &model.entities[s.entity];
+            let node = p.node.filter(|&node| is_real(model, node));
+            // Decision: the model fills `optional` and `spread` in for a type parameter
+            // only, so for a value parameter the node the grammar wrote says it: a
+            // `SpreadParameter` takes the rest, and a `QuestionMark` may be left out.
+            // @lfy def/query/main.lfy:typeTextOf
+            let spread = matches!(p.value(SPREAD), Some(Value::Bool(true)))
+                || node.is_some_and(|node| model.info(node).rule == E::SpreadParameter.entity());
+            let optional = matches!(p.value(OPTIONAL), Some(Value::Bool(true)))
+                || node.is_some_and(|node| {
+                    model
+                        .node(node)
+                        .token(P::QuestionMark, model.tokens(node.file))
+                        .is_some()
+                });
+            let dots = if spread { "..." } else { "" };
+            let question = if optional { "?" } else { "" };
+            // Decision: a parameter written without a type is spelled by its name alone,
+            // since there is no type to put after the colon.
+            match &p.ty {
+                Some(ty) => format!("{dots}{}{question}: {}", s.name, type_text(model, ty)),
+                None => format!("{dots}{}{question}", s.name),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    // Decision: a `FunctionType` always writes the type after its arrow, so the output is
+    // there to spell.
+    let output = e.output().map(|ty| type_text(model, ty)).unwrap_or_default();
+    format!("({parameters}) => {output}")
+}
+
+/// The entity that lists a type parameter or declares a member: the current entity of the
+/// scope the symbol was declared in, which is the declaration that owns that scope.
+// Decision: an enum member is of kind `enumMember` and not the `member` the criterion
+// names, so it reports no owner.
+// @lfy def/query/main.lfy:hoverOf
+fn owner_of(model: &Model, entity: EntityId) -> Option<EntityId> {
+    let symbol = model.entities[entity].symbol?;
+    let symbol = &model.symbols[symbol];
+    if !matches!(symbol.kind, SymbolKind::TypeParameter | SymbolKind::Member) {
+        return None;
+    }
+    let owner = model.scopes[symbol.scope].current;
+    (owner != entity).then_some(owner)
 }
 
 /// Everything shown for one entity.
@@ -679,9 +827,12 @@ fn type_name(model: &Model, ty: &TypeRef) -> String {
 /// documented nodes without their openers, closers, and one leading space per line; the
 /// criteria are `criteriaOf` the entity; the traits are the identifier of each of
 /// `Entity.traits` in application order, so a native data or fn shows `builtin` among
-/// them. A member of a kind data or of a base data, reached after the context accessor or
-/// a value accessor, hovers as any member: kind `member`, its range in the library file
-/// that declares it, and its own definition and type.
+/// them; the owner is the identifier of the declaration whose `TypeParameters` lists a type
+/// parameter, or the owner of a member, and `None` for anything else. A member of a kind
+/// data or of a base data, reached after the context accessor or a value accessor, hovers
+/// as any member: kind `member`, its range in the library file that declares it, and its
+/// own definition and type. A type parameter hovers with kind `typeParameter`, the type
+/// after its `extends` as its type, and the declaration that lists it as its owner.
 // @lfy def/query/main.lfy:hoverOf
 pub fn hover_of(workspace: &Workspace, entity: EntityId) -> Hover {
     let model = &workspace.model;
@@ -707,7 +858,11 @@ pub fn hover_of(workspace: &Workspace, entity: EntityId) -> Hover {
         // Decision: the binder stores the definition with references as written, so they
         // are stripped to the referenced identifier here, as `criteriaOf` does.
         definition: e.definition.as_deref().map(model::strip_references), // @lfy def/query/main.lfy:hoverOf
-        ty: e.ty.as_ref().map(|ty| type_name(model, ty)), // @lfy def/query/main.lfy:hoverOf
+        // A type parameter's type is the type after its `extends`, so the same read gives
+        // its constraint. @lfy def/query/main.lfy:hoverOf
+        ty: type_text_of(workspace, e.ty.as_ref()), // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf
+        owner: owner_of(model, entity).and_then(|owner| model.entities[owner].identifier.clone()),
         // A trait applied anonymously names nothing and is left out.
         // @lfy def/query/main.lfy:hoverOf
         traits: e
@@ -1151,13 +1306,15 @@ fn expression_begins_after(before: &Token) -> bool {
 /// members of the current entity of the scope holding the position (of the left side,
 /// when there is one). After `$&`: the members of the parent scope's current entity.
 /// After `.` or `?.`: what the left side offers, or nothing when it resolves to nothing.
-/// After `is`, `extends`, or a comma in trait uses: every trait visible plus the module
-/// symbols. Inside the string of a `Use`: paths. Inside a template reference or
-/// documentation: every name visible, then every rule entity. After the colon of a
-/// definition clause: every data, type, enum, or trait visible, then the primitive type
-/// keywords. Where a statement can begin: every name visible, then the keyword that
-/// begins each statement. Where an expression can begin: every name visible, then the
-/// value keywords, then the primitive type keywords.
+/// After `is`, the `extends` of an extends clause, or a comma in trait uses: every trait
+/// visible plus the module symbols. Inside the string of a `Use`: paths. Inside a template
+/// reference or documentation: every name visible, then every rule entity. Where a type
+/// is written — after the colon of a definition clause, after the `<` or a comma of type
+/// arguments, and after the `extends` or `=` of a type parameter — every data, type,
+/// enum, trait, or type parameter visible, then the primitive type keywords. Where a
+/// statement can begin: every name visible, then the keyword that begins each statement.
+/// Where an expression can begin: every name visible, then the value keywords, then the
+/// primitive type keywords.
 // @lfy def/query/main.lfy:completionsAt
 pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> Vec<Completion> {
     let model = &workspace.model;
@@ -1261,6 +1418,44 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
             .iter()
             .rposition(|token| !is_trivia_token(token))
     };
+    // Whether a token is written directly against the token before it, with nothing
+    // between them.
+    let against_previous = |index: usize| -> bool {
+        previous_of(index).is_some_and(|previous| {
+            is_name_token(&tokens[previous]) && end_of(&tokens[previous]) == start_of(&tokens[index])
+        })
+    };
+    // Whether a token spells the name of a declaration of this file.
+    // @lfy def/query/main.lfy:completionsAt
+    let declares_a_name = |index: usize| -> bool {
+        model
+            .symbols
+            .iter()
+            .any(|symbol| symbol.node.file == id && symbol.name_token == Some(index))
+    };
+    // Whether a `<` opens the type arguments of a generic, rather than the type parameters
+    // a declaration lists or an ordering comparison.
+    // Decision: a `Generic` needs its closing `>` and the token after it, so `Box<` at the
+    // end of a line is no more in the tree than an unfinished trait list is; when the tree
+    // does not say, the tokens do: a `<` written against a name that is used rather than
+    // declared opens type arguments, as a comparison is written with space around it.
+    // @lfy def/query/main.lfy:completionsAt
+    let opens_type_arguments = |index: usize| -> bool {
+        if !tokens[index].is(P::LessThan) {
+            return false;
+        }
+        match holder_of(index) {
+            Some(rule) if rule == E::TypeArguments.entity() || rule == E::Generic.entity() => true,
+            // The `<` of a `TypeParameters` is followed by a name being declared.
+            Some(rule) if rule == E::TypeParameters.entity() => false,
+            _ => against_previous(index) && !previous_of(index).is_some_and(declares_a_name),
+        }
+    };
+    // Whether a token is the `extends` or the `=` of a `TypeParameter`, after which the
+    // constraint or the default type is written.
+    // @lfy def/query/main.lfy:completionsAt
+    let of_type_parameter =
+        |index: usize| -> bool { holder_of(index) == Some(E::TypeParameter.entity()) };
     // Decision: a recoverable rule that fails past its trait uses (`d A is t, ` at the
     // end of a file) puts the comma in an error node, so when the tree does not say the
     // comma is in `TraitUses`, the tokens do: a run of names and commas back to `is` or
@@ -1278,9 +1473,42 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
         let mut cursor = index;
         while let Some(previous) = previous_of(cursor) {
             let token = &tokens[previous];
+            // The `extends` of a `TypeParameter` names a type, not a trait.
+            // @lfy def/query/main.lfy:completionsAt
+            if token.is(K::ExtendsKeyword) && of_type_parameter(previous) {
+                return false;
+            }
             if token.is(K::IsKeyword) || token.is(K::ExtendsKeyword) {
                 return true;
             }
+            if !(token.is(I::Identifier) || token.is(P::Comma) || token.is(P::ValueAccessor)) {
+                return false;
+            }
+            cursor = previous;
+        }
+        false
+    });
+    // The `<` of `TypeArguments` or of `Generic`, or a comma inside either.
+    // @lfy def/query/main.lfy:completionsAt
+    let in_type_arguments = before.is_some_and(|index| {
+        if opens_type_arguments(index) {
+            return true;
+        }
+        if !tokens[index].is(P::Comma) {
+            return false;
+        }
+        let chain = nodes_covering(model, id, index);
+        if find_rule(model, &chain, E::TypeArguments.entity()).is_some()
+            || find_rule(model, &chain, E::Generic.entity()).is_some()
+        {
+            return true;
+        }
+        let mut cursor = index;
+        while let Some(previous) = previous_of(cursor) {
+            if opens_type_arguments(previous) {
+                return true;
+            }
+            let token = &tokens[previous];
             if !(token.is(I::Identifier) || token.is(P::Comma) || token.is(P::ValueAccessor)) {
                 return false;
             }
@@ -1301,6 +1529,18 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
                     is_name_token(token) || token.is(P::GroupClose) || token.is(P::QuestionMark)
                 }))
     });
+    // The `extends` or the `=` of a `TypeParameter`.
+    // @lfy def/query/main.lfy:completionsAt
+    let in_type_parameter = before.is_some_and(|index| {
+        (tokens[index].is(K::ExtendsKeyword) || tokens[index].is(P::PlainSetter))
+            && of_type_parameter(index)
+    });
+    // Where a type is written: after the colon of a definition, inside type arguments, or
+    // after the `extends` or `=` of a type parameter.
+    // @lfy def/query/main.lfy:completionsAt
+    let offers_type = (before_rule == Some(Rule::Punctuation(P::Colon)) && is_definition_colon)
+        || in_type_arguments
+        || in_type_parameter;
     let in_prose = find_rule(model, &chain, E::TemplateReference.entity()).is_some()
         || find_rule(model, &chain, C::Documentation.entity()).is_some()
         || matches!(
@@ -1387,10 +1627,16 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
             // @lfy def/query/main.lfy:completionsAt
         }
         // @lfy def/query/main.lfy:completionsAt
-        Some(Rule::Keyword(K::IsKeyword | K::ExtendsKeyword)) => {
+        Some(Rule::Keyword(K::IsKeyword)) => trait_names(model, scope, &mut out),
+        // The `extends` of an `ExtendsClause` names traits; the `extends` of a
+        // `TypeParameter` names the type it must extend.
+        // @lfy def/query/main.lfy:completionsAt
+        Some(Rule::Keyword(K::ExtendsKeyword)) if !in_type_parameter => {
             trait_names(model, scope, &mut out)
         }
-        Some(Rule::Punctuation(P::Comma)) if in_trait_uses => trait_names(model, scope, &mut out),
+        Some(Rule::Punctuation(P::Comma)) if in_trait_uses && !in_type_arguments => {
+            trait_names(model, scope, &mut out)
+        }
         // @lfy def/query/main.lfy:completionsAt
         _ if in_prose => {
             names(&mut out);
@@ -1411,7 +1657,7 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
             }
         }
         // @lfy def/query/main.lfy:completionsAt
-        Some(Rule::Punctuation(P::Colon)) if is_definition_colon => {
+        _ if offers_type => {
             out.extend(
                 visible_symbols(model, scope)
                     .into_iter()
@@ -1422,6 +1668,10 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
                                 | SymbolKind::Type
                                 | SymbolKind::Enum
                                 | SymbolKind::Trait
+                                // A type parameter visible from the position is a type
+                                // wherever one is offered.
+                                // @lfy def/query/main.lfy:completionsAt
+                                | SymbolKind::TypeParameter
                         )
                     })
                     .map(|symbol| symbol_completion(model, symbol)),
@@ -2030,6 +2280,11 @@ fn token_type_of(model: &Model, symbol: SymbolId) -> TokenType {
         SymbolKind::EnumMember => TokenType::EnumMember,
         SymbolKind::Function | SymbolKind::AgentFunction => TokenType::Function,
         SymbolKind::Parameter => TokenType::Parameter,
+        // A type parameter is a type parameter wherever its name appears: in the
+        // `TypeParameters` that lists it, in a type position, and in an expression alike,
+        // because the symbol it resolves to is the same everywhere.
+        // @lfy def/query/main.lfy:semanticTokensOf
+        SymbolKind::TypeParameter => TokenType::TypeParameter,
         SymbolKind::Variable | SymbolKind::LoopVariable | SymbolKind::External => {
             TokenType::Variable
         }
@@ -2643,7 +2898,51 @@ mod tests {
         // The range covers the identifier of the declaration, not the token hovered.
         // @lfy def/query/main.lfy:hoverOf
         assert_eq!(hover.range, range(A, (2, 2), (2, 3)));
+        assert_eq!(hover.owner, None);
         assert_eq!(hover_at(&ws, A, at(2, 12)), None);
+    }
+
+    // @lfy def/query/main.lfy:hoverAt
+    #[test]
+    fn a_type_parameter_hovers_with_its_constraint_and_the_declaration_that_lists_it() {
+        let text = "d Item {} d Box<T extends Item> { $item: `d` = T; }";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        assert!(ws.problems.is_empty(), "{:?}", ws.problems);
+        let hover = hover_at(&ws, A, find_pos(text, "T;", 0)).unwrap();
+        assert_eq!(hover.kind, SymbolKind::TypeParameter);
+        assert_eq!(hover.identifier, "T");
+        // @lfy def/query/main.lfy:hoverOf
+        assert_eq!(hover.ty.as_deref(), Some("Item"));
+        assert_eq!(hover.owner.as_deref(), Some("Box"));
+        assert_eq!(hover.definition, None);
+        assert!(hover.traits.is_empty());
+        assert!(hover.criteria.is_empty());
+        // The declaration itself, in the `TypeParameters` that lists it, hovers alike.
+        assert_eq!(hover_at(&ws, A, find_pos(text, "T extends", 0)), Some(hover));
+        // A type parameter without a constraint has no type to show.
+        // @lfy def/query/main.lfy:hoverOf
+        let text = "d Box<U> { $item: `d` = U; }";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        let hover = hover_at(&ws, A, find_pos(text, "U;", 0)).unwrap();
+        assert_eq!(hover.kind, SymbolKind::TypeParameter);
+        assert_eq!(hover.ty, None);
+        assert_eq!(hover.owner.as_deref(), Some("Box"));
+    }
+
+    // @lfy def/query/main.lfy:hoverOf
+    #[test]
+    fn a_member_names_the_declaration_that_declares_it_as_its_owner() {
+        let text = "trait t { $m = string; }\nd A is t { $n = string; }\nconst v = 1;\n";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        assert_eq!(hover_of(&ws, find(&ws, "A.n")[0]).owner.as_deref(), Some("A"));
+        // A member a trait adds is owned by the entity it was reached through.
+        assert_eq!(hover_of(&ws, find(&ws, "t.m")[0]).owner.as_deref(), Some("t"));
+        // Anything else reports no owner. @lfy def/query/main.lfy:hoverOf
+        assert_eq!(hover_of(&ws, find(&ws, "v")[0]).owner, None);
+        assert_eq!(hover_of(&ws, find(&ws, "A")[0]).owner, None);
     }
 
     // @lfy def/query/main.lfy:hoverOf
@@ -2685,6 +2984,95 @@ mod tests {
         assert_eq!(hover.identifier, "global");
         assert_eq!(hover.documentation, None);
         assert_eq!(hover.range, Range::empty("", at(1, 0)));
+    }
+
+    /// [`type_text_of`] the type of the entity a name spells in a source.
+    fn type_text_at(workspace: &Workspace, name: &str) -> Option<String> {
+        let entity = find(workspace, name);
+        assert_eq!(entity.len(), 1, "{name} names one entity");
+        let ty = workspace.model.entities[entity[0]].ty.clone();
+        type_text_of(workspace, ty.as_ref())
+    }
+
+    /// [`type_text_of`] the type of the one entity a name is bound to anywhere in the
+    /// program: a parameter of a function type declares no symbol of a file scope.
+    fn type_text_of_symbol(workspace: &Workspace, name: &str) -> Option<String> {
+        let found: Vec<EntityId> = workspace
+            .model
+            .symbols
+            .iter()
+            .filter(|symbol| symbol.name == name)
+            .map(|symbol| symbol.entity)
+            .collect();
+        assert_eq!(found.len(), 1, "{name} names one symbol");
+        let ty = workspace.model.entities[found[0]].ty.clone();
+        type_text_of(workspace, ty.as_ref())
+    }
+
+    // @lfy def/query/main.lfy:typeTextOf
+    #[test]
+    fn a_generic_is_spelled_with_its_arguments_and_a_list_with_its_brackets() {
+        let fixture = Fixture::one("d Box<T> {} const b = Box<string>;");
+        let ws = fixture.load();
+        assert_eq!(type_text_at(&ws, "b").as_deref(), Some("Box<string>"));
+        // Nothing to spell. @lfy def/query/main.lfy:typeTextOf
+        assert_eq!(type_text_of(&ws, None), None);
+        // A declaration and a primitive are spelled by their identifier.
+        // @lfy def/query/main.lfy:typeTextOf
+        let fixture = Fixture::one("d A {}\nconst v: A = A;\nconst w: string = \"x\";\n");
+        let ws = fixture.load();
+        assert_eq!(type_text_at(&ws, "v").as_deref(), Some("A"));
+        assert_eq!(type_text_at(&ws, "w").as_deref(), Some("string"));
+        // A list is the item then square brackets, `List<T>` and `T[]` alike, and a
+        // function type or a union is parenthesized first.
+        // @lfy def/query/main.lfy:typeTextOf
+        let fixture = Fixture::with_prelude(
+            "d Box<T> {\n  $items: `d` = T[];\n  $listed: `d` = List<T>;\n  $pairs: `d` = (A | B)[];\n}\nd A {}\nd B {}\ntype S<U> { calls = ((item: U) => U)[] }\n",
+        );
+        let ws = fixture.load();
+        assert_eq!(type_text_at(&ws, "Box.items").as_deref(), Some("T[]"));
+        assert_eq!(type_text_at(&ws, "Box.listed").as_deref(), Some("T[]"));
+        assert_eq!(type_text_at(&ws, "Box.pairs").as_deref(), Some("(A | B)[]"));
+        assert_eq!(
+            type_text_at(&ws, "S.calls").as_deref(),
+            Some("((item: U) => U)[]")
+        );
+    }
+
+    // @lfy def/query/main.lfy:typeTextOf
+    #[test]
+    fn a_function_type_is_spelled_with_its_parameters_and_its_output() {
+        let text =
+            "d Box<T> { $items: `d` = T[]; $map: `e` = (transform: (item: T) => T) => T[]; }\n";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        // The type of the parameter `transform`, which is a function type written in a
+        // type position.
+        assert_eq!(
+            type_text_of_symbol(&ws, "transform").as_deref(),
+            Some("(item: T) => T")
+        );
+        assert_eq!(type_text_at(&ws, "Box.items").as_deref(), Some("T[]"));
+        // An optional parameter takes a question mark after its name and a spread one
+        // three dots before it. @lfy def/query/main.lfy:typeTextOf
+        let text = "d A {}\ntype S { f = (one: string, two?: number, ...rest: string[]) => A }\n";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        assert_eq!(
+            type_text_at(&ws, "S.f").as_deref(),
+            Some("(one: string, two?: number, ...rest: string[]) => A")
+        );
+    }
+
+    // @lfy def/query/main.lfy:typeTextOf
+    #[test]
+    fn a_member_read_on_a_generic_left_side_spells_the_substituted_type() {
+        let text = "d Box<T> { $item: `d` = T; }\nconst b: Box<string> = 1;\nconst c = b.item;\n";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        // `item` of a Box of string spells string, as the binder substitutes it.
+        assert_eq!(type_text_at(&ws, "c").as_deref(), Some("string"));
+        assert_eq!(type_text_at(&ws, "Box.item").as_deref(), Some("T"));
     }
 
     /// The names of the members the prelude's `Entity` declares.
@@ -2976,6 +3364,57 @@ mod tests {
             OfferedKind::Completion(CompletionKind::Keyword)
         );
         assert!(!labels(&completions).contains(&"v"));
+    }
+
+    // @lfy def/query/main.lfy:completionsAt
+    #[test]
+    fn where_a_type_is_offered_a_visible_type_parameter_is_among_the_completions() {
+        // Inside the type arguments of a generic, at the end of the file.
+        let text = "d Item {} d Box<T> { $pair: `d` = Box<";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        let completions = completions_at(&ws, A, at(1, text.chars().count()));
+        assert_eq!(
+            labels(&completions),
+            [
+                "T", "Item", "Box", "boolean", "number", "string", "object", "function", "trait"
+            ]
+        );
+        // @lfy def/query/main.lfy:completionsAt
+        assert_eq!(
+            completions[0].kind,
+            OfferedKind::Symbol(SymbolKind::TypeParameter)
+        );
+        assert_eq!(completions[1].kind, OfferedKind::Symbol(SymbolKind::Data));
+        assert!(!labels(&completions).contains(&"pair"));
+
+        // A `<` and a comma of type arguments the tree does hold, and the `extends` and
+        // the `=` of a type parameter. @lfy def/query/main.lfy:completionsAt
+        let text = "d Item {}\nd Pair<A, B> { $one: `d` = Pair<Item, Item>; }\nd Box<T extends Item = Item> {}\n";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        let after_open = completions_at(&ws, A, after(find_pos(text, "Pair<Item", 0), 5));
+        assert_eq!(
+            labels(&after_open)[..4],
+            ["A", "B", "Item", "Pair"],
+            "{:?}",
+            labels(&after_open)
+        );
+        let after_comma = completions_at(&ws, A, after(find_pos(text, "Item, Item", 0), 6));
+        assert_eq!(labels(&after_comma)[..4], ["A", "B", "Item", "Pair"]);
+        let after_extends = completions_at(&ws, A, after(find_pos(text, "extends Item", 0), 8));
+        assert_eq!(labels(&after_extends)[..3], ["T", "Item", "Pair"]);
+        let after_setter = completions_at(&ws, A, after(find_pos(text, "Item = Item", 0), 7));
+        assert_eq!(labels(&after_setter)[..3], ["T", "Item", "Pair"]);
+
+        // The `<` after the identifier of a declaration lists the names it is generic
+        // over, so no type is offered there. @lfy def/query/main.lfy:completionsAt
+        let text = "d Item {} d Box<";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        let completions = completions_at(&ws, A, at(1, text.chars().count()));
+        let names = labels(&completions);
+        assert!(names.contains(&"true"), "{names:?}");
     }
 
     // @lfy def/query/main.lfy:completionsAt
@@ -3431,7 +3870,7 @@ mod tests {
         let outline = outline_of(&ws, main);
         let names: Vec<&str> = outline.iter().map(|o| o.name.as_str()).collect();
         assert_eq!(names[0], "rangeOf");
-        assert_eq!(names.len(), 16);
+        assert_eq!(names.len(), 17);
         assert!(names.contains(&"semanticTokensOf"));
         assert!(outline.iter().all(|o| o.kind == SymbolKind::AgentFunction));
         // Parameters are not outlined.
@@ -3560,6 +3999,49 @@ mod tests {
         );
         // @lfy def/query/main.lfy:semanticTokensOf
         assert!(semantic_tokens_of(&workspace, "def/missing.lfy").is_empty());
+    }
+
+    // @lfy def/query/main.lfy:semanticTokensOf
+    #[test]
+    fn semantic_tokens_classify_a_type_parameter_wherever_its_name_appears() {
+        let text = "d Box<T> { $item: `d` = T; } const b = Box<string>;";
+        let fixture = Fixture::one(text);
+        let workspace = fixture.load();
+        let tokens = semantic_tokens_of(&workspace, A);
+        let summary: Vec<(String, TokenType, Vec<TokenModifier>)> = tokens
+            .iter()
+            .map(|t| {
+                let index = token_at(&workspace, A, t.range.start).unwrap();
+                (
+                    token(&workspace, 0, index).value.clone(),
+                    t.ty,
+                    t.modifiers.clone(),
+                )
+            })
+            .collect();
+        use TokenModifier::*;
+        assert_eq!(
+            summary,
+            vec![
+                (
+                    "Box".to_string(),
+                    TokenType::Data,
+                    vec![Declaration, Agentic]
+                ),
+                ("T".to_string(), TokenType::TypeParameter, vec![Declaration]),
+                ("item".to_string(), TokenType::Property, vec![Declaration]),
+                ("T".to_string(), TokenType::TypeParameter, vec![]),
+                (
+                    "b".to_string(),
+                    TokenType::Variable,
+                    vec![Declaration, Readonly]
+                ),
+                ("Box".to_string(), TokenType::Data, vec![Agentic]),
+            ]
+        );
+        // `string` is a keyword, so it gets no token.
+        // @lfy def/query/main.lfy:semanticTokensOf
+        assert!(!summary.iter().any(|(raw, ..)| raw == "string"));
     }
 
     // @lfy def/query/main.lfy:semanticTokensOf

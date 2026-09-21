@@ -8,11 +8,14 @@ grammar_rules! {
     /// every statement.
     pub enum Statement {
         // Declarations
-        DataDeclaration is [statement()]: "A data structure whose implementation is generated from its criteria" = "[[AgentDataKeyword]] , [[Identifier]] , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )", // @lfy def/grammar/rules/statement.lfy:DataDeclaration
+        /// Acceptance criteria:
+        /// - `d List<T>;` is a `DataDeclaration` of `List` whose `TypeParameters` hold
+        ///   the one `TypeParameter` `T`.
+        DataDeclaration is [statement()]: "A data structure whose implementation is generated from its criteria" = "[[AgentDataKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )", // @lfy def/grammar/rules/statement.lfy:DataDeclaration
         AgentFunctionDeclaration is [statement()]: "A function whose implementation is generated from its criteria" = "[[AgentFunctionKeyword]] , [[Signature]] , (/ [[DoubleArrowRight]] , [[TypeExpression]] /) , ( [[Block]] | [[Semicolon]] )", // @lfy def/grammar/rules/statement.lfy:AgentFunctionDeclaration
         FunctionDeclaration is [statement()]: "A function written out in full" = "[[FunctionKeyword]] , [[Signature]] , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[Block]]", // @lfy def/grammar/rules/statement.lfy:FunctionDeclaration
-        TraitDeclaration is [statement()]: "A reusable component" = "[[TraitKeyword]] , [[Identifier]] , (/ [[Parameters]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , [[Block]]", // @lfy def/grammar/rules/statement.lfy:TraitDeclaration
-        TypeDeclaration is [statement()]: "A structural type" = "[[TypeKeyword]] , [[Declared]] , [[Type]]", // @lfy def/grammar/rules/statement.lfy:TypeDeclaration
+        TraitDeclaration is [statement()]: "A reusable component" = "[[TraitKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[Parameters]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , [[Block]]", // @lfy def/grammar/rules/statement.lfy:TraitDeclaration
+        TypeDeclaration is [statement()]: "A structural type" = "[[TypeKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , [[Type]]", // @lfy def/grammar/rules/statement.lfy:TypeDeclaration
         EnumDeclaration is [statement()]: "A set of named values" = "[[EnumKeyword]] , [[Declared]] , [[Object]]", // @lfy def/grammar/rules/statement.lfy:EnumDeclaration
         VariableDeclaration is [statement()]: "A named value" = "( [[ConstKeyword]] | [[LetKeyword]] ) , [[Declared]] , (/ [[PlainSetter]] , [[Expression]] /) , [[Semicolon]]", // @lfy def/grammar/rules/statement.lfy:VariableDeclaration
         AliasDeclaration is [statement()]: "A new name and context for something already named" = "[[AliasKeyword]] , [[Declared]] , [[PlainSetter]] , [[Expression]] , [[Semicolon]]", // @lfy def/grammar/rules/statement.lfy:AliasDeclaration
@@ -136,6 +139,37 @@ mod tests {
                 list_of("[[MatchArm]]")
             )
         );
+    }
+
+    /// The declarations that can be generic take their `TypeParameters` right after
+    /// their identifier.
+    // @lfy def/grammar/rules/statement.lfy:DataDeclaration
+    #[test]
+    fn the_generic_declarations_take_their_type_parameters_after_the_identifier() {
+        for rule in [
+            Statement::DataDeclaration,
+            Statement::TraitDeclaration,
+            Statement::TypeDeclaration,
+        ] {
+            let references = rule.expression().unwrap().references();
+            assert_eq!(references[1], "Identifier", "{}", rule.identifier());
+            assert_eq!(references[2], "TypeParameters", "{}", rule.identifier());
+        }
+        // @lfy def/grammar/rules/statement.lfy:TypeDeclaration
+        assert_eq!(
+            Statement::TypeDeclaration.expression().unwrap().references(),
+            vec!["TypeKeyword", "Identifier", "TypeParameters", "IsClause", "DefinitionClause", "Type"]
+        );
+        // @lfy def/grammar/rules/statement.lfy:AgentFunctionDeclaration
+        // A function's type parameters belong to its `Signature`, not to the statement.
+        for rule in [
+            Statement::AgentFunctionDeclaration,
+            Statement::FunctionDeclaration,
+        ] {
+            let references = rule.expression().unwrap().references();
+            assert!(!references.contains(&"TypeParameters"), "{}", rule.identifier());
+            assert_eq!(references[1], "Signature", "{}", rule.identifier());
+        }
     }
 
     // @lfy def/grammar/rules/statement.lfy:Condition

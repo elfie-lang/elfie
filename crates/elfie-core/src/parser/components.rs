@@ -81,8 +81,9 @@ pub const TRIED_BEFORE: &[(Entity, Entity)] = &[
     (Entity::Statement(Statement::FunctionDeclaration), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:36
     (Entity::Statement(Statement::TraitDeclaration), Entity::Statement(Statement::ExpressionStatement)), // @lfy def/parser/components.lfy:37
     (Entity::Expression(Expression::Object), Entity::Expression(Expression::Type)), // @lfy def/parser/components.lfy:38
-    (Entity::Expression(Expression::InlineFunction), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:39
-    (Entity::Statement(Statement::ConditionGroup), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:40
+    (Entity::Expression(Expression::TypeValue), Entity::Expression(Expression::TypeGroup)), // @lfy def/parser/components.lfy:39
+    (Entity::Expression(Expression::InlineFunction), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:40
+    (Entity::Statement(Statement::ConditionGroup), Entity::Expression(Expression::Group)), // @lfy def/parser/components.lfy:41
 ];
 
 /// The rules that carry `documented` and `recoverable` through the statement loop.
@@ -141,14 +142,21 @@ mod tests {
 
     // @lfy def/parser/components.lfy:34
     #[test]
-    fn tried_before_lists_the_seven_orderings() {
-        assert_eq!(TRIED_BEFORE.len(), 7);
+    fn tried_before_lists_the_eight_orderings() {
+        assert_eq!(TRIED_BEFORE.len(), 8);
         for &(first, other) in TRIED_BEFORE {
             assert_ne!(first, other);
             assert!(!first.is_terminal() && !other.is_terminal(), "{first} {other}");
         }
         assert_eq!(
             TRIED_BEFORE[5],
+            (
+                Entity::Expression(Expression::TypeValue),
+                Entity::Expression(Expression::TypeGroup)
+            )
+        );
+        assert_eq!(
+            TRIED_BEFORE[6],
             (
                 Entity::Expression(Expression::InlineFunction),
                 Entity::Expression(Expression::Group)

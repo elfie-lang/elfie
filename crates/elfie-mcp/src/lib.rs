@@ -11,9 +11,10 @@ pub mod traits; // @lfy def/mcp/traits.lfy:1
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
-use elfie_core::generation::{self, Batch, Output, Plan, Request, SourceMap};
+use elfie_core::generation::{self, Batch, Marker, Output, Plan, Request, SourceMap, Unit};
 use elfie_core::model::{self, Criterion, EntityId, FileId, Model};
 use elfie_core::query::{self, Outline, Position, Range};
 use elfie_core::workspace::{self, Workspace};
@@ -23,6 +24,7 @@ use rmcp::model::{
 };
 use rmcp::service::{RequestContext, RoleServer};
 use rmcp::{ServerHandler, ServiceExt};
+use serde_json::Value;
 
 pub use data::{Session, Stamp, Tool, ToolArgument, ToolResult};
 pub use traits::{Arguments, Registered};
@@ -193,7 +195,87 @@ pub fn tools() -> Vec<Registered> {
             ],
             |session, arguments| check(session, arguments.string("unit")?, arguments.optional("target")),
         ),
+        Registered::new(
+            "output",
+            "Where the generated code for one entity is: every region of every output that came from it, with its text",
+            vec![
+                ToolArgument::new("name", "as elfie_find takes it", "string", true), // @lfy def/mcp/main.lfy:output
+                ToolArgument::new("target", "the identifier of one target; every target when left out", "string", false), // @lfy def/mcp/main.lfy:output
+            ],
+            |session, arguments| output(session, arguments.string("name")?, arguments.optional("target")),
+        ),
+        Registered::new(
+            "source",
+            "Where one line of generated code came from: the definition file, the entity, and its line",
+            vec![
+                ToolArgument::new("file", "the path of an output file, relative to the root", "string", true), // @lfy def/mcp/main.lfy:source
+                ToolArgument::new("line", "a line of that file, counting from 1", "number", true), // @lfy def/mcp/main.lfy:source
+            ],
+            |session, arguments| source(session, arguments.string("file")?, counted(arguments.string("line")?, "line")?),
+        ),
+        Registered::new(
+            "changes",
+            "What differs for each entity of a unit since its outputs were last accepted",
+            vec![ToolArgument::new("unit", "the stem of a unit, as elfie_units lists it", "string", true)], // @lfy def/mcp/main.lfy:changes
+            |session, arguments| changes(session, arguments.string("unit")?),
+        ),
+        Registered::new(
+            "review",
+            "The full review request for one batch: every criterion and test with the regions generated for its entities, and how to report",
+            vec![
+                ToolArgument::new("batch", "the identifier of a batch, as elfie_units lists it, or the stem of one of its units", "string", true), // @lfy def/mcp/main.lfy:review
+                ToolArgument::new("target", "the identifier of the batch's target; the only target when left out", "string", false), // @lfy def/mcp/main.lfy:review
+            ],
+            |session, arguments| review(session, arguments.string("batch")?, arguments.optional("target")),
+        ),
     ]
+}
+
+/// One call of a fn carrying `tool`: the arguments are checked against the parameters as
+/// the parameters are declared, then the fn is called with the session and them.
+///
+// Decision: `source` takes a line, which is a number, and the trait's `Arguments` gives a
+// fn the text of an argument. A number argument is therefore checked as a number here,
+// where the fn that carries the trait lives, and then handed on spelled as text through a
+// tool that says text, so that the one call path of `traits` still makes the call, catches
+// a failure, and answers with the result.
+// @lfy def/mcp/main.lfy:source
+fn call_tool(registered: &Registered, session: &Session, arguments: &JsonObject) -> ToolResult {
+    if let Err(message) = traits::check_arguments(&registered.tool, arguments) {
+        return ToolResult::error(message);
+    }
+    let mut spelled = arguments.clone();
+    let mut tool = registered.tool.clone();
+    for argument in &mut tool.arguments {
+        if argument.ty != "number" {
+            continue;
+        }
+        if let Some(number) = spelled.get(&argument.name).filter(|value| value.is_number()).cloned() {
+            spelled.insert(argument.name.clone(), Value::String(number.to_string()));
+        }
+        argument.ty = "string".to_string();
+    }
+    traits::call(
+        &Registered {
+            tool,
+            call: registered.call,
+        },
+        session,
+        &spelled,
+    )
+}
+
+/// A number argument that counts things — a line, an index, or a length — read back from
+/// the text it was spelled as.
+// @lfy def/mcp/main.lfy:source
+fn counted(text: &str, name: &str) -> Result<usize, String> {
+    let value: f64 = text
+        .parse()
+        .map_err(|_| format!("the argument {name} must be a number"))?;
+    if value.fract() != 0.0 || value < 1.0 {
+        return Err(format!("the argument {name} must be a whole number, counting from 1"));
+    }
+    Ok(value as usize)
 }
 
 /// The protocol server: one session behind a lock, and the tools.
@@ -224,7 +306,7 @@ impl Server {
         session.refresh();
         let empty = JsonObject::new();
         let arguments = request.arguments.as_ref().unwrap_or(&empty);
-        let result = traits::call(registered, &session, arguments);
+        let result = call_tool(registered, &session, arguments);
         let content = vec![ContentBlock::text(result.text)];
         Ok(if result.is_error { CallToolResult::error(content) } else { CallToolResult::success(content) })
     }
@@ -238,7 +320,7 @@ impl ServerHandler for Server {
             .with_protocol_version(ProtocolVersion::V_2025_06_18) // @lfy def/mcp/main.lfy:Protocol
             .with_server_info(Implementation::new("elfie", env!("CARGO_PKG_VERSION")))
             .with_instructions(
-                "The Elfie agent server. elfie_problems, elfie_find, elfie_entity, elfie_references, and elfie_outline read the program; elfie_grammar gives the language; elfie_units, elfie_request, and elfie_check drive compilation. Nothing here writes a file.",
+                "The Elfie agent server. elfie_problems, elfie_find, elfie_entity, elfie_references, and elfie_outline read the program; elfie_grammar gives the language; elfie_units, elfie_request, elfie_check, and elfie_review drive compilation; elfie_output, elfie_source, and elfie_changes read what the last acceptance recorded. Nothing here writes a file.",
             )
     }
 
@@ -896,6 +978,203 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
     }
 }
 
+// ---- what the last acceptance recorded ---------------------------------------------
+
+// Decision: the source maps these tools read come from each target's output directory, as
+// elfie_units reads them through `load_source_maps`, so what a tool answers is what the
+// last acceptance recorded, never a guess from the text on disk.
+
+/// The language a fenced block of an output is marked with: the output's extension, or
+/// nothing when it has none.
+// @lfy def/mcp/main.lfy:output
+fn fence_of(path: &str) -> &str {
+    Path::new(path).extension().and_then(|extension| extension.to_str()).unwrap_or("")
+}
+
+/// The lines of an output from `first` through `last`, counting from 1, as they are on
+/// disk; the empty text when the file cannot be read.
+// @lfy def/mcp/main.lfy:output
+fn excerpt(workspace: &Workspace, output: &str, first: usize, last: usize) -> String {
+    let Ok(text) = fs::read_to_string(workspace.root.join(output)) else {
+        return String::new();
+    };
+    let lines: Vec<&str> = text.lines().collect();
+    let from = first.saturating_sub(1).min(lines.len());
+    let to = last.min(lines.len()).max(from);
+    lines[from..to].join("\n")
+}
+
+/// Where the generated code for one entity is: every region of every output that came from
+/// it, with its text.
+// @lfy def/mcp/main.lfy:output
+pub fn output(session: &Session, name: &str, target: Option<&str>) -> Result<String, String> {
+    let workspace = &session.workspace;
+    check_target(workspace, target)?; // @lfy def/mcp/main.lfy:output
+    let maps = load_source_maps(workspace);
+    let regions = generation::regions_of(workspace, &maps, name, target); // @lfy def/mcp/main.lfy:output
+    if regions.is_empty() {
+        return Ok(format!("nothing is generated for {name}")); // @lfy def/mcp/main.lfy:output
+    }
+    // A region's output is the source map that holds it; `regions_of` keeps no path, and a
+    // marker is matched by the same target and the same marker it was found by.
+    // @lfy def/mcp/main.lfy:output
+    let mut blocks = Vec::new();
+    for map in &maps {
+        if target.is_some_and(|target| map.target != target) {
+            continue;
+        }
+        for marker in &map.markers {
+            if !regions.contains(marker) {
+                continue;
+            }
+            // @lfy def/mcp/main.lfy:output
+            blocks.push(format!(
+                "{}:{}-{}\n```{}\n{}\n```",
+                map.output,
+                marker.output_line,
+                marker.end,
+                fence_of(&map.output),
+                excerpt(workspace, &map.output, marker.output_line, marker.end)
+            ));
+        }
+    }
+    Ok(blocks.join("\n\n"))
+}
+
+/// The criterion of the entity a marker names that begins on the marker's source line, as
+/// `criteria_of` gives it; `None` when none does.
+// @lfy def/mcp/main.lfy:source
+fn criterion_on(workspace: &Workspace, marker: &Marker) -> Option<String> {
+    let entity = marker.entity.as_ref()?;
+    let model = &workspace.model;
+    for &id in &query::find(workspace, &format!("{}:{entity}", marker.file)) {
+        for criterion in model::criteria_of(model, id) {
+            let Some(node) = criterion.node else { continue };
+            let Some(token) = model.first_token(node) else { continue };
+            if token.line == marker.line {
+                return Some(criterion_text(&criterion));
+            }
+        }
+    }
+    None
+}
+
+/// Where one line of generated code came from: the definition file, the entity, and its
+/// line.
+// @lfy def/mcp/main.lfy:source
+pub fn source(session: &Session, file: &str, line: usize) -> Result<String, String> {
+    let workspace = &session.workspace;
+    for map in load_source_maps(workspace) {
+        if map.output != file {
+            continue;
+        }
+        // @lfy def/mcp/main.lfy:source
+        let Some(marker) = map.markers.iter().find(|marker| marker.covers(line)) else {
+            continue;
+        };
+        let mut text = format!("{}:{}", marker.file, marker.line);
+        if let Some(entity) = &marker.entity {
+            text.push_str(&format!(" {entity}"));
+        }
+        // @lfy def/mcp/main.lfy:source
+        if let Some(criterion) = criterion_on(workspace, marker) {
+            text.push('\n');
+            text.push_str(&criterion);
+        }
+        return Ok(text);
+    }
+    // @lfy def/mcp/main.lfy:source
+    Ok(format!("no source map covers {file}:{line}"))
+}
+
+/// The unit with a stem, of the first target in `Workspace::targets` order that has one.
+// @lfy def/mcp/main.lfy:changes
+fn unit_of_stem(workspace: &Workspace, plan: &Plan, stem: &str) -> Result<usize, String> {
+    for target in 0..workspace.targets.len() {
+        if let Some(index) = (0..plan.units.len())
+            .find(|&index| plan.units[index].stem == stem && plan.units[index].target == target)
+        {
+            return Ok(index);
+        }
+    }
+    // @lfy def/mcp/main.lfy:changes
+    Err(format!("no unit has the stem {stem}; elfie_units lists them"))
+}
+
+/// The source at the last accepted generation, recovered as the command line recovers it:
+/// through git when the root is a repository and the unit's source is in it, taking the
+/// revision of the file whose hash is the one the source map recorded.
+// @lfy def/mcp/main.lfy:changes
+fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
+    let map = unit.outputs.first()?;
+    let file = &workspace.files[unit.file].path;
+    let log = Command::new("git")
+        .args(["log", "--format=%H", "-n", "50", "--", file])
+        .current_dir(&workspace.root)
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    if !log.status.success() {
+        return None;
+    }
+    for revision in String::from_utf8_lossy(&log.stdout).lines() {
+        let show = Command::new("git")
+            .args(["show", &format!("{revision}:{file}")])
+            .current_dir(&workspace.root)
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        if !show.status.success() {
+            continue;
+        }
+        let text = String::from_utf8_lossy(&show.stdout).into_owned();
+        if generation::source_hash(&text) == map.hash {
+            return Some(text);
+        }
+    }
+    None
+}
+
+/// What differs for each entity of a unit since its outputs were last accepted.
+// @lfy def/mcp/main.lfy:changes
+pub fn changes(session: &Session, unit: &str) -> Result<String, String> {
+    let workspace = &session.workspace;
+    let plan = plan_of(workspace);
+    let index = unit_of_stem(workspace, &plan, unit)?;
+    let planned = &plan.units[index];
+    if planned.outputs.is_empty() {
+        return Ok(format!("no previous output for {unit}; nothing has been accepted for it yet")); // @lfy def/mcp/main.lfy:changes
+    }
+    let previous = previous_source(workspace, planned); // @lfy def/mcp/main.lfy:changes
+    let mut text = String::new();
+    if previous.is_none() {
+        // @lfy def/mcp/main.lfy:changes
+        text.push_str("the source the outputs were generated from cannot be recovered; every entity is listed as added\n");
+    }
+    let found = generation::changes(workspace, planned, previous.as_deref()); // @lfy def/mcp/main.lfy:changes
+    if found.is_empty() {
+        return Ok(format!("no changes in {unit} since its outputs were accepted")); // @lfy def/mcp/main.lfy:changes
+    }
+    // @lfy def/mcp/main.lfy:changes
+    let lines: Vec<String> = found
+        .iter()
+        .map(|change| format!("{} {} {}", change.entity, change.kind.as_str(), change.detail))
+        .collect();
+    text.push_str(&lines.join("\n"));
+    Ok(text)
+}
+
+/// The full review request for one batch: every criterion and test with the regions
+/// generated for its entities, and how to report.
+// @lfy def/mcp/main.lfy:review
+pub fn review(session: &Session, batch: &str, target: Option<&str>) -> Result<String, String> {
+    let workspace = &session.workspace;
+    let plan = plan_of(workspace);
+    let index = resolve_batch(workspace, &plan, batch, target)?; // @lfy def/mcp/main.lfy:review
+    // @lfy def/mcp/main.lfy:review
+    Ok(generation::review(workspace, &plan, &plan.batches[index], &load_source_maps(workspace)).instructions)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -958,7 +1237,7 @@ mod tests {
     fn call(session: &Session, name: &str, arguments: serde_json::Value) -> ToolResult {
         let tools = tools();
         let registered = traits::find(&tools, name).unwrap_or_else(|| panic!("no tool named {name}"));
-        traits::call(registered, session, arguments.as_object().unwrap())
+        call_tool(registered, session, arguments.as_object().unwrap())
     }
 
     // @lfy def/mcp/main.lfy:serve
@@ -977,12 +1256,19 @@ mod tests {
                 "elfie_units",
                 "elfie_request",
                 "elfie_check",
+                "elfie_output",
+                "elfie_source",
+                "elfie_changes",
+                "elfie_review",
             ]
         );
         let listed = traits::list(&tools());
-        assert_eq!(listed.len(), 9);
+        assert_eq!(listed.len(), 13);
         assert_eq!(listed[0].input_schema["required"], serde_json::json!([]));
         assert_eq!(listed[1].input_schema["required"], serde_json::json!(["name"]));
+        // A line is a number, and is listed as one. @lfy def/mcp/main.lfy:source
+        assert_eq!(listed[10].input_schema["properties"]["line"]["type"], "number");
+        assert_eq!(listed[10].input_schema["required"], serde_json::json!(["file", "line"]));
 
         let fixture = Fixture::new();
         fixture.write("def/a.lfy", "const y = z;\n");
@@ -1206,5 +1492,144 @@ mod tests {
         assert!(!fixture.root.join("out/source-map.json").exists());
         let error = check(&session, "a", None).unwrap_err();
         assert!(error.contains("rejected a:"), "{error}");
+    }
+
+    /// A project whose unit `b` has an accepted output, with the source maps recorded in
+    /// the target's output directory the way the command line records them.
+    fn accepted_project() -> Fixture {
+        let fixture = compiled_project();
+        fixture.write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B;\n");
+        let session = fixture.session();
+        let workspace = &session.workspace;
+        let plan = plan_of(workspace);
+        let index = resolve_unit(workspace, &plan, "b", None).unwrap();
+        let request = request_of_unit(workspace, &plan, index);
+        let outputs = outputs_of(workspace, &plan, index);
+        let verdict = generation::accept(workspace, &plan, &request, index, &outputs);
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
+        fixture
+    }
+
+    // @lfy def/mcp/main.lfy:output
+    #[test]
+    fn output_gives_every_region_of_an_entity_with_its_text() {
+        let fixture = accepted_project();
+        let session = fixture.session();
+        let text = output(&session, "B", None).unwrap();
+        assert_eq!(text, "out/b.rs:1-2\n```rs\n// @lfy def/b.lfy:B\npub struct B;\n```");
+        assert_eq!(output(&session, "B", Some("rust")).unwrap(), text);
+        // Nothing is generated for the name. @lfy def/mcp/main.lfy:output
+        let none = output(&session, "A", None).unwrap();
+        assert_eq!(none, "nothing is generated for A");
+        // The target is not a known one. @lfy def/mcp/main.lfy:output
+        let error = output(&session, "B", Some("go")).unwrap_err();
+        assert!(error.contains("go is not a target") && error.contains("rust"), "{error}");
+    }
+
+    // @lfy def/mcp/main.lfy:source
+    #[test]
+    fn source_names_the_definition_a_line_came_from() {
+        let fixture = accepted_project();
+        let session = fixture.session();
+        assert_eq!(source(&session, "out/b.rs", 1).unwrap(), "def/b.lfy:1 B");
+        assert_eq!(source(&session, "out/b.rs", 2).unwrap(), "def/b.lfy:1 B");
+        // No source map has the file as its output. @lfy def/mcp/main.lfy:source
+        let text = source(&session, "out/a.rs", 1).unwrap();
+        assert_eq!(text, "no source map covers out/a.rs:1");
+        // A line past the region of every marker. @lfy def/mcp/main.lfy:source
+        assert_eq!(source(&session, "out/b.rs", 9).unwrap(), "no source map covers out/b.rs:9");
+        // A number argument reaches the fn as a number. @lfy def/mcp/main.lfy:source
+        let result = call(&session, "elfie_source", serde_json::json!({ "file": "out/b.rs", "line": 2 }));
+        assert!(!result.is_error, "{}", result.text);
+        assert_eq!(result.text, "def/b.lfy:1 B");
+        let result = call(&session, "elfie_source", serde_json::json!({ "file": "out/b.rs", "line": "2" }));
+        assert!(result.is_error);
+        assert!(result.text.contains("line") && result.text.contains("number"), "{}", result.text);
+    }
+
+    // @lfy def/mcp/main.lfy:source
+    #[test]
+    fn source_quotes_a_criterion_that_begins_on_the_line() {
+        let fixture = Fixture::new();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{
+                    "name": "p",
+                    "lib": "lib",
+                    "dependencies": { "rust": { "root": "targets/rust" } },
+                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
+                }"#,
+            )
+            .write("targets/rust/main.lfy", "trait rust extends target: `Built as Rust` {}\nrust.apply(global);\n")
+            // The fn and its one criterion are written on one line, so the criterion begins
+            // on the line the marker of the fn names.
+            .write("def/b.lfy", "fn b(): `A b` => string { @acceptanceCriteria.add({ behavior = `It answers` }); }\n")
+            .write("out/b.rs", "// @lfy def/b.lfy:b\npub fn b() -> String {\n    String::new()\n}\n");
+        let session = fixture.session();
+        assert_eq!(problems(&session, None).unwrap(), "no problems");
+        let workspace = &session.workspace;
+        let plan = plan_of(workspace);
+        let index = resolve_unit(workspace, &plan, "b", None).unwrap();
+        let request = request_of_unit(workspace, &plan, index);
+        let outputs = outputs_of(workspace, &plan, index);
+        let verdict = generation::accept(workspace, &plan, &request, index, &outputs);
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
+        // A criterion of the entity begins on the line the marker names, so its text
+        // follows on the next line. @lfy def/mcp/main.lfy:source
+        let session = fixture.session();
+        assert_eq!(source(&session, "out/b.rs", 2).unwrap(), "def/b.lfy:1 b\nIt answers");
+    }
+
+    // @lfy def/mcp/main.lfy:changes
+    #[test]
+    fn changes_reports_what_differs_since_the_outputs_were_accepted() {
+        let fixture = accepted_project();
+        let session = fixture.session();
+        // The unit has outputs and the previous text cannot be recovered: the text says so
+        // first, then every entity as added. @lfy def/mcp/main.lfy:changes
+        let text = changes(&session, "b").unwrap();
+        assert!(text.starts_with("the source the outputs were generated from cannot be recovered"), "{text}");
+        assert!(text.contains("\nB added "), "{text}");
+        // The outputs of a unit are empty. @lfy def/mcp/main.lfy:changes
+        let text = changes(&session, "a").unwrap();
+        assert!(text.starts_with("no previous output for a"), "{text}");
+        // No unit has that stem. @lfy def/mcp/main.lfy:changes
+        let error = changes(&session, "zzz").unwrap_err();
+        assert!(error.contains("no unit has the stem zzz"), "{error}");
+    }
+
+    // @lfy def/mcp/main.lfy:changes
+    #[test]
+    fn changes_says_so_when_nothing_differs() {
+        let fixture = accepted_project();
+        let session = fixture.session();
+        let workspace = &session.workspace;
+        let plan = plan_of(workspace);
+        let index = unit_of_stem(workspace, &plan, "b").unwrap();
+        // The file as it is now is the file the outputs were generated from, so nothing
+        // differs. @lfy def/mcp/main.lfy:changes
+        let text = fs::read_to_string(fixture.root.join("def/b.lfy")).unwrap();
+        assert!(generation::changes(workspace, &plan.units[index], Some(&text)).is_empty());
+    }
+
+    // @lfy def/mcp/main.lfy:review
+    #[test]
+    fn review_gives_the_review_request_of_one_batch() {
+        let fixture = compiled_project();
+        let session = fixture.session();
+        let instructions = review(&session, "b+1", None).unwrap();
+        assert!(instructions.contains("Reviewing the batch"), "{instructions}");
+        assert!(instructions.contains("def/a.lfy"), "{instructions}");
+        assert_eq!(review(&session, "a", None).unwrap(), instructions);
+        assert_eq!(review(&session, "a", Some("rust")).unwrap(), instructions);
+        // No batch has that identifier or holds a unit with that stem, or the target is
+        // ambiguous. @lfy def/mcp/main.lfy:review
+        let error = review(&session, "c", None).unwrap_err();
+        assert!(error.contains("no batch has the identifier c"), "{error}");
+        let error = review(&session, "a", Some("go")).unwrap_err();
+        assert!(error.contains("go is not a target"), "{error}");
     }
 }

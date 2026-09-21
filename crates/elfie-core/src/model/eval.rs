@@ -148,18 +148,10 @@ impl Binder {
         ) {
             return;
         }
-        // Parameters of the declaration.
-        let parameters: Vec<SymbolId> = self.model.entities[entity]
-            .scope
-            .map(|scope| {
-                self.model.scopes[scope]
-                    .symbols
-                    .iter()
-                    .copied()
-                    .filter(|&s| self.model.symbols[s].kind == SymbolKind::Parameter)
-                    .collect()
-            })
-            .unwrap_or_default();
+        // Parameters of the declaration: its value parameters, its type parameters left
+        // out, since those are Entity.typeParameters and not FnEntity.parameters.
+        // @lfy def/model/main.lfy:bind
+        let parameters = self.value_parameters(entity);
         match &mut self.model.entities[entity].kind {
             EntityKind::Fn {
                 parameters: slot, ..
@@ -298,7 +290,7 @@ impl Binder {
                 self.apply_trait(entity, target, arguments, values, source, extends);
             } else if extends {
                 // Data extending data includes its members.
-                // @lfy def/grammar/rules/expression.lfy:18
+                // @lfy def/grammar/rules/expression.lfy:ExtendsClause
                 self.include_members(entity, target);
             } else {
                 self.problem(
@@ -1042,6 +1034,11 @@ impl Binder {
         if rule == E::TypeExpression.entity() || rule == E::TypePredicate.entity() {
             return Value::Type(Box::new(self.type_from_expression(r)));
         }
+        // The left expression with type arguments is the type it names, seen with them.
+        // @lfy def/model/main.lfy:bind
+        if rule == E::Generic.entity() {
+            return Value::Type(Box::new(self.type_from_expression(r)));
+        }
         if rule.is_infix() {
             return self.eval_infix(r, env);
         }
@@ -1311,6 +1308,38 @@ impl Binder {
                     && self.kind_member_anywhere(name)
                 {
                     return Value::Undefined;
+                }
+                // What a declaration is generic over, what a use of it was written with,
+                // and what a type parameter's declaration gave it: the model answers
+                // these from the entity, since the prelude declares them as members.
+                // @lfy def/model/main.lfy:bind
+                // @lfy def/model/main.lfy:bind
+                // @lfy def/model/main.lfy:bind
+                match name {
+                    super::bind::TYPE_ARGUMENTS => {
+                        return Value::List(
+                            self.model
+                                .type_arguments(entity)
+                                .into_iter()
+                                .map(|ty| Value::Type(Box::new(ty)))
+                                .collect(),
+                        );
+                    }
+                    super::bind::TYPE_PARAMETERS => {
+                        return Value::List(
+                            self.model
+                                .type_parameters(entity)
+                                .into_iter()
+                                .map(Value::Entity)
+                                .collect(),
+                        );
+                    }
+                    super::bind::DEFAULT_VALUE | super::bind::OPTIONAL | super::bind::SPREAD => {
+                        if let Some(value) = self.model.entities[entity].value(name) {
+                            return value.clone();
+                        }
+                    }
+                    _ => {}
                 }
                 match ContextProperty::lookup(name) {
                     Some(ContextProperty::Identifier) => self.model.entities[entity]

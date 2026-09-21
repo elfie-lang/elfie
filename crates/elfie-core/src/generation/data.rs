@@ -4,7 +4,10 @@
 //! together in one request; a [`Plan`] is every unit of a workspace and how they are
 //! batched; a [`Request`] is everything the compiler is handed for one batch; a
 //! [`Verdict`] is whether one unit's [`Output`]s are accepted, and the [`SourceMap`]s they
-//! earn; an [`Outcome`] is what one run of the compiler came to. The `Target`, `File`,
+//! earn; an [`Outcome`] is what one run of the compiler came to; a [`Change`] is one
+//! difference for one entity since a unit's output was accepted; a [`ReviewRequest`] is
+//! everything a verifier is handed, and a [`ReviewReport`] of [`Review`]s is what it
+//! found. The `Target`, `File`,
 //! `Unit`, and `Entity` fields of the definition are kept as indices into
 //! `Workspace::targets`, `Workspace::files`, `Plan::units`, and `Model::entities`, so that
 //! a plan is one plain value that does not own the workspace.
@@ -64,6 +67,10 @@ impl fmt::Display for Reason {
 
 /// One place where generated code says where it came from.
 ///
+/// A marker's region is the output lines from [`Marker::output_line`] through
+/// [`Marker::end`], inclusive, as [`covers`](Marker::covers) reads it; the regions of one
+/// output never overlap and together cover every line from its first marker to its last
+/// line, so every generated line after the first marker belongs to exactly one marker.
 /// A marker is written in the output as a line comment of the target's language reading
 /// `@lfy`, a space, the source path relative to the workspace root, a colon, and then
 /// either a line (optionally a colon and a column) or the name of an entity of that file.
@@ -88,6 +95,9 @@ pub struct Marker {
     /// The source column, counting from 0; `None` when the marker names a whole line or an
     /// entity.
     pub column: Option<usize>, // @lfy def/generation/data.lfy:Marker.column
+    /// The last output line of the region the marker begins: the line before the next
+    /// marker in the same output, or the last line of the output.
+    pub end: usize, // @lfy def/generation/data.lfy:Marker.end
 }
 
 impl Marker {
@@ -102,6 +112,14 @@ impl Marker {
         }
     }
 
+    /// Whether an output line belongs to the marker's region: from [`Marker::output_line`]
+    /// through [`Marker::end`], inclusive. A marker another marker shares its output line
+    /// with covers nothing, so a line still belongs to exactly one marker.
+    // @lfy def/generation/data.lfy:Marker.end
+    pub fn covers(&self, line: usize) -> bool {
+        (self.output_line..=self.end).contains(&line)
+    }
+
     pub fn to_json(&self) -> Value {
         json!({
             "outputLine": self.output_line,
@@ -109,17 +127,23 @@ impl Marker {
             "entity": self.entity,
             "line": self.line,
             "column": self.column,
+            "end": self.end,
         })
     }
 
     pub fn from_json(value: &Value) -> Option<Marker> {
         let object = value.as_object()?;
+        let output_line = usize_field(object, "outputLine")?;
         Some(Marker {
-            output_line: usize_field(object, "outputLine")?,
+            output_line,
             file: string_field(object, "file")?,
             entity: string_field(object, "entity"),
             line: usize_field(object, "line")?,
             column: usize_field(object, "column"),
+            // Decision: a marker read back without an end was written before ends were
+            // recorded; its region is taken as its own line alone, which claims no line it
+            // may not own and is never an inverted range.
+            end: usize_field(object, "end").unwrap_or(output_line),
         })
     }
 }
@@ -145,7 +169,8 @@ pub struct SourceMap {
     /// When the output was accepted: the clock at acceptance as an RFC 3339 timestamp, as
     /// [`now_rfc3339`](super::now_rfc3339) spells it.
     pub generated: String, // @lfy def/generation/data.lfy:SourceMap.generated
-    /// Every marker in the output, in output order, with lines derived.
+    /// Every marker in the output, in output order, with [`Marker::line`] and
+    /// [`Marker::end`] derived.
     pub markers: Vec<Marker>, // @lfy def/generation/data.lfy:SourceMap.markers
 }
 
@@ -297,6 +322,18 @@ pub struct Request {
     pub native_dependencies: Vec<NativeDependency>, // @lfy def/generation/data.lfy:Request.nativeDependencies
 }
 
+/// Everything a verifier is handed to check the outputs of one batch against what was
+/// asked.
+// @lfy def/generation/data.lfy:ReviewRequest
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ReviewRequest {
+    /// The batch.
+    pub batch: Batch, // @lfy def/generation/data.lfy:ReviewRequest.batch
+    /// The prompt: every criterion and test of the batch with its place, every region
+    /// generated for each entity, and how to report.
+    pub instructions: String, // @lfy def/generation/data.lfy:ReviewRequest.instructions
+}
+
 /// One file the compiler produced.
 // @lfy def/generation/data.lfy:Output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -384,6 +421,206 @@ pub struct Verdict {
     pub outputs: Vec<Output>, // @lfy def/generation/data.lfy:Verdict.outputs
 }
 
+/// What differs for one entity between a unit's file as last accepted and as it is now.
+// @lfy def/generation/data.lfy:ChangeKind
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ChangeKind {
+    /// The entity is declared now and was not before.
+    Added, // @lfy def/generation/data.lfy:ChangeKind.added
+    /// The entity was declared before and is not now.
+    Removed, // @lfy def/generation/data.lfy:ChangeKind.removed
+    /// Its definition differs.
+    Definition, // @lfy def/generation/data.lfy:ChangeKind.definition
+    /// Its type differs, as `interfaceOf` spells it.
+    DeclaredType, // @lfy def/generation/data.lfy:ChangeKind.declaredType
+    /// Its parameters or its output differ.
+    Signature, // @lfy def/generation/data.lfy:ChangeKind.signature
+    /// Its criteria differ in count or in the text of any.
+    Criteria, // @lfy def/generation/data.lfy:ChangeKind.criteria
+    /// Its tests differ.
+    Tests, // @lfy def/generation/data.lfy:ChangeKind.tests
+    /// Anything else in the text of its declaration differs.
+    Body, // @lfy def/generation/data.lfy:ChangeKind.body
+}
+
+impl ChangeKind {
+    /// The value of the enum member.
+    pub fn value(self) -> &'static str {
+        match self {
+            ChangeKind::Added => "the entity is declared now and was not before",
+            ChangeKind::Removed => "the entity was declared before and is not now",
+            ChangeKind::Definition => "its definition differs",
+            ChangeKind::DeclaredType => "its type differs, as interfaceOf spells it",
+            ChangeKind::Signature => "its parameters or its output differ",
+            ChangeKind::Criteria => "its criteria differ in count or in the text of any",
+            ChangeKind::Tests => "its tests differ",
+            ChangeKind::Body => "anything else in the text of its declaration differs",
+        }
+    }
+
+    /// The member's name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ChangeKind::Added => "added",
+            ChangeKind::Removed => "removed",
+            ChangeKind::Definition => "definition",
+            ChangeKind::DeclaredType => "declaredType",
+            ChangeKind::Signature => "signature",
+            ChangeKind::Criteria => "criteria",
+            ChangeKind::Tests => "tests",
+            ChangeKind::Body => "body",
+        }
+    }
+}
+
+impl fmt::Display for ChangeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// One difference for one entity between a unit's file as last accepted and as it is now.
+// @lfy def/generation/data.lfy:Change
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Change {
+    /// The identifier, or the owner's identifier, a dot, and a member's name.
+    pub entity: String, // @lfy def/generation/data.lfy:Change.entity
+    /// What differs.
+    pub kind: ChangeKind, // @lfy def/generation/data.lfy:Change.kind
+    /// What changed, in one line, quoting the old and the new when they are short.
+    pub detail: String, // @lfy def/generation/data.lfy:Change.detail
+}
+
+/// What a verifier found for one criterion or test.
+// @lfy def/generation/data.lfy:ReviewStatus
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ReviewStatus {
+    /// The output does what it says.
+    Satisfied, // @lfy def/generation/data.lfy:ReviewStatus.satisfied
+    /// The output does something else.
+    Violated, // @lfy def/generation/data.lfy:ReviewStatus.violated
+    /// No output can be checked against it.
+    Unverifiable, // @lfy def/generation/data.lfy:ReviewStatus.unverifiable
+}
+
+impl ReviewStatus {
+    /// The value of the enum member.
+    pub fn value(self) -> &'static str {
+        match self {
+            ReviewStatus::Satisfied => "the output does what it says",
+            ReviewStatus::Violated => "the output does something else",
+            ReviewStatus::Unverifiable => "no output can be checked against it",
+        }
+    }
+
+    /// The member's name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReviewStatus::Satisfied => "satisfied",
+            ReviewStatus::Violated => "violated",
+            ReviewStatus::Unverifiable => "unverifiable",
+        }
+    }
+
+    /// The member of this name; `None` when it is no member's name.
+    pub fn from_name(name: &str) -> Option<ReviewStatus> {
+        match name {
+            "satisfied" => Some(ReviewStatus::Satisfied),
+            "violated" => Some(ReviewStatus::Violated),
+            "unverifiable" => Some(ReviewStatus::Unverifiable),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ReviewStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// What a verifier's report ends with, on a line of its own.
+// @lfy def/generation/data.lfy:Review
+pub const REVIEWED: &str = "ELFIE: REVIEWED";
+
+/// A verifier's finding for one criterion or test.
+///
+/// A verifier writes a review as one JSON object on one line with exactly the keys `file`,
+/// `line`, `entity`, `status`, `evidence`, and `note`, as [`Review::to_json`] writes one
+/// and [`Review::from_json`] reads one, and ends its report with a line reading
+/// [`REVIEWED`].
+// Decision: a review names its criterion by file and line and quotes nothing, because a
+// criterion has no name and the definition file is the one place its text lives.
+// @lfy def/generation/data.lfy:Review
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Review {
+    /// The definition file the criterion or test is written in, relative to the workspace
+    /// root.
+    pub file: String, // @lfy def/generation/data.lfy:Review.file
+    /// The line the criterion or test begins on.
+    pub line: usize, // @lfy def/generation/data.lfy:Review.line
+    /// The identifier, or the owner's identifier, a dot, and a member's name, of the entity
+    /// it belongs to.
+    pub entity: String, // @lfy def/generation/data.lfy:Review.entity
+    /// What was found.
+    pub status: ReviewStatus, // @lfy def/generation/data.lfy:Review.status
+    /// The output path and line range it was checked against, such as
+    /// `crates/elfie-core/src/x.rs:120-134`; empty when none.
+    pub evidence: String, // @lfy def/generation/data.lfy:Review.evidence
+    /// Why, in one line; for a violated one, what the code does instead.
+    pub note: String, // @lfy def/generation/data.lfy:Review.note
+}
+
+impl Review {
+    /// The keys a review is written with, and no others.
+    // @lfy def/generation/data.lfy:Review
+    const KEYS: [&'static str; 6] = ["file", "line", "entity", "status", "evidence", "note"];
+
+    /// The review as the one JSON object a verifier writes on one line.
+    // @lfy def/generation/data.lfy:Review
+    pub fn to_json(&self) -> Value {
+        json!({
+            "file": self.file,
+            "line": self.line,
+            "entity": self.entity,
+            "status": self.status.as_str(),
+            "evidence": self.evidence,
+            "note": self.note,
+        })
+    }
+
+    /// A review from what a verifier wrote; `None` unless the value is an object with
+    /// exactly those keys, a line that is a number, and a status naming a member of
+    /// [`ReviewStatus`].
+    // @lfy def/generation/data.lfy:Review
+    pub fn from_json(value: &Value) -> Option<Review> {
+        let object = value.as_object()?;
+        if object.len() != Review::KEYS.len()
+            || !Review::KEYS.iter().all(|key| object.contains_key(*key))
+        {
+            return None;
+        }
+        Some(Review {
+            file: string_field(object, "file")?,
+            line: usize_field(object, "line")?,
+            entity: string_field(object, "entity")?,
+            status: ReviewStatus::from_name(&string_field(object, "status")?)?,
+            evidence: string_field(object, "evidence")?,
+            note: string_field(object, "note")?,
+        })
+    }
+}
+
+/// Everything a verifier found for one batch, read mechanically from its report.
+// @lfy def/generation/data.lfy:ReviewReport
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ReviewReport {
+    /// Each review, in report order, one per file, line, and entity.
+    pub reviews: Vec<Review>, // @lfy def/generation/data.lfy:ReviewReport.reviews
+    /// The lines of the verifier's output that were neither a review nor the end line.
+    pub problems: Vec<String>, // @lfy def/generation/data.lfy:ReviewReport.problems
+}
+
 /// Every unit of a workspace, which need generating, and how they are batched.
 // @lfy def/generation/data.lfy:Plan
 // Decision: the definition gives the plan its workspace; a plan here does not own the
@@ -432,6 +669,7 @@ mod tests {
             entity: None,
             line: 11,
             column: None,
+            end: 7,
         };
         assert_eq!(line.spelling(), "@lfy def/a.lfy:11");
 
@@ -466,9 +704,96 @@ mod tests {
                 entity: Some("Marker".to_string()),
                 line: 11,
                 column: None,
+                end: 24,
             }],
         };
         assert_eq!(SourceMap::from_json(&map.to_json()), Some(map));
+    }
+
+    /// A marker's region runs from its output line through its end, inclusive, and a
+    /// marker sharing its output line with the next one covers nothing, so a line belongs
+    /// to exactly one marker.
+    // @lfy def/generation/data.lfy:Marker.end
+    #[test]
+    fn a_marker_covers_its_output_line_through_its_end() {
+        let marker = Marker {
+            output_line: 3,
+            file: "def/a.lfy".to_string(),
+            entity: Some("A".to_string()),
+            line: 11,
+            column: None,
+            end: 5,
+        };
+        assert!(!marker.covers(2));
+        assert!(marker.covers(3));
+        assert!(marker.covers(5));
+        assert!(!marker.covers(6));
+
+        let shared = Marker { end: 2, ..marker };
+        assert!(!shared.covers(2));
+        assert!(!shared.covers(3));
+    }
+
+    /// A marker read back from a source map written before ends were recorded covers its
+    /// own line alone.
+    // @lfy def/generation/data.lfy:Marker.end
+    #[test]
+    fn a_marker_without_an_end_reads_back_as_its_own_line() {
+        let value = json!({
+            "outputLine": 7,
+            "file": "def/a.lfy",
+            "entity": "A",
+            "line": 11,
+            "column": null,
+        });
+        let marker = Marker::from_json(&value).expect("a marker without an end reads");
+        assert_eq!(marker.end, 7);
+        assert!(marker.covers(7));
+    }
+
+    /// A review is one JSON object with exactly the keys file, line, entity, status,
+    /// evidence, and note, and a verifier's report ends with a line reading
+    /// `ELFIE: REVIEWED`.
+    // @lfy def/generation/data.lfy:Review
+    #[test]
+    fn a_review_is_one_json_object_with_exactly_its_keys() {
+        assert_eq!(REVIEWED, "ELFIE: REVIEWED");
+
+        let review = Review {
+            file: "def/generation/data.lfy".to_string(),
+            line: 42,
+            entity: "Review".to_string(),
+            status: ReviewStatus::Violated,
+            evidence: "crates/elfie-core/src/x.rs:120-134".to_string(),
+            note: "it writes two objects on one line".to_string(),
+        };
+        let value = review.to_json();
+        let mut keys: Vec<&str> = value
+            .as_object()
+            .expect("an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["entity", "evidence", "file", "line", "note", "status"]);
+        assert_eq!(serde_json::to_string(&value).unwrap().lines().count(), 1);
+        assert_eq!(Review::from_json(&value), Some(review));
+
+        // An object with a key too many, one too few, or a status that names no member is
+        // no review.
+        let mut extra = value.clone();
+        extra.as_object_mut().unwrap().insert("why".to_string(), Value::from("x"));
+        assert_eq!(Review::from_json(&extra), None);
+        let mut missing = value.clone();
+        missing.as_object_mut().unwrap().remove("note");
+        assert_eq!(Review::from_json(&missing), None);
+        let mut unknown = value.clone();
+        unknown
+            .as_object_mut()
+            .unwrap()
+            .insert("status".to_string(), Value::from("maybe"));
+        assert_eq!(Review::from_json(&unknown), None);
+        assert_eq!(ReviewStatus::from_name("satisfied"), Some(ReviewStatus::Satisfied));
     }
 
     /// A source map written before signatures were recorded reads back with none, so the

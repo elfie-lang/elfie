@@ -478,9 +478,10 @@ impl LanguageServer for Backend {
         }
     }
 
-    /// `hoverAt` as markdown: a code line of the kind, identifier, a colon, and the type;
-    /// then the definition; then the documentation; then each criterion as a list item
-    /// reading its situations then its behaviors.
+    /// `hoverAt` as markdown: a code line of the kind, identifier, a colon, and the type,
+    /// then the owner in parentheses when there is one; then the definition; then the
+    /// documentation; then each criterion as a list item reading its situations then its
+    /// behaviors.
     // @lfy def/lsp/main.lfy:serve
     async fn hover(&self, params: lsp::HoverParams) -> Result<Option<lsp::Hover>> {
         let at = params.text_document_position_params;
@@ -1068,10 +1069,10 @@ fn severity(severity: query::Severity) -> lsp::DiagnosticSeverity {
     }
 }
 
-/// A hover as markdown: a code line of the kind, identifier, a colon, and the type; then
-/// the definition; then the traits on one line when there are any, so a native thing shows
-/// `builtin`; then the documentation; then each criterion as a list item reading its
-/// situations then its behaviors.
+/// A hover as markdown: a code line of the kind, identifier, a colon, and the type, then
+/// the owner in parentheses when there is one; then the definition; then the traits on one
+/// line when there are any, so a native thing shows `builtin`; then the documentation; then
+/// each criterion as a list item reading its situations then its behaviors.
 // @lfy def/lsp/main.lfy:serve
 fn hover_markdown(hover: &query::Hover) -> String {
     let mut sections = Vec::new();
@@ -1079,6 +1080,12 @@ fn hover_markdown(hover: &query::Hover) -> String {
     if let Some(ty) = &hover.ty {
         code.push_str(": ");
         code.push_str(ty);
+    }
+    // Decision: the owner closes the code line, so the kind, the name and the type read as
+    // they are written and the declaration that owns them follows in parentheses.
+    // @lfy def/lsp/main.lfy:serve
+    if let Some(owner) = hover.owner.as_deref().filter(|text| !text.is_empty()) {
+        code.push_str(&format!(" ({owner})"));
     }
     sections.push(format!("```elfie\n{code}\n```"));
     if let Some(definition) = hover.definition.as_deref().filter(|text| !text.is_empty()) {
@@ -1352,13 +1359,14 @@ mod tests {
 
     // @lfy def/lsp/main.lfy:serve
     #[test]
-    fn hover_reads_code_line_definition_traits_documentation_then_criteria() {
+    fn hover_reads_code_line_owner_definition_traits_documentation_then_criteria() {
         let hover = query::Hover {
             range: Range::empty("def/a.lfy", Position::new(1, 0)),
             kind: elfie_core::model::SymbolKind::Data,
             identifier: "A".to_string(),
             definition: Some("An A".to_string()),
             ty: Some("Base".to_string()),
+            owner: None,
             traits: vec!["builtin".to_string(), "tool".to_string()],
             documentation: Some("Doc line".to_string()),
             criteria: vec![
@@ -1377,15 +1385,30 @@ mod tests {
             hover_markdown(&hover),
             "```elfie\ndata A: Base\n```\n\nAn A\n\nbuiltin, tool\n\nDoc line\n\n- It rains: Stay in; Read\n- Always"
         );
+        // A member's owner closes the code line.
+        // @lfy def/lsp/main.lfy:serve
+        let owned = query::Hover {
+            kind: elfie_core::model::SymbolKind::Member,
+            identifier: "n".to_string(),
+            ty: Some("string".to_string()),
+            owner: Some("A".to_string()),
+            ..hover.clone()
+        };
+        assert!(
+            hover_markdown(&owned).starts_with("```elfie\nmember n: string (A)\n```"),
+            "{}",
+            hover_markdown(&owned)
+        );
         let bare = query::Hover {
             definition: None,
             ty: None,
+            owner: Some("Box".to_string()),
             traits: Vec::new(),
             documentation: Some(String::new()),
             criteria: Vec::new(),
             ..hover
         };
-        assert_eq!(hover_markdown(&bare), "```elfie\ndata A\n```");
+        assert_eq!(hover_markdown(&bare), "```elfie\ndata A (Box)\n```");
     }
 
     // @lfy def/lsp/main.lfy:serve
@@ -1848,10 +1871,11 @@ mod tests {
         ];
         let encoded = encode_tokens(&tokens, &[range(0, 2, 3), range(0, 8, 9), range(2, 6, 7)]);
         let flat: Vec<(u32, u32, u32, u32, u32)> = encoded.iter().map(|t| (t.delta_line, t.delta_start, t.length, t.token_type, t.token_modifiers_bitset)).collect();
-        assert_eq!(flat, vec![(0, 2, 1, 1, 0b11), (0, 6, 1, 9, 1 << 4), (2, 6, 1, 8, 0)]);
+        assert_eq!(flat, vec![(0, 2, 1, 1, 0b11), (0, 6, 1, 10, 1 << 4), (2, 6, 1, 9, 0)]);
         let legend = legend();
         assert_eq!(legend.token_types[1].as_str(), "data");
-        assert_eq!(legend.token_types.len(), 10);
+        assert_eq!(legend.token_types[8].as_str(), "typeParameter");
+        assert_eq!(legend.token_types.len(), 11);
         assert_eq!(legend.token_modifiers[4].as_str(), "scope");
     }
 
@@ -1865,7 +1889,7 @@ mod tests {
         let a = editor.uri("def/a.lfy");
         let answer = editor.request("textDocument/semanticTokens/full", json!({ "textDocument": { "uri": a } })).await;
         // A at 0:2 (data, declaration+agentic), y at 1:6 (variable, declaration+readonly), A at 1:10 (data, agentic).
-        assert_eq!(answer["result"]["data"], json!([0, 2, 1, 1, 0b11, 1, 6, 1, 8, 0b101, 0, 4, 1, 1, 0b10]));
+        assert_eq!(answer["result"]["data"], json!([0, 2, 1, 1, 0b11, 1, 6, 1, 9, 0b101, 0, 4, 1, 1, 0b10]));
         editor.exit(true).await;
     }
 }

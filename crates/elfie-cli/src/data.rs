@@ -14,12 +14,13 @@ pub enum Command {
     Tree,    // @lfy def/cli/data.lfy:Command.tree
     Tokens,  // @lfy def/cli/data.lfy:Command.tokens
     Compile, // @lfy def/cli/data.lfy:Command.compile
+    Verify,  // @lfy def/cli/data.lfy:Command.verify
     Lsp,     // @lfy def/cli/data.lfy:Command.lsp
     Mcp,     // @lfy def/cli/data.lfy:Command.mcp
 }
 
 impl Command {
-    pub const ALL: [Command; 10] = [
+    pub const ALL: [Command; 11] = [
         Command::Help,
         Command::Version,
         Command::Init,
@@ -28,6 +29,7 @@ impl Command {
         Command::Tree,
         Command::Tokens,
         Command::Compile,
+        Command::Verify,
         Command::Lsp,
         Command::Mcp,
     ];
@@ -43,6 +45,7 @@ impl Command {
             Command::Tree => "tree",
             Command::Tokens => "tokens",
             Command::Compile => "compile",
+            Command::Verify => "verify",
             Command::Lsp => "lsp",
             Command::Mcp => "mcp",
         }
@@ -63,6 +66,7 @@ impl Command {
             Command::Tree => "Print the parse tree of one file",
             Command::Tokens => "Print the tokens of one file",
             Command::Compile => "Plan the units and run the compiler on each (--dry-run, --all, --target)",
+            Command::Verify => "Run the verifier on the outputs already recorded, compiling nothing (--target)",
             Command::Lsp => "Serve an editor over standard input and output",
             Command::Mcp => "Serve agents over standard input and output",
         }
@@ -126,6 +130,8 @@ pub enum Step {
     Checking,      // @lfy def/cli/data.lfy:Step.checking
     Accepted,      // @lfy def/cli/data.lfy:Step.accepted
     Rejected,      // @lfy def/cli/data.lfy:Step.rejected
+    Verifying,     // @lfy def/cli/data.lfy:Step.verifying
+    Reviewed,      // @lfy def/cli/data.lfy:Step.reviewed
     Retrying,      // @lfy def/cli/data.lfy:Step.retrying
     Blocked,       // @lfy def/cli/data.lfy:Step.blocked
     Clarification, // @lfy def/cli/data.lfy:Step.clarification
@@ -144,6 +150,8 @@ impl Step {
             Step::Checking => "checking",
             Step::Accepted => "accepted",
             Step::Rejected => "rejected",
+            Step::Verifying => "verifying",
+            Step::Reviewed => "reviewed",
             Step::Retrying => "retrying",
             Step::Blocked => "blocked",
             Step::Clarification => "clarification",
@@ -161,6 +169,8 @@ impl Step {
             Step::Checking => "the outputs of a unit are being checked",
             Step::Accepted => "a unit was accepted and recorded",
             Step::Rejected => "a unit was rejected",
+            Step::Verifying => "the verifier is running on a batch whose units were accepted",
+            Step::Reviewed => "the verifier reviewed a batch",
             Step::Retrying => "the compiler is running a batch again with the problems",
             Step::Blocked => "the compiler could not proceed",
             Step::Clarification => "the compiler asked a question",
@@ -188,7 +198,8 @@ pub struct Progress {
     /// Seconds since the compile began, as [`std::time::SystemTime::elapsed`] from its
     /// start gives them.
     pub elapsed: f64, // @lfy def/cli/data.lfy:Progress.elapsed
-    /// The detail: the reason a unit is planned, a problem, a question, or the count of
-    /// batches.
+    /// The detail: the reason a unit is planned, a problem, a question, the count of
+    /// batches, or for `Reviewed` the counts of satisfied, violated, and unverifiable
+    /// reviews, in that order.
     pub message: String, // @lfy def/cli/data.lfy:Progress.message
 }

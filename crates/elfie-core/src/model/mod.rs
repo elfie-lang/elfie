@@ -53,6 +53,10 @@ pub fn bind(sources: Vec<Source>) -> Model {
             .acceptance_criteria
             .sort_by_key(|criterion| criterion.contributor != id);
     }
+    // A declaration seen with type arguments takes the declaration's definition, members,
+    // criteria, and traits, which the apply pass filled in after the type pass made it.
+    // @lfy def/model/main.lfy:bind
+    model.finish_generics();
     model
         .problems
         .sort_by_key(|problem| (problem.node.file, problem.node.index));

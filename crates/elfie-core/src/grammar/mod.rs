@@ -325,7 +325,7 @@ mod tests {
         let document = grammar_document();
         let texts: Vec<&str> = rules().map(|rule| rule.text()).collect();
         assert_eq!(document, texts.join("\n"));
-        assert_eq!(texts.len(), 275);
+        assert_eq!(texts.len(), 281);
         assert!(document.ends_with("SourceFile = (: [[Statement]] :) ;"));
         assert!(document.len() > terminal_document().len());
     }

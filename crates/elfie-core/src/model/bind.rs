@@ -2,7 +2,7 @@
 //! resolve passes of binding. The apply pass lives in `eval.rs`, which executes trait and
 //! declaration bodies.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::grammar::GrammarRule;
@@ -25,14 +25,37 @@ pub const SYNTHETIC: NodeRef = NodeRef {
 pub(crate) struct Binder {
     pub trees: Rc<Trees>,
     pub model: Model,
-    pub cache: std::collections::HashMap<EntityId, Value>,
+    pub cache: HashMap<EntityId, Value>,
     pub evaluating: HashSet<EntityId>,
     /// The universe scope, holding `global`.
     pub universe: ScopeId,
     /// The prelude scope, when a source has [`Origin::Prelude`].
     // @lfy def/model/main.lfy:bind
     pub prelude: Option<ScopeId>,
+    /// The type each `TypeArguments` or `Generic` node yields, so that a node written
+    /// once is one entity however often its type is read, and its arity is reported once.
+    // @lfy def/model/main.lfy:bind
+    pub generics: HashMap<NodeRef, TypeRef>,
 }
+
+/// The name under which a generic entity holds what it was written with, and a type
+/// parameter what its declaration gave it. `Entity` is a record of the model, and the
+/// prelude's `Entity` declares these as members of it, so the binder records them where
+/// the value of a member of an entity lives.
+// @lfy def/model/main.lfy:bind
+pub const TYPE_ARGUMENTS: &str = "typeArguments";
+/// `Entity.typeParameters`: what a declaration is generic over.
+// @lfy def/model/main.lfy:bind
+pub const TYPE_PARAMETERS: &str = "typeParameters";
+/// `Kinds.Parameter.defaultValue`: what a type parameter takes when it is left out.
+// @lfy def/model/main.lfy:bind
+pub const DEFAULT_VALUE: &str = "defaultValue";
+/// `Kinds.Parameter.optional`: whether a type parameter may be left out.
+// @lfy def/model/main.lfy:bind
+pub const OPTIONAL: &str = "optional";
+/// `Kinds.Parameter.spread`: never true of a type parameter.
+// @lfy def/model/main.lfy:bind
+pub const SPREAD: &str = "spread";
 
 /// The data the prelude gives an entity for what it is; `Entity` covers every entity and
 /// the others only their own kind.
@@ -116,6 +139,7 @@ impl Binder {
             evaluating: Default::default(),
             universe: 0,
             prelude: None,
+            generics: Default::default(),
         }
     }
 
@@ -308,14 +332,33 @@ impl Binder {
             let entity = self.new_entity(entity_kind(kind), Some(r), name.clone());
             (entity, kind, name, name_token)
         });
+        // A FunctionType declares no name, but it is a function all the same: it owns an
+        // anonymous entity whose parameters are declared in the scope it owns and whose
+        // output is the type after its arrow.
+        // @lfy def/model/main.lfy:bind
+        let function_type = trees.is(r, E::FunctionType).then(|| {
+            self.new_entity(
+                EntityKind::Fn {
+                    parameters: Vec::new(),
+                    output: None,
+                    agent: false,
+                },
+                Some(r),
+                None,
+            )
+        });
         if is_scoped(rule) {
             // A For declares its loop variable, not itself: its current stays the parent's.
-            let current = match declared {
-                Some((entity, kind, _, _)) if kind != SymbolKind::LoopVariable => entity,
+            let current = match (&declared, function_type) {
+                (Some((entity, kind, _, _)), _) if *kind != SymbolKind::LoopVariable => *entity,
+                (_, Some(entity)) => entity,
                 _ => self.model.scopes[enclosing].current,
             };
             scope = self.new_scope(Some(enclosing), r, current);
             if let Some((entity, _, _, _)) = declared {
+                self.model.entities[entity].scope = Some(scope);
+            }
+            if let Some(entity) = function_type {
                 self.model.entities[entity].scope = Some(scope);
             }
         }
@@ -436,14 +479,34 @@ impl Binder {
             .collect();
         for e in ids {
             let (ty, definition) = self.declared_type(e);
+            let item_type = self.item_type_of(ty.as_ref());
             let entity = &mut self.model.entities[e];
             entity.ty = ty;
             entity.definition_node = definition;
-            entity.item_type = match &entity.ty {
-                Some(TypeRef::List(item)) => Some((**item).clone()),
-                _ => None,
-            };
+            entity.item_type = item_type;
         }
+    }
+
+    /// `Entity.itemType`: the first of the type arguments of `Entity.type` when that type
+    /// is the standard library's `List`, and undefined otherwise. `T[]` and `List<T>` are
+    /// the same type, which the model spells as a list, so a bare `List` has no arguments
+    /// and no item type.
+    // @lfy def/model/main.lfy:bind
+    fn item_type_of(&self, ty: Option<&TypeRef>) -> Option<TypeRef> {
+        match ty {
+            Some(TypeRef::List(item)) => Some((**item).clone()),
+            Some(TypeRef::Entity(e)) if self.is_list(*e) => {
+                self.model.type_arguments(*e).into_iter().next()
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether an entity is the standard library's `List`, or that declaration seen with
+    /// arguments.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn is_list(&self, entity: EntityId) -> bool {
+        self.prelude_data("List") == Some(self.model.generic_base(entity))
     }
 
     fn declared_type(&mut self, e: EntityId) -> (Option<TypeRef>, Option<NodeRef>) {
@@ -463,10 +526,36 @@ impl Binder {
                 let output = trees
                     .child(node, E::TypeExpression)
                     .map(|t| self.type_from_type_expression(t));
-                if let EntityKind::Fn { output: slot, .. } = &mut self.model.entities[e].kind {
-                    *slot = output;
+                // FnEntity.parameters is the symbols of the Parameter and SpreadParameter
+                // nodes of its Parameters, which a FunctionType declares in the scope it
+                // owns just as a declaration does.
+                // @lfy def/model/main.lfy:bind
+                let parameters = self.value_parameters(e);
+                if let EntityKind::Fn {
+                    output: output_slot,
+                    parameters: parameter_slot,
+                    ..
+                } = &mut self.model.entities[e].kind
+                {
+                    *output_slot = output;
+                    *parameter_slot = parameters;
                 }
                 (Some(TypeRef::Function), definition)
+            }
+            // A type parameter's type is what it must extend, and its kind data is
+            // Kinds.Parameter, whose defaultValue is the type after its setter.
+            // @lfy def/model/main.lfy:bind
+            EntityKind::Parameter if trees.is(node, E::TypeParameter) => {
+                let (constraint, default) = self.type_parameter_clauses(node);
+                let default = default.map(|t| Value::Type(Box::new(t)));
+                let values = &mut self.model.entities[e].values;
+                values.push((OPTIONAL.to_string(), Value::Bool(default.is_some())));
+                values.push((
+                    DEFAULT_VALUE.to_string(),
+                    default.unwrap_or(Value::Undefined),
+                ));
+                values.push((SPREAD.to_string(), Value::Bool(false)));
+                (constraint, None)
             }
             EntityKind::Parameter => {
                 let (ty, definition) = self.clause_type_or_definition(node);
@@ -534,6 +623,51 @@ impl Binder {
             EntityKind::Module => (None, None),
             _ => (None, None),
         }
+    }
+
+    /// The symbols of the parameters an entity declares: its value parameters, in order,
+    /// its type parameters left out.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn value_parameters(&self, entity: EntityId) -> Vec<SymbolId> {
+        match self.model.entities[entity].scope {
+            Some(scope) => self.model.scopes[scope]
+                .symbols
+                .iter()
+                .copied()
+                .filter(|&s| self.model.symbols[s].kind == SymbolKind::Parameter)
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// The type after a type parameter's `extends`, and the type after its `=`.
+    // @lfy def/model/main.lfy:bind
+    fn type_parameter_clauses(&mut self, node: NodeRef) -> (Option<TypeRef>, Option<TypeRef>) {
+        let trees = self.trees.clone();
+        let mut constraint = None;
+        let mut default = None;
+        let mut pending = None;
+        for part in trees.parts(node) {
+            match part {
+                Part::Token(index) => {
+                    if trees.token_is(node.file, index, K::ExtendsKeyword) {
+                        pending = Some(false);
+                    } else if trees.token_is(node.file, index, P::PlainSetter) {
+                        pending = Some(true);
+                    }
+                }
+                Part::Node(child) if trees.is(child, E::TypeExpression) => {
+                    let ty = self.type_from_type_expression(child);
+                    match pending.take() {
+                        Some(true) => default = Some(ty),
+                        Some(false) => constraint = Some(ty),
+                        None => {}
+                    }
+                }
+                Part::Node(_) => {}
+            }
+        }
+        (constraint, default)
     }
 
     /// The template or string of a DefinitionClause, when it holds one.
@@ -733,9 +867,16 @@ impl Binder {
         }
     }
 
+    /// A TypeItem: a type value or a parenthesized type, its type arguments when it has
+    /// any, and square brackets that make a list of it.
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind
     fn type_from_type_item(&mut self, item: NodeRef) -> TypeRef {
         let trees = self.trees.clone();
+        // `T[]` is List of T; nested brackets nest the arguments.
+        // @lfy def/model/main.lfy:bind
         let list = trees.has_token(item, P::ListOpen);
+        let arguments = trees.child(item, E::TypeArguments);
         let inner = match trees.child_nodes(item).into_iter().next() {
             Some(value) if trees.is(value, E::TypeExpression) => {
                 self.type_from_type_expression(value)
@@ -743,11 +884,112 @@ impl Binder {
             Some(value) => self.type_from_expression(value),
             None => TypeRef::Unknown(trees.raw(item)),
         };
+        let inner = match arguments {
+            // A Reference followed by TypeArguments is that declaration seen with them.
+            // @lfy def/model/main.lfy:bind
+            Some(arguments) => {
+                let written = trees
+                    .children_of(arguments, E::TypeExpression)
+                    .into_iter()
+                    .map(|argument| self.type_from_type_expression(argument))
+                    .collect();
+                self.generic_type(arguments, inner, written)
+            }
+            None => inner,
+        };
         if list {
             TypeRef::List(Box::new(inner))
         } else {
             inner
         }
+    }
+
+    /// The declaration a type stands for, seen with the arguments a `TypeArguments` or a
+    /// `Generic` node was written with: an entity whose identifier, definition, members,
+    /// criteria, and type parameters are the declaration's, whose type is the declaration
+    /// itself, and whose type arguments are what was written. `List` of one argument is
+    /// spelled as a list, so `List<T>` and `T[]` are the same type.
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind
+    fn generic_type(&mut self, at: NodeRef, base: TypeRef, arguments: Vec<TypeRef>) -> TypeRef {
+        if let Some(ty) = self.generics.get(&at) {
+            return ty.clone();
+        }
+        let TypeRef::Entity(declaration) = base else {
+            return base;
+        };
+        self.check_arity(at, declaration, arguments.len());
+        if self.is_list(declaration) && arguments.len() == 1 {
+            let list = TypeRef::List(Box::new(arguments.into_iter().next().expect("one")));
+            self.generics.insert(at, list.clone());
+            return list;
+        }
+        let entity = self.seen_with(declaration, arguments, Some(at));
+        self.generics.insert(at, TypeRef::Entity(entity));
+        TypeRef::Entity(entity)
+    }
+
+    /// One declaration seen with type arguments: its identifier, definition, members,
+    /// criteria, and type parameters are the declaration's, its type is the declaration
+    /// itself, and its type arguments are what was written.
+    // @lfy def/model/main.lfy:bind
+    fn seen_with(
+        &mut self,
+        declaration: EntityId,
+        arguments: Vec<TypeRef>,
+        at: Option<NodeRef>,
+    ) -> EntityId {
+        let source = self.model.entities[declaration].clone();
+        let at = at.or(source.node);
+        let entity = self.new_entity(source.kind.clone(), at, source.identifier.clone());
+        let seen = &mut self.model.entities[entity];
+        seen.definition = source.definition;
+        seen.definition_node = source.definition_node;
+        seen.acceptance_criteria = source.acceptance_criteria;
+        seen.traits = source.traits;
+        seen.scope = source.scope;
+        seen.ty = Some(TypeRef::Entity(declaration));
+        seen.values.push((
+            TYPE_ARGUMENTS.to_string(),
+            Value::List(
+                arguments
+                    .into_iter()
+                    .map(|argument| Value::Type(Box::new(argument)))
+                    .collect(),
+            ),
+        ));
+        entity
+    }
+
+    /// More arguments than the declaration has type parameters, or fewer than those
+    /// without a default, is a problem at the arguments; the entity is bound all the same.
+    // @lfy def/model/main.lfy:bind
+    fn check_arity(&mut self, at: NodeRef, declaration: EntityId, written: usize) {
+        let parameters = self.model.type_parameters(declaration);
+        let required = parameters
+            .iter()
+            .filter(|&&parameter| {
+                !matches!(
+                    self.model.entities[parameter].value(OPTIONAL),
+                    Some(Value::Bool(true))
+                )
+            })
+            .count();
+        if written <= parameters.len() && written >= required {
+            return;
+        }
+        let name = self.model.entities[declaration]
+            .identifier
+            .clone()
+            .unwrap_or_else(|| "the declaration".to_string());
+        let lists = match parameters.len() {
+            1 => "1 type parameter".to_string(),
+            other => format!("{other} type parameters"),
+        };
+        self.problem(
+            at,
+            format!("{written} type arguments, but {name} lists {lists}"),
+        );
     }
 
     /// TypeRef of an expression standing as a type: after `=` in a member, a default
@@ -771,21 +1013,68 @@ impl Binder {
             };
         }
         if rule == E::Name.entity() || rule == E::Member.entity() {
-            if let Some(symbol) = self.resolve_name_node(node) {
-                let symbol = &self.model.symbols[symbol];
-                return match symbol.kind {
+            // A member is read on what the left side names, or, when the left side names
+            // a value, in the entity of its type.
+            // @lfy def/model/main.lfy:bind
+            let symbol = self
+                .resolve_name_node(node)
+                .or_else(|| self.member_through_type(node));
+            if let Some(symbol) = symbol {
+                let kind = self.model.symbols[symbol].kind;
+                let entity = self.model.symbols[symbol].entity;
+                return match kind {
                     SymbolKind::Data | SymbolKind::Trait | SymbolKind::Type | SymbolKind::Enum => {
-                        TypeRef::Entity(symbol.entity)
+                        TypeRef::Entity(entity)
                     }
-                    SymbolKind::Alias | SymbolKind::External => TypeRef::Entity(symbol.entity),
-                    SymbolKind::Module => TypeRef::Entity(symbol.entity),
-                    _ => self.model.entities[symbol.entity]
+                    SymbolKind::Alias | SymbolKind::External => TypeRef::Entity(entity),
+                    SymbolKind::Module => TypeRef::Entity(entity),
+                    // A name of a type parameter yields the type parameter's entity, not
+                    // what it must extend.
+                    // @lfy def/model/main.lfy:bind
+                    SymbolKind::TypeParameter => TypeRef::Entity(entity),
+                    // A member read on a left side with type arguments is its declared
+                    // type with each of the base's type parameters replaced.
+                    // @lfy def/model/main.lfy:bind
+                    SymbolKind::Member if rule == E::Member.entity() => self
+                        .member_type_at(node, entity)
+                        .unwrap_or(TypeRef::Unknown(trees.raw(node))),
+                    _ => self.model.entities[entity]
                         .ty
                         .clone()
                         .unwrap_or(TypeRef::Unknown(trees.raw(node))),
                 };
             }
             return TypeRef::Unknown(trees.raw(node));
+        }
+        // A parenthesized type is the type inside it.
+        // @lfy def/grammar/rules/expression.lfy:TypeGroup
+        if rule == E::TypeGroup.entity() {
+            return match trees.child(node, E::TypeExpression) {
+                Some(inner) => self.type_from_type_expression(inner),
+                None => TypeRef::Unknown(trees.raw(node)),
+            };
+        }
+        // A FunctionType is the anonymous function entity the node owns.
+        // @lfy def/model/main.lfy:bind
+        if rule == E::FunctionType.entity() {
+            return match self.function_type_entity(node) {
+                Some(entity) => TypeRef::Entity(entity),
+                None => TypeRef::Function,
+            };
+        }
+        // The left expression with type arguments, in an expression position.
+        // @lfy def/model/main.lfy:bind
+        if rule == E::Generic.entity() {
+            let base = match trees.left(node) {
+                Some(left) => self.type_from_expression(left),
+                None => return TypeRef::Unknown(trees.raw(node)),
+            };
+            let written = trees
+                .children_of(node, E::TypeExpression)
+                .into_iter()
+                .map(|argument| self.type_from_type_expression(argument))
+                .collect();
+            return self.generic_type(node, base, written);
         }
         if rule == E::Reference.entity() {
             // A name in a type position is wrapped in a Reference.
@@ -873,6 +1162,150 @@ impl Binder {
             }
         }
         TypeRef::Unknown(trees.raw(node))
+    }
+
+    /// The anonymous function entity a FunctionType node owns: the current entity of the
+    /// scope the node was given when it was declared.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn function_type_entity(&self, node: NodeRef) -> Option<EntityId> {
+        let scope = self.model.scope_of(node)?;
+        let entity = self.model.scopes[scope].current;
+        matches!(self.model.entities[entity].kind, EntityKind::Fn { .. }).then_some(entity)
+    }
+
+    /// The member a `Member` node reads when its left side names a value: the member of
+    /// the entity of the left side's type.
+    // @lfy def/model/main.lfy:bind
+    fn member_through_type(&mut self, node: NodeRef) -> Option<SymbolId> {
+        let trees = self.trees.clone();
+        if !trees.is(node, E::Member) {
+            return None;
+        }
+        let (accessor, name) = trees.accessor_and_name(node)?;
+        let layer = accessor_layer(trees.token(node.file, accessor).rule?)?;
+        if layer != Layer::Value && layer != Layer::Scope {
+            return None;
+        }
+        let name = trees.token(node.file, name?).value.clone();
+        let left = trees.left(node)?;
+        let TypeRef::Entity(base) = self.type_from_expression(left) else {
+            return None;
+        };
+        self.member_symbol(base, &name)
+    }
+
+    /// The type of a member as it is read on a left side: its declared type with each of
+    /// the base's type parameters replaced by the argument at the same position.
+    // @lfy def/model/main.lfy:bind
+    fn member_type_at(&mut self, node: NodeRef, member: EntityId) -> Option<TypeRef> {
+        let declared = self.model.entities[member].ty.clone()?;
+        let trees = self.trees.clone();
+        let Some(left) = trees.left(node) else {
+            return Some(declared);
+        };
+        let TypeRef::Entity(base) = self.type_from_expression(left) else {
+            return Some(declared);
+        };
+        let parameters = self.model.type_parameters(base);
+        let arguments = self.model.type_arguments(base);
+        if parameters.is_empty() || arguments.is_empty() {
+            return Some(declared);
+        }
+        Some(self.substitute(declared, &parameters, &arguments))
+    }
+
+    /// A type with each of `parameters` replaced by the argument at the same position,
+    /// through nested type arguments and through the parameters and output of a function
+    /// type. A parameter with no argument at its position stays itself, and nothing
+    /// beyond this direct substitution is inferred.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn substitute(
+        &mut self,
+        ty: TypeRef,
+        parameters: &[EntityId],
+        arguments: &[TypeRef],
+    ) -> TypeRef {
+        if parameters.is_empty() {
+            return ty;
+        }
+        match ty {
+            TypeRef::Entity(entity) => {
+                if let Some(position) = parameters.iter().position(|&p| p == entity) {
+                    return match arguments.get(position) {
+                        Some(argument) => argument.clone(),
+                        None => TypeRef::Entity(entity),
+                    };
+                }
+                let nested = self.model.type_arguments(entity);
+                if !nested.is_empty() {
+                    let base = self.model.generic_base(entity);
+                    let nested = nested
+                        .into_iter()
+                        .map(|argument| self.substitute(argument, parameters, arguments))
+                        .collect();
+                    return TypeRef::Entity(self.seen_with(base, nested, None));
+                }
+                if matches!(self.model.entities[entity].kind, EntityKind::Fn { .. }) {
+                    return TypeRef::Entity(self.substituted_function(
+                        entity, parameters, arguments,
+                    ));
+                }
+                TypeRef::Entity(entity)
+            }
+            TypeRef::List(item) => {
+                TypeRef::List(Box::new(self.substitute(*item, parameters, arguments)))
+            }
+            TypeRef::Union(items) => TypeRef::Union(
+                items
+                    .into_iter()
+                    .map(|item| self.substitute(item, parameters, arguments))
+                    .collect(),
+            ),
+            other => other,
+        }
+    }
+
+    /// A function type with its parameters and its output substituted. Its parameter
+    /// symbols are copies: they name the same declarations and are in no scope of their
+    /// own, so nothing else sees them.
+    // @lfy def/model/main.lfy:bind
+    fn substituted_function(
+        &mut self,
+        entity: EntityId,
+        parameters: &[EntityId],
+        arguments: &[TypeRef],
+    ) -> EntityId {
+        let source = self.model.entities[entity].clone();
+        let mut substituted = Vec::new();
+        for symbol in source.parameters().to_vec() {
+            let original = self.model.symbols[symbol].clone();
+            let declared = self.model.entities[original.entity].ty.clone();
+            let node = self.model.entities[original.entity].node;
+            let ty = declared.map(|ty| self.substitute(ty, parameters, arguments));
+            let copy = self.new_entity(EntityKind::Parameter, node, Some(original.name.clone()));
+            self.model.entities[copy].ty = ty;
+            self.model.symbols.push(Symbol {
+                entity: copy,
+                ..original
+            });
+            substituted.push(self.model.symbols.len() - 1);
+        }
+        let output = source
+            .output()
+            .cloned()
+            .map(|ty| self.substitute(ty, parameters, arguments));
+        let copy = self.new_entity(
+            EntityKind::Fn {
+                parameters: substituted,
+                output,
+                agent: false,
+            },
+            source.node,
+            None,
+        );
+        self.model.entities[copy].ty = Some(TypeRef::Function);
+        self.model.entities[copy].scope = source.scope;
+        copy
     }
 
     /// The trait symbol a TraitUse names, statically.
@@ -1345,6 +1778,13 @@ impl Binder {
                 Target::Entity(self.model.symbols[s].entity)
             });
         }
+        // The left expression with type arguments reads the members of the declaration it
+        // names, seen with them.
+        // @lfy def/model/main.lfy:bind
+        if rule == E::Generic.entity() {
+            let ty = self.type_from_expression(node);
+            return self.target_of_type(ty);
+        }
         if rule == E::Call.entity() {
             if let Some(left) = trees.left(node) {
                 let symbol = self
@@ -1398,6 +1838,16 @@ impl Binder {
 
     fn target_of_type(&self, ty: TypeRef) -> Target {
         match ty {
+            // A left side whose type is a type parameter reads the members of what the
+            // parameter must extend; without an extends clause nothing resolves and no
+            // problem is added, because nothing is known about the parameter.
+            // @lfy def/model/main.lfy:bind
+            TypeRef::Entity(e) if self.is_type_parameter(e) => {
+                match self.model.entities[e].ty.clone() {
+                    Some(constraint) => self.target_of_type(constraint),
+                    None => Target::Unknown,
+                }
+            }
             TypeRef::Entity(e) => match self.model.entities[e].kind {
                 EntityKind::File => {
                     Target::Module(self.model.entities[e].file.expect("file entity"))
@@ -1421,6 +1871,14 @@ impl Binder {
         }
     }
 
+    /// Whether an entity is the entity of a `TypeParameter`.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn is_type_parameter(&self, entity: EntityId) -> bool {
+        self.model.entities[entity]
+            .symbol
+            .is_some_and(|symbol| self.model.symbols[symbol].kind == SymbolKind::TypeParameter)
+    }
+
     /// The symbol declared by the nearest earlier statement of the same block.
     fn previous_symbol(&self, r: NodeRef) -> Option<SymbolId> {
         let trees = &self.trees;
@@ -1442,6 +1900,77 @@ impl Binder {
             statement = parent;
         }
         None
+    }
+}
+
+/// What a declaration is generic over, and what a use of it was written with. `Entity` is
+/// a record of the model and the prelude declares both as members of it, so the model
+/// answers them rather than holding a field for each.
+impl Model {
+    /// `Entity.typeParameters`: the entity of each `TypeParameter` in the declaration's
+    /// `TypeParameters`, in order; empty for a declaration without them. A declaration
+    /// seen with arguments owns the declaration's scope, so its type parameters are the
+    /// declaration's.
+    // @lfy def/model/main.lfy:bind
+    pub fn type_parameters(&self, entity: EntityId) -> Vec<EntityId> {
+        match self.entities[entity].scope {
+            Some(scope) => self.scopes[scope]
+                .symbols
+                .iter()
+                .filter(|&&symbol| self.symbols[symbol].kind == SymbolKind::TypeParameter)
+                .map(|&symbol| self.symbols[symbol].entity)
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// `Entity.typeArguments`: what each argument the type was written with resolves to,
+    /// in order; empty for a declaration used without arguments.
+    // @lfy def/model/main.lfy:bind
+    pub fn type_arguments(&self, entity: EntityId) -> Vec<TypeRef> {
+        match self.entities[entity].value(TYPE_ARGUMENTS) {
+            Some(Value::List(items)) => items
+                .iter()
+                .filter_map(|item| match item {
+                    Value::Type(ty) => Some((**ty).clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// A declaration seen with arguments takes the declaration's definition, members,
+    /// criteria, and traits. The type pass makes the entity, but the apply pass fills the
+    /// declaration in after it, so what it takes is copied once binding is done.
+    // @lfy def/model/main.lfy:bind
+    pub(crate) fn finish_generics(&mut self) {
+        for entity in 0..self.entities.len() {
+            let base = self.generic_base(entity);
+            if base == entity {
+                continue;
+            }
+            self.entities[entity].definition = self.entities[base].definition.clone();
+            self.entities[entity].definition_node = self.entities[base].definition_node;
+            self.entities[entity].acceptance_criteria =
+                self.entities[base].acceptance_criteria.clone();
+            self.entities[entity].traits = self.entities[base].traits.clone();
+            self.entities[entity].scope = self.entities[base].scope;
+        }
+    }
+
+    /// The declaration a type seen with arguments stands for; the entity itself for
+    /// anything else.
+    // @lfy def/model/main.lfy:bind
+    pub fn generic_base(&self, entity: EntityId) -> EntityId {
+        match self.entities[entity].ty {
+            Some(TypeRef::Entity(base))
+                if self.entities[entity].value(TYPE_ARGUMENTS).is_some() =>
+            {
+                base
+            }
+            _ => entity,
+        }
     }
 }
 
@@ -1470,7 +1999,9 @@ fn entity_kind(kind: SymbolKind) -> EntityKind {
         SymbolKind::External => EntityKind::External,
         SymbolKind::Module => EntityKind::Module,
         SymbolKind::LoopVariable => EntityKind::LoopVariable,
-        SymbolKind::Parameter => EntityKind::Parameter,
+        // A type parameter is a parameter of the declaration it stands in, so it is one
+        // entity kind with the value parameters; its symbol keeps the two apart.
+        SymbolKind::Parameter | SymbolKind::TypeParameter => EntityKind::Parameter,
         SymbolKind::Member => EntityKind::Member,
         SymbolKind::EnumMember => EntityKind::EnumMember,
     }

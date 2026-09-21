@@ -12,69 +12,98 @@ use super::data::{Layer, SymbolKind};
 
 /// The rules carrying `scoped`: each owns a scope.
 // @lfy def/model/traits.lfy:scoped
-// @lfy def/model/components.lfy:10
 pub fn is_scoped(rule: Rule) -> bool {
     [
-        F::SourceFile.entity(),               // @lfy def/model/components.lfy:10
-        S::Block.entity(),                    // @lfy def/model/components.lfy:11
-        S::DataDeclaration.entity(),          // @lfy def/model/components.lfy:12
-        S::AgentFunctionDeclaration.entity(), // @lfy def/model/components.lfy:13
-        S::FunctionDeclaration.entity(),      // @lfy def/model/components.lfy:14
-        E::InlineFunction.entity(),           // @lfy def/model/components.lfy:15
-        S::TraitDeclaration.entity(),         // @lfy def/model/components.lfy:16
-        S::TypeDeclaration.entity(),          // @lfy def/model/components.lfy:17
-        S::EnumDeclaration.entity(),          // @lfy def/model/components.lfy:18
-        S::For.entity(),                      // @lfy def/model/components.lfy:19
-        S::With.entity(),                     // @lfy def/model/components.lfy:20
+        F::SourceFile.entity(),               // @lfy def/grammar/rules/file.lfy:SourceFile
+        S::Block.entity(),                    // @lfy def/grammar/rules/statement.lfy:Block
+        S::DataDeclaration.entity(),          // @lfy def/grammar/rules/statement.lfy:DataDeclaration
+        S::AgentFunctionDeclaration.entity(), // @lfy def/grammar/rules/statement.lfy:AgentFunctionDeclaration
+        S::FunctionDeclaration.entity(),      // @lfy def/grammar/rules/statement.lfy:FunctionDeclaration
+        E::InlineFunction.entity(),           // @lfy def/grammar/rules/expression.lfy:InlineFunction
+        E::FunctionType.entity(),             // @lfy def/grammar/rules/expression.lfy:FunctionType
+        S::TraitDeclaration.entity(),         // @lfy def/grammar/rules/statement.lfy:TraitDeclaration
+        S::TypeDeclaration.entity(),          // @lfy def/grammar/rules/statement.lfy:TypeDeclaration
+        S::EnumDeclaration.entity(),          // @lfy def/grammar/rules/statement.lfy:EnumDeclaration
+        S::For.entity(),                      // @lfy def/grammar/rules/statement.lfy:For
+        S::With.entity(),                     // @lfy def/grammar/rules/statement.lfy:With
     ]
     .contains(&rule)
 }
 
 /// The layer a rule carrying `reading` reads, for the accessor terminals.
-// @lfy def/model/components.lfy:23
+// @lfy def/model/traits.lfy:reading
 pub fn accessor_layer(rule: Rule) -> Option<Layer> {
     Some(match rule {
-        r if r == P::ValueAccessor.entity() => Layer::Value, // @lfy def/model/components.lfy:23
-        r if r == P::OptionalValueAccessor.entity() => Layer::Value, // @lfy def/model/components.lfy:24
-        r if r == P::ContextAccessor.entity() => Layer::Context, // @lfy def/model/components.lfy:25
-        r if r == P::ScopeAccessor.entity() => Layer::Scope, // @lfy def/model/components.lfy:26
-        r if r == P::ParentScopeAccessor.entity() => Layer::Parent, // @lfy def/model/components.lfy:27
+        // @lfy def/grammar/terminals/punctuation.lfy:ValueAccessor
+        r if r == P::ValueAccessor.entity() => Layer::Value,
+        // @lfy def/grammar/terminals/punctuation.lfy:OptionalValueAccessor
+        r if r == P::OptionalValueAccessor.entity() => Layer::Value,
+        // @lfy def/grammar/terminals/punctuation.lfy:ContextAccessor
+        r if r == P::ContextAccessor.entity() => Layer::Context,
+        // @lfy def/grammar/terminals/punctuation.lfy:ScopeAccessor
+        r if r == P::ScopeAccessor.entity() => Layer::Scope,
+        // @lfy def/grammar/terminals/punctuation.lfy:ParentScopeAccessor
+        r if r == P::ParentScopeAccessor.entity() => Layer::Parent,
         _ => return None,
     })
 }
 
 /// The layer a rule carrying `reading` reads, for the expression rules.
 // @lfy def/model/traits.lfy:reading
-// @lfy def/model/components.lfy:28
 pub fn reading_layer(rule: Rule) -> Option<Layer> {
     Some(match rule {
-        r if r == E::Name.entity() => Layer::Value,             // @lfy def/model/components.lfy:28
-        r if r == E::TraitUse.entity() => Layer::Value,         // @lfy def/model/components.lfy:29
-        r if r == E::Dereference.entity() => Layer::Dereference, // @lfy def/model/components.lfy:30
-        r if r == E::Previous.entity() => Layer::Previous,      // @lfy def/model/components.lfy:31
+        // @lfy def/grammar/rules/expression.lfy:Name
+        r if r == E::Name.entity() => Layer::Value,
+        // @lfy def/grammar/rules/expression.lfy:TraitUse
+        r if r == E::TraitUse.entity() => Layer::Value,
+        // @lfy def/grammar/rules/expression.lfy:Dereference
+        r if r == E::Dereference.entity() => Layer::Dereference,
+        // @lfy def/grammar/rules/expression.lfy:Previous
+        r if r == E::Previous.entity() => Layer::Previous,
         _ => return None,
     })
 }
 
 /// Which rule spells a declared name, and what kind of symbol it makes.
-// @lfy def/model/components.lfy:37
+// @lfy def/model/traits.lfy:declaring
 pub fn declaring(rule: Rule) -> Option<(Rule, SymbolKind)> {
     Some(match rule {
-        r if r == S::DataDeclaration.entity() => (I::Identifier.entity(), SymbolKind::Data), // @lfy def/model/components.lfy:38
-        r if r == S::TraitDeclaration.entity() => (I::Identifier.entity(), SymbolKind::Trait), // @lfy def/model/components.lfy:39
-        r if r == S::FunctionDeclaration.entity() => (E::Signature.entity(), SymbolKind::Function), // @lfy def/model/components.lfy:40
-        r if r == S::AgentFunctionDeclaration.entity() => (E::Signature.entity(), SymbolKind::AgentFunction), // @lfy def/model/components.lfy:41
-        r if r == S::TypeDeclaration.entity() => (E::Declared.entity(), SymbolKind::Type), // @lfy def/model/components.lfy:42
-        r if r == S::EnumDeclaration.entity() => (E::Declared.entity(), SymbolKind::Enum), // @lfy def/model/components.lfy:43
-        r if r == S::VariableDeclaration.entity() => (E::Declared.entity(), SymbolKind::Variable), // @lfy def/model/components.lfy:44
-        r if r == S::AliasDeclaration.entity() => (E::Declared.entity(), SymbolKind::Alias), // @lfy def/model/components.lfy:45
-        r if r == S::ExternalDeclaration.entity() => (E::Declared.entity(), SymbolKind::External), // @lfy def/model/components.lfy:46
-        r if r == S::Use.entity() => (I::Identifier.entity(), SymbolKind::Module), // @lfy def/model/components.lfy:47
-        r if r == S::For.entity() => (E::Declared.entity(), SymbolKind::LoopVariable), // @lfy def/model/components.lfy:48
-        r if r == S::ForFrom.entity() => (E::Declared.entity(), SymbolKind::LoopVariable), // @lfy def/model/components.lfy:49
-        r if r == E::Parameter.entity() => (E::Name.entity(), SymbolKind::Parameter), // @lfy def/model/components.lfy:50
-        r if r == E::SpreadParameter.entity() => (E::Name.entity(), SymbolKind::Parameter), // @lfy def/model/components.lfy:51
-        r if r == E::TypeKey.entity() => (E::Name.entity(), SymbolKind::Member), // @lfy def/model/components.lfy:52
+        // @lfy def/grammar/rules/statement.lfy:DataDeclaration
+        r if r == S::DataDeclaration.entity() => (I::Identifier.entity(), SymbolKind::Data),
+        // @lfy def/grammar/rules/statement.lfy:TraitDeclaration
+        r if r == S::TraitDeclaration.entity() => (I::Identifier.entity(), SymbolKind::Trait),
+        // @lfy def/grammar/rules/statement.lfy:FunctionDeclaration
+        r if r == S::FunctionDeclaration.entity() => (E::Signature.entity(), SymbolKind::Function),
+        // @lfy def/grammar/rules/statement.lfy:AgentFunctionDeclaration
+        r if r == S::AgentFunctionDeclaration.entity() => {
+            (E::Signature.entity(), SymbolKind::AgentFunction)
+        }
+        // A type declaration spells its name with an Identifier of its own, so that the
+        // type parameters that may follow it are not mistaken for the name.
+        // @lfy def/grammar/rules/statement.lfy:TypeDeclaration
+        r if r == S::TypeDeclaration.entity() => (I::Identifier.entity(), SymbolKind::Type),
+        // @lfy def/grammar/rules/statement.lfy:EnumDeclaration
+        r if r == S::EnumDeclaration.entity() => (E::Declared.entity(), SymbolKind::Enum),
+        // @lfy def/grammar/rules/statement.lfy:VariableDeclaration
+        r if r == S::VariableDeclaration.entity() => (E::Declared.entity(), SymbolKind::Variable),
+        // @lfy def/grammar/rules/statement.lfy:AliasDeclaration
+        r if r == S::AliasDeclaration.entity() => (E::Declared.entity(), SymbolKind::Alias),
+        // @lfy def/grammar/rules/statement.lfy:ExternalDeclaration
+        r if r == S::ExternalDeclaration.entity() => (E::Declared.entity(), SymbolKind::External),
+        // @lfy def/grammar/rules/statement.lfy:Use
+        r if r == S::Use.entity() => (I::Identifier.entity(), SymbolKind::Module),
+        // @lfy def/grammar/rules/statement.lfy:For
+        r if r == S::For.entity() => (E::Declared.entity(), SymbolKind::LoopVariable),
+        // @lfy def/grammar/rules/statement.lfy:ForFrom
+        r if r == S::ForFrom.entity() => (E::Declared.entity(), SymbolKind::LoopVariable),
+        // @lfy def/grammar/rules/expression.lfy:Parameter
+        r if r == E::Parameter.entity() => (E::Name.entity(), SymbolKind::Parameter),
+        // @lfy def/grammar/rules/expression.lfy:SpreadParameter
+        r if r == E::SpreadParameter.entity() => (E::Name.entity(), SymbolKind::Parameter),
+        // @lfy def/grammar/rules/expression.lfy:TypeParameter
+        r if r == E::TypeParameter.entity() => (I::Identifier.entity(), SymbolKind::TypeParameter),
+        // @lfy def/grammar/rules/expression.lfy:TypeKey
+        r if r == E::TypeKey.entity() => (E::Name.entity(), SymbolKind::Member),
         _ => return None,
     })
 }

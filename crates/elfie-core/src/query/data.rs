@@ -164,9 +164,13 @@ pub struct Hover {
     /// `Entity.definition` with every template reference and execution resolved for the
     /// entity.
     pub definition: Option<String>, // @lfy def/query/data.lfy:Hover.definition
-    /// The identifier of `Entity.type`, or the source text of the type when it is
-    /// anonymous.
+    /// `Entity.type` spelled as it is written: an identifier, a generic with its
+    /// arguments, `T[]` for a list, a function type with its parameters and output, a type
+    /// parameter by its name; `None` when there is none.
     pub ty: Option<String>, // @lfy def/query/data.lfy:Hover.type
+    /// The identifier of the declaration that lists a type parameter or declares a member;
+    /// `None` for anything else.
+    pub owner: Option<String>, // @lfy def/query/data.lfy:Hover.owner
     /// The identifier of each of `Entity.traits` in application order; `builtin` among
     /// them for a native thing.
     pub traits: Vec<String>, // @lfy def/query/data.lfy:Hover.traits
@@ -286,21 +290,22 @@ pub struct Edit {
 // @lfy def/query/data.lfy:TokenType
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenType {
-    Namespace,  // @lfy def/query/data.lfy:TokenType.namespace
-    Data,       // @lfy def/query/data.lfy:TokenType.data
-    Trait,      // @lfy def/query/data.lfy:TokenType._trait
-    Type,       // @lfy def/query/data.lfy:TokenType._type
-    Enum,       // @lfy def/query/data.lfy:TokenType._enum
-    EnumMember, // @lfy def/query/data.lfy:TokenType.enumMember
-    Function,   // @lfy def/query/data.lfy:TokenType._function
-    Parameter,  // @lfy def/query/data.lfy:TokenType.parameter
-    Variable,   // @lfy def/query/data.lfy:TokenType.variable
-    Property,   // @lfy def/query/data.lfy:TokenType.property
+    Namespace,     // @lfy def/query/data.lfy:TokenType.namespace
+    Data,          // @lfy def/query/data.lfy:TokenType.data
+    Trait,         // @lfy def/query/data.lfy:TokenType._trait
+    Type,          // @lfy def/query/data.lfy:TokenType._type
+    Enum,          // @lfy def/query/data.lfy:TokenType._enum
+    EnumMember,    // @lfy def/query/data.lfy:TokenType.enumMember
+    Function,      // @lfy def/query/data.lfy:TokenType._function
+    Parameter,     // @lfy def/query/data.lfy:TokenType.parameter
+    TypeParameter, // @lfy def/query/data.lfy:TokenType.typeParameter
+    Variable,      // @lfy def/query/data.lfy:TokenType.variable
+    Property,      // @lfy def/query/data.lfy:TokenType.property
 }
 
 impl TokenType {
     /// Every type in enum order: the order of a semantic tokens legend.
-    pub const ALL: [TokenType; 10] = [
+    pub const ALL: [TokenType; 11] = [
         TokenType::Namespace,
         TokenType::Data,
         TokenType::Trait,
@@ -309,6 +314,7 @@ impl TokenType {
         TokenType::EnumMember,
         TokenType::Function,
         TokenType::Parameter,
+        TokenType::TypeParameter,
         TokenType::Variable,
         TokenType::Property,
     ];
@@ -324,6 +330,7 @@ impl TokenType {
             TokenType::EnumMember => "enumMember",
             TokenType::Function => "function",
             TokenType::Parameter => "parameter",
+            TokenType::TypeParameter => "typeParameter",
             TokenType::Variable => "variable",
             TokenType::Property => "property",
         }
@@ -475,11 +482,13 @@ mod tests {
                 "enumMember",
                 "function",
                 "parameter",
+                "typeParameter",
                 "variable",
                 "property"
             ]
         );
-        assert_eq!(TokenType::Property.index(), 9);
+        assert_eq!(TokenType::Property.index(), 10);
+        assert_eq!(TokenType::TypeParameter.index(), 8);
         assert_eq!(
             TokenModifier::ALL
                 .iter()

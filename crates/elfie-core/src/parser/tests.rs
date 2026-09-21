@@ -55,14 +55,14 @@ fn check_lossless(tree: &Tree, source: &str) {
     sorted.sort_by_key(|error| error.start);
     assert_eq!(tree.errors, sorted, "{source:?}");
     for node in tree.root.descendants() {
-        // @lfy def/parser/data.lfy:12
+        // @lfy def/parser/data.lfy:Node
         assert!(node.start <= node.end, "{source:?}");
         assert!(
             node.children.iter().all(|child| node.start <= child.start() && child.end() <= node.end),
             "{source:?}: {}",
             node.rule.identifier()
         );
-        // @lfy def/parser/data.lfy:16
+        // @lfy def/parser/data.lfy:Node
         assert!(
             !node.rule.is_alternation_list() || node.rule == tree.root_rule,
             "{source:?}: {}",
@@ -122,6 +122,41 @@ fn test_definition_binds_tighter_than_a_setter() {
     assert_eq!(shape(&tree.root, &tree), ["Definition", "PlainSetter(=)", "Number"]);
     let definition = tree.root.node(Expression::Definition).unwrap();
     assert_eq!(shape(definition, &tree), ["Name", "Colon(:)", "Name"]);
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn test_an_identifier_cannot_follow_a_generic() {
+    let tree = expr("a < b > c");
+    check_lossless(&tree, "a < b > c");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    assert_eq!(
+        shape(&tree.root, &tree),
+        ["RelationalOperation", "GreaterThan(>)", "Name"]
+    );
+    let left = tree.root.node(Expression::RelationalOperation).unwrap();
+    assert_eq!(shape(left, &tree), ["Name", "LessThan(<)", "Name"]);
+    assert_eq!(tree.raw(left.start, left.end), "a < b");
+    assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn test_a_call_of_a_generic() {
+    let tree = expr("f<string>(x)");
+    check_lossless(&tree, "f<string>(x)");
+    assert!(tree.root.is(Expression::Call));
+    assert_eq!(shape(&tree.root, &tree), ["Generic", "GroupOpen(()", "Items", "GroupClose())"]);
+    let generic = tree.root.node(Expression::Generic).unwrap();
+    assert_eq!(
+        shape(generic, &tree),
+        ["Name", "LessThan(<)", "TypeExpression", "GreaterThan(>)"]
+    );
+    assert!(generic.find(Expression::PrimitiveType).is_some());
+    let items = tree.root.node(Expression::Items).unwrap();
+    assert_eq!(shape(items, &tree), ["Name"]);
     assert!(tree.errors.is_empty());
 }
 
@@ -396,7 +431,7 @@ fn the_parser_parses_against_the_grammar_document_only() {
     // Categories and bindings come from the rules: the tables set none of them.
     let tables = beginning::tables();
     let plus = Entity::Punctuation(Punctuation::Plus);
-    let additive = tables.operation(plus).unwrap();
+    let additive = tables.operations(plus)[0];
     assert_eq!(additive.effective_binding(), Expression::AdditiveOperation.effective_binding());
     assert!(additive.is_infix());
 }
@@ -483,7 +518,7 @@ fn a_statement_is_selected_among_the_statement_rules_in_tried_before_order() {
     );
     assert!(tree.errors.is_empty());
     // A statement that begins with a block is a Block, never an Object.
-    // @lfy def/grammar/rules/statement.lfy:36
+    // @lfy def/grammar/rules/statement.lfy:Block
     let tree = file("{ a = 1 }");
     assert!(first_statement(&tree).is(Statement::Block));
     assert_eq!(tree.errors.len(), 1);
@@ -616,7 +651,7 @@ fn operands_and_tails_are_parsed_with_the_operation_power_as_the_minimum() {
     let definition = tree.root.node(Expression::Definition).unwrap();
     assert!(definition.node(Expression::BitwiseOrOperation).is_some());
     // A cast's tail is a type expression.
-    // @lfy def/grammar/rules/expression.lfy:127
+    // @lfy def/grammar/rules/expression.lfy:Cast
     let tree = expr("a as string | number");
     assert!(tree.root.is(Expression::Cast));
     assert_eq!(shape(&tree.root, &tree), ["Name", "AsKeyword(as)", "TypeExpression"]);
@@ -654,6 +689,69 @@ fn expressions_after_an_open_bracket_or_in_other_rules_start_at_minimum_zero() {
     let tree = expr("(a = b)");
     assert!(tree.root.is(Expression::Group));
     assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn the_postfix_rule_of_an_operator_is_tried_before_its_infix_rule() {
+    // A LessThan is the operator of Generic, a postfix rule, and of RelationalOperation,
+    // an infix rule: the postfix rule comes first.
+    let tables = beginning::tables();
+    let less_than = Entity::Punctuation(Punctuation::LessThan);
+    assert_eq!(
+        tables.operations(less_than),
+        [
+            Entity::Expression(Expression::Generic),
+            Entity::Expression(Expression::RelationalOperation)
+        ]
+    );
+    // Every other operator terminal continues with one rule.
+    let plus = Entity::Punctuation(Punctuation::Plus);
+    assert_eq!(tables.operations(plus), [Entity::Expression(Expression::AdditiveOperation)]);
+    assert!(tables.operations(Entity::Punctuation(Punctuation::Semicolon)).is_empty());
+    // The postfix rule is the parse of the token where its own criteria hold there …
+    let tree = expr("f<T>(x)");
+    assert!(tree.root.is(Expression::Call));
+    assert!(tree.root.node(Expression::Generic).is_some());
+    assert!(tree.errors.is_empty());
+    // … and the infix rule is tried only where the postfix rule is no match.
+    let tree = expr("a < b > c");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_attempt_for_one_rule_is_distinct_from_an_attempt_for_another() {
+    // A Generic is no match when the expression is parsed for a Reference, so the same
+    // tokens at the same index and minimum parse differently for the two rules and
+    // neither attempt answers the other.
+    let source = "List<T>";
+    let as_expression = parse(tokens(source), Some(Entity::Expression(Expression::Expression)));
+    check_lossless(&as_expression, source);
+    assert!(as_expression.root.is(Expression::Generic));
+    assert!(as_expression.errors.is_empty());
+    let as_reference = parse(tokens(source), Some(Entity::Expression(Expression::Reference)));
+    check_lossless(&as_reference, source);
+    assert!(as_reference.root.find(Expression::Generic).is_none());
+    assert_eq!(as_reference.errors.len(), 1);
+    // Both attempts happen in one parse of a declaration whose type and value are the
+    // same tokens: the type holds the TypeArguments of a TypeItem, the value a Generic.
+    let source = "const x: List<T> = List<T>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let declaration = first_statement(&tree);
+    let arguments = declaration.find(Expression::TypeArguments).expect("the type");
+    assert_eq!(tree.raw(arguments.start, arguments.end), "<T>");
+    let generic = declaration.find(Expression::Generic).expect("the value");
+    assert_eq!(tree.raw(generic.start, generic.end), "List<T>");
+    // Each rule is still attempted at most once per token index and minimum.
+    let (_, attempts) = parse_counting(tokens(source), None);
+    for (key, count) in attempts {
+        assert_eq!(count, 1, "{} at {} with minimum {}", key.0, key.1, key.2);
+    }
 }
 
 // Errors
@@ -744,7 +842,7 @@ fn a_stopped_repetition_ends_or_covers_the_stopping_tokens() {
     assert_eq!(shape(&tree.root, &tree), ["Error(\") \")", "ExpressionStatement"]);
 }
 
-// @lfy def/parser/data.lfy:21
+// @lfy def/parser/data.lfy:ErrorNode.expected
 #[test]
 fn invalid_tokens_inside_expressions_expect_an_operator_or_an_operand() {
     let tree = file("a # + b;");
@@ -768,7 +866,7 @@ fn invalid_tokens_inside_expressions_expect_an_operator_or_an_operand() {
     assert!(!expected.contains(&"Plus") && !expected.contains(&"Star"));
 }
 
-// @lfy def/parser/data.lfy:21
+// @lfy def/parser/data.lfy:ErrorNode.expected
 #[test]
 fn an_invalid_token_inside_an_alternation_expects_every_alternative_and_what_follows() {
     let tree = file("`a\\qb`;");
@@ -792,7 +890,12 @@ fn an_invalid_token_inside_an_alternation_expects_every_alternative_and_what_fol
     assert!(expected.contains(&"ConstKeyword") && expected.contains(&"BlockClose"));
     // Several optional clauses at one position: the first spans them all.
     let tree = file("d X # { }");
-    assert_eq!(tree.errors[0].expected, &["IsKeyword", "ExtendsKeyword", "BlockOpen", "Semicolon", "Colon"]);
+    // @lfy def/grammar/rules/statement.lfy:DataDeclaration
+    // The `TypeParameters` of a declaration are the first of them.
+    assert_eq!(
+        tree.errors[0].expected,
+        &["IsKeyword", "ExtendsKeyword", "BlockOpen", "Semicolon", "Colon", "LessThan"]
+    );
     let tree = file("(a) # => a;");
     assert_eq!(
         tree.errors[0].expected,
@@ -949,7 +1052,7 @@ fn the_rule_tried_first_wins_and_the_other_is_tried_only_when_it_fails() {
 
 // Grammar clauses the parser applies
 
-// @lfy def/grammar/rules/expression.lfy:70
+// @lfy def/grammar/rules/expression.lfy:Current
 #[test]
 fn a_member_name_is_only_taken_when_nothing_sits_between_it_and_the_accessor() {
     // Current: the member name is not matched across space, so `is` is a trait clause.
@@ -984,7 +1087,7 @@ fn a_member_name_is_only_taken_when_nothing_sits_between_it_and_the_accessor() {
     assert!(tree.errors.is_empty(), "{:?}", tree.errors);
 }
 
-// @lfy def/grammar/rules/expression.lfy:74
+// @lfy def/grammar/rules/expression.lfy:Group
 #[test]
 fn a_group_cannot_match_before_a_trait_clause_a_definition_or_a_double_arrow() {
     for source in ["(a) : T;", "(a) is t;", "(a) =>;"] {
@@ -1015,23 +1118,241 @@ fn negation_and_dereference_cannot_be_matched_across_space() {
     assert!(tree.root.is(Expression::NotOperation));
 }
 
-// @lfy def/grammar/rules/expression.lfy:76
+// @lfy def/grammar/rules/expression.lfy:InlineFunction
 #[test]
 fn a_block_after_the_double_arrow_is_a_block_and_a_conditional_owns_its_colon() {
     let tree = expr("() => { a = 1; }");
     assert!(tree.root.is(Expression::InlineFunction));
     assert!(tree.root.node(Statement::Block).is_some());
     assert!(tree.root.node(Expression::Object).is_none());
-    // @lfy def/grammar/rules/expression.lfy:128
+    // @lfy def/grammar/rules/expression.lfy:Conditional
     let tree = expr("a ? x : T : c");
     assert!(tree.root.is(Expression::Definition));
     let conditional = tree.root.node(Expression::Conditional).unwrap();
     assert_eq!(shape(conditional, &tree), ["Name", "QuestionMark(?)", "Name", "Colon(:)", "Name"]);
 }
 
+// Generics
+
+/// A `Generic` is the parse of a `LessThan` only when one of the listed tokens follows
+/// the `GreaterThan`; otherwise the `RelationalOperation` is.
+// @lfy def/grammar/rules/expression.lfy:Generic
+#[test]
+fn a_generic_matches_only_when_the_token_after_its_arguments_allows_it() {
+    // @lfy def/grammar/rules/expression.lfy:Generic
+    // `$items = List<T>;`: a `Semicolon` follows the `GreaterThan`.
+    let source = "$items = List<T>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let assignment = first_statement(&tree).node(Expression::Assignment).unwrap();
+    let generic = assignment.node(Expression::Generic).unwrap();
+    assert_eq!(
+        shape(generic, &tree),
+        ["Name", "LessThan(<)", "TypeExpression", "GreaterThan(>)"]
+    );
+    assert_eq!(tree.raw(generic.start, generic.end), "List<T>");
+    // @lfy def/grammar/rules/expression.lfy:Generic
+    // `f<string>(x)`: a `GroupOpen` follows, so the `Generic` is the called expression.
+    let tree = expr("f<string>(x)");
+    check_lossless(&tree, "f<string>(x)");
+    assert!(tree.root.is(Expression::Call));
+    let generic = tree.root.node(Expression::Generic).unwrap();
+    assert_eq!(tree.raw(generic.start, generic.end), "f<string>");
+    assert!(generic.find(Expression::PrimitiveType).is_some());
+    // @lfy def/grammar/rules/expression.lfy:Generic
+    // `a < b`: no `GreaterThan` follows `b`, so the `LessThan` is a comparison.
+    let tree = expr("a < b");
+    check_lossless(&tree, "a < b");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.errors.is_empty());
+    // @lfy def/grammar/rules/expression.lfy:Generic
+    // `a < b > c`: the `Identifier` after the `GreaterThan` rules the `Generic` out, so
+    // two comparisons read as `(a < b) > c`.
+    let tree = expr("a < b > c");
+    check_lossless(&tree, "a < b > c");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    let left = tree.root.node(Expression::RelationalOperation).unwrap();
+    assert_eq!(tree.raw(left.start, left.end), "a < b");
+    assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.errors.is_empty());
+    // @lfy def/grammar/rules/expression.lfy:Generic
+    // `List<T>=x` compares, it does not assign: the longest match lexes `>=` as one
+    // token, which cannot close the arguments.
+    let tree = expr("List<T>=x");
+    check_lossless(&tree, "List<T>=x");
+    assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.root.find(Expression::Assignment).is_none());
+    assert_eq!(tree.root.rule, Entity::Expression(Expression::RelationalOperation));
+}
+
+/// A `Generic` binds as `Member` and `Index` do.
+// @lfy def/grammar/rules/expression.lfy:Generic
+#[test]
+fn a_generic_binds_at_the_access_level() {
+    let tree = expr("a + f<T>(x)");
+    check_lossless(&tree, "a + f<T>(x)");
+    assert!(tree.root.is(Expression::AdditiveOperation));
+    let call = tree.root.node(Expression::Call).unwrap();
+    assert_eq!(tree.raw(call.start, call.end), "f<T>(x)");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let tree = expr("x.f<T>(y)");
+    check_lossless(&tree, "x.f<T>(y)");
+    assert!(tree.root.is(Expression::Call));
+    let generic = tree.root.node(Expression::Generic).unwrap();
+    assert_eq!(tree.raw(generic.start, generic.end), "x.f<T>");
+    assert!(generic.node(Expression::Member).is_some());
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+}
+
+/// In a type position the arguments are the `TypeArguments` of the `TypeItem`, never a
+/// `Generic`, because the left expression there is parsed to satisfy a `Reference`.
+// @lfy def/grammar/rules/expression.lfy:TypeItem
+#[test]
+fn type_arguments_close_one_list_each_and_are_never_a_generic() {
+    let source = "const x: List<List<T>>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    // `TypeValue` is an alternation list, so the item it selected stands in its place.
+    let outer = first_statement(&tree).find(Expression::TypeItem).unwrap();
+    assert_eq!(shape(outer, &tree), ["Reference", "TypeArguments"]);
+    let arguments = outer.node(Expression::TypeArguments).unwrap();
+    assert_eq!(
+        shape(arguments, &tree),
+        ["LessThan(<)", "TypeExpression", "GreaterThan(>)"]
+    );
+    // @lfy def/grammar/rules/expression.lfy:TypeArguments
+    // The two `GreaterThan` tokens close one list each.
+    let inner = arguments.find(Expression::TypeItem).unwrap();
+    assert_eq!(shape(inner, &tree), ["Reference", "TypeArguments"]);
+    assert_eq!(tree.raw(inner.start, inner.end), "List<T>");
+    assert!(first_statement(&tree).find(Expression::Generic).is_none());
+    // @lfy def/grammar/rules/expression.lfy:TypeItem
+    // `T[]` is the same type as `List<T>`. After a `Reference` the brackets are the
+    // `Index` of it with nothing inside, which is the array type of it; the `TypeItem`
+    // takes them itself only where no reference chain could.
+    let source = "const x: T[];";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let item = first_statement(&tree).find(Expression::TypeItem).unwrap();
+    assert_eq!(shape(item, &tree), ["Reference"]);
+    let index = item.find(Expression::Index).unwrap();
+    assert_eq!(shape(index, &tree), ["Name", "ListOpen([)", "ListClose(])"]);
+}
+
+/// A `TypeGroup` is a parenthesized type, and cannot be a match when a
+/// `DoubleArrowRight` follows its `GroupClose`: the parentheses are then the
+/// `Parameters` of a `FunctionType`.
+// @lfy def/grammar/rules/expression.lfy:TypeGroup
+#[test]
+fn a_parenthesized_type_is_a_type_group_unless_a_function_type_follows() {
+    let source = "const x: (A | B)[];";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let item = first_statement(&tree).find(Expression::TypeItem).unwrap();
+    assert_eq!(shape(item, &tree), ["TypeGroup", "ListOpen([)", "ListClose(])"]);
+    // @lfy def/grammar/rules/expression.lfy:FunctionType
+    let source = "const x: (item: T) => U;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let statement = first_statement(&tree);
+    assert!(statement.find(Expression::TypeGroup).is_none());
+    let function = statement.find(Expression::FunctionType).unwrap();
+    assert_eq!(
+        shape(function, &tree),
+        ["Parameters", "DoubleArrowRight(=>)", "TypeExpression"]
+    );
+}
+
+/// The type parameters of a generic declaration sit right after its identifier, and a
+/// function's belong to its `Signature`.
+// @lfy def/grammar/rules/statement.lfy:DataDeclaration
+#[test]
+fn a_declaration_takes_its_type_parameters_after_its_identifier() {
+    let source = "d List<T>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::DataDeclaration));
+    assert_eq!(
+        shape(declaration, &tree),
+        ["AgentDataKeyword(d)", "Identifier(List)", "TypeParameters", "Semicolon(;)"]
+    );
+    let parameters = declaration.node(Expression::TypeParameters).unwrap();
+    let names: Vec<&Node> = parameters.nodes_of(Expression::TypeParameter).collect();
+    assert_eq!(names.len(), 1);
+    assert_eq!(shape(names[0], &tree), ["Identifier(T)"]);
+    // @lfy def/grammar/rules/statement.lfy:TypeDeclaration
+    let source = "type Pair<A, B extends object> { left: A = A, right: B = B }";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::TypeDeclaration));
+    let parameters = declaration.node(Expression::TypeParameters).unwrap();
+    assert_eq!(parameters.nodes_of(Expression::TypeParameter).count(), 2);
+    // @lfy def/grammar/rules/expression.lfy:TypeParameter
+    let extends = parameters
+        .nodes_of(Expression::TypeParameter)
+        .nth(1)
+        .unwrap();
+    assert_eq!(
+        shape(extends, &tree),
+        ["Identifier(B)", "ExtendsKeyword(extends)", "TypeExpression"]
+    );
+}
+
+/// `fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;`
+// @lfy def/grammar/rules/expression.lfy:Signature
+#[test]
+fn a_signature_carries_its_type_parameters_and_typed_parameters() {
+    let source = "fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::AgentFunctionDeclaration));
+    let signature = declaration.node(Expression::Signature).unwrap();
+    assert_eq!(
+        shape(signature, &tree),
+        ["Identifier(map)", "TypeParameters", "Parameters"]
+    );
+    let type_parameters: Vec<String> = signature
+        .node(Expression::TypeParameters)
+        .unwrap()
+        .nodes_of(Expression::TypeParameter)
+        .map(|parameter| tree.raw(parameter.start, parameter.end))
+        .collect();
+    assert_eq!(type_parameters, ["T", "U"]);
+    let parameters: Vec<&Node> = signature
+        .node(Expression::Parameters)
+        .unwrap()
+        .nodes_of(Expression::Parameter)
+        .collect();
+    assert_eq!(parameters.len(), 2);
+    // @lfy def/grammar/rules/expression.lfy:TypeItem
+    let list = parameters[0].find(Expression::TypeItem).unwrap();
+    assert_eq!(shape(list, &tree), ["Reference", "TypeArguments"]);
+    assert_eq!(tree.raw(list.start, list.end), "List<T>");
+    // @lfy def/grammar/rules/expression.lfy:FunctionType
+    let function = parameters[1].find(Expression::FunctionType).unwrap();
+    assert_eq!(tree.raw(function.start, function.end), "(item: T) => U");
+    // The return type is `List` with the type argument `U`.
+    let returned = declaration
+        .node(Expression::TypeExpression)
+        .expect("the return type");
+    assert_eq!(tree.raw(returned.start, returned.end), "List<U>");
+}
+
 // data
 
-// @lfy def/parser/data.lfy:4
+// @lfy def/parser/data.lfy:Node
 #[test]
 fn nodes_expose_their_rule_and_error_nodes_have_none() {
     let tree = file("a;");
@@ -1044,7 +1365,7 @@ fn nodes_expose_their_rule_and_error_nodes_have_none() {
     assert!(tree.errors[0].children.is_empty());
 }
 
-// @lfy def/parser/data.lfy:28
+// @lfy def/parser/data.lfy:Tree.errors
 #[test]
 fn errors_are_every_error_node_in_the_tree_ordered_by_start() {
     let source = "const = 1; { ) x } return;";

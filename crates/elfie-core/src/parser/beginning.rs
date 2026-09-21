@@ -1,6 +1,7 @@
 //! Compiled from the "Rule Beginning" criteria of `def/parser/main.lfy` and its global
-//! acceptance criteria: which terminals can begin each rule, the operator that continues
-//! an expression, and the compile-time checks that `triedBefore` orders every choice.
+//! acceptance criteria: which terminals can begin each rule, the operations each operator
+//! terminal continues an expression with, and the compile-time checks that `triedBefore`
+//! orders every choice.
 
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -19,8 +20,10 @@ pub(crate) struct Tables {
     index: HashMap<Entity, usize>,
     /// The terminals each rule can begin with.
     first: HashMap<Entity, HashSet<Entity>>,
-    /// The infix or postfix rule each operator terminal continues an expression with.
-    operations: HashMap<Entity, Entity>,
+    /// The rules each operator terminal continues an expression with, the postfix rule
+    /// before the infix rule where the terminal is the operator of both.
+    // @lfy def/parser/main.lfy:parse
+    operations: HashMap<Entity, Vec<Entity>>,
     /// The parsed tail syntax of every postfix rule with a tail.
     tails: HashMap<Entity, Expr>,
 }
@@ -58,10 +61,12 @@ impl Tables {
         }
     }
 
-    /// The infix or postfix rule whose operator a token of `terminal` satisfies.
+    /// The rules a token of `terminal` could continue an expression with, in the order
+    /// they are tried: the postfix rule of the terminal before its infix rule, as
+    /// `Generic` comes before `RelationalOperation` at a `LessThan`.
     // @lfy def/parser/main.lfy:parse
-    pub fn operation(&self, terminal: Entity) -> Option<Entity> {
-        self.operations.get(&terminal).copied()
+    pub fn operations(&self, terminal: Entity) -> &[Entity] {
+        self.operations.get(&terminal).map_or(&[], Vec::as_slice)
     }
 
     /// The identifiers of the operator terminals whose operation would apply with `min`
@@ -72,11 +77,14 @@ impl Tables {
         let set: HashSet<Entity> = self
             .operations
             .iter()
-            .filter(|(_, operation)| admitted.is_none_or(|admitted| admitted.contains(operation)))
-            .filter(|(_, operation)| {
-                operation.effective_binding().is_some_and(|binding| {
-                    let power = binding.precedence_value();
-                    power > min || (power == min && binding.associativity == Some(crate::grammar::Associativity::Right))
+            .filter(|(_, operations)| {
+                operations.iter().any(|operation| {
+                    admitted.is_none_or(|admitted| admitted.contains(operation))
+                        && operation.effective_binding().is_some_and(|binding| {
+                            let power = binding.precedence_value();
+                            power > min
+                                || (power == min && binding.associativity == Some(crate::grammar::Associativity::Right))
+                        })
                 })
             })
             .map(|(&terminal, _)| terminal)
@@ -310,8 +318,8 @@ pub fn validate() -> Result<(), Vec<Violation>> {
 
 /// Internal requirements the compiled parser relies on, checked once: parser-level rules
 /// use only references, sequences, alternations, optionals and repetitions, and each
-/// operator terminal continues an expression with one rule.
-fn assert_supported(operations: &HashMap<Entity, Entity>) -> Result<(), String> {
+/// operator terminal continues an expression with one rule of each category.
+fn assert_supported(operations: &HashMap<Entity, Vec<Entity>>) -> Result<(), String> {
     for rule in rules().filter(|rule| !rule.is_terminal() && rule.category() != Category::Rule || rule.is_statement()) {
         let Some(expr) = rule.expression() else {
             continue;
@@ -342,20 +350,32 @@ pub(crate) fn tables() -> &'static Tables {
         }
         let index: HashMap<Entity, usize> = rules().enumerate().map(|(index, rule)| (rule, index)).collect();
         let first = compute_first();
-        let mut operations: HashMap<Entity, Entity> = HashMap::new();
+        let mut operations: HashMap<Entity, Vec<Entity>> = HashMap::new();
         let mut tails = HashMap::new();
         for rule in rules().filter(|rule| is_operation(*rule)) {
             let operator = rule.category().operator().expect("operations have operators");
             let mut terminals = Vec::new();
             operator_terminals(operator, &mut terminals);
             for terminal in terminals {
-                if let Some(other) = operations.insert(terminal, rule) {
+                // A terminal may be the operator of a postfix rule and of an infix rule,
+                // as `LessThan` is of `Generic` and of `RelationalOperation`: the postfix
+                // rule is tried first and the infix rule only where the postfix rule is
+                // no match there, so the postfix rule comes first.
+                // @lfy def/parser/main.lfy:parse
+                let entry = operations.entry(terminal).or_default();
+                if let Some(other) = entry.iter().find(|other| other.is_postfix() == rule.is_postfix()) {
+                    // @lfy def/parser/main.lfy:parse
                     panic!(
                         "parse cannot be compiled: {} continues an expression with both {} and {}",
                         terminal.identifier(),
                         other.identifier(),
                         rule.identifier()
                     );
+                }
+                // @lfy def/parser/main.lfy:parse
+                match rule.is_postfix() {
+                    true => entry.insert(0, rule),
+                    false => entry.push(rule),
                 }
             }
             if let Category::Postfix { tail: Some(tail), .. } = rule.category() {
@@ -444,17 +464,23 @@ mod tests {
 
     // @lfy def/parser/main.lfy:parse
     #[test]
-    fn each_operator_terminal_continues_an_expression_with_one_rule() {
+    fn each_operator_terminal_continues_an_expression_with_one_rule_of_each_category() {
         let tables = tables();
-        assert_eq!(tables.operation(punctuation(Punctuation::Plus)), Some(expression(Expression::AdditiveOperation)));
-        assert_eq!(tables.operation(punctuation(Punctuation::Minus)), Some(expression(Expression::AdditiveOperation)));
-        assert_eq!(tables.operation(punctuation(Punctuation::ValueAccessor)), Some(expression(Expression::Member)));
-        assert_eq!(tables.operation(punctuation(Punctuation::GroupOpen)), Some(expression(Expression::Call)));
-        assert_eq!(tables.operation(Entity::Keyword(Keyword::AsKeyword)), Some(expression(Expression::Cast)));
-        assert_eq!(tables.operation(punctuation(Punctuation::PlainSetter)), Some(expression(Expression::Assignment)));
-        assert_eq!(tables.operation(punctuation(Punctuation::Ampersand)), Some(expression(Expression::BitwiseAndOperation)));
-        assert_eq!(tables.operation(punctuation(Punctuation::Semicolon)), None);
-        assert_eq!(tables.operation(Entity::Keyword(Keyword::InKeyword)), None);
+        assert_eq!(tables.operations(punctuation(Punctuation::Plus)), [expression(Expression::AdditiveOperation)]);
+        assert_eq!(tables.operations(punctuation(Punctuation::Minus)), [expression(Expression::AdditiveOperation)]);
+        assert_eq!(tables.operations(punctuation(Punctuation::ValueAccessor)), [expression(Expression::Member)]);
+        assert_eq!(tables.operations(punctuation(Punctuation::GroupOpen)), [expression(Expression::Call)]);
+        assert_eq!(tables.operations(Entity::Keyword(Keyword::AsKeyword)), [expression(Expression::Cast)]);
+        assert_eq!(tables.operations(punctuation(Punctuation::PlainSetter)), [expression(Expression::Assignment)]);
+        assert_eq!(tables.operations(punctuation(Punctuation::Ampersand)), [expression(Expression::BitwiseAndOperation)]);
+        assert!(tables.operations(punctuation(Punctuation::Semicolon)).is_empty());
+        assert!(tables.operations(Entity::Keyword(Keyword::InKeyword)).is_empty());
+        // A terminal that is the operator of both: the postfix rule comes first.
+        // @lfy def/parser/main.lfy:parse
+        assert_eq!(
+            tables.operations(punctuation(Punctuation::LessThan)),
+            [expression(Expression::Generic), expression(Expression::RelationalOperation)]
+        );
         assert!(tables.tail(expression(Expression::Member)).is_some());
         assert!(tables.tail(expression(Expression::AdditiveOperation)).is_none());
     }

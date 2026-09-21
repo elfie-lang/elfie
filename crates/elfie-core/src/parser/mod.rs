@@ -60,12 +60,12 @@ pub(crate) fn parse_counting(tokens: Vec<Token>, rule: Option<Entity>) -> (Tree,
     let root = parser.parse_root(root_rule);
     let attempts = std::mem::take(&mut parser.attempts);
     drop(parser);
-    // @lfy def/parser/data.lfy:28
+    // @lfy def/parser/data.lfy:Tree.errors
     let mut errors: Vec<ErrorNode> = root.errors().into_iter().cloned().collect();
     errors.sort_by_key(|error| error.start);
     let tree = Tree {
         tokens,    // @lfy def/parser/main.lfy:parse
-        root_rule, // @lfy def/parser/data.lfy:26
+        root_rule, // @lfy def/parser/data.lfy:Tree.rootRule
         root,      // @lfy def/parser/main.lfy:parse
         errors,    // @lfy def/parser/main.lfy:parse
     };
@@ -73,7 +73,11 @@ pub(crate) fn parse_counting(tokens: Vec<Token>, rule: Option<Entity>) -> (Tree,
 }
 
 /// A rule attempt: the rule, the token index, the minimum binding power in force, and
-/// whether a line break counted as trivia.
+/// whether a line break counted as trivia. The rule is part of the key because a
+/// criterion of an operation can make it no match when the expression is parsed for a
+/// particular rule, as `Generic` is no match for `Reference`: an attempt for that rule is
+/// distinct from an attempt at the same token index and minimum for another rule.
+// @lfy def/parser/main.lfy:parse
 pub(crate) type Key = (Entity, usize, u8, bool);
 
 /// What a rule produced when it was satisfied: its child and the index after it.
@@ -193,7 +197,7 @@ impl<'t> Parser<'t> {
     /// What could continue the open rule where `element` is about to be tried: the
     /// terminals that begin it and, when it can be satisfied without a token, those that
     /// begin what follows it.
-    // @lfy def/parser/data.lfy:21
+    // @lfy def/parser/data.lfy:ErrorNode.expected
     fn expected_at(&self, element: &Expr, follow: &HashSet<Entity>) -> Vec<&'static str> {
         let mut set = self.tables.first_of(element);
         if ebnf::grammar().is_expr_nullable(element) {
@@ -366,10 +370,17 @@ impl<'t> Parser<'t> {
         self.newline_is_trivia = saved;
         let end = result?;
         node.end = end;
-        // @lfy def/grammar/rules/expression.lfy:74
+        // @lfy def/grammar/rules/expression.lfy:Group
         if rule == Entity::Expression(Expression::Group) {
             let (_, next) = self.skip(end, true, Vec::new);
             if self.rule_at(next).is_some_and(expression::group_cannot_match_before) {
+                return None;
+            }
+        }
+        // @lfy def/grammar/rules/expression.lfy:TypeGroup
+        if rule == Entity::Expression(Expression::TypeGroup) {
+            let (_, next) = self.skip(end, true, Vec::new);
+            if self.rule_at(next).is_some_and(expression::type_group_cannot_match_before) {
                 return None;
             }
         }
@@ -383,7 +394,7 @@ impl<'t> Parser<'t> {
     /// `Current`: an accessor and, only when nothing sits between them, a member name.
     /// When space, a line break, comments, or documentation exist between the accessor
     /// and the member name, the member name is not matched.
-    // @lfy def/grammar/rules/expression.lfy:70
+    // @lfy def/grammar/rules/expression.lfy:Current
     fn parse_current(&mut self, node: &mut Node) -> Option<usize> {
         let accessor = self.parse_rule(Entity::Punctuation(Punctuation::Accessor), node.start, 0)?;
         let mut end = accessor.end;
@@ -690,9 +701,29 @@ impl<'t> Parser<'t> {
 
     // Expressions
 
+    /// The operations a token of `terminal` could continue an expression with, each tried
+    /// only when the one before it fails there: the postfix rule of the terminal before
+    /// its infix rule, as a `LessThan` opens the type arguments of a `Generic` before it
+    /// is the operator of a `RelationalOperation`.
+    // @lfy def/parser/main.lfy:parse
+    fn operations_at(&self, terminal: Entity, admitted: Option<&[Entity]>) -> Vec<Entity> {
+        // A `Generic` is no match when the left expression is parsed to satisfy a rule
+        // that does not admit it, such as `Reference`: the arguments are then the
+        // `TypeArguments` of the `TypeItem` around it.
+        // @lfy def/grammar/rules/expression.lfy:Generic
+        let generic = Entity::Expression(Expression::Generic);
+        let admits_generic = admitted.is_none_or(|items| items.contains(&generic));
+        self.tables
+            .operations(terminal)
+            .iter()
+            .copied()
+            .filter(|&operation| operation != generic || admits_generic)
+            .collect()
+    }
+
     /// An expression begins with one primary or prefix and continues with any number of
     /// infix and postfix operations, grouped by their binding power.
-    // @lfy def/grammar/rules/expression.lfy:142
+    // @lfy def/grammar/rules/expression.lfy:Expression
     fn parse_expression(
         &mut self,
         at: usize,
@@ -722,22 +753,34 @@ impl<'t> Parser<'t> {
             let Some(terminal) = self.rule_at(next) else {
                 break;
             };
-            let Some(operation) = self.tables.operation(terminal) else {
-                break;
-            };
-            let binding = operation.effective_binding().expect("checked by the grammar");
-            let power = binding.precedence_value();
             // @lfy def/parser/main.lfy:parse
-            let applies = power > min || (power == min && binding.associativity == Some(Associativity::Right));
-            if !applies {
+            let operations = self.operations_at(terminal, admitted);
+            if operations.is_empty() {
                 break;
             }
-            match self.parse_operation(operation, left, trivia, next, power) {
-                Ok(parsed) => left = parsed,
-                Err(returned) => {
-                    left = returned;
-                    break;
+            let mut applied = false;
+            for operation in operations {
+                let binding = operation.effective_binding().expect("checked by the grammar");
+                let power = binding.precedence_value();
+                // @lfy def/parser/main.lfy:parse
+                let applies = power > min || (power == min && binding.associativity == Some(Associativity::Right));
+                if !applies {
+                    continue;
                 }
+                // The next operation is tried only where this one is no match.
+                // @lfy def/parser/main.lfy:parse
+                match self.parse_operation(operation, left, trivia.clone(), next, power) {
+                    Ok(parsed) => {
+                        left = parsed;
+                        applied = true;
+                        break;
+                    }
+                    Err(returned) => left = returned,
+                }
+            }
+            // @lfy def/parser/main.lfy:parse
+            if !applied {
+                break;
             }
         }
         Some(left)
@@ -792,10 +835,24 @@ impl<'t> Parser<'t> {
                     seq.tail_power = Some(power); // @lfy def/grammar/traits.lfy:postfix
                     seq.previous = self.rule_at(at);
                     let elements = elements_of(tail);
-                    match self.parse_elements(&elements, &mut rest, &mut seq, at + 1, &HashSet::new()) {
+                    let end = match self.parse_elements(&elements, &mut rest, &mut seq, at + 1, &HashSet::new()) {
                         Some(end) => end,
                         None => return Err(left),
+                    };
+                    // Only some tokens may follow the `GreaterThan` that closed the type
+                    // arguments; anything else leaves the `LessThan` to the
+                    // `RelationalOperation`.
+                    // @lfy def/grammar/rules/expression.lfy:Generic
+                    if operation == Entity::Expression(Expression::Generic) {
+                        let (_, after) = self.skip(end, true, Vec::new);
+                        if self
+                            .rule_at(after)
+                            .is_some_and(|next| !expression::generic_can_match_before(next))
+                        {
+                            return Err(left);
+                        }
                     }
+                    end
                 }
                 None => at + 1,
             },
@@ -851,7 +908,7 @@ impl<'t> Parser<'t> {
     /// What could have continued the root rule once it is satisfied: an operator after an
     /// expression, the repeated element of a rule whose syntax ends in a repetition, and
     /// nothing otherwise.
-    // @lfy def/parser/data.lfy:21
+    // @lfy def/parser/data.lfy:ErrorNode.expected
     fn root_continuations(&self, rule: Entity) -> Vec<&'static str> {
         if rule == Entity::Expression(Expression::Expression) || is_expression_rule(rule) {
             return self.tables.operators_continuing(0, None);
