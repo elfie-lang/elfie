@@ -140,7 +140,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
       ],
       behavior = [
-        `With [[ValueAccessor]] or [[OptionalValueAccessor]], the [[MemberName]] resolves in the value of the left side: a module's symbols; an entity's own members first, then those members of its kind data whose value is a function; an object's keys, then the members of [[Objects.Object]]; or, for a value of any other base data, that data's members`,
+        `With [[ValueAccessor]] or [[OptionalValueAccessor]], the [[MemberName]] resolves in the value of the left side: a module's symbols; an entity's own members first, then those members of its kind data whose value is a function, whether an inline function or a reference to a fn or function declaration, as [[Traits.Trait.apply]] is; an object's keys, then the members of [[Objects.Object]]; or, for a value of any other base data, that data's members`,
         `With [[ScopeAccessor]], the [[MemberName]] resolves to the member symbol itself, or to the entity's scope when there is no name`,
         `With [[ContextAccessor]], the [[MemberName]] resolves in the members of the entity's kind data and yields that member`,
         `With [[ContextAccessor]], a [[MemberName]] that is a member of a kind data other than the entity's yields undefined for it, without a [[Problem]], so [[Criteria.Test.input]] can read [[Functions.Function.parameters]] of anything`,
@@ -177,7 +177,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         `Nothing is found for a name`,
         `The name is not the [[MemberName]] of a [[Member]] whose left side has no symbol either`,
       ],
-      behavior = `The [[Usage]] has no symbol, and a [[Problem]] is added`,
+      behavior = `The [[Usage]] has no symbol, and a [[Problem]] is added, whatever the left side is: a trait, a data, a module, a predicate, or a value; being lenient here would hide a misspelled member behind a silent undefined`,
     });
 
   // Properties

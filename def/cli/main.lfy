@@ -330,5 +330,20 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `0, after printing satisfied def/a.lfy:3 A: covered by a test, then 1 satisfied, 0 violated, 0 unverifiable, with no compiler run`,
       ),
     },
+    {
+      input = [
+        [
+          `verify`,
+          `a`,
+          `--root`,
+          string@like(
+            `The same root with the output for a recorded in source-map.json and a verifier that writes one review of def/a.lfy line 3 for A with status violated, evidence src/a.rs:4-6, and note returns 0 for an empty list, then ELFIE: REVIEWED`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `1, the problems code, after printing violated def/a.lfy:3 A: returns 0 for an empty list, then 0 satisfied, 1 violated, 0 unverifiable, with no compiler run and elfie-requests/a.reviews.json holding the review`,
+      ),
+    },
   );
 }

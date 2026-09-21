@@ -35,8 +35,12 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       ],
     })
     .add({
-      situation = `[[FileSystem.read]] of elfie.json under [[root]] is undefined, or its text is not a JSON object`,
+      situation = `[[FileSystem.exists]] finds elfie.json under [[root]] but [[FileSystem.read]] of it is undefined, or its text is not a JSON object`,
       behavior = `A [[LoadProblem]] for it is added and every default above stands`,
+    })
+    .add({
+      situation = `No elfie.json exists under [[root]]`,
+      behavior = `Every default above stands and no problem is added, since a manifest is optional`,
     })
     .add({
       situation = `[[FileSystem.exists]] is false for [[root]], or for [[Workspace.sourceDirectory]] under it`,
@@ -222,7 +226,7 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
     })
     .add({ behavior = `A replacement stands until the same [[path]] is given again` })
     .add({
-      situation = `[[path]] is neither under [[Workspace.sourceDirectory]] nor resolved to by a [[Use]] in the program`,
+      situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program`,
       behavior = `The result matches [[workspace]]`,
     });
 
