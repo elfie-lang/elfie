@@ -283,7 +283,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
-      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back, and its [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty`,
+      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back`,
     })
     .add({
       situation = [
@@ -299,7 +299,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
         `elfie.json names no verifier, or --no-verify is given`,
       ],
-      behavior = `The batch counts as done`,
+      behavior = `Each unit's [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty, and the batch counts as done`,
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is rejected`,
