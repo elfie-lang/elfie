@@ -8,7 +8,7 @@ use "./target";
 trait modulePerFile(root: string, extension: string) extends target: `Each unit gives one file named by its stem` {
   where (`A unit's stem does not end in main`) -> `Its one output is {{root}} then the stem then a dot and {{extension}}, one directory per segment of the stem`;
   where (`A unit's stem ends in main`) -> `Its one output is the file the language names for the module of the stem's directory, spelled by the extending trait`;
-  where (`A directory holds a module file and other outputs`) -> `The module file declares each of the others as the language declares a submodule`;
+  where (`A directory holds the file the language names for the module of that directory, and other outputs`) -> `That module file declares each of the others as the language declares a submodule`;
 }
 
 /// prefixes: each key is the first segment of a stem and its value the directory, relative to the root, that such units are written under

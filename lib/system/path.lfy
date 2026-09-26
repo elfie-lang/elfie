@@ -95,9 +95,9 @@ d Path is builtin: `A file system path, as text` {
     base: Path,
   ) => Path | undefined;
   with Path$relative {
-    where (`Both are absolute, or both relative`) -> `Both are normalized, and the result is the segments of the path after the ones it shares with base, preceded by one .. for each segment base has beyond the shared ones`;
+    where (`The path and base are both absolute, or both relative`) -> `Both are normalized, and the result is the segments of the path after the ones it shares with base, preceded by one .. for each segment base has beyond the shared ones`;
     where (`The path and base name the same place`) -> `Returns .`;
-    where (`One is absolute and the other is not`) -> `Returns undefined, because nothing relates them`;
+    where (`One of the path and base is absolute and the other is not`) -> `Returns undefined, because nothing relates them`;
     @test(
       { input = [`src/a/b.rs`, `src`], expect = `a/b.rs` },
       { input = [`src/a/b.rs`, `src/c`], expect = `../a/b.rs` },
@@ -109,8 +109,8 @@ d Path is builtin: `A file system path, as text` {
   $isAbsolute: `Whether the path begins at a root rather than at the current directory` = () => boolean;
   with Path$isAbsolute {
     where (`The path begins with /`) -> `Returns true`;
-    where (`The path was read back from a platform with drive letters and begins with one`) -> `Returns true too`;
-    where (`Otherwise`) -> `Returns false`;
+    where (`The path was read back from a platform with drive letters and begins with one`) -> `Returns true`;
+    where (`The path does not begin with /, and does not begin with a drive letter after being read back from a platform with drive letters`) -> `Returns false`;
     @test({ input = [`/a/b`], expect = true }, { input = [`a/b`], expect = false }, { input = [``], expect = false });
   }
 

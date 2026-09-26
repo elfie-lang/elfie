@@ -33,7 +33,7 @@ fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is
       behavior = `Returns [[Phase.compile]]`,
     })
     .add({
-      situation = `Otherwise`,
+      situation = `[[node]] is not, and is not inside, any of: an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], an [[ExtendsClause]], the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, or of test on an entity's context, or a statement directly in a [[SourceFile]] that is not a declaration; and [[node]] is not a [[TemplateReference]] or [[TemplateExecution]] in a definition, a criterion, or a test`,
       behavior = `Returns [[Phase.runtime]]; a declaration whose body is compile time is itself runtime, and a file-level const is runtime though [[lower]] folds its value`,
     });
 
@@ -101,7 +101,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
     })
     .add({
       behavior = [
-        `[[TraitEntity.entities]] is every entity the trait was applied to, in file order then application order, complete before the resolve pass reads it and before any statement reads it, as below`,
+        `[[TraitEntity.entities]] is every entity the trait was applied to, in file order then application order, complete before the resolve pass reads it and before any statement reads it, because a statement that reads it waits until no statement left to run can apply the trait`,
         `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
       ],
     });
@@ -113,7 +113,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = `It waits until no statement left to run can apply that trait, then reads the full list`,
     })
     .add({
-      situation = `Every statement left to run is waiting, and none can run`,
+      situation = `Every statement left to run is waiting to read what a trait was applied to, and none can run`,
       behavior = `A [[Problem]] naming the waiting statements and the traits they wait on is added at each, and none of them runs`,
     });
 
@@ -246,7 +246,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
   @acceptanceCriteria
     .add({
       behavior = [
-        `Every other node is kept with the same rule and its kept children in order`,
+        `Every node whose [[phaseOf]] is [[Phase.runtime]], that is not inside a [[Phase.compile]] node or an ace function, and that is not replaced by a folded node, is kept with the same rule and its kept children in order`,
         `Every lowered node's origin is the parse node it came from; a folded node's origin is the expression it replaced`,
         `[[Program.files]] holds one [[LoweredFile]] per file of [[Workspace.files]], in order, and a file with only compile-time statements lowers to an empty [[SourceFile]]`,
       ],

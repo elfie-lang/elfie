@@ -76,7 +76,7 @@ fn exists(path: string) is builtin: `Whether something is at a path` => boolean 
 /// recursive: whether files in directories under it are listed too
 fn list(path: string, recursive: boolean = false) is builtin: `The files in a directory, as paths relative to it, sorted` => string[] {
   where (`[[path]] is a directory`) -> `Returns the path of each file directly in it, relative to [[path]], in ascending text order; directories are not listed`;
-  where (`[[recursive]] is true`) -> `Files in every directory under [[path]] are included, each still relative to [[path]] with / between the segments, in the same order`;
+  where (`[[path]] is a directory and [[recursive]] is true`) -> `The result also holds each file in every directory under [[path]], each relative to [[path]] with / between the segments, all in ascending text order`;
   where (`[[path]] is not a directory, or cannot be read`) -> `Returns an empty list`;
   where (`Any call`) -> `Nothing outside [[path]] is touched and nothing is written`;
   @test(

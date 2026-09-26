@@ -59,7 +59,7 @@ fn stream(
 ) is builtin: `Runs a command as run does, passing each line of its output to onLine as it arrives` => Exit {
   where (`Any call`) -> `Behaves as [[run]] with the same arguments, and returns the same [[Exit]], its output still held whole`;
   where (`[[onLine]] is set and the command writes a line to standard output or standard error`) -> `[[onLine]] is called with the line, without its line ending, and whether it came from standard error, before the call returns and in the order the lines arrived`;
-  where (`The command ends with an unfinished line`) -> `That text is passed to [[onLine]] as a line too`;
+  where (`[[onLine]] is set and the command ends with an unfinished line`) -> `That text is passed to [[onLine]] as a line, as each finished line is`;
   where (`[[onLine]] is unset`) -> `Behaves exactly as [[run]]`;
   @test(
     {

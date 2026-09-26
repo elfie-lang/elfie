@@ -55,7 +55,7 @@ d Scope: `A region in which names resolve` {
   @acceptanceCriteria
     .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent` })
     .add({
-      behavior = `A file scope also holds the symbols its use statements import, after its own; its parent is the prelude scope, or none for a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
+      behavior = `A file scope holds the symbols its use statements import, after the symbols declared directly in it; its parent is the prelude scope, or none for a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
     })
     .add({
       behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`,

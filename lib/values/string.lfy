@@ -104,7 +104,7 @@ d String is builtin: `Text` {
   $toNumber: `The number the string spells, or undefined when it spells none` = () => number | undefined;
   with String$toNumber {
     where (`The string is a decimal number, with an optional sign, fraction, and surrounding whitespace`) -> `Yields that number`;
-    where (`Anything else is in the string, or it is empty`) -> `Yields undefined`;
+    where (`The string is empty, or is not a decimal number with an optional sign, fraction, and surrounding whitespace`) -> `Yields undefined`;
     @test({ input = [" -1.5 "], expect = -1.5 });
     @test({ input = ["1a"], expect = undefined });
   }

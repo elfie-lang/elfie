@@ -24,7 +24,7 @@ d Json is builtin: `A value that JSON can carry: an object, a list, a string, a 
   with Json$at {
     where (`A step names a key and the value at that point is an object with that key`) -> `The walk continues into that entry`;
     where (`A step is a whole number and the value at that point is a list with that index`) -> `The walk continues into that item`;
-    where (`A step fits neither, or the walk runs out of value`) -> `Returns undefined`;
+    where (`At some step the value is neither an object with the key the step names nor a list with the index the step names as a whole number, or the walk runs out of value`) -> `Returns undefined`;
     where (`The path is empty`) -> `Returns the value itself`;
     @test(
       { input = [{ a = { b = [1, 2] } }, `a.b.1`], expect = 2 },

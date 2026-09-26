@@ -24,7 +24,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = [
         `Binding runs three passes over every file: declare (scopes, symbols, entities), expand (traits, members, criteria, and every other compile-time statement), resolve (usages, properties, templates)`,
         `[[sources]] are bound in the order given, which places every file after the files it uses`,
-        `Binding never stops; every failure below is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
+        `Binding never stops; every failure it meets is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
       ],
     })
     .add({ behavior = `Each [[Source]] is bound once, however many others use it` });
@@ -158,7 +158,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       situation = `Two [[rule]] entities in the program have the same identifier`,
       behavior = [
         `A [[Problem]] is added at the second, naming the file of the first, because the grammar knows a rule only by its identifier`,
-        `A reference found nowhere else that spells that identifier resolves to neither, and its [[Problem]] says the name is more than one rule rather than that it is not declared`,
+        `A [[TemplateReference]] or [[TemplateExecution]] that spells that identifier and is found nowhere in the scope it is written in resolves to neither rule, and its [[Problem]] says the name is more than one rule rather than that it is not declared`,
       ],
     })
     .add({
@@ -338,7 +338,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     where (`A [[Node]] for [[&rule]] is bound`) -> `A symbol and an entity are created as [[declaring]] says`;
   }
   for (const rule in reading@entities) {
-    where (`A [[Node]] for [[&rule]] is bound`) -> `A [[Usage]] with the layer from [[reading]] is created and resolved as above`;
+    where (`A [[Node]] for [[&rule]] is bound`) -> `A [[Usage]] with the layer from [[reading]] is created and resolved: a [[Name]] or [[TraitUse]] to the first match walking outward from its scope, a [[Member]] or [[Current]] in the layer of its left side that its accessor reads, a [[Dereference]] to the entity its operand is bound to, and a [[Previous]] to the entity declared by the nearest earlier statement of the same block`;
   }
 }
 
@@ -346,12 +346,15 @@ fn resolve(model: Model, node: Node): `The symbol a node uses or declares` => Sy
   @acceptanceCriteria
     .add({ situation = `[[node]] has a [[Usage]] in [[model]]`, behavior = `Returns its [[Usage.symbol]]` })
     .add({ situation = `[[node]] declares a symbol in [[model]]`, behavior = `Returns that symbol` })
-    .add({ situation = `Neither`, behavior = `Returns undefined` });
+    .add({
+      situation = `[[node]] has no [[Usage]] in [[model]] and declares no symbol in [[model]]`,
+      behavior = `Returns undefined`,
+    });
 }
 
 fn entitiesOf(model: Model, traitEntity: TraitEntity): `Everything that has a trait` => Entity[] {
   @acceptanceCriteria
-    .add({ behavior = `Returns [[TraitEntity.entities]] of [[traitEntity]]` })
+    .add({ situation = `[[traitEntity]] is a trait`, behavior = `Returns [[TraitEntity.entities]] of [[traitEntity]]` })
     .add({ situation = `[[traitEntity]] is not a trait`, behavior = `Returns an empty list` });
 }
 
