@@ -1,3 +1,4 @@
+use "../interpret/data";
 use "../model/data";
 use "../workspace/data";
 use "elfie/prelude/builtin";
@@ -8,7 +9,9 @@ use "elfie/target/target";
 enum Reason: `Why a unit needs generating` {
   fresh = `no output has been generated for it`,
   changed = `its source differs from what its output was generated from`,
+  requirements = `its criteria or tests differ from those its output was generated against, while its code does not`,
   dependency = `the interface of a unit it depends on differs from the one its output was generated against`,
+  violated = `a global criterion or test its output answers for was reviewed as violated`,
   requested = `the caller asked for it regardless`,
 }
 
@@ -18,6 +21,7 @@ d Marker: `One place where generated code says where it came from` {
   $entity: `The name the marker spells, when it names an entity: the identifier, or the owner's identifier, a dot, and a member's name; undefined when it names a line` = string | undefined;
   $line: `The source line: as spelled, or derived from [[Marker.entity]] as the first line of that entity's declaration` = number;
   $column: `The source column, counting from 0; undefined when the marker names a whole line or an entity` = number | undefined;
+  $requirement: `The id of the [[LoweredCriterion]] or [[LoweredTest]] the region answers for, spelled after the entity and a #; undefined when it answers for none` = string | undefined;
   $end: `The last output line of the region the marker begins: the line before the next marker in the same output, or the last line of the output` = number;
   @acceptanceCriteria
     .add({
@@ -25,6 +29,9 @@ d Marker: `One place where generated code says where it came from` {
     })
     .add({
       behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, and then either a line (optionally a colon and a column) or the name of an entity of that file`,
+    })
+    .add({
+      behavior = `A marker for a test, or for code written to satisfy one criterion, names the entity then a # and the id of that criterion or test, or global then a # and the id for a global one; this is the only place a criterion or test appears in an output, and never as its text`,
     })
     .add({
       behavior = `Text is read as a marker only when what follows @lfy and the space is a path ending in .lfy, a colon, and a number or an identifier path; anything else after @lfy is prose`,
@@ -38,7 +45,8 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   $target: `The identifier of the target it was generated for` = string;
   $output: `The output file's path, relative to [[Workspace.root]]` = string;
   $source: `The source file's path, relative to [[Workspace.root]]` = string;
-  $hash: `SHA-256 of the source file's bytes when the output was accepted, as lowercase hex` = string;
+  $hash: `SHA-256 of [[LoweredFile.text]] of the source file when the output was accepted, as lowercase hex, so an edit that leaves the lowered code the same, such as a comment, changes nothing` = string;
+  $requirements: `SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line breaks, when the output was accepted` = string;
   $signature: `SHA-256 of the unit's interface text, as interfaceOf spells it, when the output was accepted` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = object;
   $generated: `When the output was accepted: [[Time.Instant.rfc3339]] of [[Time.now]] at acceptance` = string;
@@ -48,7 +56,8 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
 d Unit: `The work the compiler does as one piece: one source file for one target` {
   $target: `What it is built for` = Target;
   $file: `The source file` = File;
-  $entities: `The entities of the file built for the target, in file order; never an entity of the elfie package` = Entity[];
+  $entities: `The entities of the file built for the target that have a lowered node, in file order; never an entity of the elfie package, a trait, or an ace function` = Entity[];
+  $lowered: `The file as lowering gave it` = LoweredFile;
   $stem: `[[Path.relative]] of [[File.path]] to the directory it was found under, without its extension; the target's guidance spells the output file from it` = string;
   $dependencies: `The units of the same target for the files this file uses, transitively through files that have no unit` = Unit[];
   $outputs: `The outputs the last accepted generation produced, from the target's source maps; empty when none` = SourceMap[];
@@ -69,17 +78,19 @@ d Interface: `What a dependent unit may rely on from another unit's output` {
 d Request: `Everything the compiler is handed to produce the outputs of one batch` {
   $batch: `The batch` = Batch;
   $instructions: `The prompt: what to produce, where, the rules for producing it, what of the standard library is [[builtin]] and never generated, and how to report the outcome` = string;
-  $sources: `The text of each unit's source file, by [[File.path]]` = object;
-  $previous: `The source text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = object;
+  $sources: `[[LoweredFile.text]] of each unit's file, by [[File.path]]` = object;
+  $requirements: `The local criteria and tests of each unit, by [[File.path]], each with its id` = object;
+  $globals: `Every global criterion and test of [[Plan.program]], each once with its id` = (LoweredCriterion | LoweredTest)[];
+  $previous: `The lowered text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = object;
   $existing: `The current text of each existing output of the batch, by path` = object;
   $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
   $guidance: `Every criterion of [[Target.marker]], then of every trait it extends down to [[target]], nearest first, and of every trait applied to it with arguments, each resolved for the marker` = Criterion[];
   $nativeDependencies: `What the generated code may require from the target's ecosystem` = NativeDependency[];
 }
 
-d ReviewRequest: `Everything a verifier is handed to check the outputs of one batch against what was asked` {
-  $batch: `The batch` = Batch;
-  $instructions: `The prompt: every criterion and test of the batch with its place, every region generated for each entity, and how to report` = string;
+d ReviewRequest: `Everything a verifier is handed to check outputs against what was asked: the local criteria and tests of one batch, or every global one once` {
+  $batch: `The batch; undefined for the review of global criteria and tests` = Batch | undefined;
+  $instructions: `The prompt: every criterion and test with its id and place, every region answering for each, and how to report` = string;
 }
 
 d Output: `One file the compiler produced` {
@@ -131,9 +142,10 @@ enum ReviewStatus: `What a verifier found for one criterion or test` {
   unverifiable = `no output can be checked against it`,
 }
 
-// Decision: a review names its criterion by file and line and quotes nothing, because a criterion has
-// no name and the definition file is the one place its text lives.
+// Decision: a review names its criterion or test by id and quotes nothing; its file, line, and entity
+// are derived from the id's origin, so a verifier never has to spell a place right.
 d Review: `A verifier's finding for one criterion or test` {
+  $id: `The id of the [[LoweredCriterion]] or [[LoweredTest]] it answers for` = string;
   $file: `The definition file the criterion or test is written in, relative to [[Workspace.root]]` = string;
   $line: `The line the criterion or test begins on` = number;
   $entity: `The identifier, or the owner's identifier, a dot, and a member's name, of the entity it belongs to` = string;
@@ -142,17 +154,21 @@ d Review: `A verifier's finding for one criterion or test` {
   $note: `Why, in one line; for a violated one, what the code does instead` = string;
   @acceptanceCriteria
     .add({
-      behavior = `A verifier writes a review as one JSON object on one line with exactly the keys file, line, entity, status, evidence, and note, and ends its report with a line reading ELFIE: REVIEWED`,
+      behavior = `A verifier writes a review as one JSON object on one line with exactly the keys id, status, evidence, and note, and ends its report with a line reading ELFIE: REVIEWED`,
+    })
+    .add({
+      behavior = `[[Review.file]], [[Review.line]], and [[Review.entity]] are derived from the origin of the criterion or test the id names, never read from the verifier; for a global one the entity is global`,
     });
 }
 
 d ReviewReport: `Everything a verifier found for one batch, read mechanically from its report` {
-  $reviews: `Each review, in report order, one per file, line, and entity` = Review[];
+  $reviews: `Each review, in report order, one per id` = Review[];
   $problems: `The lines of the verifier's output that were neither a review nor the end line` = string[];
 }
 
 d Plan: `Every unit of a workspace, which need generating, and how they are batched` {
   $workspace: `The workspace planned` = Workspace;
+  $program: `The workspace lowered, which units, requests, and reviews read` = Program;
   $units: `Every unit of every target, each after its dependencies` = Unit[];
   $batches: `The planned units grouped for compilation, each batch after the batches holding its dependencies` = Batch[];
 }

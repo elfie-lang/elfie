@@ -74,6 +74,7 @@ d LoweredNode: `One node of the program as generation sees it: runtime code only
 d LoweredFile: `One file as generation sees it` {
   $file: `The file it was lowered from` = File;
   $root: `The lowered [[SourceFile]]` = LoweredNode;
+  $text: `The lowered tree spelled as Elfie source: kept nodes as written, folded nodes as the literal of their value, member nodes as a member with its type and value; never a criterion or a test` = string;
   $criteria: `The local criteria of the file's own entity, in order` = LoweredCriterion[];
   $tests: `The local tests of the file's own entity, in order` = LoweredTest[];
 }

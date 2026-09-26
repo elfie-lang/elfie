@@ -1,4 +1,6 @@
 use "../grammar/rules/statement";
+use "../interpret/data";
+use "../interpret/main" as Interpreter;
 use "../lexer/data";
 use "../model/data";
 use "../model/main" as Binder;
@@ -35,9 +37,16 @@ fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may
     });
 }
 
-fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = []): `Every unit of a workspace, which need generating, and how they are batched` => Plan {
+/// violated: the stems of units whose outputs answer for a global criterion or test the last global review found violated
+fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [], violated: string[] = []): `Every unit of a workspace, which need generating, and how they are batched` => Plan {
   // Selection
   @acceptanceCriteria
+    .add({
+      behavior = `[[Plan.program]] is [[Interpreter.lower]] of [[workspace]], and [[Unit.lowered]] is its [[LoweredFile]] for the unit's file`,
+    })
+    .add({
+      behavior = `An entity with no lowered node, such as a trait or an ace function, is never among [[Unit.entities]], so no output has to carry a marker for it`,
+    })
     .add({
       behavior = `An entity is built for a [[Target]] when it is among [[Binder.entitiesOf]] the [[Target.marker]], when the anonymous entity of its file is, or when global is; the last two select every entity declared in the file scope`,
     })
@@ -74,7 +83,11 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [])
       behavior = `[[Unit.outputs]] is every [[SourceMap]] in [[sourceMaps]] whose target and source are the unit's; the caller drops maps whose output no longer exists before calling`,
     })
     .add({
-      behavior = `[[Unit.reason]] is the first of these that holds: requested when [[File.path]] or [[Unit.stem]] is in [[requested]]; fresh when [[Unit.outputs]] is empty; changed when the SHA-256 of the file's text differs from [[SourceMap.hash]] of any output; dependency when the hash of [[interfaceOf]] any dependency differs from what [[SourceMap.dependencies]] of the unit's outputs record for it, or when they record nothing for it; undefined otherwise`,
+      behavior = `[[Unit.reason]] is the first of these that holds: requested when [[File.path]] or [[Unit.stem]] is in [[requested]]; violated when [[Unit.stem]] is in [[violated]]; fresh when [[Unit.outputs]] is empty; changed when the SHA-256 of [[LoweredFile.text]] differs from [[SourceMap.hash]] of any output; requirements when the SHA-256 of its local criterion and test ids differs from [[SourceMap.requirements]] of any output; dependency when the hash of [[interfaceOf]] any dependency differs from what [[SourceMap.dependencies]] of the unit's outputs record for it, or when they record nothing for it; undefined otherwise`,
+    })
+    .add({
+      situation = `Only [[Program.criteria]] or [[Program.tests]] differ from what the outputs were generated against`,
+      behavior = `No unit is planned for it; the global review is run instead, and a unit is planned again only when that review finds a global criterion or test its output answers for violated`,
     })
     .add({
       behavior = `A dependency that is planned only because of its own dependencies, and whose interface is unchanged, plans nothing beyond itself, so an edit inside one function body regenerates one unit`,
@@ -142,7 +155,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [])
 fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
     .add({
-      behavior = `[[Request.batch]] is [[batch]]; [[Request.sources]] maps each unit's [[File.path]] to the joined [[Token.raw]] of its tokens; [[Request.previous]] is [[previous]]`,
+      behavior = `[[Request.batch]] is [[batch]]; [[Request.sources]] maps each unit's [[File.path]] to [[LoweredFile.text]] of [[Unit.lowered]]; [[Request.requirements]] maps it to every [[LoweredNode.criteria]], [[LoweredNode.tests]], [[LoweredFile.criteria]], and [[LoweredFile.tests]] of the file; [[Request.globals]] is [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]; [[Request.previous]] is [[previous]]`,
     })
     .add({
       behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of a unit of the batch to its text`,
@@ -169,11 +182,14 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
         `That the reader is the compiler for the target, that its whole job is the outputs for the units of this batch, listed by stem, and that it writes nothing outside them`,
         `Where the outputs go: under [[Target.outputDirectory]], spelled from each [[Unit.stem]] as the guidance says, at the paths in [[Unit.outputs]] when there are any`,
         `The guidance, then the native dependencies it may require, then each interface: the dependency's output paths and the identifier, kind, definition, and type of each of its entities, to be used by the names its outputs spell and never edited`,
-        `Then, for each unit of the batch in order, a section with its source text and each of its entities with its kind and every criterion and test of [[Binder.criteriaOf]] and [[Entity.tests]] resolved for it`,
+        `Then, for each unit of the batch in order, a section holding, for each of its entities, the entity's lowered code and then, apart from the code, its local criteria and tests, each on its own line with its id`,
+        `Then one section of the global criteria and tests, each once with its id and marked global, saying that they hold across the whole program, that a unit answers for one only where it is relevant to that unit's code and ignores it otherwise, and that the global review checks each once`,
+        `That criteria and tests are never restated in an output as comments or documentation; an output names one only by its id in a [[Marker]]`,
         `That the data and fns of the standard library carrying [[builtin]] are bound to what the guidance names for them and never generated, and that a member of the library written out in full is translated where it is used`,
-        `The rules for kinds: a [[DataDeclaration]] becomes a type; an [[AgentFunctionDeclaration]] becomes a function whose body satisfies every criterion and test; a [[FunctionDeclaration]] is translated statement by statement with nothing added; a [[TraitDeclaration]] emits nothing of its own, its members and criteria belong to each entity that carries it; a [[TypeDeclaration]] and [[EnumDeclaration]] become their nearest equivalents; an [[ExternalDeclaration]] is bound to what the guidance says; an [[Ace]] statement is evaluated during compilation and its results inlined where used; a [[Use]] is satisfied by the interfaces`,
+        `The rules for kinds: a [[DataDeclaration]] becomes a type; an [[AgentFunctionDeclaration]] becomes a function whose body satisfies every criterion and test; a [[FunctionDeclaration]] is translated statement by statement with nothing added; a [[TraitDeclaration]] emits nothing of its own, its members and criteria belong to each entity that carries it; a [[TypeDeclaration]] and [[EnumDeclaration]] become their nearest equivalents; an [[ExternalDeclaration]] is bound to what the guidance says; a folded value is written as the literal it holds and a [[Prompted]] value is chosen to fit its prompt; a [[Use]] is satisfied by the interfaces`,
         `That every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says, and never a line number`,
-        `That each [[Test]] becomes one test, and each criterion that can be checked mechanically becomes one test named after its entity, placed where the guidance says`,
+        `That each [[LoweredTest]] becomes one test, and each [[LoweredCriterion]] that can be checked mechanically becomes one test, each carrying a [[Marker]] with its id, placed where the guidance says`,
+        `When the unit's reason is requirements: that its code is unchanged and only the tests and code answering for the criteria and tests whose ids were added or removed need to change`,
         `When [[Request.existing]] is not empty: that only what the difference between [[Request.previous]] and [[Request.sources]] requires changes, that names and structure are kept, and that markers of unchanged items are kept; where [[Request.previous]] has no entry, that the existing output is reconciled with the source`,
         `That the tools of the agent server may be called for anything the request leaves out`,
         `How to end its report: with one line reading ELFIE: DONE when every output is written; ELFIE: BLOCKED: followed by the reason when an ambiguous criterion, two criteria in conflict, a name that resolves nowhere, or anything else stops it, in which case it writes no output for the unit and quotes the criterion; or ELFIE: CLARIFY: followed by one question when only a person can decide, in which case it writes nothing`,
@@ -266,6 +282,10 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Rejected with a problem naming the output line`,
     })
     .add({
+      situation = `A marker names a requirement id that is neither a local criterion or test of the unit nor one of [[Request.globals]]`,
+      behavior = `Rejected with a problem naming the output line and the id`,
+    })
+    .add({
       behavior = `An output may hold markers for other files of the program, because one output often mirrors several`,
     })
     .add({
@@ -280,7 +300,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of the unit's source, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
+      behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of [[LoweredFile.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
       behavior = `[[Marker.end]] of each marker is derived as the line before [[Marker.outputLine]] of the next marker in the same output, or the last line of the output for the last marker, so the regions of an output partition it from its first marker on`,
@@ -393,8 +413,8 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
         `[[ChangeKind.definition]] when [[Entity.definition]] differs`,
         `[[ChangeKind.declaredType]] when the type of the entity, spelled as [[interfaceOf]] spells it, differs`,
         `[[ChangeKind.signature]] when a fn's parameters, their types, or its output, spelled as [[interfaceOf]] spells them, differ`,
-        `[[ChangeKind.criteria]] when the count of [[Binder.criteriaOf]] differs, or the text of any criterion differs from the one at the same place`,
-        `[[ChangeKind.tests]] when [[Entity.tests]] differ in count, or any test's input or expectation differs from the one at the same place`,
+        `[[ChangeKind.criteria]] when the ids of its local criteria differ; the detail names the ids added and removed, and a removed and an added one at the same position are called reworded`,
+        `[[ChangeKind.tests]] when the ids of its local tests differ, named the same way`,
         `[[ChangeKind.body]] when the joined [[Token.raw]] of the tokens the declaring node covers differs once its definition, type, parameters, output, criteria, tests, whitespace, and comments are left out`,
       ],
     })
@@ -450,15 +470,15 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a veri
   @acceptanceCriteria
     .add({ behavior = `[[ReviewRequest.batch]] is [[batch]]` })
     .add({
-      behavior = `A criterion's place is the file of its [[Criterion.contributor]] relative to [[Workspace.root]], a colon, and the line its add call or where statement begins on; a test's place is its entity's file the same way and the line its object begins on`,
+      behavior = `Only local criteria and tests are reviewed here; a global one is reviewed once, by [[globalReview]]. A criterion's or test's place is the file of its origin relative to [[Workspace.root]], a colon, and the line its origin begins on`,
     })
     .add({
       behavior = [
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming [[Batch.identifier]] and the target`,
-        `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each criterion of [[Binder.criteriaOf]] on one line prefixed by its place, then each of [[Entity.tests]] as input and expectation on one line prefixed by its place`,
+        `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its local criteria on one line prefixed by its id and place, then each of its local tests as input and expectation on one line prefixed by its id and place`,
         `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines of the output in a fenced block; when the output cannot be read, a line saying so instead`,
-        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys file, line, entity, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server may be called for regions the request leaves out; and that the report ends with one line reading ELFIE: REVIEWED`,
+        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server may be called for regions the request leaves out; and that the report ends with one line reading ELFIE: REVIEWED`,
       ],
     });
 
@@ -484,17 +504,52 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a veri
   );
 }
 
+fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is handed to check every global criterion and test once, across every output of the program` => ReviewRequest {
+  @acceptanceCriteria
+    .add({ behavior = `[[ReviewRequest.batch]] is undefined` })
+    .add({
+      behavior = [
+        `[[ReviewRequest.instructions]] says, in this order:`,
+        `A heading naming the global review and the targets`,
+        `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, as the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines in a fenced block`,
+        `The same verifier protocol as [[review]]`,
+      ],
+    })
+    .add({
+      situation = `No marker in any output names a global criterion's or test's id`,
+      behavior = `It is listed with a line saying no unit answered for it, so the verifier finds it unverifiable, never violated`,
+    })
+    .add({
+      behavior = `The caller runs it once after every batch of a compile, and whenever [[Program.criteria]] or [[Program.tests]] changed; a violated review gives the stems of the units whose markers answered for it, for the violated argument of [[plan]]`,
+    });
+
+  @test(
+    {
+      input = [
+        Plan@like(`A program with one global criterion g, whose id two outputs, src/a.rs and src/b.rs, name in a marker`),
+        [SourceMap@like(`For src/a.rs and src/b.rs, each with one marker naming global and the id of g`)],
+      ],
+      expect = ReviewRequest@like(`No batch; g once with its id, then two regions, one per output, then the protocol`),
+    },
+    {
+      input = [Plan@like(`A program with one global criterion g that no marker names`), []],
+      expect = ReviewRequest@like(`No batch; g once with a line saying no unit answered for it`),
+    },
+  );
+}
+
 /// report: everything the verifier wrote to standard output
-fn reviewOf(report: string): `What a verifier found, read mechanically from its report` => ReviewReport {
+/// program: the lowered program, whose criteria and tests the ids name
+fn reviewOf(report: string, program: Program): `What a verifier found, read mechanically from its report` => ReviewReport {
   @acceptanceCriteria
     .add({
       behavior = `The end line is the last line of [[report]] reading ELFIE: REVIEWED, with any whitespace around it; lines after it are ignored`,
     })
     .add({
-      behavior = `Each line before the end line that [[Json.parse]] reads as an object with exactly the keys file, line, entity, status, evidence, and note, whose line is a number and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order`,
+      behavior = `Each line before the end line that [[Json.parse]] reads as an object with exactly the keys id, status, evidence, and note, whose id names a criterion or test of [[program]] and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order, with its file, line, and entity derived from that criterion's or test's origin`,
     })
     .add({
-      situation = `Two such lines have the same file, line, and entity`,
+      situation = `Two such lines have the same id`,
       behavior = `Only the last is kept, at its own place`,
     })
     .add({
@@ -508,13 +563,15 @@ fn reviewOf(report: string): `What a verifier found, read mechanically from its 
   @test(
     {
       input = [
-        `# reading src/a.rs\n{"file":"def/a.lfy","line":4,"entity":"A","status":"satisfied","evidence":"src/a.rs:1-30","note":"the field is there"}\n{"file":"def/a.lfy","line":7,"entity":"A","status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined instead of an empty list"}\nELFIE: REVIEWED`,
+        `# reading src/a.rs\n{"id":"A:A:1f2e","status":"satisfied","evidence":"src/a.rs:1-30","note":"the field is there"}\n{"id":"A:A:9c0d","status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined instead of an empty list"}\nELFIE: REVIEWED`,
+        Program@like(`A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`),
       ],
-      expect = ReviewReport@like(`Two reviews, satisfied then violated, and no problems`),
+      expect = ReviewReport@like(`Two reviews, satisfied then violated, placed at def/a.lfy:4 and def/a.lfy:7 for A, and no problems`),
     },
     {
       input = [
-        `{"file":"def/a.lfy","line":4,"entity":"A","status":"maybe","evidence":"","note":"unsure"}\nI think it is fine.\n{"file":"def/a.lfy","line":7,"entity":"A","status":"unverifiable","evidence":"","note":"no region"}\nELFIE: REVIEWED`,
+        `{"id":"A:A:1f2e","status":"maybe","evidence":"","note":"unsure"}\nI think it is fine.\n{"id":"A:A:9c0d","status":"unverifiable","evidence":"","note":"no region"}\nELFIE: REVIEWED`,
+        Program@like(`A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`),
       ],
       expect = ReviewReport@like(
         `One review, unverifiable at line 7, and two problems: the line whose status is maybe, and the prose line`,
@@ -522,7 +579,8 @@ fn reviewOf(report: string): `What a verifier found, read mechanically from its 
     },
     {
       input = [
-        `{"file":"def/a.lfy","line":4,"entity":"A","status":"satisfied","evidence":"","note":"first"}\n{"file":"def/a.lfy","line":4,"entity":"A","status":"violated","evidence":"src/a.rs:3-3","note":"second"}`,
+        `{"id":"A:A:1f2e","status":"satisfied","evidence":"","note":"first"}\n{"id":"A:A:1f2e","status":"violated","evidence":"src/a.rs:3-3","note":"second"}`,
+        Program@like(`A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`),
       ],
       expect = ReviewReport@like(
         `One review, violated with note second, and one problem reading: the report did not end`,
