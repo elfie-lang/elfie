@@ -12,9 +12,12 @@ use "./number";
 
 d List<T> is builtin: `An ordered sequence of values` {
   where (`A list is written`) -> `Items go in square brackets, such as [a, b]; ...a inside the brackets spreads a's items in place, such as [...a, ...b]`;
-  where (`A list is indexed with .[i]`) -> `Yields the item at i counting from 0, or undefined when i is out of range`;
+  where (`A list is indexed with .[i]`) and (`i is in range`) -> `Yields the item at i counting from 0`;
+  where (`A list is indexed with .[i]`) and (`i is out of range`) -> `Yields undefined`;
   where (`A list is indexed with a range .[a ... b]`) -> `Yields a new list of the items from a up to but not including b`;
-  where (`A for loop visits a list`) -> `in visits the items, of the indices, and (const item, index from list) both`;
+  where (`A for loop with in visits a list`) -> `It visits the items`;
+  where (`A for loop with of visits a list`) -> `It visits the indices`;
+  where (`A for loop written (const item, index from list) visits a list`) -> `It visits both the items and the indices`;
   where (`A type is written T[]`) -> `It is [[List]] with T as its one type argument`;
 
   $length: `The count of items` = number;
@@ -65,7 +68,10 @@ d List<T> is builtin: `An ordered sequence of values` {
   }
   $join: `The items' text, separated` = (separator: string = ",") => string;
   with List$join {
-    where (`An item is not a string`) -> `Its text is that of [[Number.toString]] for a number, true or false for a boolean, and empty for null or undefined`;
+    where (`An item is a number`) -> `Its text is that of [[Number.toString]]`;
+    where (`An item is true`) -> `Its text is true`;
+    where (`An item is false`) -> `Its text is false`;
+    where (`An item is null or undefined`) -> `Its text is empty`;
     @test({ input = [[1, "b"], "-"], expect = "1-b" });
     @test({ input = [["a", "b"]], expect = "a,b" });
   }
@@ -100,7 +106,9 @@ d List<T> is builtin: `An ordered sequence of values` {
   /// compare: negative when a goes first, positive when b does, zero when either
   $sort: `The items in order` = (compare?: (a: T, b: T) => number) => T[];
   with List$sort {
-    where (`compare is left out`) -> `Numbers order numerically and strings by code point; items that are neither keep their order`;
+    where (`compare is left out`) and (`Two items are numbers`) -> `They order numerically`;
+    where (`compare is left out`) and (`Two items are strings`) -> `They order by code point`;
+    where (`compare is left out`) and (`An item is neither a number nor a string`) -> `It keeps its order`;
     where (`Two items compare equal`) -> `They keep their order`;
     @test({ input = [[3, 1, 2]], expect = [1, 2, 3] });
     @test({ input = [["b", "a"], (a, b) => a < b ? 1 : -1], expect = ["b", "a"] });

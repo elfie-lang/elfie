@@ -32,8 +32,11 @@ fn write(path: string, text: string) is builtin: `Whether text was written as th
   where (`Any call`) -> `Nothing outside [[path]] and the directories above it is touched`;
   @acceptanceCriteria
     .add({
-      behavior = `Returns true when the file holds [[text]] afterwards`,
       sideEffects = [`The file at [[path]] is written`],
+    })
+    .add({
+      situation = `The file holds [[text]] afterwards`,
+      behavior = `Returns true`,
     });
   @test(
     { input = [string@like(`A path under a directory that exists`), `hello`], expect = true },
@@ -51,8 +54,11 @@ fn append(path: string, text: string) is builtin: `Whether text was added to the
   where (`Any call`) -> `Nothing outside [[path]] and the directories above it is touched`;
   @acceptanceCriteria
     .add({
-      behavior = `Returns true when [[text]] is at the end of the file afterwards`,
       sideEffects = [`The file at [[path]] grows`],
+    })
+    .add({
+      situation = `[[text]] is at the end of the file afterwards`,
+      behavior = `Returns true`,
     });
   @test(
     { input = [string@like(`The path of a file holding a`), `b`], expect = boolean@like(`true, and the file holds ab`) },
@@ -97,8 +103,11 @@ fn createDirectory(path: string) is builtin: `Whether a directory exists at a pa
   where (`Any call`) -> `Nothing outside [[path]] and the directories above it is touched`;
   @acceptanceCriteria
     .add({
-      behavior = `Returns true when a directory is at [[path]] afterwards`,
       sideEffects = [`Directories are created`],
+    })
+    .add({
+      situation = `A directory is at [[path]] afterwards`,
+      behavior = `Returns true`,
     });
   @test(
     { input = [string@like(`A path two levels under a directory that exists`)], expect = true },
@@ -130,8 +139,11 @@ fn remove(path: string) is builtin: `Whether one file was removed` => boolean {
   where (`Any call`) -> `Nothing outside [[path]] is touched`;
   @acceptanceCriteria
     .add({
-      behavior = `Returns true when the file is gone because of this call`,
       sideEffects = [`The file at [[path]] is deleted`],
+    })
+    .add({
+      situation = `The file is gone because of this call`,
+      behavior = `Returns true`,
     });
   @test(
     { input = [string@like(`The path of a file`)], expect = true },

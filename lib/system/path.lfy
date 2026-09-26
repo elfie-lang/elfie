@@ -7,8 +7,10 @@ use "../prelude/builtin";
 // own; its criterion says what the split would give.
 
 d Path is builtin: `A file system path, as text` {
-  where (`Any path the language sees`) -> `Its separator is /, whatever the platform; the target converts when it hands a path to a platform whose separator differs and when it reads one back`;
-  where (`A path is written in the compiler's own definitions`) -> `It is relative to the workspace root unless the definition says otherwise`;
+  where (`Any path the language sees`) -> `Its separator is /, whatever the platform`;
+  where (`The target hands a path to a platform whose separator differs, or reads one back from it`) -> `The target converts the separator`;
+  where (`A path is written in the compiler's own definitions`) and (`The definition does not say what the path is relative to`) -> `It is relative to the workspace root`;
+  where (`A path is written in the compiler's own definitions`) and (`The definition says what the path is relative to`) -> `It is relative to what the definition says`;
   where (`A path ends in a separator`) -> `The trailing separator names nothing and every member ignores it`;
 
   /// segments: what is appended, in order
@@ -120,7 +122,8 @@ d Path is builtin: `A file system path, as text` {
     where (`A segment is .. and a segment other than .. precedes it`) -> `Both are dropped`;
     where (`A segment is .. at the start of a relative path, or after other leading .. segments`) -> `It stays`;
     where (`A segment is .. at the root of an absolute path`) -> `It is dropped, since the root has no parent`;
-    where (`Nothing is left`) -> `Returns . for a relative path and / for an absolute one`;
+    where (`Nothing is left`) and (`The path is relative`) -> `Returns .`;
+    where (`Nothing is left`) and (`The path is absolute`) -> `Returns /`;
     @test(
       { input = [`a/./b/../c`], expect = `a/c` },
       { input = [`../a`], expect = `../a` },

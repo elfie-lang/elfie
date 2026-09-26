@@ -14,8 +14,11 @@ d Pair<K, V>: `A key with its value` {
 
 d Object<V> is builtin: `Keys with values` {
   where (`An object is written`) -> `Keys and values go in braces, each key set with =, such as { a = 1, b = "x" }`;
-  where (`An object is read with .key or .[key]`) -> `Yields the key's value, or undefined when the key is absent`;
-  where (`A for loop visits an object`) -> `(const k of obj) visits the keys, (const v in obj) the values, and (const v, k from obj) both`;
+  where (`An object is read with .key or .[key]`) and (`The key is present`) -> `Yields the key's value`;
+  where (`An object is read with .key or .[key]`) and (`The key is absent`) -> `Yields undefined`;
+  where (`A for loop written (const k of obj) visits an object`) -> `It visits the keys`;
+  where (`A for loop written (const v in obj) visits an object`) -> `It visits the values`;
+  where (`A for loop written (const v, k from obj) visits an object`) -> `It visits both the values and the keys`;
   where (`A type is written object`) -> `It is an open [[Object]] whose values are not known`;
 
   $keys: `The keys, in insertion order` = () => string[];

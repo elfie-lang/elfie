@@ -6,7 +6,8 @@ trait targetInterface extends target: `A target that is a surface others call: a
   $protocol: `The protocol the surface speaks, as its specification names it; undefined for a plain command line` = string | undefined;
 
   where (`An fn is marked as exposed by a trait of the surface`) -> `It is one operation of the surface, named and described as that trait says`;
-  where (`A call of an operation of the surface, an fn marked as exposed by a trait of the surface, arrives`) -> `The arguments are checked against that fn's parameters before it runs, and a bad argument is reported without running it`;
+  where (`A call of an operation of the surface, an fn marked as exposed by a trait of the surface, arrives`) -> `The arguments are checked against that fn's parameters before it runs`;
+  where (`A call of an operation of the surface, an fn marked as exposed by a trait of the surface, arrives`) and (`An argument does not match that fn's parameters`) -> `The bad argument is reported and the fn is not run`;
   where (`An operation fails`) -> `The failure is reported through the surface and never ends the process`;
   where (`The surface has a channel`) -> `Nothing but [[targetInterface.protocol]] is written to it; logging goes elsewhere`;
 }

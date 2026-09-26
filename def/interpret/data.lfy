@@ -11,7 +11,9 @@ enum Phase: `When a piece of source runs` {
 
 d Value: `What evaluating an expression at compile time gives` {
   where (`An expression is evaluated`) -> `The result is undefined, null, a boolean, a number, a string, a list or object of values, an entity, a scope, or a function with the scope it was written in`;
-  where (`A value is written into a lowered tree`) -> `It is spelled as the literal of its kind; an entity or a scope is spelled as a reference to its declaration, and a function as a reference to the declaration it came from`;
+  where (`A value that is not an entity, a scope, or a function is written into a lowered tree`) -> `It is spelled as the literal of its kind`;
+  where (`A value that is an entity or a scope is written into a lowered tree`) -> `It is spelled as a reference to its declaration`;
+  where (`A value that is a function is written into a lowered tree`) -> `It is spelled as a reference to the declaration it came from`;
 }
 
 d Prompted: `A value only the compiler can choose, left for generation to choose` {

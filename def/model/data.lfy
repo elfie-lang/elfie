@@ -55,7 +55,15 @@ d Scope: `A region in which names resolve` {
   @acceptanceCriteria
     .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent` })
     .add({
-      behavior = `A file scope holds the symbols its use statements import, after the symbols declared directly in it; its parent is the prelude scope, or none for a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
+      behavior = `A file scope holds the symbols its use statements import, after the symbols declared directly in it`,
+    })
+    .add({
+      situation = `A file scope belongs to a file whose [[Source.origin]] is [[Origin.program]]`,
+      behavior = `Its parent is the prelude scope`,
+    })
+    .add({
+      situation = `A file scope belongs to a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
+      behavior = `It has no parent`,
     })
     .add({
       behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`,
@@ -67,7 +75,12 @@ d Applied: `One trait on one entity` {
   $arguments: `Argument nodes, in order` = Node[];
   @acceptanceCriteria
     .add({
-      behavior = `Knows the [[IsClause]], [[ExtendsClause]], or apply [[Call]] that applied it, or the application it was inherited through`,
+      situation = `The trait was applied directly`,
+      behavior = `Knows the [[IsClause]], [[ExtendsClause]], or apply [[Call]] that applied it`,
+    })
+    .add({
+      situation = `The trait was inherited through another application`,
+      behavior = `Knows the application it was inherited through`,
     });
 }
 

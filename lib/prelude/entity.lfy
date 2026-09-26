@@ -27,6 +27,7 @@ d Entity is builtin: `What every declared thing is seen as through its context l
     });
   }
   $tests: `Every test added, in order` = Test[];
-  where (`The context accessor is followed by a name on any entity`) -> `The name resolves among these members, and the layer alone is the entity itself`;
+  where (`The context accessor is followed by a name on any entity`) -> `The name resolves among these members`;
+  where (`The context accessor is followed by no name on any entity`) -> `The layer alone is the entity itself`;
   where (`A bracketed reference appears in its definition, documentation, or value`) -> `The referenced entity is added to [[Entity.references]]`;
 }

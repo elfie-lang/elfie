@@ -62,9 +62,13 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = [
         `Runs as the binder's expand pass: after the declare pass and before the resolve pass, over every file in bind order`,
         `Each round runs every [[Phase.compile]] statement not yet run whose names now resolve: trait applications, ace statements, declaration bodies, and file-level statements`,
-        `Rounds repeat until one runs nothing; a statement that still does not resolve then adds a [[Problem]] at the name`,
+        `Rounds repeat until one runs nothing`,
         `Names are resolved only as far as a statement needs them to run; the resolve pass resolves the rest`,
       ],
+    })
+    .add({
+      situation = `The expand pass's rounds have stopped and a [[Phase.compile]] statement not yet run still does not resolve`,
+      behavior = `A [[Problem]] is added at the name that does not resolve`,
     })
     .add({
       behavior = [
@@ -76,12 +80,26 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
   // Applying traits
   @acceptanceCriteria
     .add({
-      situation = `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
-      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
+      situation = [
+        `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
+        `The first argument does not resolve to an [[alternationList]]`,
+      ],
+      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, with the other arguments as [[Applied.arguments]]`,
+    })
+    .add({
+      situation = [
+        `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
+        `The first argument resolves to an [[alternationList]]`,
+      ],
+      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to every item of the [[alternationList]], with the other arguments as [[Applied.arguments]]`,
     })
     .add({
       situation = `A [[Current]] with no [[MemberName]] is run`,
-      behavior = `It resolves to the scope's current entity; in a file scope that is the anonymous entity for the file, so a trait applied to it at the top level of a file is applied to the file`,
+      behavior = `It resolves to the scope's current entity`,
+    })
+    .add({
+      situation = [`A [[Current]] with no [[MemberName]] is run`, `Its scope is a file scope`],
+      behavior = `It resolves to the anonymous entity for the file, so a trait applied to it at the top level of a file is applied to the file`,
     })
     .add({
       situation = `An applied trait has an [[ExtendsClause]]`,
@@ -218,24 +236,48 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     .add({
       behavior = [
         `A kept declaration of a data or trait-carrying entity has one child lowered node per member of its entity, in member order, after its other kept children`,
-        `A member node's entity is the member and its origin is the statement that declared the member, which is in the trait's file when a trait added it`,
+        `A member node's entity is the member and its origin is the statement that declared the member`,
       ],
+    })
+    .add({
+      situation = `A trait added the member of a lowered member node`,
+      behavior = `The member node's origin is the statement in the trait's file that declared the member`,
     });
 
   // Criteria and tests
   @acceptanceCriteria
     .add({
       behavior = [
-        `Every criterion and test of every entity is lowered once, into a [[LoweredCriterion]] or [[LoweredTest]] with its id, and never into the tree's children`,
-        `A local one joins [[LoweredNode.criteria]] or [[LoweredNode.tests]] of the node whose entity it is for, or [[LoweredFile.criteria]] or [[LoweredFile.tests]] when it is for the file's own entity`,
+        `Every criterion of every entity is lowered once, into a [[LoweredCriterion]] with its id, and never into the tree's children`,
+        `Every test of every entity is lowered once, into a [[LoweredTest]] with its id, and never into the tree's children`,
       ],
     })
     .add({
-      situation = `A criterion or test was added to global's context, or comes from a trait applied to global`,
+      situation = `A local criterion is for an entity other than its file's own entity`,
+      behavior = `It joins [[LoweredNode.criteria]] of the node whose entity it is for`,
+    })
+    .add({
+      situation = `A local test is for an entity other than its file's own entity`,
+      behavior = `It joins [[LoweredNode.tests]] of the node whose entity it is for`,
+    })
+    .add({
+      situation = `A local criterion is for its file's own entity`,
+      behavior = `It joins [[LoweredFile.criteria]] of that file`,
+    })
+    .add({
+      situation = `A local test is for its file's own entity`,
+      behavior = `It joins [[LoweredFile.tests]] of that file`,
+    })
+    .add({
+      situation = `A criterion was added to global's context, or comes from a trait applied to global`,
       behavior = [
-        `It is global: it is in [[Program.criteria]] or [[Program.tests]] once, with global in its id and no entity, and in no node or file`,
+        `It is global: it is in [[Program.criteria]] once, with global in its id and no entity, and in no node or file`,
         `The same trait criterion reaching every entity through global is one global criterion, not one per entity`,
       ],
+    })
+    .add({
+      situation = `A test was added to global's context, or comes from a trait applied to global`,
+      behavior = `It is global: it is in [[Program.tests]] once, with global in its id and no entity, and in no node or file`,
     })
     .add({
       situation = `A criterion comes from [[Target.marker]] of a target, or from a trait it extends`,
@@ -248,8 +290,12 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       behavior = [
         `Every node whose [[phaseOf]] is [[Phase.runtime]], that is not inside a [[Phase.compile]] node or an ace function, and that is not replaced by a folded node, is kept with the same rule and its kept children in order`,
         `Every lowered node's origin is the parse node it came from; a folded node's origin is the expression it replaced`,
-        `[[Program.files]] holds one [[LoweredFile]] per file of [[Workspace.files]], in order, and a file with only compile-time statements lowers to an empty [[SourceFile]]`,
+        `[[Program.files]] holds one [[LoweredFile]] per file of [[Workspace.files]], in order`,
       ],
+    })
+    .add({
+      situation = `A file of [[Workspace.files]] holds only compile-time statements`,
+      behavior = `It lowers to an empty [[SourceFile]]`,
     });
 
   @test(

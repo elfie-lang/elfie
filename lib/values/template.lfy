@@ -7,7 +7,8 @@ use "./list";
 
 d Template is builtin: `Text with references and evaluated expressions` {
   where (`A template is written`) -> `Backticks hold text, references such as [[Template.references]] in double square brackets, and executions in double braces`;
-  where (`A reference names an entity, such as Name or Name.member`) -> `It resolves in the scope the template is written in, and check reports one that resolves to nothing`;
+  where (`A reference names an entity, such as Name or Name.member`) -> `It resolves in the scope the template is written in`;
+  where (`A reference resolves to nothing in the scope the template is written in`) -> `check reports it`;
   where (`An execution holds an expression`) -> `It is evaluated at bind time in the scope the template is written in`;
   where (`Double brackets or braces are wanted as text`) -> `A backslash before them, such as \[[, keeps them as written`;
   where (`A template holds neither a reference nor an execution`) -> `It is a string`;
@@ -28,7 +29,8 @@ d Template is builtin: `Text with references and evaluated expressions` {
   }
   $text: `The rendered text` = () => string;
   with Template$text {
-    where (`A reference is rendered`) -> `It becomes the referenced entity's identifier, or the owner's identifier, a dot, and the member's name`;
+    where (`A reference to an entity that is not a member is rendered`) -> `It becomes the referenced entity's identifier`;
+    where (`A reference to a member is rendered`) -> `It becomes the owner's identifier, a dot, and the member's name`;
     where (`An execution is rendered`) -> `It becomes its value's text, as [[List.join]] would write one item`;
     @test({ input = [`see [[Template.raw]]`], expect = "see Template.raw" });
     @test({ input = [`{{1 + 1}} items`], expect = "2 items" });

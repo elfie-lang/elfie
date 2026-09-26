@@ -69,7 +69,8 @@ fn parse(text: string) is builtin: `The value JSON text carries; undefined when 
 /// pretty: whether to indent it across lines
 fn stringify(value: Json, pretty: boolean = false) is builtin: `JSON text carrying a value` => string {
   where (`[[pretty]] is false`) -> `Returns the value on one line with no spaces outside strings, and no newline at the end`;
-  where (`[[pretty]] is true`) -> `Returns one entry or item per line, indented by two spaces per level, a space after each colon, and a newline at the end; an empty object or list stays on one line`;
+  where (`[[pretty]] is true`) -> `Returns one entry or item per line, indented by two spaces per level, a space after each colon, and a newline at the end`;
+  where (`[[pretty]] is true`) and (`The value holds an empty object or list`) -> `The empty object or list stays on one line`;
   where (`The value holds an object`) -> `Its keys are written in insertion order`;
   where (`The value holds a string`) -> `It is quoted with the escapes JSON requires and no others`;
   @test(

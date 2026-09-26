@@ -59,7 +59,12 @@ d Number is builtin: `A number; integer or not` {
 }
 
 d Boolean is builtin: `true or false` {
-  where (`Values meet &&, ||, or !`) -> `&& yields the left side when it is falsy and the right side otherwise; || yields the left side when it is truthy and the right side otherwise; ! yields true for a falsy value and false otherwise`;
+  where (`Values meet &&`) and (`The left side is falsy`) -> `&& yields the left side`;
+  where (`Values meet &&`) and (`The left side is truthy`) -> `&& yields the right side`;
+  where (`Values meet ||`) and (`The left side is truthy`) -> `|| yields the left side`;
+  where (`Values meet ||`) and (`The left side is falsy`) -> `|| yields the right side`;
+  where (`A value meets !`) and (`The value is falsy`) -> `! yields true`;
+  where (`A value meets !`) and (`The value is truthy`) -> `! yields false`;
   where (`The left side of && or || decides the result`) -> `The right side is not evaluated`;
   where (`A value is judged truthy or falsy`) -> `Only false, null, and undefined are falsy; 0, empty strings, and empty lists are truthy`;
 

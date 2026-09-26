@@ -17,7 +17,8 @@ trait target: `What an entity carries to be built for one target, and what the t
   where (`An entity is declared in a file of a package`) -> `It is not built, however it is marked; a package is built by its own project`;
 
   // Markers
-  where (`An item of a unit's output comes from an entity`) -> `It carries a line comment beginning with [[target.markerComment]], then @lfy, a space, the source path relative to the root, a colon, and the entity's name, as the generation stage's Marker describes; a member is named by its owner's identifier, a dot, and the member's name`;
+  where (`An item of a unit's output comes from an entity`) -> `It carries a line comment beginning with [[target.markerComment]], then @lfy, a space, the source path relative to the root, a colon, and the entity's name, as the generation stage's Marker describes`;
+  where (`An item of a unit's output comes from a member`) -> `The entity's name in its marker is the member's owner's identifier, a dot, and the member's name`;
   where (`An entity of the unit has no marker in any output`) -> `The unit is rejected, so every entity built for the target is named at least once in the outputs`;
   where (`A marker would name a line`) -> `It names the entity instead, because a name survives edits that move lines`;
   where (`An output is written`) -> `Its path is under [[target.outputDirectory]] as elfie.json settles it; nothing outside that directory is written`;

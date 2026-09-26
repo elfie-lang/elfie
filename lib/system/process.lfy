@@ -25,8 +25,11 @@ d Exit is builtin: `What a finished command left` {
 /// environment: variables added to the inherited environment, by name; an entry replaces an inherited one
 fn run(command: string, input?: string, directory?: string, environment?: object) is builtin: `Runs a command through the platform shell and waits for it, capturing its output whole` => Exit {
   where (`Any call`) -> `[[command]] is run by the platform shell (sh -c on Unix, cmd /C on Windows) and the call returns only when it has exited`;
-  where (`[[input]] is set`) -> `It is written to the command's standard input, which is then closed; when unset, the standard input is empty`;
-  where (`[[directory]] is set`) -> `The command runs with it as its working directory, relative to the current directory unless absolute; when unset, the current directory`;
+  where (`[[input]] is set`) -> `It is written to the command's standard input, which is then closed`;
+  where (`[[input]] is unset`) -> `The command's standard input is empty`;
+  where (`[[directory]] is set and relative`) -> `The command runs with it as its working directory, relative to the current directory`;
+  where (`[[directory]] is set and absolute`) -> `The command runs with it as its working directory`;
+  where (`[[directory]] is unset`) -> `The command runs with the current directory as its working directory`;
   where (`[[environment]] is set`) -> `Each of its entries is set in the command's environment on top of the inherited one; nothing is removed from the inherited environment`;
   where (`The command exits`) -> `[[Exit.code]] is its code, and [[Exit.stdout]] and [[Exit.stderr]] hold everything it wrote, decoded as UTF-8`;
   where (`The shell cannot be started, or [[directory]] does not exist`) -> `Returns an [[Exit]] with code -1 and the failure in [[Exit.stderr]]`;

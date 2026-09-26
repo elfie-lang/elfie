@@ -4,7 +4,9 @@ use "../prelude/builtin";
 // Decision: lengths, indices, and slices count characters (Unicode scalar values), never bytes.
 
 d String is builtin: `Text` {
-  where (`A string is written`) -> `Double quotes take escapes such as \n, single quotes take none but \\ and \', and a template with no reference and no execution is a string too`;
+  where (`A string is written in double quotes`) -> `It takes escapes such as \n`;
+  where (`A string is written in single quotes`) -> `It takes no escapes but \\ and \'`;
+  where (`A template with no reference and no execution is written`) -> `It is a string`;
   where (`Two strings are added with +`) -> `They are concatenated`;
   where (`Two strings are compared with <, <=, >, or >=`) -> `They order by code point, character by character`;
 
