@@ -65,7 +65,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `help`,
-      behavior = `Prints every command of [[Command]], verify among them, with one line of description and the global options, --no-verify among them, and returns success`,
+      behavior = `Prints every command of [[Command]], verify among them, with one line of description and the global options, --no-verify and --strict among them, and returns success`,
     })
     .add({ situation = `version`, behavior = `Prints the version of the executable and returns success` });
 
@@ -81,6 +81,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `check`,
       behavior = `[[Loader.load]] of the root, then every [[Query.diagnosticsOf]] printed, or of the files given as arguments only; the code is problems when any is an error and success otherwise`,
+    })
+    .add({
+      situation = `check with no files given, and the program has no errors`,
+      behavior = `The plan is made as compile makes it with no stems requested, and each unit that is not up to date is printed as a warning of stage generation at its source file, naming the target, the unit, and the description of its [[Unit.reason]]; the last line counts the files, the problems, and the stale units`,
+    })
+    .add({
+      situation = `check with --strict`,
+      behavior = `The code is problems when anything at all is printed as a warning or error, a stale unit included, so one command checks that the definitions bind cleanly and that every output is up to date`,
     });
 
   // format

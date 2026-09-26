@@ -2,8 +2,6 @@
 
 This is the main source code repository for [Elfie][1]. It contains the specification details, compiler, and standard library.
 
-Where the language is going, release by release, is in [ROADMAP.md](ROADMAP.md).
-
 ## Why Elfie Exists?
 
 When you try and code by simply prompting your agent, you're relying on the internals of the LLM and whatever guardrails you have in place to transform your non-deterministic input into deterministic output. And with the increase in volume of code changes coming out of LLMs, more and more people are abondoning reviewing their outputs and simply trying to trust their agents harness and hoping you've put the right pieces in place. It tries to treat the LLM as an engineer.

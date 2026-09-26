@@ -134,6 +134,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `It resolves to the first match walking from its scope outward`,
     })
     .add({
+      situation = `A trait is named in the [[IsClause]] or [[ExtendsClause]] of a declaration`,
+      behavior = `The name is found walking outward from the scope that holds the declaration, never from the declaration's own scope, so a member the declaration gains from an applied trait never shadows a trait, as the member rule of the trait rule would; the clause's arguments still resolve in the declaration's own scope`,
+    })
+    .add({
       behavior = [
         `The kind data of an entity is the prelude data for what it is: [[Prelude.Entity]] for every entity, and also [[Traits.Trait]] for a trait, [[Functions.Function]] for a fn or function, [[Kinds.Data]] for a data, [[Kinds.Type]] for a type, [[Kinds.Enum]] for an enum, [[Kinds.Member]] for a member, [[Kinds.Parameter]] for a parameter or a type parameter, [[Kinds.Variable]] for a variable, and [[Kinds.Module]] for a module`,
         `The base data of a value is [[Strings.String]] for a string, [[Numbers.Number]] for a number, [[Numbers.Boolean]] for a boolean, [[Objects.Object]] for an object, [[Lists.List]] for any list, [[Templates.Template]] for a template, and [[Functions.Function]] for a function value`,
@@ -175,6 +179,13 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     .add({
       situation = `A [[TemplateReference]] or [[TemplateExecution]] is bound`,
       behavior = `It resolves in the scope the template is written in; a reference found nowhere resolves to the one [[rule]] entity with that identifier in any file`,
+    })
+    .add({
+      situation = `Two [[rule]] entities in the program have the same identifier`,
+      behavior = [
+        `A [[Problem]] is added at the second, naming the file of the first, because the grammar knows a rule only by its identifier`,
+        `A reference found nowhere else that spells that identifier resolves to neither, and its [[Problem]] says the name is more than one rule rather than that it is not declared`,
+      ],
     })
     .add({
       situation = [
@@ -300,6 +311,21 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       input = [[Source@like(`a.lfy, with [[Origin.program]], parsed from: trait t {} d A {} t.apply(A);`)]],
       expect = Model@like(
         `apply resolving to [[Traits.Trait.apply]] through t's kind data; A carrying one [[Applied]] for t; no problems`,
+      ),
+    },
+    {
+      input = [
+        [
+          Source@like(
+            `b.lfy, with [[Origin.program]], parsed from: trait rule(syntax: string) { $rule: \`the rule\` = string; }`,
+          ),
+          Source@like(
+            `a.lfy, with [[Origin.program]], parsed from: use "./b"; d A is rule(\`x\`): \`a\` {} d B is rule(\`y\`): \`b\` {}`,
+          ),
+        ],
+      ],
+      expect = Model@like(
+        `Both [[Usage]]s of rule in a.lfy resolving to the trait rule of b.lfy, not to the member rule that A and B gain; A and B each carrying one [[Applied]] for rule; no problems`,
       ),
     },
     {

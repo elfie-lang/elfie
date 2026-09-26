@@ -1,4 +1,3 @@
-use "../grammar/traits";
 use "./data";
 
 ace function inMode(modes: string[]) {

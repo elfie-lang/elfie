@@ -1,6 +1,5 @@
 use "../grammar/terminals/comment";
 use "../grammar/terminals/literal";
-use "../grammar/traits";
 use "./traits";
 
 enum Mode: `Regions of the source that change which terminals may match` {
