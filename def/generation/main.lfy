@@ -27,10 +27,10 @@ fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may
       behavior = `One line per entity of [[Unit.entities]] in file order: its identifier, its kind, its definition, its type, and for a fn its parameters with their types and its output, each as [[Binder.criteriaOf]] would spell them`,
     })
     .add({
-      behavior = `After the line of a data, type, trait, or enum, one line per member or enum member it declares, in order: the member's name, definition, and type, since a dependent relies on those as much as on the declaration itself`,
+      behavior = `After the line giving the identifier, kind, definition, and type of a data, type, trait, or enum of [[Unit.entities]], one line per member or enum member it declares, in order: the member's name, definition, and type, since a dependent relies on those as much as on the declaration itself`,
     })
     .add({
-      behavior = `A type line spells an entity of the elfie package by its identifier alone, such as List or [[Path]], never by a path or a module name`,
+      behavior = `Wherever the text spells a type, it spells an entity of the elfie package by its identifier alone, such as List or [[Path]], never by a path or a module name`,
     })
     .add({
       behavior = `A change that leaves every line the same, such as a new criterion or a moved line, leaves the text the same, so dependents are not regenerated for it`,
@@ -51,14 +51,14 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       behavior = `An entity is built for a [[Target]] when it is among [[Binder.entitiesOf]] the [[Target.marker]], when the anonymous entity of its file is, or when global is; the last two select every entity declared in the file scope`,
     })
     .add({
-      behavior = `Every file without a [[File.package]] that has at least one built entity for a target gives one [[Unit]] holding those entities in file order`,
+      behavior = `Every file without a [[File.package]] that has at least one entity with a lowered node built for a target, that is among [[Binder.entitiesOf]] the [[Target.marker]] itself or through the anonymous entity of its file or global, gives one [[Unit]] holding those entities in file order`,
     })
     .add({
       situation = `A file has a [[File.package]]`,
       behavior = `It gives no unit; a package is compiled by its own project`,
     })
     .add({
-      situation = `The [[File.package]] is the elfie package, the standard library`,
+      situation = `A file's [[File.package]] is the elfie package, the standard library`,
       behavior = `It gives no unit even when [[Target.marker]] is applied to global, and none of its entities is ever in [[Unit.entities]]; a unit's [[Interface]] and [[Request.interfaces]] may still name its entities as types`,
     })
     .add({
@@ -167,7 +167,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
       behavior = `[[Request.guidance]] is [[Binder.criteriaOf]] the [[Target.marker]], then of every trait it extends, transitively and nearest first, so a marker extending [[targetLanguage]] gives its own criteria, then those of [[targetLanguage]], then those of [[target]]; a trait reached twice contributes once, at its first place`,
     })
     .add({
-      behavior = `The guidance also holds the criteria of every trait applied to the marker with arguments, such as [[cratePerPrefix]] and [[modulePerFile]], in extends order after the marker's own, with each of their template values evaluated from those arguments; every template value of the guidance is evaluated for the marker's application`,
+      behavior = `[[Request.guidance]] holds the criteria of every trait applied to the marker with arguments, such as [[cratePerPrefix]] and [[modulePerFile]], in extends order after the marker's own, with each of their template values evaluated from those arguments; every template value of the guidance is evaluated for the marker's application`,
     })
     .add({
       behavior = `[[Request.nativeDependencies]] is [[Workspace.nativeDependencies]] followed by [[Package.nativeDependencies]] of [[Target.package]]`,
@@ -226,18 +226,21 @@ fn outcomeOf(report: string, verdicts: Verdict[]): `How one run of the compiler 
       behavior = `The kind is blocked and the message is the rest of that line and every line after it`,
     })
     .add({
-      situation = `That line reads ELFIE: CLARIFY:`,
+      situation = `The last line of [[report]] that begins with ELFIE: reads ELFIE: CLARIFY:`,
       behavior = `The kind is clarification and the message is the rest of that line and every line after it`,
     })
     .add({
-      situation = `[[verdicts]] is empty and no such line exists`,
+      situation = `[[verdicts]] is empty and no line of [[report]] begins with ELFIE:`,
       behavior = `The kind is failed and the message says the compiler reported nothing`,
     })
     .add({
-      situation = `Some verdict is rejected`,
+      situation = `Some verdict of [[verdicts]] is rejected, and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
       behavior = `The kind is rejected and the message is the first problem of the first rejected verdict`,
     })
-    .add({ situation = `Otherwise`, behavior = `The kind is accepted and the message is empty` })
+    .add({
+      situation = `No verdict of [[verdicts]] is rejected, [[verdicts]] is not empty or some line of [[report]] begins with ELFIE:, and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      behavior = `The kind is accepted and the message is empty`,
+    })
     .add({ behavior = `[[Outcome.verdicts]] is [[verdicts]]` });
 
   @test(
@@ -270,7 +273,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Its line is derived as the first line of the declaring node of the entity with that name in that file, and the marker is left as written`,
     })
     .add({
-      situation = `A marker names an entity that the file does not declare`,
+      situation = `A marker names a file of the program and an entity that file does not declare`,
       behavior = `Rejected with a problem naming the output line and the name`,
     })
     .add({
@@ -300,7 +303,8 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      behavior = `Otherwise accepted, with one [[SourceMap]] per output holding the SHA-256 of [[LoweredFile.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
+      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
+      behavior = `Accepted, with one [[SourceMap]] per output holding the SHA-256 of [[LoweredFile.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
       behavior = `[[Marker.end]] of each marker is derived as the line before [[Marker.outputLine]] of the next marker in the same output, or the last line of the output for the last marker, so the regions of an output partition it from its first marker on`,
@@ -349,7 +353,7 @@ fn regionsOf(workspace: Workspace, sourceMaps: SourceMap[], name: string, target
       behavior = `Returns every [[Marker]] of every [[SourceMap]] in [[sourceMaps]] whose [[Marker.entity]] is [[name]], source map by source map in [[sourceMaps]] order and within one in [[SourceMap.markers]] order, which is output order`,
     })
     .add({
-      behavior = `A marker whose [[Marker.entity]] is [[name]], a dot, and a member's name is included too, in the same order, since a member's region is part of its owner's code`,
+      behavior = `A marker whose [[Marker.entity]] is [[name]], a dot, and a member's name is included too, source map by source map in [[sourceMaps]] order and within one in [[SourceMap.markers]] order, since a member's region is part of its owner's code`,
     })
     .add({
       behavior = `A marker that names a line rather than an entity is included when [[Marker.file]] declares the entity named [[name]] in [[workspace]] and [[Marker.line]] falls inside its declaring node`,
@@ -358,7 +362,10 @@ fn regionsOf(workspace: Workspace, sourceMaps: SourceMap[], name: string, target
       situation = `[[target]] is set`,
       behavior = `Only markers of source maps whose [[SourceMap.target]] is [[target]]`,
     })
-    .add({ situation = `Nothing matches`, behavior = `Returns an empty list` });
+    .add({
+      situation = `No marker of [[sourceMaps]], within those whose [[SourceMap.target]] is [[target]] when it is set, names [[name]], a member of it, or a line inside the declaring node of the entity named [[name]]`,
+      behavior = `Returns an empty list`,
+    });
 
   @test(
     {
@@ -512,12 +519,12 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming the global review and the targets`,
         `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, as the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines in a fenced block`,
-        `The same verifier protocol as [[review]]`,
+        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server may be called for regions the request leaves out; and that the report ends with one line reading ELFIE: REVIEWED`,
       ],
     })
     .add({
       situation = `No marker in any output names a global criterion's or test's id`,
-      behavior = `It is listed with a line saying no unit answered for it, so the verifier finds it unverifiable, never violated`,
+      behavior = `It is listed in [[ReviewRequest.instructions]] with a line saying no unit answered for it, so the verifier finds it unverifiable, never violated`,
     })
     .add({
       behavior = `The caller runs it once after every batch of a compile, and whenever [[Program.criteria]] or [[Program.tests]] changed; a violated review gives the stems of the units whose markers answered for it, for the violated argument of [[plan]]`,
@@ -546,18 +553,18 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
       behavior = `The end line is the last line of [[report]] reading ELFIE: REVIEWED, with any whitespace around it; lines after it are ignored`,
     })
     .add({
-      behavior = `Each line before the end line that [[Json.parse]] reads as an object with exactly the keys id, status, evidence, and note, whose id names a criterion or test of [[program]] and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order, with its file, line, and entity derived from that criterion's or test's origin`,
+      behavior = `Each line of [[report]] before its last line reading ELFIE: REVIEWED, with any whitespace around it, or each line when none reads so, that [[Json.parse]] reads as an object with exactly the keys id, status, evidence, and note, whose id names a criterion or test of [[program]] and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order, with its file, line, and entity derived from that criterion's or test's origin`,
     })
     .add({
-      situation = `Two such lines have the same id`,
-      behavior = `Only the last is kept, at its own place`,
+      situation = `Two lines of [[report]] that are each read as a [[Review]] have the same id`,
+      behavior = `Only the last is kept in [[ReviewReport.reviews]], at its own place`,
     })
     .add({
-      behavior = `Every other line before the end line that is not blank and does not begin with # is in [[ReviewReport.problems]] as written, in report order`,
+      behavior = `Every line of [[report]] before its last line reading ELFIE: REVIEWED, with any whitespace around it, or every line when none reads so, that is not read as a [[Review]], is not blank, and does not begin with # is in [[ReviewReport.problems]] as written, in report order`,
     })
     .add({
-      situation = `There is no end line`,
-      behavior = `Every line is read as above and [[ReviewReport.problems]] ends with a line reading: the report did not end`,
+      situation = `No line of [[report]] reads ELFIE: REVIEWED, with any whitespace around it`,
+      behavior = `Reviews and problems are read from every line of [[report]], and [[ReviewReport.problems]] ends with a line reading: the report did not end`,
     });
 
   @test(
