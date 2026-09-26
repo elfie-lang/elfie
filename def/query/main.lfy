@@ -459,6 +459,10 @@ fn diagnosticsOf(workspace: Workspace, file?: string): `Every problem of the pro
       behavior = `An error of stage parser at the node, whose message lists [[ErrorNode.expected]] and the text found`,
     })
     .add({
+      situation = `An [[ErrorNode]] with [[ErrorNode.keyword]] is in a tree`,
+      behavior = `The error is at that token instead, and its message is the token's text followed by: is a keyword and cannot be a name`,
+    })
+    .add({
       situation = `A [[Problem]] is in [[Workspace.problems]]`,
       behavior = `An error at [[Problem.node]] with [[Problem.message]], of stage loader when [[Problem.node]] is a [[Use]], since resolving uses and their cycles is the only problem loading adds, and binder otherwise`,
     })

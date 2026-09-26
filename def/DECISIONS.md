@@ -420,3 +420,19 @@ LSP/MCP protocols are deliberately not part of this round.
   verification passes, so a batch the review rejects stays planned; and a batch compiled before a
   later batch changes the binder or loader may need re-requesting, since its tests ran against
   the earlier behavior (generation's stub-library fixture, twice now).
+
+# Language gaps closed for v0.1
+
+- **A trait is applied to a file with `t.apply(@)` at the file's top level.** A bare `@` resolves
+  to the scope's current entity, which in a file scope is the file's anonymous entity; generation
+  already builds every entity of a file whose anonymous entity carries the marker. Alternatives: a
+  file header statement (rejected: a new statement kind every stage must learn) or `global` only
+  (rejected: no per-file choice with several targets). Closes issue 2 above.
+- **A keyword where a name belongs is reported as such.** `ErrorNode.keyword` is set when an
+  identifier of the same text would have let the open rule continue, and the diagnostic reads
+  `d is a keyword and cannot be a name`. The keyword stays reserved everywhere; making `d`
+  contextual or renaming it was rejected. Closes the `x = c ?? d;` note above.
+- **Parameters stay without descriptions.** No grammar change, and `///` lines stay a
+  convention the binder does not read. Issue 1 above is left as is.
+- **`Entity.sideEffects` is gone**; `sideEffects` is a field of each criterion, set by its `add`
+  call (`lib/criteria/criterion.lfy`). Closes issue 3 above.

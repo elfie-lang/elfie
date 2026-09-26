@@ -142,6 +142,13 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     .add({
       situation = `A rule without [[recoverable]] cannot be satisfied`,
       behavior = `It produces nothing and leaves its tokens to the rule that referenced it`,
+    })
+    .add({
+      situation = [
+        `An [[ErrorNode]] is produced`,
+        `A token it covers is of a [[GrammarTraits.keyword]] terminal, and an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
+      ],
+      behavior = `[[ErrorNode.keyword]] is the first such token; otherwise it is undefined`,
     });
 
   @test(
@@ -224,6 +231,22 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       expect = Tree@like(
         `A [[SourceFile]] root holding a [[VariableDeclaration]] whose expression is an [[ErrorNode]] covering = 1 with [[ErrorNode.expected]] [[Identifier]], followed by a complete [[VariableDeclaration]] of y; one error`,
       ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: const d = 1;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding a [[VariableDeclaration]] whose [[ErrorNode]] covers d = 1 with [[ErrorNode.expected]] [[Identifier]] and [[ErrorNode.keyword]] the token d; one error`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: x = c ?? d;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding an [[ExpressionStatement]] whose [[ErrorNode]] covers ?? d with [[ErrorNode.keyword]] the token d; one error`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: const = 1;`)],
+      expect = Tree@like(`A [[SourceFile]] root whose one [[ErrorNode]] has no [[ErrorNode.keyword]]`),
     },
   );
 

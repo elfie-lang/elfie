@@ -101,6 +101,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
     })
     .add({
+      situation = `A [[Current]] with no [[MemberName]] is bound`,
+      behavior = `It resolves to the scope's current entity; in a file scope that is the anonymous entity for the file, so a trait applied to it at the top level of a file is applied to the file`,
+    })
+    .add({
       situation = `An applied trait has an [[ExtendsClause]]`,
       behavior = `Each extended trait is applied too, up the whole chain, with its arguments evaluated from the extending trait's parameters`,
     })
@@ -296,6 +300,12 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       input = [[Source@like(`a.lfy, with [[Origin.program]], parsed from: trait t {} d A {} t.apply(A);`)]],
       expect = Model@like(
         `apply resolving to [[Traits.Trait.apply]] through t's kind data; A carrying one [[Applied]] for t; no problems`,
+      ),
+    },
+    {
+      input = [[Source@like(`a.lfy, with [[Origin.program]], parsed from: trait t {} d A {} t.apply(@);`)]],
+      expect = Model@like(
+        `The anonymous entity for a.lfy carrying one [[Applied]] for t; A carrying none; no problems`,
       ),
     },
     {

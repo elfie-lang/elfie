@@ -19,6 +19,7 @@ d Node: `A rule satisfied by a run of consecutive tokens` {
 d ErrorNode extends Node: `Tokens the parser could not fit into the open rule` {
   $rule: `No rule being satisfied due to error` = undefined;
   $expected: `Identifiers of what could have continued the open rule at [[Node.start]]` = string[];
+  $keyword: `The keyword token the open rule would have taken as a name, when that is why it stopped` = Token | undefined;
 }
 
 d Tree: `The result of parsing one token list` {
