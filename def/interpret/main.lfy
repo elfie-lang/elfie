@@ -23,45 +23,18 @@ use "elfie/prelude/trait" as Traits;
 // rust-analyzer does for macro expansions.
 
 fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is kept for runtime` => Phase {
-  // Always compile time
   @acceptanceCriteria
     .add({
-      situation = `[[node]] is an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], or an [[ExtendsClause]]`,
+      situation = `[[node]] is, or is inside, one of: an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], an [[ExtendsClause]], the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, or of test on an entity's context, or a statement directly in a [[SourceFile]] that is not a declaration`,
       behavior = `Returns [[Phase.compile]]`,
-    })
-    .add({
-      situation = `[[node]] is a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, or of test on an entity's context`,
-      behavior = `Returns [[Phase.compile]]`,
-    })
-    .add({
-      situation = `[[node]] is the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], or anything inside one`,
-      behavior = `Returns [[Phase.compile]]; the declaration itself is [[Phase.runtime]]`,
-    })
-    .add({
-      situation = `[[node]] is a statement directly in a [[SourceFile]] and is not a declaration`,
-      behavior = `Returns [[Phase.compile]], as though it were written after ace`,
     })
     .add({
       situation = `[[node]] is a [[TemplateReference]] or [[TemplateExecution]] in a definition, a criterion, or a test`,
       behavior = `Returns [[Phase.compile]]`,
-    });
-
-  // Always runtime
-  @acceptanceCriteria
-    .add({
-      situation = `[[node]] is a [[FunctionDeclaration]], [[TypeDeclaration]], [[EnumDeclaration]], [[AliasDeclaration]], [[ExternalDeclaration]], or [[Use]] not under ace, or anything in the [[Block]] of such a [[FunctionDeclaration]]`,
-      behavior = `Returns [[Phase.runtime]] unless a criterion above says otherwise`,
     })
     .add({
-      situation = `[[node]] is a [[VariableDeclaration]] with const directly in a [[SourceFile]], not under ace`,
-      behavior = `Returns [[Phase.runtime]]; its value is still evaluated at compile time, as [[lower]] says`,
-    });
-
-  // Problems
-  @acceptanceCriteria
-    .add({
-      situation = `[[node]] is a [[VariableDeclaration]] with let directly in a [[SourceFile]]`,
-      behavior = `A [[Problem]] is added saying a file-level let is not allowed`,
+      situation = `Otherwise`,
+      behavior = `Returns [[Phase.runtime]]; a declaration whose body is compile time is itself runtime, and a file-level const is runtime though [[lower]] folds its value`,
     });
 
   @test(
@@ -79,16 +52,6 @@ fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is
       expect = Phase.compile,
     },
     { input = [Model@like(`bound from: const c = 1;`), Node@like(`the declaration`)], expect = Phase.runtime },
-    {
-      input = [
-        Workspace@like(
-          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
-        ),
-      ],
-      expect = Program@like(
-        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
-      ),
-    },
   );
 }
 
@@ -110,7 +73,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       ],
     });
 
-  // Applying traits (moved from the binder)
+  // Applying traits
   @acceptanceCriteria
     .add({
       situation = `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
@@ -180,16 +143,6 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       input = [Model@like(`declared from: fn f() => number; ace const c = f();`)],
       expect = Model@like(`One [[Problem]] at the call of f, and c undefined`),
     },
-    {
-      input = [
-        Workspace@like(
-          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
-        ),
-      ],
-      expect = Program@like(
-        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
-      ),
-    },
   );
 }
 
@@ -228,16 +181,6 @@ fn evaluate(model: Model, node: Node): `The value of an expression, computed at 
       input = [Model@like(`bound from: const s = string@like(\`a word\`);`), Node@like(`the right side`)],
       expect = Prompted@like(`of string, prompt a word`),
     },
-    {
-      input = [
-        Workspace@like(
-          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
-        ),
-      ],
-      expect = Program@like(
-        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
-      ),
-    },
   );
 }
 
@@ -255,11 +198,15 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
   @acceptanceCriteria
     .add({
       behavior = [
-        `A kept declaration's lowered node carries its entity, so its members, criteria, and tests are read from [[Workspace.model]] and never from the tree`,
+        `A kept declaration's lowered node carries its entity`,
         `The value of a file-level const is [[evaluate]] of its expression, lowered as one folded node`,
         `Inside runtime code, an expression that [[evaluate]] gives a value for without a runtime parameter or variable is one folded node holding that value`,
         `A call of like is one folded node holding its [[Prompted]]`,
       ],
+    })
+    .add({
+      situation = `A [[VariableDeclaration]] with let is directly in a [[SourceFile]]`,
+      behavior = `A [[Problem]] is added at it saying a file-level let is not allowed, and it is kept`,
     })
     .add({
       situation = `Runtime code calls an ace function with an argument [[evaluate]] cannot give a value for`,

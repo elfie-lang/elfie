@@ -68,7 +68,9 @@ d LoweredNode: `One node of the program as generation sees it: runtime code only
   $tests: `The local tests of its entity, in order; empty when it declares none` = LoweredTest[];
   @acceptanceCriteria
     .add({ behavior = `Every lowered node has an origin, so every place generation reads maps back to the source` })
-    .add({ behavior = `No lowered node has a [[Phase.compile]] rule, except a folded node whose value is a [[Prompted]]` });
+    .add({
+      behavior = `A lowered node is a kept runtime node, a folded value, or a member of its parent's entity; nothing whose [[Phase]] is compile is kept as written`,
+    });
 }
 
 d LoweredFile: `One file as generation sees it` {

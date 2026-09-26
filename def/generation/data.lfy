@@ -21,7 +21,7 @@ d Marker: `One place where generated code says where it came from` {
   $entity: `The name the marker spells, when it names an entity: the identifier, or the owner's identifier, a dot, and a member's name; undefined when it names a line` = string | undefined;
   $line: `The source line: as spelled, or derived from [[Marker.entity]] as the first line of that entity's declaration` = number;
   $column: `The source column, counting from 0; undefined when the marker names a whole line or an entity` = number | undefined;
-  $requirement: `The id of the [[LoweredCriterion]] or [[LoweredTest]] the region answers for, spelled after the entity and a #; undefined when it answers for none` = string | undefined;
+  $requirement: `The id of the [[LoweredCriterion]] or [[LoweredTest]] the region answers for, spelled after the entity and a #; a global id begins with global; undefined when it answers for none` = string | undefined;
   $end: `The last output line of the region the marker begins: the line before the next marker in the same output, or the last line of the output` = number;
   @acceptanceCriteria
     .add({
@@ -31,7 +31,7 @@ d Marker: `One place where generated code says where it came from` {
       behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, and then either a line (optionally a colon and a column) or the name of an entity of that file`,
     })
     .add({
-      behavior = `A marker for a test, or for code written to satisfy one criterion, names the entity then a # and the id of that criterion or test, or global then a # and the id for a global one; this is the only place a criterion or test appears in an output, and never as its text`,
+      behavior = `A marker for a test, or for code written to satisfy one criterion, names the entity the code belongs to, then a # and the id of that criterion or test, local or global; this is the only place a criterion or test appears in an output, and never as its text`,
     })
     .add({
       behavior = `Text is read as a marker only when what follows @lfy and the space is a path ending in .lfy, a colon, and a number or an identifier path; anything else after @lfy is prose`,
