@@ -192,6 +192,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `Its entity's [[Entity.type]] is what the [[TypeExpression]] after its [[ExtendsKeyword]] resolves to, or undefined without one; its kind data is [[Kinds.Parameter]], whose [[Kinds.Parameter.defaultValue]] is what the [[TypeExpression]] after its [[PlainSetter]] resolves to and whose [[Kinds.Parameter.optional]] is whether it has one; [[Kinds.Parameter.spread]] is false`,
     })
     .add({
+      situation = `A [[TypeParameter]] is bound`,
+      behavior = `Its entity's [[Entity.definition]] is undefined and its [[Entity.traits]] and [[Entity.acceptanceCriteria]] are empty, because a [[TypeParameter]] has no [[DefinitionClause]], no [[IsClause]], and no body`,
+    })
+    .add({
       behavior = `[[Entity.typeParameters]] is the entity of each [[TypeParameter]] in the declaration's [[TypeParameters]], in order; empty for a declaration without them`,
     })
     .add({

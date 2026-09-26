@@ -24,15 +24,22 @@ d Documentation is rule(
   `( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )`,
 ): `Documentation for the declaration that follows it` {
   @acceptanceCriteria
-    .add({ behavior = `Attaches to the declaration that follows it` })
     .add({
-      situation = `No declaration follows`,
+      situation = `A declaration follows the documentation with only [[Space]], [[NewLine]], [[Comment]], or other [[Documentation]] between them`,
+      behavior = `Attaches to that declaration, even when it is one of several documentation blocks in a row`,
+    })
+    .add({
+      situation = [
+        `No declaration follows the documentation`,
+        `It is not one of two or more documentation blocks in a row that were all opened with [[BlockDocumentationOpen]]`,
+      ],
       behavior = `Attaches to nothing`,
     })
     .add({
       situation = [
-        `No decleration exists between two or more documentation blocks`,
+        `No declaration exists between two or more documentation blocks`,
         `Documentation blocks were all opened with [[BlockDocumentationOpen]]`,
+        `No declaration follows the last of them`,
       ],
       behavior = `Attaches to the "global" object`,
     })

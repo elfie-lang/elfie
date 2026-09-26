@@ -246,7 +246,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `Every batch of a compile has been handled, a verifier is named, --no-verify is not given, and either a batch was accepted or the SHA-256 of the ids of [[Program.criteria]] and [[Program.tests]] of [[Plan.program]] differs from the one the last global review recorded`,
-      behavior = `A globalVerifying progress line is printed, then the verifier is [[Process.stream]] once with [[ReviewRequest.instructions]] of [[Generation.globalReview]] of the plan and every source map, recorded or held, as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH set to global, and ELFIE_UNITS as its environment, each line it writes shown as it arrives and [[Files.append]] to elfie-requests/compile.log under the root; its report is read by [[Generation.reviewOf]]`,
+      behavior = `A globalVerifying progress line is printed, then the verifier is [[Process.stream]] once with [[ReviewRequest.instructions]] of [[Generation.globalReview]] of the plan and every source map, recorded or held, as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH set to global, and ELFIE_UNITS set to the stems, space separated, of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is a global id as its environment, each line it writes shown as it arrives and [[Files.append]] to elfie-requests/compile.log under the root; its report is read by [[Generation.reviewOf]]`,
     })
     .add({
       situation = `[[Generation.reviewOf]] reads the verifier's report on the global review`,
@@ -283,7 +283,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `verify with no stem, or with --global, and elfie.json names a verifier`,
-      behavior = `After any batches are reviewed, [[Generation.globalReview]] of the plan and the source maps is built and the verifier is [[Process.stream]] once with its [[ReviewRequest.instructions]] as input and ELFIE_BATCH set to global, its report read by [[Generation.reviewOf]], and elfie-requests/global.reviews.json under the root [[Files.write]] with the SHA-256 of the global ids reviewed and the [[ReviewReport]]; with --global alone no batch is reviewed`,
+      behavior = `After any batches are reviewed, [[Generation.globalReview]] of the plan and the source maps is built and the verifier is [[Process.stream]] once with its [[ReviewRequest.instructions]] as input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH set to global, and ELFIE_UNITS set to the stems, space separated, of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is a global id as its environment, its report read by [[Generation.reviewOf]], and elfie-requests/global.reviews.json under the root [[Files.write]] with the SHA-256 of the global ids reviewed and the [[ReviewReport]]; with --global alone no batch is reviewed`,
     })
     .add({
       situation = `verify`,
