@@ -28,9 +28,9 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     .add({
       situation = [
         `[[rule]] is an [[GrammarTraits.alternationList]]`,
-        `Tokens are left over or trivia precedes the item`,
+        `Tokens are left over after [[rule]] is satisfied, or trivia precedes the item that satisfied [[rule]]`,
       ],
-      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia, the item, and the [[ErrorNode]]`,
+      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia, the item that satisfied [[rule]], and the [[ErrorNode]] of the tokens left over, if any`,
     });
 
   // The grammar document is the only grammar the parser knows
@@ -51,7 +51,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       behavior = `It is satisfied by one token whose [[Token.rule]] is that terminal`,
     })
     .add({
-      situation = `Any other rule is referenced`,
+      situation = `A rule that is not a [[GrammarTraits.terminal]] is referenced`,
       behavior = `It is satisfied by a node whose children are what its elements produced, in order`,
     })
     .add({
@@ -114,7 +114,8 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
   // Expressions
   @acceptanceCriteria
     .add({
-      behavior = `Operands and tail expressions of an operation are parsed with that operation's power as the minimum`,
+      situation = `An operand or tail expression of an operation does not follow [[GroupOpen]] or [[ListOpen]]`,
+      behavior = `It is parsed with that operation's power as the minimum`,
     })
     .add({
       situation = `An operation's power is greater than the minimum in force, or equal to it with right associativity`,
@@ -144,11 +145,8 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       behavior = `It produces nothing and leaves its tokens to the rule that referenced it`,
     })
     .add({
-      situation = [
-        `An [[ErrorNode]] is produced`,
-        `A token it covers is of a [[GrammarTraits.keyword]] terminal, and an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
-      ],
-      behavior = `[[ErrorNode.keyword]] is the first such token; otherwise it is undefined`,
+      situation = `An [[ErrorNode]] is produced`,
+      behavior = `[[ErrorNode.keyword]] is the first token it covers that is of a [[GrammarTraits.keyword]] terminal and where an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it; it is undefined when no token it covers is such`,
     });
 
   @test(

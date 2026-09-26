@@ -68,7 +68,7 @@ trait rust extends targetLanguage, cratePerPrefix(
       behavior = `An extends constraint on a type parameter becomes a trait bound when the target has a trait matching the constraint's data or trait; otherwise the bound is dropped and a comment on the item names the constraint`,
     })
     .add({
-      behavior = `List<T> and T[] are Vec<T>; a type argument that is a primitive maps as the standard library section says`,
+      behavior = `List<T> and T[] are Vec<T>; a type argument that is a primitive maps to the same Rust type as that primitive does outside a type argument`,
     })
     .add({
       behavior = `A parameter whose type is a function type (A) => B is impl Fn(A) -> B; a member of a data whose type is a function type is Box<dyn Fn(A) -> B>`,
