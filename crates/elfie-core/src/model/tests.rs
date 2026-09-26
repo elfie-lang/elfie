@@ -440,6 +440,61 @@ fn test_apply_resolves_through_the_kind_data() {
     );
 }
 
+/// A trait named in an IsClause resolves to the trait itself, not to the member of the
+/// same name the trait gives the entities it is applied to.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_rule_named_in_is_clause_resolves_to_the_trait() {
+    let b = source(
+        "b.lfy",
+        "trait rule(syntax: string) { $rule: `the rule` = string; }",
+        &[],
+    );
+    let a = source(
+        "a.lfy",
+        "use \"./b\"; d A is rule(`x`): `a` {} d B is rule(`y`): `b` {}",
+        &[Some("b.lfy")],
+    );
+    let model = bind(vec![b, a]);
+    assert_clean(&model);
+    let program = model.file("a.lfy").unwrap();
+    let rule_file = model.file("b.lfy").unwrap();
+    let rule_trait = file_symbol(&model, rule_file, "rule");
+    let rule_entity = model.symbols[rule_trait].entity;
+    // Both usages of rule resolve to the trait, not the member A and B each gain.
+    let use_a = usage(&model, node(&model, program, E::TraitUse, "rule(`x`)"));
+    let use_b = usage(&model, node(&model, program, E::TraitUse, "rule(`y`)"));
+    assert_eq!(use_a.symbol, Some(rule_trait));
+    assert_eq!(use_b.symbol, Some(rule_trait));
+    let (a_entity, b_entity) = (
+        model.symbols[file_symbol(&model, program, "A")].entity,
+        model.symbols[file_symbol(&model, program, "B")].entity,
+    );
+    assert_ne!(member(&model, a_entity, "rule"), rule_trait);
+    // A and B each carry one Applied for rule.
+    assert_eq!(model.entities[a_entity].traits.len(), 1);
+    assert_eq!(model.entities[a_entity].traits[0].entity, rule_entity);
+    assert_eq!(model.entities[b_entity].traits.len(), 1);
+    assert_eq!(model.entities[b_entity].traits[0].entity, rule_entity);
+}
+
+/// A bare `@`, a Current with no MemberName, resolves to the scope's current entity; at
+/// the top level of a file that is the anonymous entity for the file, so applying a trait
+/// to it applies the trait to the file.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn test_current_with_no_member_name_applies_to_the_file() {
+    let model = bind_with_prelude("trait t {} d A {} t.apply(@);");
+    assert_clean(&model);
+    let program = model.file("a.lfy").unwrap();
+    let t = model.symbols[file_symbol(&model, program, "t")].entity;
+    let a = model.symbols[file_symbol(&model, program, "A")].entity;
+    let file_entity = model.file_entities[program];
+    assert_eq!(model.entities[file_entity].traits.len(), 1);
+    assert_eq!(model.entities[file_entity].traits[0].entity, t);
+    assert!(model.entities[a].traits.is_empty());
+}
+
 /// A type parameter is a symbol of the scope its declaration owns, with what it extends
 /// as its type and the type after its setter as its default.
 // @lfy def/model/main.lfy:bind
@@ -1185,6 +1240,39 @@ fn template_reference_resolves_in_scope_or_to_the_rule() {
     assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
     assert_eq!(model.problems[0].node, names_in_a[2]);
     assert_eq!(usages_of(&model, foo).len(), 1);
+}
+
+/// Two rule entities sharing an identifier: a problem at the second naming the first's
+/// file, and a reference to that identifier resolves to neither, with a problem of its
+/// own saying it is more than one rule rather than that it is not declared.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn two_rule_entities_with_the_same_identifier_is_a_problem() {
+    let a = source(
+        "a.lfy",
+        "trait rule(syntax: string) {} d Foo is rule(`x`) {}",
+        &[],
+    );
+    let b = source("b.lfy", "use \"./a\"; d Foo is rule(`y`) {}", &[Some("a.lfy")]);
+    // A third file, so the template reference is not found by normal scope lookup and
+    // falls to the rule fallback, which is ambiguous.
+    let c = source("c.lfy", "const t = `[[Foo]]`;", &[]);
+    let model = bind(vec![a, b, c]);
+    let bfile = model.file("b.lfy").unwrap();
+    let cfile = model.file("c.lfy").unwrap();
+    let second_foo = model.symbols[file_symbol(&model, bfile, "Foo")].entity;
+    let second_node = model.entities[second_foo].node.expect("Foo has a node");
+    let reference = node(&model, cfile, E::Name, "Foo");
+    assert_eq!(
+        problems(&model)
+            .into_iter()
+            .map(|p| p.contains("a.lfy") || p.contains("more than one rule"))
+            .collect::<Vec<_>>(),
+        [true, true]
+    );
+    assert_eq!(model.problems[0].node, second_node);
+    assert_eq!(model.problems[1].node, reference);
+    assert_eq!(usage(&model, reference).symbol, None);
 }
 
 /// A context member name must be the value of a ContextProperty.

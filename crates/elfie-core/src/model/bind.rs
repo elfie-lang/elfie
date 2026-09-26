@@ -1442,7 +1442,13 @@ impl Binder {
         copy
     }
 
-    /// The trait symbol a TraitUse names, statically.
+    /// The trait symbol a TraitUse names, statically. Named in the IsClause or
+    /// ExtendsClause of a declaration, it is found walking outward from the scope that
+    /// holds the declaration, never from the declaration's own scope, so a member the
+    /// declaration gains from an applied trait never shadows the trait itself, as the
+    /// member rule of the trait rule would; arguments still resolve in the declaration's
+    /// own scope, wherever they are evaluated.
+    // @lfy def/model/main.lfy:bind
     pub fn resolve_trait_use(&self, trait_use: NodeRef) -> Option<SymbolId> {
         let trees = &self.trees;
         let identifiers: Vec<usize> = trees
@@ -1461,7 +1467,30 @@ impl Binder {
                 _ => None,
             })
             .collect();
-        let scope = self.model.enclosing_scope(trait_use);
+        let own_scope = self.model.enclosing_scope(trait_use);
+        // The declaring statement the clause belongs to, when the clause is an IsClause
+        // or ExtendsClause; only when that statement itself owns a scope (a data, trait,
+        // type, enum, or function, never an external or a variable) is there a scope of
+        // its own to skip.
+        let clause = trees
+            .ancestor(trait_use, E::IsClause)
+            .or_else(|| trees.ancestor(trait_use, E::ExtendsClause));
+        let declaration = clause.and_then(|c| {
+            let mut current = trees.parent(c);
+            while let Some(node) = current {
+                if trees.is_statement(node) {
+                    return Some(node);
+                }
+                current = trees.parent(node);
+            }
+            None
+        });
+        let scope = match declaration.and_then(|d| self.model.scope_of(d)) {
+            Some(declared_scope) if declared_scope == own_scope => {
+                self.model.scopes[own_scope].parent.unwrap_or(own_scope)
+            }
+            _ => own_scope,
+        };
         match identifiers.as_slice() {
             [single] => self.lookup(scope, &trees.token(trait_use.file, *single).value),
             [module, name] => {
@@ -1470,6 +1499,40 @@ impl Binder {
                 self.member_symbol(entity, &trees.token(trait_use.file, *name).value)
             }
             _ => None,
+        }
+    }
+
+    /// Two entities carrying the trait `rule` with the same identifier: the grammar knows
+    /// a rule only by its identifier, so a problem is added at the second, naming the
+    /// file of the first. Run after every file has been applied, so every entity's
+    /// traits, gained through `is`, `extends`, or `apply`, are complete.
+    // @lfy def/model/main.lfy:bind
+    pub fn check_rule_identifiers(&mut self) {
+        let Some(rule_trait) = self.model.trait_named("rule") else {
+            return;
+        };
+        let mut seen: HashMap<String, EntityId> = HashMap::new();
+        for id in 0..self.model.entities.len() {
+            if !self.model.entities[id].has_trait(rule_trait) {
+                continue;
+            }
+            let Some(name) = self.model.entities[id].identifier.clone() else {
+                continue;
+            };
+            match seen.get(&name) {
+                Some(&first) => {
+                    if let Some(node) = self.model.entities[id].node {
+                        let path = self.model.entities[first]
+                            .node
+                            .map(|n| self.trees.sources[n.file].path.clone())
+                            .unwrap_or_default();
+                        self.problem(node, format!("{name} is already a rule, in {path}"));
+                    }
+                }
+                None => {
+                    seen.insert(name, id);
+                }
+            }
         }
     }
 
@@ -1626,7 +1689,10 @@ impl Binder {
     }
 
     /// A Name resolves to the first match walking from its scope outward; inside a
-    /// template, a name found nowhere resolves to the one rule entity with that name.
+    /// template, a name found nowhere resolves to the one rule entity with that name. Two
+    /// rule entities sharing that identifier is neither, and its problem says so rather
+    /// than that the name is not declared.
+    // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
     fn resolve_name(&mut self, r: NodeRef) {
@@ -1641,14 +1707,20 @@ impl Binder {
         let token = trees.name_token(r);
         let scope = self.model.enclosing_scope(r);
         let mut symbol = self.lookup_at(r, scope, &name);
-        if symbol.is_none() && self.in_template(r) {
+        let in_template = self.in_template(r);
+        if symbol.is_none() && in_template {
             symbol = self
                 .model
                 .rule_entity(&name)
                 .and_then(|e| self.model.entities[e].symbol);
         }
         if symbol.is_none() {
-            self.problem(r, format!("{name} is not declared in scope"));
+            let message = if in_template && self.model.rule_identifier_is_ambiguous(&name) {
+                format!("{name} is more than one rule")
+            } else {
+                format!("{name} is not declared in scope")
+            };
+            self.problem(r, message);
         }
         let usage = self.add_usage(r, Some(name), token, Layer::Value, symbol);
         self.record_reference(r, usage);

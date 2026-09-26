@@ -309,6 +309,46 @@ fn test_a_declaration_missing_its_name_recovers_at_the_semicolon() {
     assert_eq!(tree.errors.len(), 1);
 }
 
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn test_a_keyword_that_would_have_been_the_declared_name_is_the_error_s_keyword() {
+    let source = "const d = 1;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let statement = first_statement(&tree);
+    assert!(statement.is(Statement::VariableDeclaration));
+    assert_eq!(shape(statement, &tree), ["ConstKeyword(const)", "Error(\"d = 1\")", "Semicolon(;)"]);
+    let error = statement.errors()[0];
+    assert_eq!(error.expected, vec!["Identifier"]);
+    assert_eq!(tree.raw(error.start, error.end), "d = 1");
+    assert_eq!(error.keyword.as_ref().map(|token| token.raw.as_str()), Some("d"));
+    assert_eq!(tree.errors.len(), 1);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn test_a_keyword_where_an_operand_was_expected_is_the_error_s_keyword() {
+    let source = "x = c ?? d;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let statement = first_statement(&tree);
+    assert!(statement.is(Statement::ExpressionStatement));
+    let error = statement.errors()[0];
+    assert_eq!(tree.raw(error.start, error.end), "?? d");
+    assert_eq!(error.keyword.as_ref().map(|token| token.raw.as_str()), Some("d"));
+    assert_eq!(tree.errors.len(), 1);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn test_an_error_node_has_no_keyword_when_none_of_its_tokens_are_one() {
+    let source = "const = 1;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert_eq!(tree.errors.len(), 1);
+    assert!(tree.errors[0].keyword.is_none());
+}
+
 // parse
 
 // @lfy def/parser/main.lfy:parse

@@ -130,14 +130,14 @@ impl Lexer<'_> {
     fn run(&mut self) -> Result<(), LexError> {
         while self.offset < self.input.len() {
             if at_line_break(&self.input[self.offset..]) {
-                // @lfy def/lexer/traits.lfy:37
+                // @lfy def/lexer/traits.lfy:appliedUntilNewLine
                 traits::before_line_break(&mut self.stack);
             }
             match self.candidate()? {
                 // @lfy def/lexer/main.lfy:lex
                 Some((terminal, len)) => {
                     self.push(Some(terminal), len);
-                    traits::on_token(terminal, &mut self.stack); // @lfy def/lexer/traits.lfy:14
+                    traits::on_token(terminal, &mut self.stack); // @lfy def/lexer/traits.lfy:modeOpener
                 }
                 // @lfy def/lexer/main.lfy:lex
                 None => {
@@ -146,7 +146,7 @@ impl Lexer<'_> {
                 }
             }
         }
-        // @lfy def/lexer/traits.lfy:37
+        // @lfy def/lexer/traits.lfy:appliedUntilNewLine
         traits::before_line_break(&mut self.stack);
         // @lfy def/lexer/main.lfy:lex
         for entry in self.stack.open() {
@@ -929,7 +929,7 @@ mod tests {
         assert_eq!(rules_of("`[[ // c ]]`")[3], punctuation(Punctuation::Slash));
     }
 
-    // @lfy def/lexer/traits.lfy:37
+    // @lfy def/lexer/traits.lfy:appliedUntilNewLine
     #[test]
     fn line_modes_end_before_the_line_break() {
         assert_eq!(

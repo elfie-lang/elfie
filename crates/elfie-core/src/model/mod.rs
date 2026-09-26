@@ -41,6 +41,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
     for file in 0..files {
         binder.apply_file(file); // @lfy def/model/main.lfy:bind
     }
+    binder.check_rule_identifiers(); // @lfy def/model/main.lfy:bind
     for file in 0..files {
         binder.resolve_file(file); // @lfy def/model/main.lfy:bind
     }

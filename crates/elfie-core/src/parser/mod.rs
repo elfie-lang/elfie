@@ -7,7 +7,9 @@
 //! order, with trivia between elements taken as children of the open node. Statements and
 //! expressions are selected by the next token that is not trivia and tried in
 //! `triedBefore` order; expressions climb by binding power; recoverable rules close with
-//! error nodes instead of failing once they have taken a token.
+//! error nodes instead of failing once they have taken a token. An error node's keyword is
+//! the first token it covers that is of a keyword terminal an `Identifier` of the same
+//! text would have let the rule that was open there take.
 
 use std::collections::{HashMap, HashSet};
 
@@ -26,6 +28,7 @@ use crate::grammar::rules::expression::{self as expression, Expression, PREFIXES
 use crate::grammar::rules::file::File;
 use crate::grammar::rules::statement::{STATEMENTS, Statement};
 use crate::grammar::terminals::comment::Comment;
+use crate::grammar::terminals::identifier::Identifier;
 use crate::grammar::terminals::punctuation::Punctuation;
 use crate::grammar::terminals::space::Space;
 use crate::grammar::{Associativity, Category, Entity, GrammarRule};
@@ -172,6 +175,11 @@ struct Parser<'t> {
     attempts: HashMap<Key, usize>,
     /// Whether a `NewLine` token is trivia: not inside a line documentation's reference.
     newline_is_trivia: bool,
+    /// Indices of keyword tokens where a rule that was open there failed to take them only
+    /// because they were not an `Identifier`; an `Identifier` of the same text there would
+    /// have let that rule take it.
+    // @lfy def/parser/data.lfy:ErrorNode.keyword
+    keyword_misses: HashSet<usize>,
 }
 
 impl<'t> Parser<'t> {
@@ -182,6 +190,7 @@ impl<'t> Parser<'t> {
             memo: HashMap::new(),
             attempts: HashMap::new(),
             newline_is_trivia: true,
+            keyword_misses: HashSet::new(),
         }
     }
 
@@ -192,6 +201,15 @@ impl<'t> Parser<'t> {
     /// The identifiers of the terminals that could begin `expr`.
     fn expected_for_expr(&self, expr: &Expr) -> Vec<&'static str> {
         self.tables.identifiers(&self.tables.first_of(expr))
+    }
+
+    /// The first token from `start` up to `end` that is of a keyword terminal and that an
+    /// `Identifier` of the same text would have let the rule that was open there take.
+    // @lfy def/parser/data.lfy:ErrorNode.keyword
+    fn keyword_in(&self, start: usize, end: usize) -> Option<Token> {
+        (start..end)
+            .find(|index| self.keyword_misses.contains(index))
+            .map(|index| self.tokens[index].clone())
     }
 
     /// What could continue the open rule where `element` is about to be tried: the
@@ -308,6 +326,15 @@ impl<'t> Parser<'t> {
             // @lfy def/parser/main.lfy:parse
             Category::Rule | Category::Statement | Category::Primary => self.parse_syntax(rule, at),
         };
+        // A keyword token where `rule` could have begun with an `Identifier` is a name the
+        // rule that was open there would have taken, had it not been a keyword.
+        // @lfy def/parser/data.lfy:ErrorNode.keyword
+        if result.is_none()
+            && self.tables.first(rule).contains(&Entity::Identifier(Identifier::Identifier))
+            && self.rule_at(at).is_some_and(GrammarRule::is_keyword)
+        {
+            self.keyword_misses.insert(at);
+        }
         self.memo.insert(key, result.clone());
         result
     }
@@ -441,7 +468,9 @@ impl<'t> Parser<'t> {
                 let (trivia, start) = self.probe(seq, pos, || expected.clone());
                 node.children.extend(trivia);
                 let end = traits::sweep_end(self.tokens, start, sync);
-                node.children.push(Child::Error(ErrorNode::new(start, end, expected)));
+                let mut error = ErrorNode::new(start, end, expected);
+                error.keyword = self.keyword_in(start, end); // @lfy def/parser/data.lfy:ErrorNode.keyword
+                node.children.push(Child::Error(error));
                 pos = end;
                 seq.lenient = true;
                 if let Some(next) = self.parse_element(element, node, seq, pos, &follow) {
@@ -600,7 +629,9 @@ impl<'t> Parser<'t> {
             let (trivia, start) = self.probe(seq, pos, || expected.clone());
             node.children.extend(trivia);
             debug_assert_eq!(start, at);
-            node.children.push(Child::Error(ErrorNode::new(start, end, expected)));
+            let mut error = ErrorNode::new(start, end, expected);
+            error.keyword = self.keyword_in(start, end); // @lfy def/parser/data.lfy:ErrorNode.keyword
+            node.children.push(Child::Error(error));
             seq.taken = true;
             pos = end;
         }
@@ -775,7 +806,7 @@ impl<'t> Parser<'t> {
                         applied = true;
                         break;
                     }
-                    Err(returned) => left = returned,
+                    Err(returned) => left = *returned,
                 }
             }
             // @lfy def/parser/main.lfy:parse
@@ -798,7 +829,7 @@ impl<'t> Parser<'t> {
         trivia: Vec<Child>,
         at: usize,
         power: u8,
-    ) -> Result<Parsed, Parsed> {
+    ) -> Result<Parsed, Box<Parsed>> {
         let start = left.child.start();
         let mut rest = Node::open(operation, at);
         rest.children.push(Child::Token(at));
@@ -814,7 +845,7 @@ impl<'t> Parser<'t> {
                         rest.children.push(right.child);
                         right.end
                     }
-                    None => return Err(left),
+                    None => return Err(Box::new(left)),
                 }
             }
             // @lfy def/grammar/traits.lfy:postfix
@@ -827,7 +858,7 @@ impl<'t> Parser<'t> {
                             .rule_at(next)
                             .is_some_and(|terminal| self.tables.expr_can_begin(tail, terminal));
                         if tail_begins && between.iter().any(|child| !matches!(child, Child::Error(_))) {
-                            return Err(left);
+                            return Err(Box::new(left));
                         }
                     }
                     let mut seq = Seq::new(operation);
@@ -837,7 +868,7 @@ impl<'t> Parser<'t> {
                     let elements = elements_of(tail);
                     let end = match self.parse_elements(&elements, &mut rest, &mut seq, at + 1, &HashSet::new()) {
                         Some(end) => end,
-                        None => return Err(left),
+                        None => return Err(Box::new(left)),
                     };
                     // Only some tokens may follow the `GreaterThan` that closed the type
                     // arguments; anything else leaves the `LessThan` to the
@@ -849,7 +880,7 @@ impl<'t> Parser<'t> {
                             .rule_at(after)
                             .is_some_and(|next| !expression::generic_can_match_before(next))
                         {
-                            return Err(left);
+                            return Err(Box::new(left));
                         }
                     }
                     end
@@ -965,7 +996,9 @@ impl<'t> Parser<'t> {
                     None if at < len => {
                         // @lfy def/parser/main.lfy:parse
                         let expected = self.tables.expected(rule);
-                        root.children.push(Child::Error(ErrorNode::new(at, len, expected)));
+                        let mut error = ErrorNode::new(at, len, expected);
+                        error.keyword = self.keyword_in(at, len); // @lfy def/parser/data.lfy:ErrorNode.keyword
+                        root.children.push(Child::Error(error));
                         root.end = len;
                     }
                     None => root.end = at,
@@ -978,7 +1011,9 @@ impl<'t> Parser<'t> {
         root.children.extend(trailing);
         if rest < len {
             let expected = self.root_continuations(rule);
-            root.children.push(Child::Error(ErrorNode::new(rest, len, expected)));
+            let mut error = ErrorNode::new(rest, len, expected);
+            error.keyword = self.keyword_in(rest, len); // @lfy def/parser/data.lfy:ErrorNode.keyword
+            root.children.push(Child::Error(error));
         }
         root.end = len;
         traits::attach_documentation(&mut root, self.tokens);

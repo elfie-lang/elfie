@@ -695,6 +695,22 @@ impl Model {
         found
     }
 
+    /// Whether more than one entity carrying the trait `rule` shares this identifier, so
+    /// a reference that spells it resolves to neither.
+    // @lfy def/model/main.lfy:bind
+    pub fn rule_identifier_is_ambiguous(&self, identifier: &str) -> bool {
+        let Some(rule_trait) = self.trait_named("rule") else {
+            return false;
+        };
+        self.entities
+            .iter()
+            .filter(|entity| {
+                entity.identifier.as_deref() == Some(identifier) && entity.has_trait(rule_trait)
+            })
+            .count()
+            > 1
+    }
+
     /// The one trait entity with this identifier in any file scope, if exactly one.
     pub fn trait_named(&self, identifier: &str) -> Option<EntityId> {
         let mut found = None;

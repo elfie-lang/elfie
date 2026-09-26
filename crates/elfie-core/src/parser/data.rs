@@ -211,6 +211,9 @@ pub struct ErrorNode {
     pub end: usize, // @lfy def/parser/data.lfy:ErrorNode.end
     /// Identifiers of what could have continued the open rule at `start`.
     pub expected: Vec<&'static str>, // @lfy def/parser/data.lfy:ErrorNode.expected
+    /// The keyword token the open rule would have taken as a name, when that is why it
+    /// stopped.
+    pub keyword: Option<Token>, // @lfy def/parser/data.lfy:ErrorNode.keyword
 }
 
 impl ErrorNode {
@@ -221,6 +224,7 @@ impl ErrorNode {
             start,
             end,
             expected,
+            keyword: None,
         }
     }
 
