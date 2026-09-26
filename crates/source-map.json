@@ -21337,1855 +21337,6 @@
   },
   {
     "dependencies": {
-      "def/cli/data.lfy": "60f275f2c6ebafd8b5ba2b055057f6fcfdad1d10e972e9ec3a71f159f0cbcbd8",
-      "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
-      "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
-      "def/generation/main.lfy": "488bf9cb01cbc9d8f64ecc7dd625fc34e88fcc0db76d3ce3a1f29c9b05934cba",
-      "def/lexer/main.lfy": "e55fc64929934ffe6fe257b6e50974f75c387664d1da55f875e47f5a77a6e4c9",
-      "def/lsp/main.lfy": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
-      "def/mcp/main.lfy": "8a197e45d6bf22cc0e6c20b63856094711202820f55b75e421ef745ade43e7f5",
-      "def/parser/data.lfy": "94b78197746fcd04d17cecb8afbd63f9a2e6963b001ef7ab57e94d7bdde34d17",
-      "def/parser/main.lfy": "262674fad2ce5064daf34d48a76f387f1d5395f4c1e0dfa508e699441c2459fb",
-      "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d",
-      "def/query/main.lfy": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
-      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
-      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
-    },
-    "generated": "2026-09-21T15:34:58Z",
-    "hash": "03c4bb1f92941d9e1fd15f7639296f193b01a4536f6005ef5b4c8dbc4c35e0dc",
-    "markers": [
-      {
-        "column": null,
-        "end": 45,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 36
-      },
-      {
-        "column": null,
-        "end": 53,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 46
-      },
-      {
-        "column": null,
-        "end": 60,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 54
-      },
-      {
-        "column": null,
-        "end": 75,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 61
-      },
-      {
-        "column": null,
-        "end": 92,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 76
-      },
-      {
-        "column": null,
-        "end": 96,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 93
-      },
-      {
-        "column": null,
-        "end": 112,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 97
-      },
-      {
-        "column": null,
-        "end": 117,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 113
-      },
-      {
-        "column": null,
-        "end": 135,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 118
-      },
-      {
-        "column": null,
-        "end": 141,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 136
-      },
-      {
-        "column": null,
-        "end": 156,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 142
-      },
-      {
-        "column": null,
-        "end": 158,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 157
-      },
-      {
-        "column": null,
-        "end": 160,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 159
-      },
-      {
-        "column": null,
-        "end": 168,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 161
-      },
-      {
-        "column": null,
-        "end": 180,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 169
-      },
-      {
-        "column": null,
-        "end": 196,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 181
-      },
-      {
-        "column": null,
-        "end": 208,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 197
-      },
-      {
-        "column": null,
-        "end": 215,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 209
-      },
-      {
-        "column": null,
-        "end": 223,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 216
-      },
-      {
-        "column": null,
-        "end": 247,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 224
-      },
-      {
-        "column": null,
-        "end": 250,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 248
-      },
-      {
-        "column": null,
-        "end": 275,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 251
-      },
-      {
-        "column": null,
-        "end": 293,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 276
-      },
-      {
-        "column": null,
-        "end": 304,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 294
-      },
-      {
-        "column": null,
-        "end": 340,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 305
-      },
-      {
-        "column": null,
-        "end": 354,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 341
-      },
-      {
-        "column": null,
-        "end": 373,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 355
-      },
-      {
-        "column": null,
-        "end": 387,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 374
-      },
-      {
-        "column": null,
-        "end": 403,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 388
-      },
-      {
-        "column": null,
-        "end": 409,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 404
-      },
-      {
-        "column": null,
-        "end": 419,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 410
-      },
-      {
-        "column": null,
-        "end": 433,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 420
-      },
-      {
-        "column": null,
-        "end": 466,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 434
-      },
-      {
-        "column": null,
-        "end": 469,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 467
-      },
-      {
-        "column": null,
-        "end": 488,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 470
-      },
-      {
-        "column": null,
-        "end": 503,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 489
-      },
-      {
-        "column": null,
-        "end": 513,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 504
-      },
-      {
-        "column": null,
-        "end": 518,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 514
-      },
-      {
-        "column": null,
-        "end": 536,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 519
-      },
-      {
-        "column": null,
-        "end": 550,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 537
-      },
-      {
-        "column": null,
-        "end": 561,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 551
-      },
-      {
-        "column": null,
-        "end": 568,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 562
-      },
-      {
-        "column": null,
-        "end": 585,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 569
-      },
-      {
-        "column": null,
-        "end": 599,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 586
-      },
-      {
-        "column": null,
-        "end": 605,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 600
-      },
-      {
-        "column": null,
-        "end": 615,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 606
-      },
-      {
-        "column": null,
-        "end": 621,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 616
-      },
-      {
-        "column": null,
-        "end": 629,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 622
-      },
-      {
-        "column": null,
-        "end": 640,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 630
-      },
-      {
-        "column": null,
-        "end": 656,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 641
-      },
-      {
-        "column": null,
-        "end": 664,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 657
-      },
-      {
-        "column": null,
-        "end": 671,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 665
-      },
-      {
-        "column": null,
-        "end": 678,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 672
-      },
-      {
-        "column": null,
-        "end": 698,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 679
-      },
-      {
-        "column": null,
-        "end": 719,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 699
-      },
-      {
-        "column": null,
-        "end": 738,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 720
-      },
-      {
-        "column": null,
-        "end": 756,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 739
-      },
-      {
-        "column": null,
-        "end": 789,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 757
-      },
-      {
-        "column": null,
-        "end": 798,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 790
-      },
-      {
-        "column": null,
-        "end": 805,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 799
-      },
-      {
-        "column": null,
-        "end": 814,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 806
-      },
-      {
-        "column": null,
-        "end": 820,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 815
-      },
-      {
-        "column": null,
-        "end": 827,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 821
-      },
-      {
-        "column": null,
-        "end": 870,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 828
-      },
-      {
-        "column": null,
-        "end": 877,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 871
-      },
-      {
-        "column": null,
-        "end": 884,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 878
-      },
-      {
-        "column": null,
-        "end": 894,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 885
-      },
-      {
-        "column": null,
-        "end": 901,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 895
-      },
-      {
-        "column": null,
-        "end": 907,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 902
-      },
-      {
-        "column": null,
-        "end": 914,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 908
-      },
-      {
-        "column": null,
-        "end": 921,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 915
-      },
-      {
-        "column": null,
-        "end": 931,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 922
-      },
-      {
-        "column": null,
-        "end": 955,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 932
-      },
-      {
-        "column": null,
-        "end": 964,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 956
-      },
-      {
-        "column": null,
-        "end": 967,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 965
-      },
-      {
-        "column": null,
-        "end": 977,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 968
-      },
-      {
-        "column": null,
-        "end": 984,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 978
-      },
-      {
-        "column": null,
-        "end": 993,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 985
-      },
-      {
-        "column": null,
-        "end": 1009,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 994
-      },
-      {
-        "column": null,
-        "end": 1018,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1010
-      },
-      {
-        "column": null,
-        "end": 1028,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1019
-      },
-      {
-        "column": null,
-        "end": 1038,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1029
-      },
-      {
-        "column": null,
-        "end": 1044,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1039
-      },
-      {
-        "column": null,
-        "end": 1059,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1045
-      },
-      {
-        "column": null,
-        "end": 1077,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1060
-      },
-      {
-        "column": null,
-        "end": 1089,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1078
-      },
-      {
-        "column": null,
-        "end": 1100,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1090
-      },
-      {
-        "column": null,
-        "end": 1111,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1101
-      },
-      {
-        "column": null,
-        "end": 1125,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1112
-      },
-      {
-        "column": null,
-        "end": 1130,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1126
-      },
-      {
-        "column": null,
-        "end": 1153,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1131
-      },
-      {
-        "column": null,
-        "end": 1169,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1154
-      },
-      {
-        "column": null,
-        "end": 1183,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1170
-      },
-      {
-        "column": null,
-        "end": 1194,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1184
-      },
-      {
-        "column": null,
-        "end": 1212,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1195
-      },
-      {
-        "column": null,
-        "end": 1222,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1213
-      },
-      {
-        "column": null,
-        "end": 1243,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1223
-      },
-      {
-        "column": null,
-        "end": 1256,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1244
-      },
-      {
-        "column": null,
-        "end": 1264,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1257
-      },
-      {
-        "column": null,
-        "end": 1280,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1265
-      },
-      {
-        "column": null,
-        "end": 1287,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1281
-      },
-      {
-        "column": null,
-        "end": 1291,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1288
-      },
-      {
-        "column": null,
-        "end": 1301,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1292
-      },
-      {
-        "column": null,
-        "end": 1323,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1302
-      },
-      {
-        "column": null,
-        "end": 1325,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1324
-      },
-      {
-        "column": null,
-        "end": 1332,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1326
-      },
-      {
-        "column": null,
-        "end": 1335,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1333
-      },
-      {
-        "column": null,
-        "end": 1351,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1336
-      },
-      {
-        "column": null,
-        "end": 1359,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1352
-      },
-      {
-        "column": null,
-        "end": 1369,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1360
-      },
-      {
-        "column": null,
-        "end": 1379,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1370
-      },
-      {
-        "column": null,
-        "end": 1387,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1380
-      },
-      {
-        "column": null,
-        "end": 1390,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1388
-      },
-      {
-        "column": null,
-        "end": 1399,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1391
-      },
-      {
-        "column": null,
-        "end": 1414,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1400
-      },
-      {
-        "column": null,
-        "end": 1429,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1415
-      },
-      {
-        "column": null,
-        "end": 1441,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1430
-      },
-      {
-        "column": null,
-        "end": 1455,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1442
-      },
-      {
-        "column": null,
-        "end": 1476,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1456
-      },
-      {
-        "column": null,
-        "end": 1492,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1477
-      },
-      {
-        "column": null,
-        "end": 1498,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1493
-      },
-      {
-        "column": null,
-        "end": 1507,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1499
-      },
-      {
-        "column": null,
-        "end": 1513,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1508
-      },
-      {
-        "column": null,
-        "end": 1527,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1514
-      },
-      {
-        "column": null,
-        "end": 1541,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1528
-      },
-      {
-        "column": null,
-        "end": 1552,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1542
-      },
-      {
-        "column": null,
-        "end": 1567,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1553
-      },
-      {
-        "column": null,
-        "end": 1573,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1568
-      },
-      {
-        "column": null,
-        "end": 1577,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1574
-      },
-      {
-        "column": null,
-        "end": 1588,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1578
-      },
-      {
-        "column": null,
-        "end": 1605,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1589
-      },
-      {
-        "column": null,
-        "end": 1614,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1606
-      },
-      {
-        "column": null,
-        "end": 1621,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1615
-      },
-      {
-        "column": null,
-        "end": 1623,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1622
-      },
-      {
-        "column": null,
-        "end": 1625,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1624
-      },
-      {
-        "column": null,
-        "end": 1637,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1626
-      },
-      {
-        "column": null,
-        "end": 1642,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1638
-      },
-      {
-        "column": null,
-        "end": 1646,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1643
-      },
-      {
-        "column": null,
-        "end": 1654,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1647
-      },
-      {
-        "column": null,
-        "end": 1662,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1655
-      },
-      {
-        "column": null,
-        "end": 1678,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1663
-      },
-      {
-        "column": null,
-        "end": 1691,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1679
-      },
-      {
-        "column": null,
-        "end": 1696,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1692
-      },
-      {
-        "column": null,
-        "end": 1702,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1697
-      },
-      {
-        "column": null,
-        "end": 1705,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1703
-      },
-      {
-        "column": null,
-        "end": 1714,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1706
-      },
-      {
-        "column": null,
-        "end": 1725,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1715
-      },
-      {
-        "column": null,
-        "end": 1785,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1726
-      },
-      {
-        "column": null,
-        "end": 1805,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1786
-      },
-      {
-        "column": null,
-        "end": 1846,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1806
-      },
-      {
-        "column": null,
-        "end": 1854,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 1847
-      },
-      {
-        "column": null,
-        "end": 1862,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 1855
-      },
-      {
-        "column": null,
-        "end": 1869,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 1863
-      },
-      {
-        "column": null,
-        "end": 1880,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 1870
-      },
-      {
-        "column": null,
-        "end": 1885,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 1881
-      },
-      {
-        "column": null,
-        "end": 1894,
-        "entity": "parse",
-        "file": "def/cli/main.lfy",
-        "line": 20,
-        "outputLine": 1886
-      },
-      {
-        "column": null,
-        "end": 1903,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1895
-      },
-      {
-        "column": null,
-        "end": 1914,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1904
-      },
-      {
-        "column": null,
-        "end": 1920,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1915
-      },
-      {
-        "column": null,
-        "end": 1931,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1921
-      },
-      {
-        "column": null,
-        "end": 1944,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1932
-      },
-      {
-        "column": null,
-        "end": 1946,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1945
-      },
-      {
-        "column": null,
-        "end": 1951,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1947
-      },
-      {
-        "column": null,
-        "end": 1961,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1952
-      },
-      {
-        "column": null,
-        "end": 1966,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1962
-      },
-      {
-        "column": null,
-        "end": 1970,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1967
-      },
-      {
-        "column": null,
-        "end": 1978,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1971
-      },
-      {
-        "column": null,
-        "end": 1988,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1979
-      },
-      {
-        "column": null,
-        "end": 1995,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1989
-      },
-      {
-        "column": null,
-        "end": 1997,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1996
-      },
-      {
-        "column": null,
-        "end": 2003,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 1998
-      },
-      {
-        "column": null,
-        "end": 2008,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2004
-      },
-      {
-        "column": null,
-        "end": 2019,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2009
-      },
-      {
-        "column": null,
-        "end": 2036,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2020
-      },
-      {
-        "column": null,
-        "end": 2047,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2037
-      },
-      {
-        "column": null,
-        "end": 2057,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2048
-      },
-      {
-        "column": null,
-        "end": 2067,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2058
-      },
-      {
-        "column": null,
-        "end": 2072,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2068
-      },
-      {
-        "column": null,
-        "end": 2079,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2073
-      },
-      {
-        "column": null,
-        "end": 2090,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2080
-      },
-      {
-        "column": null,
-        "end": 2099,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2091
-      },
-      {
-        "column": null,
-        "end": 2105,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2100
-      },
-      {
-        "column": null,
-        "end": 2111,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2106
-      },
-      {
-        "column": null,
-        "end": 2123,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2112
-      },
-      {
-        "column": null,
-        "end": 2146,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2124
-      },
-      {
-        "column": null,
-        "end": 2155,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2147
-      },
-      {
-        "column": null,
-        "end": 2175,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2156
-      },
-      {
-        "column": null,
-        "end": 2207,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2176
-      },
-      {
-        "column": null,
-        "end": 2227,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2208
-      },
-      {
-        "column": null,
-        "end": 2232,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2228
-      },
-      {
-        "column": null,
-        "end": 2235,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2233
-      },
-      {
-        "column": null,
-        "end": 2243,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2236
-      },
-      {
-        "column": null,
-        "end": 2251,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2244
-      },
-      {
-        "column": null,
-        "end": 2270,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2252
-      },
-      {
-        "column": null,
-        "end": 2276,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2271
-      },
-      {
-        "column": null,
-        "end": 2286,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2277
-      },
-      {
-        "column": null,
-        "end": 2304,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2287
-      },
-      {
-        "column": null,
-        "end": 2309,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2305
-      },
-      {
-        "column": null,
-        "end": 2322,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2310
-      },
-      {
-        "column": null,
-        "end": 2354,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2323
-      },
-      {
-        "column": null,
-        "end": 2365,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2355
-      },
-      {
-        "column": null,
-        "end": 2373,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2366
-      },
-      {
-        "column": null,
-        "end": 2375,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2374
-      },
-      {
-        "column": null,
-        "end": 2385,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2376
-      },
-      {
-        "column": null,
-        "end": 2391,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2386
-      },
-      {
-        "column": null,
-        "end": 2396,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2392
-      },
-      {
-        "column": null,
-        "end": 2399,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2397
-      },
-      {
-        "column": null,
-        "end": 2403,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2400
-      },
-      {
-        "column": null,
-        "end": 2406,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2404
-      },
-      {
-        "column": null,
-        "end": 2410,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2407
-      },
-      {
-        "column": null,
-        "end": 2422,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2411
-      },
-      {
-        "column": null,
-        "end": 2431,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2423
-      },
-      {
-        "column": null,
-        "end": 2434,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2432
-      },
-      {
-        "column": null,
-        "end": 2440,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2435
-      },
-      {
-        "column": null,
-        "end": 2449,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2441
-      },
-      {
-        "column": null,
-        "end": 2451,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2450
-      },
-      {
-        "column": null,
-        "end": 2468,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2452
-      },
-      {
-        "column": null,
-        "end": 2476,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2469
-      },
-      {
-        "column": null,
-        "end": 2479,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2477
-      },
-      {
-        "column": null,
-        "end": 2484,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2480
-      },
-      {
-        "column": null,
-        "end": 2488,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2485
-      },
-      {
-        "column": null,
-        "end": 2497,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2489
-      },
-      {
-        "column": null,
-        "end": 2503,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2498
-      },
-      {
-        "column": null,
-        "end": 2507,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2504
-      },
-      {
-        "column": null,
-        "end": 2510,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2508
-      },
-      {
-        "column": null,
-        "end": 2515,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2511
-      },
-      {
-        "column": null,
-        "end": 2526,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2516
-      },
-      {
-        "column": null,
-        "end": 2547,
-        "entity": "main",
-        "file": "def/cli/main.lfy",
-        "line": 49,
-        "outputLine": 2527
-      }
-    ],
-    "output": "crates/elfie-cli/src/main.rs",
-    "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
-    "source": "def/cli/main.lfy",
-    "target": "rust"
-  },
-  {
-    "dependencies": {
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
       "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44"
     },
@@ -49723,6 +47874,1927 @@
     "output": "crates/elfie-core/src/query/mod.rs",
     "signature": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
     "source": "def/query/main.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/cli/data.lfy": "60f275f2c6ebafd8b5ba2b055057f6fcfdad1d10e972e9ec3a71f159f0cbcbd8",
+      "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
+      "def/generation/data.lfy": "74717387129e709ed8eda26bf6c24bcd90c20d6efe9575c1073a962ddde3f9f2",
+      "def/generation/main.lfy": "488bf9cb01cbc9d8f64ecc7dd625fc34e88fcc0db76d3ce3a1f29c9b05934cba",
+      "def/lexer/main.lfy": "e55fc64929934ffe6fe257b6e50974f75c387664d1da55f875e47f5a77a6e4c9",
+      "def/lsp/main.lfy": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
+      "def/mcp/main.lfy": "8a197e45d6bf22cc0e6c20b63856094711202820f55b75e421ef745ade43e7f5",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
+      "def/parser/main.lfy": "262674fad2ce5064daf34d48a76f387f1d5395f4c1e0dfa508e699441c2459fb",
+      "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d",
+      "def/query/main.lfy": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
+      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
+    },
+    "generated": "2026-09-26T08:37:34Z",
+    "hash": "45791d62c6888984395068b4db3b07200c363b083a8d8a36b4f4952495ecab7c",
+    "markers": [
+      {
+        "column": null,
+        "end": 45,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 36
+      },
+      {
+        "column": null,
+        "end": 53,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 46
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 54
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 61
+      },
+      {
+        "column": null,
+        "end": 92,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 76
+      },
+      {
+        "column": null,
+        "end": 96,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 93
+      },
+      {
+        "column": null,
+        "end": 112,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 97
+      },
+      {
+        "column": null,
+        "end": 117,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 113
+      },
+      {
+        "column": null,
+        "end": 135,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 118
+      },
+      {
+        "column": null,
+        "end": 141,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 136
+      },
+      {
+        "column": null,
+        "end": 156,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 142
+      },
+      {
+        "column": null,
+        "end": 158,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 157
+      },
+      {
+        "column": null,
+        "end": 160,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 159
+      },
+      {
+        "column": null,
+        "end": 168,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 161
+      },
+      {
+        "column": null,
+        "end": 180,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 169
+      },
+      {
+        "column": null,
+        "end": 196,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 181
+      },
+      {
+        "column": null,
+        "end": 208,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 197
+      },
+      {
+        "column": null,
+        "end": 215,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 209
+      },
+      {
+        "column": null,
+        "end": 223,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 216
+      },
+      {
+        "column": null,
+        "end": 247,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 224
+      },
+      {
+        "column": null,
+        "end": 250,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 248
+      },
+      {
+        "column": null,
+        "end": 277,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 251
+      },
+      {
+        "column": null,
+        "end": 290,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 278
+      },
+      {
+        "column": null,
+        "end": 302,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 291
+      },
+      {
+        "column": null,
+        "end": 313,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 303
+      },
+      {
+        "column": null,
+        "end": 323,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 314
+      },
+      {
+        "column": null,
+        "end": 338,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 324
+      },
+      {
+        "column": null,
+        "end": 349,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 339
+      },
+      {
+        "column": null,
+        "end": 385,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 350
+      },
+      {
+        "column": null,
+        "end": 415,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 386
+      },
+      {
+        "column": null,
+        "end": 434,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 416
+      },
+      {
+        "column": null,
+        "end": 448,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 435
+      },
+      {
+        "column": null,
+        "end": 464,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 449
+      },
+      {
+        "column": null,
+        "end": 470,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 465
+      },
+      {
+        "column": null,
+        "end": 480,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 471
+      },
+      {
+        "column": null,
+        "end": 494,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 481
+      },
+      {
+        "column": null,
+        "end": 527,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 495
+      },
+      {
+        "column": null,
+        "end": 530,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 528
+      },
+      {
+        "column": null,
+        "end": 549,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 531
+      },
+      {
+        "column": null,
+        "end": 564,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 550
+      },
+      {
+        "column": null,
+        "end": 574,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 565
+      },
+      {
+        "column": null,
+        "end": 579,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 575
+      },
+      {
+        "column": null,
+        "end": 597,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 580
+      },
+      {
+        "column": null,
+        "end": 611,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 598
+      },
+      {
+        "column": null,
+        "end": 622,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 612
+      },
+      {
+        "column": null,
+        "end": 629,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 623
+      },
+      {
+        "column": null,
+        "end": 646,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 630
+      },
+      {
+        "column": null,
+        "end": 660,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 647
+      },
+      {
+        "column": null,
+        "end": 666,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 661
+      },
+      {
+        "column": null,
+        "end": 676,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 667
+      },
+      {
+        "column": null,
+        "end": 682,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 677
+      },
+      {
+        "column": null,
+        "end": 690,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 683
+      },
+      {
+        "column": null,
+        "end": 701,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 691
+      },
+      {
+        "column": null,
+        "end": 717,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 702
+      },
+      {
+        "column": null,
+        "end": 725,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 718
+      },
+      {
+        "column": null,
+        "end": 732,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 726
+      },
+      {
+        "column": null,
+        "end": 739,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 733
+      },
+      {
+        "column": null,
+        "end": 759,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 740
+      },
+      {
+        "column": null,
+        "end": 780,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 760
+      },
+      {
+        "column": null,
+        "end": 799,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 781
+      },
+      {
+        "column": null,
+        "end": 817,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 800
+      },
+      {
+        "column": null,
+        "end": 850,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 818
+      },
+      {
+        "column": null,
+        "end": 859,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 851
+      },
+      {
+        "column": null,
+        "end": 866,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 860
+      },
+      {
+        "column": null,
+        "end": 875,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 867
+      },
+      {
+        "column": null,
+        "end": 881,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 876
+      },
+      {
+        "column": null,
+        "end": 888,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 882
+      },
+      {
+        "column": null,
+        "end": 931,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 889
+      },
+      {
+        "column": null,
+        "end": 938,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 932
+      },
+      {
+        "column": null,
+        "end": 945,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 939
+      },
+      {
+        "column": null,
+        "end": 955,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 946
+      },
+      {
+        "column": null,
+        "end": 962,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 956
+      },
+      {
+        "column": null,
+        "end": 968,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 963
+      },
+      {
+        "column": null,
+        "end": 975,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 969
+      },
+      {
+        "column": null,
+        "end": 982,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 976
+      },
+      {
+        "column": null,
+        "end": 992,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 983
+      },
+      {
+        "column": null,
+        "end": 1016,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 993
+      },
+      {
+        "column": null,
+        "end": 1025,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1017
+      },
+      {
+        "column": null,
+        "end": 1028,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1026
+      },
+      {
+        "column": null,
+        "end": 1038,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1029
+      },
+      {
+        "column": null,
+        "end": 1045,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1039
+      },
+      {
+        "column": null,
+        "end": 1054,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1046
+      },
+      {
+        "column": null,
+        "end": 1070,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1055
+      },
+      {
+        "column": null,
+        "end": 1079,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1071
+      },
+      {
+        "column": null,
+        "end": 1089,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1080
+      },
+      {
+        "column": null,
+        "end": 1099,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1090
+      },
+      {
+        "column": null,
+        "end": 1105,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1100
+      },
+      {
+        "column": null,
+        "end": 1120,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1106
+      },
+      {
+        "column": null,
+        "end": 1138,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1121
+      },
+      {
+        "column": null,
+        "end": 1150,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1139
+      },
+      {
+        "column": null,
+        "end": 1161,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1151
+      },
+      {
+        "column": null,
+        "end": 1172,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1162
+      },
+      {
+        "column": null,
+        "end": 1186,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1173
+      },
+      {
+        "column": null,
+        "end": 1191,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1187
+      },
+      {
+        "column": null,
+        "end": 1214,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1192
+      },
+      {
+        "column": null,
+        "end": 1230,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1215
+      },
+      {
+        "column": null,
+        "end": 1244,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1231
+      },
+      {
+        "column": null,
+        "end": 1255,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1245
+      },
+      {
+        "column": null,
+        "end": 1273,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1256
+      },
+      {
+        "column": null,
+        "end": 1283,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1274
+      },
+      {
+        "column": null,
+        "end": 1304,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1284
+      },
+      {
+        "column": null,
+        "end": 1317,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1305
+      },
+      {
+        "column": null,
+        "end": 1325,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1318
+      },
+      {
+        "column": null,
+        "end": 1341,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1326
+      },
+      {
+        "column": null,
+        "end": 1348,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1342
+      },
+      {
+        "column": null,
+        "end": 1352,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1349
+      },
+      {
+        "column": null,
+        "end": 1362,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1353
+      },
+      {
+        "column": null,
+        "end": 1384,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1363
+      },
+      {
+        "column": null,
+        "end": 1386,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1385
+      },
+      {
+        "column": null,
+        "end": 1393,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1387
+      },
+      {
+        "column": null,
+        "end": 1396,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1394
+      },
+      {
+        "column": null,
+        "end": 1412,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1397
+      },
+      {
+        "column": null,
+        "end": 1420,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1413
+      },
+      {
+        "column": null,
+        "end": 1430,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1421
+      },
+      {
+        "column": null,
+        "end": 1440,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1431
+      },
+      {
+        "column": null,
+        "end": 1448,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1441
+      },
+      {
+        "column": null,
+        "end": 1451,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1449
+      },
+      {
+        "column": null,
+        "end": 1460,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1452
+      },
+      {
+        "column": null,
+        "end": 1475,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1461
+      },
+      {
+        "column": null,
+        "end": 1490,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1476
+      },
+      {
+        "column": null,
+        "end": 1502,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1491
+      },
+      {
+        "column": null,
+        "end": 1516,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1503
+      },
+      {
+        "column": null,
+        "end": 1537,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1517
+      },
+      {
+        "column": null,
+        "end": 1553,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1538
+      },
+      {
+        "column": null,
+        "end": 1559,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1554
+      },
+      {
+        "column": null,
+        "end": 1568,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1560
+      },
+      {
+        "column": null,
+        "end": 1574,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1569
+      },
+      {
+        "column": null,
+        "end": 1588,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1575
+      },
+      {
+        "column": null,
+        "end": 1602,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1589
+      },
+      {
+        "column": null,
+        "end": 1613,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1603
+      },
+      {
+        "column": null,
+        "end": 1628,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1614
+      },
+      {
+        "column": null,
+        "end": 1634,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1629
+      },
+      {
+        "column": null,
+        "end": 1638,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1635
+      },
+      {
+        "column": null,
+        "end": 1649,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1639
+      },
+      {
+        "column": null,
+        "end": 1666,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1650
+      },
+      {
+        "column": null,
+        "end": 1675,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1667
+      },
+      {
+        "column": null,
+        "end": 1682,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1676
+      },
+      {
+        "column": null,
+        "end": 1684,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1683
+      },
+      {
+        "column": null,
+        "end": 1686,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1685
+      },
+      {
+        "column": null,
+        "end": 1698,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1687
+      },
+      {
+        "column": null,
+        "end": 1703,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1699
+      },
+      {
+        "column": null,
+        "end": 1707,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1704
+      },
+      {
+        "column": null,
+        "end": 1715,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1708
+      },
+      {
+        "column": null,
+        "end": 1723,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1716
+      },
+      {
+        "column": null,
+        "end": 1740,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1724
+      },
+      {
+        "column": null,
+        "end": 1753,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1741
+      },
+      {
+        "column": null,
+        "end": 1758,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1754
+      },
+      {
+        "column": null,
+        "end": 1764,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1759
+      },
+      {
+        "column": null,
+        "end": 1767,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1765
+      },
+      {
+        "column": null,
+        "end": 1776,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1768
+      },
+      {
+        "column": null,
+        "end": 1787,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1777
+      },
+      {
+        "column": null,
+        "end": 1847,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1788
+      },
+      {
+        "column": null,
+        "end": 1867,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1848
+      },
+      {
+        "column": null,
+        "end": 1908,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1868
+      },
+      {
+        "column": null,
+        "end": 1916,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 1909
+      },
+      {
+        "column": null,
+        "end": 1924,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 1917
+      },
+      {
+        "column": null,
+        "end": 1931,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 1925
+      },
+      {
+        "column": null,
+        "end": 1942,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 1932
+      },
+      {
+        "column": null,
+        "end": 1947,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 1943
+      },
+      {
+        "column": null,
+        "end": 1956,
+        "entity": "parse",
+        "file": "def/cli/main.lfy",
+        "line": 20,
+        "outputLine": 1948
+      },
+      {
+        "column": null,
+        "end": 1965,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1957
+      },
+      {
+        "column": null,
+        "end": 1979,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1966
+      },
+      {
+        "column": null,
+        "end": 1985,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1980
+      },
+      {
+        "column": null,
+        "end": 1996,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1986
+      },
+      {
+        "column": null,
+        "end": 2011,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 1997
+      },
+      {
+        "column": null,
+        "end": 2013,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2012
+      },
+      {
+        "column": null,
+        "end": 2018,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2014
+      },
+      {
+        "column": null,
+        "end": 2029,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2019
+      },
+      {
+        "column": null,
+        "end": 2035,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2030
+      },
+      {
+        "column": null,
+        "end": 2041,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2036
+      },
+      {
+        "column": null,
+        "end": 2056,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2042
+      },
+      {
+        "column": null,
+        "end": 2063,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2057
+      },
+      {
+        "column": null,
+        "end": 2071,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2064
+      },
+      {
+        "column": null,
+        "end": 2076,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2072
+      },
+      {
+        "column": null,
+        "end": 2080,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2077
+      },
+      {
+        "column": null,
+        "end": 2088,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2081
+      },
+      {
+        "column": null,
+        "end": 2098,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2089
+      },
+      {
+        "column": null,
+        "end": 2105,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2099
+      },
+      {
+        "column": null,
+        "end": 2107,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2106
+      },
+      {
+        "column": null,
+        "end": 2113,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2108
+      },
+      {
+        "column": null,
+        "end": 2118,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2114
+      },
+      {
+        "column": null,
+        "end": 2129,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2119
+      },
+      {
+        "column": null,
+        "end": 2146,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2130
+      },
+      {
+        "column": null,
+        "end": 2157,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2147
+      },
+      {
+        "column": null,
+        "end": 2167,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2158
+      },
+      {
+        "column": null,
+        "end": 2177,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2168
+      },
+      {
+        "column": null,
+        "end": 2182,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2178
+      },
+      {
+        "column": null,
+        "end": 2189,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2183
+      },
+      {
+        "column": null,
+        "end": 2200,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2190
+      },
+      {
+        "column": null,
+        "end": 2209,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2201
+      },
+      {
+        "column": null,
+        "end": 2215,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2210
+      },
+      {
+        "column": null,
+        "end": 2221,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2216
+      },
+      {
+        "column": null,
+        "end": 2233,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2222
+      },
+      {
+        "column": null,
+        "end": 2256,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2234
+      },
+      {
+        "column": null,
+        "end": 2265,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2257
+      },
+      {
+        "column": null,
+        "end": 2285,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2266
+      },
+      {
+        "column": null,
+        "end": 2317,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2286
+      },
+      {
+        "column": null,
+        "end": 2337,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2318
+      },
+      {
+        "column": null,
+        "end": 2342,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2338
+      },
+      {
+        "column": null,
+        "end": 2345,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2343
+      },
+      {
+        "column": null,
+        "end": 2353,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2346
+      },
+      {
+        "column": null,
+        "end": 2361,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2354
+      },
+      {
+        "column": null,
+        "end": 2380,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2362
+      },
+      {
+        "column": null,
+        "end": 2386,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2381
+      },
+      {
+        "column": null,
+        "end": 2396,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2387
+      },
+      {
+        "column": null,
+        "end": 2414,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2397
+      },
+      {
+        "column": null,
+        "end": 2419,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2415
+      },
+      {
+        "column": null,
+        "end": 2432,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2420
+      },
+      {
+        "column": null,
+        "end": 2464,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2433
+      },
+      {
+        "column": null,
+        "end": 2475,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2465
+      },
+      {
+        "column": null,
+        "end": 2483,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2476
+      },
+      {
+        "column": null,
+        "end": 2485,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2484
+      },
+      {
+        "column": null,
+        "end": 2495,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2486
+      },
+      {
+        "column": null,
+        "end": 2501,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2496
+      },
+      {
+        "column": null,
+        "end": 2506,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2502
+      },
+      {
+        "column": null,
+        "end": 2509,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2507
+      },
+      {
+        "column": null,
+        "end": 2513,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2510
+      },
+      {
+        "column": null,
+        "end": 2516,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2514
+      },
+      {
+        "column": null,
+        "end": 2520,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2517
+      },
+      {
+        "column": null,
+        "end": 2532,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2521
+      },
+      {
+        "column": null,
+        "end": 2541,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2533
+      },
+      {
+        "column": null,
+        "end": 2544,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2542
+      },
+      {
+        "column": null,
+        "end": 2550,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2545
+      },
+      {
+        "column": null,
+        "end": 2559,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2551
+      },
+      {
+        "column": null,
+        "end": 2561,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2560
+      },
+      {
+        "column": null,
+        "end": 2578,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2562
+      },
+      {
+        "column": null,
+        "end": 2586,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2579
+      },
+      {
+        "column": null,
+        "end": 2589,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2587
+      },
+      {
+        "column": null,
+        "end": 2594,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2590
+      },
+      {
+        "column": null,
+        "end": 2598,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2595
+      },
+      {
+        "column": null,
+        "end": 2607,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2599
+      },
+      {
+        "column": null,
+        "end": 2613,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2608
+      },
+      {
+        "column": null,
+        "end": 2617,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2614
+      },
+      {
+        "column": null,
+        "end": 2620,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2618
+      },
+      {
+        "column": null,
+        "end": 2625,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2621
+      },
+      {
+        "column": null,
+        "end": 2636,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2626
+      },
+      {
+        "column": null,
+        "end": 2657,
+        "entity": "main",
+        "file": "def/cli/main.lfy",
+        "line": 49,
+        "outputLine": 2637
+      }
+    ],
+    "output": "crates/elfie-cli/src/main.rs",
+    "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
+    "source": "def/cli/main.lfy",
     "target": "rust"
   }
 ]

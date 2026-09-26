@@ -16,8 +16,8 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Outcome, OutcomeKind, Output, Plan, Request, Review, ReviewReport, ReviewStatus, SourceMap, Unit,
-    Verdict,
+    self, Batch, Outcome, OutcomeKind, Output, Plan, Reason, Request, Review, ReviewReport, ReviewStatus, SourceMap,
+    Unit, Verdict,
 };
 use elfie_core::grammar::GrammarRule as _;
 use elfie_core::lexer::{Token, lex};
@@ -200,12 +200,12 @@ fn help_text() -> String {
     for command in Command::ALL {
         out.push_str(&format!("  {:<8} {}\n", command.value(), command.description()));
     }
-    out.push_str("\noptions:\n  --root <dir>   The project directory (default: the nearest elfie.json above the current directory)\n  --json         Print results as JSON lines\n  --no-verify    Do not run the verifier on a batch whose units were accepted\n  --help, -h     Print this help\n  --version      Print the version\n");
+    out.push_str("\noptions:\n  --root <dir>   The project directory (default: the nearest elfie.json above the current directory)\n  --json         Print results as JSON lines\n  --no-verify    Do not run the verifier on a batch whose units were accepted\n  --strict       check: fail on any warning, error, or stale unit\n  --help, -h     Print this help\n  --version      Print the version\n");
     out
 }
 
 /// Prints every command, verify among them, with one line of description and the global
-/// options, --no-verify among them.
+/// options, --no-verify and --strict among them.
 // @lfy def/cli/main.lfy:main
 fn help() -> ExitCode {
     print!("{}", help_text());
@@ -272,7 +272,9 @@ fn print_diagnostic(diagnostic: &Diagnostic, json: bool) {
 }
 
 /// Load the root, then every diagnostic printed, or of the files given only; the code is
-/// problems when any is an error and success otherwise.
+/// problems when any is an error and success otherwise. With no files given and no error,
+/// each unit that is not up to date is also printed as a warning and counted, and --strict
+/// fails on any warning, error, or stale unit.
 // @lfy def/cli/main.lfy:main
 fn check(invocation: &Invocation) -> ExitCode {
     let workspace = workspace::load(Path::new(&invocation.root));
@@ -282,12 +284,55 @@ fn check(invocation: &Invocation) -> ExitCode {
         print_diagnostic(diagnostic, json);
     }
     if diagnostics.iter().any(|d| d.severity == Severity::Error) {
+        return ExitCode::Problems;
+    }
+    // With no files given, the plan is made as compile makes it with no stems requested,
+    // and each unit that is not up to date is printed as a warning of stage generation.
+    // @lfy def/cli/main.lfy:main
+    let mut stale = 0usize;
+    if invocation.arguments.is_empty() {
+        let maps = load_source_maps(&workspace);
+        let plan = generation::plan(&workspace, &maps, &[]);
+        for unit in &plan.units {
+            let Some(reason) = unit.reason else { continue };
+            stale += 1;
+            print_stale(&workspace, unit, reason, json);
+        }
+    }
+    // The last line counts the files, the problems, and the stale units.
+    // @lfy def/cli/main.lfy:main
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({ "files": workspace.files.len(), "problems": diagnostics.len(), "stale": stale })
+        );
+    } else {
+        println!("{} files, {} problems, {stale} stale units", workspace.files.len(), diagnostics.len());
+    }
+    // --strict: the code is problems when anything at all was printed as a warning or
+    // error, a stale unit included.
+    // @lfy def/cli/main.lfy:main
+    if invocation.flag("strict") && (!diagnostics.is_empty() || stale > 0) {
         ExitCode::Problems
     } else {
-        if !json {
-            println!("{} files, no problems", workspace.files.len());
-        }
         ExitCode::Success
+    }
+}
+
+/// A unit that is not up to date, printed as a warning of stage generation at its source
+/// file, naming the target, the unit, and the description of its reason.
+// @lfy def/cli/main.lfy:main
+fn print_stale(workspace: &Workspace, unit: &Unit, reason: Reason, json: bool) {
+    let file = &workspace.files[unit.file].path;
+    let target = &workspace.targets[unit.target].identifier;
+    let message = format!("{target} {}: {}", unit.stem, reason.value());
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({ "file": file, "stage": "generation", "severity": "warning", "message": message })
+        );
+    } else {
+        println!("{file}: generation warning: {message}");
     }
 }
 
@@ -342,7 +387,23 @@ fn format_command(invocation: &Invocation) -> ExitCode {
             for error in &tree.errors {
                 let token = tree.tokens.get(error.start).or(tree.tokens.last());
                 let (line, column) = token.map_or((0, 0), |t| (t.line, t.column));
-                println!("{display}:{line}:{column}: parser error: expected [{}] but found {:?}", error.expected.join(", "), tree.raw(error.start, error.end));
+                let expected = error.expected.join(", ");
+                let value = tree.raw(error.start, error.end);
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "file": display,
+                            "line": line,
+                            "column": column,
+                            "stage": "parser",
+                            "severity": "error",
+                            "message": format!("expected [{expected}] but found {value:?}"),
+                        })
+                    );
+                } else {
+                    println!("{display}:{line}:{column}: parser error: expected [{expected}] but found {value:?}");
+                }
             }
             code = ExitCode::Problems;
             continue;
@@ -1663,6 +1724,7 @@ fn verify(invocation: &Invocation) -> ExitCode {
             // @lfy def/cli/main.lfy:main
             match known.units.iter().find(|unit| &unit.stem == stem) {
                 Some(unit) if !unit.outputs.is_empty() => requested.push(stem.clone()),
+                _ if json => println!("{}", serde_json::json!({ "stem": stem, "message": "nothing to review" })),
                 _ => println!("{stem}: nothing to review"),
             }
         }
@@ -1899,8 +1961,8 @@ mod tests {
     }
 
     /// Help prints every command of [`Command`], verify among them, with one line of
-    /// description and the global options, --no-verify among them, and version prints the
-    /// version; both return success.
+    /// description and the global options, --no-verify and --strict among them, and
+    /// version prints the version; both return success.
     // @lfy def/cli/main.lfy:main
     #[test]
     fn help_and_version_return_success() {
@@ -1910,7 +1972,10 @@ mod tests {
             assert!(text.contains(command.description()), "{text}");
         }
         assert!(text.contains(Command::Verify.value()), "{text}");
-        assert!(text.contains("--root") && text.contains("--json") && text.contains("--no-verify"), "{text}");
+        assert!(
+            text.contains("--root") && text.contains("--json") && text.contains("--no-verify") && text.contains("--strict"),
+            "{text}"
+        );
         assert_eq!(help(), ExitCode::Success);
         // @lfy def/cli/main.lfy:main
         assert_eq!(version(), ExitCode::Success);
@@ -1940,10 +2005,12 @@ mod tests {
         // this file's to report on.
         let mine: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.range.file == "def/a.lfy").collect();
         assert_eq!(mine.len(), 1);
-        let printed =
-            format!("{}:{}:{}: {} {}", mine[0].range.file, mine[0].range.start.line, mine[0].range.start.column, mine[0].stage, mine[0].severity);
+        let printed = format!(
+            "{}:{}:{}: {} {}: {}",
+            mine[0].range.file, mine[0].range.start.line, mine[0].range.start.column, mine[0].stage, mine[0].severity, mine[0].message
+        );
         // @lfy def/cli/main.lfy:main
-        assert_eq!(printed, "def/a.lfy:1:10: binder error");
+        assert_eq!(printed, "def/a.lfy:1:10: binder error: z is not declared in scope");
         // A file given as an argument narrows the diagnostics. @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["check", "def/a.lfy"]), ExitCode::Problems.code());
     }
@@ -1955,6 +2022,49 @@ mod tests {
         let fixture = Fixture::new();
         fixture.write("def/a.lfy", "const y = 1;\n");
         assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+    }
+
+    /// With no files given and no error, a unit that is not up to date is printed as a
+    /// warning of stage generation naming the target, the unit, and the description of its
+    /// reason, and the last line counts the files, the problems, and the stale units.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn check_prints_stale_units_as_warnings() {
+        let fixture = Fixture::new();
+        one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+        assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+        // A file given as an argument skips the stale-unit report. @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["check", "def/a.lfy"]), ExitCode::Success.code());
+    }
+
+    /// The count of stale units matches the plan, and the message names the target, the
+    /// unit, and the description of the reason.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn print_stale_names_the_target_the_unit_and_the_reason() {
+        let fixture = Fixture::new();
+        one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+        let workspace = workspace::load(&fixture.root);
+        let plan = generation::plan(&workspace, &load_source_maps(&workspace), &[]);
+        assert_eq!(plan.units.len(), 1);
+        assert_eq!(plan.units[0].reason, Some(Reason::Fresh));
+        print_stale(&workspace, &plan.units[0], Reason::Fresh, false);
+    }
+
+    /// With --strict the code is problems when anything at all was printed as a warning or
+    /// error, a stale unit included, even though the same project without --strict is
+    /// success.
+    // @lfy def/cli/main.lfy:main
+    #[test]
+    fn check_strict_fails_on_a_stale_unit() {
+        let fixture = Fixture::new();
+        one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+        assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["check", "--strict"]), ExitCode::Problems.code());
+        // With every unit up to date, --strict is success too. @lfy def/cli/main.lfy:main
+        fixture.write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A {}\n");
+        assert_eq!(fixture.run(&["compile", "--accept"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["check", "--strict"]), ExitCode::Success.code());
     }
 
     /// Format with --check writes nothing, prints the file that would change, and the code
