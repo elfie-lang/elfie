@@ -5,6 +5,7 @@ use "../grammar/traits";
 use "../parser/data";
 use "./data";
 use "./traits";
+use "../interpret/main" as Interpreter;
 use "elfie/criteria/criterion" as Criteria;
 use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
@@ -21,7 +22,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
   @acceptanceCriteria
     .add({
       behavior = [
-        `Binding runs three passes over every file: declare (scopes, symbols, entities), apply (traits, members, criteria), resolve (usages, properties, templates)`,
+        `Binding runs three passes over every file: declare (scopes, symbols, entities), expand (traits, members, criteria, and every other compile-time statement), resolve (usages, properties, templates)`,
         `[[sources]] are bound in the order given, which places every file after the files it uses`,
         `Binding never stops; every failure below is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
       ],
@@ -94,37 +95,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `The module symbol's entity is the used file's entity, so a [[Member]] on it resolves in that file's symbols and a [[For]] over it visits those symbols' entities (in) or names (of) or both (from)`,
     });
 
-  // Apply
+  // Expand
   @acceptanceCriteria
     .add({
-      situation = `A [[Call]] is bound whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
-      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
-    })
-    .add({
-      situation = `A [[Current]] with no [[MemberName]] is bound`,
-      behavior = `It resolves to the scope's current entity; in a file scope that is the anonymous entity for the file, so a trait applied to it at the top level of a file is applied to the file`,
-    })
-    .add({
-      situation = `An applied trait has an [[ExtendsClause]]`,
-      behavior = `Each extended trait is applied too, up the whole chain, with its arguments evaluated from the extending trait's parameters`,
-    })
-    .add({
-      situation = `A trait is applied to an entity`,
-      behavior = [
-        `Each member declared in the trait's body joins the entity's scope`,
-        `The trait body's value setters are evaluated with the parameters bound to the arguments as the entity's values`,
-        `Each criterion of the trait body is appended to [[Entity.acceptanceCriteria]] with [[Criterion.contributor]] set to the trait`,
-      ],
-    })
-    .add({
-      situation = `Two applied traits declare the same member`,
-      behavior = `Most recently applied trait definition wins`,
-    })
-    .add({
-      behavior = [
-        `[[TraitEntity.entities]] is every entity the trait was applied to, in file order then application order, complete before the resolve pass reads it`,
-        `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
-      ],
+      behavior = `The expand pass is [[Interpreter.expand]]: trait applications, ace statements, declaration bodies, and file-level statements run there, and the resolve pass reads what it left`,
     });
 
   // Resolve

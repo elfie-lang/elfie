@@ -1,12 +1,13 @@
 use "../grammar/rules/expression";
 use "../grammar/rules/file";
 use "../grammar/rules/statement";
+use "../grammar/traits";
 use "../model/data";
-use "../model/main" as Binder;
 use "../parser/data";
 use "../workspace/data";
 use "./data";
 use "elfie/prelude/builtin";
+use "elfie/prelude/trait" as Traits;
 
 // Decision: compile-time code runs the way Rust runs it. Code that can add names (trait
 // applications, ace statements, declaration bodies) runs in a loop with name resolution until
@@ -14,6 +15,9 @@ use "elfie/prelude/builtin";
 // something asks for it, as const evaluation does. Elfie lets one body both read the model and
 // add names, which Rust does not, so reading everything a trait was applied to waits until
 // nothing can apply it any more.
+// Decision: expand, evaluate, and lower live in one module although the binder calls the first
+// two and lowering runs after the workspace is loaded, because they share one classification,
+// phaseOf, and one value model; the pipeline order is stated by each fn, not by the module.
 // Decision: the parse tree is never rewritten, because the query, format, and LSP stages rely on
 // it reproducing the source. Lowering builds a new tree whose nodes point back to it, as
 // rust-analyzer does for macro expansions.
@@ -83,7 +87,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
   @acceptanceCriteria
     .add({
       behavior = [
-        `Runs after the declare pass and before the resolve pass of [[Binder.bind]], over every file in bind order`,
+        `Runs as the binder's expand pass: after the declare pass and before the resolve pass, over every file in bind order`,
         `Each round runs every [[Phase.compile]] statement not yet run whose names now resolve: trait applications, ace statements, declaration bodies, and file-level statements`,
         `Rounds repeat until one runs nothing; a statement that still does not resolve then adds a [[Problem]] at the name`,
         `Names are resolved only as far as a statement needs them to run; the resolve pass resolves the rest`,
@@ -93,6 +97,39 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = [
         `Running a statement changes only the model: symbols join scopes, members and values join entities, [[Applied]] records join entities, and criteria and tests join entities`,
         `Running a statement never changes a [[Tree]]`,
+      ],
+    });
+
+  // Applying traits (moved from the binder)
+  @acceptanceCriteria
+    .add({
+      situation = `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
+      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, or to every item when it resolves to an [[alternationList]], with the other arguments as [[Applied.arguments]]`,
+    })
+    .add({
+      situation = `A [[Current]] with no [[MemberName]] is run`,
+      behavior = `It resolves to the scope's current entity; in a file scope that is the anonymous entity for the file, so a trait applied to it at the top level of a file is applied to the file`,
+    })
+    .add({
+      situation = `An applied trait has an [[ExtendsClause]]`,
+      behavior = `Each extended trait is applied too, up the whole chain, with its arguments evaluated from the extending trait's parameters`,
+    })
+    .add({
+      situation = `A trait is applied to an entity`,
+      behavior = [
+        `Each member declared in the trait's body joins the entity's scope`,
+        `The trait body's value setters are evaluated with the parameters bound to the arguments as the entity's values`,
+        `Each criterion of the trait body is appended to [[Entity.acceptanceCriteria]] with [[Criterion.contributor]] set to the trait`,
+      ],
+    })
+    .add({
+      situation = `Two applied traits declare the same member`,
+      behavior = `Most recently applied trait definition wins`,
+    })
+    .add({
+      behavior = [
+        `[[TraitEntity.entities]] is every entity the trait was applied to, in file order then application order, complete before the resolve pass reads it and before any statement reads it, as below`,
+        `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
       ],
     });
 
