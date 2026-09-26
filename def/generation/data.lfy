@@ -31,10 +31,19 @@ d Marker: `One place where generated code says where it came from` {
       behavior = `A marker is written in the output as a line comment of the target's language reading @lfy, a space, the source path relative to [[Workspace.root]], a colon, and then either a line (optionally a colon and a column) or the name of an entity of that file`,
     })
     .add({
-      behavior = `A marker for a test, or for code written to satisfy one criterion, names the entity the code belongs to, then a # and the id of that criterion or test, local or global; this is the only place a criterion or test appears in an output, and never as its text`,
+      situation = `A marker is for a test, or for code written to satisfy one criterion`,
+      behavior = `The marker names the entity the code belongs to, then a # and the id of that criterion or test, local or global`,
     })
     .add({
-      behavior = `Text is read as a marker only when what follows @lfy and the space is a path ending in .lfy, a colon, and a number or an identifier path; anything else after @lfy is prose`,
+      behavior = `A criterion or test appears in an output only as its id in a marker, and never as its text`,
+    })
+    .add({
+      situation = `What follows @lfy and the space is a path ending in .lfy, a colon, and a number or an identifier path`,
+      behavior = `The text is read as a marker`,
+    })
+    .add({
+      situation = `What follows @lfy is not a space and a path ending in .lfy, a colon, and a number or an identifier path`,
+      behavior = `The text after @lfy is prose and is not read as a marker`,
     })
     .add({
       behavior = `The compiler is asked to write names, never lines, so that its markers survive edits that move lines; every line in a source map is derived from the model, never copied from the compiler`,
@@ -157,7 +166,12 @@ d Review: `A verifier's finding for one criterion or test` {
       behavior = `A verifier writes a review as one JSON object on one line with exactly the keys id, status, evidence, and note, and ends its report with a line reading ELFIE: REVIEWED`,
     })
     .add({
-      behavior = `[[Review.file]], [[Review.line]], and [[Review.entity]] are derived from the origin of the criterion or test the id names, never read from the verifier; for a global one the entity is global`,
+      situation = `The id names a criterion or test that is not global`,
+      behavior = `[[Review.file]], [[Review.line]], and [[Review.entity]] are derived from the origin of the criterion or test the id names, never read from the verifier`,
+    })
+    .add({
+      situation = `The id names a global criterion or test`,
+      behavior = `[[Review.file]] and [[Review.line]] are derived from the origin of the criterion or test the id names, never read from the verifier, and [[Review.entity]] is global`,
     });
 }
 
