@@ -75,7 +75,9 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     .add({
       behavior = `A protocol line is [[Position.line]] minus one; a protocol character is the count of [[Session.encoding]] code units in the characters before [[Position.column]] on that line, and back`,
     })
-    .add({ behavior = `Every range sent is a [[Range]] converted that way` });
+    .add({
+      behavior = `Every range sent is a [[Range]] whose positions are converted to a protocol line of [[Position.line]] minus one and a protocol character of the count of [[Session.encoding]] code units before [[Position.column]] on that line`,
+    });
 
   // Features, each one query
   @acceptanceCriteria
@@ -99,7 +101,7 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     })
     .add({
       situation = `documentSymbol`,
-      behavior = `[[Query.outlineOf]] nested as the protocol's document symbols, with kinds mapped as completion maps them`,
+      behavior = `[[Query.outlineOf]] nested as the protocol's document symbols, with kinds mapped to the protocol's kinds: keyword to Keyword, path to File, data and type to Struct, trait to Interface, enum to Enum, function and agentFunction to Function, member to Field, variable and parameter to Variable, module to Module, anything else to Text`,
     })
     .add({ situation = `workspace symbol`, behavior = `[[Query.findSymbols]] with the request's query` })
     .add({

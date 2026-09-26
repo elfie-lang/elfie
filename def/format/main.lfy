@@ -69,7 +69,7 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
       behavior = `It is multi-line: one item per line, each ending with a [[Comma]], the close on its own line`,
     })
     .add({
-      situation = `Otherwise`,
+      situation = `A [[List]], [[Object]], [[Type]], [[Arguments]], [[Parameters]], [[Items]], or [[TraitUses]] held no [[NewLine]] between its brackets in the source, and the line would not exceed 120 characters`,
       behavior = `It stays on one line and a trailing [[Comma]] before the close is removed`,
     })
     .add({

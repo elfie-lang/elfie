@@ -48,7 +48,10 @@ fn problems(session: Session, file?: string) is tool: `The problems of the progr
     .add({
       behavior = `One line per [[Query.diagnosticsOf]] reading the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`,
     })
-    .add({ situation = `There are none`, behavior = `The text says no problems` });
+    .add({
+      situation = `[[Query.diagnosticsOf]] gives no diagnostic for the program, or for [[file]] when it is given`,
+      behavior = `The text says no problems`,
+    });
 }
 
 /// name: an identifier, or an owner's identifier, a dot, and a member's name; a file path and a colon before it limits the search to that file
@@ -57,7 +60,10 @@ fn find(session: Session, name: string) is tool: `Where things with a name are d
     .add({
       behavior = `One line per entity of [[Query.find]] reading the kind, the identifier, the file, the line, and the definition when there is one`,
     })
-    .add({ situation = `Nothing matches`, behavior = `The text says so and suggests elfie_outline` });
+    .add({
+      situation = `[[Query.find]] finds no entity for [[name]]`,
+      behavior = `The text says so and suggests elfie_outline`,
+    });
 }
 
 /// name: as elfie_find takes it
@@ -67,7 +73,7 @@ fn entity(session: Session, name: string) is tool: `Everything known about the t
       behavior = `For each entity of [[Query.find]], in order: the fields of [[Query.hoverOf]] with a heading each; the identifier of each trait in [[Entity.traits]]; each member's name, definition, and type; each of [[Entity.tests]] as input and expectation; the count of [[Binder.usagesOf]] its symbol with the file and line of each; then [[Query.sourceOf]] in a fenced block`,
     })
     .add({
-      situation = `More than one entity matches`,
+      situation = `[[Query.find]] finds more than one entity for [[name]]`,
       behavior = `Each is separated by a rule and headed by its file, so the caller can narrow the name with a file path`,
     });
 }
@@ -98,7 +104,7 @@ fn grammar(session: Session) is tool: `The grammar of Elfie: every terminal and 
 fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in order, why each needs generating, and how they are batched` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[Generation.plan]] of the workspace with the source maps read from each target's output directory and the violated units of the last global review read as the command line reads them, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
+      behavior = `[[Generation.plan]] of the workspace with the source maps read from source-map.json under each target's [[Target.outputDirectory]], none for a target whose file is missing, dropping any whose output no longer exists, and as the violated units the stems of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is the id of a violated review in elfie-requests/global.reviews.json under the root, none when that file is missing, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
     })
     .add({
       situation = `[[target]] is set`,
@@ -127,10 +133,13 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
       behavior = `[[Generation.accept]] of the unit against the request of its batch and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk`,
     })
     .add({
-      situation = `Accepted`,
+      situation = `[[Generation.accept]] of the unit accepts it`,
       behavior = `The text says so and lists the outputs; nothing is written, the CLI records source maps`,
     })
-    .add({ situation = `Rejected`, behavior = `An error listing [[Verdict.problems]]` });
+    .add({
+      situation = `[[Generation.accept]] of the unit rejects it`,
+      behavior = `An error listing [[Verdict.problems]]`,
+    });
 }
 
 // Decision: the source maps every tool below reads come from each target's output directory, as
@@ -141,7 +150,7 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
 fn output(session: Session, name: string, target?: string) is tool: `Where the generated code for one entity is: every region of every output that came from it, with its text` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `For each [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]], with the source maps read as elfie_units reads them: a line reading the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then the [[Files.read]] text of those lines of the output in a fenced block`,
+      behavior = `For each [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]], with the source maps read from source-map.json under each target's [[Target.outputDirectory]], none for a target whose file is missing: a line reading the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then the [[Files.read]] text of those lines of the output in a fenced block`,
     })
     .add({ situation = `Nothing is generated for [[name]]`, behavior = `The text says so` })
     .add({
@@ -158,8 +167,8 @@ fn source(session: Session, file: string, line: number) is tool: `Where one line
       behavior = `The [[Marker]] of the [[SourceMap]] whose [[SourceMap.output]] is [[file]] whose region covers [[line]], that is whose [[Marker.outputLine]] is at most [[line]] and whose [[Marker.end]] is at least [[line]]: a line reading [[Marker.file]], a colon, [[Marker.line]], and then [[Marker.entity]] when it names one`,
     })
     .add({
-      situation = `The marker names a requirement`,
-      behavior = `[[Marker.requirement]] follows on the next line, then the text of that criterion or test, local or global, from the lowered program`,
+      situation = `The [[Marker]] whose region covers [[line]] of [[file]] names a requirement`,
+      behavior = `[[Marker.requirement]] follows on the line after the one reading [[Marker.file]] and [[Marker.line]], then the text of that criterion or test, local or global, from the lowered program`,
     })
     .add({
       situation = `No source map has [[file]] as its output, or [[line]] is before its first marker`,
@@ -178,7 +187,10 @@ fn changes(session: Session, unit: string) is tool: `What differs for each entit
       situation = `The unit has outputs and the previous text cannot be recovered`,
       behavior = `The text says so first, then every entity as added, as [[Generation.changes]] gives with undefined`,
     })
-    .add({ situation = `Nothing differs`, behavior = `The text says no changes` })
+    .add({
+      situation = `[[Generation.changes]] of the unit with that stem gives no [[Change]]`,
+      behavior = `The text says no changes`,
+    })
     .add({ situation = `No unit has that stem`, behavior = `An error saying so` });
 }
 
@@ -187,7 +199,7 @@ fn changes(session: Session, unit: string) is tool: `What differs for each entit
 fn review(session: Session, batch: string, target?: string) is tool: `The full review request for one batch: every criterion and test with the regions generated for its entities, and how to report` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with the source maps read as elfie_units reads them, so a verifier session can fetch its own request`,
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with the source maps read from source-map.json under each target's [[Target.outputDirectory]], none for a target whose file is missing, so a verifier session can fetch its own request`,
     })
     .add({
       situation = `No batch has that identifier or holds a unit with that stem, or the target is ambiguous`,
@@ -198,7 +210,7 @@ fn review(session: Session, batch: string, target?: string) is tool: `The full r
 fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with the regions that answer for each` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of the plan elfie_units makes, with the source maps read as elfie_units reads them, so a verifier session can fetch the global review`,
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of [[Generation.plan]] of the workspace and the source maps read from source-map.json under each target's [[Target.outputDirectory]], none for a target whose file is missing, so a verifier session can fetch the global review`,
     })
     .add({ situation = `No global criterion or test exists`, behavior = `The text says so` });
 }
