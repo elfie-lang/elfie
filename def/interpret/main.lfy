@@ -79,6 +79,16 @@ fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is
       expect = Phase.compile,
     },
     { input = [Model@like(`bound from: const c = 1;`), Node@like(`the declaration`)], expect = Phase.runtime },
+    {
+      input = [
+        Workspace@like(
+          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
+        ),
+      ],
+      expect = Program@like(
+        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
+      ),
+    },
   );
 }
 
@@ -170,6 +180,16 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       input = [Model@like(`declared from: fn f() => number; ace const c = f();`)],
       expect = Model@like(`One [[Problem]] at the call of f, and c undefined`),
     },
+    {
+      input = [
+        Workspace@like(
+          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
+        ),
+      ],
+      expect = Program@like(
+        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
+      ),
+    },
   );
 }
 
@@ -208,6 +228,16 @@ fn evaluate(model: Model, node: Node): `The value of an expression, computed at 
       input = [Model@like(`bound from: const s = string@like(\`a word\`);`), Node@like(`the right side`)],
       expect = Prompted@like(`of string, prompt a word`),
     },
+    {
+      input = [
+        Workspace@like(
+          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
+        ),
+      ],
+      expect = Program@like(
+        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
+      ),
+    },
   );
 }
 
@@ -236,6 +266,35 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       behavior = `A [[Problem]] is added at the call, because the function will not exist at runtime`,
     });
 
+  // Members
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `A kept declaration of a data or trait-carrying entity has one child lowered node per member of its entity, in member order, after its other kept children`,
+        `A member node's entity is the member and its origin is the statement that declared the member, which is in the trait's file when a trait added it`,
+      ],
+    });
+
+  // Criteria and tests
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Every criterion and test of every entity is lowered once, into a [[LoweredCriterion]] or [[LoweredTest]] with its id, and never into the tree's children`,
+        `A local one joins [[LoweredNode.criteria]] or [[LoweredNode.tests]] of the node whose entity it is for, or [[LoweredFile.criteria]] or [[LoweredFile.tests]] when it is for the file's own entity`,
+      ],
+    })
+    .add({
+      situation = `A criterion or test was added to global's context, or comes from a trait applied to global`,
+      behavior = [
+        `It is global: it is in [[Program.criteria]] or [[Program.tests]] once, with global in its id and no entity, and in no node or file`,
+        `The same trait criterion reaching every entity through global is one global criterion, not one per entity`,
+      ],
+    })
+    .add({
+      situation = `A criterion comes from [[Target.marker]] of a target, or from a trait it extends`,
+      behavior = `It is guidance for that target and not a global criterion, because every request of the target already carries it as guidance`,
+    });
+
   // What is kept
   @acceptanceCriteria
     .add({
@@ -252,7 +311,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
         Workspace@like(`def/a.lfy reading: trait t { $x: \`d\` = string; } d A is t { where (\`s\`) -> \`b\`; }`),
       ],
       expect = Program@like(
-        `a.lfy lowered to a [[SourceFile]] holding one [[DataDeclaration]] node for A with no clause and no block children, carrying the entity A, which has the member x and one criterion; no node for t`,
+        `a.lfy lowered to a [[SourceFile]] holding one [[DataDeclaration]] node for A with no clause, one member node for x whose origin is in t, and one [[LoweredCriterion]] with situation s and an id beginning A:A:; no node for t`,
       ),
     },
     {
@@ -267,6 +326,16 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       ],
       expect = Program@like(
         `The function names kept, with r@entities folded to a list holding A, and e@identifier kept because e only has a value at runtime`,
+      ),
+    },
+    {
+      input = [
+        Workspace@like(
+          `def/a.lfy reading: trait g { where (\`any\`) -> \`holds\`; } g.apply(global); d A {} d B {}, and def/b.lfy reading: global@acceptanceCriteria.add({ behavior = \`all\` });`,
+        ),
+      ],
+      expect = Program@like(
+        `[[Program.criteria]] holding two global criteria, holds with an id beginning global:g: and all with an id beginning global:, and no criteria on the nodes of A and B`,
       ),
     },
   );

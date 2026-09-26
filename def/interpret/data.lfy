@@ -20,12 +20,52 @@ d Prompted: `A value only the compiler can choose, left for generation to choose
   where (`A call of like on an entity's context is evaluated`) -> `The result is a [[Prompted]], never a value the interpreter picks, so binding stays deterministic`;
 }
 
+enum RequirementScope: `Whom a criterion or test is for` {
+  local = `one entity, a member, or a file`,
+  global = `the whole program: every unit sees it, and it is verified once`,
+}
+
+// Decision: criteria and tests are records of their own beside the code, never comments in it, so a
+// change to them is told apart from a change to a body, a verifier can answer for each one by its
+// id, and the compiler is not led to restate them in its output.
+// Decision: an id is built from what a criterion is for, who wrote it, and what it says, so it
+// survives lines moving; a reworded criterion is a new id, and the old one is removed.
+
+d LoweredCriterion extends Criterion: `One acceptance criterion as generation and verification see it: an entity of its own, apart from the code` {
+  $id: `The receiving entity's name, or global for a global criterion, then a colon, the contributor's name, a colon, and the SHA-256 of its situation, behavior, and side effects as rendered, in lowercase hex` = string;
+  $scope: `Whether it is for one entity or for the whole program` = RequirementScope;
+  $entity: `The entity it is for; undefined when global` = Entity | undefined;
+  $origin: `The where statement or add call that wrote it` = Node;
+  $references: `Every entity it names with a bracketed reference, in order, kept as links rather than rendered names` = Entity[];
+  @acceptanceCriteria
+    .add({
+      situation = `Two criteria for the same entity would have the same id`,
+      behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
+    });
+}
+
+d LoweredTest extends Test: `One test as generation and verification see it: an entity of its own, apart from the code` {
+  $id: `The receiving entity's name, or global for a global test, then a colon, the name of the entity whose body holds it, a colon, and the SHA-256 of its input and expect as spelled, in lowercase hex` = string;
+  $scope: `Whether it is for one entity or for the whole program` = RequirementScope;
+  $entity: `The entity it is for; undefined when global` = Entity | undefined;
+  $origin: `The test call argument that wrote it` = Node;
+  $inputValue: `Its input, evaluated` = Value | Prompted;
+  $expectValue: `Its expect, evaluated` = Value | Prompted;
+  @acceptanceCriteria
+    .add({
+      situation = `Two tests for the same entity would have the same id`,
+      behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
+    });
+}
+
 d LoweredNode: `One node of the program as generation sees it: runtime code only, with compile-time results in place` {
   $rule: `The rule it satisfies` = Rule;
   $children: `Lowered nodes and tokens in source order; a folded node has none` = (LoweredNode | Token)[];
   $origin: `The node of the parse tree it was lowered from` = Node;
   $entity: `The entity it declares; undefined when it declares none` = Entity | undefined;
   $value: `What a folded node holds; undefined for a node kept as written` = Value | Prompted | undefined;
+  $criteria: `The local criteria of its entity, in [[Entity.acceptanceCriteria]] order; empty when it declares none` = LoweredCriterion[];
+  $tests: `The local tests of its entity, in order; empty when it declares none` = LoweredTest[];
   @acceptanceCriteria
     .add({ behavior = `Every lowered node has an origin, so every place generation reads maps back to the source` })
     .add({ behavior = `No lowered node has a [[Phase.compile]] rule, except a folded node whose value is a [[Prompted]]` });
@@ -34,10 +74,14 @@ d LoweredNode: `One node of the program as generation sees it: runtime code only
 d LoweredFile: `One file as generation sees it` {
   $file: `The file it was lowered from` = File;
   $root: `The lowered [[SourceFile]]` = LoweredNode;
+  $criteria: `The local criteria of the file's own entity, in order` = LoweredCriterion[];
+  $tests: `The local tests of the file's own entity, in order` = LoweredTest[];
 }
 
 d Program: `A workspace with every file lowered: what generation reads` {
   $workspace: `The workspace lowered` = Workspace;
   $files: `One per file of [[Workspace.files]], in the same order` = LoweredFile[];
+  $criteria: `Every global criterion, each once, in the order they were added` = LoweredCriterion[];
+  $tests: `Every global test, each once, in the order they were added` = LoweredTest[];
   $problems: `Every problem lowering added, in node order` = Problem[];
 }
