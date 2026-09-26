@@ -28,9 +28,17 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     .add({
       situation = [
         `[[rule]] is an [[GrammarTraits.alternationList]]`,
-        `Tokens are left over after [[rule]] is satisfied, or trivia precedes the item that satisfied [[rule]]`,
+        `Trivia precedes the item that satisfied [[rule]]`,
+        `No tokens are left over after [[rule]] is satisfied`,
       ],
-      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia, the item that satisfied [[rule]], and the [[ErrorNode]] of the tokens left over, if any`,
+      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia and the item that satisfied [[rule]]`,
+    })
+    .add({
+      situation = [
+        `[[rule]] is an [[GrammarTraits.alternationList]]`,
+        `Tokens are left over after [[rule]] is satisfied`,
+      ],
+      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia, the item that satisfied [[rule]], and the [[ErrorNode]] of the tokens left over`,
     });
 
   // The grammar document is the only grammar the parser knows
@@ -88,27 +96,90 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     .add({ situation = `One candidate is selected for the next token`, behavior = `That candidate is tried` })
     .add({
       situation = `More than one candidate is selected for the next token`,
-      behavior = `They are tried in [[triedBefore]] order, each only when the one before it fails there`,
+      behavior = `They are tried in [[triedBefore]] order`,
+    })
+    .add({
+      situation = [
+        `More than one candidate is selected for the next token`,
+        `A candidate fails there`,
+      ],
+      behavior = `The next candidate in [[triedBefore]] order is tried`,
+    })
+    .add({
+      situation = [
+        `More than one candidate is selected for the next token`,
+        `A candidate does not fail there`,
+      ],
+      behavior = `No candidate after it in [[triedBefore]] order is tried`,
+    })
+    .add({
+      situation = [
+        `Every alternative of an alternation is a [[GrammarTraits.primary]], [[GrammarTraits.prefix]], [[GrammarTraits.infix]], or [[GrammarTraits.postfix]] rule`,
+        `At least one alternative of the alternation is a [[GrammarTraits.infix]] or [[GrammarTraits.postfix]] rule`,
+      ],
+      behavior = `The [[Expression]] that satisfies the alternation is parsed with a minimum one below the lowest binding power among its [[GrammarTraits.infix]] and [[GrammarTraits.postfix]] alternatives`,
+    })
+    .add({
+      situation = [
+        `Every alternative of an alternation is a [[GrammarTraits.primary]], [[GrammarTraits.prefix]], [[GrammarTraits.infix]], or [[GrammarTraits.postfix]] rule`,
+        `No alternative of the alternation is a [[GrammarTraits.infix]] or [[GrammarTraits.postfix]] rule`,
+      ],
+      behavior = `The [[Expression]] that satisfies the alternation is parsed with minimum 0`,
     })
     .add({
       situation = `Every alternative of an alternation is a [[GrammarTraits.primary]], [[GrammarTraits.prefix]], [[GrammarTraits.infix]], or [[GrammarTraits.postfix]] rule`,
       behavior = [
-        `The alternation is satisfied by one [[Expression]] parsed with a minimum one below the lowest binding power among its [[GrammarTraits.infix]] and [[GrammarTraits.postfix]] alternatives, or 0 when it has none`,
+        `The alternation is satisfied by one [[Expression]]`,
         `That [[Expression]] begins with one of the alternation's [[GrammarTraits.primary]] or [[GrammarTraits.prefix]] alternatives`,
         `The rule of the node that [[Expression]] produces is one of the alternatives`,
         `No candidate is selected among the alternatives, and [[triedBefore]] does not order them`,
       ],
     })
     .add({
-      situation = `An optional element is reached`,
-      behavior = [
-        `It is tried when the next token that is not [[trivia]] can begin it, and skipped otherwise`,
-        `When it fails it is skipped; a later failure never revisits the choice`,
+      situation = [
+        `An optional element is reached`,
+        `The next token that is not [[trivia]] can begin it`,
       ],
+      behavior = `It is tried`,
     })
     .add({
-      situation = `A repetition is reached`,
-      behavior = `Another iteration is tried while the next token that is not [[trivia]] can begin the repeated element; an iteration that fails leaves its tokens and ends the repetition`,
+      situation = [
+        `An optional element is reached`,
+        `The next token that is not [[trivia]] cannot begin it`,
+      ],
+      behavior = `It is skipped`,
+    })
+    .add({
+      situation = [
+        `An optional element is reached`,
+        `It is tried and fails`,
+      ],
+      behavior = `It is skipped`,
+    })
+    .add({
+      situation = `An optional element is reached`,
+      behavior = `A later failure never revisits the choice of trying or skipping it`,
+    })
+    .add({
+      situation = [
+        `A repetition is reached`,
+        `The next token that is not [[trivia]] can begin the repeated element`,
+      ],
+      behavior = `Another iteration is tried`,
+    })
+    .add({
+      situation = [
+        `A repetition is reached`,
+        `The next token that is not [[trivia]] cannot begin the repeated element`,
+      ],
+      behavior = `The repetition ends`,
+    })
+    .add({
+      situation = [
+        `A repetition is reached`,
+        `An iteration of it fails`,
+      ],
+      behavior = `The iteration leaves its tokens and the repetition ends`,
     });
 
   // Expressions
@@ -127,7 +198,21 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     })
     .add({
       situation = `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
-      behavior = `The postfix rule is tried first, its own criteria included, and the infix rule only when the postfix rule is no match there`,
+      behavior = `The postfix rule is tried first, its own criteria included`,
+    })
+    .add({
+      situation = [
+        `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
+        `The postfix rule is no match there`,
+      ],
+      behavior = `The infix rule is tried`,
+    })
+    .add({
+      situation = [
+        `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
+        `The postfix rule is a match there`,
+      ],
+      behavior = `The infix rule is not tried`,
     })
     .add({
       situation = `A criterion of an operation makes it no match when the expression is parsed for a particular rule, as [[Generic]] is no match for [[Reference]]`,
@@ -145,8 +230,18 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       behavior = `It produces nothing and leaves its tokens to the rule that referenced it`,
     })
     .add({
-      situation = `An [[ErrorNode]] is produced`,
-      behavior = `[[ErrorNode.keyword]] is the first token it covers that is of a [[GrammarTraits.keyword]] terminal and where an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it; it is undefined when no token it covers is such`,
+      situation = [
+        `An [[ErrorNode]] is produced`,
+        `A token it covers is of a [[GrammarTraits.keyword]] terminal, and an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
+      ],
+      behavior = `[[ErrorNode.keyword]] is the first token it covers that is of a [[GrammarTraits.keyword]] terminal and where an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
+    })
+    .add({
+      situation = [
+        `An [[ErrorNode]] is produced`,
+        `No token it covers is of a [[GrammarTraits.keyword]] terminal where an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
+      ],
+      behavior = `[[ErrorNode.keyword]] is undefined`,
     });
 
   @test(

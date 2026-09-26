@@ -69,9 +69,8 @@ d Conditions is rule(`[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[
     .add({
       behavior = `A negated nested group distributes the negation: "and" becomes "or" and "or" becomes "and" inside of the group`,
     })
-    .add({
-      behavior = `Conditions joined by "or" merge into one situation; conditions joined by "and" are a list of situations`,
-    });
+    .add({ situation = `Conditions are joined by "or"`, behavior = `They merge into one situation` })
+    .add({ situation = `Conditions are joined by "and"`, behavior = `They are a list of situations` });
 }
 d Where is statement(`[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]`): `Adds an acceptance criterion: the conditions are the situation, the expression the behavior` {}
 

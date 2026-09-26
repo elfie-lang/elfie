@@ -80,10 +80,21 @@ fn symbolAt(workspace: Workspace, file: string, position: Position): `The symbol
       behavior = `The [[Usage]] of the [[Reference]] gives the symbol, so references in prose resolve like code`,
     })
     .add({
-      situation = `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
-      behavior = `Returns the module symbol the [[Use]] declares, or undefined when it has no [[AsKeyword]]`,
+      situation = [
+        `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+        `The [[Use]] has an [[AsKeyword]]`,
+      ],
+      behavior = `Returns the module symbol the [[Use]] declares`,
     })
-    .add({ situation = `[[tokenAt]] is undefined, or is not an [[Identifier]], not a keyword standing as a [[MemberName]], not inside a [[TemplateReference]], and not the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+    .add({
+      situation = [
+        `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+        `The [[Use]] has no [[AsKeyword]]`,
+      ],
+      behavior = `Returns undefined`,
+    })
+    .add({
+      situation = `[[tokenAt]] is undefined, or is not an [[Identifier]], not a keyword standing as a [[MemberName]], not inside a [[TemplateReference]], and not the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
       behavior = `Returns undefined`,
     });
 
@@ -132,8 +143,14 @@ fn definitionOf(workspace: Workspace, file: string, position: Position): `Where 
 
 fn referencesTo(workspace: Workspace, file: string, position: Position, includeDeclaration: boolean = true): `Every place the symbol at a position is used` => Range[] {
   @acceptanceCriteria
+    .add({ behavior = `One range per [[Usage]] in [[Binder.usagesOf]] the symbol` })
     .add({
-      behavior = `One range per [[Usage]] in [[Binder.usagesOf]] the symbol, covering the token that spells the name, or the accessor when the usage is of a layer itself`,
+      situation = `A [[Usage]] in [[Binder.usagesOf]] the symbol is not of a layer itself`,
+      behavior = `The range of that usage covers the token that spells the name`,
+    })
+    .add({
+      situation = `A [[Usage]] in [[Binder.usagesOf]] the symbol is of a layer itself`,
+      behavior = `The range of that usage covers the accessor`,
     })
     .add({ situation = `[[includeDeclaration]] is true`, behavior = `The range [[definitionOf]] gives is first` })
     .add({ behavior = `Ranges are in [[Workspace.files]] order, then by [[Range.start]]` })
@@ -163,14 +180,49 @@ fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, 
 
   // Type
   @acceptanceCriteria
+    .add({ behavior = `[[SemanticToken.type]] follows the kind of the symbol the token declares or resolves to` })
     .add({
-      behavior = `[[SemanticToken.type]] follows the kind of the symbol the token declares or resolves to: the [[TokenType]] of the same name where there is one; [[SymbolKind.agentFunction]] gives [[TokenType._function]]; [[SymbolKind.loopVariable]] and [[SymbolKind._external]] give [[TokenType.variable]]; [[SymbolKind.member]] gives [[TokenType.property]]; [[SymbolKind._module]] gives [[TokenType.namespace]]`,
+      situation = `The token declares or resolves to a symbol whose kind has a [[TokenType]] of the same name`,
+      behavior = `[[SemanticToken.type]] is the [[TokenType]] of the same name as the kind`,
+    })
+    .add({
+      situation = `The token declares or resolves to a symbol of kind [[SymbolKind.agentFunction]]`,
+      behavior = `[[SemanticToken.type]] is [[TokenType._function]]`,
+    })
+    .add({
+      situation = `The token declares or resolves to a symbol of kind [[SymbolKind.loopVariable]] or [[SymbolKind._external]]`,
+      behavior = `[[SemanticToken.type]] is [[TokenType.variable]]`,
+    })
+    .add({
+      situation = `The token declares or resolves to a symbol of kind [[SymbolKind.member]]`,
+      behavior = `[[SemanticToken.type]] is [[TokenType.property]]`,
+    })
+    .add({
+      situation = `The token declares or resolves to a symbol of kind [[SymbolKind._module]]`,
+      behavior = `[[SemanticToken.type]] is [[TokenType.namespace]]`,
     })
     .add({
       situation = `The token declares or resolves to a symbol of kind [[SymbolKind.typeParameter]]`,
-      behavior = `The type is [[TokenType.typeParameter]] wherever the name appears, in the [[TypeParameters]] that lists it, in a type position, and in an expression alike; declaration is among the modifiers of the token in the [[TypeParameter]] alone`,
+      behavior = `The type is [[TokenType.typeParameter]] wherever the name appears, in the [[TypeParameters]] that lists it, in a type position, and in an expression alike`,
     })
-    .add({ situation = `The token declares or resolves to an alias`, behavior = `The type is that of the entity the alias is bound to` })
+    .add({
+      situation = [
+        `The token declares or resolves to a symbol of kind [[SymbolKind.typeParameter]]`,
+        `The token is the name in the [[TypeParameter]] that declares it`,
+      ],
+      behavior = `declaration is among the token's modifiers`,
+    })
+    .add({
+      situation = [
+        `The token declares or resolves to a symbol of kind [[SymbolKind.typeParameter]]`,
+        `The token is not the name in the [[TypeParameter]] that declares it`,
+      ],
+      behavior = `declaration is not among the token's modifiers`,
+    })
+    .add({
+      situation = `The token declares or resolves to an alias`,
+      behavior = `The type is that of the entity the alias is bound to`,
+    })
     .add({
       situation = `The token resolves to a member of a kind data or of a base data, as [[Binder.bind]] resolves the [[ContextAccessor]] and the [[ValueAccessor]], or names a member of a kind data other than the entity's`,
       behavior = `The type is property, whatever the member's value is`,
@@ -192,9 +244,14 @@ fn semanticTokensOf(workspace: Workspace, file: string): `Every name of a file, 
       situation = `The token declares or resolves to a variable declared with [[ConstKeyword]]`,
       behavior = `readonly is among the token's modifiers`,
     })
+    .add({ situation = `The token follows a [[ContextAccessor]]`, behavior = `context is among its modifiers` })
     .add({
-      situation = `The token follows a [[ContextAccessor]], a [[ScopeAccessor]] or [[ParentScopeAccessor]], or a [[ValueAccessor]] or [[OptionalValueAccessor]]`,
-      behavior = `context, scope, or value, in the same order, is among its modifiers`,
+      situation = `The token follows a [[ScopeAccessor]] or [[ParentScopeAccessor]]`,
+      behavior = `scope is among its modifiers`,
+    })
+    .add({
+      situation = `The token follows a [[ValueAccessor]] or [[OptionalValueAccessor]]`,
+      behavior = `value is among its modifiers`,
     })
     .add({
       situation = `The token is inside a [[TemplateReference]], a [[TemplateExecution]], or [[Documentation]]`,
@@ -239,20 +296,68 @@ fn typeTextOf(workspace: Workspace, entity: Entity | undefined): `How a type is 
   @acceptanceCriteria
     .add({ situation = `[[entity]] is undefined`, behavior = `Returns undefined` })
     .add({
-      situation = `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
-      behavior = `A declaration, or a primitive, is spelled by its identifier; a type parameter by its name; a type that declares no name by the source text of its type expression`,
+      situation = [
+        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
+        `[[entity]] is a declaration or a primitive`,
+      ],
+      behavior = `It is spelled by its identifier`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
+        `[[entity]] is a type parameter`,
+      ],
+      behavior = `It is spelled by its name`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
+        `[[entity]] is a type that declares no name`,
+      ],
+      behavior = `It is spelled by the source text of its type expression`,
     })
     .add({
       situation = `[[entity]] has [[Entity.typeArguments]] and is not [[Lists.List]] with one of [[Entity.typeArguments]]`,
       behavior = `The identifier, then a less-than sign, then each argument as [[typeTextOf]] spells it, joined by a comma and a space, then a greater-than sign`,
     })
     .add({
-      situation = `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
-      behavior = `The argument as [[typeTextOf]] spells it, then square brackets, so the sugar wins in display; the argument is parenthesized first when it is a function type or a union or intersection`,
+      situation = [
+        `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
+        `The argument is not a function type, a union, or an intersection`,
+      ],
+      behavior = `The argument as [[typeTextOf]] spells it, then square brackets, so the sugar wins in display`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
+        `The argument is a function type, a union, or an intersection`,
+      ],
+      behavior = `The argument as [[typeTextOf]] spells it, parenthesized, then square brackets, so the sugar wins in display`,
     })
     .add({
       situation = `[[entity]] is the entity of a [[FunctionType]]`,
-      behavior = `A parenthesized list of its parameters, each as its name, a colon, a space, and its type as [[typeTextOf]] spells it, with a question mark after the name of an optional one and three dots before a spread one, joined by a comma and a space, then a space, a double arrow, a space, and [[FnEntity.output]] as [[typeTextOf]] spells it`,
+      behavior = `A parenthesized list of its parameters, joined by a comma and a space, then a space, a double arrow, a space, and [[FnEntity.output]] as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is the entity of a [[FunctionType]]`,
+        `A parameter of it is neither optional nor spread`,
+      ],
+      behavior = `That parameter is spelled as its name, a colon, a space, and its type as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is the entity of a [[FunctionType]]`,
+        `A parameter of it is optional`,
+      ],
+      behavior = `That parameter is spelled as its name, a question mark, a colon, a space, and its type as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is the entity of a [[FunctionType]]`,
+        `A parameter of it is a spread one`,
+      ],
+      behavior = `That parameter is spelled as three dots, its name, a colon, a space, and its type as [[typeTextOf]] spells it`,
     })
     .add({
       situation = `A member's type is read on a left side with [[Entity.typeArguments]]`,
@@ -289,19 +394,23 @@ fn typeTextOf(workspace: Workspace, entity: Entity | undefined): `How a type is 
 fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one entity` => Hover {
   @acceptanceCriteria
     .add({ behavior = `[[Hover.range]] covers the identifier of the entity's declaration, as [[declaring]] finds it` })
+    .add({ situation = `[[entity]] is not a member`, behavior = `[[Hover.kind]] is the kind of the entity's symbol` })
+    .add({ situation = `[[entity]] is a member`, behavior = `[[Hover.kind]] is [[SymbolKind.member]]` })
+    .add({ situation = `[[entity]] is not anonymous`, behavior = `[[Hover.identifier]] is [[Entity.identifier]]` })
     .add({
-      behavior = `[[Hover.kind]] is the kind of the entity's symbol; [[SymbolKind.member]] when the entity is a member`,
-    })
-    .add({
-      behavior = `[[Hover.identifier]] is [[Entity.identifier]], or the text of the declaring node's first line when anonymous`,
+      situation = `[[entity]] is anonymous`,
+      behavior = `[[Hover.identifier]] is the text of the declaring node's first line`,
     })
     .add({
       behavior = `[[Hover.definition]] is [[Entity.definition]] with each [[TemplateReference]] replaced by the referenced identifier and each [[TemplateExecution]] by its value`,
     })
     .add({ behavior = `[[Hover.type]] is [[typeTextOf]] [[Entity.type]]` })
     .add({
-      behavior = `[[Hover.owner]] is the identifier of the declaration whose [[TypeParameters]] lists a type parameter, or [[Kinds.Member.owner]] of a member, and undefined for anything else`,
+      situation = `[[entity]] is a type parameter`,
+      behavior = `[[Hover.owner]] is the identifier of the declaration whose [[TypeParameters]] lists it`,
     })
+    .add({ situation = `[[entity]] is a member`, behavior = `[[Hover.owner]] is [[Kinds.Member.owner]] of it` })
+    .add({ situation = `[[entity]] is neither a type parameter nor a member`, behavior = `[[Hover.owner]] is undefined` })
     .add({
       behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`,
     })
@@ -315,7 +424,21 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
     })
     .add({
       situation = `[[entity]] is a type parameter`,
-      behavior = `[[Hover.kind]] is [[SymbolKind.typeParameter]], [[Hover.type]] is [[typeTextOf]] its constraint, the type after its [[ExtendsKeyword]], or undefined when it has none, [[Hover.owner]] is the declaration that lists it, and [[Hover.definition]], [[Hover.traits]], and [[Hover.criteria]] are empty`,
+      behavior = `[[Hover.kind]] is [[SymbolKind.typeParameter]], [[Hover.owner]] is the declaration that lists it, and [[Hover.definition]], [[Hover.traits]], and [[Hover.criteria]] are empty`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is a type parameter`,
+        `It has a constraint, the type after its [[ExtendsKeyword]]`,
+      ],
+      behavior = `[[Hover.type]] is [[typeTextOf]] that constraint`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is a type parameter`,
+        `It has no [[ExtendsKeyword]] constraint`,
+      ],
+      behavior = `[[Hover.type]] is undefined`,
     });
 }
 
@@ -371,7 +494,56 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
     })
     .add({
       situation = `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
-      behavior = `What [[Binder.bind]] would resolve the [[ValueAccessor]] in, as the left side is: a module's symbols; an entity's own members, then the members of its kind data whose value is a function; an enum's keys; an object's keys, then the members of [[Objects.Object]]; or, for a value that is a string, a number, or a list, the entity's own members and then every member of [[Strings.String]], [[Numbers.Number]], or [[Lists.List]]`,
+      behavior = `What [[Binder.bind]] would resolve the [[ValueAccessor]] in, as the left side is`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to a module`,
+      ],
+      behavior = `The module's symbols`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to an entity that is not a module, an enum, or an object, and whose value is not a string, a number, or a list`,
+      ],
+      behavior = `The entity's own members, then the members of its kind data whose value is a function`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to an enum`,
+      ],
+      behavior = `The enum's keys`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to an object`,
+      ],
+      behavior = `The object's keys, then the members of [[Objects.Object]]`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to an entity whose value is a string`,
+      ],
+      behavior = `The entity's own members, then every member of [[Strings.String]]`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to an entity whose value is a number`,
+      ],
+      behavior = `The entity's own members, then every member of [[Numbers.Number]]`,
+    })
+    .add({
+      situation = [
+        `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves`,
+        `The left side resolves to an entity whose value is a list`,
+      ],
+      behavior = `The entity's own members, then every member of [[Lists.List]]`,
     })
     .add({
       situation = `The nearest token before [[position]] that is not [[trivia]] is a [[ValueAccessor]] or [[OptionalValueAccessor]] and the left side of the [[Member]] resolves to nothing`,
@@ -382,8 +554,18 @@ fn completionsAt(workspace: Workspace, file: string, position: Position): `What 
       behavior = `Every symbol of kind [[SymbolKind._trait]] visible from the position, plus the module symbols`,
     })
     .add({
-      situation = `The position is inside the string of a [[Use]]`,
-      behavior = `Of kind [[CompletionKind.path]]: for a path beginning with a dot, the directories and the .lfy files without their extension under the directory the path names so far, relative to the file's directory; otherwise the identifier of each [[Package]], then paths under its root the same way`,
+      situation = [
+        `The position is inside the string of a [[Use]]`,
+        `The path begins with a dot`,
+      ],
+      behavior = `Of kind [[CompletionKind.path]]: the directories and the .lfy files without their extension under the directory the path names so far, relative to the file's directory`,
+    })
+    .add({
+      situation = [
+        `The position is inside the string of a [[Use]]`,
+        `The path does not begin with a dot`,
+      ],
+      behavior = `Of kind [[CompletionKind.path]]: the identifier of each [[Package]], then the directories and the .lfy files without their extension under the directory the path names so far, relative to that package's root`,
     })
     .add({
       situation = `The position is inside a [[TemplateReference]] or [[Documentation]]`,
@@ -463,8 +645,18 @@ fn diagnosticsOf(workspace: Workspace, file?: string): `Every problem of the pro
       behavior = `An error of stage loader at an empty range at line 1, column 0 of elfie.json under [[Workspace.root]], whether or not that file exists`,
     })
     .add({
-      situation = `A [[Token]] has no [[Token.rule]]`,
-      behavior = `An error of stage lexer at the token, whose message is invalid text, or names the mode left open when [[Token.raw]] is empty`,
+      situation = [
+        `A [[Token]] has no [[Token.rule]]`,
+        `[[Token.raw]] of the token is not empty`,
+      ],
+      behavior = `An error of stage lexer at the token, whose message is invalid text`,
+    })
+    .add({
+      situation = [
+        `A [[Token]] has no [[Token.rule]]`,
+        `[[Token.raw]] of the token is empty`,
+      ],
+      behavior = `An error of stage lexer at the token, whose message names the mode left open`,
     })
     .add({
       situation = `An [[ErrorNode]] without [[ErrorNode.keyword]] is in a tree`,
@@ -475,8 +667,18 @@ fn diagnosticsOf(workspace: Workspace, file?: string): `Every problem of the pro
       behavior = `An error of stage parser at [[ErrorNode.keyword]], whose message is the token's text followed by: is a keyword and cannot be a name`,
     })
     .add({
-      situation = `A [[Problem]] is in [[Workspace.problems]]`,
-      behavior = `An error at [[Problem.node]] with [[Problem.message]], of stage loader when [[Problem.node]] is a [[Use]], since resolving uses and their cycles is the only problem loading adds, and binder otherwise`,
+      situation = [
+        `A [[Problem]] is in [[Workspace.problems]]`,
+        `[[Problem.node]] is a [[Use]]`,
+      ],
+      behavior = `An error at [[Problem.node]] with [[Problem.message]], of stage loader, since resolving uses and their cycles is the only problem loading adds`,
+    })
+    .add({
+      situation = [
+        `A [[Problem]] is in [[Workspace.problems]]`,
+        `[[Problem.node]] is not a [[Use]]`,
+      ],
+      behavior = `An error at [[Problem.node]] with [[Problem.message]], of stage binder`,
     })
     .add({
       situation = [
@@ -524,7 +726,14 @@ fn findSymbols(workspace: Workspace, query: string): `Declarations across the pr
   @acceptanceCriteria
     .add({
       situation = `[[query]] is not empty`,
-      behavior = `Every [[Outline]] of every file, flattened, whose name contains [[query]] ignoring case; a child's name is its parent's name, a dot, and its own`,
+      behavior = `Every [[Outline]] of every file, flattened, whose name contains [[query]] ignoring case`,
+    })
+    .add({
+      situation = [
+        `[[query]] is not empty`,
+        `An [[Outline]] is a child of another [[Outline]]`,
+      ],
+      behavior = `Its name is its parent's name, a dot, and its own`,
     })
     .add({ situation = `[[query]] is empty`, behavior = `Every top level declaration of every file` })
     .add({

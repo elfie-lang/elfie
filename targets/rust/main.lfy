@@ -16,7 +16,25 @@ trait rust extends targetLanguage, cratePerPrefix(
   // Layout
   @acceptanceCriteria
     .add({
-      behavior = `Within its crate's directory a stem of main gives mod.rs, or lib.rs for the crate root, or main.rs for the cli crate`,
+      situation = [
+        `A file's stem is main`,
+        `The file is not the root of its crate`,
+      ],
+      behavior = `Within its crate's directory the file is mod.rs`,
+    })
+    .add({
+      situation = [
+        `A file's stem is main`,
+        `The file is the root of a crate other than the cli crate`,
+      ],
+      behavior = `Within its crate's directory the file is lib.rs`,
+    })
+    .add({
+      situation = [
+        `A file's stem is main`,
+        `The file is the root of the cli crate`,
+      ],
+      behavior = `Within its crate's directory the file is main.rs`,
     })
     .add({
       behavior = `A marker is a line comment reading // @lfy followed by the source path relative to the repository root, a colon, and the entity's name`,
@@ -25,7 +43,12 @@ trait rust extends targetLanguage, cratePerPrefix(
   // Kinds
   @acceptanceCriteria
     .add({
-      behavior = `A d declaration becomes a struct, or an enum when its members are alternatives; a type declaration a struct; an enum declaration an enum with a method giving each member's value`,
+      situation = `A d declaration's members are not alternatives`,
+      behavior = `The d declaration becomes a struct`,
+    })
+    .add({ situation = `A d declaration's members are alternatives`, behavior = `The d declaration becomes an enum` })
+    .add({
+      behavior = `A type declaration becomes a struct; an enum declaration an enum with a method giving each member's value`,
     })
     .add({
       behavior = `A fn declaration becomes a pub fn whose body satisfies every criterion and test; a function declaration is translated statement by statement`,
@@ -40,15 +63,19 @@ trait rust extends targetLanguage, cratePerPrefix(
 
   // Standard library
   @acceptanceCriteria
+    .add({ behavior = `List is Vec<T>; Boolean is bool; Nullish is Option<T>` })
+    .add({ situation = `A String value is not only read`, behavior = `String is String` })
+    .add({ situation = `A String value is only read`, behavior = `String is &str` })
     .add({
-      behavior = `List is Vec<T>; String is String, or &str where a value is only read; Boolean is bool; Nullish is Option<T>`,
+      situation = `No criterion says a Number value counts things: a length, an index, a line, or a column`,
+      behavior = `Number is f64`,
     })
     .add({
-      behavior = `Number is f64, or usize where a criterion says the value counts things: a length, an index, a line, or a column`,
+      situation = `A criterion says a Number value counts things: a length, an index, a line, or a column`,
+      behavior = `Number is usize`,
     })
-    .add({
-      behavior = `Object is serde_json::Map where it holds JSON, and BTreeMap<String, _> where the use names the value type`,
-    })
+    .add({ situation = `An Object holds JSON`, behavior = `Object is serde_json::Map` })
+    .add({ situation = `The use of an Object names the value type`, behavior = `Object is BTreeMap<String, _>` })
     .add({
       behavior = `Path is std::path; the file functions are std::fs; Json is serde_json; run and stream are std::process::Command through sh -c`,
     })
@@ -65,7 +92,12 @@ trait rust extends targetLanguage, cratePerPrefix(
       behavior = `A declaration with type parameters becomes a generic item with the same parameters, in the same order and with the same names`,
     })
     .add({
-      behavior = `An extends constraint on a type parameter becomes a trait bound when the target has a trait matching the constraint's data or trait; otherwise the bound is dropped and a comment on the item names the constraint`,
+      situation = `The target has a trait matching the data or trait of an extends constraint on a type parameter`,
+      behavior = `The extends constraint becomes a trait bound`,
+    })
+    .add({
+      situation = `The target has no trait matching the data or trait of an extends constraint on a type parameter`,
+      behavior = `The bound is dropped and a comment on the item names the constraint`,
     })
     .add({
       behavior = `List<T> and T[] are Vec<T>; a type argument that is a primitive maps to the same Rust type as that primitive does outside a type argument`,

@@ -121,7 +121,12 @@ trait postfix(operator: is rule, tail?: string, disallowSpace?: boolean) extends
 ): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
   @acceptanceCriteria
     .add({
-      behavior = `Binds as the token that satisfied [[operator]] does, unless this rule itself has [[binding]], which then wins`,
+      situation = `This rule itself has no [[binding]]`,
+      behavior = `Binds as the token that satisfied [[operator]] does`,
+    })
+    .add({
+      situation = `This rule itself has [[binding]]`,
+      behavior = `Binds by its own [[binding]], which wins over that of the token that satisfied [[operator]]`,
     })
     .add({
       situation = `[[Expression]] after [[tail]] do not follow [[GroupOpen]] or [[ListOpen]]`,

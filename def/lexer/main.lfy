@@ -27,7 +27,18 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
     .add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token` })
     .add({ behavior = `A new [[ModeStack]] is created for each call` })
     .add({
-      behavior = `At each position every [[terminal]] whose [[candidateInModes]] condition holds (or [[inCode]] when it has none) is matched`,
+      situation = [
+        `A [[terminal]] has a [[candidateInModes]] condition`,
+        `That condition holds at a position`,
+      ],
+      behavior = `The terminal is matched at that position`,
+    })
+    .add({
+      situation = [
+        `A [[terminal]] has no [[candidateInModes]] condition`,
+        `[[inCode]] holds at a position`,
+      ],
+      behavior = `The terminal is matched at that position`,
     })
     .add({ behavior = `The longest match is the token` })
     .add({
