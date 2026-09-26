@@ -1,6 +1,7 @@
 use "../format/main" as Formatter;
 use "../generation/data";
 use "../generation/main" as Generation;
+use "../interpret/data";
 use "../lexer/main" as Lexer;
 use "../lsp/main" as Lsp;
 use "../mcp/main" as Mcp;
@@ -124,7 +125,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `[[Loader.load]] of the root; when any diagnostic is an error, they are printed and the code is problems, because the compiler is never handed a program with problems`,
     })
     .add({
-      behavior = `The source maps of each target are [[Json.parse]] of [[Files.read]] of source-map.json, [[Path.join]] to [[Target.outputDirectory]], none when the file is missing, dropping any whose output [[Files.exists]] no longer finds, and [[Generation.plan]] is made with the stems given as arguments as the requested units; --all requests every unit and --target limits the plan to one target`,
+      behavior = `The source maps of each target are [[Json.parse]] of [[Files.read]] of source-map.json, [[Path.join]] to [[Target.outputDirectory]], none when the file is missing, dropping any whose output [[Files.exists]] no longer finds, and [[Generation.plan]] is made with the stems given as arguments as the requested units and the stems the last global review found violated as the violated units; --all requests every unit and --target limits the plan to one target`,
+    })
+    .add({
+      behavior = `The last global review is [[Json.parse]] of [[Files.read]] of elfie-requests/global.reviews.json under the root: the SHA-256 of the ids of every global criterion and test it reviewed, and its [[ReviewReport]]; none when the file is missing. Its violated units are the stems of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is the id of a violated review`,
     })
     .add({
       situation = `compile with --dry-run`,
@@ -154,7 +158,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `The compiler is the command elfie.json names under compiler; it is [[Process.stream]] once per batch in plan order, with [[Request.instructions]] of [[Generation.request]] as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS (the stems, space separated) as its environment`,
     })
     .add({
-      behavior = `[[Request.previous]] holds, for each unit, the source at the last accepted generation when the root is a git repository and that source is recoverable from it through [[Process.run]] of git`,
+      behavior = `[[Request.previous]] holds, for each unit, [[LoweredFile.text]] of the source at the last accepted generation, lowered as [[Generation.changes]] binds a previous text, when the root is a git repository and that source is recoverable from it through [[Process.run]] of git`,
     })
     .add({
       situation = `[[Process.stream]] returns its [[Process.Exit]]`,
@@ -234,6 +238,30 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `verifying and reviewed are [[Progress]] lines like every other step, so --json prints each as [[Json.stringify]] of the [[Progress]]; every line of the verifier's output and its report are [[Files.append]] to elfie-requests/compile.log as the compiler's are`,
     });
 
+  // Global review
+  // Decision: a global criterion or test is reviewed once for the whole program, after every batch,
+  // because every unit may answer for it and no single batch sees them all.
+  @acceptanceCriteria
+    .add({
+      situation = `Every batch of a compile has been handled, a verifier is named, --no-verify is not given, and either a batch was accepted or the SHA-256 of the ids of [[Program.criteria]] and [[Program.tests]] of [[Plan.program]] differs from the one the last global review recorded`,
+      behavior = `A globalVerifying progress line is printed, then the verifier is [[Process.stream]] once with [[ReviewRequest.instructions]] of [[Generation.globalReview]] of the plan and every source map, recorded or held, as its input, as a batch's verifier is run, with ELFIE_BATCH set to global; its report is read by [[Generation.reviewOf]]`,
+    })
+    .add({
+      behavior = `elfie-requests/global.reviews.json is [[Files.write]] with the SHA-256 of the global ids reviewed and the [[ReviewReport]], replacing an earlier file, and one globalReviewed progress line follows with the counts of satisfied, violated, and unverifiable reviews`,
+    })
+    .add({
+      situation = `Some global review is violated`,
+      behavior = `One problem per violated review is printed as failure at, a space, global, a colon, a space, [[Review.note]], and [[Review.evidence]] in parentheses; the units whose markers answered for it are planned with reason violated and compiled once more in the same compile, their batches handled as any other, and the global review runs once more after them`,
+    })
+    .add({
+      situation = `A global review is violated again after that`,
+      behavior = `The compile stops there; the code is problems, and the next compile plans those units with reason violated`,
+    })
+    .add({
+      situation = `No global criterion or test exists`,
+      behavior = `No global review runs and no file is written`,
+    });
+
   // verify
   // Decision: verify is compile without the compiler: the same plan, the same review request, the
   // same verifier, so a person can ask for an opinion on outputs already recorded.
@@ -248,6 +276,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       behavior = `For each batch of [[Plan.batches]] holding a requested unit, in plan order, [[Generation.review]] of the plan, the batch, and the source maps is built and the verifier is run, its output shown and logged, its report read by [[Generation.reviewOf]], and elfie-requests/<batch>.reviews.json written, exactly as compile does after acceptance, a failed run being run once more the same way`,
+    })
+    .add({
+      situation = `verify with no stem, or with --global`,
+      behavior = `After the batches, [[Generation.globalReview]] of the plan and the source maps is built and the verifier run on it once, as compile runs the global review, and elfie-requests/global.reviews.json written; with --global alone no batch is reviewed`,
     })
     .add({
       behavior = `Each review is printed as its status, a space, [[Review.file]], a colon, [[Review.line]], a space, [[Review.entity]], a colon, a space, and [[Review.note]]; after each batch one line gives the counts of satisfied, violated, and unverifiable; with --json each review is [[Json.stringify]] of the [[Review]] on one line`,

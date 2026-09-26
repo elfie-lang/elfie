@@ -38,6 +38,8 @@ enum Step: `What a compile is doing, as progress reports it` {
   rejected = `a unit was rejected`,
   verifying = `the verifier is running on a batch whose units were accepted`,
   reviewed = `the verifier reviewed a batch`,
+  globalVerifying = `the verifier is running once on every global criterion and test`,
+  globalReviewed = `the verifier reviewed the global criteria and tests`,
   retrying = `the compiler is running a batch again with the problems`,
   blocked = `the compiler could not proceed`,
   clarification = `the compiler asked a question`,
@@ -52,5 +54,5 @@ d Progress: `One line of what a compile is doing, for a person or a script watch
   $done: `Units accepted so far` = number;
   $total: `Units planned` = number;
   $elapsed: `Seconds since the compile began, as [[Time.elapsed]] from its start gives them` = number;
-  $message: `The detail: the reason a unit is planned, a problem, a question, the count of batches, or for reviewed the counts of satisfied, violated, and unverifiable reviews, in that order` = string;
+  $message: `The detail: the reason a unit is planned, a problem, a question, the count of batches, or for reviewed and globalReviewed the counts of satisfied, violated, and unverifiable reviews, in that order` = string;
 }

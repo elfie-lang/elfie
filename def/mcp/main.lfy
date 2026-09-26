@@ -98,7 +98,7 @@ fn grammar(session: Session) is tool: `The grammar of Elfie: every terminal and 
 fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in order, why each needs generating, and how they are batched` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[Generation.plan]] of the workspace with the source maps read from each target's output directory, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
+      behavior = `[[Generation.plan]] of the workspace with the source maps read from each target's output directory and the violated units of the last global review read as the command line reads them, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
     })
     .add({
       situation = `[[target]] is set`,
@@ -158,8 +158,8 @@ fn source(session: Session, file: string, line: number) is tool: `Where one line
       behavior = `The [[Marker]] of the [[SourceMap]] whose [[SourceMap.output]] is [[file]] whose region covers [[line]], that is whose [[Marker.outputLine]] is at most [[line]] and whose [[Marker.end]] is at least [[line]]: a line reading [[Marker.file]], a colon, [[Marker.line]], and then [[Marker.entity]] when it names one`,
     })
     .add({
-      situation = `A criterion of that entity, as [[Binder.criteriaOf]] gives it, begins on [[Marker.line]]`,
-      behavior = `Its text follows on the next line`,
+      situation = `The marker names a requirement`,
+      behavior = `[[Marker.requirement]] follows on the next line, then the text of that criterion or test, local or global, from the lowered program`,
     })
     .add({
       situation = `No source map has [[file]] as its output, or [[line]] is before its first marker`,
@@ -193,4 +193,12 @@ fn review(session: Session, batch: string, target?: string) is tool: `The full r
       situation = `No batch has that identifier or holds a unit with that stem, or the target is ambiguous`,
       behavior = `An error saying which`,
     });
+}
+
+fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with the regions that answer for each` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of the plan elfie_units makes, with the source maps read as elfie_units reads them, so a verifier session can fetch the global review`,
+    })
+    .add({ situation = `No global criterion or test exists`, behavior = `The text says so` });
 }
