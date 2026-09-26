@@ -1,0 +1,236 @@
+use "../grammar/rules/expression";
+use "../grammar/rules/file";
+use "../grammar/rules/statement";
+use "../model/data";
+use "../model/main" as Binder;
+use "../parser/data";
+use "../workspace/data";
+use "./data";
+use "elfie/prelude/builtin";
+
+// Decision: compile-time code runs the way Rust runs it. Code that can add names (trait
+// applications, ace statements, declaration bodies) runs in a loop with name resolution until
+// nothing new appears, as macro expansion does; code that only yields a value is evaluated when
+// something asks for it, as const evaluation does. Elfie lets one body both read the model and
+// add names, which Rust does not, so reading everything a trait was applied to waits until
+// nothing can apply it any more.
+// Decision: the parse tree is never rewritten, because the query, format, and LSP stages rely on
+// it reproducing the source. Lowering builds a new tree whose nodes point back to it, as
+// rust-analyzer does for macro expansions.
+
+fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is kept for runtime` => Phase {
+  // Always compile time
+  @acceptanceCriteria
+    .add({
+      situation = `[[node]] is an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], or an [[ExtendsClause]]`,
+      behavior = `Returns [[Phase.compile]]`,
+    })
+    .add({
+      situation = `[[node]] is a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, or of test on an entity's context`,
+      behavior = `Returns [[Phase.compile]]`,
+    })
+    .add({
+      situation = `[[node]] is the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], or anything inside one`,
+      behavior = `Returns [[Phase.compile]]; the declaration itself is [[Phase.runtime]]`,
+    })
+    .add({
+      situation = `[[node]] is a statement directly in a [[SourceFile]] and is not a declaration`,
+      behavior = `Returns [[Phase.compile]], as though it were written after ace`,
+    })
+    .add({
+      situation = `[[node]] is a [[TemplateReference]] or [[TemplateExecution]] in a definition, a criterion, or a test`,
+      behavior = `Returns [[Phase.compile]]`,
+    });
+
+  // Always runtime
+  @acceptanceCriteria
+    .add({
+      situation = `[[node]] is a [[FunctionDeclaration]], [[TypeDeclaration]], [[EnumDeclaration]], [[AliasDeclaration]], [[ExternalDeclaration]], or [[Use]] not under ace, or anything in the [[Block]] of such a [[FunctionDeclaration]]`,
+      behavior = `Returns [[Phase.runtime]] unless a criterion above says otherwise`,
+    })
+    .add({
+      situation = `[[node]] is a [[VariableDeclaration]] with const directly in a [[SourceFile]], not under ace`,
+      behavior = `Returns [[Phase.runtime]]; its value is still evaluated at compile time, as [[lower]] says`,
+    });
+
+  // Problems
+  @acceptanceCriteria
+    .add({
+      situation = `[[node]] is a [[VariableDeclaration]] with let directly in a [[SourceFile]]`,
+      behavior = `A [[Problem]] is added saying a file-level let is not allowed`,
+    });
+
+  @test(
+    { input = [Model@like(`bound from: trait t {}`), Node@like(`the trait declaration`)], expect = Phase.compile },
+    {
+      input = [Model@like(`bound from: scoped.apply(SourceFile);`), Node@like(`the expression statement`)],
+      expect = Phase.compile,
+    },
+    {
+      input = [Model@like(`bound from: function f() -> number { return 1; }`), Node@like(`the return`)],
+      expect = Phase.runtime,
+    },
+    {
+      input = [Model@like(`bound from: fn f() => number { where (\`a\`) -> \`b\`; }`), Node@like(`the where`)],
+      expect = Phase.compile,
+    },
+    { input = [Model@like(`bound from: const c = 1;`), Node@like(`the declaration`)], expect = Phase.runtime },
+  );
+}
+
+fn expand(model: Model): `Run every piece of compile-time code that can add names, until nothing new appears` => Model {
+  // Loop
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Runs after the declare pass and before the resolve pass of [[Binder.bind]], over every file in bind order`,
+        `Each round runs every [[Phase.compile]] statement not yet run whose names now resolve: trait applications, ace statements, declaration bodies, and file-level statements`,
+        `Rounds repeat until one runs nothing; a statement that still does not resolve then adds a [[Problem]] at the name`,
+        `Names are resolved only as far as a statement needs them to run; the resolve pass resolves the rest`,
+      ],
+    })
+    .add({
+      behavior = [
+        `Running a statement changes only the model: symbols join scopes, members and values join entities, [[Applied]] records join entities, and criteria and tests join entities`,
+        `Running a statement never changes a [[Tree]]`,
+      ],
+    });
+
+  // What a trait was applied to
+  @acceptanceCriteria
+    .add({
+      situation = `A statement reads what a trait was applied to, through its entities on the context layer`,
+      behavior = `It waits until no statement left to run can apply that trait, then reads the full list`,
+    })
+    .add({
+      situation = `Every statement left to run is waiting, and none can run`,
+      behavior = `A [[Problem]] naming the waiting statements and the traits they wait on is added at each, and none of them runs`,
+    });
+
+  // Calls
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Compile-time code may call an ace function, a function, and a fn carrying [[builtin]], which the interpreter performs natively`,
+        `A call of a fn not carrying [[builtin]] adds a [[Problem]] at the call, because its body is criteria and has nothing to run`,
+      ],
+    });
+
+  @test(
+    {
+      input = [Model@like(`declared from: d A is t {} trait t { $x: \`d\` = string; }`)],
+      expect = Model@like(`A carrying t and the member x, though t is declared after A; no problems`),
+    },
+    {
+      input = [
+        Model@like(
+          `declared from: a.lfy reading trait p {} d X is p {} d All is list(...p@entities), and b.lfy using a.lfy reading d Y is p {}`,
+        ),
+      ],
+      expect = Model@like(`The value of All holding X and Y, because reading p@entities waited for b.lfy`),
+    },
+    {
+      input = [Model@like(`declared from: fn f() => number; ace const c = f();`)],
+      expect = Model@like(`One [[Problem]] at the call of f, and c undefined`),
+    },
+  );
+}
+
+fn evaluate(model: Model, node: Node): `The value of an expression, computed at compile time when something asks for it` => Value | Prompted {
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Evaluates [[node]] in the scope it is written in, against [[model]] as [[expand]] left it`,
+        `The same node evaluated twice gives the same value, and the model is not changed by evaluating it`,
+      ],
+    })
+    .add({
+      situation = `[[node]] is a call of like on an entity's context`,
+      behavior = `Returns a [[Prompted]] of that entity's type with the prompt rendered`,
+    })
+    .add({
+      situation = `[[node]] reads a layer other than value, dereferences, or reads the previous statement, and what it reads depends only on the model`,
+      behavior = `Returns the value it reads, so runtime code that uses it can be folded`,
+    })
+    .add({
+      situation = `[[node]] depends on a parameter or variable that only has a value at runtime`,
+      behavior = `Returns undefined and adds no [[Problem]]; the caller decides whether that is one`,
+    })
+    .add({
+      situation = `Evaluating [[node]] needs its own value, directly or through other nodes`,
+      behavior = `Returns undefined and adds a [[Problem]] naming the cycle`,
+    });
+
+  @test(
+    { input = [Model@like(`bound from: ace const c = 1 + 2;`), Node@like(`the right side`)], expect = Value@like(`3`) },
+    {
+      input = [Model@like(`bound from: d A {} const n = A@identifier;`), Node@like(`A@identifier`)],
+      expect = Value@like(`the string A`),
+    },
+    {
+      input = [Model@like(`bound from: const s = string@like(\`a word\`);`), Node@like(`the right side`)],
+      expect = Prompted@like(`of string, prompt a word`),
+    },
+  );
+}
+
+fn lower(workspace: Workspace): `The program as generation sees it: runtime code only, with compile-time results in place` => Program {
+  // What is dropped
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `A node whose [[phaseOf]] is [[Phase.compile]] has no lowered node, and neither does anything inside it`,
+        `An ace function has no lowered node`,
+      ],
+    });
+
+  // What is folded
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `A kept declaration's lowered node carries its entity, so its members, criteria, and tests are read from [[Workspace.model]] and never from the tree`,
+        `The value of a file-level const is [[evaluate]] of its expression, lowered as one folded node`,
+        `Inside runtime code, an expression that [[evaluate]] gives a value for without a runtime parameter or variable is one folded node holding that value`,
+        `A call of like is one folded node holding its [[Prompted]]`,
+      ],
+    })
+    .add({
+      situation = `Runtime code calls an ace function with an argument [[evaluate]] cannot give a value for`,
+      behavior = `A [[Problem]] is added at the call, because the function will not exist at runtime`,
+    });
+
+  // What is kept
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `Every other node is kept with the same rule and its kept children in order`,
+        `Every lowered node's origin is the parse node it came from; a folded node's origin is the expression it replaced`,
+        `[[Program.files]] holds one [[LoweredFile]] per file of [[Workspace.files]], in order, and a file with only compile-time statements lowers to an empty [[SourceFile]]`,
+      ],
+    });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`def/a.lfy reading: trait t { $x: \`d\` = string; } d A is t { where (\`s\`) -> \`b\`; }`),
+      ],
+      expect = Program@like(
+        `a.lfy lowered to a [[SourceFile]] holding one [[DataDeclaration]] node for A with no clause and no block children, carrying the entity A, which has the member x and one criterion; no node for t`,
+      ),
+    },
+    {
+      input = [Workspace@like(`def/a.lfy reading: ace function q(t) { return t + "!"; } const c = q("x");`)],
+      expect = Program@like(`a.lfy holding only the const c, whose value is one folded node holding the string x!`),
+    },
+    {
+      input = [
+        Workspace@like(
+          `def/a.lfy reading: trait r {} d A is r {} function names() -> string[] { let out = []; for (const e in r@entities) { out.push(e@identifier); } return out; }`,
+        ),
+      ],
+      expect = Program@like(
+        `The function names kept, with r@entities folded to a list holding A, and e@identifier kept because e only has a value at runtime`,
+      ),
+    },
+  );
+}
