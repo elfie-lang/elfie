@@ -29,7 +29,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `--tree followed by a file is read as the tree command with that file, so what the parser stage shipped keeps working`,
     })
     .add({
-      behavior = `Every other argument beginning with two dashes is an option: --name gives true and --name=value or --name value gives the text; every other argument is positional`,
+      behavior = `Every other argument beginning with two dashes is an option: --name=value gives the text; --target followed by a value gives that value, since it is the one other option that takes one; any other --name is a flag and gives true, never taking the next argument, so --json check still names the check command; every other argument is positional`,
     })
     .add({
       situation = `The command is not one of [[Command]], or an option's value is missing`,

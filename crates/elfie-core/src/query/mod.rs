@@ -100,6 +100,17 @@ fn end_of(token: &Token) -> Position {
     Position::new(line, column)
 }
 
+/// The range of a token held by value, such as `ErrorNode.keyword`, rather than reached by
+/// index into a file's tokens.
+// @lfy def/query/main.lfy:diagnosticsOf
+fn range_of_token(token: &Token) -> Range {
+    Range {
+        file: token.file.to_string(),
+        start: start_of(token),
+        end: end_of(token),
+    }
+}
+
 /// Whether a token is an identifier or a keyword: what a name is spelled with, and what a
 /// position exactly after it still belongs to.
 fn is_name_token(token: &Token) -> bool {
@@ -1736,7 +1747,9 @@ fn finish(completions: Vec<Completion>, prefix: &str) -> Vec<Completion> {
 /// `elfie.json` under the root when it has none. A token without a rule is an error of
 /// stage lexer at the token: invalid text, or the mode left open when the token has no
 /// text. An error node is an error of stage parser listing what was expected and what
-/// was found. A problem of the model is an error at its node, of stage loader when that
+/// was found; when it holds the keyword the open rule would have taken as a name, the
+/// error is at that keyword instead, saying it is a keyword and cannot be a name. A
+/// problem of the model is an error at its node, of stage loader when that
 /// node is a `Use` and of stage binder otherwise. A `Use`
 /// importing symbols of which none is used in the file, or naming a module never used, is
 /// a warning of stage binder at the `Use`, unless the file holding it declares no symbol
@@ -1804,6 +1817,15 @@ pub fn diagnostics_of(workspace: &Workspace, file: Option<&str>) -> Vec<Diagnost
             ));
         }
         for node in &source.tree.errors {
+            // @lfy def/query/main.lfy:diagnosticsOf
+            if let Some(keyword) = &node.keyword {
+                out.push(error(
+                    range_of_token(keyword),
+                    Stage::Parser,
+                    format!("{} is a keyword and cannot be a name", keyword.raw),
+                ));
+                continue;
+            }
             // @lfy def/query/main.lfy:diagnosticsOf
             let found = source.tree.raw(node.start, node.end);
             let found = if found.is_empty() {
@@ -3524,6 +3546,19 @@ mod tests {
             diagnostics[0].message
         );
         assert!(diagnostics_of(&ws, Some("def/other.lfy")).is_empty());
+    }
+
+    // @lfy def/query/main.lfy:diagnosticsOf
+    #[test]
+    fn a_keyword_taken_as_a_name_is_a_parser_error_at_that_keyword() {
+        let fixture = Fixture::one("const d = 1;");
+        let ws = fixture.load();
+        let diagnostics = diagnostics_of(&ws, None);
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+        assert_eq!(diagnostics[0].stage, Stage::Parser);
+        assert_eq!(diagnostics[0].severity, Severity::Error);
+        assert_eq!(diagnostics[0].range, range(A, (1, 6), (1, 7)));
+        assert_eq!(diagnostics[0].message, "d is a keyword and cannot be a name");
     }
 
     // @lfy def/query/main.lfy:diagnosticsOf
