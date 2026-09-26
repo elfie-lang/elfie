@@ -16,18 +16,35 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     .add({
       behavior = `Speaks JSON-RPC 2.0 with the framing [[Protocol]] specifies over standard input and output; nothing else is ever written to standard output, and logging goes to standard error`,
     })
+    .add({ behavior = `Requests are answered in the order received` })
     .add({
-      behavior = `Requests are answered in the order received; a request that fails inside the server yields an error response and the server goes on`,
+      situation = `A request fails inside the server`,
+      behavior = `It yields an error response and the server goes on`,
     })
-    .add({ behavior = `Returns 0 when exit follows shutdown and 1 when exit arrives without it` });
+    .add({ situation = `exit arrives after shutdown`, behavior = `Returns 0` })
+    .add({ situation = `exit arrives without shutdown before it`, behavior = `Returns 1` });
 
   // Lifecycle
   @acceptanceCriteria
     .add({
-      behavior = `On initialize, [[Session.workspace]] is [[Loader.load]] of [[root]], or of the client's first workspace folder, or of the current directory, in that order of availability`,
+      situation = `initialize arrives and [[root]] is given`,
+      behavior = `[[Session.workspace]] is [[Loader.load]] of [[root]]`,
     })
     .add({
-      behavior = `[[Session.encoding]] is utf-8 when the client offers it, utf-16 otherwise, and the response says which`,
+      situation = `initialize arrives, [[root]] is not given, and the client names a workspace folder`,
+      behavior = `[[Session.workspace]] is [[Loader.load]] of the client's first workspace folder`,
+    })
+    .add({
+      situation = `initialize arrives, [[root]] is not given, and the client names no workspace folder`,
+      behavior = `[[Session.workspace]] is [[Loader.load]] of the current directory`,
+    })
+    .add({
+      situation = `initialize arrives and the client offers utf-8`,
+      behavior = `[[Session.encoding]] is utf-8 and the response says so`,
+    })
+    .add({
+      situation = `initialize arrives and the client does not offer utf-8`,
+      behavior = `[[Session.encoding]] is utf-16 and the response says so`,
     })
     .add({
       behavior = `The response advertises hover, definition, references, completion, rename with prepare, document symbols, workspace symbols, document formatting, and semantic tokens for a whole document, and full text document synchronization`,
@@ -58,7 +75,11 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     })
     .add({
       situation = `The workspace changed`,
-      behavior = `Diagnostics are published for every file whose [[Query.diagnosticsOf]] differ from those last published, and as empty for a file that left the program`,
+      behavior = `Diagnostics are published for every file whose [[Query.diagnosticsOf]] differ from those last published`,
+    })
+    .add({
+      situation = `The workspace changed and a file left the program`,
+      behavior = `Empty diagnostics are published for that file`,
     })
     .add({
       situation = `Another change arrives before the diagnostics for the last one were published`,
@@ -83,7 +104,15 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
   @acceptanceCriteria
     .add({
       situation = `hover`,
-      behavior = `[[Query.hoverAt]] as markdown: a code line of the kind, identifier, a colon, and the type, then the owner of [[Hover.owner]] in parentheses when there is one; then the definition; then the traits of [[Hover.traits]] on one line when there are any, so a native thing shows builtin; then the documentation; then each criterion as a list item reading its situations then its behaviors`,
+      behavior = `[[Query.hoverAt]] as markdown: a code line of the kind, identifier, a colon, and the type; then the definition; then the documentation; then each criterion as a list item reading its situations then its behaviors`,
+    })
+    .add({
+      situation = `hover, and [[Hover.owner]] is set`,
+      behavior = `The code line ends with the owner of [[Hover.owner]] in parentheses, after the type`,
+    })
+    .add({
+      situation = `hover, and [[Hover.traits]] is not empty`,
+      behavior = `The traits of [[Hover.traits]] follow the definition on one line, before the documentation, so a native thing shows builtin`,
     })
     .add({ situation = `definition`, behavior = `[[Query.definitionOf]] as one location` })
     .add({ situation = `references`, behavior = `[[Query.referencesTo]] with the request's includeDeclaration` })
@@ -92,12 +121,20 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
       behavior = `[[Query.completionsAt]] with [[Completion.kind]] mapped to the protocol's kinds: keyword to Keyword, path to File, data and type to Struct, trait to Interface, enum to Enum, function and agentFunction to Function, member to Field, variable and parameter to Variable, module to Module, anything else to Text`,
     })
     .add({
-      situation = `prepareRename`,
-      behavior = `The range of the token under the position when [[Query.symbolAt]] finds a symbol, and an error saying nothing is declared here otherwise`,
+      situation = `prepareRename, and [[Query.symbolAt]] finds a symbol`,
+      behavior = `The range of the token under the position`,
     })
     .add({
-      situation = `rename`,
-      behavior = `[[Query.renameAt]] as one workspace edit with the edits grouped by file, or an error response carrying the reason it returned`,
+      situation = `prepareRename, and [[Query.symbolAt]] finds no symbol`,
+      behavior = `An error saying nothing is declared here`,
+    })
+    .add({
+      situation = `rename, and [[Query.renameAt]] returns edits`,
+      behavior = `[[Query.renameAt]] as one workspace edit with the edits grouped by file`,
+    })
+    .add({
+      situation = `rename, and [[Query.renameAt]] returns a reason`,
+      behavior = `An error response carrying the reason [[Query.renameAt]] returned`,
     })
     .add({
       situation = `documentSymbol`,
@@ -105,12 +142,28 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     })
     .add({ situation = `workspace symbol`, behavior = `[[Query.findSymbols]] with the request's query` })
     .add({
-      situation = `formatting`,
-      behavior = `One edit replacing the whole document with [[Formatter.format]] of its tree when that differs, no edits when it is the same, and no edits with a log message when the tree has errors`,
+      situation = `formatting, the document's tree has no errors, and [[Formatter.format]] of it differs from the document`,
+      behavior = `One edit replacing the whole document with [[Formatter.format]] of its tree`,
+    })
+    .add({
+      situation = `formatting, the document's tree has no errors, and [[Formatter.format]] of it is the same as the document`,
+      behavior = `No edits`,
+    })
+    .add({
+      situation = `formatting, and the document's tree has errors`,
+      behavior = `No edits, with a log message`,
     })
     .add({
       situation = `semantic tokens for a whole document`,
-      behavior = `[[Query.semanticTokensOf]] encoded as the protocol's relative form: for each token in order, the line difference from the token before, the start difference when on the same line or the start itself otherwise, the length in [[Session.encoding]] units, the index of its type in the legend, and the modifiers as a bit set by legend index`,
+      behavior = `[[Query.semanticTokensOf]] encoded as the protocol's relative form: for each token in order, the line difference from the token before, its start, the length in [[Session.encoding]] units, the index of its type in the legend, and the modifiers as a bit set by legend index`,
+    })
+    .add({
+      situation = `semantic tokens for a whole document, and a token is on the same line as the token before it`,
+      behavior = `The start of that token is encoded as the difference from the start of the token before it`,
+    })
+    .add({
+      situation = `semantic tokens for a whole document, and a token is the first or is on a different line from the token before it`,
+      behavior = `The start of that token is encoded as the start itself`,
     });
 
   @test(

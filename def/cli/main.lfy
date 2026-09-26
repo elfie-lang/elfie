@@ -21,16 +21,54 @@ use "elfie/system/time" as Time;
 fn parse(arguments: string[]): `The invocation the arguments spell, or the usage error they make` => Invocation | string {
   @acceptanceCriteria
     .add({
-      behavior = `The first argument that does not begin with a dash names the [[Command]]; none, or --help or -h anywhere, means help; --version means version`,
+      situation = [`An argument does not begin with a dash`, `No argument is --help, -h, or --version`],
+      behavior = `The first argument that does not begin with a dash names the [[Command]]`,
     })
     .add({
-      behavior = `--root followed by a directory, or --root= and the directory, sets [[Invocation.root]]; otherwise the root is the nearest directory at or above [[Process.currentDirectory]] where [[Files.exists]] finds elfie.json, or the current one`,
+      situation = [`No argument that does not begin with a dash is given`, `No argument is --version`],
+      behavior = `The command is help`,
+    })
+    .add({ situation = `--help or -h is among the arguments`, behavior = `The command is help` })
+    .add({ situation = `--version is among the arguments`, behavior = `The command is version` })
+    .add({
+      situation = `--root followed by a directory, or --root= and the directory, is among the arguments`,
+      behavior = `That directory is [[Invocation.root]]`,
     })
     .add({
-      behavior = `--tree followed by a file is read as the tree command with that file, so what the parser stage shipped keeps working`,
+      situation = [
+        `No --root is among the arguments`,
+        `[[Files.exists]] finds elfie.json in a directory at or above [[Process.currentDirectory]]`,
+      ],
+      behavior = `[[Invocation.root]] is the nearest directory at or above [[Process.currentDirectory]] where [[Files.exists]] finds elfie.json`,
     })
     .add({
-      behavior = `Every argument beginning with two dashes other than --root, --tree, --help, and --version is an option: --name=value gives the text; --target followed by a value gives that value, since it is the one other option that takes one; any other --name is a flag and gives true, never taking the next argument, so --json check still names the check command; every argument that does not begin with a dash, other than the one naming the command and the value --root or --target takes, is positional`,
+      situation = [
+        `No --root is among the arguments`,
+        `[[Files.exists]] finds elfie.json in no directory at or above [[Process.currentDirectory]]`,
+      ],
+      behavior = `[[Invocation.root]] is [[Process.currentDirectory]]`,
+    })
+    .add({
+      situation = `--tree followed by a file is among the arguments`,
+      behavior = `The invocation is the tree command with that file, so what the parser stage shipped keeps working`,
+    })
+    .add({
+      behavior = `Every argument beginning with two dashes other than --root, --tree, --help, and --version is an option`,
+    })
+    .add({
+      situation = `An option other than --root is written --name=value`,
+      behavior = `The option gives the text value`,
+    })
+    .add({
+      situation = `--target is followed by a value`,
+      behavior = `The option target gives that value, since it is the one option besides --root that takes a following value`,
+    })
+    .add({
+      situation = `An option other than --root, --tree, --help, --version, and --target is written --name, with no equals sign`,
+      behavior = `It is a flag and gives true, never taking the next argument, so --json check still names the check command`,
+    })
+    .add({
+      behavior = `Every argument that does not begin with a dash, other than the one naming the command and the value --root or --target takes, is positional`,
     })
     .add({
       situation = `The command is not one of [[Command]], or an option's value is missing`,
@@ -56,7 +94,8 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `It is printed to standard error with the help text and the code is usage`,
     })
     .add({
-      behavior = `--json on any command that prints results prints them as JSON lines instead of text, one object per result, each [[Json.stringify]] on one line`,
+      situation = `--json is given to any command that prints results`,
+      behavior = `The command prints them as JSON lines instead of text, one object per result, each [[Json.stringify]] on one line`,
     })
     .add({
       behavior = `A [[Diagnostic]] is printed as the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`,
@@ -73,15 +112,32 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // init
   @acceptanceCriteria
     .add({
-      situation = `init`,
-      behavior = `[[Files.write]] of elfie.json in the root naming the project after the argument, or the directory, and [[Files.createDirectory]] of the source directory; returns failure when [[Files.exists]] finds elfie.json already`,
+      situation = [`init`, `[[Files.exists]] does not find elfie.json in the root`, `An argument is given`],
+      behavior = `[[Files.write]] of elfie.json in the root naming the project after the argument, and [[Files.createDirectory]] of the source directory`,
+    })
+    .add({
+      situation = [`init`, `[[Files.exists]] does not find elfie.json in the root`, `No argument is given`],
+      behavior = `[[Files.write]] of elfie.json in the root naming the project after the directory, and [[Files.createDirectory]] of the source directory`,
+    })
+    .add({
+      situation = [`init`, `[[Files.exists]] finds elfie.json in the root`],
+      behavior = `Returns failure`,
     });
 
   // check
   @acceptanceCriteria
     .add({
-      situation = `check`,
-      behavior = `[[Loader.load]] of the root, then every [[Query.diagnosticsOf]] printed, or of the files given as arguments only; the code is problems when any is an error and success otherwise`,
+      situation = [`check`, `No files are given as arguments`],
+      behavior = `[[Loader.load]] of the root, then every [[Query.diagnosticsOf]] printed`,
+    })
+    .add({
+      situation = [`check`, `Files are given as arguments`],
+      behavior = `[[Loader.load]] of the root, then every [[Query.diagnosticsOf]] of the files given as arguments only printed`,
+    })
+    .add({ situation = [`check`, `A printed diagnostic is an error`], behavior = `The code is problems` })
+    .add({
+      situation = [`check`, `No printed diagnostic is an error`, `--strict is not given`],
+      behavior = `The code is success`,
     })
     .add({
       situation = `check with no files given, and the program has no errors`,
@@ -95,12 +151,32 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // format
   @acceptanceCriteria
     .add({
-      situation = `format`,
-      behavior = `Each file given, or every file of [[Files.list]] of the source directory, recursively, whose [[Path.extension]] is lfy, is [[Files.read]], lexed, parsed, and replaced by [[Files.write]] of [[Formatter.format]] of its tree when that differs`,
+      situation = [`format`, `Files are given as arguments`],
+      behavior = `Each file given is [[Files.read]], lexed, and parsed`,
     })
     .add({
-      situation = `format with --check`,
-      behavior = `Nothing is written; each file given, or each file under the source directory whose [[Path.extension]] is lfy, whose [[Formatter.format]] of its tree differs from its text is printed, and the code is problems when any differs`,
+      situation = [`format`, `No files are given as arguments`],
+      behavior = `Every file of [[Files.list]] of the source directory, recursively, whose [[Path.extension]] is lfy, is [[Files.read]], lexed, and parsed`,
+    })
+    .add({
+      situation = [
+        `format without --check`,
+        `[[Formatter.format]] of the tree of a file being formatted differs from its text`,
+      ],
+      behavior = `That file is replaced by [[Files.write]] of [[Formatter.format]] of its tree`,
+    })
+    .add({ situation = `format with --check`, behavior = `Nothing is written` })
+    .add({
+      situation = [`format with --check`, `Files are given as arguments`],
+      behavior = `Each file given whose [[Formatter.format]] of its tree differs from its text is printed`,
+    })
+    .add({
+      situation = [`format with --check`, `No files are given as arguments`],
+      behavior = `Each file under the source directory whose [[Path.extension]] is lfy and whose [[Formatter.format]] of its tree differs from its text is printed`,
+    })
+    .add({
+      situation = [`format with --check`, `[[Formatter.format]] of the tree of a file checked differs from its text`],
+      behavior = `The code is problems`,
     })
     .add({
       situation = `format on a file whose tree has errors`,
@@ -111,7 +187,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `tree`,
-      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value; an [[ErrorNode]] is printed with what it expected, and the code is problems when there is one`,
+      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value`,
+    })
+    .add({
+      situation = [`tree`, `The tree of the file given holds an [[ErrorNode]]`],
+      behavior = `Each [[ErrorNode]] is printed with what it expected, and the code is problems`,
     })
     .add({
       situation = `tokens`,
@@ -120,16 +200,34 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
 
   // compile
   @acceptanceCriteria
+    .add({ situation = `compile`, behavior = `[[Loader.load]] of the root` })
     .add({
-      situation = `compile`,
-      behavior = `[[Loader.load]] of the root; when any diagnostic is an error, they are printed and the code is problems, because the compiler is never handed a program with problems`,
+      situation = [`compile`, `A diagnostic of the loaded program is an error`],
+      behavior = `The diagnostics are printed and the code is problems, because the compiler is never handed a program with problems`,
     })
     .add({
       situation = `compile`,
-      behavior = `The source maps of each target are [[Json.parse]] of [[Files.read]] of source-map.json, [[Path.join]] to [[Target.outputDirectory]], none when the file is missing, dropping any whose output [[Files.exists]] no longer finds, and [[Generation.plan]] is made with the stems given as arguments as the requested units and the stems of the units the last global review, read from elfie-requests/global.reviews.json under the root, found violated as the violated units; --all requests every unit and --target limits the plan to one target`,
+      behavior = `The source maps of each target are [[Json.parse]] of [[Files.read]] of source-map.json, [[Path.join]] to [[Target.outputDirectory]], dropping any whose output [[Files.exists]] no longer finds, and [[Generation.plan]] is made with them and with the stems of the units the last global review, read from elfie-requests/global.reviews.json under the root, found violated as the violated units`,
     })
     .add({
-      behavior = `The last global review is [[Json.parse]] of [[Files.read]] of elfie-requests/global.reviews.json under the root: the SHA-256 of the ids of every global criterion and test it reviewed, and its [[ReviewReport]]; none when the file is missing. Its violated units are the stems of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is the id of a violated review`,
+      situation = [`compile`, `A target has no source-map.json under its [[Target.outputDirectory]]`],
+      behavior = `[[Generation.plan]] is made with no source maps for that target`,
+    })
+    .add({
+      situation = `compile without --all`,
+      behavior = `[[Generation.plan]] is made with the stems given as arguments as the requested units`,
+    })
+    .add({ situation = `compile with --all`, behavior = `[[Generation.plan]] is made with every unit requested` })
+    .add({
+      situation = `compile with --target`,
+      behavior = `[[Generation.plan]] is limited to the one target --target names`,
+    })
+    .add({
+      behavior = `The last global review is [[Json.parse]] of [[Files.read]] of elfie-requests/global.reviews.json under the root: the SHA-256 of the ids of every global criterion and test it reviewed, and its [[ReviewReport]]. Its violated units are the stems of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is the id of a violated review`,
+    })
+    .add({
+      situation = `compile or check, and elfie-requests/global.reviews.json under the root is missing`,
+      behavior = `There is no last global review`,
     })
     .add({
       situation = `compile with --dry-run`,
@@ -140,8 +238,22 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // Decision: progress is a stream of one-line events rather than a redrawn screen, so it reads the
   // same in a terminal, in a log, and as JSON lines for a script.
   @acceptanceCriteria
+    .add({ behavior = `Every step of a compile prints one [[Progress]] line as it happens` })
     .add({
-      behavior = `Every step of a compile prints one [[Progress]] line as it happens: the step, the batch and unit when there are any, done over total, [[Time.elapsed]] since the compile began, and the message; with --json each is [[Json.stringify]] of the [[Progress]] on one line`,
+      situation = `compile without --json`,
+      behavior = `Each [[Progress]] line reads the step, done over total, [[Time.elapsed]] since the compile began, and the message`,
+    })
+    .add({
+      situation = [`compile without --json`, `The [[Progress.batch]] of a step is set`],
+      behavior = `Its [[Progress]] line reads the batch after the step`,
+    })
+    .add({
+      situation = [`compile without --json`, `The [[Progress.unit]] of a step is set`],
+      behavior = `Its [[Progress]] line reads the unit after the step and the batch`,
+    })
+    .add({
+      situation = `compile with --json`,
+      behavior = `Each [[Progress]] line is [[Json.stringify]] of the [[Progress]] on one line`,
     })
     .add({
       behavior = `The first [[Progress]] line of a compile is planned, with the count of units planned and of batches; the last is finished, with the count accepted, rejected, blocked, and failed`,
@@ -159,7 +271,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `The compiler is the command elfie.json names under compiler; it is [[Process.stream]] once per batch in plan order, with [[Request.instructions]] of [[Generation.request]] as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS (the stems, space separated) as its environment`,
     })
     .add({
-      behavior = `[[Request.previous]] holds, for each unit, [[LoweredFile.text]] of the source at the last accepted generation, lowered as [[Generation.changes]] binds a previous text, when the root is a git repository and that source is recoverable from it through [[Process.run]] of git`,
+      situation = [
+        `compile`,
+        `The root is a git repository and the source of a unit at its last accepted generation is recoverable from it through [[Process.run]] of git`,
+      ],
+      behavior = `[[Request.previous]] holds, for that unit, [[LoweredFile.text]] of that source, lowered as [[Generation.changes]] binds a previous text`,
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
@@ -167,11 +283,41 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
-      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back, its [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty, and the batch is verified, or counts as done when nothing verifies it`,
+      behavior = `Each unit's [[Verdict.outputs]] are [[Files.write]] back, and its [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
+        `elfie.json names a verifier and --no-verify is not given`,
+      ],
+      behavior = `The batch is verified`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
+        `elfie.json names no verifier, or --no-verify is given`,
+      ],
+      behavior = `The batch counts as done`,
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is rejected`,
-      behavior = `The problems are printed, and the batch is run once more with them appended to [[Request.instructions]]; a second rejection stops the compile`,
+      behavior = `The problems are printed`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Generation.outcomeOf]] of a batch's compiler run is rejected for the first time in the compile`,
+      ],
+      behavior = `The batch is run once more with the problems appended to [[Request.instructions]]`,
+    })
+    .add({
+      situation = [
+        `compile without --continue`,
+        `[[Generation.outcomeOf]] of a batch's compiler run is rejected for the second time in the compile`,
+      ],
+      behavior = `The compile stops`,
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is blocked`,
@@ -179,26 +325,61 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is clarification`,
-      behavior = `The question is printed and [[Files.write]] to elfie-requests/<batch>.question.md under the root, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file, which the next compile of the batch [[Files.read]] and appends to its instructions`,
+      behavior = `The question is printed and [[Files.write]] to elfie-requests/<batch>.question.md under the root, and the compile stops; the person answers by editing the definitions, or by writing the answer below the question in that file`,
     })
     .add({
-      situation = `[[Generation.outcomeOf]] of a batch's compiler run is failed, or [[Process.Exit.code]] of that run is -1 because the command could not be started`,
-      behavior = `The batch is run once more; a second failure stops the compile`,
+      situation = [
+        `compile`,
+        `elfie-requests/<batch>.question.md under the root holds an answer written below the question`,
+      ],
+      behavior = `The compile of that batch [[Files.read]] the answer and appends it to the batch's instructions`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `For the first time in the compile, [[Generation.outcomeOf]] of a batch's compiler run is failed, or [[Process.Exit.code]] of that run is -1 because the command could not be started`,
+      ],
+      behavior = `The batch is run once more`,
+    })
+    .add({
+      situation = [
+        `compile without --continue`,
+        `For the second time in the compile, [[Generation.outcomeOf]] of a batch's compiler run is failed, or [[Process.Exit.code]] of that run is -1 because the command could not be started`,
+      ],
+      behavior = `The compile stops`,
+    })
+    .add({
+      situation = [
+        `compile with --continue`,
+        `A batch is stopped by a second rejection or failure, a block, or a question`,
+      ],
+      behavior = `Only the batches that depend on one of its units are stopped; independent batches still run`,
     })
     .add({
       situation = `compile with --continue`,
-      behavior = `A batch stopped by a second rejection or failure, a block, or a question stops only the batches that depend on one of its units; independent batches still run, and the finished line lists every batch that did not complete`,
+      behavior = `The finished line lists every batch that did not complete`,
     })
+    .add({ situation = [`compile`, `Every batch was accepted`], behavior = `The code is success` })
     .add({
-      behavior = `The code of a compile is success when every batch was accepted, problems when any was rejected, blocked, or asked a question, and failure when a command could not run`,
+      situation = [`compile`, `A batch was rejected, blocked, or asked a question`],
+      behavior = `The code is problems`,
     })
+    .add({ situation = [`compile`, `A command could not run`], behavior = `The code is failure` })
     .add({
       situation = `compile, and elfie.json names no compiler`,
       behavior = `The request of each batch is [[Files.write]] to elfie-requests under the root, one file per batch named by its identifier, for a compiler run by hand; the code is success`,
     })
     .add({
       situation = `compile with --accept`,
-      behavior = `No compiler is run; the outputs already under [[Target.outputDirectory]] for each planned unit, the files of [[Files.list]] of it, recursively, whose text carries a [[Marker]] for the unit, are checked with [[Generation.accept]], written back normalized, and their [[SourceMap]]s recorded in source-map.json when accepted, so a compiler that worked through the agent server has its work recorded; the code is problems when any unit is rejected`,
+      behavior = `No compiler is run; the outputs already under [[Target.outputDirectory]] for each planned unit, the files of [[Files.list]] of it, recursively, whose text carries a [[Marker]] for the unit, are checked with [[Generation.accept]] and written back normalized`,
+    })
+    .add({
+      situation = [`compile with --accept`, `[[Generation.accept]] accepts a planned unit`],
+      behavior = `The [[SourceMap]]s of its outputs are recorded in source-map.json, so a compiler that worked through the agent server has its work recorded`,
+    })
+    .add({
+      situation = [`compile with --accept`, `[[Generation.accept]] rejects a planned unit`],
+      behavior = `The code is problems`,
     });
 
   // Verifying
@@ -218,7 +399,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The verifier's report on a batch holds no violated review`,
-      behavior = `The source maps [[Generation.accept]] derived for the batch, held until the review, are recorded in source-map.json and the batch is done; an unverifiable review is counted in the reviewed line and never rejects`,
+      behavior = `The source maps [[Generation.accept]] derived for the batch, held until the review, are recorded in source-map.json and the batch is done`,
+    })
+    .add({
+      situation = [`compile`, `The verifier's report on a batch holds an unverifiable review`],
+      behavior = `The unverifiable review is counted in the reviewed line and never rejects the batch`,
     })
     .add({
       situation = `The verifier's report on a batch holds a violated review`,
@@ -226,18 +411,39 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `A batch run once more because the verifier's report on it held a violated review is accepted by [[Generation.accept]]`,
-      behavior = `The verifier is run on it once more, with [[Generation.review]] of the plan, the batch, and the source maps [[Generation.accept]] derived for its new outputs; a violated review then stops the batch as rejected, which the finished line and the code count as a rejection, and its source maps are not recorded, so its outputs stay on disk and the unit stays planned`,
+      behavior = `The verifier is run on it once more, with [[Generation.review]] of the plan, the batch, and the source maps [[Generation.accept]] derived for its new outputs`,
     })
     .add({
-      situation = `A run of the verifier on a batch ends with [[ReviewReport.problems]] not empty, with no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED, or with [[Process.Exit.code]] -1`,
-      behavior = `The verifier run failed: it is run once more; when that run fails too, its problems are printed as a failed progress line, and the batch is verified with the reviews parsed from that run as if its report had been complete`,
+      situation = [
+        `compile`,
+        `A batch was run once more because the verifier's report on it held a violated review, and the verifier's report on that later run holds a violated review too`,
+      ],
+      behavior = `The batch stops as rejected, which the finished line and the code count as a rejection, and its source maps are not recorded, so its outputs stay on disk and the unit stays planned`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The first run of the verifier on a batch ends with [[ReviewReport.problems]] not empty, with no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED, or with [[Process.Exit.code]] -1`,
+      ],
+      behavior = `The verifier run failed, and it is run once more on the batch`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A run of the verifier on a batch, made once more because the run before it failed, ends with [[ReviewReport.problems]] not empty, with no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED, or with [[Process.Exit.code]] -1`,
+      ],
+      behavior = `Its problems are printed as a failed progress line, and the batch is verified with the reviews parsed from that run as if its report had been complete`,
     })
     .add({
       situation = `compile, and either --no-verify is given or elfie.json names no verifier`,
       behavior = `No verifier runs, nothing is reviewed, no reviews file is written, and a batch is done and its source maps recorded when its units are accepted`,
     })
     .add({
-      behavior = `verifying and reviewed are [[Progress]] lines like every other step, so --json prints each as [[Json.stringify]] of the [[Progress]]; every line of the verifier's output and its report are [[Files.append]] to elfie-requests/compile.log under the root`,
+      behavior = `verifying and reviewed are [[Progress]] lines like every other step; every line of the verifier's output and its report are [[Files.append]] to elfie-requests/compile.log under the root`,
+    })
+    .add({
+      situation = `compile with --json`,
+      behavior = `Each verifying and reviewed line is printed as [[Json.stringify]] of its [[Progress]]`,
     });
 
   // Global review
@@ -271,7 +477,27 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `verify`,
-      behavior = `[[Loader.load]] of the root and the source maps of each target read from source-map.json under [[Target.outputDirectory]], none when the file is missing, dropping any whose output [[Files.exists]] no longer finds, any error diagnostic printed and ending with problems; then [[Generation.plan]] with every stem given as a requested unit or, with no stem, with every unit whose [[Unit.outputs]] is not empty requested; --target limits the plan to one target; nothing is compiled and no output is written`,
+      behavior = `[[Loader.load]] of the root and the source maps of each target read from source-map.json under [[Target.outputDirectory]], dropping any whose output [[Files.exists]] no longer finds; nothing is compiled and no output is written`,
+    })
+    .add({
+      situation = [`verify`, `A target has no source-map.json under its [[Target.outputDirectory]]`],
+      behavior = `That target has no source maps`,
+    })
+    .add({
+      situation = [`verify`, `A diagnostic of the loaded program is an error`],
+      behavior = `Every error diagnostic is printed and verify ends with the code problems`,
+    })
+    .add({
+      situation = [`verify`, `No diagnostic of the loaded program is an error`, `Stems are given`],
+      behavior = `[[Generation.plan]] is made with every stem given as a requested unit`,
+    })
+    .add({
+      situation = [`verify`, `No diagnostic of the loaded program is an error`, `No stem is given`],
+      behavior = `[[Generation.plan]] is made with every unit whose [[Unit.outputs]] is not empty requested`,
+    })
+    .add({
+      situation = `verify with --target`,
+      behavior = `[[Generation.plan]] is limited to the one target --target names`,
     })
     .add({
       situation = `verify, and a stem given names a unit whose [[Unit.outputs]] is empty`,
@@ -279,19 +505,43 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `verify, elfie.json names a verifier, and --global is not given without a stem`,
-      behavior = `For each batch of [[Plan.batches]] holding a requested unit, in plan order, [[Generation.review]] of the plan, the batch, and the source maps is built and the verifier, the command elfie.json names under verifier, is [[Process.stream]] with its [[ReviewRequest.instructions]] as input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment; each line it writes is shown as it arrives prefixed by the batch and [[Files.append]] to elfie-requests/compile.log under the root, its report is read by [[Generation.reviewOf]], and [[ReviewReport.reviews]] is [[Files.write]] to elfie-requests/<batch>.reviews.json under the root, replacing an earlier file; a run whose [[ReviewReport.problems]] is not empty, that has no line reading ELFIE: REVIEWED, or whose [[Process.Exit.code]] is -1 is run once more`,
+      behavior = `For each batch of [[Plan.batches]] holding a requested unit, in plan order, [[Generation.review]] of the plan, the batch, and the source maps is built and the verifier, the command elfie.json names under verifier, is [[Process.stream]] with its [[ReviewRequest.instructions]] as input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS as its environment; each line it writes is shown as it arrives prefixed by the batch and [[Files.append]] to elfie-requests/compile.log under the root, its report is read by [[Generation.reviewOf]], and [[ReviewReport.reviews]] is [[Files.write]] to elfie-requests/<batch>.reviews.json under the root, replacing an earlier file`,
+    })
+    .add({
+      situation = [
+        `verify, elfie.json names a verifier, and --global is not given without a stem`,
+        `A run of the verifier on a batch has [[ReviewReport.problems]] not empty, has no line reading ELFIE: REVIEWED, or has [[Process.Exit.code]] -1`,
+      ],
+      behavior = `That run is made once more`,
     })
     .add({
       situation = `verify with no stem, or with --global, and elfie.json names a verifier`,
-      behavior = `After any batches are reviewed, [[Generation.globalReview]] of the plan and the source maps is built and the verifier is [[Process.stream]] once with its [[ReviewRequest.instructions]] as input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH set to global, and ELFIE_UNITS set to the stems, space separated, of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is a global id as its environment, its report read by [[Generation.reviewOf]], and elfie-requests/global.reviews.json under the root [[Files.write]] with the SHA-256 of the global ids reviewed and the [[ReviewReport]]; with --global alone no batch is reviewed`,
+      behavior = `After any batches are reviewed, [[Generation.globalReview]] of the plan and the source maps is built and the verifier is [[Process.stream]] once with its [[ReviewRequest.instructions]] as input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH set to global, and ELFIE_UNITS set to the stems, space separated, of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is a global id as its environment, its report read by [[Generation.reviewOf]], and elfie-requests/global.reviews.json under the root [[Files.write]] with the SHA-256 of the global ids reviewed and the [[ReviewReport]]`,
+    })
+    .add({ situation = `verify with --global and no stem`, behavior = `No batch is reviewed` })
+    .add({
+      situation = `verify without --json`,
+      behavior = `Each review is printed as its status, a space, [[Review.file]], a colon, [[Review.line]], a space, [[Review.entity]], a colon, a space, and [[Review.note]]`,
     })
     .add({
       situation = `verify`,
-      behavior = `Each review is printed as its status, a space, [[Review.file]], a colon, [[Review.line]], a space, [[Review.entity]], a colon, a space, and [[Review.note]]; after each batch one line gives the counts of satisfied, violated, and unverifiable; with --json each review is [[Json.stringify]] of the [[Review]] on one line`,
+      behavior = `After each batch one line gives the counts of satisfied, violated, and unverifiable`,
     })
     .add({
-      situation = `verify, and elfie.json names a verifier`,
-      behavior = `The code is problems when any review is violated, failure when the verifier could not be started, and success otherwise`,
+      situation = `verify with --json`,
+      behavior = `Each review is printed as [[Json.stringify]] of the [[Review]] on one line`,
+    })
+    .add({
+      situation = [`verify, and elfie.json names a verifier`, `A review is violated`],
+      behavior = `The code is problems`,
+    })
+    .add({
+      situation = [`verify, and elfie.json names a verifier`, `The verifier could not be started`],
+      behavior = `The code is failure`,
+    })
+    .add({
+      situation = [`verify, and elfie.json names a verifier`, `The verifier was started and no review is violated`],
+      behavior = `The code is success`,
     })
     .add({
       situation = `verify, and elfie.json names no verifier`,

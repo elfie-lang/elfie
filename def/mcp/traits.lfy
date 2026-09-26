@@ -6,7 +6,9 @@ use "./data";
 // documentation because a [[Parameter]] has no place for a description of its own.
 
 trait tool: `Exposed to agents as one tool of the server` {
-  where (`The server lists its tools`) -> `{{@identifier}} is listed as elfie_{{@identifier}}, described by {{@definition}}, with one argument per parameter that is not the [[Session]], named and typed as the parameter is, required unless the parameter is optional or has a default`;
+  where (`The server lists its tools`) -> `{{@identifier}} is listed as elfie_{{@identifier}}, described by {{@definition}}, with one argument per parameter that is not the [[Session]], named and typed as the parameter is`;
+  where (`The server lists its tools, and a parameter of {{@identifier}} that is not the [[Session]] is neither optional nor has a default`) -> `The argument for that parameter is listed as required`;
+  where (`The server lists its tools, and a parameter of {{@identifier}} that is not the [[Session]] is optional or has a default`) -> `The argument for that parameter is listed as not required`;
   where (`The fn has [[Documentation]] with a line that begins with a parameter's name and a colon`) -> `The rest of that line describes that argument`;
   where (`A call names elfie_{{@identifier}}`) -> `The arguments are checked against the parameters, the fn is called with the session and them, and what it returns is the call's result`;
   where (`An argument is missing, unknown, or of the wrong type`) -> `The result is an error naming the argument, and the fn is not called`;

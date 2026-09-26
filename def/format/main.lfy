@@ -37,7 +37,12 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
       behavior = `A run of blank lines between statements becomes one blank line; blank lines inside a statement are removed`,
     })
     .add({
-      behavior = `[[Documentation]] and a [[Comment]] on its own line stay on their own line before what follows them, indented like it; a [[Comment]] that shares a line with code stays at the end of that line after one space`,
+      situation = `A [[Documentation]], or a [[Comment]] on its own line`,
+      behavior = `It stays on its own line before what follows it, indented like it`,
+    })
+    .add({
+      situation = `A [[Comment]] shares a line with code`,
+      behavior = `It stays at the end of that line after one space`,
     })
     .add({ behavior = `Trailing spaces are removed and every [[NewLine]] becomes a line feed` });
 
@@ -58,9 +63,9 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
     .add({
       behavior = `A [[FunctionType]] is laid out as its [[Parameters]] are, then one space, the [[DoubleArrowRight]], one space, and the type`,
     })
-    .add({
-      behavior = `A [[Block]] opens on the line of its statement and its close stands alone on its own line; an empty [[Block]] is the two braces together`,
-    });
+    .add({ behavior = `A [[Block]] opens on the line of its statement` })
+    .add({ situation = `A [[Block]] is not empty`, behavior = `Its close stands alone on its own line` })
+    .add({ situation = `A [[Block]] is empty`, behavior = `It is the two braces together` });
 
   // Wrapping
   @acceptanceCriteria
@@ -74,7 +79,11 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
     })
     .add({
       situation = `[[TypeParameters]], [[TypeArguments]], or the arguments of a [[Generic]] would make the line exceed 120 characters`,
-      behavior = `They are multi-line like [[Arguments]]: one item per line, each ending with a [[Comma]], the [[GreaterThan]] on its own line; otherwise they stay on one line whatever the source held`,
+      behavior = `They are multi-line like [[Arguments]]: one item per line, each ending with a [[Comma]], the [[GreaterThan]] on its own line`,
+    })
+    .add({
+      situation = `[[TypeParameters]], [[TypeArguments]], or the arguments of a [[Generic]] would not make the line exceed 120 characters`,
+      behavior = `They stay on one line whatever the source held`,
     })
     .add({
       situation = `A chain of [[Call]] and [[Member]] on one left side, such as add on acceptanceCriteria, held a [[NewLine]] before an accessor in the source`,

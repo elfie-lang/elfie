@@ -28,11 +28,28 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   // Layout
   @acceptanceCriteria
     .add({
-      behavior = [
-        `[[Workspace.name]] is the name elfie.json gives, or the name of the [[root]] directory`,
-        `[[Workspace.sourceDirectory]] is the source directory elfie.json gives, or def`,
-        `[[Workspace.outputDirectory]] is the output directory elfie.json gives, or src`,
-      ],
+      situation = `elfie.json under [[root]] is a JSON object that gives a name`,
+      behavior = `[[Workspace.name]] is the name elfie.json gives`,
+    })
+    .add({
+      situation = `elfie.json under [[root]] is a JSON object that gives no name`,
+      behavior = `[[Workspace.name]] is the name of the [[root]] directory`,
+    })
+    .add({
+      situation = `elfie.json under [[root]] is a JSON object that gives a source directory`,
+      behavior = `[[Workspace.sourceDirectory]] is the source directory elfie.json gives`,
+    })
+    .add({
+      situation = `elfie.json under [[root]] is a JSON object that gives no source directory`,
+      behavior = `[[Workspace.sourceDirectory]] is def`,
+    })
+    .add({
+      situation = `elfie.json under [[root]] is a JSON object that gives an output directory`,
+      behavior = `[[Workspace.outputDirectory]] is the output directory elfie.json gives`,
+    })
+    .add({
+      situation = `elfie.json under [[root]] is a JSON object that gives no output directory`,
+      behavior = `[[Workspace.outputDirectory]] is src`,
     })
     .add({
       situation = `[[FileSystem.exists]] finds elfie.json under [[root]] but [[FileSystem.read]] of it is undefined, or its text is not a JSON object`,
@@ -75,7 +92,12 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       behavior = `The first of its [[Path.segments]] names a [[Package]], and the path is [[Path.join]] of that [[Package.root]] and the remaining segments`,
     })
     .add({
-      behavior = `The path a [[Use]] names, once joined to its file's directory or its package's root, resolves to the file at the path plus .lfy, or to [[Path.join]] of the path and main.lfy, whichever [[FileSystem.exists]] says is there`,
+      situation = `[[FileSystem.exists]] is true for the path a [[Use]] names, once joined to its file's directory or its package's root, plus .lfy`,
+      behavior = `The [[Use]] resolves to the file at the path plus .lfy`,
+    })
+    .add({
+      situation = `[[FileSystem.exists]] is false for the path a [[Use]] names, once joined to its file's directory or its package's root, plus .lfy, and true for [[Path.join]] of that path and main.lfy`,
+      behavior = `The [[Use]] resolves to the file at [[Path.join]] of the path and main.lfy`,
     })
     .add({
       situation = `[[FileSystem.exists]] is true for both the joined path of a [[Use]] plus .lfy and [[Path.join]] of that path and main.lfy`,
@@ -116,8 +138,23 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     .add({
       behavior = [
         `The [[Package]] named elfie is in the program whether or not elfie.json names it, and every file [[FileSystem.list]] gives recursively under its [[Package.root]] whose [[Path.extension]] is lfy is in the program and carries it as its [[File.package]]`,
-        `Its [[Package.root]] is the first of these that is given, never the next one when the given one is missing: the dependency entry elfie in elfie.json; the top level key lib in elfie.json, relative to [[root]]; the directory [[Process.environment]] gives for ELFIE_LIB; the copy of the library the compiler was built with, which the target's guidance says how it travels`,
       ],
+    })
+    .add({
+      situation = `elfie.json has the dependency entry elfie`,
+      behavior = `The [[Package.root]] of the [[Package]] named elfie is the directory that entry gives, whether or not that directory exists`,
+    })
+    .add({
+      situation = `elfie.json has no dependency entry elfie and has the top level key lib`,
+      behavior = `The [[Package.root]] of the [[Package]] named elfie is the directory lib gives, relative to [[root]], whether or not that directory exists`,
+    })
+    .add({
+      situation = `elfie.json has neither the dependency entry elfie nor the top level key lib, and [[Process.environment]] gives a directory for ELFIE_LIB`,
+      behavior = `The [[Package.root]] of the [[Package]] named elfie is the directory [[Process.environment]] gives for ELFIE_LIB, whether or not that directory exists`,
+    })
+    .add({
+      situation = `elfie.json has neither the dependency entry elfie nor the top level key lib, and [[Process.environment]] gives no directory for ELFIE_LIB`,
+      behavior = `The [[Package.root]] of the [[Package]] named elfie is the copy of the library the compiler was built with, which the target's guidance says how it travels`,
     })
     .add({
       behavior = [
@@ -136,13 +173,23 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     .add({
       behavior = `[[Target.marker]] is what the identifier of the trait elfie.json gives for the target resolves to in the file scope of the main file of [[Target.package]]`,
     })
-    .add({ behavior = `[[Target.outputDirectory]] is the one elfie.json gives, or [[Workspace.outputDirectory]]` })
+    .add({
+      situation = `elfie.json gives an output directory for a target`,
+      behavior = `[[Target.outputDirectory]] of that target is the one elfie.json gives`,
+    })
+    .add({
+      situation = `elfie.json gives no output directory for a target`,
+      behavior = `[[Target.outputDirectory]] of that target is [[Workspace.outputDirectory]]`,
+    })
     .add({
       behavior = [
         `The entities built for a target are [[Binder.entitiesOf]] of [[Target.marker]]`,
         `Every entity declared in the file scope of a file whose own entity carries the marker`,
-        `Every entity of every project file when global carries it`,
       ],
+    })
+    .add({
+      situation = `global carries the [[Target.marker]] of a target`,
+      behavior = `Every entity of every project file is built for that target`,
     })
     .add({
       situation = `A target's identifier resolves to nothing, or to an entity that is not a trait`,
