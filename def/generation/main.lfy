@@ -753,7 +753,9 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
   @test(
     {
       input = [
-        Plan@like(`A program with one global criterion g, whose id two outputs, src/a.rs and src/b.rs, name in a marker`),
+        Plan@like(
+          `A program with one global criterion g, whose id two outputs, src/a.rs and src/b.rs, name in a marker`,
+        ),
         [SourceMap@like(`For src/a.rs and src/b.rs, each with one marker naming global and the id of g`)],
       ],
       expect = ReviewRequest@like(`No batch; g once with its id, then two regions, one per output, then the protocol`),
@@ -801,14 +803,20 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
     {
       input = [
         `# reading src/a.rs\n{"id":"A:A:1f2e","status":"satisfied","evidence":"src/a.rs:1-30","note":"the field is there"}\n{"id":"A:A:9c0d","status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined instead of an empty list"}\nELFIE: REVIEWED`,
-        Program@like(`A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`),
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
       ],
-      expect = ReviewReport@like(`Two reviews, satisfied then violated, placed at def/a.lfy:4 and def/a.lfy:7 for A, and no problems`),
+      expect = ReviewReport@like(
+        `Two reviews, satisfied then violated, placed at def/a.lfy:4 and def/a.lfy:7 for A, and no problems`,
+      ),
     },
     {
       input = [
         `{"id":"A:A:1f2e","status":"maybe","evidence":"","note":"unsure"}\nI think it is fine.\n{"id":"A:A:9c0d","status":"unverifiable","evidence":"","note":"no region"}\nELFIE: REVIEWED`,
-        Program@like(`A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`),
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
       ],
       expect = ReviewReport@like(
         `One review, unverifiable at line 7, and two problems: the line whose status is maybe, and the prose line`,
@@ -817,7 +825,9 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
     {
       input = [
         `{"id":"A:A:1f2e","status":"satisfied","evidence":"","note":"first"}\n{"id":"A:A:1f2e","status":"violated","evidence":"src/a.rs:3-3","note":"second"}`,
-        Program@like(`A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`),
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
       ],
       expect = ReviewReport@like(
         `One review, violated with note second, and one problem reading: the report did not end`,
