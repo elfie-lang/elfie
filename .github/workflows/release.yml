@@ -1,0 +1,182 @@
+name: Release
+
+# Publishes built versions as GitHub releases, one channel per layer:
+#
+#   agentic  every push to agentic-main                  0.1.0-agentic.N  prerelease
+#   beta     Run workflow on the beta branch, kind beta  0.1.0-beta.N     prerelease
+#   rc       Run workflow on main, kind rc               0.1.0-rc.N       prerelease
+#   final    Run workflow on main, kind final            0.1.0            latest, rebuilt from the newest rc
+#
+# The base (0.1.0) is the [workspace.package] version in the branch's Cargo.toml.
+# scripts/release/version.sh computes the rest, and refuses a base that is not above the latest
+# stable release or is more than one whole version above it. Only the newest 10 agentic
+# releases are kept.
+
+on:
+  push:
+    branches: [agentic-main]
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "beta runs on the beta branch; rc and final run on main"
+        type: choice
+        options: [beta, rc, final]
+        required: true
+
+concurrency:
+  group: release-${{ inputs.kind || 'agentic' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CHANNEL: ${{ inputs.kind || 'agentic' }}
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      sha: ${{ steps.version.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check the branch releases this channel
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          case "$CHANNEL:$BRANCH" in
+            agentic:agentic-main | beta:beta | rc:main | final:main) ;;
+            *) echo "::error::$CHANNEL releases cannot run from $BRANCH (agentic: agentic-main, beta: beta, rc and final: main)"; exit 1 ;;
+          esac
+      - id: version
+        run: scripts/release/version.sh "$CHANNEL"
+
+  verify:
+    name: Check and test
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: scripts/release/stamp.sh "$VERSION"
+      - run: cargo build --workspace --locked
+      - name: Check definitions bind with no problems
+        run: ./target/debug/elfie check
+      - run: cargo test --workspace --locked
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm }
+          - { target: aarch64-apple-darwin, os: macos-latest }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - run: scripts/release/stamp.sh "$VERSION"
+      - run: cargo build --release --locked -p elfie
+      - name: Package
+        run: |
+          mkdir dist
+          if [[ $TARGET == *windows* ]]; then
+            7z a -tzip "dist/elfie-$VERSION-$TARGET.zip" ./target/release/elfie.exe
+          else
+            tar -czf "dist/elfie-$VERSION-$TARGET.tar.gz" -C target/release elfie
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: elfie-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  vscode:
+    name: VS Code extension
+    needs: version
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors/vscode
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - run: npm ci
+      - run: npm version --no-git-tag-version "$VERSION"
+      - run: npx vsce package --allow-missing-repository -o "elfie-vscode-$VERSION.vsix"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: elfie-vscode
+          path: editors/vscode/elfie-vscode-*.vsix
+          if-no-files-found: error
+
+  publish:
+    name: Publish ${{ needs.version.outputs.tag }}
+    needs: [version, verify, build, vscode]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+      SHA: ${{ needs.version.outputs.sha }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+      - name: Create the release
+        run: |
+          if [[ $PRERELEASE == true ]]; then
+            flags=(--prerelease --latest=false)
+          else
+            flags=(--latest)
+          fi
+          notes="The $CHANNEL build of Elfie $VERSION, from $GITHUB_SERVER_URL/$GH_REPO/commit/$SHA."
+          gh release create "$TAG" dist/* --target "$SHA" --title "$VERSION" --notes "$notes" "${flags[@]}"
+      - name: Keep only the newest 10 agentic releases
+        if: env.CHANNEL == 'agentic'
+        run: |
+          gh release list --limit 1000 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | test("-agentic\\.[0-9]+$"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
+            | while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
