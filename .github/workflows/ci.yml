@@ -33,6 +33,9 @@ jobs:
         run: ./target/debug/elfie format --check
       - name: Test
         run: cargo test --workspace --locked
+      # Last so that a stale unit does not hide the results of the steps above.
+      - name: Check every unit is up to date
+        run: ./target/debug/elfie check --strict
 
   clippy:
     name: Clippy
