@@ -436,3 +436,31 @@ LSP/MCP protocols are deliberately not part of this round.
   convention the binder does not read. Issue 1 above is left as is.
 - **`Entity.sideEffects` is gone**; `sideEffects` is a field of each criterion, set by its `add`
   call (`lib/criteria/criterion.lfy`). Closes issue 3 above.
+
+# Compile data in elfie-compile (2026-09-30)
+
+- **Source maps move from one file per target to one file per unit.** They were a single
+  `source-map.json` in each target's output directory, rewritten whole on every acceptance. They
+  now live at `elfie-compile/maps/<target>/<stem>.json` under the root, one JSON list per unit,
+  mirroring the definitions tree (`def/cli/main.lfy` maps to `elfie-compile/maps/rust/cli/main.json`).
+  Per unit rather than per output because the unit is what is planned, accepted, and recorded:
+  staleness reads one unit's maps, and acceptance writes one file. Alternative rejected: one file
+  per output, mirroring the output path, which would split one unit's record across files and
+  still need every file read to plan a unit.
+- **What that buys.** Accepting a unit writes its map file and nothing else, so a compile of one
+  unit changes one map file and a commit shows which units a compile touched. Maps are written
+  with sorted keys and in output order, so equal maps give equal bytes; outputs re-accepted
+  unchanged leave the file untouched rather than bumping `generated`. `--target` opens one
+  target's folder only. Deleting a definition file removes its map file on the next compile.
+- **`elfie-compile/` is the home of compile-time data and is checked in.** `elfie-compile/cache/`
+  is the exception: `elfie init` adds `/elfie-compile/cache/` to `.gitignore`, and nothing may
+  rely on it. Deleting it changes no plan, request, verdict, or output, only time. Anything
+  that is the only record of something belongs outside `cache/`. This repository ignores it too.
+- **Reading and recording are `Generation.sourceMapsOf` and `Generation.record`**, shared by the
+  CLI (`check`, `compile`, `verify`) and every agent server tool that reads maps, replacing the
+  reading rule each of them spelled out on its own.
+- **Migration.** A target with no maps folder still reads `source-map.json` from its output
+  directory; the next compile that is not a dry run records each unit's maps in its own file and
+  removes `source-map.json`. `crates/source-map.json` stays until the compiled CLI does this.
+- **Issue:** `elfie-requests/` (logs, blocked and question files, reviews) still sits under the
+  root beside `elfie-compile/`. Moving it under `elfie-compile/` was left out of this change.

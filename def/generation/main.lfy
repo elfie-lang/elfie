@@ -108,7 +108,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
   // Staleness
   @acceptanceCriteria
     .add({
-      behavior = `[[Unit.outputs]] is every [[SourceMap]] in [[sourceMaps]] whose target and source are the unit's; the caller drops maps whose output no longer exists before calling`,
+      behavior = `[[Unit.outputs]] is every [[SourceMap]] in [[sourceMaps]] whose target and source are the unit's; callers pass [[sourceMapsOf]] the workspace, which leaves out maps whose output no longer exists`,
     })
     .add({
       situation = `[[File.path]] or [[Unit.stem]] is in [[requested]]`,
@@ -474,6 +474,128 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
         [Output@like(`One file with a marker a.lfy:3`)],
       ],
       expect = Verdict@like(`Accepted, and the output in [[Verdict.outputs]] reads a.lfy:A instead`),
+    },
+  );
+}
+
+// Compile data
+
+// Decision: compile-time data lives in elfie-compile under [[Workspace.root]], never under an output
+// directory, so outputs hold only generated code. elfie-compile is checked in: it is the record of
+// what was generated from what. elfie-compile/maps holds the source maps, one file per unit, so
+// accepting a unit writes one small file instead of rewriting every map of the target, and a commit
+// shows exactly which units a compile touched. elfie-compile/cache is git-ignored and holds only what
+// can be rebuilt from the definitions, the maps, and the outputs: deleting it changes no plan,
+// request, verdict, or output, only how long they take.
+
+/// target: the identifier of one target; every target when left out
+fn sourceMapsOf(workspace: Workspace, target?: string): `Every source map recorded for a workspace whose output still exists` => SourceMap[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `A unit's map file is elfie-compile/maps under [[Workspace.root]], then [[Target.identifier]], then [[Unit.stem]] with the extension .json, such as elfie-compile/maps/rust/cli/main.json for def/cli/main.lfy; it holds the unit's source maps as one JSON list`,
+    })
+    .add({
+      behavior = `Returns the source maps of every map file under the folder of each target of [[Workspace.targets]], in target order, then in the order [[Files.list]] gives the files, then in the order each file lists them`,
+    })
+    .add({
+      situation = `[[target]] is set`,
+      behavior = `Only the folder of that target is read; the map files of other targets are never opened`,
+    })
+    .add({
+      situation = `[[Files.exists]] does not find the [[SourceMap.output]] of a recorded map`,
+      behavior = `The map is left out`,
+    })
+    .add({
+      situation = `A map file cannot be read or is not a JSON list of source maps`,
+      behavior = `It contributes nothing, so its unit plans as fresh`,
+    })
+    .add({
+      situation = [
+        `A target has no folder under elfie-compile/maps`,
+        `Its [[Target.outputDirectory]] holds source-map.json, as earlier versions recorded every map of a target`,
+      ],
+      behavior = `That target's maps are read from source-map.json instead, the same way, so a project keeps its maps until the next compile moves them`,
+    })
+    .add({
+      situation = [
+        `A target has no folder under elfie-compile/maps`,
+        `Its [[Target.outputDirectory]] holds no source-map.json`,
+      ],
+      behavior = `That target has no source maps`,
+    })
+    .add({ behavior = `Nothing is written, and nothing under elfie-compile/cache is read` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(
+          `One target rust; elfie-compile/maps/rust holds a.json with one map for crates/a/src/a.rs and b.json with one map for crates/b/src/b.rs, both outputs present`,
+        ),
+      ],
+      expect = [SourceMap@like(`crates/a/src/a.rs`), SourceMap@like(`crates/b/src/b.rs`)],
+    },
+    {
+      input = [Workspace@like(`The same project with crates/b/src/b.rs deleted`)],
+      expect = [SourceMap@like(`crates/a/src/a.rs`)],
+    },
+    {
+      input = [
+        Workspace@like(
+          `One target rust with no elfie-compile folder and crates/source-map.json holding two maps whose outputs are present`,
+        ),
+      ],
+      expect = [SourceMap@like(`The two maps of crates/source-map.json, in its order`)],
+    },
+  );
+}
+
+fn record(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `Whether the source maps of one accepted unit are recorded in its map file` => boolean {
+  @acceptanceCriteria
+    .add({
+      behavior = `The unit's map file, as [[sourceMapsOf]] names it, holds [[sourceMaps]] afterwards, replacing whatever it held; no other file is written, so recording one unit leaves every other map file byte for byte as it was`,
+      sideEffects = [`The unit's map file is written`],
+    })
+    .add({
+      behavior = `The file is [[Json.stringify]] pretty of [[sourceMaps]] in [[SourceMap.output]] order, each map's markers in output order, and the keys of every object in alphabetical order, so the same maps always give the same bytes and a diff shows only what changed`,
+    })
+    .add({
+      situation = `The unit's map file already holds maps that differ from [[sourceMaps]] only in [[SourceMap.generated]]`,
+      behavior = `The file is left as it is and the result is true, so accepting outputs that did not change changes nothing on disk`,
+    })
+    .add({
+      situation = `No folder above the unit's map file exists yet`,
+      behavior = `Every missing folder is created, so a project cloned without elfie-compile records its maps`,
+    })
+    .add({
+      situation = `[[sourceMaps]] is empty`,
+      behavior = `The map file is removed by [[Files.remove]], so the unit plans as fresh`,
+    })
+    .add({ situation = `The file cannot be written`, behavior = `Returns false` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`One target rust whose maps folder holds a.json and b.json`),
+        Unit@like(`The unit of def/a.lfy`),
+        [SourceMap@like(`For crates/a/src/a.rs with a new hash`)],
+      ],
+      expect = boolean@like(`true; elfie-compile/maps/rust/a.json holds the new map and b.json is untouched`),
+    },
+    {
+      input = [
+        Workspace@like(`The same project`),
+        Unit@like(`The unit of def/a.lfy`),
+        [SourceMap@like(`The map a.json holds, with a later generated time`)],
+      ],
+      expect = boolean@like(`true, and a.json is not written`),
+    },
+    {
+      input = [
+        Workspace@like(`One target rust with no elfie-compile folder`),
+        Unit@like(`The unit of def/cli/main.lfy`),
+        [SourceMap@like(`For crates/elfie-cli/src/main.rs`)],
+      ],
+      expect = boolean@like(`true, and elfie-compile/maps/rust/cli/main.json is created with every folder above it`),
     },
   );
 }

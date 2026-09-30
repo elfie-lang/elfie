@@ -50,7 +50,7 @@ d Marker: `One place where generated code says where it came from` {
     });
 }
 
-d SourceMap: `What one output file was generated from, recorded mechanically at acceptance` {
+d SourceMap: `What one output file was generated from, recorded mechanically at acceptance in the map file of its unit` {
   $target: `The identifier of the target it was generated for` = string;
   $output: `The output file's path, relative to [[Workspace.root]]` = string;
   $source: `The source file's path, relative to [[Workspace.root]]` = string;
@@ -69,7 +69,7 @@ d Unit: `The work the compiler does as one piece: one source file for one target
   $lowered: `The file as lowering gave it` = LoweredFile;
   $stem: `[[Path.relative]] of [[File.path]] to the directory it was found under, without its extension; the target's guidance spells the output file from it` = string;
   $dependencies: `The units of the same target for the files this file uses, transitively through files that have no unit` = Unit[];
-  $outputs: `The outputs the last accepted generation produced, from the target's source maps; empty when none` = SourceMap[];
+  $outputs: `The outputs the last accepted generation produced, from the unit's map file; empty when none` = SourceMap[];
   $reason: `Why it is planned; undefined when it is up to date` = Reason | undefined;
 }
 
