@@ -99,3 +99,13 @@ fn exit(code: number) is builtin: `Ends the process with an exit code; never ret
       sideEffects = [`The process ends`],
     });
 }
+
+/// isError: true to ask about standard error, false for standard output
+fn isTerminal(isError: boolean) is builtin: `Whether standard output, or standard error, is written to a terminal rather than a file or a pipe` => boolean {
+  where (`The stream is attached to a terminal`) -> `Returns true`;
+  where (`The stream is redirected to a file, a pipe, or nothing`) -> `Returns false`;
+  @test(
+    { input = [false], expect = boolean@like(`true in a terminal, false when standard output is piped`) },
+    { input = [true], expect = boolean@like(`true in a terminal, false when standard error is redirected`) },
+  );
+}

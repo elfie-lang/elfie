@@ -1,0 +1,233 @@
+use "../generation/data";
+use "../query/data";
+use "./data";
+use "elfie/system/process" as Process;
+
+// Decision: color is decided once per stream, standard output and standard error apart, and every
+// piece of text is painted by what it means rather than by a color named where it is printed, so
+// the whole CLI reads as one palette and a person scanning a long compile finds the failures by
+// their color alone.
+// Decision: color never reaches a file, a pipe, JSON, or compile.log, so what a script or an agent
+// reads is the same text it read before color existed; only a person at a terminal sees escapes.
+
+enum ColorChoice: `When the CLI colors what it prints, as --color names it` {
+  auto = `auto`,
+  always = `always`,
+  never = `never`,
+}
+
+enum Tone: `What a piece of printed text means; its value is the ANSI SGR parameters that color it` {
+  success: `Something done or satisfied, in green` = `32`,
+  failure: `An error, a rejection, or a violation, in red` = `31`,
+  warning: `Something a person must look at that is not an error, in yellow` = `33`,
+  active: `Work under way or a name to act on, in cyan` = `36`,
+  subject: `What a line is about: a file, a batch, a unit, in bold` = `1`,
+  muted: `Detail read only when wanted: counters, times, prefixes, dependencies, in dim` = `2`,
+}
+
+/// choice: what --color asked for
+/// isError: true for standard error, false for standard output
+fn colorsOn(choice: ColorChoice, isError: boolean): `Whether text printed to one stream is colored` => boolean {
+  @acceptanceCriteria
+    .add({ situation = `[[choice]] is always`, behavior = `Returns true, whatever the environment says` })
+    .add({ situation = `[[choice]] is never`, behavior = `Returns false` })
+    .add({
+      situation = [`[[choice]] is auto`, `[[Process.environment]] gives NO_COLOR as any text but the empty one`],
+      behavior = `Returns false`,
+    })
+    .add({
+      situation = [`[[choice]] is auto`, `[[Process.environment]] gives TERM as dumb`],
+      behavior = `Returns false`,
+    })
+    .add({
+      situation = [
+        `[[choice]] is auto`,
+        `[[Process.environment]] gives NO_COLOR as undefined or empty, and TERM as anything but dumb`,
+        `[[Process.environment]] gives CLICOLOR_FORCE as any text but the empty one and 0`,
+      ],
+      behavior = `Returns true, so a person can keep color through a pager`,
+    })
+    .add({
+      situation = [
+        `[[choice]] is auto`,
+        `[[Process.environment]] gives NO_COLOR as undefined or empty, and TERM as anything but dumb`,
+        `[[Process.environment]] gives CLICOLOR_FORCE as undefined, empty, or 0`,
+      ],
+      behavior = `Returns [[Process.isTerminal]] of [[isError]]`,
+    });
+
+  @test(
+    { input = [ColorChoice.always, false], expect = true },
+    { input = [ColorChoice.never, true], expect = false },
+    {
+      input = [ColorChoice.auto, false],
+      expect = boolean@like(`false while standard output is piped and CLICOLOR_FORCE is not set`),
+    },
+  );
+}
+
+/// text: what is printed
+/// tone: what it means
+/// on: whether the stream it goes to is colored, as [[colorsOn]] decides
+fn paint(text: string, tone: Tone, on: boolean): `Text wrapped in the escapes that color it by its tone, or left as it is` => string {
+  @acceptanceCriteria
+    .add({
+      situation = [`[[on]] is true`, `[[text]] is not empty`],
+      behavior = `Returns the escape character, [, the value of [[tone]], m, the text, and the escape character, [, 0, m; the reset always follows, so no color runs past the text`,
+    })
+    .add({ situation = `[[on]] is false`, behavior = `Returns [[text]] unchanged` })
+    .add({ situation = `[[text]] is empty`, behavior = `Returns [[text]] unchanged` })
+    .add({
+      behavior = `[[width]] of what is returned is [[width]] of [[text]], so a painted column lines up as its plain text would`,
+    });
+
+  @test(
+    { input = [`ok`, Tone.success, true], expect = `\u001b[32mok\u001b[0m` },
+    { input = [`ok`, Tone.success, false], expect = `ok` },
+    { input = [``, Tone.failure, true], expect = `` },
+  );
+}
+
+/// text: what is measured, painted or not
+fn width(text: string): `How many columns text takes in a terminal` => number {
+  @acceptanceCriteria
+    .add({
+      behavior = `Counts characters, not bytes, and skips every escape sequence that begins with the escape character and [ and ends with m, so painted and plain text measure the same`,
+    });
+
+  @test(
+    { input = [`batch`], expect = 5 },
+    { input = [`\u001b[1mbatch\u001b[0m`], expect = 5 },
+    { input = [`✓ ok`], expect = 4 },
+  );
+}
+
+/// text: what is padded, painted or not
+/// columns: the width to fill
+fn padded(text: string, columns: number): `Text followed by spaces up to a width, so the columns after it line up` => string {
+  @acceptanceCriteria
+    .add({
+      situation = `[[width]] of [[text]] is less than [[columns]]`,
+      behavior = `Appends spaces until [[width]] of the result is [[columns]]`,
+    })
+    .add({
+      situation = `[[width]] of [[text]] is [[columns]] or more`,
+      behavior = `Returns [[text]] unchanged, never cut`,
+    });
+
+  @test({ input = [`ab`, 4], expect = `ab  ` }, { input = [`abcdef`, 4], expect = `abcdef` });
+}
+
+/// seconds: a length of time, as [[Progress.elapsed]] holds it
+fn duration(seconds: number): `A length of time, short enough to scan in a column` => string {
+  @acceptanceCriteria
+    .add({
+      situation = `[[seconds]] is under 60`,
+      behavior = `Returns the seconds to one decimal and s, as 12.3s`,
+    })
+    .add({
+      situation = `[[seconds]] is 60 or more and under 3600`,
+      behavior = `Returns the whole minutes, m, the remaining whole seconds as two digits, and s, as 2m05s`,
+    })
+    .add({
+      situation = `[[seconds]] is 3600 or more`,
+      behavior = `Returns the whole hours, h, the remaining whole minutes as two digits, and m, as 1h02m`,
+    })
+    .add({ behavior = `Every part is truncated, never rounded up, so 59.99 seconds is 59.9s and never 60.0s` });
+
+  @test(
+    { input = [0.42], expect = `0.4s` },
+    { input = [12.34], expect = `12.3s` },
+    { input = [59.99], expect = `59.9s` },
+    { input = [125], expect = `2m05s` },
+    { input = [3725], expect = `1h02m` },
+  );
+}
+
+/// step: what a compile is doing
+fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Tone {
+  @acceptanceCriteria
+    .add({ behavior = `accepted, reviewed, and globalReviewed are success` })
+    .add({ behavior = `rejected and failed are failure` })
+    .add({ behavior = `retrying, blocked, and clarification are warning` })
+    .add({ behavior = `requesting, compiling, checking, verifying, and globalVerifying are active` })
+    .add({ behavior = `planned and finished are subject` });
+
+  @test(
+    { input = [Step.accepted], expect = Tone.success },
+    { input = [Step.rejected], expect = Tone.failure },
+    { input = [Step.clarification], expect = Tone.warning },
+    { input = [Step.compiling], expect = Tone.active },
+  );
+}
+
+/// step: what a compile is doing
+fn glyphOf(step: Step): `One character that marks a progress line's step, so the eye finds the outcomes without reading` => string {
+  @acceptanceCriteria
+    .add({ behavior = `planned and finished are ◆` })
+    .add({ behavior = `requesting and checking are ·` })
+    .add({ behavior = `compiling, verifying, and globalVerifying are ▸` })
+    .add({ behavior = `accepted, reviewed, and globalReviewed are ✓` })
+    .add({ behavior = `rejected and failed are ✗` })
+    .add({ behavior = `retrying is ↻, blocked is ■, and clarification is ?` });
+
+  @test(
+    { input = [Step.accepted], expect = `✓` },
+    { input = [Step.failed], expect = `✗` },
+    { input = [Step.compiling], expect = `▸` },
+  );
+}
+
+/// severity: how bad a diagnostic is
+fn severityTone(severity: Severity): `The tone a diagnostic's severity is painted in` => Tone {
+  @acceptanceCriteria
+    .add({ behavior = `error is failure, warning is warning, information and hint are active` });
+
+  @test({ input = [Severity.error], expect = Tone.failure }, { input = [Severity.hint], expect = Tone.active });
+}
+
+/// status: what a verifier found
+fn statusTone(status: ReviewStatus): `The tone a review's status is painted in` => Tone {
+  @acceptanceCriteria
+    .add({ behavior = `satisfied is success, violated is failure, unverifiable is warning` });
+
+  @test(
+    { input = [ReviewStatus.satisfied], expect = Tone.success },
+    { input = [ReviewStatus.violated], expect = Tone.failure },
+  );
+}
+
+/// reason: why a unit needs generating, or undefined when it is up to date
+fn reasonTone(reason: Reason | undefined): `The tone a unit's reason is painted in` => Tone {
+  @acceptanceCriteria
+    .add({ behavior = `requested is active and fresh is success` })
+    .add({ behavior = `changed, requirements, and dependency are warning` })
+    .add({ behavior = `violated is failure` })
+    .add({ behavior = `undefined, printed as up to date, is muted` });
+
+  @test(
+    { input = [Reason.changed], expect = Tone.warning },
+    { input = [Reason.violated], expect = Tone.failure },
+    { input = [undefined], expect = Tone.muted },
+  );
+}
+
+/// count: how many
+/// label: what was counted, as rejected
+/// tone: the tone the count is painted in when it is not 0
+/// on: whether the stream is colored
+fn tally(count: number, label: string, tone: Tone, on: boolean): `A count and what it counts, painted only when it is worth noticing` => string {
+  @acceptanceCriteria
+    .add({ behavior = `The text is the count, a space, and [[label]]` })
+    .add({ situation = `[[count]] is not 0`, behavior = `Returns [[paint]] of the text in [[tone]]` })
+    .add({
+      situation = `[[count]] is 0`,
+      behavior = `Returns [[paint]] of the text in muted, so a summary shows at a glance which counts matter`,
+    });
+
+  @test(
+    { input = [2, `rejected`, Tone.failure, true], expect = `\u001b[31m2 rejected\u001b[0m` },
+    { input = [0, `rejected`, Tone.failure, true], expect = `\u001b[2m0 rejected\u001b[0m` },
+    { input = [0, `rejected`, Tone.failure, false], expect = `0 rejected` },
+  );
+}

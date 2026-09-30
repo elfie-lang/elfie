@@ -12,6 +12,7 @@ use "../query/main" as Query;
 use "../workspace/data";
 use "../workspace/main" as Loader;
 use "./data";
+use "./style" as Style;
 use "elfie/system/file" as Files;
 use "elfie/system/json" as Json;
 use "elfie/system/path";
@@ -64,7 +65,19 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `The option target gives that value, since it is the one option besides --root that takes a following value`,
     })
     .add({
-      situation = `An option other than --root, --tree, --help, --version, and --target is written --name, with no equals sign`,
+      situation = `--color is followed by auto, always, or never`,
+      behavior = `The option color gives that value`,
+    })
+    .add({
+      situation = `--color is written with no equals sign and not followed by auto, always, or never`,
+      behavior = `It is a flag and gives true, read as always, and the next argument is left for what follows`,
+    })
+    .add({
+      situation = `--color=value is among the arguments, and the value is not one of [[Style.ColorChoice]]`,
+      behavior = `Returns a usage message reading --color must be auto, always, or never`,
+    })
+    .add({
+      situation = `An option other than --root, --tree, --help, --version, --target, and --color is written --name, with no equals sign`,
       behavior = `It is a flag and gives true, never taking the next argument, so --json check still names the check command`,
     })
     .add({
@@ -82,6 +95,8 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
     },
     { input = [[`--tree`, `def/a.lfy`]], expect = Invocation@like(`tree with the one argument def/a.lfy`) },
     { input = [[`frobnicate`]], expect = string@like(`A usage message naming frobnicate`) },
+    { input = [[`check`, `--color=sometimes`]], expect = string@like(`A usage message naming --color`) },
+    { input = [[`--color`, `never`, `check`]], expect = Invocation@like(`check with the option color never`) },
   );
 }
 
@@ -101,11 +116,45 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `A [[Diagnostic]] is printed as the file, a colon, the line, a colon, the column, a colon, the stage, the severity, and the message`,
     });
 
+  // Color and layout
+  // Decision: color is for a person at a terminal and changes no word of what is printed, so every
+  // criterion that names a line's text holds with color on or off. The text layout (columns,
+  // glyphs, empty lines between batches) is for a person too; a script reads --json, whose lines
+  // are unchanged.
+  @acceptanceCriteria
+    .add({
+      situation = `--json is not given`,
+      behavior = `Text for standard output is painted with [[Style.paint]] when [[Style.colorsOn]] of the --color choice and false is true, and text for standard error when [[Style.colorsOn]] of the choice and true is; each stream is decided once per run`,
+    })
+    .add({ situation = `--color is not given`, behavior = `The --color choice is auto` })
+    .add({
+      situation = `--json is given`,
+      behavior = `Nothing is painted on either stream, whatever --color says, so every JSON line is plain JSON`,
+    })
+    .add({
+      behavior = `Every line [[Files.append]] to elfie-requests/compile.log is the line as printed with colors off, so the log never holds an escape; its layout is the printed layout`,
+    })
+    .add({
+      situation = `A [[Diagnostic]] is printed without --json`,
+      behavior = `The file, line, and column with their colons are subject, the stage is muted, the severity is painted in [[Style.severityTone]] of it, and the message is plain`,
+    })
+    .add({
+      behavior = `A usage message, or any other message the CLI itself prints to standard error, begins with elfie: painted failure, then a space and the message`,
+    })
+    .add({
+      situation = `A message the CLI prints to standard error begins with a path`,
+      behavior = `The path is subject`,
+    });
+
   // help, version
   @acceptanceCriteria
     .add({
       situation = `help`,
-      behavior = `Prints every command of [[Command]], verify among them, with one line of description and the global options, --no-verify and --strict among them, and returns success`,
+      behavior = `Prints every command of [[Command]], verify among them, with one line of description and the global options, --no-verify, --strict, and --color among them, and returns success`,
+    })
+    .add({
+      situation = `help`,
+      behavior = `The usage line and the headings commands: and options: are subject; each command name and each option is active and padded with [[Style.padded]] so every description starts in the same column; descriptions are plain`,
     })
     .add({ situation = `version`, behavior = `Prints the version of the executable and returns success` });
 
@@ -144,6 +193,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `[[Generation.plan]] is made with no stems requested, from the source maps in source-map.json under each [[Target.outputDirectory]] and the stems the last global review in elfie-requests/global.reviews.json found violated, and each unit that is not up to date is printed as a warning of stage generation at its source file, naming the target, the unit, and the description of its [[Unit.reason]]; the last line counts the files, the problems, and the stale units`,
     })
     .add({
+      situation = `check without --json`,
+      behavior = `In the last line the count of files is plain, the problems are [[Style.tally]] in failure, and the stale units are [[Style.tally]] in warning`,
+    })
+    .add({
+      situation = [`check without --json`, `A stale unit is printed`],
+      behavior = `Its target and unit are subject and the description of its [[Unit.reason]] is painted in [[Style.reasonTone]] of it`,
+    })
+    .add({
       situation = `check with --strict`,
       behavior = `The code is problems when anything at all is printed as a warning or error, a stale unit included, so one command checks that the definitions bind cleanly and that every output is up to date`,
     });
@@ -179,6 +236,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `The code is problems`,
     })
     .add({
+      situation = [`format without --check and without --json`, `A file is written`],
+      behavior = `It is printed as formatted painted success, a space, and the file`,
+    })
+    .add({
+      situation = [`format with --check and without --json`, `A file would change`],
+      behavior = `The file printed is painted warning`,
+    })
+    .add({
       situation = `format on a file whose tree has errors`,
       behavior = `Its errors are printed, it is left as it is, and the code is problems`,
     });
@@ -196,6 +261,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `tokens`,
       behavior = `Prints [[Lexer.lex]] of [[Files.read]] of the one file given, one token per line as its line, column, rule, and value`,
+    })
+    .add({
+      situation = `tree or tokens`,
+      behavior = `A rule is active, a token's value is success, and a token range, line, or column is muted`,
+    })
+    .add({
+      situation = [`tree`, `The tree of the file given holds an [[ErrorNode]]`],
+      behavior = `Each [[ErrorNode]] and what it expected are painted failure`,
     });
 
   // compile
@@ -232,6 +305,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `compile with --dry-run`,
       behavior = `Each planned unit is printed as its target, [[Unit.stem]], its reason or up to date, and the stems of its dependencies, then each batch with the stems it holds, and nothing is generated`,
+    })
+    .add({
+      situation = `compile with --dry-run and without --json`,
+      behavior = `In a unit's line the target is muted, the stem is subject, the reason is painted in [[Style.reasonTone]] of it, and the dependencies are muted; the words and their order stay as they are, so a script splitting a line on spaces reads the same fields`,
+    })
+    .add({
+      situation = `compile with --dry-run and without --json`,
+      behavior = `In a batch's line the word batch is muted, the identifier is subject, and the stems are muted`,
     });
 
   // Progress
@@ -241,15 +322,88 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({ behavior = `Every step of a compile prints one [[Progress]] line as it happens` })
     .add({
       situation = `compile without --json`,
-      behavior = `Each [[Progress]] line reads the step, done over total, [[Time.elapsed]] since the compile began, and the message`,
+      behavior = `Each [[Progress]] line reads, in columns separated by two spaces: the counter, the time, the step, then the batch and unit when there are any, and the first line of the message`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = `The counter is [, done right aligned to the width of total, /, total, and ], painted muted, so it keeps one width for the whole compile`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = `The time is [[Style.duration]] of [[Time.elapsed]] since the compile began, right aligned to six columns and painted muted`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = `The step is [[Style.glyphOf]] the step, a space, and the step's name, painted in [[Style.toneOf]] the step and padded with [[Style.padded]] to the longest name of [[Step]] with its glyph, so every batch starts in the same column`,
     })
     .add({
       situation = [`compile without --json`, `The [[Progress.batch]] of a step is set`],
-      behavior = `Its [[Progress]] line reads the batch after the step`,
+      behavior = `Its [[Progress]] line reads the batch, painted subject, after the step`,
     })
     .add({
-      situation = [`compile without --json`, `The [[Progress.unit]] of a step is set`],
-      behavior = `Its [[Progress]] line reads the unit after the step and the batch`,
+      situation = [
+        `compile without --json`,
+        `The [[Progress.unit]] of a step is set and is not its [[Progress.batch]]`,
+      ],
+      behavior = `Its [[Progress]] line reads the unit after the batch`,
+    })
+    .add({
+      situation = [`compile without --json`, `The [[Progress.unit]] of a step is its [[Progress.batch]]`],
+      behavior = `The unit is not repeated after the batch`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is rejected, failed, blocked, or clarification`],
+      behavior = `The message is painted in [[Style.toneOf]] the step`,
+    })
+    .add({
+      situation = [
+        `compile without --json`,
+        `The step is not rejected, failed, blocked, clarification, reviewed, globalReviewed, or finished`,
+      ],
+      behavior = `The message is plain`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is reviewed or globalReviewed`],
+      behavior = `The message is [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
+    })
+    .add({
+      situation = [
+        `compile without --json`,
+        `A [[Progress]] line is the first line of a batch after the first batch, or is finished, or is globalVerifying`,
+      ],
+      behavior = `An empty line is printed and logged before it, so each batch reads as one block`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`, `Nothing was rejected, blocked, or failed`],
+      behavior = `Its glyph and name are painted success`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`, `Something was rejected, blocked, or failed`],
+      behavior = `Its glyph and name are painted failure`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`],
+      behavior = `The message is [[Style.tally]] of the units accepted in success, those rejected in failure, the batches blocked in warning, and those failed in failure, separated by a comma and a space, with the words the message has with --json`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`, `Some batch did not complete`],
+      behavior = `The batches that did not complete follow on their own line, indented four spaces, as did not complete: and the batches separated by a comma and a space, painted warning`,
+    })
+    .add({
+      situation = [`compile without --json`, `Problems, a reason, or a question are printed`],
+      behavior = `They follow the [[Progress]] line they belong to, one problem or line of text per line, each indented four spaces`,
+    })
+    .add({
+      situation = [`compile without --json`, `A problem is printed`],
+      behavior = `It begins with - and a space and is painted failure`,
+    })
+    .add({
+      situation = [`compile without --json`, `A reason or a question is printed`],
+      behavior = `It is painted warning`,
+    })
+    .add({
+      situation = [`compile without --json`, `Every unit is up to date`],
+      behavior = `The line saying so is painted success`,
     })
     .add({
       situation = `compile with --json`,
@@ -260,6 +414,24 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       behavior = `While the compiler runs on a batch, each line [[Process.stream]] passes to its onLine is shown as it arrives, prefixed by the batch, and [[Process.Exit.stdout]] is the report`,
+    })
+    .add({
+      situation = `compile or verify without --json`,
+      behavior = `The prefix of a line from the compiler or the verifier is two spaces, the batch, a space, │, and a space; the line itself is shown exactly as the command wrote it`,
+    })
+    .add({
+      situation = [
+        `compile or verify without --json`,
+        `A line from the compiler or the verifier came from standard output`,
+      ],
+      behavior = `Its prefix is painted muted`,
+    })
+    .add({
+      situation = [
+        `compile or verify without --json`,
+        `A line from the compiler or the verifier came from standard error`,
+      ],
+      behavior = `Its prefix is painted warning`,
     })
     .add({
       behavior = `Every progress line and report is [[Files.append]] to elfie-requests/compile.log under the root, never under an output directory, so a run can be read after the fact and no output is ever mistaken for the CLI's own files`,
@@ -526,6 +698,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `verify`,
       behavior = `After each batch one line gives the counts of satisfied, violated, and unverifiable`,
+    })
+    .add({
+      situation = `verify without --json`,
+      behavior = `A review's status is painted in [[Style.statusTone]] of it and padded with [[Style.padded]] to the longest status of [[ReviewStatus]], the file and line are subject, and the entity and note are plain`,
+    })
+    .add({
+      situation = `verify without --json`,
+      behavior = `The counts line after each batch is [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
     })
     .add({
       situation = `verify with --json`,
