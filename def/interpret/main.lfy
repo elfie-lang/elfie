@@ -288,7 +288,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
   @acceptanceCriteria
     .add({
       behavior = [
-        `Every node whose [[phaseOf]] is [[Phase.runtime]], that is not inside a [[Phase.compile]] node or an ace function, and that is not replaced by a folded node, is kept with the same rule and its kept children in order`,
+        `Every node whose [[phaseOf]] is [[Phase.runtime]], that is not inside a [[Phase.compile]] node or an ace function, that is not replaced by a folded node, and that is not an [[ExpressionStatement]] whose expression is [[Phase.compile]], is kept with the same rule and its kept children in order`,
         `Every lowered node's origin is the parse node it came from; a folded node's origin is the expression it replaced`,
         `[[Program.files]] holds one [[LoweredFile]] per file of [[Workspace.files]], in order`,
       ],
@@ -296,6 +296,10 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     .add({
       situation = `A file of [[Workspace.files]] holds only compile-time statements`,
       behavior = `It lowers to an empty [[SourceFile]]`,
+    })
+    .add({
+      situation = `An [[ExpressionStatement]] inside runtime code, such as a function body, has an expression whose [[phaseOf]] is [[Phase.compile]], as in function f() { t.apply(X); }`,
+      behavior = `A [[Problem]] is added at the statement saying compile-time declarations belong outside runtime code, and the statement has no lowered node`,
     });
 
   @test(
@@ -310,6 +314,10 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     {
       input = [Workspace@like(`def/a.lfy reading: ace function q(t) { return t + "!"; } const c = q("x");`)],
       expect = Program@like(`a.lfy holding only the const c, whose value is one folded node holding the string x!`),
+    },
+    {
+      input = [Workspace@like(`def/a.lfy reading: trait t {} d X {} function f() { t.apply(X); }`)],
+      expect = Program@like(`The function f kept with an empty body, and one [[Problem]] at the statement t.apply(X)`),
     },
     {
       input = [
