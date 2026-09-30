@@ -298,8 +298,11 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       behavior = `It lowers to an empty [[SourceFile]]`,
     })
     .add({
-      situation = `An [[ExpressionStatement]] inside runtime code, such as a function body, has an expression whose [[phaseOf]] is [[Phase.compile]], as in function f() { t.apply(X); }`,
-      behavior = `A [[Problem]] is added at the statement saying compile-time declarations belong outside runtime code, and the statement has no lowered node`,
+      situation = `A function that is not ace has statements in its body, and every one of them is [[Phase.compile]], as in function f() { t.apply(X); }`,
+      behavior = [
+        `The statements run at compile time as they would anywhere else, and none of them has a lowered node`,
+        `A [[Problem]] is added at the function saying its body is empty at runtime, so it should be ace or hold runtime code`,
+      ],
     });
 
   @test(
@@ -317,7 +320,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     },
     {
       input = [Workspace@like(`def/a.lfy reading: trait t {} d X {} function f() { t.apply(X); }`)],
-      expect = Program@like(`The function f kept with an empty body, and one [[Problem]] at the statement t.apply(X)`),
+      expect = Program@like(`The function f kept with an empty body, and one [[Problem]] at f`),
     },
     {
       input = [
