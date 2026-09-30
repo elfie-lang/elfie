@@ -162,11 +162,27 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = [`init`, `[[Files.exists]] does not find elfie.json in the root`, `An argument is given`],
-      behavior = `[[Files.write]] of elfie.json in the root naming the project after the argument, and [[Files.createDirectory]] of the source directory`,
+      behavior = `[[Files.write]] of elfie.json in the root naming the project after the argument, and [[Files.createDirectory]] of the source directory and of elfie-compile/maps`,
     })
     .add({
       situation = [`init`, `[[Files.exists]] does not find elfie.json in the root`, `No argument is given`],
-      behavior = `[[Files.write]] of elfie.json in the root naming the project after the directory, and [[Files.createDirectory]] of the source directory`,
+      behavior = `[[Files.write]] of elfie.json in the root naming the project after the directory, and [[Files.createDirectory]] of the source directory and of elfie-compile/maps`,
+    })
+    .add({
+      situation = [`init`, `[[Files.exists]] does not find elfie.json in the root`, `The root has no .gitignore`],
+      behavior = `[[Files.write]] of .gitignore in the root holding one line reading /elfie-compile/cache/`,
+    })
+    .add({
+      situation = [
+        `init`,
+        `[[Files.exists]] does not find elfie.json in the root`,
+        `The root's .gitignore has no line reading /elfie-compile/cache/`,
+      ],
+      behavior = `That line is [[Files.append]] to it, on a line of its own, and nothing else in it changes`,
+    })
+    .add({
+      situation = `init`,
+      behavior = `Nothing ignores elfie-compile itself or elfie-compile/maps, because the maps are checked in`,
     })
     .add({
       situation = [`init`, `[[Files.exists]] finds elfie.json in the root`],
@@ -190,7 +206,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `check with no files given, and the program has no errors`,
-      behavior = `[[Generation.plan]] is made with no stems requested, from the source maps in source-map.json under each [[Target.outputDirectory]] and the stems the last global review in elfie-requests/global.reviews.json found violated, and each unit that is not up to date is printed as a warning of stage generation at its source file, naming the target, the unit, and the description of its [[Unit.reason]]; the last line counts the files, the problems, and the stale units`,
+      behavior = `[[Generation.plan]] is made with no stems requested, from [[Generation.sourceMapsOf]] the workspace and the stems the last global review in elfie-requests/global.reviews.json found violated, and each unit that is not up to date is printed as a warning of stage generation at its source file, naming the target, the unit, and the description of its [[Unit.reason]]; the last line counts the files, the problems, and the stale units`,
     })
     .add({
       situation = `check without --json`,
@@ -280,11 +296,32 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `compile`,
-      behavior = `The source maps of each target are [[Json.parse]] of [[Files.read]] of source-map.json, [[Path.join]] to [[Target.outputDirectory]], dropping any whose output [[Files.exists]] no longer finds, and [[Generation.plan]] is made with them and with the stems of the units the last global review, read from elfie-requests/global.reviews.json under the root, found violated as the violated units`,
+      behavior = `[[Generation.plan]] is made with [[Generation.sourceMapsOf]] the workspace and with the stems of the units the last global review, read from elfie-requests/global.reviews.json under the root, found violated as the violated units`,
     })
     .add({
-      situation = [`compile`, `A target has no source-map.json under its [[Target.outputDirectory]]`],
-      behavior = `[[Generation.plan]] is made with no source maps for that target`,
+      situation = `compile with --target`,
+      behavior = `The source maps are [[Generation.sourceMapsOf]] the workspace for that target alone, so no other target's map files are opened`,
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A planned target's maps were read from source-map.json under its [[Target.outputDirectory]]`,
+      ],
+      behavior = `Before any batch runs, each unit's maps from that file are recorded in its map file by [[Generation.record]], and the file is removed by [[Files.remove]] once every one is recorded`,
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A unit's maps from source-map.json could not be recorded`,
+      ],
+      behavior = `source-map.json is left in place and read again by the next compile`,
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A map file under the folder of a planned target belongs to no unit of the plan, because its definition file was deleted, moved, or no longer builds for the target`,
+      ],
+      behavior = `The map file is removed by [[Files.remove]] before any batch runs`,
     })
     .add({
       situation = `compile without --all`,
@@ -471,7 +508,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
         `elfie.json names no verifier, or --no-verify is given`,
       ],
-      behavior = `Each unit's [[SourceMap]]s replace the unit's in source-map.json, [[Files.write]] as [[Json.stringify]] pretty, and the batch counts as done`,
+      behavior = `Each unit's [[Verdict.sourceMaps]] are recorded by [[Generation.record]], and the batch counts as done`,
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is rejected`,
@@ -547,7 +584,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile with --accept`, `[[Generation.accept]] accepts a planned unit`],
-      behavior = `The [[SourceMap]]s of its outputs are recorded in source-map.json, so a compiler that worked through the agent server has its work recorded`,
+      behavior = `The [[SourceMap]]s of its outputs are recorded by [[Generation.record]], so a compiler that worked through the agent server has its work recorded`,
     })
     .add({
       situation = [`compile with --accept`, `[[Generation.accept]] rejects a planned unit`],
@@ -556,9 +593,9 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
 
   // Verifying
   // Decision: the verifier is a second agent that never writes, run after structural acceptance,
-  // with the source maps accept derived but before they are recorded, so that every criterion can
-  // be pointed at the region of output that claims to satisfy it and a batch the review rejects
-  // stays planned; a compiler judging its own work is not a check, and a review that names no
+  // with the source maps accept derived but before [[Generation.record]] records them, so that
+  // every criterion can be pointed at the region of output that claims to satisfy it and a batch
+  // the review rejects stays planned; a compiler judging its own work is not a check, and a review that names no
   // line of output is not evidence.
   @acceptanceCriteria
     .add({
@@ -571,7 +608,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The verifier's report on a batch holds no violated review`,
-      behavior = `The source maps [[Generation.accept]] derived for the batch, held until the review, are recorded in source-map.json and the batch is done`,
+      behavior = `The source maps [[Generation.accept]] derived for the batch, held until the review, are recorded by [[Generation.record]] for each unit and the batch is done`,
     })
     .add({
       situation = [`compile`, `The verifier's report on a batch holds an unverifiable review`],
@@ -608,7 +645,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `compile, and either --no-verify is given or elfie.json names no verifier`,
-      behavior = `No verifier runs, nothing is reviewed, no reviews file is written, and a batch is done and its source maps recorded when its units are accepted`,
+      behavior = `No verifier runs, nothing is reviewed, no reviews file is written, and a batch is done and its source maps recorded by [[Generation.record]] when its units are accepted`,
     })
     .add({
       behavior = `verifying and reviewed are [[Progress]] lines like every other step; every line of the verifier's output and its report are [[Files.append]] to elfie-requests/compile.log under the root`,
@@ -649,11 +686,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `verify`,
-      behavior = `[[Loader.load]] of the root and the source maps of each target read from source-map.json under [[Target.outputDirectory]], dropping any whose output [[Files.exists]] no longer finds; nothing is compiled and no output is written`,
-    })
-    .add({
-      situation = [`verify`, `A target has no source-map.json under its [[Target.outputDirectory]]`],
-      behavior = `That target has no source maps`,
+      behavior = `[[Loader.load]] of the root and [[Generation.sourceMapsOf]] the workspace; nothing is compiled, no output is written, and nothing under elfie-compile is recorded, moved, or removed`,
     })
     .add({
       situation = [`verify`, `A diagnostic of the loaded program is an error`],
@@ -728,6 +761,16 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `The review request of each batch is [[Files.write]] to elfie-requests under the root, named by the batch identifier with the extension .review.md, for a verifier run by hand; the code is success`,
     });
 
+  // Compile data
+  @acceptanceCriteria
+    .add({
+      behavior = `Nothing under elfie-compile/cache is ever the only record of anything: a command run after the folder is deleted gives the same plan, requests, verdicts, and outputs as one run with it`,
+    })
+    .add({
+      situation = `A command writes under elfie-compile and the folder it writes into is missing`,
+      behavior = `The folder is created, so a project cloned without elfie-compile/cache, or without elfie-compile at all, compiles`,
+    });
+
   // lsp, mcp
   @acceptanceCriteria
     .add({ situation = `lsp`, behavior = `Returns [[Lsp.serve]] of the root` })
@@ -799,7 +842,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
           `a`,
           `--root`,
           string@like(
-            `The same root with the output for a recorded in source-map.json and a verifier that writes one review of def/a.lfy line 3 for A with status satisfied and note covered by a test, then ELFIE: REVIEWED`,
+            `The same root with the output for a recorded in elfie-compile/maps/rust/a.json and a verifier that writes one review of def/a.lfy line 3 for A with status satisfied and note covered by a test, then ELFIE: REVIEWED`,
           ),
         ],
       ],
@@ -814,12 +857,43 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
           `a`,
           `--root`,
           string@like(
-            `The same root with the output for a recorded in source-map.json and a verifier that writes one review of def/a.lfy line 3 for A with status violated, evidence src/a.rs:4-6, and note returns 0 for an empty list, then ELFIE: REVIEWED`,
+            `The same root with the output for a recorded in elfie-compile/maps/rust/a.json and a verifier that writes one review of def/a.lfy line 3 for A with status violated, evidence src/a.rs:4-6, and note returns 0 for an empty list, then ELFIE: REVIEWED`,
           ),
         ],
       ],
       expect = number@like(
         `1, the problems code, after printing violated def/a.lfy:3 A: returns 0 for an empty list, then 0 satisfied, 1 violated, 0 unverifiable, with no compiler run and elfie-requests/a.reviews.json holding the review`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--root`,
+          string@like(
+            `A root with one target rust, def holding a.lfy and b.lfy, both recorded in elfie-compile/maps/rust, a.lfy edited since, and a compiler and verifier that accept a's batch`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after compiling a alone, with elfie-compile/maps/rust/a.json rewritten and b.json byte for byte as it was`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--dry-run`,
+          `--root`,
+          string@like(`A root with one target rust whose maps are all recorded and elfie-compile/cache deleted`),
+        ],
+      ],
+      expect = number@like(`0, after printing every unit as up to date`),
+    },
+    {
+      input = [[`init`, `demo`, `--root`, string@like(`An empty directory`)]],
+      expect = number@like(
+        `0, after writing elfie.json naming demo, creating def and elfie-compile/maps, and writing .gitignore holding /elfie-compile/cache/`,
       ),
     },
   );

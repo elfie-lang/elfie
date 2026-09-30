@@ -117,11 +117,7 @@ fn grammar(session: Session) is tool: `The grammar of Elfie: every terminal and 
 fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in order, why each needs generating, and how they are batched` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[Generation.plan]] of the workspace with the source maps read from source-map.json under each target's [[Target.outputDirectory]], dropping any whose output no longer exists, and as the violated units the stems of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is the id of a violated review in elfie-requests/global.reviews.json under the root, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
-    })
-    .add({
-      situation = `A target has no source-map.json under its [[Target.outputDirectory]]`,
-      behavior = `[[Generation.plan]] is made with no source maps for that target`,
+      behavior = `[[Generation.plan]] of the workspace with [[Generation.sourceMapsOf]] the workspace, and as the violated units the stems of every unit whose outputs hold a [[Marker]] whose [[Marker.requirement]] is the id of a violated review in elfie-requests/global.reviews.json under the root, one line per unit reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies; then one line per batch reading its identifier and the stems it holds`,
     })
     .add({
       situation = `elfie-requests/global.reviews.json under the root is missing`,
@@ -167,19 +163,15 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
     });
 }
 
-// Decision: the source maps every tool below reads come from each target's output directory, as
-// elfie_units reads them, so what a tool answers is what the last acceptance recorded, never a guess
-// from the text on disk.
+// Decision: the source maps every tool below reads are [[Generation.sourceMapsOf]] the workspace,
+// as elfie_units reads them, so what a tool answers is what the last acceptance recorded in
+// elfie-compile/maps, never a guess from the text on disk.
 /// name: as elfie_find takes it
 /// target: the identifier of one target; every target when left out
 fn output(session: Session, name: string, target?: string) is tool: `Where the generated code for one entity is: every region of every output that came from it, with its text` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `For each [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]], with the source maps read from source-map.json under each target's [[Target.outputDirectory]]: a line reading the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then the [[Files.read]] text of those lines of the output in a fenced block`,
-    })
-    .add({
-      situation = `A target has no source-map.json under its [[Target.outputDirectory]]`,
-      behavior = `[[Generation.regionsOf]] is given no source maps for that target`,
+      behavior = `For each [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]], with [[Generation.sourceMapsOf]] the workspace: a line reading the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then the [[Files.read]] text of those lines of the output in a fenced block`,
     })
     .add({ situation = `Nothing is generated for [[name]]`, behavior = `The text says so` })
     .add({
@@ -236,11 +228,7 @@ fn changes(session: Session, unit: string) is tool: `What differs for each entit
 fn review(session: Session, batch: string, target?: string) is tool: `The full review request for one batch: every criterion and test with the regions generated for its entities, and how to report` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with the source maps read from source-map.json under each target's [[Target.outputDirectory]], so a verifier session can fetch its own request`,
-    })
-    .add({
-      situation = `A target has no source-map.json under its [[Target.outputDirectory]]`,
-      behavior = `[[Generation.review]] for the batch is given no source maps for that target`,
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with [[Generation.sourceMapsOf]] the workspace, so a verifier session can fetch its own request`,
     })
     .add({
       situation = `No batch has that identifier or holds a unit with that stem, or the target is ambiguous`,
@@ -251,11 +239,7 @@ fn review(session: Session, batch: string, target?: string) is tool: `The full r
 fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with the regions that answer for each` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of [[Generation.plan]] of the workspace and the source maps read from source-map.json under each target's [[Target.outputDirectory]], so a verifier session can fetch the global review`,
-    })
-    .add({
-      situation = `A target has no source-map.json under its [[Target.outputDirectory]]`,
-      behavior = `[[Generation.globalReview]] is given no source maps for that target`,
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of [[Generation.plan]] of the workspace and [[Generation.sourceMapsOf]] the workspace, so a verifier session can fetch the global review`,
     })
     .add({ situation = `No global criterion or test exists`, behavior = `The text says so` });
 }
