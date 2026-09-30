@@ -25,26 +25,26 @@ expect() {
 tag() { git tag "$1"; }
 
 # Nothing released: the baseline is 0.0.0, so 0.1.x is the cap.
-expect 0.1.0-agentic.1 agentic
+expect 0.1.0-experimental.1 experimental
 expect 0.1.0-beta.1 beta
 expect 0.1.0-rc.1 rc
 expect error final
-expect error agentic 0.2.0
-expect 1.0.0-agentic.1 agentic 1.0.0
-expect error agentic 1.0.1
-expect error agentic 0.1
-expect error agentic 0.1.0-beta.1
+expect error experimental 0.2.0
+expect 1.0.0-experimental.1 experimental 1.0.0
+expect error experimental 1.0.1
+expect error experimental 0.1
+expect error experimental 0.1.0-beta.1
 expect error nightly
 
 # Counters are per base and per channel, and take the highest existing N.
-tag v0.1.0-agentic.1
-tag v0.1.0-agentic.9
-tag v0.1.0-agentic.10
+tag v0.1.0-experimental.1
+tag v0.1.0-experimental.9
+tag v0.1.0-experimental.10
 tag v0.1.0-beta.2
-expect 0.1.0-agentic.11 agentic
+expect 0.1.0-experimental.11 experimental
 expect 0.1.0-beta.3 beta
 expect 0.1.0-rc.1 rc
-expect 0.1.1-agentic.1 agentic 0.1.1
+expect 0.1.1-experimental.1 experimental 0.1.1
 
 # final accepts the highest release candidate.
 tag v0.1.0-rc.1
@@ -55,21 +55,21 @@ expect 0.1.0 final
 
 # Once 0.1.0 is stable, the base must move above it, and no further than 0.2.x.
 tag v0.1.0
-expect error agentic
+expect error experimental
 expect 0.1.1-rc.1 rc 0.1.1
-expect 0.2.0-agentic.1 agentic 0.2.0
-expect 0.2.3-agentic.1 agentic 0.2.3
-expect error agentic 0.3.0
+expect 0.2.0-experimental.1 experimental 0.2.0
+expect 0.2.3-experimental.1 experimental 0.2.3
+expect error experimental 0.3.0
 expect 1.0.0-beta.1 beta 1.0.0
 
 # From 1.0.0 on the cap is the next major.
 tag v1.0.0
 tag v1.4.2
-expect 1.5.0-agentic.1 agentic 1.5.0
-expect 2.0.0-agentic.1 agentic 2.0.0
-expect 2.7.1-agentic.1 agentic 2.7.1
-expect error agentic 3.0.0
-expect error agentic 1.4.2
+expect 1.5.0-experimental.1 experimental 1.5.0
+expect 2.0.0-experimental.1 experimental 2.0.0
+expect 2.7.1-experimental.1 experimental 2.7.1
+expect error experimental 3.0.0
+expect error experimental 1.4.2
 
 if ((failures)); then
     echo "$failures failure(s)"

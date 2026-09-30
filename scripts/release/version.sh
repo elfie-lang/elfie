@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Computes the version a release channel publishes next, and refuses one that breaks the layer
-# rules. Usage: scripts/release/version.sh <agentic|beta|rc|final> [base]
+# rules. Usage: scripts/release/version.sh <experimental|beta|rc|final> [base]
 #
 # The base (X.Y.Z) is the [workspace.package] version in Cargo.toml unless given. The stable
 # baseline is the highest vX.Y.Z tag, or 0.0.0 before the first release. A base must be above
 # the baseline and at most one whole version above it: the next minor while the baseline is
 # below 1.0.0 (plus 1.0.0 itself), the next major from 1.0.0 on.
 #
-# agentic, beta, and rc publish <base>-<channel>.N, where N is one past the highest existing
+# experimental, beta, and rc publish <base>-<channel>.N, where N is one past the highest existing
 # v<base>-<channel>.N tag. final publishes <base> from the commit of the highest v<base>-rc.N tag.
 #
 # Prints the version, and when GITHUB_OUTPUT is set also writes version, tag, prerelease (true
@@ -19,8 +19,8 @@ fail() { echo "error: $*" >&2; exit 1; }
 
 channel=${1:-}
 case "$channel" in
-    agentic | beta | rc | final) ;;
-    *) fail "usage: $0 <agentic|beta|rc|final> [base]" ;;
+    experimental | beta | rc | final) ;;
+    *) fail "usage: $0 <experimental|beta|rc|final> [base]" ;;
 esac
 
 base=${2:-$(awk '/^\[workspace\.package\]/ { inside = 1; next } /^\[/ { inside = 0 } inside && /^version *=/ { gsub(/[" ]/, "", $0); sub(/^version=/, "", $0); print; exit }' Cargo.toml)}

@@ -2,14 +2,14 @@ name: Release
 
 # Publishes built versions as GitHub releases, one channel per layer:
 #
-#   agentic  every push to agentic-main                  0.1.0-agentic.N  prerelease
-#   beta     Run workflow on the beta branch, kind beta  0.1.0-beta.N     prerelease
-#   rc       Run workflow on main, kind rc               0.1.0-rc.N       prerelease
-#   final    Run workflow on main, kind final            0.1.0            latest, rebuilt from the newest rc
+#   experimental  every push to agentic-main                  0.1.0-experimental.N  prerelease
+#   beta          Run workflow on the beta branch, kind beta  0.1.0-beta.N          prerelease
+#   rc            Run workflow on main, kind rc               0.1.0-rc.N            prerelease
+#   final         Run workflow on main, kind final            0.1.0                 latest, rebuilt from the newest rc
 #
 # The base (0.1.0) is the [workspace.package] version in the branch's Cargo.toml.
 # scripts/release/version.sh computes the rest, and refuses a base that is not above the latest
-# stable release or is more than one whole version above it. Only the newest 10 agentic
+# stable release or is more than one whole version above it. Only the newest 10 experimental
 # releases are kept.
 
 on:
@@ -24,7 +24,7 @@ on:
         required: true
 
 concurrency:
-  group: release-${{ inputs.kind || 'agentic' }}
+  group: release-${{ inputs.kind || 'experimental' }}
   cancel-in-progress: false
 
 permissions:
@@ -32,7 +32,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  CHANNEL: ${{ inputs.kind || 'agentic' }}
+  CHANNEL: ${{ inputs.kind || 'experimental' }}
 
 jobs:
   version:
@@ -52,8 +52,8 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           case "$CHANNEL:$BRANCH" in
-            agentic:agentic-main | beta:beta | rc:main | final:main) ;;
-            *) echo "::error::$CHANNEL releases cannot run from $BRANCH (agentic: agentic-main, beta: beta, rc and final: main)"; exit 1 ;;
+            experimental:agentic-main | beta:beta | rc:main | final:main) ;;
+            *) echo "::error::$CHANNEL releases cannot run from $BRANCH (experimental: agentic-main, beta: beta, rc and final: main)"; exit 1 ;;
           esac
       - id: version
         run: scripts/release/version.sh "$CHANNEL"
@@ -174,9 +174,9 @@ jobs:
           fi
           notes="The $CHANNEL build of Elfie $VERSION, from $GITHUB_SERVER_URL/$GH_REPO/commit/$SHA."
           gh release create "$TAG" dist/* --target "$SHA" --title "$VERSION" --notes "$notes" "${flags[@]}"
-      - name: Keep only the newest 10 agentic releases
-        if: env.CHANNEL == 'agentic'
+      - name: Keep only the newest 10 experimental releases
+        if: env.CHANNEL == 'experimental'
         run: |
           gh release list --limit 1000 --json tagName,createdAt \
-            --jq '[.[] | select(.tagName | test("-agentic\\.[0-9]+$"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
+            --jq '[.[] | select(.tagName | test("-experimental\\.[0-9]+$"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
             | while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
