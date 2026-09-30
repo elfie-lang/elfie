@@ -138,7 +138,7 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     })
     .add({
       situation = `documentSymbol`,
-      behavior = `[[Query.outlineOf]] nested as the protocol's document symbols, with kinds mapped to the protocol's kinds: keyword to Keyword, path to File, data and type to Struct, trait to Interface, enum to Enum, function and agentFunction to Function, member to Field, variable and parameter to Variable, module to Module, anything else to Text`,
+      behavior = `[[Query.outlineOf]] nested as the protocol's document symbols, with each [[Outline.kind]] mapped to the LSP 3.17 SymbolKind: data and type to Struct, trait to Interface, enum to Enum, enumMember to EnumMember, function and agentFunction to Function, member to Field, typeParameter to TypeParameter, module to Module, and variable, loopVariable, parameter, alias, and external to Variable`,
     })
     .add({ situation = `workspace symbol`, behavior = `[[Query.findSymbols]] with the request's query` })
     .add({
