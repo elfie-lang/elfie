@@ -1,0 +1,1116 @@
+[
+  {
+    "dependencies": {
+      "def/cli/data.lfy": "0ce029359a7610563f39eaadf6455a1a55cc6cde4d533741522ac9c1ca2a4286",
+      "def/generation/data.lfy": "d0d4bf4276bb4e03bac11b27d67324f6cf60350fe70604a1cd9ca74a2db5cf7f",
+      "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d"
+    },
+    "generated": "2026-10-01T18:03:44Z",
+    "hash": "6c439ea791ef4781ad784c22895b770d5b6bf8914e1e6a2f292ee421faa77cd8",
+    "markers": [
+      {
+        "column": null,
+        "end": 20,
+        "entity": "ColorChoice",
+        "file": "def/cli/style.lfy",
+        "line": 13,
+        "outputLine": 18,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 21,
+        "entity": "ColorChoice.auto",
+        "file": "def/cli/style.lfy",
+        "line": 14,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 22,
+        "entity": "ColorChoice.always",
+        "file": "def/cli/style.lfy",
+        "line": 15,
+        "outputLine": 22,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 27,
+        "entity": "ColorChoice.never",
+        "file": "def/cli/style.lfy",
+        "line": 16,
+        "outputLine": 23,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 31,
+        "entity": "ColorChoice",
+        "file": "def/cli/style.lfy",
+        "line": 13,
+        "outputLine": 28,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 41,
+        "entity": "ColorChoice",
+        "file": "def/cli/style.lfy",
+        "line": 13,
+        "outputLine": 32,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 48,
+        "entity": "ColorChoice",
+        "file": "def/cli/style.lfy",
+        "line": 13,
+        "outputLine": 42,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": "Tone",
+        "file": "def/cli/style.lfy",
+        "line": 19,
+        "outputLine": 49,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "Tone.success",
+        "file": "def/cli/style.lfy",
+        "line": 20,
+        "outputLine": 53,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 56,
+        "entity": "Tone.failure",
+        "file": "def/cli/style.lfy",
+        "line": 21,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 58,
+        "entity": "Tone.warning",
+        "file": "def/cli/style.lfy",
+        "line": 22,
+        "outputLine": 57,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": "Tone.active",
+        "file": "def/cli/style.lfy",
+        "line": 23,
+        "outputLine": 59,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 62,
+        "entity": "Tone.subject",
+        "file": "def/cli/style.lfy",
+        "line": 24,
+        "outputLine": 61,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "Tone.muted",
+        "file": "def/cli/style.lfy",
+        "line": 25,
+        "outputLine": 63,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 81,
+        "entity": "Tone",
+        "file": "def/cli/style.lfy",
+        "line": 19,
+        "outputLine": 68,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 88,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 82,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 91,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 89,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 97,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 92,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 111,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 98,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 120,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 112,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 122,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 121,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 125,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 123,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 129,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 126,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 134,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 130,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 138,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 135,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 149,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 139,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 152,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 150,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 156,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 153,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 165,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 157,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 170,
+        "entity": "width",
+        "file": "def/cli/style.lfy",
+        "line": 92,
+        "outputLine": 166,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 180,
+        "entity": "width",
+        "file": "def/cli/style.lfy",
+        "line": 92,
+        "outputLine": 171,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 188,
+        "entity": "width",
+        "file": "def/cli/style.lfy",
+        "line": 92,
+        "outputLine": 181,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 191,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 189,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 195,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 192,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 205,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 196,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 211,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 206,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 214,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 212,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 218,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 215,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 221,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 219,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 227,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 222,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 230,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 228,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 232,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 231,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 234,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 233,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 236,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 235,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 238,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 237,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 245,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 239,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 248,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 246,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 250,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 249,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 252,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 251,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 254,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 253,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 256,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 255,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 258,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 257,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 260,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 259,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 262,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 261,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 268,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 263,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 271,
+        "entity": "severityTone",
+        "file": "def/cli/style.lfy",
+        "line": 182,
+        "outputLine": 269,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 279,
+        "entity": "severityTone",
+        "file": "def/cli/style.lfy",
+        "line": 182,
+        "outputLine": 272,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 282,
+        "entity": "statusTone",
+        "file": "def/cli/style.lfy",
+        "line": 190,
+        "outputLine": 280,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 290,
+        "entity": "statusTone",
+        "file": "def/cli/style.lfy",
+        "line": 190,
+        "outputLine": 283,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 293,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 291,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 295,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 294,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 297,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 296,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 299,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 298,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 301,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 300,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 310,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 302,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 312,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 311,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 314,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 313,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 324,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 315,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 337,
+        "entity": "ColorChoice",
+        "file": "def/cli/style.lfy",
+        "line": 13,
+        "outputLine": 325,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 351,
+        "entity": "Tone",
+        "file": "def/cli/style.lfy",
+        "line": 19,
+        "outputLine": 338,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 356,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 352,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 358,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 357,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 360,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 359,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 364,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 361,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 367,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 365,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 370,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 368,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 376,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 371,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 383,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 30,
+        "outputLine": 377,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 386,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 384,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 388,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 387,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 390,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 389,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 393,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 391,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 400,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 72,
+        "outputLine": 394,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 404,
+        "entity": "width",
+        "file": "def/cli/style.lfy",
+        "line": 92,
+        "outputLine": 401,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 406,
+        "entity": "width",
+        "file": "def/cli/style.lfy",
+        "line": 92,
+        "outputLine": 405,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 412,
+        "entity": "width",
+        "file": "def/cli/style.lfy",
+        "line": 92,
+        "outputLine": 407,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 415,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 413,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 417,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 416,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 421,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 418,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 426,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 107,
+        "outputLine": 422,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 429,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 427,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 432,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 430,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 434,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 433,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 436,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 435,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 438,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 437,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 446,
+        "entity": "duration",
+        "file": "def/cli/style.lfy",
+        "line": 122,
+        "outputLine": 439,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 449,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 447,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 453,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 450,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 456,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 454,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 460,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 457,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 466,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 461,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 472,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 148,
+        "outputLine": 467,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 475,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 473,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 478,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 476,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 481,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 479,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 485,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 482,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 489,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 486,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 492,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 490,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 496,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 493,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 522,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 165,
+        "outputLine": 497,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 525,
+        "entity": "severityTone",
+        "file": "def/cli/style.lfy",
+        "line": 182,
+        "outputLine": 523,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 530,
+        "entity": "severityTone",
+        "file": "def/cli/style.lfy",
+        "line": 182,
+        "outputLine": 526,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 534,
+        "entity": "statusTone",
+        "file": "def/cli/style.lfy",
+        "line": 190,
+        "outputLine": 531,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 537,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 535,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 541,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 538,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 543,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 542,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 549,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 201,
+        "outputLine": 544,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 552,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 550,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 554,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 553,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 556,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 555,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 559,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 557,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 563,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 219,
+        "outputLine": 560,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-cli/src/style.rs",
+    "requirements": "",
+    "signature": "df6ec5972f07377e4fd151dceed84a206e506e4c4a8b5f43405208f92d1b12e1",
+    "source": "def/cli/style.lfy",
+    "target": "rust"
+  }
+]

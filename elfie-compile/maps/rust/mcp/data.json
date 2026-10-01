@@ -1,0 +1,1407 @@
+[
+  {
+    "dependencies": {
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "d14d085adc98580129cd3a2f71b3a8bb13e204df41fcffd16886be8cba01e972",
+    "markers": [
+      {
+        "column": null,
+        "end": 17,
+        "entity": "ToolArgument",
+        "file": "def/mcp/data.lfy",
+        "line": 3,
+        "outputLine": 14,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 19,
+        "entity": "ToolArgument.name",
+        "file": "def/mcp/data.lfy",
+        "line": 4,
+        "outputLine": 18,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 21,
+        "entity": "ToolArgument.description",
+        "file": "def/mcp/data.lfy",
+        "line": 5,
+        "outputLine": 20,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "ToolArgument.type",
+        "file": "def/mcp/data.lfy",
+        "line": 6,
+        "outputLine": 22,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 39,
+        "entity": "ToolArgument.required",
+        "file": "def/mcp/data.lfy",
+        "line": 7,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 43,
+        "entity": "Tool",
+        "file": "def/mcp/data.lfy",
+        "line": 10,
+        "outputLine": 40,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 45,
+        "entity": "Tool.name",
+        "file": "def/mcp/data.lfy",
+        "line": 11,
+        "outputLine": 44,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 47,
+        "entity": "Tool.description",
+        "file": "def/mcp/data.lfy",
+        "line": 12,
+        "outputLine": 46,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 51,
+        "entity": "Tool.arguments",
+        "file": "def/mcp/data.lfy",
+        "line": 13,
+        "outputLine": 48,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "ToolResult",
+        "file": "def/mcp/data.lfy",
+        "line": 16,
+        "outputLine": 52,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 57,
+        "entity": "ToolResult.text",
+        "file": "def/mcp/data.lfy",
+        "line": 17,
+        "outputLine": 56,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 94,
+        "entity": "ToolResult.isError",
+        "file": "def/mcp/data.lfy",
+        "line": 18,
+        "outputLine": 58,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 98,
+        "entity": "Session",
+        "file": "def/mcp/data.lfy",
+        "line": 21,
+        "outputLine": 95,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "Session.workspace",
+        "file": "def/mcp/data.lfy",
+        "line": 22,
+        "outputLine": 99,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 103,
+        "entity": "Session.seen",
+        "file": "def/mcp/data.lfy",
+        "line": 23,
+        "outputLine": 102,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-mcp/src/data.rs",
+    "requirements": "",
+    "signature": "8d028d12654fa0fcffbd7ae7f82b77cb07a7bf5b53abfbe0f0818c2349073a29",
+    "source": "def/mcp/data.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "d14d085adc98580129cd3a2f71b3a8bb13e204df41fcffd16886be8cba01e972",
+    "markers": [
+      {
+        "column": null,
+        "end": 8,
+        "entity": null,
+        "file": "def/mcp/data.lfy",
+        "line": 1,
+        "outputLine": 8,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 90,
+        "entity": null,
+        "file": "def/mcp/traits.lfy",
+        "line": 1,
+        "outputLine": 9,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 91,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 129,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 135,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 130,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 146,
+        "entity": "problems",
+        "file": "def/mcp/main.lfy",
+        "line": 46,
+        "outputLine": 136,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 152,
+        "entity": "find",
+        "file": "def/mcp/main.lfy",
+        "line": 55,
+        "outputLine": 147,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 158,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 153,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 164,
+        "entity": "references",
+        "file": "def/mcp/main.lfy",
+        "line": 76,
+        "outputLine": 159,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 176,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 165,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 183,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 177,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 184,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 184,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 192,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 185,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 193,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 193,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 201,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 194,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 202,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 202,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 210,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 203,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 211,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 211,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 218,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 212,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 225,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 219,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 226,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 226,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 241,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 227,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 269,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 242,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 290,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 270,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 299,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 291,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 316,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 300,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 319,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 317,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 326,
+        "entity": "Protocol",
+        "file": "def/mcp/main.lfy",
+        "line": 16,
+        "outputLine": 320,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 335,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 327,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 350,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 336,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 352,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 351,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 366,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 353,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 377,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 367,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 480,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 378,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 483,
+        "entity": "problems",
+        "file": "def/mcp/main.lfy",
+        "line": 46,
+        "outputLine": 481,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 492,
+        "entity": "problems",
+        "file": "def/mcp/main.lfy",
+        "line": 46,
+        "outputLine": 484,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 494,
+        "entity": "problems",
+        "file": "def/mcp/main.lfy",
+        "line": 46,
+        "outputLine": 493,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 515,
+        "entity": "problems",
+        "file": "def/mcp/main.lfy",
+        "line": 46,
+        "outputLine": 495,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 521,
+        "entity": "find",
+        "file": "def/mcp/main.lfy",
+        "line": 55,
+        "outputLine": 516,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 523,
+        "entity": "find",
+        "file": "def/mcp/main.lfy",
+        "line": 55,
+        "outputLine": 522,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 539,
+        "entity": "find",
+        "file": "def/mcp/main.lfy",
+        "line": 55,
+        "outputLine": 524,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 553,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 540,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 555,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 554,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 578,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 556,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 616,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 579,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 637,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 617,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 651,
+        "entity": "references",
+        "file": "def/mcp/main.lfy",
+        "line": 76,
+        "outputLine": 638,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 665,
+        "entity": "references",
+        "file": "def/mcp/main.lfy",
+        "line": 76,
+        "outputLine": 652,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 676,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 666,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 680,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 677,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 687,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 681,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 692,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 688,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 698,
+        "entity": "grammar",
+        "file": "def/mcp/main.lfy",
+        "line": 92,
+        "outputLine": 693,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 738,
+        "entity": "grammar",
+        "file": "def/mcp/main.lfy",
+        "line": 92,
+        "outputLine": 699,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 766,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 739,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 778,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 767,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 785,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 779,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 802,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 786,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 810,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 803,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 815,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 811,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 829,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 816,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 845,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 830,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 870,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 846,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 902,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 871,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 921,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 903,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 938,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 922,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 942,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 939,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 943,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 943,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 948,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 944,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 954,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 949,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 957,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 955,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 971,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 958,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 988,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 972,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 995,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 989,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1008,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 996,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1011,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1009,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1013,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1012,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1015,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1014,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1019,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1016,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1029,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1020,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1045,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1030,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1063,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1046,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1070,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1064,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1078,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1071,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1085,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1079,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1090,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1086,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1099,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1091,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1106,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1100,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1138,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1107,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1145,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1139,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1147,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1146,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1150,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1148,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1153,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1151,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1155,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1154,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1157,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1156,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1168,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1158,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1172,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 1169,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1173,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 1173,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1242,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 1174,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1268,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 1243,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1285,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1269,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1297,
+        "entity": "problems",
+        "file": "def/mcp/main.lfy",
+        "line": 46,
+        "outputLine": 1286,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1312,
+        "entity": "tool",
+        "file": "def/mcp/traits.lfy",
+        "line": 8,
+        "outputLine": 1298,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1318,
+        "entity": "tool",
+        "file": "def/mcp/traits.lfy",
+        "line": 8,
+        "outputLine": 1313,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1348,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 18,
+        "outputLine": 1319,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1359,
+        "entity": "find",
+        "file": "def/mcp/main.lfy",
+        "line": 55,
+        "outputLine": 1349,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1361,
+        "entity": "find",
+        "file": "def/mcp/main.lfy",
+        "line": 55,
+        "outputLine": 1360,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1371,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 1362,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1377,
+        "entity": "references",
+        "file": "def/mcp/main.lfy",
+        "line": 76,
+        "outputLine": 1372,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1388,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 1378,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1402,
+        "entity": "entity",
+        "file": "def/mcp/main.lfy",
+        "line": 64,
+        "outputLine": 1389,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1409,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 1403,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1414,
+        "entity": "outline",
+        "file": "def/mcp/main.lfy",
+        "line": 84,
+        "outputLine": 1410,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1446,
+        "entity": "grammar",
+        "file": "def/mcp/main.lfy",
+        "line": 92,
+        "outputLine": 1415,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1455,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 1447,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1460,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 98,
+        "outputLine": 1456,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1472,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 1461,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1479,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 111,
+        "outputLine": 1473,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1484,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 1480,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1488,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 1485,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1513,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 124,
+        "outputLine": 1489,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1521,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1514,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1524,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1522,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1529,
+        "entity": "output",
+        "file": "def/mcp/main.lfy",
+        "line": 141,
+        "outputLine": 1525,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1536,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1530,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1539,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1537,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1541,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1540,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1550,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1542,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1580,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1551,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1585,
+        "entity": "source",
+        "file": "def/mcp/main.lfy",
+        "line": 155,
+        "outputLine": 1581,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1591,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1586,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1595,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1592,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1598,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1596,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1603,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1599,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1612,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1604,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1617,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 171,
+        "outputLine": 1613,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1628,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 1618,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1635,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 187,
+        "outputLine": 1629,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-mcp/src/lib.rs",
+    "requirements": "",
+    "signature": "8d028d12654fa0fcffbd7ae7f82b77cb07a7bf5b53abfbe0f0818c2349073a29",
+    "source": "def/mcp/data.lfy",
+    "target": "rust"
+  }
+]

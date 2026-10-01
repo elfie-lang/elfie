@@ -95,7 +95,7 @@ impl fmt::Display for ParseError {
 }
 
 /// Parses the syntax of one rule (the part after `=` and before `;`).
-// @lfy def/grammar/traits.lfy:6
+// @lfy def/grammar/traits.lfy:Rule.syntax
 pub fn parse(syntax: &str) -> Result<Expr, ParseError> {
     let mut parser = Parser {
         src: syntax,
@@ -352,7 +352,7 @@ pub struct Grammar {
 
 impl Grammar {
     /// Compiles every rule returned by [`rules`].
-    // @lfy def/grammar/traits.lfy:19
+    // @lfy def/grammar/traits.lfy:rule
     pub fn compile() -> Result<Grammar, Vec<Error>> {
         let mut compiled: HashMap<&'static str, Compiled> = HashMap::new();
         let mut errors = Vec::new();

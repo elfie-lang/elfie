@@ -34,17 +34,19 @@ pub fn closes_bracket(rule: Entity) -> bool {
 
 /// The token index where an error node that begins at `start` ends, and the tokens it
 /// covers stop: the next token of `sync` at the same bracket depth, a closing token of
-/// [`BRACKETS`] that would take the depth below 0, or the end of the input. Bracket depth
-/// is 0 at `start`; each opening token adds one and each closing token removes one, and a
-/// token is at the same depth when the depth before it is 0.
-// @lfy def/parser/traits.lfy:18
+/// [`BRACKETS`] that would take the depth below 0 — which ends the error before it as if
+/// it were one of `sync` — or, when no later token is one of `sync` at that depth, the end
+/// of the input. Bracket depth is 0 at `start`, the first token the error node covers;
+/// each opening token of [`BRACKETS`] adds one and each closing token removes one, and a
+/// token is at the same depth as `start` when the depth counted before it is 0.
+// @lfy def/parser/traits.lfy:brackets
 pub fn sweep_end(tokens: &[Token], start: usize, sync: &[Entity]) -> usize {
     let mut depth = 0usize;
     for (index, token) in tokens.iter().enumerate().skip(start) {
         let Some(rule) = token.rule else {
             continue;
         };
-        // @lfy def/parser/traits.lfy:20
+        // @lfy def/parser/traits.lfy:brackets
         // @lfy def/parser/traits.lfy:recoverable
         if depth == 0 && sync.contains(&rule) {
             return index;
@@ -54,11 +56,12 @@ pub fn sweep_end(tokens: &[Token], start: usize, sync: &[Entity]) -> usize {
             if depth == 0 {
                 return index;
             }
-            depth -= 1; // @lfy def/parser/traits.lfy:18
+            depth -= 1; // @lfy def/parser/traits.lfy:brackets
         } else if opens_bracket(rule) {
-            depth += 1; // @lfy def/parser/traits.lfy:18
+            depth += 1; // @lfy def/parser/traits.lfy:brackets
         }
     }
+    // No later token is one of `sync` at the same depth.
     tokens.len() // @lfy def/parser/traits.lfy:recoverable
 }
 
@@ -166,8 +169,9 @@ pub fn tried_before(first: Entity, other: Entity) -> bool {
     false
 }
 
-/// Orders candidates so that each is tried only when the one before it fails: a total
-/// order under [`tried_before`]. `Err` names two candidates the trait does not order.
+/// Orders candidates so that the one tried first comes first, the next is tried only when
+/// it fails there, and none after it is tried when it does not: a total order under
+/// [`tried_before`]. `Err` names two candidates the trait does not order.
 // @lfy def/parser/traits.lfy:triedBefore
 pub fn order_by_tried_before(candidates: &[Entity]) -> Result<Vec<Entity>, (Entity, Entity)> {
     for (index, &a) in candidates.iter().enumerate() {
@@ -210,7 +214,9 @@ pub enum RepetitionStop {
 /// Decides how a repetition of a recoverable rule with these `sync` terminals continues
 /// when it stops on the token at `at`. `begins_after` tells whether a terminal can begin
 /// an element after the repetition and `begins_repeated` whether it can begin the
-/// repeated element.
+/// repeated element. A token that no element after the repetition can begin with and that
+/// is not one of `sync` is covered along with the tokens after it; one of `sync` that no
+/// element after can begin with is covered alone.
 // @lfy def/parser/traits.lfy:recoverable
 pub fn repetition_stop(
     tokens: &[Token],
@@ -270,7 +276,7 @@ mod tests {
         assert!(!closes_bracket(Entity::Literal(Literal::Backtick)));
     }
 
-    // @lfy def/parser/traits.lfy:18
+    // @lfy def/parser/traits.lfy:brackets
     #[test]
     fn a_sweep_stops_at_a_sync_token_at_depth_zero_or_an_unmatched_close() {
         let tokens = lex("a (b; c) {d} ; e", None).unwrap();
@@ -279,8 +285,9 @@ mod tests {
         // and `{` is a sync token at depth 0.
         assert_eq!(tokens[9].raw, "{");
         assert_eq!(sweep_end(&tokens, 0, sync), 9);
-        // @lfy def/parser/traits.lfy:20
-        // Starting inside the parentheses, `;` is at depth 0.
+        // @lfy def/parser/traits.lfy:brackets
+        // Depth is counted from 0 at the first token covered: starting inside the
+        // parentheses, `;` is at the same depth as that first token.
         assert_eq!(sweep_end(&tokens, 3, sync), 4);
         // @lfy def/parser/traits.lfy:recoverable
         // A close that would take the depth below 0 ends the sweep before it.

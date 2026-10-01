@@ -12,7 +12,7 @@ grammar_rules! {
         BlockCommentClose is [boundary("*/")]: "Closes a block comment" = r#""*/""#, // @lfy def/grammar/terminals/comment.lfy:BlockCommentClose
         BlockCommentBody is [body(BLOCK_COMMENT_BODY_EXCLUDED, &[])]: "Text of a block comment; nested opens and closes are tokens of their own" = "(: ( Character - ( [[BlockCommentOpen]] | [[BlockCommentClose]] ) ) :)", // @lfy def/grammar/terminals/comment.lfy:BlockCommentBody
         LineCommentOpen is [boundary("//")]: "Opens a comment that ends with the line" = r#""//""#, // @lfy def/grammar/terminals/comment.lfy:LineCommentOpen
-        LineCommentBody is [body(LINE_COMMENT_BODY_EXCLUDED, &[])]: "Text of a line comment" = "(: ( Character - ( [[NewLine]] ) ) :)", // @lfy def/grammar/terminals/comment.lfy:LineDocumentationBody.lexCondition
+        LineCommentBody is [body(LINE_COMMENT_BODY_EXCLUDED, &[])]: "Text of a line comment" = "(: ( Character - ( [[NewLine]] ) ) :)", // @lfy def/grammar/terminals/comment.lfy:LineCommentBody
 
         /// Followed immediately by `/`, it is a `BlockCommentOpen` followed by a
         /// `BlockCommentClose` instead; followed immediately by `*/`, it is a
@@ -26,11 +26,15 @@ grammar_rules! {
 
         Comment is [rule()]: "A comment; carries no meaning" = "( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )", // @lfy def/grammar/terminals/comment.lfy:Comment
         /// Acceptance criteria:
-        /// - Attaches to the declaration that follows it.
-        /// - When no declaration follows: attaches to nothing.
-        /// - When no declaration exists between two or more documentation blocks and the
-        ///   documentation blocks were all opened with `BlockDocumentationOpen`: attaches
-        ///   to the "global" object.
+        /// - When a declaration follows the documentation with only `Space`, `NewLine`,
+        ///   `Comment`, or other `Documentation` between them: attaches to that
+        ///   declaration, even when it is one of several documentation blocks in a row.
+        /// - When no declaration follows the documentation and it is not one of two or
+        ///   more documentation blocks in a row that were all opened with
+        ///   `BlockDocumentationOpen`: attaches to nothing.
+        /// - When no declaration exists between two or more documentation blocks, the
+        ///   documentation blocks were all opened with `BlockDocumentationOpen`, and no
+        ///   declaration follows the last of them: attaches to the "global" object.
         /// - When `LineDocumentationOpen` is the first token and `TemplateReference` is
         ///   used: a `NewLine` inside the `TemplateReference` is not trivia.
         Documentation is [rule()]: "Documentation for the declaration that follows it" = "( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )", // @lfy def/grammar/terminals/comment.lfy:Documentation
@@ -42,7 +46,7 @@ pub const BLOCK_COMMENT_BODY_EXCLUDED: &[Entity] = &[
     Entity::Comment(Comment::BlockCommentOpen),
     Entity::Comment(Comment::BlockCommentClose),
 ];
-// @lfy def/grammar/terminals/comment.lfy:LineDocumentationBody.lexCondition
+// @lfy def/grammar/terminals/comment.lfy:LineCommentBody
 pub const LINE_COMMENT_BODY_EXCLUDED: &[Entity] = &[Entity::Space(Space::NewLine)];
 // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationBody
 pub const BLOCK_DOCUMENTATION_BODY_EXCLUDED: &[Entity] = &[

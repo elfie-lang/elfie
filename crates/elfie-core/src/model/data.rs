@@ -226,32 +226,39 @@ pub struct Symbol {
 }
 
 /// A region in which names resolve. Holds the symbols declared directly in it, in order,
-/// and knows its parent; a file scope also holds the symbols its use statements import,
-/// after its own.
+/// and knows its parent; a file scope holds the symbols its use statements import, after
+/// the symbols declared directly in it.
 // @lfy def/model/data.lfy:Scope
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
-    /// The enclosing scope; for a file scope, the prelude scope, and `None` for a file
-    /// whose [`Source::origin`] is [`Origin::Library`] or [`Origin::Prelude`].
+    /// The enclosing scope. A file scope of a file whose [`Source::origin`] is
+    /// [`Origin::Program`] has the prelude scope as its parent; one whose origin is
+    /// [`Origin::Library`] or [`Origin::Prelude`] has none.
     pub parent: Option<ScopeId>, // @lfy def/model/data.lfy:Scope
     /// The node that owns it.
     pub owner: NodeRef,
     pub file: FileId,
     /// The symbols declared directly in it, in order.
     pub symbols: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
-    /// The symbols its use statements import, after its own; only a file scope has any.
+    /// The symbols its use statements import, after the symbols declared directly in it;
+    /// only a file scope has any.
     pub imports: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
     /// The current entity: what the value, context, and scope accessors reach without a
     /// left expression.
     pub current: EntityId, // @lfy def/model/data.lfy:Scope
 }
 
-/// What applied a trait: the clause or call, or the application it was inherited through.
+/// What applied a trait. A trait applied directly knows the `IsClause`, `ExtendsClause`,
+/// or apply `Call` that applied it; a trait inherited through another application knows
+/// that application.
 // @lfy def/model/data.lfy:Applied
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppliedSource {
+    /// Applied directly by an `IsClause`.
     Is(NodeRef),
+    /// Applied directly by an `ExtendsClause`.
     Extends(NodeRef),
+    /// Applied directly by an apply `Call`.
     Apply(NodeRef),
     /// Inherited through the application at this index of the same entity's traits.
     Inherited(usize),

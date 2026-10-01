@@ -1,0 +1,124 @@
+[
+  {
+    "dependencies": {
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "33e10679e05a291a3b518419fd64037140cccd427e9656a3fab9ab3209645651",
+    "markers": [
+      {
+        "column": null,
+        "end": 10,
+        "entity": "Document",
+        "file": "def/lsp/data.lfy",
+        "line": 3,
+        "outputLine": 7,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 12,
+        "entity": "Document.path",
+        "file": "def/lsp/data.lfy",
+        "line": 4,
+        "outputLine": 11,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 16,
+        "entity": "Document.text",
+        "file": "def/lsp/data.lfy",
+        "line": 5,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "Document.version",
+        "file": "def/lsp/data.lfy",
+        "line": 6,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "Encoding",
+        "file": "def/lsp/data.lfy",
+        "line": 9,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 25,
+        "entity": "Encoding.utf8",
+        "file": "def/lsp/data.lfy",
+        "line": 10,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "Encoding.utf16",
+        "file": "def/lsp/data.lfy",
+        "line": 11,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 59,
+        "entity": "Encoding.utf32",
+        "file": "def/lsp/data.lfy",
+        "line": 12,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 63,
+        "entity": "Session",
+        "file": "def/lsp/data.lfy",
+        "line": 15,
+        "outputLine": 60,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 65,
+        "entity": "Session.workspace",
+        "file": "def/lsp/data.lfy",
+        "line": 16,
+        "outputLine": 64,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "Session.documents",
+        "file": "def/lsp/data.lfy",
+        "line": 17,
+        "outputLine": 66,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 76,
+        "entity": "Session.encoding",
+        "file": "def/lsp/data.lfy",
+        "line": 18,
+        "outputLine": 68,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-lsp/src/data.rs",
+    "requirements": "",
+    "signature": "2ef92a24a8d5fa613341bfc5feb24af9a54dbff7f5cc11fec99ba30c3b2c7de2",
+    "source": "def/lsp/data.lfy",
+    "target": "rust"
+  }
+]

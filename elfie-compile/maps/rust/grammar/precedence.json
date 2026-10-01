@@ -1,0 +1,203 @@
+[
+  {
+    "dependencies": {},
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "54a934af9a20587aaf2a317936082f2b052db9d6ca81f40f9b45f01de2edb407",
+    "markers": [
+      {
+        "column": null,
+        "end": 8,
+        "entity": "Level",
+        "file": "def/grammar/precedence.lfy",
+        "line": 1,
+        "outputLine": 4,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 10,
+        "entity": "Level.joiner",
+        "file": "def/grammar/precedence.lfy",
+        "line": 2,
+        "outputLine": 9,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 12,
+        "entity": "Level.assignment",
+        "file": "def/grammar/precedence.lfy",
+        "line": 3,
+        "outputLine": 11,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 14,
+        "entity": "Level.definition",
+        "file": "def/grammar/precedence.lfy",
+        "line": 4,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 15,
+        "entity": "Level.coalescence",
+        "file": "def/grammar/precedence.lfy",
+        "line": 5,
+        "outputLine": 15,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 16,
+        "entity": "Level.logicalAnd",
+        "file": "def/grammar/precedence.lfy",
+        "line": 6,
+        "outputLine": 16,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 17,
+        "entity": "Level.bitwiseOr",
+        "file": "def/grammar/precedence.lfy",
+        "line": 7,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 18,
+        "entity": "Level.bitwiseXor",
+        "file": "def/grammar/precedence.lfy",
+        "line": 8,
+        "outputLine": 18,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "Level.bitwiseAnd",
+        "file": "def/grammar/precedence.lfy",
+        "line": 9,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 22,
+        "entity": "Level.equality",
+        "file": "def/grammar/precedence.lfy",
+        "line": 10,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": "Level.relational",
+        "file": "def/grammar/precedence.lfy",
+        "line": 11,
+        "outputLine": 23,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "Level.extraction",
+        "file": "def/grammar/precedence.lfy",
+        "line": 12,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 28,
+        "entity": "Level.additive",
+        "file": "def/grammar/precedence.lfy",
+        "line": 13,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 29,
+        "entity": "Level.multiplicative",
+        "file": "def/grammar/precedence.lfy",
+        "line": 14,
+        "outputLine": 29,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 31,
+        "entity": "Level.exponentiation",
+        "file": "def/grammar/precedence.lfy",
+        "line": 15,
+        "outputLine": 30,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 32,
+        "entity": "Level.wrapper",
+        "file": "def/grammar/precedence.lfy",
+        "line": 16,
+        "outputLine": 32,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 34,
+        "entity": "Level.unary",
+        "file": "def/grammar/precedence.lfy",
+        "line": 17,
+        "outputLine": 33,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "Level.access",
+        "file": "def/grammar/precedence.lfy",
+        "line": 18,
+        "outputLine": 35,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 38,
+        "entity": "Level.reference",
+        "file": "def/grammar/precedence.lfy",
+        "line": 19,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 100,
+        "entity": "Level.group",
+        "file": "def/grammar/precedence.lfy",
+        "line": 20,
+        "outputLine": 39,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 112,
+        "entity": "Level",
+        "file": "def/grammar/precedence.lfy",
+        "line": 1,
+        "outputLine": 101,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/precedence.rs",
+    "requirements": "",
+    "signature": "3f2400cb983ea062868eb5df5f7435a8de854f4a01fd4e66d25bda993cc2d30c",
+    "source": "def/grammar/precedence.lfy",
+    "target": "rust"
+  }
+]

@@ -1064,9 +1064,6 @@ fn entity_members(model: &Model, entity: EntityId) -> Vec<SymbolId> {
 
 /// What a value offers after a value accessor: the entity's own members, then every
 /// member of the base data of its type.
-// Decision: the keys an object literal is written with declare no symbol, so the model
-// holds none to offer; the binder leaves a name the base data does not declare to the
-// object the same way, without a problem.
 // @lfy def/query/main.lfy:completionsAt
 fn value_members(model: &Model, entity: EntityId) -> Vec<SymbolId> {
     let mut out = member_symbols(model, entity);
@@ -1145,6 +1142,75 @@ fn left_members(model: &Model, left: NodeRef) -> Option<Vec<SymbolId>> {
         },
         _ => Some(value_members(model, symbol.entity)),
     }
+}
+
+/// The keys an object literal is written with, in the order they are written: the name
+/// each `ObjectKey` declares. `None` when the entity's value is not an object literal.
+// Decision: the keys of an object declare no symbol, so they are read from the tokens the
+// declaration covers rather than from the model.
+// @lfy def/query/main.lfy:completionsAt
+fn object_keys(model: &Model, entity: EntityId) -> Option<Vec<String>> {
+    let e = &model.entities[entity];
+    if e.ty != Some(TypeRef::Primitive("object")) {
+        return None;
+    }
+    let node = e.node.filter(|&node| is_real(model, node))?;
+    // The value of a declaration is its first child that is not the name it declares, as
+    // the binder reads it to infer the type.
+    let value = child_nodes(model, node)
+        .into_iter()
+        .find(|&child| model.info(child).rule != E::Declared.entity())?;
+    if model.info(value).rule != E::Object.entity() {
+        return None;
+    }
+    let tokens = &model.sources[value.file].tree.tokens;
+    Some(
+        child_nodes(model, value)
+            .into_iter()
+            .filter(|&key| model.info(key).rule == E::ObjectKey.entity())
+            .filter_map(|key| {
+                let declared = child_nodes(model, key)
+                    .into_iter()
+                    .find(|&child| model.info(child).rule == E::Declared.entity())?;
+                let info = model.info(declared);
+                tokens[info.start..info.end]
+                    .iter()
+                    .find(|token| token.is(I::Identifier))
+                    .map(|token| token.value.clone())
+            })
+            .collect(),
+    )
+}
+
+/// What the left side of a member access offers, as completions: an object's own keys,
+/// then the members of `Object`; what [`left_members`] gives for anything else. `None`
+/// when the left side resolves to nothing.
+// @lfy def/query/main.lfy:completionsAt
+fn left_completions(model: &Model, left: NodeRef) -> Option<Vec<Completion>> {
+    if let Some(entity) = left_entity(model, left)
+        && let Some(keys) = object_keys(model, entity)
+    {
+        let mut out: Vec<Completion> = keys
+            .into_iter()
+            .map(|label| Completion {
+                label,
+                kind: OfferedKind::Symbol(SymbolKind::Member),
+                detail: None,
+            })
+            .collect();
+        out.extend(
+            value_members(model, entity)
+                .into_iter()
+                .map(|symbol| symbol_completion(model, symbol)),
+        );
+        return Some(out);
+    }
+    Some(
+        left_members(model, left)?
+            .into_iter()
+            .map(|symbol| symbol_completion(model, symbol))
+            .collect(),
+    )
 }
 
 /// The directory holding a file, relative to the root; empty for a file at the root.
@@ -1596,20 +1662,9 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
         }
         // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ScopeAccessor)) => {
-            // Decision: `$` after a left side (a Member) reaches that side's members, as
-            // the value accessor does; alone it reaches the current entity's.
-            match left_of_accessor() {
-                Some(left) => {
-                    if let Some(members) = left_members(model, left) {
-                        out.extend(
-                            members
-                                .into_iter()
-                                .map(|symbol| symbol_completion(model, symbol)),
-                        );
-                    }
-                }
-                None => out.extend(members_of(model.scopes[scope].current)),
-            }
+            // The scope layer reaches the current entity of the scope that holds the
+            // position, whatever stands to the left of the accessor.
+            out.extend(members_of(model.scopes[scope].current))
         }
         // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ParentScopeAccessor)) => {
@@ -1628,12 +1683,10 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
         }
         // @lfy def/query/main.lfy:completionsAt
         Some(Rule::Punctuation(P::ValueAccessor | P::OptionalValueAccessor)) => {
-            if let Some(members) = left_of_accessor().and_then(|left| left_members(model, left)) {
-                out.extend(
-                    members
-                        .into_iter()
-                        .map(|symbol| symbol_completion(model, symbol)),
-                );
+            if let Some(offered) =
+                left_of_accessor().and_then(|left| left_completions(model, left))
+            {
+                out.extend(offered);
             }
             // @lfy def/query/main.lfy:completionsAt
         }
@@ -3209,9 +3262,10 @@ mod tests {
                 .map(|completion| completion.label)
                 .collect()
         };
-        // An object offers the members of `Object`; the keys it is written with declare
-        // no symbol, so the model holds none.
-        let object = names("const o = { a = 1 }; const u = o.");
+        // An object offers the keys it is written with, then the members of `Object`.
+        let object = names("const o = { a = 1, b = 2 }; const u = o.");
+        assert_eq!(object[0], "a", "{object:?}");
+        assert_eq!(object[1], "b", "{object:?}");
         assert!(object.contains(&"keys".to_string()), "{object:?}");
         assert!(object.contains(&"merge".to_string()), "{object:?}");
         // An entity's own members, then the members of its kind data whose value is a
@@ -3225,6 +3279,12 @@ mod tests {
         let list = names("const l: number[] = [1]; const w = l.");
         assert!(list.contains(&"map".to_string()), "{list:?}");
         assert!(list.contains(&"length".to_string()), "{list:?}");
+        // A number offers every member of `Number`.
+        // @lfy def/query/main.lfy:completionsAt
+        let number = names("const n = 1; const m = n.");
+        assert!(number.contains(&"floor".to_string()), "{number:?}");
+        assert!(number.contains(&"clamp".to_string()), "{number:?}");
+        assert!(!number.contains(&"n".to_string()), "{number:?}");
     }
 
     // @lfy def/query/main.lfy:completionsAt
@@ -3273,9 +3333,11 @@ mod tests {
             ["one", "two"]
         );
         assert!(completions_at(&ws, A, after(find_pos(text, "q.;", 0), 2)).is_empty());
+        // The scope accessor reaches the current entity of the scope holding the
+        // position, not the members of whatever stands to its left.
         assert_eq!(
             labels(&completions_at(&ws, A, after(find_pos(text, "A$;", 0), 2))),
-            ["x", "y"]
+            ["z", "w", "v", "u", "t", "s"]
         );
         // At the top of a data the parent scope reaches the file's entity, which has no
         // members; a nested data reaches its owner's.

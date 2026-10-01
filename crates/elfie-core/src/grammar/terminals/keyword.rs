@@ -156,7 +156,7 @@ impl Keyword {
     }
 
     /// The keyword whose word is exactly `text`, if any.
-    // @lfy def/grammar/traits.lfy:45
+    // @lfy def/grammar/traits.lfy:keyword
     pub fn from_text(text: &str) -> Option<Keyword> {
         KEYWORDS.iter().find_map(|rule| match rule {
             Entity::Keyword(keyword) if keyword.word() == Some(text) => Some(*keyword),

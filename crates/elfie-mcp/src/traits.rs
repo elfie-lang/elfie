@@ -67,8 +67,10 @@ impl Registered {
 }
 
 /// The JSON schema of a tool's arguments: an object with one property per argument, typed
-/// as the parameter is and described by the fn's documentation line for it, and the
-/// arguments a call must give as `required`.
+/// as the parameter is and described by the fn's documentation line for it.
+///
+/// An argument whose parameter is neither optional nor has a default is listed as
+/// `required`; one whose parameter is optional or has a default is not.
 // @lfy def/mcp/traits.lfy:tool
 pub fn input_schema(tool: &Tool) -> JsonObject {
     let mut properties = serde_json::Map::new();
@@ -78,6 +80,8 @@ pub fn input_schema(tool: &Tool) -> JsonObject {
             argument.name.clone(),
             json!({ "type": argument.ty, "description": argument.description }), // @lfy def/mcp/traits.lfy:tool
         );
+        // A parameter that is neither optional nor has a default is listed as required; one
+        // that is optional or has a default is not. @lfy def/mcp/traits.lfy:tool
         if argument.required {
             required.push(Value::String(argument.name.clone()));
         }
@@ -200,6 +204,8 @@ mod tests {
         assert_eq!(schema["type"], "object");
         assert_eq!(schema["properties"]["name"]["type"], "string");
         assert_eq!(schema["properties"]["file"]["description"], "The file"); // @lfy def/mcp/traits.lfy:tool
+        // `name` is neither optional nor has a default, so it is listed as required; `file`
+        // is optional, so it is not. @lfy def/mcp/traits.lfy:tool
         assert_eq!(schema["required"], json!(["name"]));
         let listed = list(&[registered]);
         assert_eq!(listed.len(), 1);

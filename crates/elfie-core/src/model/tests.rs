@@ -61,11 +61,17 @@ fn prelude() -> Vec<Source> {
     // @lfy def/model/main.lfy:bind
     let kinds = source_from(
         "lib/prelude/kinds.lfy",
-        "use \"./entity\"; d Data extends Entity {} \
+        "use \"./entity\"; d Data extends Entity { $isData: `Marks a data` = boolean; } \
          d Trait extends Entity { $entities: `What carries it` = Entity[]; \
          $apply: `Applies it` = apply; } \
          fn apply(subject: Trait, target: Entity): `Applies a trait` => Trait {} \
-         d Function extends Entity { $parameters: `Its parameters` = Entity[]; }",
+         d Function extends Entity { $parameters: `Its parameters` = Entity[]; } \
+         d Type extends Entity { $isType: `Marks a type` = boolean; } \
+         d Enum extends Entity { $isEnum: `Marks an enum` = boolean; } \
+         d Member extends Entity { $isMember: `Marks a member` = boolean; } \
+         d Parameter extends Entity { $isParameter: `Marks a parameter` = boolean; } \
+         d Variable extends Entity { $isVariable: `Marks a variable` = boolean; } \
+         d Module extends Entity { $isModule: `Marks a module` = boolean; }",
         &[Some("lib/prelude/entity.lfy")],
         Origin::Library,
     );
@@ -74,7 +80,9 @@ fn prelude() -> Vec<Source> {
         "d String { $length: `How many characters` = number; $trim: `Without spaces` = () => string; } \
          d List { $length: `How many items` = number; } \
          d Object { $keys: `Its keys` = () => string[]; } \
-         d Template { $text: `The rendered text` = () => string; }",
+         d Template { $text: `The rendered text` = () => string; } \
+         d Number { $floor: `Rounded down` = () => number; } \
+         d Boolean { $not: `The opposite` = () => boolean; }",
         &[],
         Origin::Library,
     );
@@ -357,7 +365,8 @@ fn test_with_on_a_member_attaches_to_the_member() {
 }
 
 /// A program file sees the prelude through the parent of its file scope, and a name of
-/// the prelude resolves there.
+/// the prelude resolves there; a library file and the prelude itself have no parent.
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
 fn test_a_program_file_resolves_names_in_the_prelude() {
@@ -697,6 +706,8 @@ fn duplicate_declaration_is_a_problem_and_the_first_wins() {
 
 /// A type parameter of a declaration is a symbol of the scope that declaration owns,
 /// beside its parameters and members, so the name is visible throughout the declaration.
+/// One with no extends clause has no type.
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
 fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
@@ -728,9 +739,35 @@ fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
     assert_eq!(model.entities[take].output(), Some(&TypeRef::Entity(t)));
     // Its kind data is the one a parameter is seen through.
     assert_eq!(model.entities[t].kind, EntityKind::Parameter);
+    // A type parameter with no extends clause has no type of its own.
+    for name in ["held", "Pair"] {
+        let parameter = model.type_parameters(entity(&model, name))[0];
+        assert_eq!(model.entities[parameter].ty, None, "{name}");
+    }
+}
+
+/// A TypeParameter has no DefinitionClause, no IsClause, and no body, so its entity's
+/// definition is undefined and its traits and acceptance criteria are empty.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn a_type_parameter_has_no_definition_traits_or_criteria() {
+    let model = bind_one(
+        "d Item {} trait marked {} d Box<T extends Item = string, U> is marked: `a box` {}",
+    );
+    assert_clean(&model);
+    let boxed = entity(&model, "Box");
+    // The declaration itself has the definition, the trait, and any criteria.
+    assert_eq!(model.entities[boxed].definition.as_deref(), Some("a box"));
+    assert_eq!(model.entities[boxed].traits.len(), 1);
+    for &parameter in &model.type_parameters(boxed) {
+        assert_eq!(model.entities[parameter].definition, None);
+        assert!(model.entities[parameter].traits.is_empty());
+        assert!(model.entities[parameter].acceptance_criteria.is_empty());
+    }
 }
 
 /// An ObjectKey in an enum declares an enumMember; one in a plain object declares nothing.
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
 fn object_key_declares_only_in_an_enum() {
@@ -790,11 +827,18 @@ fn member_statement_declares_a_member() {
 
 /// A scope's current entity: the declared entity, the With's entity, or the parent's.
 // @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
 #[test]
 fn scope_current_entity() {
     let model = bind_one("d A {} with A { const x = 1; } for (const i in [1]) { const j = i; }");
     assert_clean(&model);
     let a = entity(&model, "A");
+    // A scope that belongs to a declaration has the declared entity as its current.
+    assert_eq!(
+        model.scopes[model.entities[a].scope.expect("a data owns a scope")].current,
+        a
+    );
     let with = model
         .scope_of(node(&model, 0, S::With, "with A { const x = 1; }"))
         .expect("a With owns a scope");
@@ -895,6 +939,54 @@ fn use_with_as_resolves_members_in_the_module() {
     assert_eq!(model.symbols[e].kind, SymbolKind::LoopVariable);
 }
 
+/// An `in` loop over a module visits its symbols' entities; an `of` loop their names.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn an_in_loop_over_a_module_visits_entities_and_an_of_loop_names() {
+    let module = || source("b.lfy", "d B1: `one` {} d B2: `two` {}", &[]);
+    let entities = source(
+        "a.lfy",
+        "use \"./b\" as M; d A { for (const item in M) { where (`s`) -> `{{item@definition}}`; } }",
+        &[Some("b.lfy")],
+    );
+    let model = bind(vec![module(), entities]);
+    assert_clean(&model);
+    let a_file = model.file("a.lfy").unwrap();
+    let a = model.symbols[file_symbol(&model, a_file, "A")].entity;
+    let behaviors: Vec<Option<Vec<String>>> = criteria_texts(&model, a)
+        .into_iter()
+        .map(|(_, behavior, _)| behavior)
+        .collect();
+    assert_eq!(
+        behaviors,
+        [
+            Some(vec!["one".to_string()]),
+            Some(vec!["two".to_string()]),
+        ]
+    );
+    let names_of = source(
+        "a.lfy",
+        "use \"./b\" as M; d A { for (const name of M) { where (`{{name}}`) -> `b`; } }",
+        &[Some("b.lfy")],
+    );
+    let model = bind(vec![module(), names_of]);
+    assert_clean(&model);
+    let a_file = model.file("a.lfy").unwrap();
+    let a = model.symbols[file_symbol(&model, a_file, "A")].entity;
+    let situations: Vec<Option<Vec<String>>> = criteria_texts(&model, a)
+        .into_iter()
+        .map(|(situation, _, _)| situation)
+        .collect();
+    assert_eq!(
+        situations,
+        [
+            Some(vec!["B1".to_string()]),
+            Some(vec!["B2".to_string()]),
+        ]
+    );
+}
+
 /// A `from` loop over a module visits its symbols' names and their entities together.
 // @lfy def/model/main.lfy:bind
 #[test]
@@ -949,11 +1041,10 @@ fn use_of_nothing_imports_nothing() {
     assert_eq!(names(&model, model.file_scopes[0]), ["x"]);
 }
 
-// ---- Apply --------------------------------------------------------------------------
+// ---- Expand -------------------------------------------------------------------------
 
-/// `X.apply(Y)` applies X to Y, and to every item of an alternationList.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+/// The expand pass runs the file-level statements of every file: `X.apply(Y)` applies X to
+/// Y, and to every item of an alternationList, and the resolve pass reads what it left.
 // @lfy def/model/main.lfy:bind
 #[test]
 fn apply_call_applies_the_trait() {
@@ -998,8 +1089,8 @@ fn apply_call_applies_the_trait() {
     assert!(!model.entities[alt].has_trait(marker));
 }
 
-/// An extends chain applies every base with arguments evaluated from the extending
-/// trait's parameters.
+/// The expand pass runs the trait applications of a declaration: an extends chain applies
+/// every base with arguments evaluated from the extending trait's parameters.
 // @lfy def/model/main.lfy:bind
 #[test]
 fn extends_chain_applies_every_base() {
@@ -1036,10 +1127,8 @@ fn extends_chain_applies_every_base() {
     assert_eq!(model.entities[a].extenders(), &[b]);
 }
 
-/// The trait body's members, values, and criteria land on the receiver, with the trait
-/// as contributor.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+/// The expand pass runs declaration bodies: the trait body's members, values, and criteria
+/// land on the receiver, with the trait as contributor.
 // @lfy def/model/main.lfy:bind
 #[test]
 fn applied_trait_body_lands_on_the_receiver() {
@@ -1069,8 +1158,8 @@ fn applied_trait_body_lands_on_the_receiver() {
     );
 }
 
-/// Two applied traits declaring the same member: the most recently applied trait's
-/// definition wins, and nothing is reported.
+/// Two applied traits declaring the same member: the expand pass leaves the most recently
+/// applied trait's definition for the resolve pass to read, and nothing is reported.
 // @lfy def/model/main.lfy:bind
 #[test]
 fn the_most_recently_applied_trait_declares_the_member() {
@@ -1131,7 +1220,22 @@ fn a_child_scope_shadows_the_parent_without_a_problem() {
     );
 }
 
-/// TraitEntity.entities is in file order then application order.
+/// The expand pass runs the ace statements of a file too, so what an ace applies is there
+/// for the resolve pass.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn an_ace_statement_runs_in_the_expand_pass() {
+    let model = bind_with_prelude("trait t {} d A {} ace t.apply(A);");
+    assert_clean(&model);
+    let program = model.file("a.lfy").unwrap();
+    let t = model.symbols[file_symbol(&model, program, "t")].entity;
+    let a = model.symbols[file_symbol(&model, program, "A")].entity;
+    assert!(model.entities[a].has_trait(t));
+    assert_eq!(entities_of(&model, t), vec![a]);
+}
+
+/// What the expand pass left of every file, read by the resolve pass: TraitEntity.entities
+/// in file order then application order.
 // @lfy def/model/main.lfy:bind
 #[test]
 fn trait_entities_in_file_then_application_order() {
@@ -1275,7 +1379,9 @@ fn two_rule_entities_with_the_same_identifier_is_a_problem() {
     assert_eq!(usage(&model, reference).symbol, None);
 }
 
-/// A context member name must be the value of a ContextProperty.
+/// A context member name must be the value of a ContextProperty. `X@type` shows that a
+/// keyword is a valid MemberName in this position.
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
 fn unknown_context_property_is_a_problem() {
@@ -1361,7 +1467,63 @@ fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     assert_eq!(problems(&model), vec!["t.entities: t has no member entities"]);
 }
 
+/// The kind data of an entity is the prelude data for what it is, and always Entity as
+/// well, so a member of that data is read on it.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+#[test]
+fn the_kind_data_of_an_entity_is_the_prelude_data_for_what_it_is() {
+    let b = source("b.lfy", "d B {}", &[]);
+    let a = source(
+        "a.lfy",
+        "use \"./b\" as M; trait t {} fn f(p: string): `d` => string {} \
+         d D { $m: `d` = string; } type T { k = string, } enum E { r = 'r', } \
+         const c1 = t@entities; const c2 = f@parameters; const c3 = D@isData; \
+         const c4 = T@isType; const c5 = E@isEnum; const c6 = D@identifier; \
+         with D$m { const c7 = @isMember; } with f$p { const c8 = @isParameter; }",
+        &[Some("b.lfy")],
+    );
+    let mut sources = prelude();
+    sources.push(b);
+    sources.push(a);
+    let model = bind(sources);
+    assert_clean(&model);
+    let file = model.file("a.lfy").unwrap();
+    for (raw, data, name) in [
+        ("t@entities", "Trait", "entities"),
+        ("f@parameters", "Function", "parameters"),
+        ("D@isData", "Data", "isData"),
+        ("T@isType", "Type", "isType"),
+        ("E@isEnum", "Enum", "isEnum"),
+        // Every entity is seen through Entity too, whatever else it is.
+        ("D@identifier", "Entity", "identifier"),
+    ] {
+        reads_member(&model, node(&model, file, E::Member, raw), data, name);
+    }
+    // A variable and a module carry Variable and Module the same way, but a name bound to
+    // one yields its value rather than its entity, so neither is read through a name.
+    let _ = (prelude_data(&model, "Variable"), prelude_data(&model, "Module"));
+    // A member and a parameter are reached as the current entity of a With.
+    for (raw, data, name) in [
+        ("@isMember", "Member", "isMember"),
+        ("@isParameter", "Parameter", "isParameter"),
+    ] {
+        reads_member(&model, node(&model, file, E::Current, raw), data, name);
+    }
+}
+
 /// A value of a base data resolves that data's members; an object's keys are its own.
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
@@ -1369,7 +1531,9 @@ fn a_value_resolves_the_members_of_its_base_data() {
     let model = bind_with_prelude(
         "const s = 'text'; const n = s.length; const t = s.trim(); const xs: string[] = []; \
          const c = xs.length; const o = { a = 1 }; const k = o.keys(); const v = o.a; \
-         const p = `text`; const r = p.text();",
+         const p = `text`; const r = p.text(); const i = 2; const f = i.floor(); \
+         const y = true; const z = y.not(); const g = (x: number) => x; \
+         const q = g.parameters;",
     );
     assert_clean(&model);
     let file = model.file("a.lfy").unwrap();
@@ -1381,6 +1545,9 @@ fn a_value_resolves_the_members_of_its_base_data() {
     read("xs.length", "List", "length");
     read("o.keys", "Object", "keys");
     read("p.text", "Template", "text");
+    read("i.floor", "Number", "floor");
+    read("y.not", "Boolean", "not");
+    read("g.parameters", "Function", "parameters");
     // An object's keys come first and are not known here, so o.a is no problem.
     assert_eq!(usage(&model, node(&model, file, E::Member, "o.a")).symbol, None);
     // A name the base data does not declare is a problem.
@@ -1436,8 +1603,27 @@ fn member_on_data_resolves_to_its_member() {
     assert_eq!(usages_of(&model, m).len(), 2);
 }
 
+/// The scope accessor with no member name after it yields the entity's own scope.
+// @lfy def/model/main.lfy:bind
+#[test]
+fn the_scope_accessor_with_no_name_yields_the_entitys_scope() {
+    let model = bind_one(
+        "d Scope {} trait t { $s: `the scope of A` = Scope; .s = A$; } \
+         d A is t { $m: `x` = string; }",
+    );
+    assert_clean(&model);
+    let a = entity(&model, "A");
+    assert_eq!(
+        model.entities[a].value("s"),
+        Some(&Value::Scope(
+            model.entities[a].scope.expect("a data owns a scope")
+        ))
+    );
+}
+
 /// The parent scope accessor yields the scope that contains the left side's scope, and
 /// undefined when there is none.
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
 fn parent_scope_accessor_yields_the_containing_scope() {
@@ -1577,6 +1763,7 @@ fn a_name_of_a_type_parameter_yields_the_parameter() {
 
 /// A member read on a left side whose type is a type parameter resolves in what the
 /// parameter extends; with no extends clause nothing resolves and nothing is reported.
+// @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 #[test]
 fn a_member_on_a_type_parameter_reads_what_it_extends() {

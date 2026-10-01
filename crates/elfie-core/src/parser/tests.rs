@@ -437,26 +437,40 @@ fn tokens_left_over_become_one_error_node_at_the_end_of_the_root() {
 
 // @lfy def/parser/main.lfy:parse
 #[test]
-fn an_alternation_list_root_holds_leading_trivia_the_item_and_the_leftovers() {
+fn an_alternation_list_root_holds_leading_trivia_and_the_item() {
     let tree = expr(" a");
     check_lossless(&tree, " a");
     assert!(tree.root.is(Expression::Expression));
     assert_eq!(shape(&tree.root, &tree), ["Name"]);
     assert_eq!(tree.root.children.len(), 2);
+    assert!(tree.root.children[0].as_token().is_some());
+    assert!(tree.errors.is_empty());
+    // With neither trivia before the item nor tokens left over, the item stands in the
+    // root's place.
+    let tree = parse(tokens("a;"), Some(Entity::Statement(Statement::Statement)));
+    assert!(tree.root.is(Statement::ExpressionStatement));
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_alternation_list_root_holds_the_item_and_the_leftovers() {
     let tree = expr("a b");
     check_lossless(&tree, "a b");
     assert!(tree.root.is(Expression::Expression));
     assert_eq!(shape(&tree.root, &tree), ["Name", "Error(\"b\")"]);
     assert_eq!(tree.errors.len(), 1);
+    // Trivia before the item and tokens left over after it: the root holds both.
+    let tree = expr(" a b");
+    check_lossless(&tree, " a b");
+    assert!(tree.root.is(Expression::Expression));
+    assert!(tree.root.children[0].as_token().is_some());
+    assert_eq!(shape(&tree.root, &tree), ["Name", "Error(\"b\")"]);
     // Nothing satisfies the rule: everything is the error node.
     let tree = expr("+ a");
     check_lossless(&tree, "+ a");
     assert_eq!(shape(&tree.root, &tree), ["Error(\"+ a\")"]);
     assert!(tree.errors[0].expected.contains(&"Identifier"));
     assert!(!tree.errors[0].expected.contains(&"Plus"));
-    // A statement root that is exactly the item stands in its place.
-    let tree = parse(tokens("a;"), Some(Entity::Statement(Statement::Statement)));
-    assert!(tree.root.is(Statement::ExpressionStatement));
 }
 
 // @lfy def/parser/main.lfy:parse
@@ -609,6 +623,75 @@ fn an_alternation_offers_its_alternatives_as_candidates() {
 
 // @lfy def/parser/main.lfy:parse
 #[test]
+fn a_candidate_that_fails_hands_the_token_to_the_next_in_tried_before_order() {
+    // A `GroupOpen` selects `InlineFunction` before `Group`; here the inline function
+    // fails at that index, so the group is tried there and satisfies the expression.
+    let tree = file("(a);");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let statement = first_statement(&tree);
+    assert!(statement.node(Expression::InlineFunction).is_none());
+    assert!(statement.node(Expression::Group).is_some());
+    // A `BlockOpen` selects `Block` before `ExpressionStatement`; a block that fails
+    // hands the token on only when it has taken none, so an object is a statement here.
+    let tree = file("x = { a = 1 };");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    assert!(first_statement(&tree).find(Expression::Object).is_some());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn no_candidate_after_one_that_does_not_fail_is_tried() {
+    // `InlineFunction` does not fail here, so `Group` is never tried at that index.
+    let tree = file("(a) => a;");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let statement = first_statement(&tree);
+    assert!(statement.node(Expression::InlineFunction).is_some());
+    assert!(statement.find(Expression::Group).is_none());
+    // `Block` does not fail here, so the statement is never an `ExpressionStatement`
+    // holding an `Object`.
+    let tree = file("{ a = 1 }");
+    assert!(first_statement(&tree).is(Statement::Block));
+    assert!(tree.root.find(Expression::Object).is_none());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_alternation_with_an_operation_parses_one_below_its_lowest_power() {
+    // `Reference = ( Name | Current | Dereference | Member | Index )`: the lowest power
+    // among its infix and postfix alternatives is the access level of `Member`, so the
+    // expression is parsed one below it and no weaker operation joins it.
+    let items = [
+        Entity::Expression(Expression::Name),
+        Entity::Expression(Expression::Current),
+        Entity::Expression(Expression::Dereference),
+        Entity::Expression(Expression::Member),
+        Entity::Expression(Expression::Index),
+    ];
+    let access = Expression::Member.effective_binding().unwrap().precedence_value();
+    assert_eq!(beginning::expression_alternation_minimum(&items), access - 1);
+    let tree = file("`[[a.b]]`;");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let reference = tree.root.find(Expression::Reference).unwrap();
+    assert!(reference.nodes().next().unwrap().is(Expression::Member));
+    // A weaker operation is below the minimum: the reference stops before it.
+    let tree = file("`[[a + b]]`;");
+    assert_eq!(tree.errors.len(), 1);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_alternation_without_an_operation_parses_with_minimum_zero() {
+    let items = [Entity::Expression(Expression::Name), Entity::Expression(Expression::Group)];
+    assert_eq!(beginning::expression_alternation_minimum(&items), 0);
+    assert_eq!(beginning::expression_alternation_minimum(&[]), 0);
+    // Every alternation of expression rules the grammar presents with an operation among
+    // its alternatives keeps a minimum above 0.
+    let with_operation = [Entity::Expression(Expression::Name), Entity::Expression(Expression::Member)];
+    assert!(beginning::expression_alternation_minimum(&with_operation) > 0);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
 fn an_alternation_of_expression_rules_is_one_expression_of_limited_power() {
     let tree = file("`[[a.b]] [[&c.q]] [[e[0] ]]`;");
     let references: Vec<&Node> = first_statement(&tree)
@@ -642,16 +725,35 @@ fn an_alternation_of_expression_rules_is_one_expression_of_limited_power() {
 #[test]
 fn an_optional_element_is_tried_when_the_next_token_can_begin_it() {
     // The member name is optional and taken when the next token can begin it.
-    let tree = file("a.;\nb.c;\nx@type;");
+    let tree = file("b.c;\nx@type;");
     let statements: Vec<&Node> = tree.root.nodes().collect();
     let member = statements[0].node(Expression::Member).unwrap();
-    assert_eq!(shape(member, &tree), ["Name", "ValueAccessor(.)"]);
-    let member = statements[1].node(Expression::Member).unwrap();
     assert_eq!(shape(member, &tree), ["Name", "ValueAccessor(.)", "Identifier(c)"]);
-    let member = statements[2].node(Expression::Member).unwrap();
+    let member = statements[1].node(Expression::Member).unwrap();
     assert_eq!(shape(member, &tree), ["Name", "ContextAccessor(@)", "TypeKeyword(type)"]);
     assert!(tree.errors.is_empty(), "{:?}", tree.errors);
-    // When the optional element fails it is skipped: a leading `&` in a type position.
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_optional_element_is_skipped_when_the_next_token_cannot_begin_it() {
+    // A `Semicolon` cannot begin a member name, so the optional element is skipped.
+    let tree = file("a.;");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let member = first_statement(&tree).node(Expression::Member).unwrap();
+    assert_eq!(shape(member, &tree), ["Name", "ValueAccessor(.)"]);
+    // A declaration skips every optional clause its next token cannot begin.
+    let tree = file("const x = 1;");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let declared = first_statement(&tree).node(Expression::Declared).unwrap();
+    assert_eq!(shape(declared, &tree), ["Identifier(x)"]);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_optional_element_that_is_tried_and_fails_is_skipped() {
+    // A leading `&` in a type position can begin the optional union operator, but the
+    // element fails there, so it is skipped and the `&` belongs to the type expression.
     let tree = file("const x: & y;");
     assert!(tree.errors.is_empty(), "{:?}", tree.errors);
     let type_expression = first_statement(&tree).find(Expression::TypeExpression).unwrap();
@@ -660,8 +762,35 @@ fn an_optional_element_is_tried_when_the_next_token_can_begin_it() {
 
 // @lfy def/parser/main.lfy:parse
 #[test]
-fn a_repetition_tries_iterations_while_the_next_token_can_begin_one() {
-    let tree = file("(a, b, ...rest) => a; (c, ) => c; match x { a -> b, }");
+fn a_later_failure_never_revisits_an_optional_element() {
+    // The optional expression inside an `Index` is taken as `b`, and the `ListClose`
+    // after it then fails: the index recovers where it stands and keeps the expression
+    // rather than parsing again without it.
+    let source = "a[b c];";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let index = first_statement(&tree).node(Expression::Index).unwrap();
+    assert_eq!(shape(index, &tree), ["Name", "ListOpen([)", "Name", "Error(\"c\")", "ListClose(])"]);
+    assert_eq!(tree.errors.len(), 1);
+    // The optional `TypeParameters` of a declaration is taken and survives the failure
+    // of the element after the clauses that follow it.
+    let source = "d X<T> extends ;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = first_statement(&tree);
+    assert!(declaration.node(Expression::TypeParameters).is_some());
+    assert_eq!(tree.raw(tree.errors[0].start, tree.errors[0].end), "extends ");
+    // Revisiting would mean attempting a rule again at the same token index and minimum.
+    let (_, attempts) = parse_counting(tokens(source), None);
+    for (key, count) in attempts {
+        assert_eq!(count, 1, "{} at {} with minimum {}", key.0, key.1, key.2);
+    }
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn a_repetition_tries_another_iteration_while_the_next_token_can_begin_one() {
+    let tree = file("(a, b, ...rest) => a; { c; e; }");
     assert!(tree.errors.is_empty(), "{:?}", tree.errors);
     let statements: Vec<&Node> = tree.root.nodes().collect();
     let parameters = statements[0].find(Expression::Parameters).unwrap();
@@ -669,9 +798,37 @@ fn a_repetition_tries_iterations_while_the_next_token_can_begin_one() {
         shape(parameters, &tree),
         ["GroupOpen(()", "Parameter", "Comma(,)", "Parameter", "Comma(,)", "SpreadParameter", "GroupClose())"]
     );
-    let parameters = statements[1].find(Expression::Parameters).unwrap();
+    // A `Block` repeats its statements while the next token can begin one.
+    assert_eq!(statements[1].nodes_of(Statement::ExpressionStatement).count(), 2);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn a_repetition_ends_when_the_next_token_cannot_begin_the_repeated_element() {
+    let tree = file("(c, ) => c; match x { a -> b, }");
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let statements: Vec<&Node> = tree.root.nodes().collect();
+    // The `GroupClose` after the trailing comma cannot begin another parameter.
+    let parameters = statements[0].find(Expression::Parameters).unwrap();
     assert_eq!(shape(parameters, &tree), ["GroupOpen(()", "Parameter", "Comma(,)", "GroupClose())"]);
-    assert_eq!(statements[2].nodes_of(Statement::MatchArm).count(), 1);
+    // The `BlockClose` after the trailing comma cannot begin another arm.
+    assert_eq!(statements[1].nodes_of(Statement::MatchArm).count(), 1);
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_iteration_that_fails_leaves_its_tokens_and_ends_the_repetition() {
+    // The statements of the block repeat; the iteration that begins at `)` fails and
+    // leaves its tokens, which the block then covers with one error node.
+    let source = "{ a; ) }";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let block = first_statement(&tree);
+    assert_eq!(
+        shape(block, &tree),
+        ["BlockOpen({)", "ExpressionStatement", "Error(\") \")", "BlockClose(})"]
+    );
+    assert_eq!(tree.errors.len(), 1);
 }
 
 // Expressions
@@ -749,15 +906,41 @@ fn the_postfix_rule_of_an_operator_is_tried_before_its_infix_rule() {
     let plus = Entity::Punctuation(Punctuation::Plus);
     assert_eq!(tables.operations(plus), [Entity::Expression(Expression::AdditiveOperation)]);
     assert!(tables.operations(Entity::Punctuation(Punctuation::Semicolon)).is_empty());
-    // The postfix rule is the parse of the token where its own criteria hold there …
+    // The postfix rule is the parse of the token where its own criteria hold there.
     let tree = expr("f<T>(x)");
     assert!(tree.root.is(Expression::Call));
     assert!(tree.root.node(Expression::Generic).is_some());
     assert!(tree.errors.is_empty());
-    // … and the infix rule is tried only where the postfix rule is no match.
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn the_infix_rule_is_tried_where_the_postfix_rule_of_the_operator_is_no_match() {
+    // A `Generic` is no match before the identifier `c`, so the `LessThan` continues the
+    // expression as the operator of a `RelationalOperation` instead.
     let tree = expr("a < b > c");
     assert!(tree.root.is(Expression::RelationalOperation));
     assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.errors.is_empty());
+    let tree = expr("a < b");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn the_infix_rule_is_not_tried_where_the_postfix_rule_of_the_operator_matches() {
+    // The `Generic` matches, so no `RelationalOperation` is built from the same
+    // `LessThan`, and the tokens it covers are the type arguments alone.
+    let tree = expr("f<string>(x)");
+    assert!(tree.errors.is_empty());
+    let generic = tree.root.node(Expression::Generic).unwrap();
+    assert_eq!(tree.raw(generic.start, generic.end), "f<string>");
+    assert!(tree.root.find(Expression::RelationalOperation).is_none());
+    let tree = expr("a<T> = 1");
+    assert!(tree.root.is(Expression::Assignment));
+    assert!(tree.root.find(Expression::Generic).is_some());
+    assert!(tree.root.find(Expression::RelationalOperation).is_none());
     assert!(tree.errors.is_empty());
 }
 
@@ -809,8 +992,9 @@ fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     let tree = file("const x");
     let declaration = first_statement(&tree);
     assert_eq!(shape(declaration, &tree), ["ConstKeyword(const)", "Declared", "Error(\"\")"]);
-    // The optional setter was skipped; the element that failed is the semicolon.
-    assert_eq!(tree.errors[0].expected, vec!["Semicolon"]);
+    // The element that failed is the semicolon, and the optional setter that was skipped
+    // there could have continued the declaration too.
+    assert_eq!(tree.errors[0].expected, vec!["Semicolon", "PlainSetter"]);
     // @lfy def/parser/main.lfy:parse
     // A rule without recoverable produces nothing, so the group here is left to the
     // statement, which then recovers.
@@ -818,6 +1002,32 @@ fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     let statement = first_statement(&tree);
     assert!(statement.is(Statement::ExpressionStatement));
     assert!(statement.node(Expression::Group).is_none());
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn the_error_s_keyword_is_the_first_token_it_covers_that_an_identifier_would_have_fit() {
+    // Both `d` and `case` are keyword tokens an `Identifier` of the same text would have
+    // let the open rule take: the first of them is the error's keyword.
+    let source = "const d = case;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let error = &tree.errors[0];
+    assert_eq!(tree.raw(error.start, error.end), "d = case");
+    assert_eq!(error.keyword.as_ref().map(|token| token.raw.as_str()), Some("d"));
+}
+
+// @lfy def/parser/main.lfy:parse
+#[test]
+fn an_error_covering_no_such_keyword_has_none() {
+    // A keyword the open rule could not have taken as a name either way is not one.
+    let source = "const = 1;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert_eq!(tree.errors.len(), 1);
+    assert!(tree.errors[0].keyword.is_none());
+    let tree = file("a # ;");
+    assert!(tree.errors[0].keyword.is_none());
 }
 
 // @lfy def/parser/traits.lfy:recoverable
@@ -845,6 +1055,21 @@ fn a_required_element_error_covers_up_to_the_sync_at_the_same_bracket_depth() {
     let parameters = first_statement(&tree).find(Expression::Parameters).unwrap();
     assert_eq!(shape(parameters, &tree), ["GroupOpen(()", "Parameter", "Error(\"b\")", "GroupClose())"]);
     assert_eq!(tree.errors.len(), 1);
+}
+
+// @lfy def/parser/traits.lfy:recoverable
+#[test]
+fn a_required_element_error_covers_up_to_the_end_of_the_input_without_a_sync() {
+    // Nothing after the failed element is a sync token of the call at the same depth, so
+    // the error covers every remaining token.
+    let source = "const x = f(a b";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let call = first_statement(&tree).find(Expression::Call).unwrap();
+    assert_eq!(shape(call, &tree), ["Name", "GroupOpen(()", "Items", "Error(\"b\")"]);
+    let error = call.errors()[0];
+    assert_eq!(error.expected, vec!["GroupClose"]);
+    assert_eq!(error.end, tree.tokens.len());
 }
 
 // @lfy def/parser/traits.lfy:recoverable
@@ -997,6 +1222,22 @@ fn expected_lists_what_could_have_continued_the_open_rule() {
     assert!(tree.errors[0].expected.contains(&"Identifier"));
     assert!(tree.errors[0].expected.contains(&"LogicalNot"));
     assert!(!tree.errors[0].expected.contains(&"Semicolon"));
+    // @lfy def/parser/traits.lfy:recoverable
+    // A required element that cannot be satisfied names everything that could have
+    // continued the open rule at that index, the optional elements skipped there
+    // included, exactly as an invalid token at the same index does.
+    for source in ["const x", "const x # ;"] {
+        let tree = file(source);
+        assert_eq!(tree.errors[0].expected, vec!["Semicolon", "PlainSetter"], "{source}");
+    }
+    for source in ["d X", "d X # { }"] {
+        let tree = file(source);
+        assert_eq!(
+            tree.errors[0].expected,
+            vec!["IsKeyword", "ExtendsKeyword", "BlockOpen", "Semicolon", "Colon", "LessThan"],
+            "{source}"
+        );
+    }
 }
 
 // trivia
@@ -1069,6 +1310,87 @@ fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
     assert!(tree.errors.is_empty());
 }
 
+/// The raw text of the documentation attached to a node.
+fn attached(node: &Node, tree: &Tree) -> Vec<String> {
+    node.documentation
+        .iter()
+        .map(|documentation| tree.raw(documentation.start, documentation.end))
+        .collect()
+}
+
+/// The first statement of a file, documentation before it skipped.
+fn first_declaration(tree: &Tree) -> &Node {
+    tree.root
+        .nodes()
+        .find(|node| node.rule.is_statement())
+        .expect("a statement")
+}
+
+/// Documentation attaches to the declaration that follows it with only `Space`, `NewLine`,
+/// `Comment`, or other `Documentation` between them, even when it is one of several
+/// documentation blocks in a row.
+// @lfy def/grammar/terminals/comment.lfy:Documentation
+#[test]
+fn documentation_attaches_to_the_declaration_that_follows_it() {
+    let source = "/** a **/\n// c\n\n/** b **/\n/// d\nconst x;\n";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    let declaration = first_declaration(&tree);
+    assert!(declaration.is(Statement::VariableDeclaration));
+    assert_eq!(attached(declaration, &tree), ["/** a **/", "/** b **/", "/// d"]);
+    // A declaration follows, so nothing is left for the "global" object.
+    assert!(tree.root.documentation.is_empty());
+}
+
+/// Documentation that no declaration follows attaches to nothing, unless it is one of two
+/// or more documentation blocks in a row that were all opened with
+/// `BlockDocumentationOpen`.
+// @lfy def/grammar/terminals/comment.lfy:Documentation
+#[test]
+fn documentation_that_no_declaration_follows_attaches_to_nothing() {
+    for source in [
+        // One block of documentation on its own.
+        "const x;\n/** a **/\n",
+        // Two blocks in a row, but not both opened with a `BlockDocumentationOpen`.
+        "const x;\n/** a **/\n/// b\n",
+        "const x;\n/// a\n/// b\n",
+    ] {
+        let tree = file(source);
+        check_lossless(&tree, source);
+        assert!(tree.errors.is_empty(), "{source:?}: {:?}", tree.errors);
+        assert!(tree.root.documentation.is_empty(), "{source:?}");
+        assert!(attached(first_declaration(&tree), &tree).is_empty(), "{source:?}");
+    }
+}
+
+/// Two or more documentation blocks in a row with no declaration between them, all opened
+/// with `BlockDocumentationOpen` and with no declaration after the last of them, attach to
+/// the "global" object: the root of the file.
+// @lfy def/grammar/terminals/comment.lfy:Documentation
+#[test]
+fn trailing_block_documentation_blocks_attach_to_the_global_object() {
+    let source = "const x;\n/** a **/\n// c\n/** b **/\n";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    assert_eq!(attached(&tree.root, &tree), ["/** a **/", "/** b **/"]);
+    assert!(attached(first_declaration(&tree), &tree).is_empty());
+    // A whole file of nothing but documentation attaches to the "global" object too.
+    let source = "/** a **/\n/** b **/\n/** c **/\n";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    assert_eq!(attached(&tree.root, &tree), ["/** a **/", "/** b **/", "/** c **/"]);
+    // A declaration between them leaves only the run after it for the "global" object.
+    let source = "/** a **/\nconst x;\n/** b **/\n/** c **/\n";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    assert!(tree.errors.is_empty(), "{:?}", tree.errors);
+    assert_eq!(attached(&tree.root, &tree), ["/** b **/", "/** c **/"]);
+    assert_eq!(attached(first_declaration(&tree), &tree), ["/** a **/"]);
+}
+
 // triedBefore
 
 // @lfy def/parser/traits.lfy:triedBefore
@@ -1076,7 +1398,14 @@ fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
 fn the_rule_tried_first_wins_and_the_other_is_tried_only_when_it_fails() {
     let tree = file("(a) => a; (a); where (a) -> b; {} x = {};");
     let statements: Vec<&Node> = tree.root.nodes().collect();
+    // @lfy def/parser/traits.lfy:triedBefore
+    // `InlineFunction` is tried before `Group` and does not fail here, so `Group` is not
+    // tried at that index at all.
     assert!(statements[0].node(Expression::InlineFunction).is_some());
+    assert!(statements[0].find(Expression::Group).is_none());
+    // @lfy def/parser/traits.lfy:triedBefore
+    // Here `InlineFunction` fails at the same index, so `Group` is tried there.
+    assert!(statements[1].node(Expression::InlineFunction).is_none());
     assert!(statements[1].node(Expression::Group).is_some());
     let condition = statements[2].find(Statement::Condition).unwrap();
     assert_eq!(shape(condition, &tree), ["Group"]);

@@ -124,19 +124,21 @@ impl Invocation {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step {
-    Planned,       // @lfy def/cli/data.lfy:Step.planned
-    Requesting,    // @lfy def/cli/data.lfy:Step.requesting
-    Compiling,     // @lfy def/cli/data.lfy:Step.compiling
-    Checking,      // @lfy def/cli/data.lfy:Step.checking
-    Accepted,      // @lfy def/cli/data.lfy:Step.accepted
-    Rejected,      // @lfy def/cli/data.lfy:Step.rejected
-    Verifying,     // @lfy def/cli/data.lfy:Step.verifying
-    Reviewed,      // @lfy def/cli/data.lfy:Step.reviewed
-    Retrying,      // @lfy def/cli/data.lfy:Step.retrying
-    Blocked,       // @lfy def/cli/data.lfy:Step.blocked
-    Clarification, // @lfy def/cli/data.lfy:Step.clarification
-    Failed,        // @lfy def/cli/data.lfy:Step.failed
-    Finished,      // @lfy def/cli/data.lfy:Step.finished
+    Planned,         // @lfy def/cli/data.lfy:Step.planned
+    Requesting,      // @lfy def/cli/data.lfy:Step.requesting
+    Compiling,       // @lfy def/cli/data.lfy:Step.compiling
+    Checking,        // @lfy def/cli/data.lfy:Step.checking
+    Accepted,        // @lfy def/cli/data.lfy:Step.accepted
+    Rejected,        // @lfy def/cli/data.lfy:Step.rejected
+    Verifying,       // @lfy def/cli/data.lfy:Step.verifying
+    Reviewed,        // @lfy def/cli/data.lfy:Step.reviewed
+    GlobalVerifying, // @lfy def/cli/data.lfy:Step.globalVerifying
+    GlobalReviewed,  // @lfy def/cli/data.lfy:Step.globalReviewed
+    Retrying,        // @lfy def/cli/data.lfy:Step.retrying
+    Blocked,         // @lfy def/cli/data.lfy:Step.blocked
+    Clarification,   // @lfy def/cli/data.lfy:Step.clarification
+    Failed,          // @lfy def/cli/data.lfy:Step.failed
+    Finished,        // @lfy def/cli/data.lfy:Step.finished
 }
 
 #[allow(dead_code)]
@@ -152,6 +154,8 @@ impl Step {
             Step::Rejected => "rejected",
             Step::Verifying => "verifying",
             Step::Reviewed => "reviewed",
+            Step::GlobalVerifying => "globalVerifying",
+            Step::GlobalReviewed => "globalReviewed",
             Step::Retrying => "retrying",
             Step::Blocked => "blocked",
             Step::Clarification => "clarification",
@@ -171,6 +175,10 @@ impl Step {
             Step::Rejected => "a unit was rejected",
             Step::Verifying => "the verifier is running on a batch whose units were accepted",
             Step::Reviewed => "the verifier reviewed a batch",
+            Step::GlobalVerifying => {
+                "the verifier is running once on every global criterion and test"
+            }
+            Step::GlobalReviewed => "the verifier reviewed the global criteria and tests",
             Step::Retrying => "the compiler is running a batch again with the problems",
             Step::Blocked => "the compiler could not proceed",
             Step::Clarification => "the compiler asked a question",
@@ -199,7 +207,7 @@ pub struct Progress {
     /// start gives them.
     pub elapsed: f64, // @lfy def/cli/data.lfy:Progress.elapsed
     /// The detail: the reason a unit is planned, a problem, a question, the count of
-    /// batches, or for `Reviewed` the counts of satisfied, violated, and unverifiable
-    /// reviews, in that order.
+    /// batches, or for `Reviewed` and `GlobalReviewed` the counts of satisfied, violated,
+    /// and unverifiable reviews, in that order.
     pub message: String, // @lfy def/cli/data.lfy:Progress.message
 }

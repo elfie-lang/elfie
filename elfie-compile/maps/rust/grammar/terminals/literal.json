@@ -1,0 +1,1952 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "8a26952b9fd42645c08481ed2ecbd5b3551c93523248e5bb38a68d46dbedb719",
+    "markers": [
+      {
+        "column": null,
+        "end": 200,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 6,
+        "outputLine": 98,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 264,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 201,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 266,
+        "entity": null,
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 4,
+        "outputLine": 265,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 268,
+        "entity": null,
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 5,
+        "outputLine": 267,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 354,
+        "entity": "Character",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 5,
+        "outputLine": 269,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 384,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 19,
+        "outputLine": 355,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 414,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 22,
+        "outputLine": 385,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 422,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 34,
+        "outputLine": 415,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 772,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 34,
+        "outputLine": 423,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 804,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 34,
+        "outputLine": 773,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/ebnf.rs",
+    "requirements": "",
+    "signature": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+    "source": "def/grammar/terminals/literal.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "8a26952b9fd42645c08481ed2ecbd5b3551c93523248e5bb38a68d46dbedb719",
+    "markers": [
+      {
+        "column": null,
+        "end": 14,
+        "entity": "Character",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 5,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 16,
+        "entity": "Digit",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 6,
+        "outputLine": 15,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 18,
+        "entity": "HexDigit",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 7,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "Backslash",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 8,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "DoubleQuoteString.rule",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 11,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 27,
+        "entity": "SingleQuote",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 18,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 28,
+        "entity": "DoubleQuote",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 19,
+        "outputLine": 28,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 29,
+        "entity": "Backtick",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 20,
+        "outputLine": 29,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 30,
+        "entity": "ExecutionOpen",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 21,
+        "outputLine": 30,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 31,
+        "entity": "ExecutionClose",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 22,
+        "outputLine": 31,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 32,
+        "entity": "ReferenceOpen",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 23,
+        "outputLine": 32,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 35,
+        "entity": "ReferenceClose",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 24,
+        "outputLine": 33,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "BackslashEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 27,
+        "outputLine": 36,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 37,
+        "entity": "SingleQuoteEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 28,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 38,
+        "entity": "DoubleQuoteEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 29,
+        "outputLine": 38,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 39,
+        "entity": "BacktickEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 30,
+        "outputLine": 39,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "NewlineEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 31,
+        "outputLine": 40,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 41,
+        "entity": "CarriageReturnEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 32,
+        "outputLine": 41,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 42,
+        "entity": "TabEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 33,
+        "outputLine": 42,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 43,
+        "entity": "NullEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 34,
+        "outputLine": 43,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 44,
+        "entity": "ContinuationEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 35,
+        "outputLine": 44,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 46,
+        "entity": "HexEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 36,
+        "outputLine": 45,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 47,
+        "entity": "UnicodeEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 37,
+        "outputLine": 47,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 48,
+        "entity": "ExecutionOpenEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 43,
+        "outputLine": 48,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 49,
+        "entity": "ExecutionCloseEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 44,
+        "outputLine": 49,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 50,
+        "entity": "ReferenceOpenEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 45,
+        "outputLine": 50,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 53,
+        "entity": "ReferenceCloseEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 46,
+        "outputLine": 51,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "SingleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 49,
+        "outputLine": 54,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "DoubleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 50,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 58,
+        "entity": "TemplateBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 65,
+        "outputLine": 56,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 59,
+        "entity": "SingleQuoteString",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 87,
+        "outputLine": 59,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 65,
+        "entity": "DoubleQuoteString",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 88,
+        "outputLine": 60,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 70,
+        "entity": "NumberLiteral",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 11,
+        "outputLine": 66,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 76,
+        "entity": "SingleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 49,
+        "outputLine": 71,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 82,
+        "entity": "SingleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 49,
+        "outputLine": 77,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 88,
+        "entity": "DoubleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 50,
+        "outputLine": 83,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "DoubleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 50,
+        "outputLine": 89,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 108,
+        "entity": "TemplateBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 65,
+        "outputLine": 102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 133,
+        "entity": "TemplateBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 65,
+        "outputLine": 109,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 154,
+        "entity": "Character",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 5,
+        "outputLine": 134,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 167,
+        "entity": "DoubleQuoteString.rule",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 11,
+        "outputLine": 155,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 172,
+        "entity": "NumberLiteral",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 11,
+        "outputLine": 168,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 183,
+        "entity": "SingleQuote",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 18,
+        "outputLine": 173,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 221,
+        "entity": "BackslashEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 27,
+        "outputLine": 184,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 230,
+        "entity": "UnicodeEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 37,
+        "outputLine": 222,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 257,
+        "entity": "SingleQuoteBody",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 49,
+        "outputLine": 231,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 268,
+        "entity": "SingleQuoteString",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 87,
+        "outputLine": 258,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/terminals/literal.rs",
+    "requirements": "",
+    "signature": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+    "source": "def/grammar/terminals/literal.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "8a26952b9fd42645c08481ed2ecbd5b3551c93523248e5bb38a68d46dbedb719",
+    "markers": [
+      {
+        "column": null,
+        "end": 22,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 4,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 5,
+        "outputLine": 23,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 6,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 33,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 7,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 42,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 10,
+        "outputLine": 34,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 15,
+        "outputLine": 43,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 56,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 70,
+        "outputLine": 53,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 59,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 11,
+        "outputLine": 57,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 13,
+        "outputLine": 60,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 61,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 14,
+        "outputLine": 61,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 77,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 15,
+        "outputLine": 62,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 83,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 19,
+        "outputLine": 78,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 89,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 19,
+        "outputLine": 84,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 96,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 19,
+        "outputLine": 90,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 167,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 124,
+        "outputLine": 97,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 178,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 26,
+        "outputLine": 168,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 189,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 30,
+        "outputLine": 179,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 191,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 34,
+        "outputLine": 190,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 194,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 35,
+        "outputLine": 192,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 196,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 36,
+        "outputLine": 195,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 204,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 36,
+        "outputLine": 197,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 213,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 40,
+        "outputLine": 205,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 214,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 48,
+        "outputLine": 214,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 220,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 44,
+        "outputLine": 215,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 223,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 50,
+        "outputLine": 221,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 227,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 57,
+        "outputLine": 224,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 234,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 59,
+        "outputLine": 228,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 253,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 63,
+        "outputLine": 235,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 255,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 51,
+        "outputLine": 254,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 257,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 52,
+        "outputLine": 256,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 259,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 53,
+        "outputLine": 258,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 261,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 54,
+        "outputLine": 260,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 268,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 55,
+        "outputLine": 262,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 269,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 51,
+        "outputLine": 269,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 270,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 52,
+        "outputLine": 270,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 271,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 53,
+        "outputLine": 271,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 272,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 54,
+        "outputLine": 272,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 278,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 55,
+        "outputLine": 273,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 285,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 59,
+        "outputLine": 279,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 289,
+        "entity": "HexEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 36,
+        "outputLine": 286,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 295,
+        "entity": "UnicodeEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 37,
+        "outputLine": 290,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 302,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 60,
+        "outputLine": 296,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 311,
+        "entity": "UnicodeEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 37,
+        "outputLine": 303,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 336,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 65,
+        "outputLine": 312,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 360,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 60,
+        "outputLine": 337,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 362,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 77,
+        "outputLine": 361,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 368,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 78,
+        "outputLine": 363,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 372,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 70,
+        "outputLine": 369,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 374,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 71,
+        "outputLine": 373,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 395,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 73,
+        "outputLine": 375,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 419,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 79,
+        "outputLine": 396,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 424,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 40,
+        "outputLine": 420,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 426,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 84,
+        "outputLine": 425,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 428,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 96,
+        "outputLine": 427,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 434,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 98,
+        "outputLine": 429,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 435,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 108,
+        "outputLine": 435,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 437,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 100,
+        "outputLine": 436,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 448,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 112,
+        "outputLine": 438,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 449,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 133,
+        "outputLine": 449,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 458,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 119,
+        "outputLine": 450,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 462,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 44,
+        "outputLine": 459,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 466,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 63,
+        "outputLine": 463,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 468,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 84,
+        "outputLine": 467,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 472,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 100,
+        "outputLine": 469,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 479,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 112,
+        "outputLine": 473,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 503,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 119,
+        "outputLine": 480,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 511,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 103,
+        "outputLine": 504,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 541,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 28,
+        "outputLine": 512,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 547,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 40,
+        "outputLine": 542,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 556,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 44,
+        "outputLine": 548,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 565,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 48,
+        "outputLine": 557,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 578,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 50,
+        "outputLine": 566,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 584,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 51,
+        "outputLine": 579,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 590,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 52,
+        "outputLine": 585,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 596,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 53,
+        "outputLine": 591,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 602,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 54,
+        "outputLine": 597,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 614,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 55,
+        "outputLine": 603,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 620,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 57,
+        "outputLine": 615,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 626,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 59,
+        "outputLine": 621,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 632,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 63,
+        "outputLine": 627,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 638,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 84,
+        "outputLine": 633,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 644,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 96,
+        "outputLine": 639,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 650,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 98,
+        "outputLine": 645,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 659,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 100,
+        "outputLine": 651,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 665,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 112,
+        "outputLine": 660,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 683,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 119,
+        "outputLine": 666,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 696,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 26,
+        "outputLine": 684,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 704,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 30,
+        "outputLine": 697,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 720,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 34,
+        "outputLine": 705,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 735,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 11,
+        "outputLine": 721,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 745,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 44,
+        "outputLine": 736,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 771,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 51,
+        "outputLine": 746,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 783,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 60,
+        "outputLine": 772,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 788,
+        "entity": "UnicodeEscape",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 37,
+        "outputLine": 784,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 841,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 65,
+        "outputLine": 789,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 873,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 103,
+        "outputLine": 842,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/traits.rs",
+    "requirements": "",
+    "signature": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+    "source": "def/grammar/terminals/literal.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "8a26952b9fd42645c08481ed2ecbd5b3551c93523248e5bb38a68d46dbedb719",
+    "markers": [
+      {
+        "column": null,
+        "end": 30,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "matches",
+        "file": "def/lexer/main.lfy",
+        "line": 11,
+        "outputLine": 31,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 43,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 48,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 44,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 49,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 49,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 59,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 50,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 96,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 60,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 97,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 102,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 103,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 103,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 104,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 104,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 128,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 105,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 132,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 129,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 136,
+        "entity": null,
+        "file": "def/lexer/traits.lfy",
+        "line": 37,
+        "outputLine": 133,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 139,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 137,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 141,
+        "entity": null,
+        "file": "def/lexer/traits.lfy",
+        "line": 14,
+        "outputLine": 140,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 148,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 142,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 150,
+        "entity": null,
+        "file": "def/lexer/traits.lfy",
+        "line": 37,
+        "outputLine": 149,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 168,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 151,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 183,
+        "entity": "BlockDocumentationOpen",
+        "file": "def/grammar/terminals/comment.lfy",
+        "line": 11,
+        "outputLine": 169,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 196,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 184,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 202,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 197,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 217,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 203,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 233,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 218,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 262,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 234,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 264,
+        "entity": "push",
+        "file": "def/lexer/main.lfy",
+        "line": 15,
+        "outputLine": 263,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 270,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 265,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 271,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 271,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 278,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 272,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 294,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 279,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 297,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 295,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 299,
+        "entity": null,
+        "file": "def/grammar/terminals/space.lfy",
+        "line": 4,
+        "outputLine": 298,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 301,
+        "entity": "NumberLiteral",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 11,
+        "outputLine": 300,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 303,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 63,
+        "outputLine": 302,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 360,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 304,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 366,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 361,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 381,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 367,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 396,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 382,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 406,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 397,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 430,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 407,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 443,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 431,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 466,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 444,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 498,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 467,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 509,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 499,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 517,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 510,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 583,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 518,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 648,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 584,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 681,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 649,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 727,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 682,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 785,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 728,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 823,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 786,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 845,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 824,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 867,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 846,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 878,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 868,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 931,
+        "entity": "BlockDocumentationOpen",
+        "file": "def/grammar/terminals/comment.lfy",
+        "line": 11,
+        "outputLine": 879,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 971,
+        "entity": null,
+        "file": "def/lexer/traits.lfy",
+        "line": 37,
+        "outputLine": 932,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1013,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 972,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/lexer/mod.rs",
+    "requirements": "",
+    "signature": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+    "source": "def/grammar/terminals/literal.lfy",
+    "target": "rust"
+  }
+]

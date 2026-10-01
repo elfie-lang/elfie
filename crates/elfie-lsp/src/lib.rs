@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use elfie_core::format;
-use elfie_core::model::Criterion;
+use elfie_core::model::{Criterion, SymbolKind};
 use elfie_core::query::{self, Position, Range, SemanticToken, TokenModifier, TokenType};
 use elfie_core::workspace;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -41,9 +41,9 @@ const NOTHING_DECLARED: &str = "nothing is declared here";
 ///
 /// Speaks JSON-RPC 2.0 with the protocol's framing over standard input and output;
 /// nothing else is ever written to standard output, and logging goes to standard error.
-/// Requests are answered in the order received; a request that fails inside the server
-/// yields an error response and the server goes on. Returns 0 when exit follows shutdown
-/// and 1 when exit arrives without it.
+/// Requests are answered in the order received. A request that fails inside the server
+/// yields an error response and the server goes on. Exit after shutdown returns 0; exit
+/// without shutdown before it returns 1.
 // @lfy def/lsp/main.lfy:serve
 pub fn serve(root: Option<&Path>) -> i32 {
     let root = root.map(Path::to_path_buf);
@@ -77,7 +77,8 @@ where
     exit_code(shared.shut_down.load(Ordering::SeqCst))
 }
 
-/// The exit code: 0 when exit follows shutdown, 1 when exit arrives without it.
+/// The exit code: 0 when exit arrives after shutdown, 1 when exit arrives without shutdown
+/// before it.
 // Decision: the input stream ending without an exit notification is treated as exit, so
 // an editor that dies leaves the same code its exit would have.
 // @lfy def/lsp/main.lfy:serve
@@ -320,34 +321,16 @@ async fn publish(shared: Arc<Shared>, client: Client, generation: u64) {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    /// The session's workspace is `load` of the root given to `serve`, or of the client's
-    /// first workspace folder, or of the current directory, in that order of availability;
-    /// the encoding is utf-8 when the client offers it, utf-16 otherwise, and the response
-    /// says which; the response advertises hover, definition, references, completion,
-    /// rename with prepare, document symbols, workspace symbols, document formatting, and
-    /// full text document synchronization.
+    /// The session's workspace is `load` of the root given to `serve` when it was given
+    /// one, of the client's first workspace folder when the client names one, and of the
+    /// current directory otherwise. The encoding is utf-8 when the client offers it and
+    /// utf-16 when it does not, and the response says which; the response advertises hover,
+    /// definition, references, completion, rename with prepare, document symbols, workspace
+    /// symbols, document formatting, and semantic tokens for a whole document, and full
+    /// text document synchronization.
     // @lfy def/lsp/main.lfy:serve
     async fn initialize(&self, params: lsp::InitializeParams) -> Result<lsp::InitializeResult> {
-        // Decision: the deprecated `rootUri` is consulted after the workspace folders and
-        // before the current directory, because older clients send nothing else.
-        // @lfy def/lsp/main.lfy:serve
-        let root = self
-            .shared
-            .root
-            .clone()
-            .or_else(|| {
-                params
-                    .workspace_folders
-                    .as_ref()?
-                    .first()?
-                    .uri
-                    .to_file_path()
-                    .ok()
-            })
-            .or_else(|| root_uri(&params)?.to_file_path().ok())
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| PathBuf::from("."));
-        let root = std::path::absolute(&root).unwrap_or(root);
+        let root = chosen_root(self.shared.root.as_deref(), &params);
         // @lfy def/lsp/main.lfy:serve
         let encoding = negotiate(
             params
@@ -478,10 +461,11 @@ impl LanguageServer for Backend {
         }
     }
 
-    /// `hoverAt` as markdown: a code line of the kind, identifier, a colon, and the type,
-    /// then the owner in parentheses when there is one; then the definition; then the
-    /// documentation; then each criterion as a list item reading its situations then its
-    /// behaviors.
+    /// `hoverAt` as markdown: a code line of the kind, identifier, a colon, and the type;
+    /// then the definition; then the documentation; then each criterion as a list item
+    /// reading its situations then its behaviors. The code line ends with the owner in
+    /// parentheses when `Hover.owner` is set, and the traits follow the definition on one
+    /// line when `Hover.traits` is not empty.
     // @lfy def/lsp/main.lfy:serve
     async fn hover(&self, params: lsp::HoverParams) -> Result<Option<lsp::Hover>> {
         let at = params.text_document_position_params;
@@ -555,8 +539,8 @@ impl LanguageServer for Backend {
         })
     }
 
-    /// The range of the token under the position when `symbolAt` finds a symbol, and an
-    /// error saying nothing is declared here otherwise.
+    /// The range of the token under the position when `symbolAt` finds a symbol; an error
+    /// saying nothing is declared here when `symbolAt` finds no symbol.
     // @lfy def/lsp/main.lfy:serve
     async fn prepare_rename(
         &self,
@@ -577,8 +561,8 @@ impl LanguageServer for Backend {
             .ok_or_else(|| Error::invalid_params(NOTHING_DECLARED))
     }
 
-    /// `renameAt` as one workspace edit with the edits grouped by file, or an error
-    /// response carrying the reason it returned.
+    /// `renameAt` as one workspace edit with the edits grouped by file when it returns
+    /// edits; an error response carrying the reason it returned when it returns a reason.
     // @lfy def/lsp/main.lfy:serve
     async fn rename(&self, params: lsp::RenameParams) -> Result<Option<lsp::WorkspaceEdit>> {
         let at = params.text_document_position;
@@ -609,8 +593,11 @@ impl LanguageServer for Backend {
         }
     }
 
-    /// `outlineOf` nested as the protocol's document symbols, with kinds mapped as
-    /// completion maps them.
+    /// `outlineOf` nested as the protocol's document symbols, with each kind mapped to the
+    /// LSP 3.17 SymbolKind: data and type to Struct, trait to Interface, enum to Enum,
+    /// enumMember to EnumMember, function and agentFunction to Function, member to Field,
+    /// typeParameter to TypeParameter, module to Module, and variable, loopVariable,
+    /// parameter, alias, and external to Variable.
     // @lfy def/lsp/main.lfy:serve
     async fn document_symbol(
         &self,
@@ -648,10 +635,6 @@ impl LanguageServer for Backend {
         })
     }
 
-    /// One edit replacing the whole document with `format` of its tree when that differs,
-    /// no edits when it is the same, and no edits with a log message when the tree has
-    /// errors.
-    // @lfy def/lsp/main.lfy:serve
     /// `semanticTokensOf` encoded in the protocol's relative form.
     // @lfy def/lsp/main.lfy:serve
     async fn semantic_tokens_full(
@@ -668,6 +651,10 @@ impl LanguageServer for Backend {
         })
     }
 
+    /// One edit replacing the whole document with `format` of its tree when the tree has no
+    /// errors and that differs from the document; no edits when the tree has no errors and
+    /// it is the same; no edits, with a log message, when the tree has errors.
+    // @lfy def/lsp/main.lfy:serve
     async fn formatting(
         &self,
         params: lsp::DocumentFormattingParams,
@@ -713,6 +700,32 @@ impl LanguageServer for Backend {
 #[allow(deprecated)]
 fn root_uri(params: &lsp::InitializeParams) -> Option<&Url> {
     params.root_uri.as_ref()
+}
+
+/// The project the session loads: the root `serve` was given when it was given one, the
+/// client's first workspace folder when the client names one, and the current directory
+/// otherwise.
+// Decision: the deprecated `rootUri` is consulted after the workspace folders and before
+// the current directory, because older clients send nothing else.
+// @lfy def/lsp/main.lfy:serve
+fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf {
+    let root = given
+        .map(Path::to_path_buf)
+        // @lfy def/lsp/main.lfy:serve
+        .or_else(|| {
+            params
+                .workspace_folders
+                .as_ref()?
+                .first()?
+                .uri
+                .to_file_path()
+                .ok()
+        })
+        .or_else(|| root_uri(params)?.to_file_path().ok())
+        // @lfy def/lsp/main.lfy:serve
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("."));
+    std::path::absolute(&root).unwrap_or(root)
 }
 
 /// The encoding agreed at initialization: utf-8 when the client offers it, utf-16
@@ -795,6 +808,10 @@ fn encode_tokens(tokens: &[SemanticToken], protocol: &[lsp::Range]) -> Vec<lsp::
         let line = range.start.line;
         let start = range.start.character;
         let delta_line = line - previous_line;
+        // The start of a token on the same line as the one before it is the difference from
+        // that one's start; the start of the first token, or of one on a different line, is
+        // the start itself.
+        // @lfy def/lsp/main.lfy:serve
         let delta_start = if delta_line == 0 { start - previous_start } else { start };
         let length = range.end.character.saturating_sub(range.start.character);
         let modifiers = token.modifiers.iter().fold(0u32, |bits, m| bits | (1 << m.index()));
@@ -995,7 +1012,9 @@ impl Converter {
         }
     }
 
-    /// Every range sent is a `Range` converted this way.
+    /// Every range sent is a `Range` whose positions are converted to a protocol line of
+    /// the position's line minus one and a protocol character of the count of the session's
+    /// encoding's code units before the position's column on that line.
     // @lfy def/lsp/main.lfy:serve
     fn range(&mut self, session: &Session, range: &Range) -> lsp::Range {
         lsp::Range {
@@ -1069,10 +1088,11 @@ fn severity(severity: query::Severity) -> lsp::DiagnosticSeverity {
     }
 }
 
-/// A hover as markdown: a code line of the kind, identifier, a colon, and the type, then
-/// the owner in parentheses when there is one; then the definition; then the traits on one
-/// line when there are any, so a native thing shows `builtin`; then the documentation; then
-/// each criterion as a list item reading its situations then its behaviors.
+/// A hover as markdown: a code line of the kind, identifier, a colon, and the type; then
+/// the definition; then the documentation; then each criterion as a list item reading its
+/// situations then its behaviors. The code line ends with the owner in parentheses when
+/// there is one, after the type; the traits follow the definition on one line when there
+/// are any, before the documentation, so a native thing shows `builtin`.
 // @lfy def/lsp/main.lfy:serve
 fn hover_markdown(hover: &query::Hover) -> String {
     let mut sections = Vec::new();
@@ -1093,6 +1113,7 @@ fn hover_markdown(hover: &query::Hover) -> String {
     }
     // Decision: the traits are one line of their identifiers in application order, joined by
     // a comma, with nothing around them; the criterion names no label.
+    // @lfy def/lsp/main.lfy:serve
     if !hover.traits.is_empty() {
         sections.push(hover.traits.join(", "));
     }
@@ -1162,21 +1183,28 @@ fn completion_kind(kind: &str) -> lsp::CompletionItemKind {
     }
 }
 
-/// A symbol kind mapped as completion maps them.
-// Decision: the protocol has no Text or Keyword symbol kind, so what completion maps to
-// Text or Keyword is a String symbol.
+/// An outline kind mapped to the LSP 3.17 SymbolKind: data and type to Struct, trait to
+/// Interface, enum to Enum, enumMember to EnumMember, function and agentFunction to
+/// Function, member to Field, typeParameter to TypeParameter, module to Module, and
+/// variable, loopVariable, parameter, alias, and external to Variable.
+// Decision: the kind is the enum, not its spelling, so the mapping is exhaustive over the
+// kinds an outline can carry and no kind falls through to one the criterion does not name.
 // @lfy def/lsp/main.lfy:serve
-fn symbol_kind(kind: &str) -> lsp::SymbolKind {
+fn symbol_kind(kind: SymbolKind) -> lsp::SymbolKind {
     match kind {
-        "path" => lsp::SymbolKind::FILE,
-        "data" | "type" => lsp::SymbolKind::STRUCT,
-        "trait" => lsp::SymbolKind::INTERFACE,
-        "enum" => lsp::SymbolKind::ENUM,
-        "function" | "agentFunction" => lsp::SymbolKind::FUNCTION,
-        "member" => lsp::SymbolKind::FIELD,
-        "variable" | "parameter" => lsp::SymbolKind::VARIABLE,
-        "module" => lsp::SymbolKind::MODULE,
-        _ => lsp::SymbolKind::STRING,
+        SymbolKind::Data | SymbolKind::Type => lsp::SymbolKind::STRUCT,
+        SymbolKind::Trait => lsp::SymbolKind::INTERFACE,
+        SymbolKind::Enum => lsp::SymbolKind::ENUM,
+        SymbolKind::EnumMember => lsp::SymbolKind::ENUM_MEMBER,
+        SymbolKind::Function | SymbolKind::AgentFunction => lsp::SymbolKind::FUNCTION,
+        SymbolKind::Member => lsp::SymbolKind::FIELD,
+        SymbolKind::TypeParameter => lsp::SymbolKind::TYPE_PARAMETER,
+        SymbolKind::Module => lsp::SymbolKind::MODULE,
+        SymbolKind::Variable
+        | SymbolKind::LoopVariable
+        | SymbolKind::Parameter
+        | SymbolKind::Alias
+        | SymbolKind::External => lsp::SymbolKind::VARIABLE,
     }
 }
 
@@ -1196,7 +1224,7 @@ fn document_symbol(
     lsp::DocumentSymbol {
         name: outline.name.clone(),
         detail: None,
-        kind: symbol_kind(outline.kind.as_str()),
+        kind: symbol_kind(outline.kind),
         tags: None,
         deprecated: None,
         range: converter.range(session, &outline.range),
@@ -1211,7 +1239,7 @@ fn document_symbol(
 fn symbol_information(outline: &query::Outline, location: lsp::Location) -> lsp::SymbolInformation {
     lsp::SymbolInformation {
         name: outline.name.clone(),
-        kind: symbol_kind(outline.kind.as_str()),
+        kind: symbol_kind(outline.kind),
         tags: None,
         deprecated: None,
         location,
@@ -1339,6 +1367,31 @@ mod tests {
 
     // @lfy def/lsp/main.lfy:serve
     #[test]
+    fn the_given_root_beats_the_first_folder_which_beats_the_current_directory() {
+        let folder = |path: &str| lsp::WorkspaceFolder {
+            uri: Url::from_file_path(path).unwrap(),
+            name: path.to_string(),
+        };
+        let named = lsp::InitializeParams {
+            workspace_folders: Some(vec![
+                folder("/tmp/elfie-first"),
+                folder("/tmp/elfie-second"),
+            ]),
+            ..Default::default()
+        };
+        let given = PathBuf::from("/tmp/elfie-given");
+        assert_eq!(chosen_root(Some(&given), &named), given);
+        assert_eq!(chosen_root(None, &named), PathBuf::from("/tmp/elfie-first"));
+        let none = lsp::InitializeParams::default();
+        assert_eq!(chosen_root(Some(&given), &none), given);
+        assert_eq!(
+            chosen_root(None, &none),
+            std::env::current_dir().expect("a current directory")
+        );
+    }
+
+    // @lfy def/lsp/main.lfy:serve
+    #[test]
     fn utf8_is_agreed_only_when_offered() {
         assert_eq!(negotiate(None), Encoding::Utf16);
         assert_eq!(
@@ -1411,6 +1464,7 @@ mod tests {
         assert_eq!(hover_markdown(&bare), "```elfie\ndata A (Box)\n```");
     }
 
+    /// Every completion kind maps to the protocol's kind the completion criterion names.
     // @lfy def/lsp/main.lfy:serve
     #[test]
     fn kinds_map_to_the_protocols_kinds() {
@@ -1433,14 +1487,32 @@ mod tests {
         for (kind, expected) in cases {
             assert_eq!(completion_kind(kind), expected, "{kind}");
         }
-        assert_eq!(symbol_kind("data"), lsp::SymbolKind::STRUCT);
-        assert_eq!(symbol_kind("trait"), lsp::SymbolKind::INTERFACE);
-        assert_eq!(symbol_kind("enum"), lsp::SymbolKind::ENUM);
-        assert_eq!(symbol_kind("function"), lsp::SymbolKind::FUNCTION);
-        assert_eq!(symbol_kind("member"), lsp::SymbolKind::FIELD);
-        assert_eq!(symbol_kind("variable"), lsp::SymbolKind::VARIABLE);
-        assert_eq!(symbol_kind("module"), lsp::SymbolKind::MODULE);
-        assert_eq!(symbol_kind("alias"), lsp::SymbolKind::STRING);
+    }
+
+    /// Every outline kind maps to the SymbolKind the document symbol criterion names.
+    // @lfy def/lsp/main.lfy:serve
+    #[test]
+    fn outline_kinds_map_to_the_lsp_symbol_kinds() {
+        let cases = [
+            (SymbolKind::Data, lsp::SymbolKind::STRUCT),
+            (SymbolKind::Type, lsp::SymbolKind::STRUCT),
+            (SymbolKind::Trait, lsp::SymbolKind::INTERFACE),
+            (SymbolKind::Enum, lsp::SymbolKind::ENUM),
+            (SymbolKind::EnumMember, lsp::SymbolKind::ENUM_MEMBER),
+            (SymbolKind::Function, lsp::SymbolKind::FUNCTION),
+            (SymbolKind::AgentFunction, lsp::SymbolKind::FUNCTION),
+            (SymbolKind::Member, lsp::SymbolKind::FIELD),
+            (SymbolKind::TypeParameter, lsp::SymbolKind::TYPE_PARAMETER),
+            (SymbolKind::Module, lsp::SymbolKind::MODULE),
+            (SymbolKind::Variable, lsp::SymbolKind::VARIABLE),
+            (SymbolKind::LoopVariable, lsp::SymbolKind::VARIABLE),
+            (SymbolKind::Parameter, lsp::SymbolKind::VARIABLE),
+            (SymbolKind::Alias, lsp::SymbolKind::VARIABLE),
+            (SymbolKind::External, lsp::SymbolKind::VARIABLE),
+        ];
+        for (kind, expected) in cases {
+            assert_eq!(symbol_kind(kind), expected, "{kind}");
+        }
     }
 
     // @lfy def/lsp/main.lfy:serve
@@ -1467,6 +1539,9 @@ mod tests {
             .iter()
             .map(|(file, diagnostics)| (file.as_str(), diagnostics.len()))
             .collect();
+        // `def/a.lfy` did not change, so it is not published again; `def/gone.lfy` left the
+        // program, so its diagnostics are published empty.
+        // @lfy def/lsp/main.lfy:serve
         assert_eq!(
             files,
             vec![("def/b.lfy", 1), ("def/new.lfy", 1), ("def/gone.lfy", 0)]
@@ -1543,8 +1618,8 @@ mod tests {
             self.send(message).await;
         }
 
-        /// Sends a request and answers with its response.
-        async fn request(&mut self, method: &str, params: Value) -> Value {
+        /// Sends a request without waiting for its response; the id it was sent with.
+        async fn send_request(&mut self, method: &str, params: Value) -> i64 {
             self.next_id += 1;
             let id = self.next_id;
             let mut message = json!({ "jsonrpc": "2.0", "id": id, "method": method });
@@ -1552,6 +1627,12 @@ mod tests {
                 message["params"] = params;
             }
             self.send(message).await;
+            id
+        }
+
+        /// Sends a request and answers with its response.
+        async fn request(&mut self, method: &str, params: Value) -> Value {
+            let id = self.send_request(method, params).await;
             self.wait_for(|message| message.get("id") == Some(&json!(id)))
                 .await
         }
@@ -1686,6 +1767,63 @@ mod tests {
         assert_eq!(editor.exit(true).await, 0);
     }
 
+    /// Several requests sent at once are answered in the order they were received, and a
+    /// request that fails is one error response among them with the server going on.
+    // @lfy def/lsp/main.lfy:serve
+    #[tokio::test]
+    async fn requests_are_answered_in_the_order_received() {
+        let root = fixture(&[("def/a.lfy", "d A {}\nconst y = A;\n")]);
+        let mut editor = Editor::connect(root);
+        editor.initialize(json!({})).await;
+        let a = editor.uri("def/a.lfy");
+        let at = |line: u32, character: u32| {
+            json!({ "textDocument": { "uri": a.clone() }, "position": { "line": line, "character": character } })
+        };
+        let mut sent = Vec::new();
+        sent.push(
+            editor
+                .send_request(
+                    "textDocument/documentSymbol",
+                    json!({ "textDocument": { "uri": a.clone() } }),
+                )
+                .await,
+        );
+        // Nothing is declared on the keyword, so this one is the error response.
+        sent.push(
+            editor
+                .send_request("textDocument/prepareRename", at(1, 1))
+                .await,
+        );
+        sent.push(editor.send_request("textDocument/hover", at(0, 2)).await);
+        sent.push(
+            editor
+                .send_request("textDocument/definition", at(1, 10))
+                .await,
+        );
+        sent.push(
+            editor
+                .send_request("workspace/symbol", json!({ "query": "A" }))
+                .await,
+        );
+        let mut answered = Vec::new();
+        let mut failed = Vec::new();
+        while answered.len() < sent.len() {
+            let response = editor
+                .wait_for(|message| {
+                    message.get("id").is_some() && message.get("method").is_none()
+                })
+                .await;
+            let id = response["id"].as_i64().expect("a response id");
+            if response.get("error").is_some() {
+                failed.push(id);
+            }
+            answered.push(id);
+        }
+        assert_eq!(answered, sent);
+        assert_eq!(failed, vec![sent[1]]);
+        editor.exit(true).await;
+    }
+
     // @lfy def/lsp/main.lfy:serve
     #[tokio::test]
     async fn exit_without_shutdown_is_one() {
@@ -1734,6 +1872,18 @@ mod tests {
         assert_eq!(
             changes[b.as_str()],
             json!([{ "range": { "start": { "line": 1, "character": 10 }, "end": { "line": 1, "character": 11 } }, "newText": "B" }])
+        );
+
+        // A rename `renameAt` refuses is an error response carrying the reason it returned.
+        // @lfy def/lsp/main.lfy:serve
+        let mut keyword = at.clone();
+        keyword["newName"] = json!("const");
+        let refused = editor.request("textDocument/rename", keyword).await;
+        assert!(
+            refused["error"]["message"]
+                .as_str()
+                .is_some_and(|reason| reason.contains("const is a keyword")),
+            "{refused}"
         );
 
         // Nothing is declared on the keyword, so prepare and rename are errors.
@@ -1871,6 +2021,10 @@ mod tests {
         ];
         let encoded = encode_tokens(&tokens, &[range(0, 2, 3), range(0, 8, 9), range(2, 6, 7)]);
         let flat: Vec<(u32, u32, u32, u32, u32)> = encoded.iter().map(|t| (t.delta_line, t.delta_start, t.length, t.token_type, t.token_modifiers_bitset)).collect();
+        // The first token's start is the start itself, the second is on the same line so its
+        // start is the difference from the one before, and the third is on another line so
+        // its start is the start itself again.
+        // @lfy def/lsp/main.lfy:serve
         assert_eq!(flat, vec![(0, 2, 1, 1, 0b11), (0, 6, 1, 10, 1 << 4), (2, 6, 1, 9, 0)]);
         let legend = legend();
         assert_eq!(legend.token_types[1].as_str(), "data");

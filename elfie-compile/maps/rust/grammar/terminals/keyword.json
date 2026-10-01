@@ -1,0 +1,602 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/precedence.lfy": "3f2400cb983ea062868eb5df5f7435a8de854f4a01fd4e66d25bda993cc2d30c",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "6128bdb81fd2daa0a191b6ff35f1cb89d56750a9a41a16f04dd490f9aa33f32d",
+    "markers": [
+      {
+        "column": null,
+        "end": 11,
+        "entity": "AgentDataKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 5,
+        "outputLine": 11,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 12,
+        "entity": "AgentFunctionKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 6,
+        "outputLine": 12,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 13,
+        "entity": "FunctionKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 7,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 14,
+        "entity": "TraitKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 8,
+        "outputLine": 14,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 15,
+        "entity": "TypeKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 9,
+        "outputLine": 15,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 16,
+        "entity": "EnumKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 10,
+        "outputLine": 16,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 17,
+        "entity": "Keyword.rule",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 11,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 18,
+        "entity": "ConstKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 12,
+        "outputLine": 18,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 19,
+        "entity": "LetKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 13,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "ExternalKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 14,
+        "outputLine": 20,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "UseKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 15,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": "IsKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 18,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 25,
+        "entity": "ExtendsKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 19,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "AsKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 20,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 27,
+        "entity": "WithKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 21,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 28,
+        "entity": "WhereKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 22,
+        "outputLine": 28,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 29,
+        "entity": "AndKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 23,
+        "outputLine": 29,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 30,
+        "entity": "OrKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 24,
+        "outputLine": 30,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 33,
+        "entity": "DefaultKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 25,
+        "outputLine": 31,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 34,
+        "entity": "IfKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 28,
+        "outputLine": 34,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 35,
+        "entity": "ElseKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 29,
+        "outputLine": 35,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "ForKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 30,
+        "outputLine": 36,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 37,
+        "entity": "InKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 31,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 38,
+        "entity": "OfKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 32,
+        "outputLine": 38,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 39,
+        "entity": "FromKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 33,
+        "outputLine": 39,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "WhileKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 34,
+        "outputLine": 40,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 41,
+        "entity": "LoopKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 35,
+        "outputLine": 41,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 42,
+        "entity": "BreakKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 36,
+        "outputLine": 42,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 43,
+        "entity": "ContinueKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 37,
+        "outputLine": 43,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 44,
+        "entity": "ReturnKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 38,
+        "outputLine": 44,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 45,
+        "entity": "MatchKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 39,
+        "outputLine": 45,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 46,
+        "entity": "MatchallKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 40,
+        "outputLine": 46,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 47,
+        "entity": "AsyncKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 41,
+        "outputLine": 47,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 48,
+        "entity": "AwaitKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 42,
+        "outputLine": 48,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 51,
+        "entity": "AceKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 43,
+        "outputLine": 49,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": "NullKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 46,
+        "outputLine": 52,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 53,
+        "entity": "UndefinedKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 47,
+        "outputLine": 53,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "TrueKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 48,
+        "outputLine": 54,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "FalseKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 49,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 56,
+        "entity": "BooleanKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 50,
+        "outputLine": 56,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 57,
+        "entity": "NumberKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 51,
+        "outputLine": 57,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 58,
+        "entity": "StringKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 52,
+        "outputLine": 58,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 61,
+        "entity": "ObjectKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 53,
+        "outputLine": 59,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 62,
+        "entity": "AbstractKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 56,
+        "outputLine": 62,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 63,
+        "entity": "CaseKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 57,
+        "outputLine": 63,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 64,
+        "entity": "ClassKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 58,
+        "outputLine": 64,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 65,
+        "entity": "ImplKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 59,
+        "outputLine": 65,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 66,
+        "entity": "InterfaceKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 60,
+        "outputLine": 66,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "NewKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 61,
+        "outputLine": 67,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 68,
+        "entity": "ModuleKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 62,
+        "outputLine": 68,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 69,
+        "entity": "PrivateKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 63,
+        "outputLine": 69,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 70,
+        "entity": "PublicKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 64,
+        "outputLine": 70,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 71,
+        "entity": "SelfKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 65,
+        "outputLine": 71,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 72,
+        "entity": "StaticKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 66,
+        "outputLine": 72,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 73,
+        "entity": "SuperKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 67,
+        "outputLine": 73,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 74,
+        "entity": "SwitchKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 68,
+        "outputLine": 74,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "ThenKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 69,
+        "outputLine": 75,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 76,
+        "entity": "TypeofKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 70,
+        "outputLine": 76,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 79,
+        "entity": "YieldKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 71,
+        "outputLine": 77,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 85,
+        "entity": "Keyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 73,
+        "outputLine": 80,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 158,
+        "entity": "Keyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 73,
+        "outputLine": 86,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 171,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 45,
+        "outputLine": 159,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 194,
+        "entity": "AgentDataKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 5,
+        "outputLine": 172,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 220,
+        "entity": "AbstractKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 56,
+        "outputLine": 195,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 236,
+        "entity": "IsKeyword",
+        "file": "def/grammar/terminals/keyword.lfy",
+        "line": 18,
+        "outputLine": 221,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/terminals/keyword.rs",
+    "requirements": "",
+    "signature": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
+    "source": "def/grammar/terminals/keyword.lfy",
+    "target": "rust"
+  }
+]

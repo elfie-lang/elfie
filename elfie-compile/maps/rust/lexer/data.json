@@ -1,0 +1,205 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "4c36b4ac490beeed15df570d9d3b258c698763aff11691df734201b2a33359ff",
+    "markers": [
+      {
+        "column": null,
+        "end": 18,
+        "entity": "Token",
+        "file": "def/lexer/data.lfy",
+        "line": 3,
+        "outputLine": 14,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "Token.rule",
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "Token.raw",
+        "file": "def/lexer/data.lfy",
+        "line": 5,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 25,
+        "entity": "Token.value",
+        "file": "def/lexer/data.lfy",
+        "line": 6,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 27,
+        "entity": "Token.file",
+        "file": "def/lexer/data.lfy",
+        "line": 7,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 29,
+        "entity": "Token.line",
+        "file": "def/lexer/data.lfy",
+        "line": 8,
+        "outputLine": 28,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 34,
+        "entity": "Token.column",
+        "file": "def/lexer/data.lfy",
+        "line": 9,
+        "outputLine": 30,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "Token.rule",
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "outputLine": 35,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 53,
+        "entity": "Token",
+        "file": "def/lexer/data.lfy",
+        "line": 3,
+        "outputLine": 41,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 62,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 54,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 76,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 63,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 77,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 98,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 88,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 99,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 103,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 108,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 104,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 155,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 109,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 166,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 156,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 184,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 167,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 199,
+        "entity": "ModeStack",
+        "file": "def/lexer/data.lfy",
+        "line": 18,
+        "outputLine": 185,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 224,
+        "entity": "Token.rule",
+        "file": "def/lexer/data.lfy",
+        "line": 4,
+        "outputLine": 200,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/lexer/data.rs",
+    "requirements": "",
+    "signature": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+    "source": "def/lexer/data.lfy",
+    "target": "rust"
+  }
+]

@@ -1,6 +1,7 @@
 //! Compiled from `def/model/main.lfy` and `def/model/traits.lfy`: the declare, type, and
-//! resolve passes of binding. The apply pass lives in `eval.rs`, which executes trait and
-//! declaration bodies.
+//! resolve passes of binding. The expand pass is the interpreter's, which `bind` calls in
+//! place of a pass of its own; `eval.rs` runs what is left of a trait or declaration body
+//! for the resolve pass.
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -239,6 +240,10 @@ impl Binder {
         Some(id)
     }
 
+    /// One usage of the layer the node's rule or accessor reads. Its name is undefined
+    /// when the node spells none after its accessor, so the usage is of that layer itself.
+    // @lfy def/model/traits.lfy:reading
+    // @lfy def/model/traits.lfy:reading
     pub fn add_usage(
         &mut self,
         node: NodeRef,
@@ -333,11 +338,11 @@ impl Binder {
         }
     }
 
-    /// A file scope's parent is the prelude scope, and none for a file whose origin is
-    /// the library or the prelude itself. Every file has been declared by now, so the
-    /// prelude's scope exists whatever order the files were given in. With no source of
-    /// [`Origin::Prelude`] no file scope has a parent, and a name only the prelude would
-    /// give is found nowhere.
+    /// A file scope whose file has the program origin takes the prelude scope as its
+    /// parent; one whose origin is the library or the prelude itself has no parent. Every
+    /// file has been declared by now, so the prelude's scope exists whatever order the
+    /// files were given in. With no source of [`Origin::Prelude`] no file scope has a
+    /// parent, and a name only the prelude would give is found nowhere.
     // @lfy def/model/data.lfy:Scope
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
@@ -389,6 +394,10 @@ impl Binder {
                 None,
             )
         });
+        // A scoped node other than the SourceFile takes the scope of the nearest scoped
+        // ancestor as its parent, so every name a descendant declares outside a nested
+        // scoped node belongs to it.
+        // @lfy def/model/traits.lfy:scoped
         if is_scoped(rule) {
             // A For declares its loop variable, not itself: its current stays the parent's.
             let current = match (&declared, function_type) {
@@ -905,6 +914,7 @@ impl Binder {
     /// The base data of a value of this type: what the prelude declares for the kind of
     /// value it is. A template's type is that data already, so it arrives here as an
     /// entity and needs no entry.
+    // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
     pub(crate) fn base_data(&self, ty: &TypeRef) -> Option<EntityId> {
         let name = match ty {
@@ -2204,7 +2214,7 @@ impl Model {
     }
 
     /// A declaration seen with arguments takes the declaration's definition, members,
-    /// criteria, and traits. The type pass makes the entity, but the apply pass fills the
+    /// criteria, and traits. The type pass makes the entity, but the expand pass fills the
     /// declaration in after it, so what it takes is copied once binding is done.
     // @lfy def/model/main.lfy:bind
     pub(crate) fn finish_generics(&mut self) {

@@ -94,6 +94,7 @@ const MEMBER: Entity = Entity::Expression(Expression::Member);
 const CALL: Entity = Entity::Expression(Expression::Call);
 const INDEX: Entity = Entity::Expression(Expression::Index);
 const ITEMS: Entity = Entity::Expression(Expression::Items);
+const TRAIT_USES: Entity = Entity::Expression(Expression::TraitUses);
 const TYPE_PARAMETERS: Entity = Entity::Expression(Expression::TypeParameters);
 const TYPE_ARGUMENTS: Entity = Entity::Expression(Expression::TypeArguments);
 const GENERIC: Entity = Entity::Expression(Expression::Generic);
@@ -178,8 +179,8 @@ fn glue_after(a: Tok) -> bool {
 }
 
 /// No space before `b`: before a comma, semicolon, closing bracket or boundary, inside a
-/// text body, before the colon and question mark of a definition, and before the operator
-/// of a postfix operation that is not a keyword.
+/// text body, before every colon and every question mark that is an operator, and before
+/// the operator of a postfix operation that is not a keyword.
 // @lfy def/format/main.lfy:format
 fn glue_before(a: Tok, b: Tok) -> bool {
     match b.rule {
@@ -201,15 +202,17 @@ fn glue_before(a: Tok, b: Tok) -> bool {
         Entity::Literal(
             Literal::TemplateBody | Literal::SingleQuoteBody | Literal::DoubleQuoteBody,
         ) => true,
-        // Decision: the colon and question mark of a `Conditional` keep a space on both sides
-        // (`a ? b : c`); the no-space rules are for definitions and optional names.
-        Entity::Punctuation(Punctuation::Colon) => matches!(
-            b.parent,
-            Entity::Expression(Expression::Definition | Expression::DefinitionClause)
-        ),
+        // Every colon takes no space before it, the one a `Conditional` holds included.
+        // @lfy def/format/main.lfy:format
+        Entity::Punctuation(Punctuation::Colon) => true,
+        // The question mark marks a name optional, or is the postfix operator of a
+        // `Conditional`; either way it follows what precedes it directly.
+        // @lfy def/format/main.lfy:format
         Entity::Punctuation(Punctuation::QuestionMark) => matches!(
             b.parent,
-            Entity::Expression(Expression::Parameter | Expression::TypeKey)
+            Entity::Expression(
+                Expression::Parameter | Expression::TypeKey | Expression::Conditional
+            )
         ),
         rule if is_accessor(rule) => matches!(
             b.parent,
@@ -495,6 +498,9 @@ impl<'t> Formatter<'t> {
                 self.children(node, 0, open);
                 self.bracketed(node, open);
             }
+            // The traits of an `is` or `extends` clause are a list with no brackets.
+            // @lfy def/format/main.lfy:format
+            TRAIT_USES => self.trait_uses(node),
             // @lfy def/format/main.lfy:format
             rule if is_link(rule) => self.chain(node),
             _ => self.children(node, 0, node.children.len()),
@@ -739,9 +745,81 @@ impl<'t> Formatter<'t> {
     fn exceeds(&self, node: &Node, open: usize, close: usize) -> bool {
         let mut measurer = self.measurer();
         measurer.list(node, open, close, false);
-        // Decision: the width counted is the list itself up to its close; what follows the
-        // close on the line (a semicolon, another close) is not counted.
+        self.too_wide(&measurer)
+    }
+
+    /// Whether the node, laid out on one line from the current column, would run past
+    /// [`MAX_WIDTH`] or cannot be laid out on one line at all.
+    // @lfy def/format/main.lfy:format
+    fn wider_than_the_line(&self, node: &Node) -> bool {
+        let mut measurer = self.measurer();
+        measurer.node(node);
+        self.too_wide(&measurer)
+    }
+
+    /// Whether what a measuring pass laid out, written from the current column, would run
+    /// past [`MAX_WIDTH`] or cannot be laid out on one line at all.
+    // Decision: the width counted is the list itself up to its close; what follows the
+    // close on the line (a semicolon, another close) is not counted.
+    // @lfy def/format/main.lfy:format
+    fn too_wide(&self, measurer: &Formatter<'t>) -> bool {
         measurer.impossible || self.column() + measurer.out.chars().count() > MAX_WIDTH
+    }
+
+    /// The traits of an `is` or `extends` clause: a list like any other, save that it has
+    /// no brackets. It is multi-line when the source held a line break or a comment
+    /// between its traits, or when the line would exceed [`MAX_WIDTH`]: then one trait per
+    /// line, the first on the line the clause begins on and each of the rest one level
+    /// deeper. A trailing comma is kept only while a trait follows it: the comma that ends
+    /// an item of a bracketed list stands before the close, and this list has none.
+    ///
+    /// One trait is never laid out over lines: with no brackets to hold the break, there
+    /// is no line for it to move to, so the trait itself is what wraps.
+    // @lfy def/format/main.lfy:format
+    fn trait_uses(&mut self, node: &Node) {
+        let entries: Vec<&Child> = node.children.iter().collect();
+        let comment = entries
+            .iter()
+            .any(|child| matches!(child, Child::Node(inner) if is_trivia(inner.rule)));
+        let line_break = entries
+            .iter()
+            .any(|child| matches!(child, Child::Token(index) if self.tree.tokens[*index].rule == Some(NEW_LINE)));
+        let traits = entries
+            .iter()
+            .filter(|child| matches!(child, Child::Node(inner) if !is_trivia(inner.rule)))
+            .count();
+        // @lfy def/format/main.lfy:format
+        let multiline = !self.flat
+            && traits > 1
+            && (comment || line_break || self.wider_than_the_line(node));
+        let saved = self.indent;
+        if multiline {
+            self.indent += 1;
+        }
+        let mut first = true;
+        for (at, child) in entries.iter().enumerate() {
+            match child {
+                Child::Token(index) if self.is_trivia_token(*index) => self.trivia_token(*index),
+                Child::Token(index) if self.tree.tokens[*index].rule == Some(COMMA) => {
+                    // @lfy def/format/main.lfy:format
+                    if self.item_follows(&entries, at) {
+                        self.token(*index, node.rule, 1);
+                    }
+                }
+                Child::Token(index) => self.token(*index, node.rule, 1),
+                Child::Node(inner) if is_trivia(inner.rule) => self.comment(inner, false),
+                Child::Node(inner) => {
+                    // @lfy def/format/main.lfy:format
+                    if multiline && !first {
+                        self.newline(false);
+                    }
+                    self.node(inner);
+                    first = false;
+                }
+                Child::Error(error) => self.error(error),
+            }
+        }
+        self.indent = saved;
     }
 
     /// Lays out the entries after the open bracket and then the close, one item per line
@@ -805,8 +883,8 @@ impl<'t> Formatter<'t> {
     }
 
     /// A chain of `Call`, `Member` and `Index` on one left side, `node` being its
-    /// outermost link. When the source held a line break before a value accessor of the
-    /// chain, each value accessor begins a new line indented one level below the line the
+    /// outermost link. When the source held a line break before an accessor of the chain,
+    /// each `Member` of the chain begins a new line indented one level below the line the
     /// chain begins on.
     // @lfy def/format/main.lfy:format
     fn chain(&mut self, node: &Node) {
@@ -821,8 +899,6 @@ impl<'t> Formatter<'t> {
             }
         };
         links.reverse();
-        // Decision: only the value accessors (`.`, `?.`) break; `@`, `$` and `$&` links stay
-        // glued to their left, so `global@acceptanceCriteria` is one line of the chain.
         let broken = !self.flat && links.iter().any(|link| self.breaks(link));
         let line_indent = self.indent;
         match head {
@@ -863,7 +939,7 @@ impl<'t> Formatter<'t> {
                                 self.trivia_token(*index)
                             }
                             Child::Token(index) => {
-                                if broken && position == 1 && self.value_accessor(*index) {
+                                if broken && position == 1 && self.accessor_token(*index) {
                                     self.newline(false);
                                 }
                                 self.token(*index, link.rule, position);
@@ -891,17 +967,13 @@ impl<'t> Formatter<'t> {
         }
     }
 
-    /// Whether the token is a value accessor.
-    fn value_accessor(&self, index: usize) -> bool {
-        matches!(
-            self.tree.tokens[index].rule,
-            Some(Entity::Punctuation(
-                Punctuation::ValueAccessor | Punctuation::OptionalValueAccessor
-            ))
-        )
+    /// Whether the token is an accessor.
+    // @lfy def/format/main.lfy:format
+    fn accessor_token(&self, index: usize) -> bool {
+        self.tree.tokens[index].rule.is_some_and(is_accessor)
     }
 
-    /// Whether a `Member` link held a line break before its value accessor in the source.
+    /// Whether a `Member` link held a line break before its accessor in the source.
     // @lfy def/format/main.lfy:format
     fn breaks(&self, link: &Node) -> bool {
         if link.rule != MEMBER {
@@ -914,7 +986,7 @@ impl<'t> Formatter<'t> {
                     line_break = true
                 }
                 Child::Token(index) if self.is_trivia_token(*index) => {}
-                Child::Token(index) => return line_break && self.value_accessor(*index),
+                Child::Token(index) => return line_break && self.accessor_token(*index),
                 _ => {}
             }
         }
@@ -1122,20 +1194,33 @@ mod tests {
 
     // @lfy def/format/main.lfy:format
     #[test]
-    fn documentation_and_own_line_comments_keep_their_line_and_trailing_comments_their_end() {
+    fn documentation_and_a_comment_on_its_own_line_stay_on_their_own_line() {
         assert_eq!(
-            formatted("// top\n\n/// doc\nfn f() {\n// own\na; // end\n  /* block */ b;\n}"),
-            "// top\n\n/// doc\nfn f() {\n  // own\n  a; // end\n  /* block */\n  b;\n}\n"
+            formatted("// top\n\n/// doc\nfn f() {\n// own\n  /* block */ b;\n}"),
+            "// top\n\n/// doc\nfn f() {\n  // own\n  /* block */\n  b;\n}\n"
         );
         assert_eq!(
-            formatted("const o = {\n  // key\n  a = 1, // one\n  b = 2 };"),
-            "const o = {\n  // key\n  a = 1, // one\n  b = 2,\n};\n"
+            formatted("const o = {\n  // key\n  a = 1,\n  b = 2 };"),
+            "const o = {\n  // key\n  a = 1,\n  b = 2,\n};\n"
+        );
+        assert_eq!(formatted("x\n  // why\n  .a();"), "x\n  // why\n  .a();\n");
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
+    fn a_comment_that_shares_a_line_with_code_stays_at_the_end_of_that_line() {
+        assert_eq!(
+            formatted("fn f() {\na; // end\n}"),
+            "fn f() {\n  a; // end\n}\n"
+        );
+        assert_eq!(
+            formatted("const o = {\n  a = 1, // one\n  b = 2 };"),
+            "const o = {\n  a = 1, // one\n  b = 2,\n};\n"
         );
         assert_eq!(
             formatted("fn f() { // open\n  a;\n}"),
             "fn f() { // open\n  a;\n}\n"
         );
-        assert_eq!(formatted("x\n  // why\n  .a();"), "x\n  // why\n  .a();\n");
     }
 
     // @lfy def/format/main.lfy:format
@@ -1156,7 +1241,10 @@ mod tests {
         assert_eq!(formatted("x = g|e^f;"), "x = g | e ^ f;\n");
         assert_eq!(formatted("x = e & f;"), "x = e & f;\n");
         assert_eq!(formatted("x = a<b==c>=g;"), "x = a < b == c >= g;\n");
-        assert_eq!(formatted("x = a ? b : c;"), "x = a ? b : c;\n");
+        // The question mark is the postfix operator of a `Conditional` and the colon of
+        // one is a colon like any other.
+        assert_eq!(formatted("x = a ? b : c;"), "x = a? b: c;\n");
+        assert_eq!(formatted("x = a ? . : c;"), "x = a? .: c;\n");
         assert_eq!(
             formatted("x = a.b ( c ) [ 0 ]@type;"),
             "x = a.b(c)[0]@type;\n"
@@ -1269,18 +1357,33 @@ mod tests {
 
     // @lfy def/format/main.lfy:format
     #[test]
-    fn a_block_opens_on_its_line_and_closes_alone_or_is_two_braces() {
-        assert_eq!(formatted("loop\n{\n}"), "loop {}\n");
-        assert_eq!(formatted("loop { break; }"), "loop {\n  break;\n}\n");
+    fn a_block_opens_on_the_line_of_its_statement() {
+        assert_eq!(formatted("fn f()\n{\n  a;\n}"), "fn f() {\n  a;\n}\n");
+        assert_eq!(formatted("while (a)\n{\n  b;\n}"), "while (a) {\n  b;\n}\n");
         assert_eq!(
             formatted("x = (a) =>\n{\n  b;\n};"),
             "x = (a) => {\n  b;\n};\n"
         );
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
+    fn the_close_of_a_block_that_is_not_empty_stands_alone_on_its_own_line() {
+        assert_eq!(formatted("loop { break; }"), "loop {\n  break;\n}\n");
         assert_eq!(
             formatted("f((a) => { b; }, 1);"),
             "f(\n  (a) => {\n    b;\n  },\n  1,\n);\n"
         );
         assert_eq!(formatted("f((a) => { b; });"), "f((a) => {\n  b;\n});\n");
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
+    fn an_empty_block_is_the_two_braces_together() {
+        assert_eq!(formatted("loop\n{\n}"), "loop {}\n");
+        assert_eq!(formatted("fn f() {\n}"), "fn f() {}\n");
+        assert_eq!(formatted("if (a) {\n} else {\n}"), "if (a) {} else {}\n");
+        assert_eq!(formatted("d X {\n}"), "d X {}\n");
     }
 
     // @lfy def/format/main.lfy:format
@@ -1316,6 +1419,14 @@ mod tests {
         );
         assert_eq!(formatted("x = { // c\n};"), "x = { // c\n};\n");
         assert_eq!(formatted("x = {\n  // c\n};"), "x = {\n  // c\n};\n");
+        // The traits of an `is` or `extends` clause have no brackets, so the last trait
+        // ends the list rather than a comma and a close.
+        assert_eq!(formatted("d X is a,\n b {}"), "d X is a,\n  b {}\n");
+        let trait_name = "t".repeat(60);
+        assert_eq!(
+            formatted(&format!("d X is {trait_name}, {trait_name}2 {{}}")),
+            format!("d X is {trait_name},\n  {trait_name}2 {{}}\n")
+        );
     }
 
     // @lfy def/format/main.lfy:format
@@ -1330,15 +1441,18 @@ mod tests {
             "type T { a = string }\n"
         );
         assert_eq!(formatted("match x { a -> 1, }"), "match x { a -> 1 }\n");
+        assert_eq!(formatted("d X is a, b, {}"), "d X is a, b {}\n");
+        // One trait has no second line to move to: the trait itself wraps.
+        let argument = "a".repeat(60);
+        assert_eq!(
+            formatted(&format!("d X is t({argument}, {argument}2) {{}}")),
+            format!("d X is t(\n  {argument},\n  {argument}2,\n) {{}}\n")
+        );
     }
 
     // @lfy def/format/main.lfy:format
     #[test]
-    fn type_parameters_and_arguments_go_one_per_line_only_when_the_line_is_too_long() {
-        // A line break in the source does not wrap them.
-        assert_eq!(formatted("fn f<\n  T,\n  U\n>(a: T);"), "fn f<T, U>(a: T);\n");
-        assert_eq!(formatted("const x: List<\n  T\n> = y;"), "const x: List<T> = y;\n");
-        assert_eq!(formatted("x = f<\n  T,\n>(a);"), "x = f<T>(a);\n");
+    fn type_parameters_and_arguments_go_one_per_line_when_the_line_would_be_too_long() {
         let long = "T".repeat(60);
         assert_eq!(
             formatted(&format!("fn f<{long}, {long}2>(a: T);")),
@@ -1356,6 +1470,18 @@ mod tests {
 
     // @lfy def/format/main.lfy:format
     #[test]
+    fn type_parameters_and_arguments_short_enough_stay_on_one_line() {
+        // A line break in the source does not wrap them.
+        assert_eq!(formatted("fn f<\n  T,\n  U\n>(a: T);"), "fn f<T, U>(a: T);\n");
+        assert_eq!(
+            formatted("const x: List<\n  T\n> = y;"),
+            "const x: List<T> = y;\n"
+        );
+        assert_eq!(formatted("x = f<\n  T,\n>(a);"), "x = f<T>(a);\n");
+    }
+
+    // @lfy def/format/main.lfy:format
+    #[test]
     fn a_chain_with_a_line_break_before_an_accessor_puts_each_member_on_its_own_line() {
         assert_eq!(formatted("x.a().b();"), "x.a().b();\n");
         assert_eq!(formatted("x.a()\n.b();"), "x\n  .a()\n  .b();\n");
@@ -1367,8 +1493,11 @@ mod tests {
         );
         assert_eq!(
             formatted("global@acceptanceCriteria\n  .add({ a = 1 });"),
-            "global@acceptanceCriteria\n  .add({ a = 1 });\n"
+            "global\n  @acceptanceCriteria\n  .add({ a = 1 });\n"
         );
+        // A line break before any accessor breaks the chain, `@`, `$` and `$&` included.
+        assert_eq!(formatted("x\n  @a.b();"), "x\n  @a\n  .b();\n");
+        assert_eq!(formatted("x\n  $a;"), "x\n  $a;\n");
         assert_eq!(
             formatted("x = [a\n  .b().c[0]];"),
             "x = [a\n  .b()\n  .c[0]];\n"

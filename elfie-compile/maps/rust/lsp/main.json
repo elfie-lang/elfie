@@ -1,0 +1,804 @@
+[
+  {
+    "dependencies": {
+      "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
+      "def/lsp/data.lfy": "2ef92a24a8d5fa613341bfc5feb24af9a54dbff7f5cc11fec99ba30c3b2c7de2",
+      "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d",
+      "def/query/main.lfy": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
+      "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
+    },
+    "generated": "2026-10-01T00:49:11Z",
+    "hash": "9376cc8f963bd4b37ea0af2c18688f224ddc206061e4817d5f8eaba61561d14a",
+    "markers": [
+      {
+        "column": null,
+        "end": 26,
+        "entity": "Protocol",
+        "file": "def/lsp/main.lfy",
+        "line": 11,
+        "outputLine": 9,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 46,
+        "entity": null,
+        "file": "def/lsp/main.lfy",
+        "line": 6,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 47,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 53,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 71,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 61,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 83,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 72,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 89,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 84,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 142,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 90,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 156,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 143,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 187,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 157,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 198,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 188,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 225,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 199,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 284,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 226,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 287,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 285,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 330,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 288,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 333,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 331,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 358,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 334,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 368,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 359,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 377,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 369,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 383,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 378,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 395,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 384,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 408,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 396,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 427,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 409,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 440,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 428,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 442,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 441,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 468,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 443,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 485,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 469,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 500,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 486,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 518,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 501,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 543,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 519,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 565,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 544,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 600,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 566,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 620,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 601,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 638,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 621,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 656,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 639,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 709,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 657,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 713,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 710,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 724,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 714,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 732,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 725,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 745,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 733,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 774,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 746,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 789,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 775,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 801,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 790,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 813,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 802,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 840,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 814,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 861,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 841,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 868,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 862,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 885,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 869,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 933,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 886,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 970,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 934,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 993,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 971,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1004,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 994,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1017,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1005,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1025,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1018,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1034,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1026,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1061,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1035,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1095,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1062,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1105,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1096,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1115,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1106,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1142,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1116,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1169,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1143,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1191,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1170,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1211,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1192,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1236,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1212,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1263,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1237,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1283,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1264,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1322,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1284,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1353,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1323,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1367,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1354,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1392,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1368,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1412,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1393,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1441,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1413,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1467,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1442,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1492,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1468,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1517,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1493,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1543,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1518,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1551,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1544,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1718,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1552,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1771,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1719,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1826,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1772,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1835,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1827,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1877,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1836,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1945,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1878,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2011,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 1946,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2026,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 2012,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2035,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 2027,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2049,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 2036,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-lsp/src/lib.rs",
+    "requirements": "",
+    "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
+    "source": "def/lsp/main.lfy",
+    "target": "rust"
+  }
+]

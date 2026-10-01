@@ -16,10 +16,12 @@ pub use data::*;
 
 /// Build the model of a program from the resolved files of all of it.
 ///
-/// Binding runs three passes over every file: declare (scopes, symbols, entities), apply
-/// (traits, members, criteria), resolve (usages, properties, templates). The sources are
-/// bound in the order given, which places every file after the files it uses. Binding
-/// never stops; every failure is a problem. Each source is bound once.
+/// Binding runs three passes over every file: declare (scopes, symbols, entities), expand
+/// (traits, members, criteria, and every other compile-time statement), resolve (usages,
+/// properties, templates). The sources are bound in the order given, which places every
+/// file after the files it uses. Binding never stops; every failure it meets is a problem,
+/// and an error node declares and uses nothing. Each source is bound once, however many
+/// others use it.
 // @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
 // @lfy def/model/main.lfy:bind
@@ -38,9 +40,18 @@ pub fn bind(sources: Vec<Source>) -> Model {
     for file in 0..files {
         binder.type_entities(file); // @lfy def/model/main.lfy:bind
     }
-    for file in 0..files {
-        binder.apply_file(file); // @lfy def/model/main.lfy:bind
-    }
+    // The expand pass is the interpreter's expand: trait applications, ace statements,
+    // declaration bodies, and file-level statements run there, and the resolve pass below
+    // reads what it left. It runs after the declare pass and before the resolve pass, over
+    // every file in bind order, and reads the trees through the model, so the model holds
+    // them while it runs.
+    // @lfy def/model/main.lfy:bind
+    // @lfy def/interpret/main.lfy:expand
+    let mut expanding = binder.model;
+    expanding.sources = binder.trees.sources.clone(); // @lfy def/interpret/main.lfy:expand
+    expanding = crate::interpret::expand(expanding); // @lfy def/interpret/main.lfy:expand
+    expanding.sources = Vec::new(); // @lfy def/interpret/main.lfy:expand
+    binder.model = expanding;
     binder.check_rule_identifiers(); // @lfy def/model/main.lfy:bind
     for file in 0..files {
         binder.resolve_file(file); // @lfy def/model/main.lfy:bind
@@ -55,7 +66,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
             .sort_by_key(|criterion| criterion.contributor != id);
     }
     // A declaration seen with type arguments takes the declaration's definition, members,
-    // criteria, and traits, which the apply pass filled in after the type pass made it.
+    // criteria, and traits, which the expand pass filled in after the type pass made it.
     // @lfy def/model/main.lfy:bind
     model.finish_generics();
     model
@@ -97,7 +108,9 @@ impl bind::Binder {
     }
 }
 
-/// The symbol a node uses or declares.
+/// The symbol a node uses or declares: its usage's symbol, or the symbol it declares, and
+/// undefined when the node has no usage in the model and declares no symbol in it.
+// @lfy def/model/main.lfy:resolve
 // @lfy def/model/main.lfy:resolve
 pub fn resolve(model: &Model, node: NodeRef) -> Option<SymbolId> {
     if let Some(usage) = model.usage_of(node) {

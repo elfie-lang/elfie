@@ -1,0 +1,2015 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/rules/file.lfy": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/lexer/main.lfy": "e55fc64929934ffe6fe257b6e50974f75c387664d1da55f875e47f5a77a6e4c9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/parser/main.lfy": "262674fad2ce5064daf34d48a76f387f1d5395f4c1e0dfa508e699441c2459fb",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-30T20:27:00Z",
+    "hash": "de6505db7bd649b9aa7d0abb8f5b22db378e2c25a87368b54a2769c93ecce240",
+    "markers": [
+      {
+        "column": null,
+        "end": 6,
+        "entity": "format",
+        "file": "def/format/main.lfy",
+        "line": 15,
+        "outputLine": 6,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 7,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 47,
+        "outputLine": 7,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 8,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 1,
+        "outputLine": 8,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 9,
+        "entity": "lower",
+        "file": "def/interpret/main.lfy",
+        "line": 205,
+        "outputLine": 9,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 10,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 10,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 11,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 20,
+        "outputLine": 11,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 12,
+        "entity": "parse",
+        "file": "def/parser/main.lfy",
+        "line": 11,
+        "outputLine": 12,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 13,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 14,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 14,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/lib.rs",
+    "requirements": "",
+    "signature": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a",
+    "source": "def/workspace/main.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/rules/file.lfy": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/lexer/main.lfy": "e55fc64929934ffe6fe257b6e50974f75c387664d1da55f875e47f5a77a6e4c9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/parser/main.lfy": "262674fad2ce5064daf34d48a76f387f1d5395f4c1e0dfa508e699441c2459fb",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-30T20:27:00Z",
+    "hash": "de6505db7bd649b9aa7d0abb8f5b22db378e2c25a87368b54a2769c93ecce240",
+    "markers": [
+      {
+        "column": null,
+        "end": 19,
+        "entity": "NativeDependency",
+        "file": "def/workspace/data.lfy",
+        "line": 4,
+        "outputLine": 16,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 21,
+        "entity": "NativeDependency.identifier",
+        "file": "def/workspace/data.lfy",
+        "line": 5,
+        "outputLine": 20,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": "NativeDependency.ecosystem",
+        "file": "def/workspace/data.lfy",
+        "line": 6,
+        "outputLine": 22,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 28,
+        "entity": "NativeDependency.version",
+        "file": "def/workspace/data.lfy",
+        "line": 7,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 32,
+        "entity": "Package",
+        "file": "def/workspace/data.lfy",
+        "line": 10,
+        "outputLine": 29,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 35,
+        "entity": "Package.identifier",
+        "file": "def/workspace/data.lfy",
+        "line": 11,
+        "outputLine": 33,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 37,
+        "entity": "Package.root",
+        "file": "def/workspace/data.lfy",
+        "line": 12,
+        "outputLine": 36,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 44,
+        "entity": "Package.nativeDependencies",
+        "file": "def/workspace/data.lfy",
+        "line": 13,
+        "outputLine": 38,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 49,
+        "entity": "File",
+        "file": "def/workspace/data.lfy",
+        "line": 16,
+        "outputLine": 45,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": "File",
+        "file": "def/workspace/data.lfy",
+        "line": 16,
+        "outputLine": 50,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "File.package",
+        "file": "def/workspace/data.lfy",
+        "line": 17,
+        "outputLine": 53,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 58,
+        "entity": "File",
+        "file": "def/workspace/data.lfy",
+        "line": 16,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 62,
+        "entity": "Target",
+        "file": "def/workspace/data.lfy",
+        "line": 20,
+        "outputLine": 59,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 64,
+        "entity": "Target.identifier",
+        "file": "def/workspace/data.lfy",
+        "line": 21,
+        "outputLine": 63,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "Target.marker",
+        "file": "def/workspace/data.lfy",
+        "line": 22,
+        "outputLine": 65,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 69,
+        "entity": "Target.package",
+        "file": "def/workspace/data.lfy",
+        "line": 23,
+        "outputLine": 68,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 73,
+        "entity": "Target.outputDirectory",
+        "file": "def/workspace/data.lfy",
+        "line": 24,
+        "outputLine": 70,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 78,
+        "entity": "LoadProblem",
+        "file": "def/workspace/data.lfy",
+        "line": 27,
+        "outputLine": 74,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 80,
+        "entity": "LoadProblem.path",
+        "file": "def/workspace/data.lfy",
+        "line": 28,
+        "outputLine": 79,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 93,
+        "entity": "LoadProblem.message",
+        "file": "def/workspace/data.lfy",
+        "line": 29,
+        "outputLine": 81,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 126,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 94,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 132,
+        "entity": "Workspace",
+        "file": "def/workspace/data.lfy",
+        "line": 32,
+        "outputLine": 127,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 134,
+        "entity": "Workspace.root",
+        "file": "def/workspace/data.lfy",
+        "line": 33,
+        "outputLine": 133,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 136,
+        "entity": "Workspace.name",
+        "file": "def/workspace/data.lfy",
+        "line": 34,
+        "outputLine": 135,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 138,
+        "entity": "Workspace.sourceDirectory",
+        "file": "def/workspace/data.lfy",
+        "line": 35,
+        "outputLine": 137,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 140,
+        "entity": "Workspace.outputDirectory",
+        "file": "def/workspace/data.lfy",
+        "line": 36,
+        "outputLine": 139,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 142,
+        "entity": "Workspace.files",
+        "file": "def/workspace/data.lfy",
+        "line": 37,
+        "outputLine": 141,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 144,
+        "entity": "Workspace.model",
+        "file": "def/workspace/data.lfy",
+        "line": 38,
+        "outputLine": 143,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 146,
+        "entity": "Package",
+        "file": "def/workspace/data.lfy",
+        "line": 10,
+        "outputLine": 145,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 149,
+        "entity": "Workspace.targets",
+        "file": "def/workspace/data.lfy",
+        "line": 39,
+        "outputLine": 147,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 151,
+        "entity": "Workspace.nativeDependencies",
+        "file": "def/workspace/data.lfy",
+        "line": 40,
+        "outputLine": 150,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 154,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 152,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 165,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 155,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 171,
+        "entity": "File",
+        "file": "def/workspace/data.lfy",
+        "line": 16,
+        "outputLine": 166,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 178,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 172,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 185,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 179,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 200,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 186,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/workspace/data.rs",
+    "requirements": "",
+    "signature": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a",
+    "source": "def/workspace/main.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/rules/file.lfy": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/lexer/main.lfy": "e55fc64929934ffe6fe257b6e50974f75c387664d1da55f875e47f5a77a6e4c9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/parser/main.lfy": "262674fad2ce5064daf34d48a76f387f1d5395f4c1e0dfa508e699441c2459fb",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-30T20:27:00Z",
+    "hash": "de6505db7bd649b9aa7d0abb8f5b22db378e2c25a87368b54a2769c93ecce240",
+    "markers": [
+      {
+        "column": null,
+        "end": 33,
+        "entity": "Workspace",
+        "file": "def/workspace/data.lfy",
+        "line": 32,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 35,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 34,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 36,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 43,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 41,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 46,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 44,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 47,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 57,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 56,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 65,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 58,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 66,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 81,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 68,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 83,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 82,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 84,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 89,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 88,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 90,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 90,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 96,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 91,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 102,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 97,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 107,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 103,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 129,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 108,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 130,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 130,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 143,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 131,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 149,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 144,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 154,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 150,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 159,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 155,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 161,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 160,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 164,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 162,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 178,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 165,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 182,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 179,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 186,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 183,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 189,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 187,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 206,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 190,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 213,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 207,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 214,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 214,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 215,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 215,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 217,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 216,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 226,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 218,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 227,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 227,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 233,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 228,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 238,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 234,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 239,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 239,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 248,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 240,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 250,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 249,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 267,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 251,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 274,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 268,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 289,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 275,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 290,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 290,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 291,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 291,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 292,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 292,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 294,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 293,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 312,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 295,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 321,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 313,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 336,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 322,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 345,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 337,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 355,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 346,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 380,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 356,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 396,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 381,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 428,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 397,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 455,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 429,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 499,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 456,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 532,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 500,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 535,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 533,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 548,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 536,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 564,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 549,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 584,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 565,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 630,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 585,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 666,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 631,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 674,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 667,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 681,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 675,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 685,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 682,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 690,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 686,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 699,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 691,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 711,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 700,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 745,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 712,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 771,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 746,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 792,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 772,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 803,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 793,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 820,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 804,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 823,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 821,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 826,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 824,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 835,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 827,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 838,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 836,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 850,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 839,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 877,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 851,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 896,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 878,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 912,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 897,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 931,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 913,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 936,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 932,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 942,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 937,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 962,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 943,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 980,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 963,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1015,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 981,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1047,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1016,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1125,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1048,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1181,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1126,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1191,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1182,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1199,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1192,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1256,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1200,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1286,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1257,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1300,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1287,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1306,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1301,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1325,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1307,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1336,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1326,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1394,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1337,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1399,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1395,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1401,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1400,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1414,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1402,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1426,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1415,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1457,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1427,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1470,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1458,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1488,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1471,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1496,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1489,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1514,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1497,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1524,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1515,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1542,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1525,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1550,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1543,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1564,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1551,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1585,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1565,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1595,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1586,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1601,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1596,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1604,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1602,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1612,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1605,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1629,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1613,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1634,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1630,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1654,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1635,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1682,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1655,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1699,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1683,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1708,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1700,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1728,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1709,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1745,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1729,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1752,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1746,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1773,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1753,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1802,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1774,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1818,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1803,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1829,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1819,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1839,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1830,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1864,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1840,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1879,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1865,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1899,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1880,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1906,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1900,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1921,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1907,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1937,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1922,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1960,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1938,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1966,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1961,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1996,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1967,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2005,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 1997,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2012,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2006,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2022,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2013,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2044,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2023,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2055,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2045,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2081,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2056,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2082,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2082,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2088,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2083,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2094,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2089,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2116,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2095,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2132,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2117,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2155,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2133,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2161,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2156,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2192,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2162,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2227,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2193,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2250,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2228,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2270,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 2251,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2293,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2271,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2304,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2294,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2328,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2305,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2329,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2329,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2351,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2330,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2371,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2352,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2389,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2372,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2401,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2390,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2429,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2402,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2462,
+        "entity": "change",
+        "file": "def/workspace/main.lfy",
+        "line": 259,
+        "outputLine": 2430,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2484,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 2463,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/workspace/mod.rs",
+    "requirements": "",
+    "signature": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a",
+    "source": "def/workspace/main.lfy",
+    "target": "rust"
+  }
+]

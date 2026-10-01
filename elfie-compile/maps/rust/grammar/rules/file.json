@@ -1,0 +1,432 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "803f44c5a8d6d38b49e1a95cb3f548d356ea15ca0e6e0be98f2c66474fb07108",
+    "markers": [
+      {
+        "column": null,
+        "end": 22,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 14,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 23,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/rules/file.rs",
+    "requirements": "",
+    "signature": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
+    "source": "def/grammar/rules/file.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "803f44c5a8d6d38b49e1a95cb3f548d356ea15ca0e6e0be98f2c66474fb07108",
+    "markers": [
+      {
+        "column": null,
+        "end": 16,
+        "entity": "scoped",
+        "file": "def/model/traits.lfy",
+        "line": 10,
+        "outputLine": 14,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 17,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 18,
+        "entity": "Block",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 38,
+        "outputLine": 18,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 19,
+        "entity": "DataDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 9,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "AgentFunctionDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 14,
+        "outputLine": 20,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 21,
+        "entity": "FunctionDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 17,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 22,
+        "entity": "InlineFunction",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 94,
+        "outputLine": 22,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "FunctionType",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 56,
+        "outputLine": 23,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": "TraitDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 20,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 25,
+        "entity": "TypeDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 23,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "EnumDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 26,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 27,
+        "entity": "For",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 46,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 33,
+        "entity": "With",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 58,
+        "outputLine": 28,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "reading",
+        "file": "def/model/traits.lfy",
+        "line": 16,
+        "outputLine": 34,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 38,
+        "entity": "ValueAccessor",
+        "file": "def/grammar/terminals/punctuation.lfy",
+        "line": 5,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "OptionalValueAccessor",
+        "file": "def/grammar/terminals/punctuation.lfy",
+        "line": 6,
+        "outputLine": 39,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 42,
+        "entity": "ContextAccessor",
+        "file": "def/grammar/terminals/punctuation.lfy",
+        "line": 7,
+        "outputLine": 41,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 44,
+        "entity": "ScopeAccessor",
+        "file": "def/grammar/terminals/punctuation.lfy",
+        "line": 8,
+        "outputLine": 43,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 51,
+        "entity": "ParentScopeAccessor",
+        "file": "def/grammar/terminals/punctuation.lfy",
+        "line": 9,
+        "outputLine": 45,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "reading",
+        "file": "def/model/traits.lfy",
+        "line": 16,
+        "outputLine": 52,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 56,
+        "entity": "Name",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 86,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 58,
+        "entity": "TraitUse",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 15,
+        "outputLine": 57,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": "Dereference",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 110,
+        "outputLine": 59,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "Previous",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 90,
+        "outputLine": 61,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 70,
+        "entity": "declaring",
+        "file": "def/model/traits.lfy",
+        "line": 40,
+        "outputLine": 68,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 72,
+        "entity": "DataDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 9,
+        "outputLine": 71,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 74,
+        "entity": "TraitDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 20,
+        "outputLine": 73,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 76,
+        "entity": "FunctionDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 17,
+        "outputLine": 75,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 82,
+        "entity": "AgentFunctionDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 14,
+        "outputLine": 77,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 84,
+        "entity": "TypeDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 23,
+        "outputLine": 83,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 86,
+        "entity": "EnumDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 26,
+        "outputLine": 85,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 88,
+        "entity": "VariableDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 27,
+        "outputLine": 87,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 90,
+        "entity": "AliasDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 30,
+        "outputLine": 89,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 92,
+        "entity": "ExternalDeclaration",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 31,
+        "outputLine": 91,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 94,
+        "entity": "Use",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 34,
+        "outputLine": 93,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 96,
+        "entity": "For",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 46,
+        "outputLine": 95,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 98,
+        "entity": "ForFrom",
+        "file": "def/grammar/rules/statement.lfy",
+        "line": 44,
+        "outputLine": 97,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 100,
+        "entity": "Parameter",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 22,
+        "outputLine": 99,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 102,
+        "entity": "SpreadParameter",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 25,
+        "outputLine": 101,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 104,
+        "entity": "TypeParameter",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 29,
+        "outputLine": 103,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 111,
+        "entity": "TypeKey",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 70,
+        "outputLine": 105,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 115,
+        "entity": "declaring",
+        "file": "def/model/traits.lfy",
+        "line": 40,
+        "outputLine": 112,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/model/components.rs",
+    "requirements": "",
+    "signature": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
+    "source": "def/grammar/rules/file.lfy",
+    "target": "rust"
+  }
+]

@@ -1,0 +1,612 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/lexer/traits.lfy": "7a0973d9e27bb433d1d92640668b902509849fad36f8e95b11b175545488956a"
+    },
+    "generated": "2026-09-26T06:06:04Z",
+    "hash": "6aec012c24b7eae1844893fb29ec0a0dfbe487b18d1d89d6917c4e51e29798fe",
+    "markers": [
+      {
+        "column": null,
+        "end": 18,
+        "entity": "Mode",
+        "file": "def/lexer/modes.lfy",
+        "line": 5,
+        "outputLine": 16,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 19,
+        "entity": "Mode.code",
+        "file": "def/lexer/modes.lfy",
+        "line": 6,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "Mode.blockComment",
+        "file": "def/lexer/modes.lfy",
+        "line": 7,
+        "outputLine": 20,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 21,
+        "entity": "Mode.lineComment",
+        "file": "def/lexer/modes.lfy",
+        "line": 8,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 22,
+        "entity": "Mode.blockDocumentation",
+        "file": "def/lexer/modes.lfy",
+        "line": 9,
+        "outputLine": 22,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "Mode.lineDocumentation",
+        "file": "def/lexer/modes.lfy",
+        "line": 10,
+        "outputLine": 23,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": "Mode.singleQuote",
+        "file": "def/lexer/modes.lfy",
+        "line": 11,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 25,
+        "entity": "Mode.doubleQuote",
+        "file": "def/lexer/modes.lfy",
+        "line": 12,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "Mode.template",
+        "file": "def/lexer/modes.lfy",
+        "line": 13,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 27,
+        "entity": "Mode.execution",
+        "file": "def/lexer/modes.lfy",
+        "line": 14,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 48,
+        "entity": "Mode.reference",
+        "file": "def/lexer/modes.lfy",
+        "line": 15,
+        "outputLine": 28,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 49,
+        "entity": "Mode.code",
+        "file": "def/lexer/modes.lfy",
+        "line": 6,
+        "outputLine": 49,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 50,
+        "entity": "Mode.blockComment",
+        "file": "def/lexer/modes.lfy",
+        "line": 7,
+        "outputLine": 50,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 51,
+        "entity": "Mode.lineComment",
+        "file": "def/lexer/modes.lfy",
+        "line": 8,
+        "outputLine": 51,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": "Mode.blockDocumentation",
+        "file": "def/lexer/modes.lfy",
+        "line": 9,
+        "outputLine": 52,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 53,
+        "entity": "Mode.lineDocumentation",
+        "file": "def/lexer/modes.lfy",
+        "line": 10,
+        "outputLine": 53,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "Mode.singleQuote",
+        "file": "def/lexer/modes.lfy",
+        "line": 11,
+        "outputLine": 54,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "Mode.doubleQuote",
+        "file": "def/lexer/modes.lfy",
+        "line": 12,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 56,
+        "entity": "Mode.template",
+        "file": "def/lexer/modes.lfy",
+        "line": 13,
+        "outputLine": 56,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 57,
+        "entity": "Mode.execution",
+        "file": "def/lexer/modes.lfy",
+        "line": 14,
+        "outputLine": 57,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 72,
+        "entity": "Mode.reference",
+        "file": "def/lexer/modes.lfy",
+        "line": 15,
+        "outputLine": 58,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 77,
+        "entity": "inCode",
+        "file": "def/lexer/modes.lfy",
+        "line": 19,
+        "outputLine": 73,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": null,
+        "file": "def/lexer/traits.lfy",
+        "line": 8,
+        "outputLine": 78,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 88,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 27,
+        "outputLine": 88,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 94,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 29,
+        "outputLine": 89,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 95,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 32,
+        "outputLine": 95,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 98,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 34,
+        "outputLine": 96,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 99,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 37,
+        "outputLine": 99,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 100,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 38,
+        "outputLine": 100,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 40,
+        "outputLine": 101,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 106,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 42,
+        "outputLine": 102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 107,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 48,
+        "outputLine": 107,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 109,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 50,
+        "outputLine": 108,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 110,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 54,
+        "outputLine": 110,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 111,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 59,
+        "outputLine": 111,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 112,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 56,
+        "outputLine": 112,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 113,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 57,
+        "outputLine": 113,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 114,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 61,
+        "outputLine": 114,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 115,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 64,
+        "outputLine": 115,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 116,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 66,
+        "outputLine": 116,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 117,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 67,
+        "outputLine": 117,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 118,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 69,
+        "outputLine": 118,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 119,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 71,
+        "outputLine": 119,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 125,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 120,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 132,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 26,
+        "outputLine": 126,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 135,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 26,
+        "outputLine": 133,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 141,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 28,
+        "outputLine": 136,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 144,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 31,
+        "outputLine": 142,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 149,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 33,
+        "outputLine": 145,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 153,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 36,
+        "outputLine": 150,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 156,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 39,
+        "outputLine": 154,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 164,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 41,
+        "outputLine": 157,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 167,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 43,
+        "outputLine": 165,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 171,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 49,
+        "outputLine": 168,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 174,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 53,
+        "outputLine": 172,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 179,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 55,
+        "outputLine": 175,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 182,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 58,
+        "outputLine": 180,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 187,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 60,
+        "outputLine": 183,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 190,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 63,
+        "outputLine": 188,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 195,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 65,
+        "outputLine": 191,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 198,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 68,
+        "outputLine": 196,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 211,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 70,
+        "outputLine": 199,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 223,
+        "entity": "Mode",
+        "file": "def/lexer/modes.lfy",
+        "line": 5,
+        "outputLine": 212,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 245,
+        "entity": "inCode",
+        "file": "def/lexer/modes.lfy",
+        "line": 19,
+        "outputLine": 224,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 255,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 25,
+        "outputLine": 246,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 277,
+        "entity": null,
+        "file": "def/lexer/modes.lfy",
+        "line": 26,
+        "outputLine": 256,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/lexer/modes.rs",
+    "requirements": "",
+    "signature": "a063d8800b3b35e9c75a086be3a579746ecd5b0b47a23cb7c95e488fecbe9ea0",
+    "source": "def/lexer/modes.lfy",
+    "target": "rust"
+  }
+]

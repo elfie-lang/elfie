@@ -299,7 +299,7 @@ fn value(rule: Option<Entity>, raw: &str) -> String {
         Some(Entity::Space(Space::NewLine)) => space::NEW_LINE_VALUE.to_owned(),
         // @lfy def/grammar/terminals/literal.lfy:NumberLiteral
         Some(Entity::Literal(Literal::NumberLiteral)) => literal::number_value(raw),
-        // @lfy def/grammar/traits.lfy:63
+        // @lfy def/grammar/traits.lfy:body
         Some(rule) if rule.is_body() => grammar::traits::body_value(rule, raw),
         // @lfy def/lexer/main.lfy:lex
         _ => raw.to_owned(),
@@ -517,19 +517,9 @@ mod tests {
 
     // @lfy def/lexer/main.lfy:lex
     #[test]
-    fn candidates_depend_on_the_mode_at_the_top_of_the_stack() {
-        // `{{` outside a template is two block opens.
-        assert_eq!(
-            rules_of("{{}}"),
-            vec![
-                punctuation(Punctuation::BlockOpen),
-                punctuation(Punctuation::BlockOpen),
-                punctuation(Punctuation::BlockClose),
-                punctuation(Punctuation::BlockClose)
-            ]
-        );
-        // Inside an execution, ordinary tokens are read; `}}` is the longest match there,
-        // so it closes the execution before a lone `}` is read.
+    fn a_terminal_with_a_lex_condition_is_matched_where_that_condition_holds() {
+        // `{{` is a candidate in a template and `}}` in an execution, so `}}` closes the
+        // execution before a lone `}` is read; the template body is read between them.
         assert_eq!(
             rules_of("`{{{}}}`"),
             vec![
@@ -541,16 +531,7 @@ mod tests {
                 literal(Literal::Backtick)
             ]
         );
-        assert_eq!(
-            rules_of("`{{ {} }}`")[2..6],
-            [
-                SPACE,
-                punctuation(Punctuation::BlockOpen),
-                punctuation(Punctuation::BlockClose),
-                SPACE
-            ]
-        );
-        // `]]` closes the reference the same way; `[[` inside it is two list opens.
+        // `]]` closes the reference the same way.
         assert_eq!(
             rules_of("`[[a[0]]]`"),
             vec![
@@ -564,6 +545,60 @@ mod tests {
                 literal(Literal::Backtick)
             ]
         );
+        // A backtick names four modes, and is matched in every one of them: in code, in
+        // an execution, in a reference, and in the template it closes.
+        assert_eq!(
+            modes::lex_condition(Entity::Literal(Literal::Backtick)),
+            &[Mode::Code, Mode::Execution, Mode::Reference, Mode::Template]
+        );
+        assert_eq!(
+            rules_of("`{{`x`}}`"),
+            vec![
+                literal(Literal::Backtick),
+                literal(Literal::ExecutionOpen),
+                literal(Literal::Backtick),
+                literal(Literal::TemplateBody),
+                literal(Literal::Backtick),
+                literal(Literal::ExecutionClose),
+                literal(Literal::Backtick)
+            ]
+        );
+        assert_eq!(rules_of("`[[`x`]]`")[2], literal(Literal::Backtick));
+        // Text modes only see their body and boundaries.
+        assert_eq!(values("'{{x}} // y'"), vec!["'", "{{x}} // y", "'"]);
+        assert_eq!(values("\"[[x]] /* y\""), vec!["\"", "[[x]] /* y", "\""]);
+        assert_eq!(values("`a}}b]]c`"), vec!["`", "a}}b]]c", "`"]);
+        assert_eq!(values("/* ' ` \" // */"), vec!["/*", " ' ` \" // ", "*/"]);
+        assert_eq!(values("// /* */ /** **/"), vec!["//", " /* */ /** **/"]);
+    }
+
+    // @lfy def/lexer/main.lfy:lex
+    #[test]
+    fn a_terminal_without_a_lex_condition_is_matched_wherever_in_code_holds() {
+        assert_eq!(
+            modes::lex_condition(Entity::Punctuation(Punctuation::BlockOpen)),
+            modes::IN_CODE
+        );
+        // In code: `{{` is two block opens, because `ExecutionOpen` is no candidate here.
+        assert_eq!(
+            rules_of("{{}}"),
+            vec![
+                punctuation(Punctuation::BlockOpen),
+                punctuation(Punctuation::BlockOpen),
+                punctuation(Punctuation::BlockClose),
+                punctuation(Punctuation::BlockClose)
+            ]
+        );
+        // Inside an execution, where `[[` is two list opens for the same reason.
+        assert_eq!(
+            rules_of("`{{ {} }}`")[2..6],
+            [
+                SPACE,
+                punctuation(Punctuation::BlockOpen),
+                punctuation(Punctuation::BlockClose),
+                SPACE
+            ]
+        );
         assert_eq!(
             rules_of("`{{[[]]}}`")[2..6],
             [
@@ -573,12 +608,19 @@ mod tests {
                 punctuation(Punctuation::ListClose)
             ]
         );
-        // Text modes only see their body and boundaries.
-        assert_eq!(values("'{{x}} // y'"), vec!["'", "{{x}} // y", "'"]);
-        assert_eq!(values("\"[[x]] /* y\""), vec!["\"", "[[x]] /* y", "\""]);
-        assert_eq!(values("`a}}b]]c`"), vec!["`", "a}}b]]c", "`"]);
-        assert_eq!(values("/* ' ` \" // */"), vec!["/*", " ' ` \" // ", "*/"]);
-        assert_eq!(values("// /* */ /** **/"), vec!["//", " /* */ /** **/"]);
+        // And inside a reference.
+        assert_eq!(
+            rules_of("`[[x + 1]]`")[2..7],
+            [
+                IDENTIFIER,
+                SPACE,
+                punctuation(Punctuation::Plus),
+                SPACE,
+                literal(Literal::NumberLiteral)
+            ]
+        );
+        // Where `inCode` does not hold they are no candidates at all.
+        assert_eq!(values("'if x'"), vec!["'", "if x", "'"]);
     }
 
     // @lfy def/lexer/main.lfy:lex

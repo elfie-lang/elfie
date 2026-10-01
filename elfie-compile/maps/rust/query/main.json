@@ -1,0 +1,2328 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/rules/expression.lfy": "0ffe7e6faf3f484bc0565921daa8361dbb3c2918906caff766a5c4c15ae6cc3d",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/terminals/identifier.lfy": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
+      "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
+      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/punctuation.lfy": "79e066c246f9fb374459220a25104f0e5bc02af61bf6bd42a235de640a346be3",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/model/traits.lfy": "380026d1ef6bf15fe0537cd7f6d0a2bcf8107ff8647eea988374cd930641a1be",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
+      "def/parser/traits.lfy": "0661b339a7044bc845c454d3098a7080fd7ef179642d030fbd5235051f029c1d",
+      "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-30T22:38:39Z",
+    "hash": "82ffcdb395ae5dac216d3d0c0cd3845b321904ddc2c37618627b1a84034ffda7",
+    "markers": [
+      {
+        "column": null,
+        "end": 6,
+        "entity": "format",
+        "file": "def/format/main.lfy",
+        "line": 15,
+        "outputLine": 6,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 7,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 47,
+        "outputLine": 7,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 8,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 1,
+        "outputLine": 8,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 9,
+        "entity": "lower",
+        "file": "def/interpret/main.lfy",
+        "line": 205,
+        "outputLine": 9,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 10,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 10,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 11,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 20,
+        "outputLine": 11,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 12,
+        "entity": "parse",
+        "file": "def/parser/main.lfy",
+        "line": 11,
+        "outputLine": 12,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 13,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 14,
+        "entity": "load",
+        "file": "def/workspace/main.lfy",
+        "line": 13,
+        "outputLine": 14,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/lib.rs",
+    "requirements": "",
+    "signature": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
+    "source": "def/query/main.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/rules/expression.lfy": "0ffe7e6faf3f484bc0565921daa8361dbb3c2918906caff766a5c4c15ae6cc3d",
+      "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/terminals/identifier.lfy": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
+      "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
+      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/punctuation.lfy": "79e066c246f9fb374459220a25104f0e5bc02af61bf6bd42a235de640a346be3",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/model/traits.lfy": "380026d1ef6bf15fe0537cd7f6d0a2bcf8107ff8647eea988374cd930641a1be",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
+      "def/parser/traits.lfy": "0661b339a7044bc845c454d3098a7080fd7ef179642d030fbd5235051f029c1d",
+      "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d",
+      "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
+    },
+    "generated": "2026-09-30T22:38:39Z",
+    "hash": "82ffcdb395ae5dac216d3d0c0cd3845b321904ddc2c37618627b1a84034ffda7",
+    "markers": [
+      {
+        "column": null,
+        "end": 39,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 45,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 40,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 46,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 76,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 104,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 88,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 132,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 105,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 140,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 133,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 154,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 141,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 163,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 155,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 180,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 164,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 182,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 181,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 195,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 183,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 197,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 196,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 204,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 198,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 212,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 205,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 232,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 213,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 238,
+        "entity": "nodesAt",
+        "file": "def/query/main.lfy",
+        "line": 64,
+        "outputLine": 233,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 239,
+        "entity": "nodesAt",
+        "file": "def/query/main.lfy",
+        "line": 64,
+        "outputLine": 239,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 294,
+        "entity": "nodesAt",
+        "file": "def/query/main.lfy",
+        "line": 64,
+        "outputLine": 240,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 309,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 295,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 316,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 310,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 326,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 317,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 330,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 327,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 336,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 331,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 353,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 337,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 361,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 354,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 370,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 362,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 371,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 371,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 384,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 372,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 390,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 385,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 398,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 391,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 425,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 399,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 460,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 426,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 469,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 461,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 475,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 470,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 479,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 476,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 497,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 480,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 511,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 498,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 533,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 512,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 549,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 534,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 566,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 550,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 584,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 567,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 609,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 585,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 625,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 610,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 645,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 626,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 662,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 646,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 690,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 663,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 692,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 691,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 697,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 693,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 700,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 698,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 704,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 701,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 720,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 705,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 727,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 721,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 737,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 728,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 744,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 738,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 746,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 745,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 753,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 747,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 764,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 754,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 766,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 765,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 775,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 767,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 788,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 776,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 819,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 789,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 846,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 820,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 851,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 847,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 865,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 852,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 866,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 866,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 870,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 867,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 872,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 871,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 873,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 873,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 874,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 874,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 877,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 875,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 883,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 878,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 884,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 884,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 890,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 885,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 892,
+        "entity": "hoverAt",
+        "file": "def/query/main.lfy",
+        "line": 445,
+        "outputLine": 891,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 894,
+        "entity": "hoverAt",
+        "file": "def/query/main.lfy",
+        "line": 445,
+        "outputLine": 893,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 932,
+        "entity": "hoverAt",
+        "file": "def/query/main.lfy",
+        "line": 445,
+        "outputLine": 895,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 968,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 933,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1009,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 969,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1023,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1010,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1029,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1024,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1057,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1030,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1066,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1058,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1087,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1067,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1094,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1088,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1112,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1095,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1150,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1113,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1187,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1151,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1240,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1188,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1274,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1241,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1394,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1275,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1403,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1395,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1415,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1404,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1434,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1416,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1505,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1435,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1518,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1506,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1532,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1519,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1553,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1533,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1568,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1554,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1609,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1569,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1616,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1610,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1634,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1617,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1662,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1635,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1668,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1663,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1683,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1669,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1690,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1684,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1692,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1691,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1696,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1693,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1703,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1697,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1722,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1704,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1736,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1723,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1748,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1737,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1753,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1749,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1770,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1754,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1784,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1771,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1811,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 1785,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1825,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1812,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1826,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1826,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1834,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1827,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1859,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1835,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1872,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1860,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1881,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1873,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1902,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1882,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1906,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1903,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1933,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1907,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1938,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1934,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2007,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 1939,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2018,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 2008,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2026,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 2019,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2052,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 2027,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2084,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 2053,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2088,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 2085,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2101,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 2089,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2109,
+        "entity": "findSymbols",
+        "file": "def/query/main.lfy",
+        "line": 725,
+        "outputLine": 2102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2131,
+        "entity": "findSymbols",
+        "file": "def/query/main.lfy",
+        "line": 725,
+        "outputLine": 2110,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2139,
+        "entity": "findSymbols",
+        "file": "def/query/main.lfy",
+        "line": 725,
+        "outputLine": 2132,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2185,
+        "entity": "findSymbols",
+        "file": "def/query/main.lfy",
+        "line": 725,
+        "outputLine": 2140,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2194,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 2186,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2196,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 2195,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2211,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 2197,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2231,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 2212,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2250,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 2232,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2273,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 2251,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2276,
+        "entity": "find",
+        "file": "def/query/main.lfy",
+        "line": 744,
+        "outputLine": 2274,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2284,
+        "entity": "find",
+        "file": "def/query/main.lfy",
+        "line": 744,
+        "outputLine": 2277,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2312,
+        "entity": "find",
+        "file": "def/query/main.lfy",
+        "line": 744,
+        "outputLine": 2285,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2319,
+        "entity": "find",
+        "file": "def/query/main.lfy",
+        "line": 744,
+        "outputLine": 2313,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2329,
+        "entity": "sourceOf",
+        "file": "def/query/main.lfy",
+        "line": 160,
+        "outputLine": 2320,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2332,
+        "entity": "sourceOf",
+        "file": "def/query/main.lfy",
+        "line": 160,
+        "outputLine": 2330,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2335,
+        "entity": "sourceOf",
+        "file": "def/query/main.lfy",
+        "line": 160,
+        "outputLine": 2333,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2346,
+        "entity": "sourceOf",
+        "file": "def/query/main.lfy",
+        "line": 160,
+        "outputLine": 2336,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2360,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2347,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2367,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2361,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2384,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2368,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2394,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2385,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2407,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2395,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2424,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2408,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2442,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2425,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2445,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2443,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2450,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2446,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2454,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2451,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2468,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2455,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2471,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2469,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2483,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2472,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2495,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2484,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2505,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2496,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2519,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2506,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2523,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2520,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2526,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2524,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2530,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2527,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2538,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2531,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2587,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 2539,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2602,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 2588,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2690,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 2603,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2719,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 2691,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2743,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 2720,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2774,
+        "entity": "tokenAt",
+        "file": "def/query/main.lfy",
+        "line": 40,
+        "outputLine": 2744,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2815,
+        "entity": "nodesAt",
+        "file": "def/query/main.lfy",
+        "line": 64,
+        "outputLine": 2775,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2845,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 2816,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2871,
+        "entity": "symbolAt",
+        "file": "def/query/main.lfy",
+        "line": 72,
+        "outputLine": 2846,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2913,
+        "entity": "definitionOf",
+        "file": "def/query/main.lfy",
+        "line": 123,
+        "outputLine": 2872,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2940,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 2914,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2959,
+        "entity": "referencesTo",
+        "file": "def/query/main.lfy",
+        "line": 144,
+        "outputLine": 2941,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2973,
+        "entity": "hoverAt",
+        "file": "def/query/main.lfy",
+        "line": 445,
+        "outputLine": 2960,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2979,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 2974,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2989,
+        "entity": "hoverAt",
+        "file": "def/query/main.lfy",
+        "line": 445,
+        "outputLine": 2980,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 2998,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 2990,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3008,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 2999,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3017,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3009,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3022,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3018,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3035,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3023,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3086,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3036,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3092,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3087,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3095,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3093,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3102,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3096,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3116,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3103,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3131,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3117,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3141,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3132,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3162,
+        "entity": "typeTextOf",
+        "file": "def/query/main.lfy",
+        "line": 295,
+        "outputLine": 3142,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3170,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3163,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3173,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3171,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3179,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3174,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3191,
+        "entity": "hoverOf",
+        "file": "def/query/main.lfy",
+        "line": 394,
+        "outputLine": 3180,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3212,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3192,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3226,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3213,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3252,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3227,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3282,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3253,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3289,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3283,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3315,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3290,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3352,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3316,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3370,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3353,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3407,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3371,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3432,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3408,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3452,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3433,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3466,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3453,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3475,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3467,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3494,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3476,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3503,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3495,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3535,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3504,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3576,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 472,
+        "outputLine": 3536,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3589,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3577,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3612,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3590,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3625,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3613,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3647,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3626,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3658,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3648,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3693,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3659,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3722,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3694,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3742,
+        "entity": "diagnosticsOf",
+        "file": "def/query/main.lfy",
+        "line": 637,
+        "outputLine": 3723,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3789,
+        "entity": "outlineOf",
+        "file": "def/query/main.lfy",
+        "line": 711,
+        "outputLine": 3743,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3815,
+        "entity": "findSymbols",
+        "file": "def/query/main.lfy",
+        "line": 725,
+        "outputLine": 3790,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3850,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 3816,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3872,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 3851,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3913,
+        "entity": "renameAt",
+        "file": "def/query/main.lfy",
+        "line": 756,
+        "outputLine": 3873,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3935,
+        "entity": "find",
+        "file": "def/query/main.lfy",
+        "line": 744,
+        "outputLine": 3914,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 3948,
+        "entity": "sourceOf",
+        "file": "def/query/main.lfy",
+        "line": 160,
+        "outputLine": 3936,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4014,
+        "entity": "rangeOf",
+        "file": "def/query/main.lfy",
+        "line": 27,
+        "outputLine": 3949,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4048,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4015,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4057,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4049,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4096,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4058,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4100,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4097,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4139,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4101,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4143,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4140,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 4176,
+        "entity": "semanticTokensOf",
+        "file": "def/query/main.lfy",
+        "line": 172,
+        "outputLine": 4144,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/query/mod.rs",
+    "requirements": "",
+    "signature": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
+    "source": "def/query/main.lfy",
+    "target": "rust"
+  }
+]

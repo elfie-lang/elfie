@@ -161,6 +161,21 @@ pub fn is_expression_rule(rule: Entity) -> bool {
     rule.is_primary() || rule.is_prefix() || is_operation(rule)
 }
 
+/// The minimum the one expression that satisfies an alternation of expression rules is
+/// parsed with: one below the lowest binding power among its infix and postfix
+/// alternatives, and 0 when it has no infix or postfix alternative.
+// @lfy def/parser/main.lfy:parse
+pub fn expression_alternation_minimum(items: &[Entity]) -> u8 {
+    items
+        .iter()
+        .filter(|&&item| is_operation(item))
+        .filter_map(|item| item.effective_binding())
+        .map(|binding| binding.precedence_value())
+        .min()
+        // @lfy def/parser/main.lfy:parse
+        .map_or(0, |power| power - 1)
+}
+
 /// The terminals an operator rule is satisfied by: the terminal itself, or every terminal
 /// of an alternation list.
 fn operator_terminals(operator: Entity, out: &mut Vec<Entity>) {
@@ -460,6 +475,25 @@ mod tests {
             tables.identifiers(tables.first(statement(Statement::VariableDeclaration))),
             vec!["ConstKeyword", "LetKeyword"]
         );
+    }
+
+    // @lfy def/parser/main.lfy:parse
+    #[test]
+    fn an_alternation_of_expression_rules_parses_one_below_its_lowest_operation() {
+        let member = expression(Expression::Member);
+        let index = expression(Expression::Index);
+        let call = expression(Expression::Call);
+        let access = member.effective_binding().unwrap().precedence_value();
+        assert_eq!(expression_alternation_minimum(&[expression(Expression::Name), member]), access - 1);
+        assert_eq!(expression_alternation_minimum(&[member, index, call]), access - 1);
+        // @lfy def/parser/main.lfy:parse
+        // With no infix or postfix alternative the minimum is 0.
+        assert_eq!(expression_alternation_minimum(&[]), 0);
+        assert_eq!(
+            expression_alternation_minimum(&[expression(Expression::Name), expression(Expression::Group)]),
+            0
+        );
+        assert_eq!(expression_alternation_minimum(&[statement(Statement::Block)]), 0);
     }
 
     // @lfy def/parser/main.lfy:parse

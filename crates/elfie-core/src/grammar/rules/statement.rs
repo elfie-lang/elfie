@@ -53,8 +53,8 @@ grammar_rules! {
         /// Acceptance criteria:
         /// - A negated nested group distributes the negation: "and" becomes "or" and "or"
         ///   becomes "and" inside of the group.
-        /// - Conditions joined by "or" merge into one situation; conditions joined by "and"
-        ///   are a list of situations.
+        /// - When conditions are joined by "or": they merge into one situation.
+        /// - When conditions are joined by "and": they are a list of situations.
         Conditions is [rule()]: "Conditions joined by and or or" = "[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)", // @lfy def/grammar/rules/statement.lfy:Conditions
         Where is [statement()]: "Adds an acceptance criterion: the conditions are the situation, the expression the behavior" = "[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]", // @lfy def/grammar/rules/statement.lfy:Where
 

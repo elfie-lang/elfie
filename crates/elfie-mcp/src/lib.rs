@@ -6,7 +6,7 @@
 //! one path exists for writing and the CLI owns it.
 
 pub mod data; // @lfy def/mcp/data.lfy:1
-pub mod traits; // @lfy def/mcp/traits.lfy:1
+pub mod traits; // @lfy def/mcp/traits.lfy:tool
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
-use elfie_core::generation::{self, Batch, Marker, Output, Plan, Request, SourceMap, Unit};
+use elfie_core::generation::{self, Batch, Output, Plan, Request, Review, ReviewStatus, SourceMap, Unit};
+use elfie_core::interpret::{self, LoweredCriterion, LoweredNode, LoweredTest, Program};
 use elfie_core::model::{self, Criterion, EntityId, FileId, Model};
 use elfie_core::query::{self, Outline, Position, Range};
 use elfie_core::workspace::{self, Workspace};
@@ -31,6 +32,13 @@ pub use traits::{Arguments, Registered};
 
 /// The project layout file; a change to it loads the workspace again.
 const MANIFEST: &str = "elfie.json";
+
+/// Where the command line keeps its own files, under the root.
+const REQUESTS: &str = "elfie-requests";
+
+/// The file under [`REQUESTS`] holding the reviews of the last global review, as the
+/// command line writes them for the batch named `global`.
+const GLOBAL_REVIEWS: &str = "global.reviews.json";
 
 /// The exit code when the server itself cannot run, as the CLI reads it.
 const FAILURE: i32 = 3;
@@ -97,11 +105,14 @@ impl Session {
 
     /// What runs first when a call arrives: every file of the program whose modification
     /// time or size differs from what was seen is re-read through `workspace::change`
-    /// with no text, a file that vanished the same way, and a changed `elfie.json` loads
-    /// the workspace again.
+    /// with no text, and a file that vanished the same way.
+    ///
+    /// When `elfie.json` has changed since the last call, the workspace is loaded again
+    /// instead, before the tool runs.
     // @lfy def/mcp/main.lfy:serve
     pub fn refresh(&mut self) {
         let now = stamps(&self.workspace);
+        // elfie.json has changed since the last call. @lfy def/mcp/main.lfy:serve
         if now.get(MANIFEST) != self.seen.get(MANIFEST) {
             self.workspace = workspace::load(&self.workspace.root);
             self.seen = stamps(&self.workspace);
@@ -228,6 +239,12 @@ pub fn tools() -> Vec<Registered> {
             ],
             |session, arguments| review(session, arguments.string("batch")?, arguments.optional("target")),
         ),
+        Registered::new(
+            "globalReview",
+            "The review request for every global criterion and test, once for the whole program, with the regions that answer for each",
+            vec![],
+            |session, _| global_review(session),
+        ),
     ]
 }
 
@@ -320,7 +337,7 @@ impl ServerHandler for Server {
             .with_protocol_version(ProtocolVersion::V_2025_06_18) // @lfy def/mcp/main.lfy:Protocol
             .with_server_info(Implementation::new("elfie", env!("CARGO_PKG_VERSION")))
             .with_instructions(
-                "The Elfie agent server. elfie_problems, elfie_find, elfie_entity, elfie_references, and elfie_outline read the program; elfie_grammar gives the language; elfie_units, elfie_request, elfie_check, and elfie_review drive compilation; elfie_output, elfie_source, and elfie_changes read what the last acceptance recorded. Nothing here writes a file.",
+                "The Elfie agent server. elfie_problems, elfie_find, elfie_entity, elfie_references, and elfie_outline read the program; elfie_grammar gives the language; elfie_units, elfie_request, elfie_check, elfie_review, and elfie_globalReview drive compilation; elfie_output, elfie_source, and elfie_changes read what the last acceptance recorded. Nothing here writes a file.",
             )
     }
 
@@ -523,6 +540,8 @@ pub fn find(session: &Session, name: &str) -> Result<String, String> {
         .iter()
         .map(|&entity| {
             let mut line = format!("{} {} {}", kind_of(model, entity), identifier_of(model, entity), place_of(model, entity));
+            // The line ends with the definition, after the kind, the identifier, the file,
+            // and the line. @lfy def/mcp/main.lfy:find
             if let Some(definition) = &model.entities[entity].definition {
                 line.push_str(&format!(": {}", model::strip_references(definition)));
             }
@@ -699,25 +718,6 @@ pub fn grammar(_session: &Session) -> Result<String, String> {
     )) // @lfy def/mcp/main.lfy:grammar
 }
 
-/// The source maps of each target, read from `source-map.json` in its output directory,
-/// dropping any whose output no longer exists.
-fn load_source_maps(workspace: &Workspace) -> Vec<SourceMap> {
-    let mut maps = Vec::new();
-    let mut seen = BTreeSet::new();
-    for target in &workspace.targets {
-        if !seen.insert(target.output_directory.clone()) {
-            continue;
-        }
-        let path = workspace.root.join(&target.output_directory).join("source-map.json");
-        for map in generation::read_source_maps(&path) {
-            if workspace.root.join(&map.output).is_file() {
-                maps.push(map);
-            }
-        }
-    }
-    maps
-}
-
 /// Every file under a directory, skipping build and version control directories.
 fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(directory) else { return };
@@ -774,11 +774,90 @@ fn check_target(workspace: &Workspace, target: Option<&str>) -> Result<(), Strin
     }
 }
 
-/// The plan of the workspace with the source maps read from each target's output
-/// directory.
+/// A plan, the program it was planned from, and the source maps it was planned against:
+/// what every tool that reads the compiler's work is given.
+// Decision: `generation::plan` takes the workspace and gives back the program lowered from
+// it beside the plan, and every later call reads that program rather than the workspace, so
+// the three travel together.
 // @lfy def/mcp/main.lfy:units
-fn plan_of(workspace: &Workspace) -> Plan {
-    generation::plan(workspace, &load_source_maps(workspace), &[])
+struct Planned {
+    /// The workspace lowered, which every request and review reads.
+    program: Program,
+    /// The plan.
+    plan: Plan,
+    /// The source maps the plan was made against: what the last acceptance recorded.
+    maps: Vec<SourceMap>,
+}
+
+impl Planned {
+    /// The workspace the plan's units index into: the one the program was lowered from.
+    fn workspace(&self) -> &Workspace {
+        &self.program.workspace
+    }
+}
+
+/// The ids of every violated review of `elfie-requests/global.reviews.json` under the root;
+/// empty when that file is missing, cannot be read, or holds no violated review.
+// @lfy def/mcp/main.lfy:units
+fn violated_requirements(workspace: &Workspace) -> Vec<String> {
+    let path = workspace.root.join(REQUESTS).join(GLOBAL_REVIEWS);
+    // The file is missing, so no unit is violated. @lfy def/mcp/main.lfy:units
+    let Ok(text) = fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_str::<Value>(&text) else {
+        return Vec::new();
+    };
+    let Some(reviews) = value.as_array() else {
+        return Vec::new();
+    };
+    reviews
+        .iter()
+        .filter_map(Review::from_json)
+        .filter(|review| review.status == ReviewStatus::Violated) // @lfy def/mcp/main.lfy:units
+        .map(|review| review.id)
+        .collect()
+}
+
+/// The stems of every unit whose outputs hold a marker answering for one of those
+/// requirement ids, each once, in plan order.
+// @lfy def/mcp/main.lfy:units
+fn violated_stems(plan: &Plan, violated: &[String]) -> Vec<String> {
+    let mut stems: Vec<String> = Vec::new();
+    for unit in &plan.units {
+        // @lfy def/mcp/main.lfy:units
+        let answered = unit.outputs.iter().flat_map(|map| map.markers.iter()).any(|marker| {
+            marker
+                .requirement
+                .as_ref()
+                .is_some_and(|id| violated.iter().any(|found| found == id))
+        });
+        if answered && !stems.contains(&unit.stem) {
+            stems.push(unit.stem.clone());
+        }
+    }
+    stems
+}
+
+/// The plan of the workspace with [`generation::source_maps_of`] the workspace, and as the
+/// violated units the stems of every unit whose outputs answer for a violated review of
+/// `elfie-requests/global.reviews.json`.
+// Decision: a unit's outputs are read off the plan, and the violated units are an input of
+// planning, so the plan is made once with no violated unit and again only when a violated
+// review names a unit; a project with none, which is every project until a global review
+// finds one, is planned once.
+// @lfy def/mcp/main.lfy:units
+fn plan_of(workspace: &Workspace) -> Planned {
+    let maps = generation::source_maps_of(workspace, None); // @lfy def/mcp/main.lfy:units
+    let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &[]);
+    let violated = violated_requirements(workspace);
+    let stems = violated_stems(&plan, &violated);
+    if stems.is_empty() {
+        return Planned { program, plan, maps };
+    }
+    // @lfy def/mcp/main.lfy:units
+    let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &stems);
+    Planned { program, plan, maps }
 }
 
 /// One unit as a line: the target, the stem, the reason or up to date, and the stems of
@@ -810,13 +889,13 @@ fn batch_line(plan: &Plan, batch: &Batch) -> String {
 /// they are batched.
 // @lfy def/mcp/main.lfy:units
 pub fn units(session: &Session, target: Option<&str>) -> Result<String, String> {
-    let workspace = &session.workspace;
-    check_target(workspace, target)?;
-    let plan = plan_of(workspace);
+    check_target(&session.workspace, target)?;
+    let planned = plan_of(&session.workspace);
+    let (workspace, plan) = (planned.workspace(), &planned.plan);
     // @lfy def/mcp/main.lfy:units
     let mut lines: Vec<String> = (0..plan.units.len())
         .filter(|&index| target.is_none_or(|target| workspace.targets[plan.units[index].target].identifier == target))
-        .map(|index| unit_line(workspace, &plan, index))
+        .map(|index| unit_line(workspace, plan, index))
         .collect();
     if lines.is_empty() {
         return Ok(match target {
@@ -831,8 +910,8 @@ pub fn units(session: &Session, target: Option<&str>) -> Result<String, String> 
     let batches: Vec<String> = plan
         .batches
         .iter()
-        .filter(|batch| target.is_none_or(|target| batch_target(workspace, &plan, batch) == target))
-        .map(|batch| batch_line(&plan, batch))
+        .filter(|batch| target.is_none_or(|target| batch_target(workspace, plan, batch) == target))
+        .map(|batch| batch_line(plan, batch))
         .collect();
     if !batches.is_empty() {
         lines.push(String::new());
@@ -901,18 +980,18 @@ fn resolve_batch(workspace: &Workspace, plan: &Plan, name: &str, target: Option<
 /// The request for a batch, with the existing outputs of its units read from disk and no
 /// previous source.
 // @lfy def/mcp/main.lfy:request
-fn request_for(workspace: &Workspace, plan: &Plan, batch: &Batch) -> Request {
+fn request_for(program: &Program, plan: &Plan, batch: &Batch) -> Request {
     let existing: Vec<Output> = batch
         .units
         .iter()
         .flat_map(|&unit| plan.units[unit].outputs.iter())
         .filter_map(|map| {
-            fs::read_to_string(workspace.root.join(&map.output))
+            fs::read_to_string(program.workspace.root.join(&map.output))
                 .ok()
                 .map(|text| Output { path: map.output.clone(), text })
         })
         .collect();
-    generation::request(workspace, plan, batch, &existing, &BTreeMap::new())
+    generation::request(program, plan, batch, &existing, &BTreeMap::new())
 }
 
 /// The request of the batch that holds a unit.
@@ -920,11 +999,11 @@ fn request_for(workspace: &Workspace, plan: &Plan, batch: &Batch) -> Request {
 // batched; it is requested as a batch of its own, which is the request its batch would
 // be, so a check of an up-to-date unit answers rather than failing.
 // @lfy def/mcp/main.lfy:check
-fn request_of_unit(workspace: &Workspace, plan: &Plan, unit: usize) -> Request {
+fn request_of_unit(program: &Program, plan: &Plan, unit: usize) -> Request {
     match plan.batches.iter().find(|batch| batch.units.contains(&unit)) {
-        Some(batch) => request_for(workspace, plan, batch),
+        Some(batch) => request_for(program, plan, batch),
         None => request_for(
-            workspace,
+            program,
             plan,
             &Batch {
                 units: vec![unit],
@@ -938,22 +1017,22 @@ fn request_of_unit(workspace: &Workspace, plan: &Plan, unit: usize) -> Request {
 /// and how to report.
 // @lfy def/mcp/main.lfy:request
 pub fn request(session: &Session, batch: &str, target: Option<&str>) -> Result<String, String> {
-    let workspace = &session.workspace;
-    let plan = plan_of(workspace);
-    let index = resolve_batch(workspace, &plan, batch, target)?; // @lfy def/mcp/main.lfy:request
-    Ok(request_for(workspace, &plan, &plan.batches[index]).instructions) // @lfy def/mcp/main.lfy:request
+    let planned = plan_of(&session.workspace);
+    let plan = &planned.plan;
+    let index = resolve_batch(planned.workspace(), plan, batch, target)?; // @lfy def/mcp/main.lfy:request
+    Ok(request_for(&planned.program, plan, &plan.batches[index]).instructions) // @lfy def/mcp/main.lfy:request
 }
 
 /// Whether the outputs on disk satisfy the request for one unit, and what is wrong when
 /// they do not. Nothing is written; the CLI records source maps.
 // @lfy def/mcp/main.lfy:check
 pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
-    let workspace = &session.workspace;
-    let plan = plan_of(workspace);
-    let index = resolve_unit(workspace, &plan, unit, target)?;
-    let request = request_of_unit(workspace, &plan, index);
-    let outputs = outputs_of(workspace, &plan, index); // @lfy def/mcp/main.lfy:check
-    let verdict = generation::accept(workspace, &plan, &request, index, &outputs);
+    let planned = plan_of(&session.workspace);
+    let (workspace, plan) = (planned.workspace(), &planned.plan);
+    let index = resolve_unit(workspace, plan, unit, target)?;
+    let request = request_of_unit(&planned.program, plan, index);
+    let outputs = outputs_of(workspace, plan, index); // @lfy def/mcp/main.lfy:check
+    let verdict = generation::accept(&planned.program, plan, &request, index, &outputs);
     if verdict.accepted {
         // @lfy def/mcp/main.lfy:check
         let mut text = format!(
@@ -980,9 +1059,9 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
 
 // ---- what the last acceptance recorded ---------------------------------------------
 
-// Decision: the source maps these tools read come from each target's output directory, as
-// elfie_units reads them through `load_source_maps`, so what a tool answers is what the
-// last acceptance recorded, never a guess from the text on disk.
+// Decision: the source maps these tools read are `generation::source_maps_of` the
+// workspace, as elfie_units reads them, so what a tool answers is what the last acceptance
+// recorded in elfie-compile/maps, never a guess from the text on disk.
 
 /// The language a fenced block of an output is marked with: the output's extension, or
 /// nothing when it has none.
@@ -1010,7 +1089,7 @@ fn excerpt(workspace: &Workspace, output: &str, first: usize, last: usize) -> St
 pub fn output(session: &Session, name: &str, target: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
     check_target(workspace, target)?; // @lfy def/mcp/main.lfy:output
-    let maps = load_source_maps(workspace);
+    let maps = generation::source_maps_of(workspace, None); // @lfy def/mcp/main.lfy:output
     let regions = generation::regions_of(workspace, &maps, name, target); // @lfy def/mcp/main.lfy:output
     if regions.is_empty() {
         return Ok(format!("nothing is generated for {name}")); // @lfy def/mcp/main.lfy:output
@@ -1041,22 +1120,68 @@ pub fn output(session: &Session, name: &str, target: Option<&str>) -> Result<Str
     Ok(blocks.join("\n\n"))
 }
 
-/// The criterion of the entity a marker names that begins on the marker's source line, as
-/// `criteria_of` gives it; `None` when none does.
+/// One lowered criterion as one line: `When` and its situations, then its behaviors, then
+/// `Side effects:` and its side effects, joined by `: `, as a request and a review spell it.
 // @lfy def/mcp/main.lfy:source
-fn criterion_on(workspace: &Workspace, marker: &Marker) -> Option<String> {
-    let entity = marker.entity.as_ref()?;
-    let model = &workspace.model;
-    for &id in &query::find(workspace, &format!("{}:{entity}", marker.file)) {
-        for criterion in model::criteria_of(model, id) {
-            let Some(node) = criterion.node else { continue };
-            let Some(token) = model.first_token(node) else { continue };
-            if token.line == marker.line {
-                return Some(criterion_text(&criterion));
-            }
-        }
+fn lowered_criterion_text(criterion: &LoweredCriterion) -> String {
+    let mut parts = Vec::new();
+    if let Some(situation) = &criterion.situation {
+        parts.push(format!("When {}", situation.join(" ")));
     }
-    None
+    if let Some(behavior) = &criterion.behavior {
+        parts.push(behavior.join(" "));
+    }
+    if let Some(side_effects) = &criterion.side_effects {
+        parts.push(format!("Side effects: {}", side_effects.join(" ")));
+    }
+    parts.join(": ")
+}
+
+/// One lowered test as one line: its input and its expectation, as spelled.
+// @lfy def/mcp/main.lfy:source
+fn lowered_test_text(test: &LoweredTest) -> String {
+    format!("Input `{}` gives `{}`", test.input_text.trim(), test.expect_text.trim())
+}
+
+/// Every criterion and test of a lowered node and the nodes under it, with those of the
+/// criteria and tests given, as its id and the one line it is spelled as.
+// @lfy def/mcp/main.lfy:source
+fn collect_requirements(
+    criteria: &[LoweredCriterion],
+    tests: &[LoweredTest],
+    out: &mut Vec<(String, String)>,
+) {
+    out.extend(criteria.iter().map(|criterion| (criterion.id.clone(), lowered_criterion_text(criterion))));
+    out.extend(tests.iter().map(|test| (test.id.clone(), lowered_test_text(test))));
+}
+
+/// Every criterion and test of the lowered program, each as its id and the one line it is
+/// spelled as: the local ones of every file, then the global ones.
+// @lfy def/mcp/main.lfy:source
+fn requirements_of(program: &Program) -> Vec<(String, String)> {
+    let mut found: Vec<(String, String)> = Vec::new();
+    for lowered in &program.files {
+        let mut nodes: Vec<&LoweredNode> = vec![&lowered.root];
+        while let Some(node) = nodes.pop() {
+            collect_requirements(&node.criteria, &node.tests, &mut found);
+            nodes.extend(node.nodes());
+        }
+        collect_requirements(&lowered.criteria, &lowered.tests, &mut found);
+    }
+    // A global criterion or test is in the program once, under no file.
+    // @lfy def/mcp/main.lfy:source
+    collect_requirements(&program.criteria, &program.tests, &mut found);
+    found
+}
+
+/// The text of the criterion or test one requirement id names, local or global, from the
+/// lowered program; `None` when the program holds none with that id.
+// @lfy def/mcp/main.lfy:source
+fn requirement_text(program: &Program, id: &str) -> Option<String> {
+    requirements_of(program)
+        .into_iter()
+        .find(|(spelled, _)| spelled == id)
+        .map(|(_, text)| text)
 }
 
 /// Where one line of generated code came from: the definition file, the entity, and its
@@ -1064,7 +1189,7 @@ fn criterion_on(workspace: &Workspace, marker: &Marker) -> Option<String> {
 // @lfy def/mcp/main.lfy:source
 pub fn source(session: &Session, file: &str, line: usize) -> Result<String, String> {
     let workspace = &session.workspace;
-    for map in load_source_maps(workspace) {
+    for map in generation::source_maps_of(workspace, None) {
         if map.output != file {
             continue;
         }
@@ -1073,13 +1198,24 @@ pub fn source(session: &Session, file: &str, line: usize) -> Result<String, Stri
             continue;
         };
         let mut text = format!("{}:{}", marker.file, marker.line);
+        // @lfy def/mcp/main.lfy:source
         if let Some(entity) = &marker.entity {
             text.push_str(&format!(" {entity}"));
         }
+        // The requirement follows on the line after, and the text of that criterion or test
+        // on the line after it; a criterion reads as a sentence, so it stands on its own
+        // line rather than beside an id that is a name and a hash.
         // @lfy def/mcp/main.lfy:source
-        if let Some(criterion) = criterion_on(workspace, marker) {
+        if let Some(requirement) = &marker.requirement {
             text.push('\n');
-            text.push_str(&criterion);
+            text.push_str(requirement);
+            let program = interpret::lower(workspace.clone());
+            // A stale map may name an id the program no longer holds; the id still says
+            // which requirement the region answered for.
+            if let Some(spelled) = requirement_text(&program, requirement) {
+                text.push('\n');
+                text.push_str(&spelled);
+            }
         }
         return Ok(text);
     }
@@ -1138,20 +1274,20 @@ fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
 /// What differs for each entity of a unit since its outputs were last accepted.
 // @lfy def/mcp/main.lfy:changes
 pub fn changes(session: &Session, unit: &str) -> Result<String, String> {
-    let workspace = &session.workspace;
-    let plan = plan_of(workspace);
-    let index = unit_of_stem(workspace, &plan, unit)?;
-    let planned = &plan.units[index];
-    if planned.outputs.is_empty() {
+    let planned = plan_of(&session.workspace);
+    let workspace = planned.workspace();
+    let index = unit_of_stem(workspace, &planned.plan, unit)?;
+    let of_stem = &planned.plan.units[index];
+    if of_stem.outputs.is_empty() {
         return Ok(format!("no previous output for {unit}; nothing has been accepted for it yet")); // @lfy def/mcp/main.lfy:changes
     }
-    let previous = previous_source(workspace, planned); // @lfy def/mcp/main.lfy:changes
+    let previous = previous_source(workspace, of_stem); // @lfy def/mcp/main.lfy:changes
     let mut text = String::new();
     if previous.is_none() {
         // @lfy def/mcp/main.lfy:changes
         text.push_str("the source the outputs were generated from cannot be recovered; every entity is listed as added\n");
     }
-    let found = generation::changes(workspace, planned, previous.as_deref()); // @lfy def/mcp/main.lfy:changes
+    let found = generation::changes(&planned.program, of_stem, previous.as_deref()); // @lfy def/mcp/main.lfy:changes
     if found.is_empty() {
         return Ok(format!("no changes in {unit} since its outputs were accepted")); // @lfy def/mcp/main.lfy:changes
     }
@@ -1168,11 +1304,24 @@ pub fn changes(session: &Session, unit: &str) -> Result<String, String> {
 /// generated for its entities, and how to report.
 // @lfy def/mcp/main.lfy:review
 pub fn review(session: &Session, batch: &str, target: Option<&str>) -> Result<String, String> {
-    let workspace = &session.workspace;
-    let plan = plan_of(workspace);
-    let index = resolve_batch(workspace, &plan, batch, target)?; // @lfy def/mcp/main.lfy:review
+    let planned = plan_of(&session.workspace);
+    let plan = &planned.plan;
+    let index = resolve_batch(planned.workspace(), plan, batch, target)?; // @lfy def/mcp/main.lfy:review
     // @lfy def/mcp/main.lfy:review
-    Ok(generation::review(workspace, &plan, &plan.batches[index], &load_source_maps(workspace)).instructions)
+    Ok(generation::review(&planned.program, plan, &plan.batches[index], &planned.maps).instructions)
+}
+
+/// The review request for every global criterion and test, once for the whole program, with
+/// the regions that answer for each.
+// @lfy def/mcp/main.lfy:globalReview
+pub fn global_review(session: &Session) -> Result<String, String> {
+    let planned = plan_of(&session.workspace);
+    // @lfy def/mcp/main.lfy:globalReview
+    if planned.program.criteria.is_empty() && planned.program.tests.is_empty() {
+        return Ok("no global criterion or test exists in the program".to_string());
+    }
+    // @lfy def/mcp/main.lfy:globalReview
+    Ok(generation::global_review(&planned.program, &planned.maps).instructions)
 }
 
 #[cfg(test)]
@@ -1267,10 +1416,11 @@ mod tests {
                 "elfie_source",
                 "elfie_changes",
                 "elfie_review",
+                "elfie_globalReview",
             ]
         );
         let listed = traits::list(&tools());
-        assert_eq!(listed.len(), 13);
+        assert_eq!(listed.len(), 14);
         assert_eq!(listed[0].input_schema["required"], serde_json::json!([]));
         assert_eq!(listed[1].input_schema["required"], serde_json::json!(["name"]));
         // A line is a number, and is listed as one. @lfy def/mcp/main.lfy:source
@@ -1516,20 +1666,26 @@ mod tests {
         assert!(error.contains("rejected a:"), "{error}");
     }
 
+    /// The unit with a stem accepted against the outputs on disk, with its source maps
+    /// recorded in the target's output directory the way the command line records them.
+    fn record_unit(fixture: &Fixture, stem: &str) {
+        let session = fixture.session();
+        let planned = plan_of(&session.workspace);
+        let (workspace, plan) = (planned.workspace(), &planned.plan);
+        let index = resolve_unit(workspace, plan, stem, None).unwrap();
+        let request = request_of_unit(&planned.program, plan, index);
+        let outputs = outputs_of(workspace, plan, index);
+        let verdict = generation::accept(&planned.program, plan, &request, index, &outputs);
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
+    }
+
     /// A project whose unit `b` has an accepted output, with the source maps recorded in
     /// the target's output directory the way the command line records them.
     fn accepted_project() -> Fixture {
         let fixture = compiled_project();
         fixture.write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B;\n");
-        let session = fixture.session();
-        let workspace = &session.workspace;
-        let plan = plan_of(workspace);
-        let index = resolve_unit(workspace, &plan, "b", None).unwrap();
-        let request = request_of_unit(workspace, &plan, index);
-        let outputs = outputs_of(workspace, &plan, index);
-        let verdict = generation::accept(workspace, &plan, &request, index, &outputs);
-        assert!(verdict.accepted, "{:?}", verdict.problems);
-        generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
+        record_unit(&fixture, "b");
         fixture
     }
 
@@ -1570,9 +1726,18 @@ mod tests {
         assert!(result.text.contains("line") && result.text.contains("number"), "{}", result.text);
     }
 
-    // @lfy def/mcp/main.lfy:source
-    #[test]
-    fn source_quotes_a_criterion_that_begins_on_the_line() {
+    /// The id of the one criterion or test of a project spelled as `text`.
+    fn requirement_id(fixture: &Fixture, text: &str) -> String {
+        let program = interpret::lower(fixture.session().workspace);
+        requirements_of(&program)
+            .into_iter()
+            .find(|(_, spelled)| spelled == text)
+            .map(|(id, _)| id)
+            .unwrap_or_else(|| panic!("the program holds a requirement reading {text}"))
+    }
+
+    /// A project with one fn carrying one local criterion and one global criterion.
+    fn project_with_requirements() -> Fixture {
         let fixture = Fixture::new();
         fixture
             .write(
@@ -1585,24 +1750,54 @@ mod tests {
                 }"#,
             )
             .write("targets/rust/main.lfy", "trait rust extends target: `Built as Rust` {}\nrust.apply(global);\n")
-            // The fn and its one criterion are written on one line, so the criterion begins
-            // on the line the marker of the fn names.
-            .write("def/b.lfy", "fn b(): `A b` => string { @acceptanceCriteria.add({ behavior = `It answers` }); }\n")
-            .write("out/b.rs", "// @lfy def/b.lfy:b\npub fn b() -> String {\n    String::new()\n}\n");
+            .write(
+                "def/b.lfy",
+                "fn b(): `A b` => string { @acceptanceCriteria.add({ behavior = `It answers` }); }\nglobal@acceptanceCriteria.add({ behavior = `Nothing is written outside the output directory` });\n",
+            );
+        fixture
+    }
+
+    // @lfy def/mcp/main.lfy:source
+    #[test]
+    fn source_names_the_requirement_a_region_answers_for() {
+        let fixture = project_with_requirements();
+        let local = requirement_id(&fixture, "It answers");
+        fixture.write(
+            "out/b.rs",
+            &format!("// @lfy def/b.lfy:b#{local}\npub fn b() -> String {{\n    String::new()\n}}\n"),
+        );
         let session = fixture.session();
         assert_eq!(problems(&session, None).unwrap(), "no problems");
-        let workspace = &session.workspace;
-        let plan = plan_of(workspace);
-        let index = resolve_unit(workspace, &plan, "b", None).unwrap();
-        let request = request_of_unit(workspace, &plan, index);
-        let outputs = outputs_of(workspace, &plan, index);
-        let verdict = generation::accept(workspace, &plan, &request, index, &outputs);
-        assert!(verdict.accepted, "{:?}", verdict.problems);
-        generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
-        // A criterion of the entity begins on the line the marker names, so its text
-        // follows on the next line. @lfy def/mcp/main.lfy:source
+        record_unit(&fixture, "b");
+        // The marker names a requirement, so its id follows on the line after the one
+        // reading the file and the line, and then the text of that criterion.
+        // @lfy def/mcp/main.lfy:source
         let session = fixture.session();
-        assert_eq!(source(&session, "out/b.rs", 2).unwrap(), "def/b.lfy:1 b\nIt answers");
+        assert_eq!(
+            source(&session, "out/b.rs", 2).unwrap(),
+            format!("def/b.lfy:1 b\n{local}\nIt answers")
+        );
+    }
+
+    /// A region may answer for a global criterion as well as a local one; its text is read
+    /// from the lowered program the same way.
+    // @lfy def/mcp/main.lfy:source
+    #[test]
+    fn source_reads_a_global_requirement_from_the_lowered_program() {
+        let fixture = project_with_requirements();
+        let global = requirement_id(&fixture, "Nothing is written outside the output directory");
+        assert!(Review::is_global(&global), "{global}");
+        fixture.write(
+            "out/b.rs",
+            &format!("// @lfy def/b.lfy:b#{global}\npub fn b() -> String {{\n    String::new()\n}}\n"),
+        );
+        record_unit(&fixture, "b");
+        let session = fixture.session();
+        // @lfy def/mcp/main.lfy:source
+        assert_eq!(
+            source(&session, "out/b.rs", 1).unwrap(),
+            format!("def/b.lfy:1 b\n{global}\nNothing is written outside the output directory")
+        );
     }
 
     // @lfy def/mcp/main.lfy:changes
@@ -1628,13 +1823,12 @@ mod tests {
     fn changes_says_so_when_nothing_differs() {
         let fixture = accepted_project();
         let session = fixture.session();
-        let workspace = &session.workspace;
-        let plan = plan_of(workspace);
-        let index = unit_of_stem(workspace, &plan, "b").unwrap();
+        let planned = plan_of(&session.workspace);
+        let index = unit_of_stem(planned.workspace(), &planned.plan, "b").unwrap();
         // The file as it is now is the file the outputs were generated from, so nothing
         // differs. @lfy def/mcp/main.lfy:changes
         let text = fs::read_to_string(fixture.root.join("def/b.lfy")).unwrap();
-        assert!(generation::changes(workspace, &plan.units[index], Some(&text)).is_empty());
+        assert!(generation::changes(&planned.program, &planned.plan.units[index], Some(&text)).is_empty());
     }
 
     // @lfy def/mcp/main.lfy:review
@@ -1653,5 +1847,67 @@ mod tests {
         assert!(error.contains("no batch has the identifier c"), "{error}");
         let error = review(&session, "a", Some("go")).unwrap_err();
         assert!(error.contains("go is not a target"), "{error}");
+    }
+
+    /// A unit whose output answers for a violated review of
+    /// `elfie-requests/global.reviews.json` is planned with the reason `violated`; without
+    /// that file the plan is made with no violated unit at all.
+    // @lfy def/mcp/main.lfy:units
+    #[test]
+    fn units_plans_a_violated_unit_again() {
+        let fixture = project_with_requirements();
+        let global = requirement_id(&fixture, "Nothing is written outside the output directory");
+        fixture.write(
+            "out/b.rs",
+            &format!("// @lfy def/b.lfy:b#{global}\npub fn b() -> String {{\n    String::new()\n}}\n"),
+        );
+        record_unit(&fixture, "b");
+
+        // The file is missing, so the plan is made with no violated unit and the recorded
+        // unit is up to date. @lfy def/mcp/main.lfy:units
+        let session = fixture.session();
+        assert_eq!(units(&session, None).unwrap(), "rust b up to date []");
+
+        // A review that is satisfied names no violated unit either.
+        let review_line = |status: &str| {
+            format!(
+                "[{}]\n",
+                Review {
+                    id: global.clone(),
+                    file: String::new(),
+                    line: 0,
+                    entity: String::new(),
+                    status: ReviewStatus::from_name(status).unwrap(),
+                    evidence: "out/b.rs:1-4".to_string(),
+                    note: "it is under out".to_string(),
+                }
+                .to_json()
+            )
+        };
+        fixture.write("elfie-requests/global.reviews.json", &review_line("satisfied"));
+        let session = fixture.session();
+        assert_eq!(units(&session, None).unwrap(), "rust b up to date []");
+
+        // The review is violated and a marker of the unit's output answers for its id, so
+        // the unit is planned again. @lfy def/mcp/main.lfy:units
+        fixture.write("elfie-requests/global.reviews.json", &review_line("violated"));
+        let session = fixture.session();
+        assert_eq!(units(&session, None).unwrap(), "rust b violated []\n\nbatch b [b]");
+    }
+
+    // @lfy def/mcp/main.lfy:globalReview
+    #[test]
+    fn global_review_gives_the_review_request_of_every_global_requirement() {
+        let fixture = project_with_requirements();
+        let session = fixture.session();
+        assert_eq!(problems(&session, None).unwrap(), "no problems");
+        let instructions = global_review(&session).unwrap();
+        assert!(instructions.contains("global review"), "{instructions}");
+        assert!(instructions.contains("Nothing is written outside the output directory"), "{instructions}");
+
+        // No global criterion or test exists. @lfy def/mcp/main.lfy:globalReview
+        let bare = compiled_project();
+        let session = bare.session();
+        assert_eq!(global_review(&session).unwrap(), "no global criterion or test exists in the program");
     }
 }

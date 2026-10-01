@@ -557,9 +557,11 @@ impl Loader<'_> {
     }
 
     /// The root of the package `elfie` when `elfie.json` names no dependency for it: the
-    /// top level key `lib` relative to the root, the directory the environment gives for
-    /// `ELFIE_LIB`, or the copy of the library the compiler was built with — the first
-    /// of these that is given, never the next one when the given one is missing.
+    /// top level key `lib` relative to the root when `elfie.json` has one, else the
+    /// directory the environment gives for `ELFIE_LIB` when it gives one, else the copy
+    /// of the library the compiler was built with. Each stands whether or not the
+    /// directory it names exists, so a missing one is a problem rather than a reason to
+    /// try the next.
     // @lfy def/workspace/main.lfy:load
     fn library_root(
         &mut self,
@@ -1578,8 +1580,36 @@ mod tests {
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    /// A manifest is optional: where no `elfie.json` exists under the root, every default
-    /// stands and no problem is added.
+    /// A manifest that is a JSON object but gives no name, no source directory and no
+    /// output directory leaves each of those defaults standing, exactly as a root with no
+    /// manifest at all does.
+    // @lfy def/workspace/main.lfy:load
+    #[test]
+    fn a_manifest_that_gives_no_layout_leaves_the_defaults_standing() {
+        let fixture = Fixture::empty();
+        fixture
+            .write("elfie.json", r#"{ "lib": "lib" }"#)
+            .write("def/main.lfy", "");
+        let workspace = fixture.load();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        // The name of the root directory, since elfie.json gives no name.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            workspace.name,
+            fixture.root.file_name().unwrap().to_string_lossy()
+        );
+        // def, since elfie.json gives no source directory.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
+        // src, since elfie.json gives no output directory.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(workspace.output_directory, DEFAULT_OUTPUT_DIRECTORY);
+        assert_eq!(paths(&workspace), ["def/main.lfy"]);
+    }
+
+    /// A manifest is optional: where no `elfie.json` exists under the root, the name is
+    /// the name of the root directory, the source directory is `def`, the output
+    /// directory is `src`, and no problem is added.
     // @lfy def/workspace/main.lfy:load
     #[test]
     fn no_manifest_is_no_problem_and_the_defaults_stand() {
@@ -2011,9 +2041,17 @@ mod tests {
             .write("def/main.lfy", "")
             .write("targets/rust/main.lfy", "trait rust extends target { }\n");
         let workspace = fixture.load();
-        // @lfy def/workspace/main.lfy:load
+        // The package a target names is loaded as any other dependency is: its files are
+        // in the program and carry it. @lfy def/workspace/main.lfy:load
         assert_eq!(workspace.packages.len(), 2);
-        assert!(workspace.file("targets/rust/main.lfy").is_some());
+        let main = workspace
+            .file("targets/rust/main.lfy")
+            .expect("the main file of the target's package");
+        assert_eq!(
+            main.package
+                .map(|package| workspace.packages[package].identifier.as_str()),
+            Some("rust")
+        );
         let problems = load_problems(&workspace);
         // @lfy def/workspace/main.lfy:load
         assert!(

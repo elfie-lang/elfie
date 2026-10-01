@@ -34,7 +34,7 @@ use crate::grammar::terminals::space::Space;
 use crate::grammar::{Associativity, Category, Entity, GrammarRule};
 use crate::lexer::Token;
 
-use beginning::{Tables, is_expression_rule, is_operation, tables};
+use beginning::{Tables, is_expression_rule, tables};
 
 /// The grammar document is the only grammar the parser knows: the EBNF of every rule.
 // @lfy def/parser/main.lfy:parse
@@ -196,11 +196,6 @@ impl<'t> Parser<'t> {
 
     fn rule_at(&self, at: usize) -> Option<Entity> {
         self.tokens.get(at).and_then(|token| token.rule)
-    }
-
-    /// The identifiers of the terminals that could begin `expr`.
-    fn expected_for_expr(&self, expr: &Expr) -> Vec<&'static str> {
-        self.tables.identifiers(&self.tables.first_of(expr))
     }
 
     /// The first token from `start` up to `end` that is of a keyword terminal and that an
@@ -452,10 +447,17 @@ impl<'t> Parser<'t> {
     ) -> Option<usize> {
         for (index, &element) in elements.iter().enumerate() {
             let follow = self.follow_of(&elements[index + 1..], follow_after);
+            // What could continue the open rule at `pos` is recorded for whichever element
+            // takes the tokens there; an element that fails gives the recording back, so
+            // an error node closing it names everything that could have continued there
+            // and not the failed element alone.
+            // @lfy def/parser/traits.lfy:recoverable
+            let recorded = seq.pending.clone();
             if let Some(next) = self.parse_element(element, node, seq, pos, &follow) {
                 pos = next;
                 continue;
             }
+            seq.pending = recorded; // @lfy def/parser/traits.lfy:recoverable
             if seq.lenient {
                 continue;
             }
@@ -464,7 +466,10 @@ impl<'t> Parser<'t> {
                 && seq.taken
                 && let Some(sync) = seq.sync
             {
-                let expected = self.expected_for_expr(element);
+                // @lfy def/parser/data.lfy:ErrorNode.expected
+                let expected = seq
+                    .take_pending(pos)
+                    .unwrap_or_else(|| self.expected_at(element, &follow));
                 let (trivia, start) = self.probe(seq, pos, || expected.clone());
                 node.children.extend(trivia);
                 let end = traits::sweep_end(self.tokens, start, sync);
@@ -703,19 +708,13 @@ impl<'t> Parser<'t> {
     }
 
     /// The alternation is satisfied by one expression parsed with a minimum one below the
-    /// lowest binding power among its infix and postfix alternatives (0 when it has none),
-    /// beginning with one of its primary or prefix alternatives, and producing a node for
-    /// one of the alternatives.
+    /// lowest binding power among its infix and postfix alternatives, and with minimum 0
+    /// when it has no infix or postfix alternative; that expression begins with one of its
+    /// primary or prefix alternatives and produces a node for one of the alternatives.
     // @lfy def/parser/main.lfy:parse
     fn parse_expression_alternation(&mut self, items: &[Entity], at: usize) -> Option<Parsed> {
         // @lfy def/parser/main.lfy:parse
-        let min = items
-            .iter()
-            .filter(|&&item| is_operation(item))
-            .filter_map(|item| item.effective_binding())
-            .map(|binding| binding.precedence_value())
-            .min()
-            .map_or(0, |power| power - 1);
+        let min = beginning::expression_alternation_minimum(items);
         // @lfy def/parser/main.lfy:parse
         let begin_with: Vec<Entity> = items
             .iter()
@@ -962,8 +961,9 @@ impl<'t> Parser<'t> {
 
     /// A node for `rule` covering every token exactly once: the node the rule produced,
     /// with anything left over as trailing trivia and one error node at its end. When the
-    /// rule is an alternation list and tokens are left over or trivia precedes the item,
-    /// the root is a node for the rule holding the trivia, the item, and the error node.
+    /// rule is an alternation list, the root is a node for the rule holding the trivia and
+    /// the item that satisfied it, plus the error node of the tokens left over when there
+    /// are any; the item stands in its place only when it is the whole of the input.
     // @lfy def/parser/main.lfy:parse
     fn parse_root(&mut self, rule: Entity) -> Node {
         let len = self.tokens.len();
@@ -1017,6 +1017,23 @@ impl<'t> Parser<'t> {
         }
         root.end = len;
         traits::attach_documentation(&mut root, self.tokens);
+        // Documentation that no declaration follows attaches to nothing, unless it is one
+        // of two or more blocks in a row, with no declaration between them, that were all
+        // opened with a `BlockDocumentationOpen`: those attach to the "global" object, the
+        // root of the file being the node that stands for it.
+        // @lfy def/grammar/terminals/comment.lfy:Documentation
+        if rule == Entity::File(File::SourceFile) {
+            let trailing = traits::documentation_before(&root.children, root.children.len(), self.tokens);
+            if trailing.len() > 1
+                && trailing.iter().all(|documentation| {
+                    documentation
+                        .token(Comment::BlockDocumentationOpen, self.tokens)
+                        .is_some()
+                })
+            {
+                root.documentation = trailing;
+            }
+        }
         root
     }
 }

@@ -1,0 +1,176 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "820b5b53ed570a2a6b99b6cb14469d897cd3a13f745fff6dcb738af7ace3851d",
+    "markers": [
+      {
+        "column": null,
+        "end": 200,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 6,
+        "outputLine": 98,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 264,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 201,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 266,
+        "entity": "IdentifierStart",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 4,
+        "outputLine": 265,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 268,
+        "entity": "IdentifierContinue",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 5,
+        "outputLine": 267,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 354,
+        "entity": "Character",
+        "file": "def/grammar/terminals/literal.lfy",
+        "line": 5,
+        "outputLine": 269,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 384,
+        "entity": null,
+        "file": "def/grammar/traits.lfy",
+        "line": 19,
+        "outputLine": 355,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 414,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 22,
+        "outputLine": 385,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 422,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 34,
+        "outputLine": 415,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 772,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 34,
+        "outputLine": 423,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 804,
+        "entity": null,
+        "file": "def/grammar/main.lfy",
+        "line": 34,
+        "outputLine": 773,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/ebnf.rs",
+    "requirements": "",
+    "signature": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
+    "source": "def/grammar/terminals/identifier.lfy",
+    "target": "rust"
+  },
+  {
+    "dependencies": {
+      "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
+      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+    },
+    "generated": "2026-09-21T04:14:50Z",
+    "hash": "820b5b53ed570a2a6b99b6cb14469d897cd3a13f745fff6dcb738af7ace3851d",
+    "markers": [
+      {
+        "column": null,
+        "end": 13,
+        "entity": "IdentifierStart",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 4,
+        "outputLine": 12,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 16,
+        "entity": "IdentifierContinue",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 5,
+        "outputLine": 14,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "Identifier",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 7,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 34,
+        "entity": "Identifier",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 7,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 50,
+        "entity": "Identifier",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 7,
+        "outputLine": 35,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": "Identifier",
+        "file": "def/grammar/terminals/identifier.lfy",
+        "line": 7,
+        "outputLine": 51,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/grammar/terminals/identifier.rs",
+    "requirements": "",
+    "signature": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
+    "source": "def/grammar/terminals/identifier.lfy",
+    "target": "rust"
+  }
+]
