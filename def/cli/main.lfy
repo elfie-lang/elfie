@@ -81,7 +81,12 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `It is a flag and gives true, never taking the next argument, so --json check still names the check command`,
     })
     .add({
-      behavior = `Every argument that does not begin with a dash, other than the one naming the command and the value --root or --target takes, is positional`,
+      situation = `No argument is --help, -h, or --version`,
+      behavior = `Every argument that does not begin with a dash, other than the one naming the command and the value --root, --target, or --color takes, is positional`,
+    })
+    .add({
+      situation = `--help, -h, or --version is among the arguments`,
+      behavior = `The invocation has no positional arguments`,
     })
     .add({
       situation = `The command is not one of [[Command]], or an option's value is missing`,
