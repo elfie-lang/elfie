@@ -861,15 +861,6 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
     .add({
       situation = `No marker in any output names a global criterion's or test's id`,
       behavior = `It is listed in [[ReviewRequest.instructions]] with a line saying no unit answered for it, so the verifier finds it unverifiable, never violated`,
-    })
-    .add({ behavior = `The caller runs it once after every batch of a compile` })
-    .add({
-      situation = `[[Program.criteria]] or [[Program.tests]] changed`,
-      behavior = `The caller runs it`,
-    })
-    .add({
-      situation = `A review from it is violated`,
-      behavior = `The review gives the stems of the units whose markers answered for it, for the violated argument of [[plan]]`,
     });
 
   @test(
