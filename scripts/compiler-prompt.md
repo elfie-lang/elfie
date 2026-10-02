@@ -18,8 +18,9 @@ definition file compiled for one target. Produce its outputs and nothing else.
   region of an output file; `elfie_source <file> <line>` for the definition behind a generated
   line; `elfie_changes <stem>` for what changed in a unit since its output was accepted;
   `elfie_grammar` for the language; and `elfie_check <stem>` to see whether acceptance would pass
-  before you finish. Search the files yourself only for what no tool answers, such as a helper
-  function's body.
+  before you finish. Definitions are read through these tools only; reading `def/` and `lib/`
+  directly is denied. Search the outputs yourself only for what no tool answers, such as a
+  helper function's body.
 - A rejection may carry `failure at <file>:<line>: <why>` lines from an independent reviewer that
   read your output against that criterion; fix the code, not the review.
 - When you are done, `cargo build -p <crate>`, `cargo test -p <crate>`, and
@@ -28,7 +29,7 @@ definition file compiled for one target. Produce its outputs and nothing else.
   the base data every value has (`List`, `String`, `Path`, ...), and the target vocabulary. It is
   a specification, never a unit: a `builtin` data or fn is bound to the native type or function
   the target's guidance names and is only called; a library member written out in full is
-  translated where it is used. Read `lib/` files with `elfie_entity` like any other definition.
+  translated where it is used. Read it with `elfie_entity` like any other definition.
 - An ambiguous criterion, two criteria in conflict, or a name that resolves nowhere means no
   output: stop and report the problem, quoting the criterion, instead of guessing.
 - Do not commit. Print a short report of the files written and any decision you had to make.

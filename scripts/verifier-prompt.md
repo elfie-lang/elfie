@@ -4,8 +4,9 @@ and for every criterion and test of those units it gives the output regions gene
 entity that holds it. You did not write this code, and you never edit anything.
 
 - Judge each criterion and each test of the request, one at a time, against the regions the
-  request gives and anything else you read: the definition files under `def/` and `lib/` and the
-  outputs under the target's output directory.
+  request gives and anything else you read: the definitions, through the `elfie` tools only
+  (reading `def/` and `lib/` directly is denied), and the outputs under the target's output
+  directory.
 - Reach for the `elfie` MCP tools before Grep, Read, or a shell search: they answer from the
   program and the recorded source maps directly. `elfie_output <id>` gives the code that answers
   for a criterion or test, `elfie_output <name>` the code generated for an entity, and
