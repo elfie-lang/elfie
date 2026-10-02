@@ -1344,16 +1344,24 @@ impl Reporter {
     // @lfy def/cli/main.lfy:main#main:main:fd2e103cd45ada13659acc347b24014460bea62429f97ff35843a450d9ebde3b
     // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
     fn append(&self, text: &str) {
-        for path in &self.logs {
-            let Some(parent) = path.parent() else { continue };
-            // The folder it writes into is created when it is missing.
-            // @lfy def/cli/main.lfy:main#main:main:d879c4ed7720d6b2f10f7658bdebae88cfb2ee0f415bb4e65471cec46f12d71d
-            if fs::create_dir_all(parent).is_err() {
-                continue;
-            }
-            let Ok(mut file) = fs::OpenOptions::new().create(true).append(true).open(path) else { continue };
-            let _ = writeln!(file, "{text}");
+        append_to(&self.logs, text);
+    }
+}
+
+/// One line appended to each log, so a run can be read after the fact. Nothing that writes a
+/// line to a person is without this, so the log holds everything the run showed.
+// @lfy def/cli/main.lfy:main#main:main:fd2e103cd45ada13659acc347b24014460bea62429f97ff35843a450d9ebde3b
+// @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+fn append_to(logs: &[PathBuf], text: &str) {
+    for path in logs {
+        let Some(parent) = path.parent() else { continue };
+        // The folder it writes into is created when it is missing.
+        // @lfy def/cli/main.lfy:main#main:main:d879c4ed7720d6b2f10f7658bdebae88cfb2ee0f415bb4e65471cec46f12d71d
+        if fs::create_dir_all(parent).is_err() {
+            continue;
         }
+        let Ok(mut file) = fs::OpenOptions::new().create(true).append(true).open(path) else { continue };
+        let _ = writeln!(file, "{text}");
     }
 }
 
@@ -1834,10 +1842,13 @@ struct Exit {
     stderr: String,
 }
 
-/// The compiler's output, each line shown as it arrives prefixed by the batch and kept
-/// whole. With --json it is shown on standard error, so that standard output stays one
-/// JSON object per line.
+/// One stream of the compiler or the verifier, each line shown as it arrives prefixed by the
+/// batch, appended to the log, and kept whole. With --json it is shown on standard error, so
+/// that standard output stays one JSON object per line. Every line of what the command wrote
+/// reaches the log, standard error among them, so a run reads after the fact as it read while
+/// it ran.
 // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
+// @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
 fn watch<R: io::Read + Send + 'static>(
     pipe: R,
     batch: &str,
@@ -1845,18 +1856,16 @@ fn watch<R: io::Read + Send + 'static>(
     to_stdout: bool,
     on: bool,
     is_error: bool,
+    logs: Vec<PathBuf>,
 ) -> JoinHandle<String> {
     // Two spaces, the batch, a space, a bar, and a space.
     // @lfy def/cli/main.lfy:main#main:main:fb4120a58e1734e9c28f23a737dba9ae4e5f8193f283ceee38366f2f755d0604
+    let plain = format!("  {batch} \u{2502} ");
     // The prefix of a line from standard output is muted.
     // @lfy def/cli/main.lfy:main#main:main:6ad3451822c64ea891b558c21bdcc31f8cb6f81e3454617bac2b1f5e5cc07250
     // The prefix of a line from standard error is warning.
     // @lfy def/cli/main.lfy:main#main:main:a3aaa5f304f90c834a7a590a643db67dc6784f65ff25f12deb878fc59a8b2044
-    let prefix = paint(
-        &format!("  {batch} \u{2502} "),
-        if is_error { Tone::Warning } else { Tone::Muted },
-        on,
-    );
+    let prefix = paint(&plain, if is_error { Tone::Warning } else { Tone::Muted }, on);
     std::thread::spawn(move || {
         let mut kept = String::new();
         for line in io::BufReader::new(pipe).lines().map_while(Result::ok) {
@@ -1868,6 +1877,11 @@ fn watch<R: io::Read + Send + 'static>(
             } else {
                 eprintln!("{prefix}{line}");
             }
+            // The line the log holds is the line as printed with colors off.
+            // @lfy def/cli/main.lfy:main#main:main:6d1962bd388ee5c3b97353bbd3d76bfb559b2e1a57b72b2916622465fb1de177
+            // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
+            // @lfy def/cli/main.lfy:main#main:main:732abddc3793f53a4dc2b58f6ad56f87f597cad84e015535b519742a047e7e4c
+            append_to(&logs, &format!("{plain}{line}"));
             if keep {
                 kept.push_str(&line);
                 kept.push('\n');
@@ -2119,8 +2133,13 @@ impl Run {
         // Each line is shown as it arrives, prefixed by the batch; with --json it goes to
         // standard error, so standard output stays one JSON object per line.
         // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
-        let out = child.stdout.take().map(|pipe| watch(pipe, label, true, !self.json, self.style.out, false));
-        let err = child.stderr.take().map(|pipe| watch(pipe, label, true, false, self.style.err, true));
+        let logs = self.reporter.logs.clone();
+        let out =
+            child.stdout.take().map(|pipe| watch(pipe, label, true, !self.json, self.style.out, false, logs.clone()));
+        // Standard error reaches the log as standard output does, so nothing the command
+        // wrote is lost to a run read after the fact.
+        // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+        let err = child.stderr.take().map(|pipe| watch(pipe, label, true, false, self.style.err, true, logs));
         if let Some(mut stdin) = child.stdin.take()
             && let Err(error) = stdin.write_all(instructions.as_bytes())
         {
@@ -3245,6 +3264,10 @@ mod tests {
     /// line.
     const SATISFIED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"id\":\"<id>\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho 'ELFIE: REVIEWED'\n";
 
+    /// A verifier that satisfies the criterion and writes a line of its own to standard error,
+    /// as an agent writes its progress there.
+    const SATISFIED_WITH_NOISE: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho 'reading the outputs' >&2\necho '{\"id\":\"<id>\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho 'ELFIE: REVIEWED'\n";
+
     /// How many lines a file the fixture wrote holds; none when it was never written.
     fn lines_of(fixture: &Fixture, path: &str) -> usize {
         fs::read_to_string(fixture.root.join(path)).map_or(0, |text| text.lines().count())
@@ -4241,6 +4264,30 @@ mod tests {
         assert!(log.contains("1 satisfied, 0 violated, 0 unverifiable"), "{log}");
         // The reviews of that run are written all the same. @lfy def/cli/main.lfy:main
         assert!(fixture.read("elfie-requests/a.reviews.json").contains("covered by a test"));
+    }
+
+    /// Every line of the verifier's output reaches the log, the lines it wrote to standard
+    /// error among them, each with the prefix it was shown with and no escape.
+    // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+    #[test]
+    fn every_line_the_verifier_wrote_reaches_the_log() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED_WITH_NOISE);
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+        let log = fixture.read("elfie-requests/compile.log");
+        // The line it wrote to standard error, prefixed by the batch as it was shown.
+        // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+        assert!(log.contains("  a \u{2502} reading the outputs"), "{log}");
+        // Its standard output, and the report it is read from, are there too.
+        // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+        assert!(log.contains("  a \u{2502} ELFIE: REVIEWED"), "{log}");
+        assert!(log.contains("--- the review of a (attempt 1) ---"), "{log}");
+        // What the compiler wrote is logged the same way.
+        // @lfy def/cli/main.lfy:main#main:main:fd2e103cd45ada13659acc347b24014460bea62429f97ff35843a450d9ebde3b
+        assert!(log.contains("  a \u{2502} ELFIE: DONE"), "{log}");
+        // Every line of it is the line as printed with colors off.
+        // @lfy def/cli/main.lfy:main#main:main:6d1962bd388ee5c3b97353bbd3d76bfb559b2e1a57b72b2916622465fb1de177
+        assert!(!log.contains('\u{1b}'), "the log holds an escape");
     }
 
     /// With --no-verify no verifier runs, nothing is reviewed, no reviews file is written,

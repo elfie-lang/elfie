@@ -358,6 +358,64 @@ mod tests {
         token.is(rule) && token.value == value
     }
 
+    /// The characters a terminal matches: its fixed text, or a sample its syntax accepts.
+    fn sample(terminal: Entity) -> &'static str {
+        let crate::grammar::Category::Terminal(kind) = terminal.category() else {
+            unreachable!()
+        };
+        if let Some(text) = kind.fixed_text() {
+            return text;
+        }
+        match terminal {
+            Entity::Identifier(Identifier::Identifier) => "x",
+            Entity::Space(Space::NewLine) => "\n",
+            Entity::Space(Space::Space) => " ",
+            Entity::Literal(Literal::NumberLiteral) => "1",
+            _ => "a",
+        }
+    }
+
+    /// Source that puts the lexer in `mode`, and how many tokens it takes to get there.
+    fn opening(terminal: Entity, mode: Mode) -> (&'static str, usize) {
+        // `/**` straight before `**/` is a block comment open, so the documentation close
+        // is reached over a body.
+        if terminal == Entity::Comment(Comment::BlockDocumentationClose) {
+            return ("/** ", 2);
+        }
+        match mode {
+            Mode::Code => ("", 0),
+            Mode::BlockComment => ("/*", 1),
+            Mode::LineComment => ("//", 1),
+            Mode::BlockDocumentation => ("/**", 1),
+            Mode::LineDocumentation => ("///", 1),
+            Mode::SingleQuote => ("'", 1),
+            Mode::DoubleQuote => ("\"", 1),
+            Mode::Template => ("`", 1),
+            Mode::Execution => ("`{{", 2),
+            Mode::Reference => ("`[[", 2),
+        }
+    }
+
+    /// In every mode its condition names, the terminal matches its characters and the
+    /// token made of exactly those characters is appended to the result.
+    fn becomes_a_token(terminal: Entity) {
+        let text = sample(terminal);
+        for &mode in modes::lex_condition(terminal) {
+            let (open, before) = opening(terminal, mode);
+            let source = format!("{open}{text}");
+            let tokens = tokens(&source);
+            assert_eq!(tokens[before].rule, Some(terminal), "{terminal} in {mode}");
+            assert_eq!(tokens[before].raw, text, "{terminal} in {mode}");
+        }
+    }
+
+    /// Every terminal of one grammar file; an escape is never a token and is left out.
+    fn family(of: fn(Entity) -> bool) -> Vec<Entity> {
+        Entity::terminals()
+            .filter(|terminal| !terminal.is_escape() && of(*terminal))
+            .collect()
+    }
+
     // @lfy def/lexer/main.lfy:lex#lex:lex:73a7a4972a85e8de228731064674ba62d23fc532c2c7fc64b823ebde817d129e
     #[test]
     fn test_empty_source_gives_no_tokens() {
@@ -945,6 +1003,191 @@ mod tests {
         assert_eq!(rules_of("true"), vec![keyword(Keyword::TrueKeyword)]);
         assert_eq!(rules_of("with"), vec![keyword(Keyword::WithKeyword)]);
         assert_eq!(rules_of("constant"), vec![IDENTIFIER]);
+    }
+
+    // @lfy def/lexer/main.lfy:lex#lex:lex:cec5b0060b35e8278d72b923ec0d43308f06aa7d3668d833f0f9543aa35f0b6b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:dc8480fe1b132653dbafa761efd05a3e5de6a1ad73c439ff76ccf86eb41b4e0c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:c5bbb7eab1368457e4aec54a5d34a062284dc171e493d247f2e7347ebc7e19cc
+    // @lfy def/lexer/main.lfy:lex#lex:lex:3870fb344a829a1af69b0a051b53955689850462cc23fc364a34bb2aca8183b2
+    // @lfy def/lexer/main.lfy:lex#lex:lex:6707e1c4e79aefdfa69631baf04ef189a740b8f901f8b529fc5e07390bfc5f94
+    // @lfy def/lexer/main.lfy:lex#lex:lex:f268de00ddab8ce2b5f7d871d904069096ac91e04a60af6b4ce2a422fa1c1a95
+    // @lfy def/lexer/main.lfy:lex#lex:lex:654f9e6f867247c5d5d574b2f07d46c36a8ef6c404b2577b327b7ef43c715b93
+    // @lfy def/lexer/main.lfy:lex#lex:lex:efa50aa9537ca0b975faaad4e0030362a65de998b5250e05b22beed0a7368cee
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7f5893c6309820127c3f11b74d3e44c52c568ff3b795d36828de9c7033d9cffd
+    // @lfy def/lexer/main.lfy:lex#lex:lex:3c1f25e9fb379f2a43e4eebfae1a8608aed01bf47ac801515d43cd72a4b9aa00
+    // @lfy def/lexer/main.lfy:lex#lex:lex:2fa5a498ae9ec85be4e1c6d1e06a460dfea9c6ac546fc121bcc72b72e1dc53de
+    // @lfy def/lexer/main.lfy:lex#lex:lex:5105638fa5bad15963d1dd1c8d43e507f9bb858ee46561da094e4f3084b8b699
+    // @lfy def/lexer/main.lfy:lex#lex:lex:bfb075cfeccf95e83562a04929353aaad00243234c5f3068d79bcefe0d5d8fac
+    // @lfy def/lexer/main.lfy:lex#lex:lex:bab1de6ccbb20015f5334ad45d95f0ecbbad634ef1d422e7087145f42149992b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:b762c56cacf0a8824211b65c00bdd11e3d1b5b3ebe28b43fc81bfcadfbd23dcb
+    // @lfy def/lexer/main.lfy:lex#lex:lex:f182ef90231cda6ee064965b1fea8939cd39f57f5c4a38685ae1c84f633affe6
+    // @lfy def/lexer/main.lfy:lex#lex:lex:39a4450c9224d969dcb4486c8c0cd1e1c0f55548cac4317e5c95e4caf4d57637
+    // @lfy def/lexer/main.lfy:lex#lex:lex:e821f7046640aca4de7c9dcfb76ccd0fa9c33607a8ae0df4a17ec0651f08b673
+    // @lfy def/lexer/main.lfy:lex#lex:lex:211320aebaf874052e03549ce2993cdaf5fefedb24a3947db7e72cbedfa5d90e
+    // @lfy def/lexer/main.lfy:lex#lex:lex:4b528f652bd89b67ae315344fc84e7e7b8efa85493ccd53768233029c71b2b48
+    // @lfy def/lexer/main.lfy:lex#lex:lex:2e7ceec342fd410345c41ac7dd5f636a2aaa55f2be2f17e48b61492e63e97044
+    // @lfy def/lexer/main.lfy:lex#lex:lex:9529f129b5faa025211caf090d1d50026bbc4a9757e5770616f06a3362cc5d0c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:dbf33729c1c4c10fcc57d1468c54b995c32049f2dc92dc471997f1c5c9853be2
+    // @lfy def/lexer/main.lfy:lex#lex:lex:745e2245316a76b622bc5600d043ecba63e15668b085efea8670a3e8abb5d0b8
+    // @lfy def/lexer/main.lfy:lex#lex:lex:4ccc7eb9b187408dc67c78823499788a8dcacb4ee11e4d73a630dadce3499139
+    // @lfy def/lexer/main.lfy:lex#lex:lex:e73feba6fff2953097ca9846a635e6d2c36553605ff5798f3a4b45bbf513ffd6
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7040eeef7974ee8eaeebb09658f72f54380699d34a04d5bfb8f0fd2f0a229e12
+    // @lfy def/lexer/main.lfy:lex#lex:lex:68372814b45240f6aa81688616a72b52475b641e27fb652e85297d7945d21a04
+    // @lfy def/lexer/main.lfy:lex#lex:lex:b76cc443143090d99bab21cf30b9ca0a6a770947dc31a76d6d26a48cdfc71b5b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:703a2a95ef61e83ffcb052addb946c3f56e92b674fc260a4ed422903954a9642
+    // @lfy def/lexer/main.lfy:lex#lex:lex:2f5085f396359f7af20542ccbaf8b2c5e7ef7978eb4abf4cf6fbeb1679f58432
+    // @lfy def/lexer/main.lfy:lex#lex:lex:325c2d2c91d44c14aa427480ccaa60016212be139b6bce97f08c24bab54e4d39
+    // @lfy def/lexer/main.lfy:lex#lex:lex:14869dd25e0efc9ce425c466211d4226b8cdbbf0e6dccf7a27f18f05ba6abcac
+    // @lfy def/lexer/main.lfy:lex#lex:lex:585c3a1937a05ec3fc87a96b60bc027704e116498eb3d9edf1cedd05a97310e3
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a64cb890d435a4942bd0b8ae17a55a7c8227fba53aa0784f6883379bb1044817
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7e650428e42ded8a9bb8a350213d4a6324b63a73fa89d87790323eb3dc0d490c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:625c75b7f4be1913a472badb53f81bf420b396b2d4a4ebd21ff6f78c63381164
+    // @lfy def/lexer/main.lfy:lex#lex:lex:4956ba53801967d51706431894ea869c45db6a67e31b4994dce5e7ad34a15af8
+    // @lfy def/lexer/main.lfy:lex#lex:lex:cf17acb09e6e4865824242b4d7540b584df2a37594eed987ae530507520c6b27
+    // @lfy def/lexer/main.lfy:lex#lex:lex:43ef62873e5d18ccff63df3e3c948a2521ceac33ffd1318db516996ab542cc1c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:b1e22ab29fa91a335f6e6a1dc90add5e6dd7411e0cb26be51e341bb511feaf33
+    // @lfy def/lexer/main.lfy:lex#lex:lex:90fd4b3ef79f60356529c9dd346fc831a76847e1055db75f0470718722d7dffa
+    // @lfy def/lexer/main.lfy:lex#lex:lex:d2999142cb65695b13d3f704eb33fb817b58e8ae804e58870ff6a53df074a217
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7c06052b2d02c497166243e250c59210a38b0a796bdf16d76962d8383902c5f9
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a8a0598642a41276bf6cdc2e271c5a71d5b280f4ae234fa4c82b2fbae04b4f9e
+    // @lfy def/lexer/main.lfy:lex#lex:lex:2a23de3561462af6c7b9a16dc8b0ac8f4878880a6c76037e973503ca80771fd4
+    // @lfy def/lexer/main.lfy:lex#lex:lex:366e542b510959f94a82d203f84e593be2ae852962762ee465c01ccfbdc158ce
+    // @lfy def/lexer/main.lfy:lex#lex:lex:828053fc6b6d3f4a43380ed0a0070f069378dded10f1bc0ed190102713b2d923
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a76c677a3347d0b2c51bb0960adbd023eeb2ef3352bb5a33ead0f54b89867779
+    // @lfy def/lexer/main.lfy:lex#lex:lex:5032279d4ce135133e7410ea22f45a7d73c0e0804dad2c4413d1c5c6a693901c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:494b8a11519426d1132a18714ff75b478466f661fef518570f38d22cad9b8a40
+    // @lfy def/lexer/main.lfy:lex#lex:lex:9e7831dfff98ff32dbee217bbe4f721927eb5833d3359577f1c1bf625c527f28
+    // @lfy def/lexer/main.lfy:lex#lex:lex:96934e6b87717d07f43bd985aabc62f9095709cbe03f97bc931f1798a6b82af2
+    // @lfy def/lexer/main.lfy:lex#lex:lex:ae552ecaa1d8ed0fa1e25d5ec5c04800d7ecfb2df742ad0b694d355d02df3682
+    // @lfy def/lexer/main.lfy:lex#lex:lex:8af86bccb2abe314883546d08dce5cd3cc4ae1cdf70266b145cbad6d5c6bdaf1
+    // @lfy def/lexer/main.lfy:lex#lex:lex:00956987f4cf192ca042f83668943e3be97dfb0846c202c1a35b2504492a06a1
+    // @lfy def/lexer/main.lfy:lex#lex:lex:425d7035c288d876c979e526e92ee9a4206d296369d1ab677be1c0f08447d852
+    // @lfy def/lexer/main.lfy:lex#lex:lex:4518f113b1168338dde89476e53dd2ccf64c7d71e115981edee76b1da2d0843e
+    // @lfy def/lexer/main.lfy:lex#lex:lex:54d31ce6d2c8114d458967cc44e82880a69963f65003b9ae9ac1bfb7e650d1c2
+    #[test]
+    fn every_keyword_becomes_a_token_of_the_characters_it_matched() {
+        let keywords = family(|terminal| matches!(terminal, Entity::Keyword(_)));
+        assert_eq!(keywords.len(), 59);
+        for terminal in keywords {
+            becomes_a_token(terminal);
+        }
+    }
+
+    // @lfy def/lexer/main.lfy:lex#lex:lex:daa3168d1b293c7413607a37488ed17b5a87b92bfc714f9048b4d14087fb2344
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7dd37cfa024fb6fac1a740126c7dc0f46d67f2fd91166a776b4c8a0f0cc47c4d
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a0cdbc2efe39fa2d56cce8ebf10733c70f6cfc012273e8ca285a8c8572f5349c
+    #[test]
+    fn a_name_and_the_space_terminals_become_tokens_of_the_characters_they_matched() {
+        let names_and_space = family(|terminal| {
+            matches!(terminal, Entity::Identifier(_) | Entity::Space(_))
+        });
+        assert_eq!(names_and_space.len(), 3);
+        for terminal in names_and_space {
+            becomes_a_token(terminal);
+        }
+    }
+
+    // @lfy def/lexer/main.lfy:lex#lex:lex:8b360892b78b6aa6c9ad195eab10616ace9a704ed5375f1c0d22aba18caf60fa
+    // @lfy def/lexer/main.lfy:lex#lex:lex:cf2a6f9d014be86e0445e2557b3fcbe990a2aa18995919050d0cf8a4b7e1cb30
+    // @lfy def/lexer/main.lfy:lex#lex:lex:65302fc5ab863de18fb1182cf01ec469f778475fc0c5ab51c1493dd72d3262cc
+    // @lfy def/lexer/main.lfy:lex#lex:lex:f9a340ab3af7852b982503d324546e9a7fab1b8b57b22fcdfaede46a7a2f4429
+    // @lfy def/lexer/main.lfy:lex#lex:lex:465a98939ff1937ab5a7ed3db603ea7a995355f6b786f33148fa3d7c05bd3cbd
+    // @lfy def/lexer/main.lfy:lex#lex:lex:f18586978975a6f9784905dfb877afddece7d47e57ca931ce1ab6d006522a2b2
+    // @lfy def/lexer/main.lfy:lex#lex:lex:f4b8ffa2e336c929bb4333ca836ffd6003f6a895f9f299763cc8a9955e8d8b2b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:1acf7cd8c19498d0e197e5d992e7126268eb2f7392c43072f9f56fc0196899a4
+    // @lfy def/lexer/main.lfy:lex#lex:lex:811e047326b17c55f0cb3fc50c7584fbc65e84a3abcfc518b676a4cfd839d867
+    // @lfy def/lexer/main.lfy:lex#lex:lex:ef417c15682a43894d15be665088696926f991ceea4c597173ee7bfb67ae0fc3
+    // @lfy def/lexer/main.lfy:lex#lex:lex:b6852d8499107bd75a798c7bce1699cb915c3cbca11d1772b7c699cf2803a2b1
+    #[test]
+    fn every_literal_becomes_a_token_of_the_characters_it_matched() {
+        let literals = family(|terminal| matches!(terminal, Entity::Literal(_)));
+        assert_eq!(literals.len(), 11);
+        for terminal in literals {
+            becomes_a_token(terminal);
+        }
+    }
+
+    // @lfy def/lexer/main.lfy:lex#lex:lex:83472bab6533b4a217659d48a67e1da7bfcd11be6e3dda1c48b2135b243db4a5
+    // @lfy def/lexer/main.lfy:lex#lex:lex:78291427acdf99773766ae9ad192cc3b9bbb10a8ab34a78fa379d4fe2259935f
+    // @lfy def/lexer/main.lfy:lex#lex:lex:3a9c59df01513e84ab814380913cc31fff0854c5e47b4e65e25aead118fded4a
+    // @lfy def/lexer/main.lfy:lex#lex:lex:903a8093f5d183eccfe5986e3476daa5ad3d543a7099350caf393a3f3d044b45
+    // @lfy def/lexer/main.lfy:lex#lex:lex:3e88f0b5696d3c0a6a543845ef979270059c3e9714e3ac49bf319a8193270b4b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:e444d7c00cb89faa3988362c15388fe371aec18acc1e0779ad3c386d84412f27
+    // @lfy def/lexer/main.lfy:lex#lex:lex:68c17153e3f0487bc920b8c733216e7abe0fd4a18ab80984da43ddb899f8d69b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:9cea6ce250cb1b4d4f79012fde135bef5fdd8f5e12e3001f4921fb77384622bb
+    // @lfy def/lexer/main.lfy:lex#lex:lex:e18236e72352c8b5faeeccf956c4c9b0dea0c0b21f7f9efe7b9b430817dd7b3f
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a7f4364192a2346eac41756d5f26aa9eb8a93d5a04592e51af89de4f86d17000
+    // @lfy def/lexer/main.lfy:lex#lex:lex:4ebe8a2a4771d3ed627b55a7aeaab444f376fb22f79628da719412c21046ed8d
+    // @lfy def/lexer/main.lfy:lex#lex:lex:beb981f9fb6813af5cfb7611ecaac34adbf42281c606cc5c682562186a90f31d
+    // @lfy def/lexer/main.lfy:lex#lex:lex:80e4ef8c84bb582b0373e2955a684ba8c4151a3f087d2358aa63332f82e06c17
+    // @lfy def/lexer/main.lfy:lex#lex:lex:925648d031faa19f627a96d6250c1529280de6a405b6ca2764fba63397bbaefe
+    // @lfy def/lexer/main.lfy:lex#lex:lex:ac1c1eb5a644d3c09156e719a324f8c0181fcc3a859987fd1aabb477708c4655
+    // @lfy def/lexer/main.lfy:lex#lex:lex:0845c6858ea17ddfeda77891e5dca413908db526960380aa30c740a3483a8dc3
+    // @lfy def/lexer/main.lfy:lex#lex:lex:938eae0816169bd58e9b355e3714ceacf2d98e0ede8e76453ac940f7fa11473b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:c8318c5931232e593aff431e22736b6b54f592020759bf56cddd0a77ab5c788d
+    // @lfy def/lexer/main.lfy:lex#lex:lex:20123c5a0d16a3c63c22ce60f4e25f8c37902fe4a06c45ee71b7b8350f807381
+    // @lfy def/lexer/main.lfy:lex#lex:lex:d50dfd712d17827bad12d13307d78d6c0976a09e3070faa803e913475e42415c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:1e1b1b5f0a9fc8eaa744027c81e7910bf3a42fd02585b1ac1f2cab88e0567265
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7730ac57d8c49b82020fadc004b6e0048cb45fbebe3a3fbb53aec0453e2cca00
+    // @lfy def/lexer/main.lfy:lex#lex:lex:450ee6e9ed76b34629d88f741f5af1a8dbe25f00f86e4c44c9a34e9172e11dab
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a3338a3ad3bc73ee43f5d57e4293c82d6f06fa50ee65af493ee341b3922f6e02
+    // @lfy def/lexer/main.lfy:lex#lex:lex:e4d0300765d272967227c0d6a640e29d92782a59270545ee1a6048ade0f4c27a
+    // @lfy def/lexer/main.lfy:lex#lex:lex:d58e9c4c838a03ef2ff7b4edd275e1c6944b8bfe45c0f89a89b3e8edd1bf783a
+    // @lfy def/lexer/main.lfy:lex#lex:lex:43ca03f0cc47736f737645e683c517024e2e4cca416afa320961e50d1276d2b9
+    // @lfy def/lexer/main.lfy:lex#lex:lex:1210c8d1158cc4f2cfa20539fa63494f3005791c35649c4e78f486e1758e3b95
+    // @lfy def/lexer/main.lfy:lex#lex:lex:bde4c4fa8e936832417bc6a32b2130759eb7ba8a1c8308acbf238a35d572fda9
+    // @lfy def/lexer/main.lfy:lex#lex:lex:ed837090ef616ebedc9863a32144bcf9ce3894da3a9acbe8d8fa5cd5ef1ee639
+    // @lfy def/lexer/main.lfy:lex#lex:lex:65b25f7c1fdc694969bffd2c2147713a85da8510413d1a69640d1a1d0cd9b2c2
+    // @lfy def/lexer/main.lfy:lex#lex:lex:551c1cdb7b4634cc42746df5ed1193d5523735ec663934e3d33ad4f201304da3
+    // @lfy def/lexer/main.lfy:lex#lex:lex:04a92806c502187b8296ff7f4cc0bdd0365e3829bd34d9949f099d814a51cfc5
+    // @lfy def/lexer/main.lfy:lex#lex:lex:03eb8cec25f70932463883b9f55fbc44edf883306b40f4eaac217b4129ee7240
+    // @lfy def/lexer/main.lfy:lex#lex:lex:25ace7e0bd83cd11eb06ea47009a60995b8c390057f30f89c9dc379ce7d21917
+    // @lfy def/lexer/main.lfy:lex#lex:lex:c0678b85286f2d7b584ce29a054a56c02eebbb8f908b12e050d5123e416ae651
+    // @lfy def/lexer/main.lfy:lex#lex:lex:42d54625cc9278f03f63328d78258f9f8bdb093f26b8794517a9b44b738345f3
+    // @lfy def/lexer/main.lfy:lex#lex:lex:731f0357d01b27d578fb18bf357317197c99f5ed930933e6a55f72a23c4baecd
+    // @lfy def/lexer/main.lfy:lex#lex:lex:17c2d06682531c39cf1868c37ee1957c42c3075164d64d2ce715a08a97ba1ca2
+    // @lfy def/lexer/main.lfy:lex#lex:lex:e4423aeba9158cb46659624213ddbeaa9d4287492c5be7f870c5b809769c34cd
+    // @lfy def/lexer/main.lfy:lex#lex:lex:27b9bf2f47adc092ad837b3bdd633f855d8dd3a890617fc933226f1c38571c6c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:cb7605d81ed4a7b5a7f764a24057cf9f5227a9bc385b6e01f5d14b8813fb94a0
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a5d50b1cdd0acae15ebb9a8e708c90b13dbfab9e32ea51a95926873716227f8c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:b7b42d92f87ef914c6a1c4d92e8707e621d7139d64d9d5f1a4ee2b9c9d78ce7d
+    // @lfy def/lexer/main.lfy:lex#lex:lex:c124301fd090aba3ab974b73c59bcfa13f02315afc44602106ca6d0819a0a93e
+    // @lfy def/lexer/main.lfy:lex#lex:lex:2bd7aec7141238cfede2a98ac697875bd44fa6fbb4b133ddcb27f743120b66d5
+    // @lfy def/lexer/main.lfy:lex#lex:lex:6f80770c9e2feffa5ad980528f9adf19b6ba8a060f9dde97438a1d755520ad8c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:fe79a13d51138ab235084a89567720582082c6fb466d57eee6952bb9c94fd611
+    // @lfy def/lexer/main.lfy:lex#lex:lex:a06f3e9532422d47cb4d5469ab77f036d9e33d0f43903e411b1865103d612873
+    // @lfy def/lexer/main.lfy:lex#lex:lex:36a661833249fb8ab6e5b09ae6f05c4c7d02cbf30c4c36b47183cfddaf755dbe
+    // @lfy def/lexer/main.lfy:lex#lex:lex:b05a4ea4770bc865427b08ff04a127589d83d871e4e1d307d37c5bfc657788f9
+    // @lfy def/lexer/main.lfy:lex#lex:lex:3c789b9273943664d1c328ae436d8addf3f5ddfb27aac30adea2932abd1f4377
+    // @lfy def/lexer/main.lfy:lex#lex:lex:92481a928fce775f1d27c33450d9ed547b5eb8e91691aeb91f55b030110d3ad9
+    // @lfy def/lexer/main.lfy:lex#lex:lex:7eda59f1fa5db032a1da1ae28be4a7a9e1843f84baf3d11c29dba29e6fdebb83
+    // @lfy def/lexer/main.lfy:lex#lex:lex:122dd18fec067ee0890ddd8c57e920f3c1b9a6c10f7b65c2463020286aa083b7
+    #[test]
+    fn every_punctuation_becomes_a_token_of_the_characters_it_matched() {
+        let punctuation = family(|terminal| matches!(terminal, Entity::Punctuation(_)));
+        assert_eq!(punctuation.len(), 55);
+        for terminal in punctuation {
+            becomes_a_token(terminal);
+        }
+    }
+
+    // @lfy def/lexer/main.lfy:lex#lex:lex:39dc045c6e0a685be0179a7d8246c8cecd74cfae9ec9cc7f2668e61f288d7ed4
+    // @lfy def/lexer/main.lfy:lex#lex:lex:0e2aca77a4ce3f7ed089abfe7bc847300a5cb9dbbe6f8ed654e679b0c16e676c
+    // @lfy def/lexer/main.lfy:lex#lex:lex:ab9c5e43a010d1f3353720f3aceac7780f3a386fb75b0b662019154933a310f4
+    // @lfy def/lexer/main.lfy:lex#lex:lex:326ea7d6257b7b6633b5ebc59801b212e41c70fd5b6ad2abff4f9578ed7c7594
+    // @lfy def/lexer/main.lfy:lex#lex:lex:6a1b9b1f09088f5975e02e1faf73a5f0e604c1accf80d2efb01411ad9e861882
+    // @lfy def/lexer/main.lfy:lex#lex:lex:53d911dd8d9fd26397292d947a5e1bbb45c5cb2f831d810a432f5640b1ade239
+    // @lfy def/lexer/main.lfy:lex#lex:lex:db6a98b7010d2d3d93d343543f427d350d245b3afe3269307ae4088f407ccc52
+    // @lfy def/lexer/main.lfy:lex#lex:lex:9c251e8c1509fff9f02787fcf13fb21f9fdab7fff7b746bfd718bd486fdae03b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:c702d0087d8fba020502259b459aedbf33414807e2d9e7fa9c43324717f3a9a4
+    // @lfy def/lexer/main.lfy:lex#lex:lex:8ad502d85fc005795d33e841785b27ed70bd5f91df77c947a7d3290ddf3d567b
+    #[test]
+    fn every_comment_terminal_becomes_a_token_of_the_characters_it_matched() {
+        let comments = family(|terminal| matches!(terminal, Entity::Comment(_)));
+        assert_eq!(comments.len(), 10);
+        for terminal in comments {
+            becomes_a_token(terminal);
+        }
     }
 
     // @lfy def/lexer/main.lfy:lex#lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103

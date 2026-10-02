@@ -10,7 +10,7 @@
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/lexer/modes.lfy": "a063d8800b3b35e9c75a086be3a579746ecd5b0b47a23cb7c95e488fecbe9ea0"
     },
-    "generated": "2026-10-02T03:57:02Z",
+    "generated": "2026-10-02T13:14:23Z",
     "hash": "ff5fbc68adc89cef009bf41fbe52855b0fa4f0ddcc3f3c615c65ff0fa7f8e276",
     "markers": [
       {
@@ -105,7 +105,7 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/ebnf.rs",
-    "requirements": "e5b236118b8643eaf51fc139c0ade6b99fa2a22d26556fbe3fb4c865457f4ea9",
+    "requirements": "7a95aa032f5c69527597d6ed6e083044f5ac10b0518468d96e99ad85761a7653",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust"
@@ -121,7 +121,7 @@
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/lexer/modes.lfy": "a063d8800b3b35e9c75a086be3a579746ecd5b0b47a23cb7c95e488fecbe9ea0"
     },
-    "generated": "2026-10-02T03:57:02Z",
+    "generated": "2026-10-02T13:14:23Z",
     "hash": "ff5fbc68adc89cef009bf41fbe52855b0fa4f0ddcc3f3c615c65ff0fa7f8e276",
     "markers": [
       {
@@ -432,7 +432,7 @@
       },
       {
         "column": null,
-        "end": 360,
+        "end": 418,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
@@ -441,174 +441,165 @@
       },
       {
         "column": null,
-        "end": 366,
+        "end": 424,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 361,
+        "outputLine": 419,
         "requirement": "lex:lex:73a7a4972a85e8de228731064674ba62d23fc532c2c7fc64b823ebde817d129e"
       },
       {
         "column": null,
-        "end": 381,
+        "end": 439,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 367,
+        "outputLine": 425,
         "requirement": "lex:lex:7b9f6253aa23103ccfefec7e416516c2ab9ec93261faf9a4d353cf5811c2328b"
       },
       {
         "column": null,
-        "end": 396,
+        "end": 454,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 382,
+        "outputLine": 440,
         "requirement": "lex:lex:17d7117b296e91576aded6aa38378d5018ad738ecf5f0ead9b23b2e82a4e0233"
       },
       {
         "column": null,
-        "end": 406,
+        "end": 464,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 397,
+        "outputLine": 455,
         "requirement": "lex:lex:893b54f62abaf4b2b38de8b0456315205a0488651632fad8b13e9e28b143f889"
       },
       {
         "column": null,
-        "end": 430,
+        "end": 488,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 407,
+        "outputLine": 465,
         "requirement": "lex:lex:23e721f4e5fa98b0777a5953702989904d09b8cf76601f7f2668c04a8e8c2f7d"
       },
       {
         "column": null,
-        "end": 431,
+        "end": 489,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 431,
+        "outputLine": 489,
         "requirement": "lex:lex:97a338cd1051f99fec01edad49bbc0c0319cc71cded2d210a9f5ac5b83cd3d52"
       },
       {
         "column": null,
-        "end": 444,
+        "end": 502,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 432,
+        "outputLine": 490,
         "requirement": "lex:lex:aa56ac92787fea3855fb1b3f31628f68bbb6ec38ce590e7cb32cd1dfd604caab"
       },
       {
         "column": null,
-        "end": 467,
+        "end": 525,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 445,
+        "outputLine": 503,
         "requirement": "lex:lex:e596ea1a811f6d4f218899f6ecb7527b53077617a2c318449f925711429adacd"
       },
       {
         "column": null,
-        "end": 468,
+        "end": 526,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 468,
+        "outputLine": 526,
         "requirement": "lex:lex:47847482a3e68ce6f0a26ef9d0fd372da3498cc761a6fa31445d5b177a9c349c"
       },
       {
         "column": null,
-        "end": 500,
+        "end": 558,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 469,
+        "outputLine": 527,
         "requirement": "lex:lex:4720c1a90961a30124edd2bd63f5a331691b9e097486fec98ffe60b06e9fe622"
       },
       {
         "column": null,
-        "end": 511,
+        "end": 569,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 501,
+        "outputLine": 559,
         "requirement": "lex:lex:f9db63b38441ea1e8401410a35a846620d3039b3b962ef1ba140575c096d2249"
       },
       {
         "column": null,
-        "end": 519,
+        "end": 577,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 512,
+        "outputLine": 570,
         "requirement": "lex:lex:20d04427ad0b528e56b30362f8f0060de1781d11a657c6d6788c671c0e5c66dc"
       },
       {
         "column": null,
-        "end": 576,
+        "end": 634,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 520,
+        "outputLine": 578,
         "requirement": "lex:lex:77c966508bfe60769e47819e1fb6191fd0cce43beb32749773eb8b9b4ab7a851"
       },
       {
         "column": null,
-        "end": 627,
+        "end": 685,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 577,
+        "outputLine": 635,
         "requirement": "lex:lex:3489f51bad43ed1c292aad6ac0104638551823e0b16a5c5b73e77b68eb7ce19f"
       },
       {
         "column": null,
-        "end": 692,
+        "end": 750,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 628,
+        "outputLine": 686,
         "requirement": "lex:lex:476bbc6035817b8576db1356118eea406a548b1ae4855e77cf8a93b4c4ec747e"
       },
       {
         "column": null,
-        "end": 725,
+        "end": 783,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 693,
+        "outputLine": 751,
         "requirement": "lex:lex:22ed1b3c87d41fd6f642e721955f58157a0c01372f21803ca50fe7b8608f86e5"
       },
       {
         "column": null,
-        "end": 726,
+        "end": 784,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 726,
+        "outputLine": 784,
         "requirement": "lex:lex:f4449978ffdf9eed5f6ec63143a03670875c20038df3324769edc39e6fb8dcc8"
       },
       {
         "column": null,
-        "end": 772,
+        "end": 830,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 727,
+        "outputLine": 785,
         "requirement": "lex:lex:09b1ff781edc31ee1df5c0f4640f90f022130351375a8ba444e28b0104082d78"
-      },
-      {
-        "column": null,
-        "end": 773,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 773,
-        "requirement": "lex:lex:24de947d6f7166dda5bb4e493e06cfaa44487312753d77f6f1693b270ebb6b44"
       },
       {
         "column": null,
@@ -616,188 +607,8 @@
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 774,
-        "requirement": "lex:lex:0de07769ae8853d0916c070c9b60d8a8b70f4bffa9e1170f6370cc0c4e466a71"
-      },
-      {
-        "column": null,
-        "end": 869,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 832,
-        "requirement": "lex:lex:0a624895048d41f174c726e78fddc0185a3474d7115dc5fa123eb01718b59e90"
-      },
-      {
-        "column": null,
-        "end": 870,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 870,
-        "requirement": "lex:lex:d5834e260284fe7ecb1d20035815676dd0f173ab2b5229f0c641ec4ac1ae8b3a"
-      },
-      {
-        "column": null,
-        "end": 871,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 871,
-        "requirement": "lex:lex:377c03a0122f86f45edc9430b78d345e1f98567c82a7413b455af636c8abe4b0"
-      },
-      {
-        "column": null,
-        "end": 872,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 872,
-        "requirement": "lex:lex:45164776c29697d5fc8d4bd51a113b8ff5ceb1d87c7cb53993649fdb2b3b68c4"
-      },
-      {
-        "column": null,
-        "end": 873,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 873,
-        "requirement": "lex:lex:cff78a579165cf2519e72409a4123e4cb0065919bd0e4c5ef616bdec39d99d97"
-      },
-      {
-        "column": null,
-        "end": 874,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 874,
-        "requirement": "lex:lex:7d9772b4420a275ee58f4637d5ee1b8974d3d8339ff3d4272ef4af8d8f2cc71b"
-      },
-      {
-        "column": null,
-        "end": 875,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 875,
-        "requirement": "lex:lex:8a46c8942af051808c3c334bddf5d25f00e558d1b2b98517aea7e42d6d69a97c"
-      },
-      {
-        "column": null,
-        "end": 876,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 876,
-        "requirement": "lex:lex:29420d87577dc9e7de99e48b7fdfd5a93d2a8ea270130016e7f0541209de733c"
-      },
-      {
-        "column": null,
-        "end": 877,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 877,
-        "requirement": "lex:lex:d4395990e5b51ad8ee2a77b2cfeb11be57d571876dd08e620d561d0d88a0f28b"
-      },
-      {
-        "column": null,
-        "end": 878,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 878,
-        "requirement": "lex:lex:550e26f0ddfb2eaa0cd1820af7b042aeb0b522f4797b64edb41199c72d67afb1"
-      },
-      {
-        "column": null,
-        "end": 879,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 879,
-        "requirement": "lex:lex:a336a1c410be065b30406b364f019a9f286db4ab6002161e6fcf3c9227637871"
-      },
-      {
-        "column": null,
-        "end": 880,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 880,
-        "requirement": "lex:lex:d1cb7c4ec2b611781f98906a83d942a7916015983e6c56d1337a6c5ab6ebda57"
-      },
-      {
-        "column": null,
-        "end": 881,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 881,
-        "requirement": "lex:lex:2132f5b87ed1bf096f3852daf5a3c8efd8d0898378b74ea7a58afcba1bb66076"
-      },
-      {
-        "column": null,
-        "end": 882,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 882,
-        "requirement": "lex:lex:88f8e5435327e4c7b72907218c31c347718fbf2711dbf7165f6c7a366302cbae"
-      },
-      {
-        "column": null,
-        "end": 883,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 883,
-        "requirement": "lex:lex:48993e60911b25a4a6d37d7aced8650a35289b67c7b9b33d1563a8b028566f03"
-      },
-      {
-        "column": null,
-        "end": 884,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 884,
-        "requirement": "lex:lex:6a5147ae5e71ae715fa5c75604ec0c764c62e1caf86955f6019f04024fedc566"
-      },
-      {
-        "column": null,
-        "end": 885,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 885,
-        "requirement": "lex:lex:670632c92a526c0c9ba544b267583db2f989850f0daeca28ef703cf2c0704946"
-      },
-      {
-        "column": null,
-        "end": 886,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 886,
-        "requirement": "lex:lex:f158a9e2c48558f095590b24febdbade19af37c1c484f04e2d8cfbe45e6952f8"
-      },
-      {
-        "column": null,
-        "end": 887,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 887,
-        "requirement": "lex:lex:c81c6cb6869c83d022bdb47b1caf6dc5659e95a197a0cce53e87a1078bbcb5db"
-      },
-      {
-        "column": null,
-        "end": 888,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 888,
-        "requirement": "lex:lex:308f19648d7d19af29b98b1d07616c7f1d97d32c33278fd0d0915f7bbef2b535"
+        "outputLine": 831,
+        "requirement": "lex:lex:24de947d6f7166dda5bb4e493e06cfaa44487312753d77f6f1693b270ebb6b44"
       },
       {
         "column": null,
@@ -805,341 +616,8 @@
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 889,
-        "requirement": "lex:lex:d6bac6682556dc19a37f90caedd3b87e9948eb46527d9551c6ec96cae3121090"
-      },
-      {
-        "column": null,
-        "end": 890,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 890,
-        "requirement": "lex:lex:1abd8f373747b386fb3e592c35d3d87436775929fb95e4766e7babb7476b18eb"
-      },
-      {
-        "column": null,
-        "end": 891,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 891,
-        "requirement": "lex:lex:063d1dbe5cc5f5ee5adf00b9853ee43909ebbbb2e96eb212bddd01854f7c5ac2"
-      },
-      {
-        "column": null,
-        "end": 892,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 892,
-        "requirement": "lex:lex:2b84395241cfb2080430ba34d52e8a80649625f3623591df3aa55237526592df"
-      },
-      {
-        "column": null,
-        "end": 893,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 893,
-        "requirement": "lex:lex:0da43a8c41ec9dce2a4b1468355519f3cf7d9b6de9965c2003db8a32edc79942"
-      },
-      {
-        "column": null,
-        "end": 894,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 894,
-        "requirement": "lex:lex:854c801cc4be5c0ba53f54321c38d8ff50aaf246917b2eb13f5923d837d47833"
-      },
-      {
-        "column": null,
-        "end": 895,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 895,
-        "requirement": "lex:lex:55a7ac252194d30e70b0b9015e4253dbac39ac4d1e03ce6d6c29b9775343c1dd"
-      },
-      {
-        "column": null,
-        "end": 896,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 896,
-        "requirement": "lex:lex:0c414ce91f6de173ff4dc217ee9e4fde05f3de48b1d15710e30ed9e6287d478d"
-      },
-      {
-        "column": null,
-        "end": 897,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 897,
-        "requirement": "lex:lex:1261710074b5da49ab13656419fba84d00515288871cc36cfa30d4f1027a8e6d"
-      },
-      {
-        "column": null,
-        "end": 898,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 898,
-        "requirement": "lex:lex:ccb5d0a85036782e1029f7fa2c6d2285b58f67b77d1865d59c2966402ac97ab8"
-      },
-      {
-        "column": null,
-        "end": 899,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 899,
-        "requirement": "lex:lex:7943f4b413655deea88e77c2f7636070c7d2b11c865bb4235de9bd607b924326"
-      },
-      {
-        "column": null,
-        "end": 900,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 900,
-        "requirement": "lex:lex:0e54d81cdd684b4a82af11eb141098758514a388a03ab8be1202d607b6546a76"
-      },
-      {
-        "column": null,
-        "end": 901,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 901,
-        "requirement": "lex:lex:8c5ab07ce0b4543c71474cdfcbd37bef1dcd5a523f2002b8f7651f86b9d2ea9c"
-      },
-      {
-        "column": null,
-        "end": 902,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 902,
-        "requirement": "lex:lex:3e5390f5a70e9ec6be683f47fa339d1fe16829d511fe4f4bd96fdabf4a2fb0dc"
-      },
-      {
-        "column": null,
-        "end": 903,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 903,
-        "requirement": "lex:lex:d105db652dad56f3195eaef8e28546b114d0c0a3af486c6880cd3e268e400ef2"
-      },
-      {
-        "column": null,
-        "end": 904,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 904,
-        "requirement": "lex:lex:4a665157d2fd00211473980cfed31ca836a7bc8fc9e191570290a8bdddff8fdf"
-      },
-      {
-        "column": null,
-        "end": 905,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 905,
-        "requirement": "lex:lex:d06290b82fc56a13448c0da9b935b2799c6748bc8f90b80be441463274c8578b"
-      },
-      {
-        "column": null,
-        "end": 906,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 906,
-        "requirement": "lex:lex:e4722204e7812ffc9e4ee15cdbad4af6dca8f6edda67f8e31d96a3170922008f"
-      },
-      {
-        "column": null,
-        "end": 907,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 907,
-        "requirement": "lex:lex:d56737e7ed82c0f4c740efb019f709e1196d2f570505a43afdd6e8c60c810f9d"
-      },
-      {
-        "column": null,
-        "end": 908,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 908,
-        "requirement": "lex:lex:c7ab6c897f29f8ae3bc230942c4967f1a181b79ead232c72c157ccd0c5eb1c89"
-      },
-      {
-        "column": null,
-        "end": 909,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 909,
-        "requirement": "lex:lex:82f88b11448889894551dcb911a0f34ddf229f435c0044c82f50dc4e5848590d"
-      },
-      {
-        "column": null,
-        "end": 910,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 910,
-        "requirement": "lex:lex:848908d248ad26c673441bb9f629852f4691e1ca1a60a8ad0a59b086ca9b544f"
-      },
-      {
-        "column": null,
-        "end": 911,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 911,
-        "requirement": "lex:lex:8692f8351b9c4affaebe61c136c955aa227014909f00e55f4d023e82d537487d"
-      },
-      {
-        "column": null,
-        "end": 912,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 912,
-        "requirement": "lex:lex:4a42ab43cc22e2e6bafc184df1a61ca5b4b1d05ae33378f0270df9fdcc332ae2"
-      },
-      {
-        "column": null,
-        "end": 913,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 913,
-        "requirement": "lex:lex:164de2b3d8760e7acf99e5fe9fff5be234036153b2d80358f811b889b19c5d8d"
-      },
-      {
-        "column": null,
-        "end": 914,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 914,
-        "requirement": "lex:lex:f85f8d804052f09a5a945cd54e761e526a7f909e9aca3da5937e6c5c59b95b5f"
-      },
-      {
-        "column": null,
-        "end": 915,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 915,
-        "requirement": "lex:lex:d1e246e82c77a6e9eb1cd53874af4970d96d105f974ad40c6c54a1c913cabf39"
-      },
-      {
-        "column": null,
-        "end": 916,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 916,
-        "requirement": "lex:lex:33f25ff224e8cbe5a24aa0143be395baaa7999b1bacad955b945659d7cba5949"
-      },
-      {
-        "column": null,
-        "end": 917,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 917,
-        "requirement": "lex:lex:60e642a244d6fdfa17ff9705f8cdf78c6d3b104134d8e507b0c1b835deea281a"
-      },
-      {
-        "column": null,
-        "end": 918,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 918,
-        "requirement": "lex:lex:b0dd5ea59fc2c22ffbab2cf17b43ceaa07437958a88eb5d32a5c5c4d44423e9d"
-      },
-      {
-        "column": null,
-        "end": 919,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 919,
-        "requirement": "lex:lex:cfb4683ddfce6ca16552d62b96eb5202d3e6f125da9e1b336c3e1ca84a46afee"
-      },
-      {
-        "column": null,
-        "end": 920,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 920,
-        "requirement": "lex:lex:811db0a069fbd1a08588bac0faf507d805a12e5f7d4599808fd4d1998397b965"
-      },
-      {
-        "column": null,
-        "end": 921,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 921,
-        "requirement": "lex:lex:a61e68413ea5e5f90dcb2ee72f0d7a12e737308cabdf4ecffbae20d2c5ba58a0"
-      },
-      {
-        "column": null,
-        "end": 922,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 922,
-        "requirement": "lex:lex:bf65c300b853514e4e33f60fac46ce298910b4c0683dff0cc7c0fc8c15a139f8"
-      },
-      {
-        "column": null,
-        "end": 923,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 923,
-        "requirement": "lex:lex:d1a41dd5ae4373d81c1d4a2de7858348c8b88c2e2449dee29b8a795e1b37d9b6"
-      },
-      {
-        "column": null,
-        "end": 924,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 924,
-        "requirement": "lex:lex:1a39f3ac6f7d0e836cd481845255e577539a02eba26748f2d45b856b5e09c674"
-      },
-      {
-        "column": null,
-        "end": 925,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 925,
-        "requirement": "lex:lex:5d5a80739fc81592f6a21d063aed0b3a0c9e64f10fdec3a585e5fea704bd1dc3"
-      },
-      {
-        "column": null,
-        "end": 926,
-        "entity": "lex",
-        "file": "def/lexer/main.lfy",
-        "line": 19,
-        "outputLine": 926,
-        "requirement": "lex:lex:2f9dd18560b0651be33b696bc272d194b86da3c652de17fe9fb7b8fe1ccb3a65"
+        "outputLine": 832,
+        "requirement": "lex:lex:0de07769ae8853d0916c070c9b60d8a8b70f4bffa9e1170f6370cc0c4e466a71"
       },
       {
         "column": null,
@@ -1147,8 +625,197 @@
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 927,
-        "requirement": "lex:lex:624687f65c4d79e19352bd975f2f6d35d28f8c8b2588e889023e89529b1dd37c"
+        "outputLine": 890,
+        "requirement": "lex:lex:0a624895048d41f174c726e78fddc0185a3474d7115dc5fa123eb01718b59e90"
+      },
+      {
+        "column": null,
+        "end": 928,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 928,
+        "requirement": "lex:lex:d5834e260284fe7ecb1d20035815676dd0f173ab2b5229f0c641ec4ac1ae8b3a"
+      },
+      {
+        "column": null,
+        "end": 929,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 929,
+        "requirement": "lex:lex:377c03a0122f86f45edc9430b78d345e1f98567c82a7413b455af636c8abe4b0"
+      },
+      {
+        "column": null,
+        "end": 930,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 930,
+        "requirement": "lex:lex:45164776c29697d5fc8d4bd51a113b8ff5ceb1d87c7cb53993649fdb2b3b68c4"
+      },
+      {
+        "column": null,
+        "end": 931,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 931,
+        "requirement": "lex:lex:cff78a579165cf2519e72409a4123e4cb0065919bd0e4c5ef616bdec39d99d97"
+      },
+      {
+        "column": null,
+        "end": 932,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 932,
+        "requirement": "lex:lex:7d9772b4420a275ee58f4637d5ee1b8974d3d8339ff3d4272ef4af8d8f2cc71b"
+      },
+      {
+        "column": null,
+        "end": 933,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 933,
+        "requirement": "lex:lex:8a46c8942af051808c3c334bddf5d25f00e558d1b2b98517aea7e42d6d69a97c"
+      },
+      {
+        "column": null,
+        "end": 934,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 934,
+        "requirement": "lex:lex:29420d87577dc9e7de99e48b7fdfd5a93d2a8ea270130016e7f0541209de733c"
+      },
+      {
+        "column": null,
+        "end": 935,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 935,
+        "requirement": "lex:lex:d4395990e5b51ad8ee2a77b2cfeb11be57d571876dd08e620d561d0d88a0f28b"
+      },
+      {
+        "column": null,
+        "end": 936,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 936,
+        "requirement": "lex:lex:550e26f0ddfb2eaa0cd1820af7b042aeb0b522f4797b64edb41199c72d67afb1"
+      },
+      {
+        "column": null,
+        "end": 937,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 937,
+        "requirement": "lex:lex:a336a1c410be065b30406b364f019a9f286db4ab6002161e6fcf3c9227637871"
+      },
+      {
+        "column": null,
+        "end": 938,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 938,
+        "requirement": "lex:lex:d1cb7c4ec2b611781f98906a83d942a7916015983e6c56d1337a6c5ab6ebda57"
+      },
+      {
+        "column": null,
+        "end": 939,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 939,
+        "requirement": "lex:lex:2132f5b87ed1bf096f3852daf5a3c8efd8d0898378b74ea7a58afcba1bb66076"
+      },
+      {
+        "column": null,
+        "end": 940,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 940,
+        "requirement": "lex:lex:88f8e5435327e4c7b72907218c31c347718fbf2711dbf7165f6c7a366302cbae"
+      },
+      {
+        "column": null,
+        "end": 941,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 941,
+        "requirement": "lex:lex:48993e60911b25a4a6d37d7aced8650a35289b67c7b9b33d1563a8b028566f03"
+      },
+      {
+        "column": null,
+        "end": 942,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 942,
+        "requirement": "lex:lex:6a5147ae5e71ae715fa5c75604ec0c764c62e1caf86955f6019f04024fedc566"
+      },
+      {
+        "column": null,
+        "end": 943,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 943,
+        "requirement": "lex:lex:670632c92a526c0c9ba544b267583db2f989850f0daeca28ef703cf2c0704946"
+      },
+      {
+        "column": null,
+        "end": 944,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 944,
+        "requirement": "lex:lex:f158a9e2c48558f095590b24febdbade19af37c1c484f04e2d8cfbe45e6952f8"
+      },
+      {
+        "column": null,
+        "end": 945,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 945,
+        "requirement": "lex:lex:c81c6cb6869c83d022bdb47b1caf6dc5659e95a197a0cce53e87a1078bbcb5db"
+      },
+      {
+        "column": null,
+        "end": 946,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 946,
+        "requirement": "lex:lex:308f19648d7d19af29b98b1d07616c7f1d97d32c33278fd0d0915f7bbef2b535"
+      },
+      {
+        "column": null,
+        "end": 947,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 947,
+        "requirement": "lex:lex:d6bac6682556dc19a37f90caedd3b87e9948eb46527d9551c6ec96cae3121090"
+      },
+      {
+        "column": null,
+        "end": 948,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 948,
+        "requirement": "lex:lex:1abd8f373747b386fb3e592c35d3d87436775929fb95e4766e7babb7476b18eb"
       },
       {
         "column": null,
@@ -1156,8 +823,8 @@
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 928,
-        "requirement": "lex:lex:72a2bce21a84fd7d1b5bef614eac52a191b411933b97527384d967c2328c44b2"
+        "outputLine": 949,
+        "requirement": "lex:lex:063d1dbe5cc5f5ee5adf00b9853ee43909ebbbb2e96eb212bddd01854f7c5ac2"
       },
       {
         "column": null,
@@ -1166,7 +833,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 950,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103"
+        "requirement": "lex:lex:2b84395241cfb2080430ba34d52e8a80649625f3623591df3aa55237526592df"
       },
       {
         "column": null,
@@ -1175,7 +842,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 951,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:2"
+        "requirement": "lex:lex:0da43a8c41ec9dce2a4b1468355519f3cf7d9b6de9965c2003db8a32edc79942"
       },
       {
         "column": null,
@@ -1184,7 +851,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 952,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:3"
+        "requirement": "lex:lex:854c801cc4be5c0ba53f54321c38d8ff50aaf246917b2eb13f5923d837d47833"
       },
       {
         "column": null,
@@ -1193,7 +860,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 953,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:4"
+        "requirement": "lex:lex:55a7ac252194d30e70b0b9015e4253dbac39ac4d1e03ce6d6c29b9775343c1dd"
       },
       {
         "column": null,
@@ -1202,7 +869,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 954,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:5"
+        "requirement": "lex:lex:0c414ce91f6de173ff4dc217ee9e4fde05f3de48b1d15710e30ed9e6287d478d"
       },
       {
         "column": null,
@@ -1211,7 +878,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 955,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:6"
+        "requirement": "lex:lex:1261710074b5da49ab13656419fba84d00515288871cc36cfa30d4f1027a8e6d"
       },
       {
         "column": null,
@@ -1220,7 +887,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 956,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:7"
+        "requirement": "lex:lex:ccb5d0a85036782e1029f7fa2c6d2285b58f67b77d1865d59c2966402ac97ab8"
       },
       {
         "column": null,
@@ -1229,7 +896,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 957,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:8"
+        "requirement": "lex:lex:7943f4b413655deea88e77c2f7636070c7d2b11c865bb4235de9bd607b924326"
       },
       {
         "column": null,
@@ -1238,7 +905,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 958,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:9"
+        "requirement": "lex:lex:0e54d81cdd684b4a82af11eb141098758514a388a03ab8be1202d607b6546a76"
       },
       {
         "column": null,
@@ -1247,7 +914,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 959,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:10"
+        "requirement": "lex:lex:8c5ab07ce0b4543c71474cdfcbd37bef1dcd5a523f2002b8f7651f86b9d2ea9c"
       },
       {
         "column": null,
@@ -1256,7 +923,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 960,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:11"
+        "requirement": "lex:lex:3e5390f5a70e9ec6be683f47fa339d1fe16829d511fe4f4bd96fdabf4a2fb0dc"
       },
       {
         "column": null,
@@ -1265,7 +932,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 961,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:12"
+        "requirement": "lex:lex:d105db652dad56f3195eaef8e28546b114d0c0a3af486c6880cd3e268e400ef2"
       },
       {
         "column": null,
@@ -1274,7 +941,7 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 962,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:13"
+        "requirement": "lex:lex:4a665157d2fd00211473980cfed31ca836a7bc8fc9e191570290a8bdddff8fdf"
       },
       {
         "column": null,
@@ -1283,7 +950,196 @@
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 963,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:14"
+        "requirement": "lex:lex:d06290b82fc56a13448c0da9b935b2799c6748bc8f90b80be441463274c8578b"
+      },
+      {
+        "column": null,
+        "end": 964,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 964,
+        "requirement": "lex:lex:e4722204e7812ffc9e4ee15cdbad4af6dca8f6edda67f8e31d96a3170922008f"
+      },
+      {
+        "column": null,
+        "end": 965,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 965,
+        "requirement": "lex:lex:d56737e7ed82c0f4c740efb019f709e1196d2f570505a43afdd6e8c60c810f9d"
+      },
+      {
+        "column": null,
+        "end": 966,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 966,
+        "requirement": "lex:lex:c7ab6c897f29f8ae3bc230942c4967f1a181b79ead232c72c157ccd0c5eb1c89"
+      },
+      {
+        "column": null,
+        "end": 967,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 967,
+        "requirement": "lex:lex:82f88b11448889894551dcb911a0f34ddf229f435c0044c82f50dc4e5848590d"
+      },
+      {
+        "column": null,
+        "end": 968,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 968,
+        "requirement": "lex:lex:848908d248ad26c673441bb9f629852f4691e1ca1a60a8ad0a59b086ca9b544f"
+      },
+      {
+        "column": null,
+        "end": 969,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 969,
+        "requirement": "lex:lex:8692f8351b9c4affaebe61c136c955aa227014909f00e55f4d023e82d537487d"
+      },
+      {
+        "column": null,
+        "end": 970,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 970,
+        "requirement": "lex:lex:4a42ab43cc22e2e6bafc184df1a61ca5b4b1d05ae33378f0270df9fdcc332ae2"
+      },
+      {
+        "column": null,
+        "end": 971,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 971,
+        "requirement": "lex:lex:164de2b3d8760e7acf99e5fe9fff5be234036153b2d80358f811b889b19c5d8d"
+      },
+      {
+        "column": null,
+        "end": 972,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 972,
+        "requirement": "lex:lex:f85f8d804052f09a5a945cd54e761e526a7f909e9aca3da5937e6c5c59b95b5f"
+      },
+      {
+        "column": null,
+        "end": 973,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 973,
+        "requirement": "lex:lex:d1e246e82c77a6e9eb1cd53874af4970d96d105f974ad40c6c54a1c913cabf39"
+      },
+      {
+        "column": null,
+        "end": 974,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 974,
+        "requirement": "lex:lex:33f25ff224e8cbe5a24aa0143be395baaa7999b1bacad955b945659d7cba5949"
+      },
+      {
+        "column": null,
+        "end": 975,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 975,
+        "requirement": "lex:lex:60e642a244d6fdfa17ff9705f8cdf78c6d3b104134d8e507b0c1b835deea281a"
+      },
+      {
+        "column": null,
+        "end": 976,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 976,
+        "requirement": "lex:lex:b0dd5ea59fc2c22ffbab2cf17b43ceaa07437958a88eb5d32a5c5c4d44423e9d"
+      },
+      {
+        "column": null,
+        "end": 977,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 977,
+        "requirement": "lex:lex:cfb4683ddfce6ca16552d62b96eb5202d3e6f125da9e1b336c3e1ca84a46afee"
+      },
+      {
+        "column": null,
+        "end": 978,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 978,
+        "requirement": "lex:lex:811db0a069fbd1a08588bac0faf507d805a12e5f7d4599808fd4d1998397b965"
+      },
+      {
+        "column": null,
+        "end": 979,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 979,
+        "requirement": "lex:lex:a61e68413ea5e5f90dcb2ee72f0d7a12e737308cabdf4ecffbae20d2c5ba58a0"
+      },
+      {
+        "column": null,
+        "end": 980,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 980,
+        "requirement": "lex:lex:bf65c300b853514e4e33f60fac46ce298910b4c0683dff0cc7c0fc8c15a139f8"
+      },
+      {
+        "column": null,
+        "end": 981,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 981,
+        "requirement": "lex:lex:d1a41dd5ae4373d81c1d4a2de7858348c8b88c2e2449dee29b8a795e1b37d9b6"
+      },
+      {
+        "column": null,
+        "end": 982,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 982,
+        "requirement": "lex:lex:1a39f3ac6f7d0e836cd481845255e577539a02eba26748f2d45b856b5e09c674"
+      },
+      {
+        "column": null,
+        "end": 983,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 983,
+        "requirement": "lex:lex:5d5a80739fc81592f6a21d063aed0b3a0c9e64f10fdec3a585e5fea704bd1dc3"
+      },
+      {
+        "column": null,
+        "end": 984,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 984,
+        "requirement": "lex:lex:2f9dd18560b0651be33b696bc272d194b86da3c652de17fe9fb7b8fe1ccb3a65"
       },
       {
         "column": null,
@@ -1291,44 +1147,872 @@
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 964,
-        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:15"
+        "outputLine": 985,
+        "requirement": "lex:lex:624687f65c4d79e19352bd975f2f6d35d28f8c8b2588e889023e89529b1dd37c"
       },
       {
         "column": null,
-        "end": 986,
+        "end": 1007,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
         "outputLine": 986,
-        "requirement": "lex:lex:4f82f81fee7df5d1f1456b33a20e33c3e124f0a730bc36d3ead5162850b4eb4f"
+        "requirement": "lex:lex:72a2bce21a84fd7d1b5bef614eac52a191b411933b97527384d967c2328c44b2"
       },
       {
         "column": null,
-        "end": 997,
+        "end": 1008,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 987,
-        "requirement": "lex:lex:96f3ebf394d27ee519580d17930046716c6bb98571c66276b16a2f1700506748"
+        "outputLine": 1008,
+        "requirement": "lex:lex:cec5b0060b35e8278d72b923ec0d43308f06aa7d3668d833f0f9543aa35f0b6b"
+      },
+      {
+        "column": null,
+        "end": 1009,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1009,
+        "requirement": "lex:lex:dc8480fe1b132653dbafa761efd05a3e5de6a1ad73c439ff76ccf86eb41b4e0c"
+      },
+      {
+        "column": null,
+        "end": 1010,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1010,
+        "requirement": "lex:lex:c5bbb7eab1368457e4aec54a5d34a062284dc171e493d247f2e7347ebc7e19cc"
+      },
+      {
+        "column": null,
+        "end": 1011,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1011,
+        "requirement": "lex:lex:3870fb344a829a1af69b0a051b53955689850462cc23fc364a34bb2aca8183b2"
+      },
+      {
+        "column": null,
+        "end": 1012,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1012,
+        "requirement": "lex:lex:6707e1c4e79aefdfa69631baf04ef189a740b8f901f8b529fc5e07390bfc5f94"
+      },
+      {
+        "column": null,
+        "end": 1013,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1013,
+        "requirement": "lex:lex:f268de00ddab8ce2b5f7d871d904069096ac91e04a60af6b4ce2a422fa1c1a95"
+      },
+      {
+        "column": null,
+        "end": 1014,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1014,
+        "requirement": "lex:lex:654f9e6f867247c5d5d574b2f07d46c36a8ef6c404b2577b327b7ef43c715b93"
+      },
+      {
+        "column": null,
+        "end": 1015,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1015,
+        "requirement": "lex:lex:efa50aa9537ca0b975faaad4e0030362a65de998b5250e05b22beed0a7368cee"
+      },
+      {
+        "column": null,
+        "end": 1016,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1016,
+        "requirement": "lex:lex:7f5893c6309820127c3f11b74d3e44c52c568ff3b795d36828de9c7033d9cffd"
+      },
+      {
+        "column": null,
+        "end": 1017,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1017,
+        "requirement": "lex:lex:3c1f25e9fb379f2a43e4eebfae1a8608aed01bf47ac801515d43cd72a4b9aa00"
+      },
+      {
+        "column": null,
+        "end": 1018,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1018,
+        "requirement": "lex:lex:2fa5a498ae9ec85be4e1c6d1e06a460dfea9c6ac546fc121bcc72b72e1dc53de"
+      },
+      {
+        "column": null,
+        "end": 1019,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1019,
+        "requirement": "lex:lex:5105638fa5bad15963d1dd1c8d43e507f9bb858ee46561da094e4f3084b8b699"
+      },
+      {
+        "column": null,
+        "end": 1020,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1020,
+        "requirement": "lex:lex:bfb075cfeccf95e83562a04929353aaad00243234c5f3068d79bcefe0d5d8fac"
+      },
+      {
+        "column": null,
+        "end": 1021,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1021,
+        "requirement": "lex:lex:bab1de6ccbb20015f5334ad45d95f0ecbbad634ef1d422e7087145f42149992b"
+      },
+      {
+        "column": null,
+        "end": 1022,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1022,
+        "requirement": "lex:lex:b762c56cacf0a8824211b65c00bdd11e3d1b5b3ebe28b43fc81bfcadfbd23dcb"
+      },
+      {
+        "column": null,
+        "end": 1023,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1023,
+        "requirement": "lex:lex:f182ef90231cda6ee064965b1fea8939cd39f57f5c4a38685ae1c84f633affe6"
+      },
+      {
+        "column": null,
+        "end": 1024,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1024,
+        "requirement": "lex:lex:39a4450c9224d969dcb4486c8c0cd1e1c0f55548cac4317e5c95e4caf4d57637"
+      },
+      {
+        "column": null,
+        "end": 1025,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1025,
+        "requirement": "lex:lex:e821f7046640aca4de7c9dcfb76ccd0fa9c33607a8ae0df4a17ec0651f08b673"
+      },
+      {
+        "column": null,
+        "end": 1026,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1026,
+        "requirement": "lex:lex:211320aebaf874052e03549ce2993cdaf5fefedb24a3947db7e72cbedfa5d90e"
+      },
+      {
+        "column": null,
+        "end": 1027,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1027,
+        "requirement": "lex:lex:4b528f652bd89b67ae315344fc84e7e7b8efa85493ccd53768233029c71b2b48"
+      },
+      {
+        "column": null,
+        "end": 1028,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1028,
+        "requirement": "lex:lex:2e7ceec342fd410345c41ac7dd5f636a2aaa55f2be2f17e48b61492e63e97044"
+      },
+      {
+        "column": null,
+        "end": 1029,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1029,
+        "requirement": "lex:lex:9529f129b5faa025211caf090d1d50026bbc4a9757e5770616f06a3362cc5d0c"
+      },
+      {
+        "column": null,
+        "end": 1030,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1030,
+        "requirement": "lex:lex:dbf33729c1c4c10fcc57d1468c54b995c32049f2dc92dc471997f1c5c9853be2"
+      },
+      {
+        "column": null,
+        "end": 1031,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1031,
+        "requirement": "lex:lex:745e2245316a76b622bc5600d043ecba63e15668b085efea8670a3e8abb5d0b8"
+      },
+      {
+        "column": null,
+        "end": 1032,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1032,
+        "requirement": "lex:lex:4ccc7eb9b187408dc67c78823499788a8dcacb4ee11e4d73a630dadce3499139"
+      },
+      {
+        "column": null,
+        "end": 1033,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1033,
+        "requirement": "lex:lex:e73feba6fff2953097ca9846a635e6d2c36553605ff5798f3a4b45bbf513ffd6"
+      },
+      {
+        "column": null,
+        "end": 1034,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1034,
+        "requirement": "lex:lex:7040eeef7974ee8eaeebb09658f72f54380699d34a04d5bfb8f0fd2f0a229e12"
+      },
+      {
+        "column": null,
+        "end": 1035,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1035,
+        "requirement": "lex:lex:68372814b45240f6aa81688616a72b52475b641e27fb652e85297d7945d21a04"
+      },
+      {
+        "column": null,
+        "end": 1036,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1036,
+        "requirement": "lex:lex:b76cc443143090d99bab21cf30b9ca0a6a770947dc31a76d6d26a48cdfc71b5b"
+      },
+      {
+        "column": null,
+        "end": 1037,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1037,
+        "requirement": "lex:lex:703a2a95ef61e83ffcb052addb946c3f56e92b674fc260a4ed422903954a9642"
+      },
+      {
+        "column": null,
+        "end": 1038,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1038,
+        "requirement": "lex:lex:2f5085f396359f7af20542ccbaf8b2c5e7ef7978eb4abf4cf6fbeb1679f58432"
+      },
+      {
+        "column": null,
+        "end": 1039,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1039,
+        "requirement": "lex:lex:325c2d2c91d44c14aa427480ccaa60016212be139b6bce97f08c24bab54e4d39"
+      },
+      {
+        "column": null,
+        "end": 1040,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1040,
+        "requirement": "lex:lex:14869dd25e0efc9ce425c466211d4226b8cdbbf0e6dccf7a27f18f05ba6abcac"
+      },
+      {
+        "column": null,
+        "end": 1041,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1041,
+        "requirement": "lex:lex:585c3a1937a05ec3fc87a96b60bc027704e116498eb3d9edf1cedd05a97310e3"
+      },
+      {
+        "column": null,
+        "end": 1042,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1042,
+        "requirement": "lex:lex:a64cb890d435a4942bd0b8ae17a55a7c8227fba53aa0784f6883379bb1044817"
+      },
+      {
+        "column": null,
+        "end": 1043,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1043,
+        "requirement": "lex:lex:7e650428e42ded8a9bb8a350213d4a6324b63a73fa89d87790323eb3dc0d490c"
+      },
+      {
+        "column": null,
+        "end": 1044,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1044,
+        "requirement": "lex:lex:625c75b7f4be1913a472badb53f81bf420b396b2d4a4ebd21ff6f78c63381164"
+      },
+      {
+        "column": null,
+        "end": 1045,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1045,
+        "requirement": "lex:lex:4956ba53801967d51706431894ea869c45db6a67e31b4994dce5e7ad34a15af8"
+      },
+      {
+        "column": null,
+        "end": 1046,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1046,
+        "requirement": "lex:lex:cf17acb09e6e4865824242b4d7540b584df2a37594eed987ae530507520c6b27"
+      },
+      {
+        "column": null,
+        "end": 1047,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1047,
+        "requirement": "lex:lex:43ef62873e5d18ccff63df3e3c948a2521ceac33ffd1318db516996ab542cc1c"
+      },
+      {
+        "column": null,
+        "end": 1048,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1048,
+        "requirement": "lex:lex:b1e22ab29fa91a335f6e6a1dc90add5e6dd7411e0cb26be51e341bb511feaf33"
+      },
+      {
+        "column": null,
+        "end": 1049,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1049,
+        "requirement": "lex:lex:90fd4b3ef79f60356529c9dd346fc831a76847e1055db75f0470718722d7dffa"
       },
       {
         "column": null,
         "end": 1050,
-        "entity": "BlockDocumentationOpen",
-        "file": "def/grammar/terminals/comment.lfy",
-        "line": 11,
-        "outputLine": 998,
-        "requirement": null
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1050,
+        "requirement": "lex:lex:d2999142cb65695b13d3f704eb33fb817b58e8ae804e58870ff6a53df074a217"
+      },
+      {
+        "column": null,
+        "end": 1051,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1051,
+        "requirement": "lex:lex:7c06052b2d02c497166243e250c59210a38b0a796bdf16d76962d8383902c5f9"
+      },
+      {
+        "column": null,
+        "end": 1052,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1052,
+        "requirement": "lex:lex:a8a0598642a41276bf6cdc2e271c5a71d5b280f4ae234fa4c82b2fbae04b4f9e"
+      },
+      {
+        "column": null,
+        "end": 1053,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1053,
+        "requirement": "lex:lex:2a23de3561462af6c7b9a16dc8b0ac8f4878880a6c76037e973503ca80771fd4"
+      },
+      {
+        "column": null,
+        "end": 1054,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1054,
+        "requirement": "lex:lex:366e542b510959f94a82d203f84e593be2ae852962762ee465c01ccfbdc158ce"
+      },
+      {
+        "column": null,
+        "end": 1055,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1055,
+        "requirement": "lex:lex:828053fc6b6d3f4a43380ed0a0070f069378dded10f1bc0ed190102713b2d923"
+      },
+      {
+        "column": null,
+        "end": 1056,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1056,
+        "requirement": "lex:lex:a76c677a3347d0b2c51bb0960adbd023eeb2ef3352bb5a33ead0f54b89867779"
+      },
+      {
+        "column": null,
+        "end": 1057,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1057,
+        "requirement": "lex:lex:5032279d4ce135133e7410ea22f45a7d73c0e0804dad2c4413d1c5c6a693901c"
+      },
+      {
+        "column": null,
+        "end": 1058,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1058,
+        "requirement": "lex:lex:494b8a11519426d1132a18714ff75b478466f661fef518570f38d22cad9b8a40"
+      },
+      {
+        "column": null,
+        "end": 1059,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1059,
+        "requirement": "lex:lex:9e7831dfff98ff32dbee217bbe4f721927eb5833d3359577f1c1bf625c527f28"
+      },
+      {
+        "column": null,
+        "end": 1060,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1060,
+        "requirement": "lex:lex:96934e6b87717d07f43bd985aabc62f9095709cbe03f97bc931f1798a6b82af2"
+      },
+      {
+        "column": null,
+        "end": 1061,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1061,
+        "requirement": "lex:lex:ae552ecaa1d8ed0fa1e25d5ec5c04800d7ecfb2df742ad0b694d355d02df3682"
+      },
+      {
+        "column": null,
+        "end": 1062,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1062,
+        "requirement": "lex:lex:8af86bccb2abe314883546d08dce5cd3cc4ae1cdf70266b145cbad6d5c6bdaf1"
+      },
+      {
+        "column": null,
+        "end": 1063,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1063,
+        "requirement": "lex:lex:00956987f4cf192ca042f83668943e3be97dfb0846c202c1a35b2504492a06a1"
+      },
+      {
+        "column": null,
+        "end": 1064,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1064,
+        "requirement": "lex:lex:425d7035c288d876c979e526e92ee9a4206d296369d1ab677be1c0f08447d852"
+      },
+      {
+        "column": null,
+        "end": 1065,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1065,
+        "requirement": "lex:lex:4518f113b1168338dde89476e53dd2ccf64c7d71e115981edee76b1da2d0843e"
+      },
+      {
+        "column": null,
+        "end": 1075,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1066,
+        "requirement": "lex:lex:54d31ce6d2c8114d458967cc44e82880a69963f65003b9ae9ac1bfb7e650d1c2"
+      },
+      {
+        "column": null,
+        "end": 1076,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1076,
+        "requirement": "lex:lex:daa3168d1b293c7413607a37488ed17b5a87b92bfc714f9048b4d14087fb2344"
+      },
+      {
+        "column": null,
+        "end": 1077,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1077,
+        "requirement": "lex:lex:7dd37cfa024fb6fac1a740126c7dc0f46d67f2fd91166a776b4c8a0f0cc47c4d"
+      },
+      {
+        "column": null,
+        "end": 1089,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1078,
+        "requirement": "lex:lex:a0cdbc2efe39fa2d56cce8ebf10733c70f6cfc012273e8ca285a8c8572f5349c"
       },
       {
         "column": null,
         "end": 1090,
-        "entity": "appliedUntilNewLine",
-        "file": "def/lexer/traits.lfy",
-        "line": 34,
-        "outputLine": 1051,
-        "requirement": null
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1090,
+        "requirement": "lex:lex:8b360892b78b6aa6c9ad195eab10616ace9a704ed5375f1c0d22aba18caf60fa"
+      },
+      {
+        "column": null,
+        "end": 1091,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1091,
+        "requirement": "lex:lex:cf2a6f9d014be86e0445e2557b3fcbe990a2aa18995919050d0cf8a4b7e1cb30"
+      },
+      {
+        "column": null,
+        "end": 1092,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1092,
+        "requirement": "lex:lex:65302fc5ab863de18fb1182cf01ec469f778475fc0c5ab51c1493dd72d3262cc"
+      },
+      {
+        "column": null,
+        "end": 1093,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1093,
+        "requirement": "lex:lex:f9a340ab3af7852b982503d324546e9a7fab1b8b57b22fcdfaede46a7a2f4429"
+      },
+      {
+        "column": null,
+        "end": 1094,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1094,
+        "requirement": "lex:lex:465a98939ff1937ab5a7ed3db603ea7a995355f6b786f33148fa3d7c05bd3cbd"
+      },
+      {
+        "column": null,
+        "end": 1095,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1095,
+        "requirement": "lex:lex:f18586978975a6f9784905dfb877afddece7d47e57ca931ce1ab6d006522a2b2"
+      },
+      {
+        "column": null,
+        "end": 1096,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1096,
+        "requirement": "lex:lex:f4b8ffa2e336c929bb4333ca836ffd6003f6a895f9f299763cc8a9955e8d8b2b"
+      },
+      {
+        "column": null,
+        "end": 1097,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1097,
+        "requirement": "lex:lex:1acf7cd8c19498d0e197e5d992e7126268eb2f7392c43072f9f56fc0196899a4"
+      },
+      {
+        "column": null,
+        "end": 1098,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1098,
+        "requirement": "lex:lex:811e047326b17c55f0cb3fc50c7584fbc65e84a3abcfc518b676a4cfd839d867"
+      },
+      {
+        "column": null,
+        "end": 1099,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1099,
+        "requirement": "lex:lex:ef417c15682a43894d15be665088696926f991ceea4c597173ee7bfb67ae0fc3"
+      },
+      {
+        "column": null,
+        "end": 1109,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1100,
+        "requirement": "lex:lex:b6852d8499107bd75a798c7bce1699cb915c3cbca11d1772b7c699cf2803a2b1"
+      },
+      {
+        "column": null,
+        "end": 1110,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1110,
+        "requirement": "lex:lex:83472bab6533b4a217659d48a67e1da7bfcd11be6e3dda1c48b2135b243db4a5"
+      },
+      {
+        "column": null,
+        "end": 1111,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1111,
+        "requirement": "lex:lex:78291427acdf99773766ae9ad192cc3b9bbb10a8ab34a78fa379d4fe2259935f"
+      },
+      {
+        "column": null,
+        "end": 1112,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1112,
+        "requirement": "lex:lex:3a9c59df01513e84ab814380913cc31fff0854c5e47b4e65e25aead118fded4a"
+      },
+      {
+        "column": null,
+        "end": 1113,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1113,
+        "requirement": "lex:lex:903a8093f5d183eccfe5986e3476daa5ad3d543a7099350caf393a3f3d044b45"
+      },
+      {
+        "column": null,
+        "end": 1114,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1114,
+        "requirement": "lex:lex:3e88f0b5696d3c0a6a543845ef979270059c3e9714e3ac49bf319a8193270b4b"
+      },
+      {
+        "column": null,
+        "end": 1115,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1115,
+        "requirement": "lex:lex:e444d7c00cb89faa3988362c15388fe371aec18acc1e0779ad3c386d84412f27"
+      },
+      {
+        "column": null,
+        "end": 1116,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1116,
+        "requirement": "lex:lex:68c17153e3f0487bc920b8c733216e7abe0fd4a18ab80984da43ddb899f8d69b"
+      },
+      {
+        "column": null,
+        "end": 1117,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1117,
+        "requirement": "lex:lex:9cea6ce250cb1b4d4f79012fde135bef5fdd8f5e12e3001f4921fb77384622bb"
+      },
+      {
+        "column": null,
+        "end": 1118,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1118,
+        "requirement": "lex:lex:e18236e72352c8b5faeeccf956c4c9b0dea0c0b21f7f9efe7b9b430817dd7b3f"
+      },
+      {
+        "column": null,
+        "end": 1119,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1119,
+        "requirement": "lex:lex:a7f4364192a2346eac41756d5f26aa9eb8a93d5a04592e51af89de4f86d17000"
+      },
+      {
+        "column": null,
+        "end": 1120,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1120,
+        "requirement": "lex:lex:4ebe8a2a4771d3ed627b55a7aeaab444f376fb22f79628da719412c21046ed8d"
+      },
+      {
+        "column": null,
+        "end": 1121,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1121,
+        "requirement": "lex:lex:beb981f9fb6813af5cfb7611ecaac34adbf42281c606cc5c682562186a90f31d"
+      },
+      {
+        "column": null,
+        "end": 1122,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1122,
+        "requirement": "lex:lex:80e4ef8c84bb582b0373e2955a684ba8c4151a3f087d2358aa63332f82e06c17"
+      },
+      {
+        "column": null,
+        "end": 1123,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1123,
+        "requirement": "lex:lex:925648d031faa19f627a96d6250c1529280de6a405b6ca2764fba63397bbaefe"
+      },
+      {
+        "column": null,
+        "end": 1124,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1124,
+        "requirement": "lex:lex:ac1c1eb5a644d3c09156e719a324f8c0181fcc3a859987fd1aabb477708c4655"
+      },
+      {
+        "column": null,
+        "end": 1125,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1125,
+        "requirement": "lex:lex:0845c6858ea17ddfeda77891e5dca413908db526960380aa30c740a3483a8dc3"
+      },
+      {
+        "column": null,
+        "end": 1126,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1126,
+        "requirement": "lex:lex:938eae0816169bd58e9b355e3714ceacf2d98e0ede8e76453ac940f7fa11473b"
+      },
+      {
+        "column": null,
+        "end": 1127,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1127,
+        "requirement": "lex:lex:c8318c5931232e593aff431e22736b6b54f592020759bf56cddd0a77ab5c788d"
+      },
+      {
+        "column": null,
+        "end": 1128,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1128,
+        "requirement": "lex:lex:20123c5a0d16a3c63c22ce60f4e25f8c37902fe4a06c45ee71b7b8350f807381"
+      },
+      {
+        "column": null,
+        "end": 1129,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1129,
+        "requirement": "lex:lex:d50dfd712d17827bad12d13307d78d6c0976a09e3070faa803e913475e42415c"
+      },
+      {
+        "column": null,
+        "end": 1130,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1130,
+        "requirement": "lex:lex:1e1b1b5f0a9fc8eaa744027c81e7910bf3a42fd02585b1ac1f2cab88e0567265"
+      },
+      {
+        "column": null,
+        "end": 1131,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1131,
+        "requirement": "lex:lex:7730ac57d8c49b82020fadc004b6e0048cb45fbebe3a3fbb53aec0453e2cca00"
       },
       {
         "column": null,
@@ -1336,12 +2020,570 @@
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 1091,
+        "outputLine": 1132,
+        "requirement": "lex:lex:450ee6e9ed76b34629d88f741f5af1a8dbe25f00f86e4c44c9a34e9172e11dab"
+      },
+      {
+        "column": null,
+        "end": 1133,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1133,
+        "requirement": "lex:lex:a3338a3ad3bc73ee43f5d57e4293c82d6f06fa50ee65af493ee341b3922f6e02"
+      },
+      {
+        "column": null,
+        "end": 1134,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1134,
+        "requirement": "lex:lex:e4d0300765d272967227c0d6a640e29d92782a59270545ee1a6048ade0f4c27a"
+      },
+      {
+        "column": null,
+        "end": 1135,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1135,
+        "requirement": "lex:lex:d58e9c4c838a03ef2ff7b4edd275e1c6944b8bfe45c0f89a89b3e8edd1bf783a"
+      },
+      {
+        "column": null,
+        "end": 1136,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1136,
+        "requirement": "lex:lex:43ca03f0cc47736f737645e683c517024e2e4cca416afa320961e50d1276d2b9"
+      },
+      {
+        "column": null,
+        "end": 1137,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1137,
+        "requirement": "lex:lex:1210c8d1158cc4f2cfa20539fa63494f3005791c35649c4e78f486e1758e3b95"
+      },
+      {
+        "column": null,
+        "end": 1138,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1138,
+        "requirement": "lex:lex:bde4c4fa8e936832417bc6a32b2130759eb7ba8a1c8308acbf238a35d572fda9"
+      },
+      {
+        "column": null,
+        "end": 1139,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1139,
+        "requirement": "lex:lex:ed837090ef616ebedc9863a32144bcf9ce3894da3a9acbe8d8fa5cd5ef1ee639"
+      },
+      {
+        "column": null,
+        "end": 1140,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1140,
+        "requirement": "lex:lex:65b25f7c1fdc694969bffd2c2147713a85da8510413d1a69640d1a1d0cd9b2c2"
+      },
+      {
+        "column": null,
+        "end": 1141,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1141,
+        "requirement": "lex:lex:551c1cdb7b4634cc42746df5ed1193d5523735ec663934e3d33ad4f201304da3"
+      },
+      {
+        "column": null,
+        "end": 1142,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1142,
+        "requirement": "lex:lex:04a92806c502187b8296ff7f4cc0bdd0365e3829bd34d9949f099d814a51cfc5"
+      },
+      {
+        "column": null,
+        "end": 1143,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1143,
+        "requirement": "lex:lex:03eb8cec25f70932463883b9f55fbc44edf883306b40f4eaac217b4129ee7240"
+      },
+      {
+        "column": null,
+        "end": 1144,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1144,
+        "requirement": "lex:lex:25ace7e0bd83cd11eb06ea47009a60995b8c390057f30f89c9dc379ce7d21917"
+      },
+      {
+        "column": null,
+        "end": 1145,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1145,
+        "requirement": "lex:lex:c0678b85286f2d7b584ce29a054a56c02eebbb8f908b12e050d5123e416ae651"
+      },
+      {
+        "column": null,
+        "end": 1146,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1146,
+        "requirement": "lex:lex:42d54625cc9278f03f63328d78258f9f8bdb093f26b8794517a9b44b738345f3"
+      },
+      {
+        "column": null,
+        "end": 1147,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1147,
+        "requirement": "lex:lex:731f0357d01b27d578fb18bf357317197c99f5ed930933e6a55f72a23c4baecd"
+      },
+      {
+        "column": null,
+        "end": 1148,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1148,
+        "requirement": "lex:lex:17c2d06682531c39cf1868c37ee1957c42c3075164d64d2ce715a08a97ba1ca2"
+      },
+      {
+        "column": null,
+        "end": 1149,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1149,
+        "requirement": "lex:lex:e4423aeba9158cb46659624213ddbeaa9d4287492c5be7f870c5b809769c34cd"
+      },
+      {
+        "column": null,
+        "end": 1150,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1150,
+        "requirement": "lex:lex:27b9bf2f47adc092ad837b3bdd633f855d8dd3a890617fc933226f1c38571c6c"
+      },
+      {
+        "column": null,
+        "end": 1151,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1151,
+        "requirement": "lex:lex:cb7605d81ed4a7b5a7f764a24057cf9f5227a9bc385b6e01f5d14b8813fb94a0"
+      },
+      {
+        "column": null,
+        "end": 1152,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1152,
+        "requirement": "lex:lex:a5d50b1cdd0acae15ebb9a8e708c90b13dbfab9e32ea51a95926873716227f8c"
+      },
+      {
+        "column": null,
+        "end": 1153,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1153,
+        "requirement": "lex:lex:b7b42d92f87ef914c6a1c4d92e8707e621d7139d64d9d5f1a4ee2b9c9d78ce7d"
+      },
+      {
+        "column": null,
+        "end": 1154,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1154,
+        "requirement": "lex:lex:c124301fd090aba3ab974b73c59bcfa13f02315afc44602106ca6d0819a0a93e"
+      },
+      {
+        "column": null,
+        "end": 1155,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1155,
+        "requirement": "lex:lex:2bd7aec7141238cfede2a98ac697875bd44fa6fbb4b133ddcb27f743120b66d5"
+      },
+      {
+        "column": null,
+        "end": 1156,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1156,
+        "requirement": "lex:lex:6f80770c9e2feffa5ad980528f9adf19b6ba8a060f9dde97438a1d755520ad8c"
+      },
+      {
+        "column": null,
+        "end": 1157,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1157,
+        "requirement": "lex:lex:fe79a13d51138ab235084a89567720582082c6fb466d57eee6952bb9c94fd611"
+      },
+      {
+        "column": null,
+        "end": 1158,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1158,
+        "requirement": "lex:lex:a06f3e9532422d47cb4d5469ab77f036d9e33d0f43903e411b1865103d612873"
+      },
+      {
+        "column": null,
+        "end": 1159,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1159,
+        "requirement": "lex:lex:36a661833249fb8ab6e5b09ae6f05c4c7d02cbf30c4c36b47183cfddaf755dbe"
+      },
+      {
+        "column": null,
+        "end": 1160,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1160,
+        "requirement": "lex:lex:b05a4ea4770bc865427b08ff04a127589d83d871e4e1d307d37c5bfc657788f9"
+      },
+      {
+        "column": null,
+        "end": 1161,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1161,
+        "requirement": "lex:lex:3c789b9273943664d1c328ae436d8addf3f5ddfb27aac30adea2932abd1f4377"
+      },
+      {
+        "column": null,
+        "end": 1162,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1162,
+        "requirement": "lex:lex:92481a928fce775f1d27c33450d9ed547b5eb8e91691aeb91f55b030110d3ad9"
+      },
+      {
+        "column": null,
+        "end": 1163,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1163,
+        "requirement": "lex:lex:7eda59f1fa5db032a1da1ae28be4a7a9e1843f84baf3d11c29dba29e6fdebb83"
+      },
+      {
+        "column": null,
+        "end": 1173,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1164,
+        "requirement": "lex:lex:122dd18fec067ee0890ddd8c57e920f3c1b9a6c10f7b65c2463020286aa083b7"
+      },
+      {
+        "column": null,
+        "end": 1174,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1174,
+        "requirement": "lex:lex:39dc045c6e0a685be0179a7d8246c8cecd74cfae9ec9cc7f2668e61f288d7ed4"
+      },
+      {
+        "column": null,
+        "end": 1175,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1175,
+        "requirement": "lex:lex:0e2aca77a4ce3f7ed089abfe7bc847300a5cb9dbbe6f8ed654e679b0c16e676c"
+      },
+      {
+        "column": null,
+        "end": 1176,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1176,
+        "requirement": "lex:lex:ab9c5e43a010d1f3353720f3aceac7780f3a386fb75b0b662019154933a310f4"
+      },
+      {
+        "column": null,
+        "end": 1177,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1177,
+        "requirement": "lex:lex:326ea7d6257b7b6633b5ebc59801b212e41c70fd5b6ad2abff4f9578ed7c7594"
+      },
+      {
+        "column": null,
+        "end": 1178,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1178,
+        "requirement": "lex:lex:6a1b9b1f09088f5975e02e1faf73a5f0e604c1accf80d2efb01411ad9e861882"
+      },
+      {
+        "column": null,
+        "end": 1179,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1179,
+        "requirement": "lex:lex:53d911dd8d9fd26397292d947a5e1bbb45c5cb2f831d810a432f5640b1ade239"
+      },
+      {
+        "column": null,
+        "end": 1180,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1180,
+        "requirement": "lex:lex:db6a98b7010d2d3d93d343543f427d350d245b3afe3269307ae4088f407ccc52"
+      },
+      {
+        "column": null,
+        "end": 1181,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1181,
+        "requirement": "lex:lex:9c251e8c1509fff9f02787fcf13fb21f9fdab7fff7b746bfd718bd486fdae03b"
+      },
+      {
+        "column": null,
+        "end": 1182,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1182,
+        "requirement": "lex:lex:c702d0087d8fba020502259b459aedbf33414807e2d9e7fa9c43324717f3a9a4"
+      },
+      {
+        "column": null,
+        "end": 1192,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1183,
+        "requirement": "lex:lex:8ad502d85fc005795d33e841785b27ed70bd5f91df77c947a7d3290ddf3d567b"
+      },
+      {
+        "column": null,
+        "end": 1193,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1193,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103"
+      },
+      {
+        "column": null,
+        "end": 1194,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1194,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:2"
+      },
+      {
+        "column": null,
+        "end": 1195,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1195,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:3"
+      },
+      {
+        "column": null,
+        "end": 1196,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1196,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:4"
+      },
+      {
+        "column": null,
+        "end": 1197,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1197,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:5"
+      },
+      {
+        "column": null,
+        "end": 1198,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1198,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:6"
+      },
+      {
+        "column": null,
+        "end": 1199,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1199,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:7"
+      },
+      {
+        "column": null,
+        "end": 1200,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1200,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:8"
+      },
+      {
+        "column": null,
+        "end": 1201,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1201,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:9"
+      },
+      {
+        "column": null,
+        "end": 1202,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1202,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:10"
+      },
+      {
+        "column": null,
+        "end": 1203,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1203,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:11"
+      },
+      {
+        "column": null,
+        "end": 1204,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1204,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:12"
+      },
+      {
+        "column": null,
+        "end": 1205,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1205,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:13"
+      },
+      {
+        "column": null,
+        "end": 1206,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1206,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:14"
+      },
+      {
+        "column": null,
+        "end": 1228,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1207,
+        "requirement": "lex:lex:61bda96c5031d4739a062049b7a3783d5880e9d95d4bc2a7d054017e1b4c3103:15"
+      },
+      {
+        "column": null,
+        "end": 1229,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1229,
+        "requirement": "lex:lex:4f82f81fee7df5d1f1456b33a20e33c3e124f0a730bc36d3ead5162850b4eb4f"
+      },
+      {
+        "column": null,
+        "end": 1240,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1230,
+        "requirement": "lex:lex:96f3ebf394d27ee519580d17930046716c6bb98571c66276b16a2f1700506748"
+      },
+      {
+        "column": null,
+        "end": 1293,
+        "entity": "BlockDocumentationOpen",
+        "file": "def/grammar/terminals/comment.lfy",
+        "line": 11,
+        "outputLine": 1241,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1333,
+        "entity": "appliedUntilNewLine",
+        "file": "def/lexer/traits.lfy",
+        "line": 34,
+        "outputLine": 1294,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1375,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 1334,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/lexer/mod.rs",
-    "requirements": "e5b236118b8643eaf51fc139c0ade6b99fa2a22d26556fbe3fb4c865457f4ea9",
+    "requirements": "7a95aa032f5c69527597d6ed6e083044f5ac10b0518468d96e99ad85761a7653",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust"
@@ -1357,7 +2599,7 @@
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/lexer/modes.lfy": "a063d8800b3b35e9c75a086be3a579746ecd5b0b47a23cb7c95e488fecbe9ea0"
     },
-    "generated": "2026-10-02T03:57:02Z",
+    "generated": "2026-10-02T13:14:23Z",
     "hash": "ff5fbc68adc89cef009bf41fbe52855b0fa4f0ddcc3f3c615c65ff0fa7f8e276",
     "markers": [
       {
@@ -1956,7 +3198,7 @@
       }
     ],
     "output": "crates/elfie-core/src/lexer/modes.rs",
-    "requirements": "e5b236118b8643eaf51fc139c0ade6b99fa2a22d26556fbe3fb4c865457f4ea9",
+    "requirements": "7a95aa032f5c69527597d6ed6e083044f5ac10b0518468d96e99ad85761a7653",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust"
@@ -1972,7 +3214,7 @@
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/lexer/modes.lfy": "a063d8800b3b35e9c75a086be3a579746ecd5b0b47a23cb7c95e488fecbe9ea0"
     },
-    "generated": "2026-10-02T03:57:02Z",
+    "generated": "2026-10-02T13:14:23Z",
     "hash": "ff5fbc68adc89cef009bf41fbe52855b0fa4f0ddcc3f3c615c65ff0fa7f8e276",
     "markers": [
       {
@@ -2058,7 +3300,7 @@
       }
     ],
     "output": "crates/elfie-core/src/lib.rs",
-    "requirements": "e5b236118b8643eaf51fc139c0ade6b99fa2a22d26556fbe3fb4c865457f4ea9",
+    "requirements": "7a95aa032f5c69527597d6ed6e083044f5ac10b0518468d96e99ad85761a7653",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust"

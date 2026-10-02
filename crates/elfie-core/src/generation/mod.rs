@@ -1618,13 +1618,14 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
 ///
 /// Rejected when there are no outputs, when an output's path is not under the target's
 /// output directory, when a marker names an entity that its file does not declare, a line
-/// of the unit's file beyond its last, or a requirement id that is neither a local
-/// criterion or test of the unit nor a global one, or when an entity of the unit has no
-/// marker naming it or a line its declaration covers. A marker naming a line that falls
-/// inside a declaration is rewritten to name that entity, since a name survives edits and a
-/// line does not. A marker naming a file that is not in the program is ignored and not
-/// recorded: it is a fixture or prose, not a claim about the program. Otherwise accepted,
-/// with one source map per output, each marker carrying the end of the region it begins.
+/// of the unit's file beyond its last, or — naming the unit's own file — a requirement id
+/// that is neither a local criterion or test of the unit nor a global one, or when an entity
+/// of the unit has no marker naming it or a line its declaration covers. A marker naming a
+/// line that falls inside a declaration is rewritten to name that entity, since a name
+/// survives edits and a line does not. A marker naming a file that is not in the program is
+/// ignored and not recorded: it is a fixture or prose, not a claim about the program.
+/// Otherwise accepted, with one source map per output, each marker carrying the end of the
+/// region it begins.
 /// Whether an output builds or its tests pass is not checked here; the guidance says how,
 /// and the caller runs it.
 // Decision: the definition passes the request and the unit; a plan here does not own its
@@ -1654,10 +1655,10 @@ pub fn accept(
     // the file's own text; the request carries the lowered text, whose lines are not its.
     let last_line = source_text(workspace, file).lines().count().max(1);
     let named = named_entities(model, file.source, &planned.entities);
-    // Every requirement id a marker of this output may name: a local criterion or test of
-    // this unit, or a global one of the request — whichever file the marker names. A region
-    // answers for the unit it was generated for, and a local criterion of another file is
-    // reviewed with that file's own unit, so an id of neither is no id this unit may claim.
+    // Every requirement id a marker naming this unit's own file may spell: a local criterion
+    // or test of this unit, or a global one of the request. An output is often shared with
+    // another unit, which writes its own markers and its own ids into it, so only a marker
+    // naming this unit's file is a claim this unit makes and only its id is checked here.
     // @lfy def/generation/main.lfy:accept
     let global_ids: Vec<&str> = request.globals.iter().map(Requirement::id).collect();
     let local_ids: Vec<String> = local_requirements(&program.files[planned.lowered])
@@ -1683,11 +1684,13 @@ pub fn accept(
         // last one, so the regions of an output partition it from its first marker on.
         // @lfy def/generation/main.lfy:accept
         for marker in parse_markers(&output.text) {
-            // A marker naming a file outside the program is a fixture or prose, claiming
-            // nothing about the program, so the id it spells is not one this unit answers
-            // for either. @lfy def/generation/main.lfy:accept
+            // A marker naming any other file — another file of the program, whose unit owns
+            // the ids it spells, or a file outside the program, which is a fixture or prose
+            // claiming nothing about it — spells no id this unit answers for, so none of
+            // those is checked.
+            // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
             if let Some(requirement) = &marker.requirement
-                && workspace.file(&marker.file).is_some()
+                && marker.file == file.path
                 && !local_ids.iter().any(|id| id == requirement)
                 && !global_ids.iter().any(|&id| id == requirement)
             {
@@ -1739,7 +1742,8 @@ pub fn accept(
         };
     }
 
-    // @lfy def/generation/main.lfy:accept
+    // Nothing of a source map comes from the compiler's text except the names it spelled.
+    // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
     let hash = source_hash(&program.files[planned.lowered].text);
     let requirements = requirements_hash(program, planned);
     let signature = interface_signature(workspace, planned);
@@ -4961,7 +4965,7 @@ mod tests {
         (plan, request, index)
     }
 
-    // @lfy def/generation/main.lfy:accept
+    // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
     #[test]
     fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
         let fixture = a_with_two_entities();
@@ -4990,7 +4994,8 @@ mod tests {
         assert_eq!(map.target, "rust");
         assert_eq!(map.output, "src/a.rs");
         assert_eq!(map.source, "def/a.lfy");
-        // @lfy def/generation/main.lfy:accept
+        // Every hash of the source map is derived here, never taken from the compiler's text.
+        // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
         assert_eq!(map.hash, source_hash(&request.sources["def/a.lfy"]));
         assert_eq!(
             map.signature,
@@ -5271,10 +5276,11 @@ mod tests {
             interface_signature(&workspace, b)
         );
 
-        // A marker of another file may name that file's entity, but the id it answers for
-        // is still the unit's own or a global one: a local criterion of another file is
-        // reviewed with that file's unit, never with this one.
-        // @lfy def/generation/main.lfy:accept
+        // A marker of another file may name that file's entity and answer for that file's own
+        // local criterion: the id belongs to that file's unit, so this unit does not check it.
+        // An output shared by two units holds the other unit's markers and ids, and checking
+        // them here would make the shared output unacceptable to one of them.
+        // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
         let make = *b.entities.last().expect("make is an entity of b");
         let (criteria, _) = requirement_ids(&program.files[b.lowered], make);
         let output = named_output(&format!(
@@ -5282,18 +5288,22 @@ mod tests {
             criteria[0]
         ));
         let verdict = accept(&program, &plan, &request, index, &[output]);
-        assert!(!verdict.accepted, "{:?}", verdict.source_maps);
-        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
-        assert!(
-            verdict.problems[0].contains(&criteria[0]),
-            "{}",
-            verdict.problems[0]
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        // An id no file of the program knows is not checked either, when the marker names
+        // another file: only a marker of this unit's own file makes a claim this unit answers
+        // for.
+        // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
+        let output = named_output(
+            "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#make:make:nowhere\nfn make() {}\n",
         );
+        let verdict = accept(&program, &plan, &request, index, &[output]);
+        assert!(verdict.accepted, "{:?}", verdict.problems);
     }
 
-    /// A marker may answer for a local criterion of the unit or for a global one, and for
-    /// nothing else; the source map records the hash of the unit's requirement ids.
-    // @lfy def/generation/main.lfy:accept
+    /// A marker of the unit's own file may answer for a local criterion of the unit or for a
+    /// global one, and for nothing else; the source map records the hash of the unit's
+    /// requirement ids.
+    // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
     #[test]
     fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_id() {
         let fixture = Fixture::with_rust_target();
@@ -5309,15 +5319,16 @@ mod tests {
         assert_eq!(local.len(), 1, "{local:?}");
         let global = program.criteria[0].id.clone();
 
-        // An id of a local criterion and one of a global criterion are both known.
-        // @lfy def/generation/main.lfy:accept
+        // An id of a local criterion and one of a global criterion are both known, so the
+        // outputs are accepted and earn their source maps.
+        // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
         let output = named_output(&format!(
             "// @lfy def/a.lfy:A#{}\npub struct A;\n// @lfy def/a.lfy:A#{global}\nfn holds() {{}}\n",
             local[0]
         ));
         let verdict = accept(&program, &plan, &request, index, &[output]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
-        // @lfy def/generation/main.lfy:accept
+        // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
         assert_eq!(
             verdict.source_maps[0].requirements,
             requirements_hash(&program, unit)
@@ -5327,8 +5338,9 @@ mod tests {
             source_hash(&program.files[unit.lowered].text)
         );
 
-        // An id of neither is rejected, by output line and id.
-        // @lfy def/generation/main.lfy:accept
+        // An id of neither, on a marker of the unit's own file, is rejected by output line
+        // and id.
+        // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
         let output = named_output("// @lfy def/a.lfy:A#A:A:nowhere\npub struct A;\n");
         let verdict = accept(&program, &plan, &request, index, &[output]);
         assert!(!verdict.accepted);
