@@ -78,13 +78,13 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
             continue;
         }
         // --root <dir> or --root=<dir> sets the root.
-        // @lfy def/cli/main.lfy:parse#parse:parse:c13f6c1685e6037f390557f71f93bf09b652b2e862a8aecc750e49f518a644d3
+        // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
         if let Some(value) = argument.strip_prefix("--root=") {
             root = Some(value.to_string());
             i += 1;
             continue;
         }
-        // @lfy def/cli/main.lfy:parse#parse:parse:c13f6c1685e6037f390557f71f93bf09b652b2e862a8aecc750e49f518a644d3
+        // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
         if argument == "--root" {
             // @lfy def/cli/main.lfy:parse#parse:parse:1875232948f1e78b7879e17a6142dbc7d23a119e9a6954e465036b47195bed69
             let Some(value) = arguments.get(i + 1) else {
@@ -366,10 +366,19 @@ const COLOR_USAGE: &str = "--color must be auto, always, or never";
 /// the current one.
 // @lfy def/cli/main.lfy:parse
 fn find_root(given: Option<&str>) -> String {
-    // The directory --root named is the root.
-    // @lfy def/cli/main.lfy:parse#parse:parse:c13f6c1685e6037f390557f71f93bf09b652b2e862a8aecc750e49f518a644d3
+    // The directory --root named is the root, made absolute against the current directory
+    // when it is relative: a batch's copy lives under the root and its compiler runs inside
+    // that copy, so a relative root would name one place from the CLI and another from there.
+    // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
     if let Some(given) = given {
-        return given.to_string();
+        let given = Path::new(given);
+        // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
+        if given.is_absolute() {
+            return given.to_string_lossy().into_owned();
+        }
+        // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
+        let current = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        return current.join(given).to_string_lossy().into_owned();
     }
     let mut current = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let start = current.clone();
@@ -972,7 +981,7 @@ fn node_json(tree: &Tree, node: &Node, depth: usize, out: &mut Vec<String>) {
                     "depth": depth + 1,
                     "kind": "token",
                     "rule": rule_name(token),
-                    "value": token.raw,
+                    "value": token.value,
                 });
                 out.push(value.to_string());
             }
@@ -985,12 +994,16 @@ fn node_json(tree: &Tree, node: &Node, depth: usize, out: &mut Vec<String>) {
 /// and its value, an error node as what it expected and the text it covers. A rule is active,
 /// a token's value is success, a token range is muted, and an error node and what it expected
 /// are failure.
-// @lfy def/cli/main.lfy:main#main:main:2ab08b38cf714f57be25010631a0f3c194133753bf7d0adb4dafa2bfe312c8d8
+///
+/// A token is given as `Token::value`, the characters with escapes applied, never the raw
+/// characters it was written as; the text it covers is only ever printed raw for an error
+/// node, which stands for text no token could be made of.
+// @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
 fn node_lines(tree: &Tree, node: &Node, depth: usize, on: bool, out: &mut Vec<String>) {
     let indent = " ".repeat(depth * 2);
     // One node per line indented by depth, as its rule and its token range; the rule is
     // active and the range is muted.
-    // @lfy def/cli/main.lfy:main#main:main:2ab08b38cf714f57be25010631a0f3c194133753bf7d0adb4dafa2bfe312c8d8
+    // @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
     // @lfy def/cli/main.lfy:main#main:main:de832217801af86c7592cc4721c38a98c42fa4f39679a023293e5124a250b778
     out.push(format!(
         "{indent}{} {}",
@@ -1011,14 +1024,14 @@ fn node_lines(tree: &Tree, node: &Node, depth: usize, on: bool, out: &mut Vec<St
             )),
             Child::Token(index) => {
                 let token = tree.token(*index);
-                // A token as its rule and its value; the rule is active and the value is
-                // success.
-                // @lfy def/cli/main.lfy:main#main:main:2ab08b38cf714f57be25010631a0f3c194133753bf7d0adb4dafa2bfe312c8d8
+                // A token as its rule and its value, the characters with escapes applied
+                // rather than as written; the rule is active and the value is success.
+                // @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
                 // @lfy def/cli/main.lfy:main#main:main:de832217801af86c7592cc4721c38a98c42fa4f39679a023293e5124a250b778
                 out.push(format!(
                     "{indent}{} {}",
                     paint(rule_name(token), Tone::Active, on),
-                    paint(&format!("{:?}", token.raw), Tone::Success, on)
+                    paint(&format!("{:?}", token.value), Tone::Success, on)
                 ));
             }
         }
@@ -1073,7 +1086,7 @@ fn tree(invocation: &Invocation) -> ExitCode {
     };
     let tree = parse(tokens, None);
     let mut out = io::BufWriter::new(io::stdout().lock());
-    // @lfy def/cli/main.lfy:main#main:main:2ab08b38cf714f57be25010631a0f3c194133753bf7d0adb4dafa2bfe312c8d8
+    // @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
     for line in tree_lines(&tree, &path, invocation.flag("json"), Paint::of(invocation).out) {
         let _ = writeln!(out, "{line}");
     }
@@ -1466,6 +1479,10 @@ const LEGACY_MAPS: &str = "source-map.json";
 /// The output directory of each planned target whose maps were read from source-map.json
 /// rather than from a folder of map files, so that a compile moves them before any batch
 /// runs.
+///
+/// A target whose folder of map files is there had its maps read from that folder, which is
+/// where every map recorded since goes, so its source-map.json is not what the plan was made
+/// from and nothing is moved out of it.
 // @lfy def/cli/main.lfy:main#main:main:4ede95f73677e1e4b2200b8d8acb50fc3d6ee537b3859a6c26714538dede2a4b
 fn legacy_targets(workspace: &Workspace, target: Option<&str>) -> Vec<String> {
     let mut found = Vec::new();
@@ -1473,7 +1490,7 @@ fn legacy_targets(workspace: &Workspace, target: Option<&str>) -> Vec<String> {
         if target.is_some_and(|target| named.identifier != target) {
             continue;
         }
-        // @lfy def/cli/main.lfy:main
+        // @lfy def/cli/main.lfy:main#main:main:4ede95f73677e1e4b2200b8d8acb50fc3d6ee537b3859a6c26714538dede2a4b
         if workspace.root.join(MAPS).join(&named.identifier).is_dir() {
             continue;
         }
@@ -1488,9 +1505,9 @@ fn legacy_targets(workspace: &Workspace, target: Option<&str>) -> Vec<String> {
 
 /// The maps a planned target kept in source-map.json recorded in each unit's map file, and
 /// the file removed once every one is recorded; a unit whose maps could not be recorded
-/// leaves the file in place, to be read again by the next compile.
+/// leaves the file in place rather than removed, so the maps it holds are not lost.
 // @lfy def/cli/main.lfy:main#main:main:4ede95f73677e1e4b2200b8d8acb50fc3d6ee537b3859a6c26714538dede2a4b
-// @lfy def/cli/main.lfy:main#main:main:dceb0166c2f576d51b88a3750b57fa1a9753ed11934b200ac800febfebcd7d76
+// @lfy def/cli/main.lfy:main#main:main:0c7aba5f9967dfe9ae7caaa4374979c8384b3230bb6484b0b025db5693731f5e
 fn move_legacy_maps(workspace: &Workspace, plan: &Plan, directories: &[String]) {
     for directory in directories {
         let path = workspace.root.join(directory).join(LEGACY_MAPS);
@@ -1508,8 +1525,9 @@ fn move_legacy_maps(workspace: &Workspace, plan: &Plan, directories: &[String]) 
             // @lfy def/cli/main.lfy:main#main:main:4ede95f73677e1e4b2200b8d8acb50fc3d6ee537b3859a6c26714538dede2a4b
             every &= generation::record(workspace, unit, &mine);
         }
-        // Every one recorded, the file is removed; one that could not be is left in place.
-        // @lfy def/cli/main.lfy:main#main:main:dceb0166c2f576d51b88a3750b57fa1a9753ed11934b200ac800febfebcd7d76
+        // Every one recorded, the file is removed; one that could not be leaves it in place
+        // rather than removed, so the maps it holds are not lost.
+        // @lfy def/cli/main.lfy:main#main:main:0c7aba5f9967dfe9ae7caaa4374979c8384b3230bb6484b0b025db5693731f5e
         if every {
             let _ = fs::remove_file(&path);
         }
@@ -2058,12 +2076,12 @@ impl Agent {
 }
 
 /// Where elfie-compile keeps a batch's own copy of the root.
-// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
 const BATCHES: &str = "elfie-compile/cache/batches";
 
 /// What a copy of the root leaves behind: the cache the copies live in, and the folder the
 /// CLI writes its own files to under the root.
-// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
 const UNCOPIED: [&str; 2] = ["elfie-compile/cache", "elfie-requests"];
 
 /// What a merge leaves alone: elfie-compile, whose maps are recorded in the root once the
@@ -2073,13 +2091,13 @@ const UNMERGED: [&str; 2] = ["elfie-compile", "elfie-requests"];
 
 /// Whether a path is under one of these folders, which are spelled relative to the root with
 /// forward slashes as the copy spells its own paths.
-// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
 fn under(path: &str, folders: &[&str]) -> bool {
     folders.iter().any(|folder| path == *folder || path.starts_with(&format!("{folder}/")))
 }
 
 /// What `git` wrote in a directory, when it ran and ended well.
-// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
 fn git(directory: &Path, arguments: &[&str]) -> Option<String> {
     let output =
         Process::new("git").args(arguments).current_dir(directory).stderr(Stdio::null()).output().ok()?;
@@ -2092,17 +2110,47 @@ fn git_directory(root: &Path) -> Option<PathBuf> {
     git(root, &["rev-parse", "--absolute-git-dir"]).map(|text| PathBuf::from(text.trim()))
 }
 
+/// Whether a file is executable, as the mode the platform keeps it in; nothing where the
+/// platform has no such mode, and nothing for a file that cannot be read.
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+#[cfg(unix)]
+fn mode_of(path: &Path) -> Option<u32> {
+    use std::os::unix::fs::PermissionsExt as _;
+    fs::metadata(path).ok().map(|data| data.permissions().mode())
+}
+
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+#[cfg(not(unix))]
+fn mode_of(_path: &Path) -> Option<u32> {
+    None
+}
+
+/// A file left in the mode its source was in, so a script a batch copied or merged can still
+/// be run.
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+#[cfg(unix)]
+fn set_mode(path: &Path, mode: Option<u32>) {
+    use std::os::unix::fs::PermissionsExt as _;
+    if let Some(mode) = mode {
+        let _ = fs::set_permissions(path, fs::Permissions::from_mode(mode));
+    }
+}
+
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+#[cfg(not(unix))]
+fn set_mode(_path: &Path, _mode: Option<u32>) {}
+
 /// One batch's own copy of the root: the directory its compiler and its verifier run in, and
 /// what each copied file held when the copy was taken, which is the batch's base.
 ///
 /// A copy exists because compilers editing one tree break each other's builds and tests. A
 /// batch's work reaches the root only once its outputs are accepted and reviewed, merged file
 /// by file, so the root only ever holds work that passed.
-// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+// @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
 struct Mirror {
     directory: PathBuf,
     /// What each copied file held, by its path relative to the root.
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
     base: BTreeMap<String, Vec<u8>>,
     /// The root's git directory, so that git in the copy reads the root's history.
     // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
@@ -2114,24 +2162,25 @@ impl Mirror {
     /// copied byte for byte to the same path under `elfie-compile/cache/batches/<batch>`.
     /// Nothing is copied when the root is no git repository, since there is then no list of
     /// what belongs to the project.
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
     fn take(root: &Path, identifier: &str) -> Option<Mirror> {
         let git_directory = git_directory(root)?;
-        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
         let listed = git(root, &["ls-files", "--cached", "--others", "--exclude-standard"])?;
         let directory = root.join(BATCHES).join(file_name_of(identifier));
         let _ = fs::remove_dir_all(&directory);
         let mut base = BTreeMap::new();
         for path in listed.lines() {
             let path = path.trim();
-            // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+            // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
             if path.is_empty() || under(path, &UNCOPIED) {
                 continue;
             }
             // A file git lists that is not there, because it was removed since, is nothing
             // to copy.
-            // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
-            let Ok(held) = fs::read(root.join(path)) else { continue };
+            // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+            let from = root.join(path);
+            let Ok(held) = fs::read(&from) else { continue };
             let to = directory.join(path);
             // @lfy def/cli/main.lfy:main#main:main:d879c4ed7720d6b2f10f7658bdebae88cfb2ee0f415bb4e65471cec46f12d71d
             if let Some(parent) = to.parent()
@@ -2139,10 +2188,14 @@ impl Mirror {
             {
                 return None;
             }
-            // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+            // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
             if fs::write(&to, &held).is_err() {
                 return None;
             }
+            // The copy keeps whether the file is executable, so a script the compiler is run
+            // through can still be started in the copy.
+            // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+            set_mode(&to, mode_of(&from));
             base.insert(path.to_string(), held);
         }
         Some(Mirror { directory, base, git_directory })
@@ -2157,6 +2210,10 @@ impl Mirror {
     // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
     fn merge(&self, root: &Path) -> Result<Vec<String>, String> {
         let mut now: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+        // What mode each file of the copy is in, so a file merged into the root keeps whether
+        // it is executable.
+        // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
+        let mut modes: BTreeMap<String, Option<u32>> = BTreeMap::new();
         let mut found = Vec::new();
         walk_all(&self.directory, &mut found);
         for path in found {
@@ -2166,6 +2223,8 @@ impl Mirror {
                 continue;
             }
             if let Ok(held) = fs::read(&path) {
+                // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
+                modes.insert(at.clone(), mode_of(&path));
                 now.insert(at, held);
             }
         }
@@ -2186,9 +2245,9 @@ impl Mirror {
             let theirs = fs::read(root.join(path)).ok();
             // The root's file still holds what the base holds: it is replaced by the copy's,
             // or removed when the copy removed it.
-            // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+            // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
             if theirs.as_deref() == base.map(Vec::as_slice) {
-                // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+                // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
                 writes.push((path.clone(), mine.cloned()));
                 continue;
             }
@@ -2222,8 +2281,11 @@ impl Mirror {
                         // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
                         return Err(path);
                     }
+                    // The root's file keeps whether the copy's was executable.
+                    // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
+                    set_mode(&to, modes.get(&path).copied().flatten());
                 }
-                // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+                // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
                 None => {
                     let _ = fs::remove_file(&to);
                 }
@@ -2274,7 +2336,7 @@ enum Where {
     // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
     Root(PathBuf),
     /// Its own copy of the root.
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
     Copy(Mirror),
 }
 
@@ -2282,13 +2344,13 @@ impl Where {
     /// Where a batch runs: a copy of the root when more than one batch may run at once and
     /// the root is a git repository, and the root itself otherwise.
     // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
     fn of(root: &Path, identifier: &str, jobs: usize) -> Where {
         // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
         if jobs <= 1 {
             return Where::Root(root.to_path_buf());
         }
-        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
         match Mirror::take(root, identifier) {
             Some(mirror) => Where::Copy(mirror),
             // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
@@ -3477,7 +3539,7 @@ fn verifier_failed(exit: &Exit, report: &ReviewReport) -> bool {
 /// copy in place for a person to read.
 // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
 fn run_batch(run: &Mutex<Run>, batch: &Batch, command: &str, root: &Path, jobs: usize) -> Done {
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
     let where_ = Where::of(root, &batch.identifier, jobs);
     // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
     let held = Run::compile_batch(run, batch, command, &where_);
@@ -4212,11 +4274,17 @@ mod tests {
         assert_eq!(parse_arguments(&args(&["compile", "--jobs", "8"])).unwrap().option("jobs"), Some("8"));
     }
 
-    // @lfy def/cli/main.lfy:parse#parse:parse:c13f6c1685e6037f390557f71f93bf09b652b2e862a8aecc750e49f518a644d3
+    // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
     #[test]
     fn the_root_option_names_the_project_directory() {
         assert_eq!(parse_arguments(&args(&["check", "--root", "/tmp"])).unwrap().root, "/tmp");
         assert_eq!(parse_arguments(&args(&["check", "--root=/tmp"])).unwrap().root, "/tmp");
+        // A relative directory is made absolute against the current directory, so every path
+        // and ELFIE_ROOT built from it names the same place from any directory.
+        // @lfy def/cli/main.lfy:parse#parse:parse:54b73de88c797c9ed9655d25225ffba5de546f1aaaa93abb283c568d6f6241c1
+        let here = std::env::current_dir().unwrap().join("here");
+        assert_eq!(Path::new(&parse_arguments(&args(&["check", "--root", "here"])).unwrap().root), here);
+        assert_eq!(Path::new(&parse_arguments(&args(&["check", "--root=here"])).unwrap().root), here);
     }
 
     // @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
@@ -4586,6 +4654,37 @@ mod tests {
         assert_eq!(run(&["tree".to_string()]), ExitCode::Usage.code());
     }
 
+    /// Tree prints one node or token per line indented by depth, a node as its rule and its
+    /// token range, and a token as its value, the characters with escapes applied, never the
+    /// raw characters it was written as.
+    // @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
+    #[test]
+    fn tree_prints_a_node_as_its_range_and_a_token_as_its_value() {
+        let tokens = tokens_of("const x = \"a\\nb\";\n");
+        let (raw, value) = {
+            let escaped =
+                tokens.iter().find(|token| token.value != token.raw).expect("a token whose escapes are applied");
+            (escaped.raw.clone(), escaped.value.clone())
+        };
+        assert_eq!((raw.as_str(), value.as_str()), ("a\\nb", "a\nb"));
+        let tree = parse(tokens, None);
+        let lines = tree_lines(&tree, "def/a.lfy", false, false);
+        // The root is its rule and its token range at no indent, and every line below it is
+        // indented two spaces per level of depth.
+        // @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
+        assert_eq!(lines[0], format!("{} 0..{}", tree.root.rule.identifier(), tree.tokens.len()));
+        for line in &lines {
+            assert_eq!((line.len() - line.trim_start().len()) % 2, 0, "{line:?} is indented by depth");
+        }
+        assert!(lines.iter().any(|line| line.starts_with("  ")), "nothing below the root is indented");
+        // A token is given as its value, never as the characters it was written as.
+        // @lfy def/cli/main.lfy:main#main:main:f2083dcc1e49fcd1843dd371a96ee6fd5d24df9903bd327709471895876bc1c1
+        let shown = format!("{value:?}");
+        assert!(lines.iter().any(|line| line.ends_with(&shown)), "no line gives {shown}: {lines:?}");
+        let written = format!("{raw:?}");
+        assert!(!lines.iter().any(|line| line.ends_with(&written)), "a line gives the raw characters");
+    }
+
     /// With --json tree and tokens print their results as JSON lines instead of text, one
     /// object per result.
     // @lfy def/cli/main.lfy:main
@@ -4618,7 +4717,7 @@ mod tests {
         assert_eq!(parsed[0]["end"], tree.tokens.len());
         let leaves: Vec<&serde_json::Value> = parsed.iter().filter(|value| value["kind"] == "token").collect();
         assert_eq!(leaves.len(), tree.tokens.len(), "every token is one object");
-        assert_eq!(leaves[0]["value"], tree.tokens[0].raw);
+        assert_eq!(leaves[0]["value"], tree.tokens[0].value);
         assert_eq!(leaves[0]["rule"], rule_name(&tree.tokens[0]));
         // An error node is given with what it expected, as the text form gives it.
         // @lfy def/cli/main.lfy:main
@@ -5462,6 +5561,49 @@ mod tests {
         assert!(!fixture.root.join("out/source-map.json").exists(), "the file is removed");
     }
 
+    /// A unit whose maps from source-map.json could not be recorded leaves the file in place
+    /// rather than removed, holding every map it held, so nothing of it is lost.
+    // @lfy def/cli/main.lfy:main#main:main:0c7aba5f9967dfe9ae7caaa4374979c8384b3230bb6484b0b025db5693731f5e
+    #[test]
+    fn maps_that_could_not_be_recorded_leave_the_file_in_place() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED);
+        fixture.write("def/b.lfy", "d B {}\n");
+        fixture.write("compiler.sh", PER_UNIT_COMPILER);
+        assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
+        // The project as an earlier version left it: every map of the target in one
+        // source-map.json under its output directory and no folder of map files.
+        let folder = fixture.root.join("elfie-compile/maps/rust");
+        let mut held = generation::read_source_maps(&folder.join("a.json"));
+        held.extend(generation::read_source_maps(&folder.join("b.json")));
+        assert_eq!(held.len(), 2);
+        let value = serde_json::Value::Array(held.iter().map(SourceMap::to_json).collect());
+        let text = serde_json::to_string_pretty(&value).unwrap();
+        fixture.write("out/source-map.json", &text);
+        fs::remove_dir_all(fixture.root.join("elfie-compile/maps")).unwrap();
+        // No unit's maps can be recorded: a file stands where the target's folder of map
+        // files goes, so no map file under it can be written.
+        // @lfy def/cli/main.lfy:main#main:main:0c7aba5f9967dfe9ae7caaa4374979c8384b3230bb6484b0b025db5693731f5e
+        fixture.write("elfie-compile/maps/rust", "not a folder\n");
+        let legacy = legacy_targets(&workspace::load(&fixture.root), None);
+        assert_eq!(legacy, vec!["out".to_string()]);
+        let (program, plan) = planned(&fixture.root, &[], &[], false, &BTreeSet::new());
+        move_legacy_maps(&program.workspace, &plan, &legacy);
+        // The file is left in place rather than removed, holding the maps it held.
+        // @lfy def/cli/main.lfy:main#main:main:0c7aba5f9967dfe9ae7caaa4374979c8384b3230bb6484b0b025db5693731f5e
+        assert!(fixture.root.join("out/source-map.json").is_file(), "the file was removed");
+        assert_eq!(fixture.read("out/source-map.json"), text, "the maps it holds were lost");
+        // With the folder writable again, every unit's maps are recorded and the file goes.
+        // @lfy def/cli/main.lfy:main#main:main:4ede95f73677e1e4b2200b8d8acb50fc3d6ee537b3859a6c26714538dede2a4b
+        fs::remove_file(fixture.root.join("elfie-compile/maps/rust")).unwrap();
+        let legacy = legacy_targets(&workspace::load(&fixture.root), None);
+        let (program, plan) = planned(&fixture.root, &[], &[], false, &BTreeSet::new());
+        move_legacy_maps(&program.workspace, &plan, &legacy);
+        assert!(folder.join("a.json").is_file(), "a's maps were not recorded");
+        assert!(folder.join("b.json").is_file(), "b's maps were not recorded");
+        assert!(!fixture.root.join("out/source-map.json").exists(), "the file stayed");
+    }
+
     /// A map file belonging to no unit of the plan is removed before any batch runs.
     // @lfy def/cli/main.lfy:main
     #[test]
@@ -5777,7 +5919,7 @@ mod tests {
             assert!(matches!(schedule.next(&planned, 1, false), Next::Wait));
         }
         // In a git repository a batch has its own copy, so --jobs stands as it is given.
-        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
         if a_repository(&fixture) {
             // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
             assert_eq!(compile_jobs(&four, &fixture.root), 4);
@@ -5786,18 +5928,25 @@ mod tests {
 
     /// A fixture root made a git repository, so that a batch gets its own copy of it; false
     /// when there is no git to make one with.
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
     fn a_repository(fixture: &Fixture) -> bool {
         git(fixture, &["init", "-q"])
             && git(fixture, &["config", "user.email", "p@example.com"])
             && git(fixture, &["config", "user.name", "p"])
     }
 
+    /// Whether a file may be run; false everywhere on a platform with no such mode, so that
+    /// comparing two files still holds there.
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+    fn executable(path: &Path) -> bool {
+        mode_of(path).is_some_and(|mode| mode & 0o111 != 0)
+    }
+
     /// Every file git lists in the root is copied byte for byte, and every file of the copy
     /// that differs from the base is merged back: replaced where the root still holds what
     /// the base holds, and three-way merged where another batch changed it.
-    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
-    // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+    // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+    // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
     // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
     #[test]
     fn a_copy_of_the_root_merges_back_into_it() {
@@ -5806,32 +5955,45 @@ mod tests {
             .write("kept.txt", "one\n")
             .write("gone.txt", "away\n")
             .write("shared.txt", "a\nb\nc\n")
+            .write("run.sh", "one\n")
             .write("elfie-requests/compile.log", "noise\n");
+        // The compiler is often a script, which the copy must leave runnable.
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+        set_mode(&fixture.root.join("run.sh"), Some(0o755));
         if !a_repository(&fixture) {
             return;
         }
-        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
         let mirror = Mirror::take(&fixture.root, "x/y").expect("a copy of the root");
         // Every file git lists is there byte for byte, under a name a file may have.
-        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
         assert_eq!(fs::read_to_string(mirror.directory.join("kept.txt")).unwrap(), "one\n");
         assert!(mirror.directory.ends_with("x-y"), "{:?}", mirror.directory);
         // Nothing under elfie-requests is copied.
-        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
         assert!(!mirror.directory.join("elfie-requests/compile.log").exists());
+        // The copy keeps whether a file is executable.
+        // @lfy def/cli/main.lfy:main#main:main:cffa83b9129db69a6a6e89dfdaff92b7cfe46174bb2487ef95b268d189285f86
+        assert_eq!(executable(&mirror.directory.join("run.sh")), executable(&fixture.root.join("run.sh")));
         // The batch changes one file, adds one, and removes one.
         fs::write(mirror.directory.join("kept.txt"), "two\n").unwrap();
         fs::write(mirror.directory.join("added.txt"), "new\n").unwrap();
         fs::write(mirror.directory.join("shared.txt"), "a\nb\nC\n").unwrap();
+        fs::write(mirror.directory.join("run.sh"), "two\n").unwrap();
+        set_mode(&mirror.directory.join("run.sh"), Some(0o755));
         fs::remove_file(mirror.directory.join("gone.txt")).unwrap();
         // Another batch changed shared.txt in the root meanwhile, elsewhere in the file.
         fixture.write("shared.txt", "A\nb\nc\n");
         let merged = mirror.merge(&fixture.root).expect("every file merges");
         // The root still held what the base holds: it is replaced by the copy's, or removed.
-        // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+        // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
         assert_eq!(fixture.read("kept.txt"), "two\n");
         assert_eq!(fixture.read("added.txt"), "new\n");
         assert!(!fixture.root.join("gone.txt").exists());
+        // What is merged keeps whether the copy's file is executable.
+        // @lfy def/cli/main.lfy:main#main:main:ded9409a836e393da440bf9fef0cb65c81639dfb04280c6643cb201fab9e2f0f
+        assert_eq!(fixture.read("run.sh"), "two\n");
+        assert_eq!(executable(&fixture.root.join("run.sh")), executable(&mirror.directory.join("run.sh")));
         // Another batch changed it: it is the three-way merge against the base.
         // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
         assert_eq!(fixture.read("shared.txt"), "A\nb\nC\n");
