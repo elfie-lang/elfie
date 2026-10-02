@@ -4,9 +4,12 @@
 # run cargo, never to edit or write. ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS are set by the
 # caller; the root is the working directory. Its standard output is the report the caller parses.
 set -e
+# The agent server's tools are loaded up front rather than deferred behind a tool search, and no
+# other MCP server is started, so the elfie tools are the first thing the agent sees to reach for.
+export ENABLE_TOOL_SEARCH=false
 echo "verifying batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
 exec claude -p \
   --permission-mode default \
   --allowedTools "Read Glob Grep Bash(cargo test:*) Bash(cargo build:*) mcp__elfie__*" \
-  --mcp-config .mcp.json \
+  --strict-mcp-config --mcp-config .mcp.json \
   --append-system-prompt "$(cat scripts/verifier-prompt.md)"

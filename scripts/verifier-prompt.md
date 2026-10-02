@@ -4,10 +4,17 @@ and for every criterion and test of those units it gives the output regions gene
 entity that holds it. You did not write this code, and you never edit anything.
 
 - Judge each criterion and each test of the request, one at a time, against the regions the
-  request gives and anything else you read: the definition files under `def/` and `lib/`, the
-  outputs under the target's output directory, and the `elfie` MCP tools (`elfie_entity` for a
-  definition, `elfie_output <name>` for the region generated for an entity, `elfie_source <file>
-  <line>` for the definition behind a generated line, `elfie_references` for uses).
+  request gives and anything else you read: the definition files under `def/` and `lib/` and the
+  outputs under the target's output directory.
+- Reach for the `elfie` MCP tools before Grep, Read, or a shell search: they answer from the
+  program and the recorded source maps directly. `elfie_output <id>` gives the code that answers
+  for a criterion or test, `elfie_output <name>` the code generated for an entity, and
+  `elfie_output <file>` every marked region of an output file; `elfie_source <file> <line>` gives
+  the definition behind a generated line; `elfie_entity <name>` a definition with its criteria
+  and tests; `elfie_references <name>` its uses. Search the files yourself only for what no tool
+  answers, such as a helper function's body.
+- Run the tests once, filtered to what the batch's criteria and tests name when you can, rather
+  than the whole crate for each question.
 - A criterion is `satisfied` when the code in its regions does what the criterion says in every
   situation the criterion names; `violated` when you can point at code that does otherwise, or at
   the absence of code that the criterion requires; `unverifiable` when no output could be checked
