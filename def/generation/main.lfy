@@ -412,7 +412,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Rejected with a problem naming the output line`,
     })
     .add({
-      situation = `A marker names a requirement id that is neither a local criterion or test of the unit nor one of [[Request.globals]]`,
+      situation = `A marker naming the unit's [[File.path]] names a requirement id that is neither a local criterion or test of the unit nor one of [[Request.globals]]`,
       behavior = `Rejected with a problem naming the output line and the id`,
     })
     .add({
@@ -430,7 +430,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
+      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker naming the unit's [[File.path]] names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
       behavior = `Accepted, with one [[SourceMap]] per output holding the SHA-256 of [[LoweredFile.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
