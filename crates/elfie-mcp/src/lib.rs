@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
-use elfie_core::generation::{self, Batch, Output, Plan, Request, Review, ReviewStatus, SourceMap, Unit};
+use elfie_core::generation::{self, Batch, Marker, Output, Plan, Request, Review, ReviewStatus, SourceMap, Unit};
 use elfie_core::interpret::{self, LoweredCriterion, LoweredNode, LoweredTest, Program};
 use elfie_core::model::{self, Criterion, EntityId, FileId, Model};
 use elfie_core::query::{self, Outline, Position, Range};
@@ -225,12 +225,12 @@ pub fn tools() -> Vec<Registered> {
             |session, arguments| check(session, arguments.string("unit")?, arguments.optional("target")), // @lfy def/mcp/main.lfy:check#check:tool:2a52a0e9b2bd82bebf01e1bfd3aed5fca61ba5453af95cacc85f4e3b5c4cc01e
         ),
         // @lfy def/mcp/main.lfy:output#output:tool:752ffa3b700084b21ec5f1b0bcb96c21eb1b5fff7e49097defad0b9e0d9bf1b0
-        // @lfy def/mcp/main.lfy:output#output:tool:0a353dbe87fe2f24754698d3ccace24eacf8f9a7bcb49966b66686381694b1a8
+        // @lfy def/mcp/main.lfy:output#output:tool:599c1cb721e2b138e4ef99b46e98e894c83f115f72abf114bfb00c4675dcab66
         Registered::new(
             "output",
-            "Where the generated code for one entity is: every region of every output that came from it, with its text",
+            "Where generated code is, with its text: every region that came from one entity, that answers for one criterion or test, or that one output file holds",
             vec![
-                ToolArgument::new("name", "as elfie_find takes it", "string", true), // @lfy def/mcp/main.lfy:output#output:tool:e1e9205de453bce452d201f0ae4ccfd4931d2c86b262c4e9a71757f8f4eecbcb
+                ToolArgument::new("name", "as elfie_find takes it, a requirement id, or the path of an output file relative to the root", "string", true), // @lfy def/mcp/main.lfy:output#output:tool:e1e9205de453bce452d201f0ae4ccfd4931d2c86b262c4e9a71757f8f4eecbcb
                 ToolArgument::new("target", "the identifier of one target; every target when left out", "string", false), // @lfy def/mcp/main.lfy:output#output:tool:df4d1829eaa070671b3ff74634d700eec5b1837b3bcff7bbc0c1a8eb6026924b
             ],
             |session, arguments| output(session, arguments.string("name")?, arguments.optional("target")), // @lfy def/mcp/main.lfy:output#output:tool:6a5f51bd5a5b426c26c7b0f93d9ead569e730c9845dcdb3dda87d68e2dd3211b
@@ -842,7 +842,10 @@ fn violated_requirements(workspace: &Workspace) -> Vec<String> {
     let Ok(value) = serde_json::from_str::<Value>(&text) else {
         return Vec::new();
     };
-    let Some(reviews) = value.as_array() else {
+    // The command line writes the file as an object whose `reviews` holds the reviews, so
+    // they are read from there, and from the whole value when it is itself the list.
+    // @lfy def/mcp/main.lfy:units#units:units:d82b2211a430e252662742c83354a01320e4defdf9462b768ecab9985cd737aa
+    let Some(reviews) = value.get("reviews").and_then(Value::as_array).or_else(|| value.as_array()) else {
         return Vec::new();
     };
     reviews
@@ -1099,14 +1102,14 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
 
 /// The language a fenced block of an output is marked with: the output's extension, or
 /// nothing when it has none.
-// @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
+// @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
 fn fence_of(path: &str) -> &str {
     Path::new(path).extension().and_then(|extension| extension.to_str()).unwrap_or("")
 }
 
 /// The lines of an output from `first` through `last`, counting from 1, as they are on
 /// disk; the empty text when the file cannot be read.
-// @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
+// @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
 fn excerpt(workspace: &Workspace, output: &str, first: usize, last: usize) -> String {
     let Ok(text) = fs::read_to_string(workspace.root.join(output)) else {
         return String::new();
@@ -1117,40 +1120,80 @@ fn excerpt(workspace: &Workspace, output: &str, first: usize, last: usize) -> St
     lines[from..to].join("\n")
 }
 
-/// Where the generated code for one entity is: every region of every output that came from
-/// it, with its text.
-// @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
+/// One region of an output: its path, the lines it spans, what it came from, and its text in
+/// a fenced block.
+// @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
+fn region_block(workspace: &Workspace, output: &str, marker: &Marker) -> String {
+    let mut heading = format!("{}:{}-{}", output, marker.output_line, marker.end);
+    if let Some(entity) = &marker.entity {
+        heading.push_str(&format!(" {entity}"));
+    }
+    // The marker names a requirement.
+    // @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
+    if let Some(requirement) = &marker.requirement {
+        heading.push_str(&format!(" {requirement}"));
+    }
+    format!(
+        "{heading}\n```{}\n{}\n```",
+        fence_of(output),
+        excerpt(workspace, output, marker.output_line, marker.end)
+    )
+}
+
+/// Every region of every source map, each with the output that holds it, in source map then
+/// output order, limited to one target when one is given.
+// @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
+fn every_region<'m>(maps: &'m [SourceMap], target: Option<&str>) -> Vec<(&'m str, &'m Marker)> {
+    maps.iter()
+        .filter(|map| !target.is_some_and(|target| map.target != target))
+        .flat_map(|map| map.markers.iter().map(|marker| (map.output.as_str(), marker)))
+        .collect()
+}
+
+/// Where generated code is, with its text: every region that came from one entity, that
+/// answers for one criterion or test, or that one output file holds.
+// @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
 pub fn output(session: &Session, name: &str, target: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
     check_target(workspace, target)?; // @lfy def/mcp/main.lfy:output#output:output:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
-    let maps = generation::source_maps_of(workspace, None); // @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
-    let regions = generation::regions_of(workspace, &maps, name, target); // @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
+    let maps = generation::source_maps_of(workspace, None); // @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
+    let every = every_region(&maps, target);
+    // The name is the output of a source map, so the regions are every marker of it in
+    // output order, and the answer reads as an outline of what generated the file.
+    // @lfy def/mcp/main.lfy:output#output:output:0b6bce059c5265b729e870f8aa0171928743ffa8790747543d082cd0e86a2966
+    let mut regions: Vec<(&str, &Marker)> =
+        every.iter().copied().filter(|(output, _)| *output == name).collect();
+    regions.sort_by_key(|(_, marker)| marker.output_line);
+    // The name is one an entity owns, so the regions are the ones `regions_of` gives for it;
+    // a marker is matched by the same target and the same marker it was found by, because
+    // `regions_of` keeps no path.
+    // @lfy def/mcp/main.lfy:output#output:output:c29793786e6ae3fd176b853a4d3b5710477ac186dcf7f5e6183c06aa9f2ddf78
     if regions.is_empty() {
-        return Ok(format!("nothing is generated for {name}")); // @lfy def/mcp/main.lfy:output#output:output:5a72fd117a88b8c2701f54c7c438704c2b027927283736cd09fd3ac08959c040
+        let owned = generation::regions_of(workspace, &maps, name, target);
+        regions = every.iter().copied().filter(|(_, marker)| owned.contains(marker)).collect();
     }
-    // A region's output is the source map that holds it; `regions_of` keeps no path, and a
-    // marker is matched by the same target and the same marker it was found by.
-    // @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
-    let mut blocks = Vec::new();
-    for map in &maps {
-        if target.is_some_and(|target| map.target != target) {
-            continue;
-        }
-        for marker in &map.markers {
-            if !regions.contains(marker) {
-                continue;
-            }
-            // @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
-            blocks.push(format!(
-                "{}:{}-{}\n```{}\n{}\n```",
-                map.output,
-                marker.output_line,
-                marker.end,
-                fence_of(&map.output),
-                excerpt(workspace, &map.output, marker.output_line, marker.end)
-            ));
+    // The name is the id of a criterion or test of the lowered program, local or global, so
+    // its text comes first and the regions are the ones answering for it.
+    // @lfy def/mcp/main.lfy:output#output:output:0c52350e6a618840ed6a463acb2333cc690b34c290596a99b442cb17e5d2cc3d
+    let mut heading = None;
+    if regions.is_empty() {
+        let program = interpret::lower(workspace.clone());
+        if let Some(text) = requirement_text(&program, name) {
+            heading = Some(text);
+            regions = every
+                .iter()
+                .copied()
+                .filter(|(_, marker)| marker.requirement.as_deref() == Some(name))
+                .collect();
         }
     }
+    let mut blocks: Vec<String> = heading.into_iter().collect();
+    if regions.is_empty() {
+        // @lfy def/mcp/main.lfy:output#output:output:5a72fd117a88b8c2701f54c7c438704c2b027927283736cd09fd3ac08959c040
+        blocks.push(format!("nothing is generated for {name}"));
+    }
+    // @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
+    blocks.extend(regions.into_iter().map(|(output, marker)| region_block(workspace, output, marker)));
     Ok(blocks.join("\n\n"))
 }
 
@@ -1271,9 +1314,24 @@ fn unit_of_stem(workspace: &Workspace, plan: &Plan, stem: &str) -> Result<usize,
     Err(format!("no unit has the stem {stem}; elfie_units lists them"))
 }
 
+/// One file read as something other than what is on disk, bound through the loader and
+/// lowered: [`interpret::LoweredFile::text`] of it, the way `generation::changes` binds a
+/// previous text.
+// @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+fn lowered_text(workspace: &Workspace, path: &str, text: &str) -> Option<String> {
+    let before = interpret::lower(workspace::change(workspace, path, Some(text)));
+    let index = before.workspace.files.iter().position(|file| file.path == path)?;
+    Some(before.files[index].text.clone())
+}
+
 /// The source at the last accepted generation, recovered as the command line recovers it:
 /// through git when the root is a repository and the unit's source is in it, taking the
 /// revision of the file whose hash is the one the source map recorded.
+///
+/// What is given back is the lowered text of that revision, because the map holds the hash
+/// of the lowered text rather than of the file's bytes: the revision the outputs were
+/// generated from is the one whose lowered text hashes to it, and a revision differing only
+/// in a comment is the same revision.
 // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
 fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
     let map = unit.outputs.first()?;
@@ -1298,8 +1356,11 @@ fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
             continue;
         }
         let text = String::from_utf8_lossy(&show.stdout).into_owned();
-        if generation::source_hash(&text) == map.hash {
-            return Some(text);
+        // The revision is the one whose lowered text hashes to what the map recorded.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+        let Some(lowered) = lowered_text(workspace, file, &text) else { continue };
+        if generation::source_hash(&lowered) == map.hash {
+            return Some(lowered);
         }
     }
     None
@@ -1414,6 +1475,21 @@ mod tests {
 
         fn session(&self) -> Session {
             Session::load(&self.root)
+        }
+
+        /// Git run in the fixture's root, so that a test can make the root a repository and
+        /// commit the source a unit's outputs are then accepted against.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+        fn git(&self, arguments: &[&str]) -> &Fixture {
+            let status = Command::new("git")
+                .args(arguments)
+                .current_dir(&self.root)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .expect("git");
+            assert!(status.success(), "git {arguments:?}");
+            self
         }
     }
 
@@ -1732,14 +1808,20 @@ mod tests {
         fixture
     }
 
-    // @lfy def/mcp/main.lfy:output#output:output:9411c7024e68bf095bee2a9eca56ffddec6c5a2a5b6622a8581b90e33bc08f8e
+    // @lfy def/mcp/main.lfy:output#output:output:c29793786e6ae3fd176b853a4d3b5710477ac186dcf7f5e6183c06aa9f2ddf78
     #[test]
     fn output_gives_every_region_of_an_entity_with_its_text() {
         let fixture = accepted_project();
         let session = fixture.session();
+        // Each region reads the path, the lines it spans, and the entity the marker names,
+        // then the text of those lines in a fenced block.
+        // @lfy def/mcp/main.lfy:output#output:output:1d1c288483af31f935edfdf8c693038cf8bedde86c9da053d3d25ae7ccac64f6
         let text = output(&session, "B", None).unwrap();
-        assert_eq!(text, "out/b.rs:1-2\n```rs\n// @lfy def/b.lfy:B\npub struct B;\n```");
+        assert_eq!(text, "out/b.rs:1-2 B\n```rs\n// @lfy def/b.lfy:B\npub struct B;\n```");
         assert_eq!(output(&session, "B", Some("rust")).unwrap(), text);
+        // The name is the output of a source map, so the regions are every marker of it.
+        // @lfy def/mcp/main.lfy:output#output:output:0b6bce059c5265b729e870f8aa0171928743ffa8790747543d082cd0e86a2966
+        assert_eq!(output(&session, "out/b.rs", None).unwrap(), text);
         // Nothing is generated for the name.
         // @lfy def/mcp/main.lfy:output#output:output:5a72fd117a88b8c2701f54c7c438704c2b027927283736cd09fd3ac08959c040
         let none = output(&session, "A", None).unwrap();
@@ -1748,6 +1830,38 @@ mod tests {
         // @lfy def/mcp/main.lfy:output#output:output:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
         let error = output(&session, "B", Some("go")).unwrap_err();
         assert!(error.contains("go is not a target") && error.contains("rust"), "{error}");
+    }
+
+    // @lfy def/mcp/main.lfy:output#output:output:0c52350e6a618840ed6a463acb2333cc690b34c290596a99b442cb17e5d2cc3d
+    #[test]
+    fn output_gives_the_regions_that_answer_for_a_requirement() {
+        let fixture = project_with_requirements();
+        let local = requirement_id(&fixture, "It answers");
+        let global = requirement_id(&fixture, "Nothing is written outside the output directory");
+        fixture.write(
+            "out/b.rs",
+            &format!("// @lfy def/b.lfy:b#{local}\npub fn b() -> String {{\n    String::new()\n}}\n"),
+        );
+        record_unit(&fixture, "b");
+        let session = fixture.session();
+        // The text of the criterion comes first, then the region, whose line names the
+        // requirement after the entity.
+        // @lfy def/mcp/main.lfy:output#output:output:0c52350e6a618840ed6a463acb2333cc690b34c290596a99b442cb17e5d2cc3d
+        assert_eq!(
+            output(&session, &local, None).unwrap(),
+            format!(
+                "It answers\n\nout/b.rs:1-4 b {local}\n```rs\n// @lfy def/b.lfy:b#{local}\npub fn b() -> String {{\n    String::new()\n}}\n```"
+            )
+        );
+        // A global id is read from the lowered program the same way; no region answers for
+        // this one, so its text is followed by nothing being generated for it.
+        // @lfy def/mcp/main.lfy:output#output:output:0c52350e6a618840ed6a463acb2333cc690b34c290596a99b442cb17e5d2cc3d
+        assert!(Review::is_global(&global), "{global}");
+        let text = output(&session, &global, None).unwrap();
+        assert_eq!(
+            text,
+            format!("Nothing is written outside the output directory\n\nnothing is generated for {global}")
+        );
     }
 
     // @lfy def/mcp/main.lfy:source#source:source:c5a82c9201a62385f7149576d228acb460938212f09111c176ce6ec9d0eb0952
@@ -1871,6 +1985,42 @@ mod tests {
         assert!(error.contains("no unit has the stem zzz"), "{error}");
     }
 
+    /// The root is a repository holding the source the outputs were accepted against, so
+    /// that source is the previous text: the revision is found by the hash of its lowered
+    /// text, which is what the source map records, and the entities added since are the
+    /// only changes.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+    #[test]
+    fn changes_recovers_the_previous_source_from_git() {
+        let fixture = accepted_project();
+        fixture
+            .git(&["init", "--quiet"])
+            .git(&["add", "-A"])
+            .git(&[
+                "-c",
+                "user.email=p@example.com",
+                "-c",
+                "user.name=p",
+                "commit",
+                "--quiet",
+                "-m",
+                "the accepted source",
+            ]);
+        // The revision is found although the file on disk now carries a comment the
+        // committed one did not, because it is matched by the hash of its lowered text and
+        // a comment is not lowered.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+        fixture.write("def/b.lfy", "// a comment\nd B {}\nd C {}\n");
+        let session = fixture.session();
+        // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+        let text = changes(&session, "b").unwrap();
+        assert!(!text.contains("cannot be recovered"), "{text}");
+        // `B` was declared in the recovered source, so only `C` is an addition.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:2c85dda7d9400c3a4dd656027b5ac3d77e047837af44ce4da61ed085e04f3ab0
+        assert!(!text.contains("B added"), "{text}");
+        assert!(text.lines().any(|line| line.starts_with("C added ")), "{text}");
+    }
+
     // @lfy def/mcp/main.lfy:changes#changes:changes:028ff59a434c25e62e3e9339d8956e59ddc0f86fe855548f05543607a43efc55
     #[test]
     fn changes_says_so_when_nothing_differs() {
@@ -1924,30 +2074,37 @@ mod tests {
         let session = fixture.session();
         assert_eq!(units(&session, None).unwrap(), "rust b up to date []");
 
-        // A review that is satisfied names no violated unit either.
-        let review_line = |status: &str| {
+        // A review that is satisfied names no violated unit either. The file is written as
+        // the command line writes it: an object whose `reviews` holds them.
+        // @lfy def/mcp/main.lfy:units#units:units:d82b2211a430e252662742c83354a01320e4defdf9462b768ecab9985cd737aa
+        let review_file = |status: &str| {
+            let one = Review {
+                id: global.clone(),
+                file: String::new(),
+                line: 0,
+                entity: String::new(),
+                status: ReviewStatus::from_name(status).unwrap(),
+                evidence: "out/b.rs:1-4".to_string(),
+                note: "it is under out".to_string(),
+            }
+            .to_json();
             format!(
-                "[{}]\n",
-                Review {
-                    id: global.clone(),
-                    file: String::new(),
-                    line: 0,
-                    entity: String::new(),
-                    status: ReviewStatus::from_name(status).unwrap(),
-                    evidence: "out/b.rs:1-4".to_string(),
-                    note: "it is under out".to_string(),
-                }
-                .to_json()
+                "{}\n",
+                serde_json::json!({
+                    "requirements": "0".repeat(64),
+                    "reviews": [one],
+                    "problems": Vec::<String>::new(),
+                })
             )
         };
-        fixture.write("elfie-requests/global.reviews.json", &review_line("satisfied"));
+        fixture.write("elfie-requests/global.reviews.json", &review_file("satisfied"));
         let session = fixture.session();
         assert_eq!(units(&session, None).unwrap(), "rust b up to date []");
 
         // The review is violated and a marker of the unit's output answers for its id, so
         // the unit is planned again.
         // @lfy def/mcp/main.lfy:units#units:units:d82b2211a430e252662742c83354a01320e4defdf9462b768ecab9985cd737aa
-        fixture.write("elfie-requests/global.reviews.json", &review_line("violated"));
+        fixture.write("elfie-requests/global.reviews.json", &review_file("violated"));
         let session = fixture.session();
         assert_eq!(units(&session, None).unwrap(), "rust b violated []\n\nbatch b [b]");
     }

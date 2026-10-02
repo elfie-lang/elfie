@@ -1363,7 +1363,16 @@ fn instructions(
     // The agent server. @lfy def/generation/main.lfy:request
     out.push_str("## The agent server\n\n");
     out.push_str(
-        "The tools of the agent server may be called for anything the request leaves out.\n\n",
+        "The tools of the agent server are called before files are searched or read by hand, because \
+         they answer from the program and its source maps at once:\n\n\
+         - `elfie_entity` for a definition with its criteria and tests.\n\
+         - `elfie_find` for where a name is declared.\n\
+         - `elfie_references` for where it is used.\n\
+         - `elfie_outline` for the declarations of a file.\n\
+         - `elfie_output` for the generated code of an entity, of a requirement id, or of an output file.\n\
+         - `elfie_source` for where a line of generated code came from.\n\
+         - `elfie_changes` for what changed in a unit since its outputs were accepted.\n\
+         - `elfie_check` for whether acceptance would pass.\n\n",
     );
 
     // How to end the report. @lfy def/generation/main.lfy:request
@@ -2826,7 +2835,7 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 // how to fix.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
-// @lfy def/generation/main.lfy:review#review:review:773848c6e09065334305d916b2185142d987e833789fefbdb3354350383e5261
+// @lfy def/generation/main.lfy:review#review:review:57745688c0ce1b5c41ba94dc00dccd0357843f84dbd23f134a02cb8dd521b290
 pub fn review(
     program: &Program,
     plan: &Plan,
@@ -3025,7 +3034,7 @@ fn write_regions(
 /// markers answered for it, for the `violated` argument of [`plan`].
 // Decision: the definition passes the plan; a plan here does not own the program lowered
 // from its workspace, and nothing else of the plan is read, so the program stands in for it.
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:45ae279ab9e22f8c4290aee47f9494f1992000d7f380b8ad4947b52f4f6da8ba
+// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:0edfce9bb6241f2f57c1589dcd9fd7f1574114c7bf21269642fd5d61c31e314a
 pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -3127,7 +3136,10 @@ Write one JSON object on one line per criterion and per test, with exactly the k
   `crates/elfie-core/src/x.rs:120-134`, and empty when you read none.
 - `note` is one line saying why and, for a violated one, what the code does instead.
 
-The tools of the agent server may be called for regions this request leaves out.
+The tools of the agent server are called before files are searched or read by hand: \
+`elfie_output` for the generated code of an entity, of a requirement id, or of an output \
+file, `elfie_source` for where a line of generated code came from, `elfie_entity` for a \
+definition with its criteria and tests, and `elfie_references` for where a name is used.
 
 End your report with exactly one line reading `ELFIE: REVIEWED`.
 ";
@@ -3139,23 +3151,33 @@ End your report with exactly one line reading `ELFIE: REVIEWED`.
 /// What a verifier found, read mechanically from its report.
 ///
 /// The end line is the last line reading `ELFIE: REVIEWED`, with any whitespace around it;
-/// lines after it are ignored. Each line before it that reads as one review object whose id
-/// names a criterion or test of the program is one review, in report order, and of two with
-/// the same id only the last is kept, at its own place. Every other line that is not blank
-/// and does not begin with `#` is a problem, as written. With no end line every line is
-/// read the same way and the problems end with a line saying the report did not end.
+/// lines after it are ignored. The lines read are those before it, or every line when there
+/// is none, each with the whitespace around it removed. A line read beginning with `{` is a
+/// review line, and every other line is ignored, whatever it says, so prose, headings, and
+/// fences around the reviews are never problems. A review line that reads as an object
+/// whose status names a member of [`ReviewStatus`], whatever its case, and that names a
+/// criterion or test of the program is one review, in report order; every other review line
+/// is a problem, as written. Of two that name the same criterion or test only the last is
+/// kept, at its own place. With no end line the problems end with a line saying the report
+/// did not end.
 ///
-/// A review is read by its id alone; its file, line, and entity are derived from the
-/// origin of the criterion or test that id names, as [`Review::at`] fills them.
+/// A review line names its criterion or test by its id, by an id a character short or long,
+/// or, with no id at all, by the file and line where exactly one of them begins. Its file,
+/// line, and entity are derived from that origin, as [`Review::at`] fills them.
+// Decision: the report is read leniently and only what tries to be a review can be wrong,
+// because a verifier that adds a sentence or a fence around its lines has still reviewed
+// everything, and running a second verifier for that costs as much as the first.
 // @lfy def/generation/main.lfy:reviewOf
 pub fn review_of(report: &str, program: &Program) -> ReviewReport {
     /// What the problems end with when the report has no end line.
     const UNENDED: &str = "the report did not end";
 
     let placed = placed_requirements(program);
+    let begun = requirements_by_place(&placed);
     let lines: Vec<&str> = report.lines().collect();
-    // @lfy def/generation/main.lfy:reviewOf
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f33d7c1d482ac83b637de975ac61fc8ad9a4e4464ac8f11554da868087905870
     let end = lines.iter().rposition(|line| line.trim() == REVIEWED);
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:996a1867a55f489798d60b80458fe3076f35d155cb98215304e3f0d67902a8b5
     let body = match end {
         Some(index) => &lines[..index],
         None => &lines[..],
@@ -3163,37 +3185,151 @@ pub fn review_of(report: &str, program: &Program) -> ReviewReport {
     let mut reviews: Vec<Review> = Vec::new();
     let mut problems: Vec<String> = Vec::new();
     for line in body {
-        // A line whose id names no criterion and no test of the program is no review: the
-        // place a review is given is the origin of what its id names.
-        // @lfy def/generation/main.lfy:reviewOf
-        let read = serde_json::from_str::<serde_json::Value>(line)
-            .ok()
-            .as_ref()
-            .and_then(Review::from_json)
-            .and_then(|review| {
-                let (file, at, entity) = placed.get(&review.id)?;
-                Some(review.at(file, *at, entity))
-            });
-        match read {
+        let text = line.trim();
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:61fbd8978cc20a987ca2da1b23ff32eaa104e206ef5e79abf58f8a12e48f173f
+        if !text.starts_with('{') {
+            continue;
+        }
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:11cf2d8d78b0bce109f19de1a111ed0ae3f62225432701c85e24d546e2ae47db
+        match read_review(text, &placed, &begun) {
             Some(review) => {
-                // @lfy def/generation/main.lfy:reviewOf
+                // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
                 reviews.retain(|kept| kept.id != review.id);
                 reviews.push(review);
             }
-            None => {
-                let text = line.trim_start();
-                // @lfy def/generation/main.lfy:reviewOf
-                if !text.trim_end().is_empty() && !text.starts_with('#') {
-                    problems.push((*line).to_string());
-                }
-            }
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fe269d5233297a703d4ba8275070083bf25bed3ae713f4bf18d3ae68bd8899a9
+            None => problems.push(text.to_string()),
         }
     }
     if end.is_none() {
-        // @lfy def/generation/main.lfy:reviewOf
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:3ac47936d62d0ed2bf1749e26c3ea37b8a7e4957588642bbd3df4379c764ba99
         problems.push(UNENDED.to_string());
     }
     ReviewReport { reviews, problems }
+}
+
+/// One review from one review line: `None` unless the line reads as an object whose status
+/// names a member of [`ReviewStatus`], whatever its case, and that names a criterion or
+/// test of the program. Its evidence and note are taken as given, and empty when missing;
+/// every other key is ignored.
+// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:21a6b24a78e64694b883d9271f98d3b5f380dd3f0eeab2f0c8ee3b2f3a6c13a5
+fn read_review(
+    line: &str,
+    placed: &BTreeMap<String, (String, usize, String)>,
+    begun: &BTreeMap<(String, usize), String>,
+) -> Option<Review> {
+    let value = serde_json::from_str::<serde_json::Value>(line).ok()?;
+    let object = value.as_object()?;
+    let spelled = object.get("status")?.as_str()?.to_ascii_lowercase();
+    let status = ReviewStatus::from_name(&spelled)?;
+    let id = named_requirement(object, placed, begun)?;
+    let (file, at, entity) = placed.get(&id)?;
+    let text = |key: &str| {
+        object
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
+    Some(
+        Review {
+            id,
+            file: String::new(),
+            line: 0,
+            entity: String::new(),
+            status,
+            evidence: text("evidence"),
+            note: text("note"),
+        }
+        .at(file, *at, entity),
+    )
+}
+
+/// Which criterion or test of the program a review line names: the one its id is; the one
+/// exactly one id near it begins or is begun by, so an id copied a character short or long
+/// still counts; or, with no id, the one that begins alone where its file and line say.
+// @lfy def/generation/main.lfy:reviewOf
+fn named_requirement(
+    object: &serde_json::Map<String, serde_json::Value>,
+    placed: &BTreeMap<String, (String, usize, String)>,
+    begun: &BTreeMap<(String, usize), String>,
+) -> Option<String> {
+    let given = object
+        .get("id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    if given.is_empty() {
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0efab5dd030ca49b2ee49759f958db33dc19a3f428271450e2191ca4481b3d47
+        let file = object.get("file")?.as_str()?.to_string();
+        let line = usize::try_from(object.get("line")?.as_u64()?).ok()?;
+        return begun.get(&(file, line)).cloned();
+    }
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f7fc6ddf0c07f86aefccb0bd6b6b10dfa0685431a0a5aa78a88390ca91a58dea
+    if placed.contains_key(given) {
+        return Some(given.to_string());
+    }
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:caa2b457254f644c392b4567da9f9731a584a27a3042ef5317572eb014f49930
+    let mut near = placed.keys().filter(|id| is_near(id, given));
+    let found = near.next()?;
+    match near.next() {
+        Some(_) => None,
+        None => Some(found.clone()),
+    }
+}
+
+/// Whether two ids are the same one up to a character: one begins the other, and they share
+/// their receiver, their contributor, and at least sixteen hex digits of their hash.
+// @lfy def/generation/main.lfy:reviewOf
+fn is_near(id: &str, given: &str) -> bool {
+    /// How many hex digits of the hash two ids share to be the same one.
+    const SHARED: usize = 16;
+
+    if !id.starts_with(given) && !given.starts_with(id) {
+        return false;
+    }
+    let Some((receiver, contributor, hash)) = id_parts(id) else {
+        return false;
+    };
+    let Some((their_receiver, their_contributor, their_hash)) = id_parts(given) else {
+        return false;
+    };
+    if receiver != their_receiver || contributor != their_contributor {
+        return false;
+    }
+    hash.chars()
+        .zip(their_hash.chars())
+        .take_while(|(left, right)| left == right && left.is_ascii_hexdigit())
+        .count()
+        >= SHARED
+}
+
+/// The receiver, the contributor, and the hash of an id: the receiving entity's name, or
+/// `global`, then the name of the entity whose body holds it, then the hash, each after a
+/// colon. The receiver and the contributor hold no colon, so the hash is what follows the
+/// last one.
+// @lfy def/generation/main.lfy:reviewOf
+fn id_parts(id: &str) -> Option<(&str, &str, &str)> {
+    let (head, hash) = id.rsplit_once(':')?;
+    let (receiver, contributor) = head.split_once(':')?;
+    Some((receiver, contributor, hash))
+}
+
+/// The id of the criterion or test that begins at each place where exactly one of them
+/// begins, as its file and its line; a place two begin at is left out, since a review line
+/// with no id would name neither.
+// @lfy def/generation/main.lfy:reviewOf
+fn requirements_by_place(
+    placed: &BTreeMap<String, (String, usize, String)>,
+) -> BTreeMap<(String, usize), String> {
+    let mut out: BTreeMap<(String, usize), Option<String>> = BTreeMap::new();
+    for (id, (file, line, _)) in placed {
+        out.entry((file.clone(), *line))
+            .and_modify(|held| *held = None)
+            .or_insert_with(|| Some(id.clone()));
+    }
+    out.into_iter()
+        .filter_map(|(place, id)| id.map(|id| (place, id)))
+        .collect()
 }
 
 /// Every criterion and test of a program by id, global and local, each with the file and
@@ -4527,7 +4663,22 @@ mod tests {
         assert!(text.contains("`ELFIE: DONE`"), "{text}");
         assert!(text.contains("`ELFIE: BLOCKED: `"), "{text}");
         assert!(text.contains("`ELFIE: CLARIFY: `"), "{text}");
-        assert!(text.contains("agent server"), "{text}");
+        // The tools of the agent server are named, and are called before files are read by
+        // hand.
+        // @lfy def/generation/main.lfy:request
+        for tool in [
+            "before files are searched or read by hand",
+            "`elfie_entity`",
+            "`elfie_find`",
+            "`elfie_references`",
+            "`elfie_outline`",
+            "`elfie_output`",
+            "`elfie_source`",
+            "`elfie_changes`",
+            "`elfie_check`",
+        ] {
+            assert!(text.contains(tool), "{tool} is missing:\n{text}");
+        }
         // The standard library is bound, never generated.
         // @lfy def/generation/main.lfy:request
         assert!(
@@ -4547,7 +4698,7 @@ mod tests {
         );
 
         // The sections come in the definition's order.
-        // @lfy def/generation/main.lfy:request#request:request:c5fe505e7af909d45f54aa7829eb8a6c41b84a47fc4c63c6d528861647a078f9
+        // @lfy def/generation/main.lfy:request#request:request:bf0089e347c69e61e5db853a634f01a203a6c5ce469273cd4e97d53c20a603ce
         let headings = [
             "# Compiling",
             "## Where the outputs go",
@@ -4810,10 +4961,16 @@ mod tests {
         let text = &with_previous.instructions;
         // Only what the difference requires changes, and the markers of unchanged items are
         // kept.
-        // @lfy def/generation/main.lfy:request#request:request:c2e330513b32bd4510edb410692c6f3a7c933c58a95ffda258d22fca4c4328a9
+        // @lfy def/generation/main.lfy:request#request:request:01d7490d7921632770d38e6d0849d5685e281fdf4c5eb600f9567a74d934e961
         assert!(text.contains("## Existing outputs"), "{text}");
         assert!(
             text.contains("keep the markers of unchanged items"),
+            "{text}"
+        );
+        // The item saying so comes right before the one naming the tools of the agent
+        // server.
+        assert!(
+            text.find("## Existing outputs") < text.find("## The agent server"),
             "{text}"
         );
         // The outputs of a unit that has some go at the paths its `Unit.outputs` names.
@@ -6088,8 +6245,9 @@ mod tests {
         // @lfy def/generation/main.lfy:review#review:review:ab46be2107934463218771ce935af8b1af8c59e0f5656d26a5d6dd846df1087d
         assert!(text.contains("`src/a.rs:1-4`"), "{text}");
         assert!(text.contains("```\none\ntwo\nthree\nfour\n```"), "{text}");
-        // The protocol: the six keys, the three statuses, and the end line.
-        // @lfy def/generation/main.lfy:review
+        // The protocol: the four keys, the three statuses, the tools that are called before
+        // files are read by hand, and the end line.
+        // @lfy def/generation/main.lfy:review#review:review:57745688c0ce1b5c41ba94dc00dccd0357843f84dbd23f134a02cb8dd521b290
         for part in [
             "examine and never edit",
             "`id`, `status`, `evidence`, and `note`",
@@ -6097,7 +6255,11 @@ mod tests {
             "`violated`",
             "`unverifiable`",
             "unverifiable, never violated",
-            "agent server",
+            "before files are searched or read by hand",
+            "`elfie_output`",
+            "`elfie_source`",
+            "`elfie_entity`",
+            "`elfie_references`",
             "`ELFIE: REVIEWED`",
         ] {
             assert!(text.contains(part), "{part} is missing:\n{text}");
@@ -6217,10 +6379,22 @@ mod tests {
         assert!(text.contains("```\none\ntwo\n```"), "{text}");
         assert!(text.contains("`src/b.rs:1-2`"), "{text}");
         assert!(text.contains("```\nthree\nfour\n```"), "{text}");
-        // Then the protocol.
-        // @lfy def/generation/main.lfy:globalReview
+        // Then the protocol, with the tools that are called before files are read by hand.
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:0edfce9bb6241f2f57c1589dcd9fd7f1574114c7bf21269642fd5d61c31e314a
         assert!(text.contains("`ELFIE: REVIEWED`"), "{text}");
         assert!(text.contains("unverifiable, never violated"), "{text}");
+        assert!(
+            text.contains("before files are searched or read by hand"),
+            "{text}"
+        );
+        for tool in [
+            "`elfie_output`",
+            "`elfie_source`",
+            "`elfie_entity`",
+            "`elfie_references`",
+        ] {
+            assert!(text.contains(tool), "{tool} is missing:\n{text}");
+        }
     }
 
     /// A global criterion no marker of any output names is listed with a line saying no
@@ -6288,14 +6462,16 @@ mod tests {
             review_line(&ids[1], "violated", "src/a.rs:12-18", "it returns undefined"),
         );
         let found = review_of(&report, &program);
-        // Each line before the end line that reads as an object with exactly those four keys,
-        // whose id names a criterion or test of the program, is one review, in report order.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:7edfaef26ee15846bc27041e6b1ea1693c38a86f769b13dc68421266c0d05664
+        // Each line read beginning with `{` is a review line.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:11cf2d8d78b0bce109f19de1a111ed0ae3f62225432701c85e24d546e2ae47db
         assert_eq!(found.reviews.len(), 2, "{found:?}");
+        // A review line whose id is the id of a criterion of the program names it.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f7fc6ddf0c07f86aefccb0bd6b6b10dfa0685431a0a5aa78a88390ca91a58dea
         assert_eq!(found.reviews[0].status, ReviewStatus::Satisfied);
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].evidence, "src/a.rs:1-30");
         assert_eq!(found.reviews[1].status, ReviewStatus::Violated);
+        assert_eq!(found.reviews[1].id, ids[1]);
         // The place of each is derived from the origin of the criterion its id names: the
         // file it is written in, the line its `add` begins on, and the entity it is for.
         // @lfy def/generation/main.lfy:reviewOf
@@ -6303,7 +6479,7 @@ mod tests {
         assert_eq!(found.reviews[0].entity, "A");
         assert_eq!(found.reviews[0].line, 3);
         assert_eq!(found.reviews[1].line, 4);
-        // A line beginning with `#` is no problem, and neither is a blank one.
+        // The prose line is no problem, and neither is a blank one.
         // @lfy def/generation/main.lfy:reviewOf
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // Lines after the end line are ignored.
@@ -6311,18 +6487,108 @@ mod tests {
         let found = review_of(&format!("{report}\nand that is all"), &program);
         assert_eq!(found.reviews.len(), 2);
         assert!(found.problems.is_empty(), "{:?}", found.problems);
+        // Each line read has the whitespace around it removed, so an indented review line
+        // is read like any other.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:996a1867a55f489798d60b80458fe3076f35d155cb98215304e3f0d67902a8b5
+        let found = review_of(
+            &format!(
+                "   {}   \n{REVIEWED}",
+                review_line(&ids[0], "satisfied", "", "indented")
+            ),
+            &program,
+        );
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
     }
 
-    /// A line whose status names no member of `ReviewStatus` is no review, and neither is
-    /// prose or a line whose id names no criterion and no test of the program; each is a
-    /// problem, as written.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:5fa253af126379872ed4480c8d44bff938860829f3de98628cc2f657119fd906
+    /// An id copied a character short or long still names its criterion, as long as exactly
+    /// one id of the program is near it.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:caa2b457254f644c392b4567da9f9731a584a27a3042ef5317572eb014f49930
     #[test]
-    fn a_line_that_is_no_review_is_a_problem_as_written() {
+    fn an_id_a_character_short_or_long_names_its_criterion() {
         let (_fixture, program, ids) = a_with_two_criteria();
-        let unknown = review_line("A:A:nowhere", "satisfied", "", "made up");
+        let short = &ids[0][..ids[0].len() - 1];
+        let long = format!("{}0", ids[1]);
         let report = format!(
-            "{}\nI think it is fine.\n{unknown}\n{}\n{REVIEWED}",
+            "{}\n{}\n{REVIEWED}",
+            review_line(short, "satisfied", "", "short"),
+            review_line(&long, "violated", "", "long"),
+        );
+        let found = review_of(&report, &program);
+        assert_eq!(found.reviews.len(), 2, "{found:?}");
+        assert_eq!(found.reviews[0].id, ids[0]);
+        assert_eq!(found.reviews[0].line, 3);
+        assert_eq!(found.reviews[1].id, ids[1]);
+        assert_eq!(found.reviews[1].line, 4);
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+        // An id that shares only its receiver and its contributor is near nothing: the two
+        // hashes have no sixteen hex digits in common.
+        // @lfy def/generation/main.lfy:reviewOf
+        let (receiver, contributor, _) = id_parts(&ids[0]).expect("an id has three parts");
+        let far = review_line(
+            &format!("{receiver}:{contributor}:00"),
+            "satisfied",
+            "",
+            "far",
+        );
+        let found = review_of(&format!("{far}\n{REVIEWED}"), &program);
+        assert!(found.reviews.is_empty(), "{found:?}");
+        assert_eq!(found.problems, [far]);
+    }
+
+    /// A review line with no id names the criterion that begins alone where its file and
+    /// line say, whatever case its status is spelled in and whatever other keys it holds,
+    /// and the prose and fences around it are no problems.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:5ccf168d438b1997f2ec7fd50ef09356d148a7940500a34b5a6b2fc51a43b52c
+    #[test]
+    fn a_review_line_with_no_id_is_placed_by_its_file_and_line() {
+        let (_fixture, program, ids) = a_with_two_criteria();
+        let report = format!(
+            "All tests pass. Report follows.\n```\n\
+             {{\"file\":\"def/a.lfy\",\"line\":3,\"entity\":\"A\",\"status\":\"Satisfied\",\
+             \"evidence\":\"src/a.rs:1-9\",\"note\":\"ok\"}}\n\
+             ```\n{REVIEWED}"
+        );
+        let found = review_of(&report, &program);
+        // A line read that does not begin with `{` is ignored, prose and fence alike.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:61fbd8978cc20a987ca2da1b23ff32eaa104e206ef5e79abf58f8a12e48f173f
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+        // The place is where exactly one criterion of the program begins, and the status
+        // reads whatever its case; the entity key the verifier wrote is ignored.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0efab5dd030ca49b2ee49759f958db33dc19a3f428271450e2191ca4481b3d47
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.reviews[0].id, ids[0]);
+        assert_eq!(found.reviews[0].file, "def/a.lfy");
+        assert_eq!(found.reviews[0].line, 3);
+        assert_eq!(found.reviews[0].entity, "A");
+        assert_eq!(found.reviews[0].status, ReviewStatus::Satisfied);
+        assert_eq!(found.reviews[0].evidence, "src/a.rs:1-9");
+        assert_eq!(found.reviews[0].note, "ok");
+        // A review line missing its evidence and its note reads with both empty, and the
+        // keys it holds beyond the four are ignored.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:21a6b24a78e64694b883d9271f98d3b5f380dd3f0eeab2f0c8ee3b2f3a6c13a5
+        let found = review_of(
+            &format!(
+                "{{\"id\":\"{}\",\"status\":\"UNVERIFIABLE\",\"reason\":\"none\"}}\n{REVIEWED}",
+                ids[1]
+            ),
+            &program,
+        );
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.reviews[0].status, ReviewStatus::Unverifiable);
+        assert_eq!(found.reviews[0].evidence, "");
+        assert_eq!(found.reviews[0].note, "");
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+    }
+
+    /// A review line whose status names no member of `ReviewStatus` is a problem, as
+    /// written, while the prose around it is none.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:e4e51ceff95aa7cf3d202b2e42573e755ade4bc85b77d90b1621d3f425a5d109
+    #[test]
+    fn a_review_line_that_is_no_review_is_a_problem_as_written() {
+        let (_fixture, program, ids) = a_with_two_criteria();
+        let report = format!(
+            "{}\nI think it is fine.\n{}\n{REVIEWED}",
             review_line(&ids[0], "maybe", "", "unsure"),
             review_line(&ids[1], "unverifiable", "", "no region"),
         );
@@ -6331,18 +6597,22 @@ mod tests {
         // @lfy def/generation/main.lfy:reviewOf
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[1]);
+        assert_eq!(found.reviews[0].line, 4);
         assert_eq!(found.reviews[0].status, ReviewStatus::Unverifiable);
-        // Every line that is no review, is not blank, and does not begin with `#` is a
-        // problem, as written, in report order.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9782bbe9f8f67ff19baae92527a7e25d2c8c79db79b8d58afada1955ca127986
+        // A review line that is no review is a problem, as written; the prose line is none.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fe269d5233297a703d4ba8275070083bf25bed3ae713f4bf18d3ae68bd8899a9
         assert_eq!(
             found.problems,
-            [
-                review_line(&ids[0], "maybe", "", "unsure"),
-                "I think it is fine.".to_string(),
-                unknown,
-            ]
+            [review_line(&ids[0], "maybe", "", "unsure")]
         );
+        // A review line whose id names no criterion and no test of the program is a problem
+        // too, and so is one that reads as no object at all.
+        // @lfy def/generation/main.lfy:reviewOf
+        let unknown = review_line("A:A:nowhere", "satisfied", "", "made up");
+        let broken = "{\"id\":".to_string();
+        let found = review_of(&format!("{unknown}\n{broken}\n{REVIEWED}"), &program);
+        assert!(found.reviews.is_empty(), "{found:?}");
+        assert_eq!(found.problems, [unknown, broken]);
     }
 
     /// Of two reviews of the same id only the last is kept, at its own place, and a report
@@ -6357,14 +6627,14 @@ mod tests {
             review_line(&ids[0], "violated", "src/a.rs:3-3", "second"),
         );
         // With no end line, reviews are read from every line of the report.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:7d8dbed5b1381d618440d882e2814afe9d880f924e90eba8eefa0a51cb559d81
+        // @lfy def/generation/main.lfy:reviewOf
         let found = review_of(&report, &program);
-        // Of two reviews of the same id only the last is kept, at its own place.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:530bd81507c25a152f040b7f923efcb22c290d283c3c5522b2a007ba119495a8
+        // Of two reviews naming the same criterion only the last is kept, at its own place.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].status, ReviewStatus::Violated);
         assert_eq!(found.reviews[0].note, "second");
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:8af09639c386a7e67c0a197f2a2facd2b7b9caabeeb08be071ae2643944463c1
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:3ac47936d62d0ed2bf1749e26c3ea37b8a7e4957588642bbd3df4379c764ba99
         assert_eq!(found.problems, ["the report did not end"]);
         // An empty report ends with nothing either.
         assert_eq!(
@@ -6380,8 +6650,9 @@ mod tests {
         assert!(found.reviews.is_empty());
         assert!(found.problems.is_empty(), "{:?}", found.problems);
 
-        // With no end line, problems are read from every line of the report too.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:4182a74673c9410aae2d6a75652f69b786e21eb5a84e4027d81a8834d12d5e23
+        // With no end line, review lines are read from every line of the report too, and
+        // the prose among them is still no problem.
+        // @lfy def/generation/main.lfy:reviewOf
         let found = review_of(
             &format!(
                 "{}\nI had a look.",
@@ -6390,10 +6661,7 @@ mod tests {
             &program,
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
-        assert_eq!(
-            found.problems,
-            ["I had a look.", "the report did not end"]
-        );
+        assert_eq!(found.problems, ["the report did not end"]);
     }
 
     /// A review of a global criterion is placed at that criterion's origin and belongs to

@@ -13,12 +13,13 @@ use std::fs;
 use std::io::{self, BufRead as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::{Command as Process, Stdio};
+use std::sync::{Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Outcome, OutcomeKind, Output, Plan, Reason, Request, Review, ReviewReport, ReviewStatus, SourceMap,
-    Unit, Verdict,
+    self, Batch, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewReport, ReviewStatus,
+    SourceMap, Unit, Verdict,
 };
 use elfie_core::grammar::GrammarRule as _;
 use elfie_core::interpret::{Program, lower};
@@ -106,6 +107,12 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 if name == COLOR && ColorChoice::lookup(value).is_none() {
                     return Err(COLOR_USAGE.to_string());
                 }
+                // --jobs=value gives the text too, and a value that is no whole number of at
+                // least 1 is a usage error.
+                // @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
+                if name == JOBS && !names_a_count(value) {
+                    return Err(JOBS_USAGE.to_string());
+                }
                 options.insert(name.to_string(), Some(value.to_string()));
             } else if name == COLOR {
                 // --color followed by auto, always, or never gives that value.
@@ -125,18 +132,24 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 i += 1;
                 continue;
             } else if OPTIONS_WITH_VALUES.contains(&name) {
-                // --target is the one option besides --root that takes a following value.
-                // @lfy def/cli/main.lfy:parse#parse:parse:4c7ddf6fa8920daad099b001bab04e3b1bad34b80a2d3a47557329a365cfd483
+                // --target and --jobs are the options besides --root that take a following
+                // value, and the option of that name gives it.
+                // @lfy def/cli/main.lfy:parse#parse:parse:31d286a6e27d0b3b1aee3510e0c91b34c50892ae2bb9d66fe5da061ccb6d6d01
                 // @lfy def/cli/main.lfy:parse#parse:parse:1875232948f1e78b7879e17a6142dbc7d23a119e9a6954e465036b47195bed69
                 let Some(value) = arguments.get(i + 1) else {
                     return Err(format!("--{name} needs a value"));
                 };
+                // @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
+                if name == JOBS && !names_a_count(value) {
+                    return Err(JOBS_USAGE.to_string());
+                }
                 options.insert(name.to_string(), Some(value.clone()));
                 i += 1;
             } else {
                 // Every other option written with no equals sign is a flag and gives true,
-                // never taking the next argument.
-                // @lfy def/cli/main.lfy:parse#parse:parse:ed22dc20ad3703b09fa1ac3603ce4550564f095a9324278e79dae3216d3015d5
+                // never taking the next argument, so --json check still names the check
+                // command.
+                // @lfy def/cli/main.lfy:parse#parse:parse:d19a41c8634f25c25ba5bfe17c06df12102331e68a6fe8764d48bf0936fbcb24
                 options.insert(name.to_string(), None);
             }
             i += 1;
@@ -151,8 +164,9 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 None => return Err(format!("{argument} is not a command")),
             }
         } else {
-            // Every other one, the value an option took aside, is positional.
-            // @lfy def/cli/main.lfy:parse#parse:parse:dd2b0b0390de36e5311e96979f200953effcf502ba2cd611c18f6bf2ac6c6545
+            // Every other one, the value --root, --target, --jobs, or --color took aside, is
+            // positional.
+            // @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
             positional.push(argument.clone());
         }
         i += 1;
@@ -286,11 +300,59 @@ fn complaint(on: bool, path: Option<&str>, message: &str) -> String {
 /// besides --root that takes a following value unconditionally, and --color takes one only
 /// when it names a [`ColorChoice`].
 // @lfy def/cli/main.lfy:parse
-const OPTIONS_WITH_VALUES: [&str; 1] = ["target"];
+const OPTIONS_WITH_VALUES: [&str; 2] = ["target", "jobs"];
 
 /// The option that says when the CLI colors what it prints.
 // @lfy def/cli/main.lfy:parse
 const COLOR: &str = "color";
+
+/// The option that says how many batches run at once.
+// @lfy def/cli/main.lfy:parse
+const JOBS: &str = "jobs";
+
+/// What a --jobs value that is no whole number of at least 1 is answered with.
+// @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
+const JOBS_USAGE: &str = "--jobs must be a whole number of at least 1";
+
+/// How many batches run at once with no --jobs given.
+// @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+const JOBS_BY_DEFAULT: usize = 4;
+
+/// Whether text names a whole number of at least 1: what --jobs takes.
+// @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
+fn names_a_count(value: &str) -> bool {
+    value.parse::<usize>().is_ok_and(|count| count >= 1)
+}
+
+/// How many batches a compile or a verify runs at once: what --jobs says, or 4.
+// @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+fn jobs_of(invocation: &Invocation) -> usize {
+    // Nothing but a whole number of at least 1 reaches here, since parse answers anything
+    // else with a usage message.
+    // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+    invocation
+        .option(JOBS)
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|&count| count >= 1)
+        .unwrap_or(JOBS_BY_DEFAULT)
+}
+
+/// How many batches a compile runs at once: what --jobs says where a batch can have its own
+/// copy of the root, and one where it cannot.
+///
+/// Outside a git repository nothing says what belongs to the project, so no batch gets a
+/// copy and every one of them would run in the root itself, breaking each other's builds and
+/// tests. They run one at a time there, in plan order, however --jobs is given.
+// @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+fn compile_jobs(invocation: &Invocation, root: &Path) -> usize {
+    // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+    match git_directory(root) {
+        // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+        Some(_) => jobs_of(invocation),
+        // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+        None => 1,
+    }
+}
 
 /// How that option is written among the arguments.
 // @lfy def/cli/main.lfy:parse
@@ -390,7 +452,7 @@ fn relative(root: &Path, path: &Path) -> String {
 
 /// The global options help lists: how each is written and one line of what it does.
 // @lfy def/cli/main.lfy:main
-const OPTIONS: [(&str, &str); 13] = [
+const OPTIONS: [(&str, &str); 14] = [
     ("--root <dir>", "The project directory (default: the nearest elfie.json above the current directory)"),
     ("--json", "Print results as JSON lines"),
     ("--color <choice>", "When to color what is printed: auto, always, or never (default: auto)"),
@@ -401,6 +463,7 @@ const OPTIONS: [(&str, &str); 13] = [
     ("--accept", "compile: check the outputs already on disk instead of running the compiler"),
     ("--continue", "compile: keep running the batches that do not depend on a stopped one"),
     ("--no-verify", "compile: do not run the verifier on a batch whose units were accepted"),
+    ("--jobs <count>", "compile, verify: how many batches to run at once (default: 4)"),
     ("--global", "verify: review only the global criteria and tests"),
     ("--help, -h", "Print this help"),
     ("--version", "Print the version"),
@@ -428,7 +491,7 @@ fn help_text(on: bool) -> String {
     out.push_str(&paint("commands:", Tone::Subject, on));
     out.push('\n');
     // Every command of Command, verify among them, with one line of description.
-    // @lfy def/cli/main.lfy:main#main:main:78ae39c06a33f38753182e1d14f58781b4b11f8abb4d1bda86b79dfbb6435425
+    // @lfy def/cli/main.lfy:main#main:main:1209be9acca3fe8503b9fbe8c9175d7c0272512b07cdcfd341cac2ca4696dfaa
     for command in Command::ALL {
         let name = padded(&paint(command.value(), Tone::Active, on), column);
         out.push_str(&format!("  {name}{}\n", command.description()));
@@ -437,8 +500,8 @@ fn help_text(on: bool) -> String {
     // @lfy def/cli/main.lfy:main#main:main:6ee407c6393a2c3323984dfc984860009bcc5b7e05fb79ca89988c26ed377004
     out.push_str(&paint("options:", Tone::Subject, on));
     out.push('\n');
-    // The global options, --no-verify, --strict, and --color among them.
-    // @lfy def/cli/main.lfy:main#main:main:78ae39c06a33f38753182e1d14f58781b4b11f8abb4d1bda86b79dfbb6435425
+    // The global options, --no-verify, --strict, --jobs, and --color among them.
+    // @lfy def/cli/main.lfy:main#main:main:1209be9acca3fe8503b9fbe8c9175d7c0272512b07cdcfd341cac2ca4696dfaa
     for (name, description) in OPTIONS {
         let name = padded(&paint(name, Tone::Active, on), column);
         out.push_str(&format!("  {name}{description}\n"));
@@ -447,8 +510,8 @@ fn help_text(on: bool) -> String {
 }
 
 /// Prints every command, verify among them, with one line of description and the global
-/// options, --no-verify, --strict, and --color among them.
-// @lfy def/cli/main.lfy:main#main:main:78ae39c06a33f38753182e1d14f58781b4b11f8abb4d1bda86b79dfbb6435425
+/// options, --no-verify, --strict, --jobs, and --color among them.
+// @lfy def/cli/main.lfy:main#main:main:1209be9acca3fe8503b9fbe8c9175d7c0272512b07cdcfd341cac2ca4696dfaa
 fn help(invocation: &Invocation) -> ExitCode {
     print!("{}", help_text(Paint::of(invocation).out));
     ExitCode::Success
@@ -1348,11 +1411,19 @@ impl Reporter {
     }
 }
 
+/// The lock every line of a log is written under, so that lines of two batches running at
+/// once never mix: a line reaches the log whole or not at all, as it reaches the terminal
+/// whole through one `println!`.
+// @lfy def/cli/main.lfy:main#main:main:3a1f341e1f488489eebade96f9e410811db493057811f2c78e1ceb8d3a8ae77d
+static LOGGING: Mutex<()> = Mutex::new(());
+
 /// One line appended to each log, so a run can be read after the fact. Nothing that writes a
 /// line to a person is without this, so the log holds everything the run showed.
 // @lfy def/cli/main.lfy:main#main:main:fd2e103cd45ada13659acc347b24014460bea62429f97ff35843a450d9ebde3b
 // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
 fn append_to(logs: &[PathBuf], text: &str) {
+    // @lfy def/cli/main.lfy:main#main:main:3a1f341e1f488489eebade96f9e410811db493057811f2c78e1ceb8d3a8ae77d
+    let _held = LOGGING.lock();
     for path in logs {
         let Some(parent) = path.parent() else { continue };
         // The folder it writes into is created when it is missing.
@@ -1376,7 +1447,7 @@ fn manifest_command(root: &Path, key: &str) -> Option<String> {
 }
 
 /// The manifest's `compiler` command, when it names one.
-// @lfy def/cli/main.lfy:main#main:main:b5feb1f16aae64bf0678e2a4e4db3b316d77ba634d2bf69d926387ee824f3154
+// @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
 fn compiler_command(root: &Path) -> Option<String> {
     manifest_command(root, "compiler")
 }
@@ -1468,21 +1539,24 @@ fn remove_orphan_maps(workspace: &Workspace, plan: &Plan, target: Option<&str>) 
     }
 }
 
-/// The files under the target's output directory that carry a marker for the unit's file.
-// @lfy def/cli/main.lfy:main#main:main:7fdbb3e978a7f8839b3fcc4f05b5cac618f21eaca6a59b219463460cf01b7f54
+/// The files under the target's output directory, in the directory the batch ran in, that
+/// carry a marker for the unit's file. Their paths are relative to that directory, which is
+/// the root or a copy of it, so an output is named the same either way.
+// @lfy def/cli/main.lfy:main#main:main:d0b78b7ebc4d561d8ef46a4e9de06ef0f94dd107b2ceaf69593d09297bbbde51
 // @lfy def/cli/main.lfy:main#main:main:a4f5fbdf4d4599c991622bd9b47997c8c03fd47ec8dedfc46405fa17cd22947b
-fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> Vec<Output> {
+fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize, directory: &Path) -> Vec<Output> {
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
     let file = &workspace.files[unit.file].path;
     let mut paths = Vec::new();
-    walk_all(&workspace.root.join(&target.output_directory), &mut paths);
+    // @lfy def/cli/main.lfy:main#main:main:d0b78b7ebc4d561d8ef46a4e9de06ef0f94dd107b2ceaf69593d09297bbbde51
+    walk_all(&directory.join(&target.output_directory), &mut paths);
     paths.sort();
     let mut found = Vec::new();
     for path in paths {
         let Ok(text) = fs::read_to_string(&path) else { continue };
         if generation::parse_markers(&text).iter().any(|m| &m.file == file) {
-            found.push(Output { path: relative(&workspace.root, &path), text });
+            found.push(Output { path: relative(directory, &path), text });
         }
     }
     found
@@ -1869,9 +1943,12 @@ fn watch<R: io::Read + Send + 'static>(
     std::thread::spawn(move || {
         let mut kept = String::new();
         for line in io::BufReader::new(pipe).lines().map_while(Result::ok) {
-            // The line itself is shown exactly as the command wrote it, as it arrives.
+            // The line itself is shown exactly as the command wrote it, as it arrives. One
+            // `println!` writes the prefix and the line together under the lock on the
+            // stream, so a line of another batch never mixes into it.
             // @lfy def/cli/main.lfy:main#main:main:fb4120a58e1734e9c28f23a737dba9ae4e5f8193f283ceee38366f2f755d0604
             // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
+            // @lfy def/cli/main.lfy:main#main:main:3a1f341e1f488489eebade96f9e410811db493057811f2c78e1ceb8d3a8ae77d
             if to_stdout {
                 println!("{prefix}{line}");
             } else {
@@ -1880,7 +1957,7 @@ fn watch<R: io::Read + Send + 'static>(
             // The line the log holds is the line as printed with colors off.
             // @lfy def/cli/main.lfy:main#main:main:6d1962bd388ee5c3b97353bbd3d76bfb559b2e1a57b72b2916622465fb1de177
             // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-            // @lfy def/cli/main.lfy:main#main:main:732abddc3793f53a4dc2b58f6ad56f87f597cad84e015535b519742a047e7e4c
+            // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
             append_to(&logs, &format!("{plain}{line}"));
             if keep {
                 kept.push_str(&line);
@@ -1889,6 +1966,497 @@ fn watch<R: io::Read + Send + 'static>(
         }
         kept
     })
+}
+
+/// What running one agent takes, held apart from the rest of a compile so that a batch can
+/// stream its compiler and its verifier while the other batches stream theirs: nothing here
+/// changes once a compile has begun.
+// @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+#[derive(Clone)]
+struct Agent {
+    json: bool,
+    style: Paint,
+    logs: Vec<PathBuf>,
+    /// The path of the running executable, so the agent server an agent starts is this same
+    /// program.
+    // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+    elfie: PathBuf,
+}
+
+impl Agent {
+    // @lfy def/cli/main.lfy:main
+    fn new(json: bool, style: Paint, logs: Vec<PathBuf>) -> Agent {
+        // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+        let elfie = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("elfie"));
+        Agent { json, style, logs, elfie }
+    }
+
+    /// Streams one agent, the compiler or the verifier, once for one batch: the instructions
+    /// as its input, the batch's directory as its directory, and ELFIE_ROOT (the batch's
+    /// directory), ELFIE_BATCH, ELFIE_UNITS (the stems, space separated), and ELFIE as its
+    /// environment. Its standard output is the report. The code is -1 when the command could
+    /// not be started.
+    ///
+    /// A batch running in a copy of the root gets GIT_DIR and GIT_WORK_TREE as well, so that
+    /// git in the copy reads the root's history.
+    // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+    // @lfy def/cli/main.lfy:main#main:main:48b94869143ec017c1f51605c536962c1e448cced5680bde78d799aa96824461
+    fn run(&self, command: &str, where_: &Where, label: &str, units: &str, instructions: &str, what: &str) -> Exit {
+        let directory = where_.directory();
+        let mut spawning = Process::new("sh");
+        spawning
+            .arg("-c")
+            .arg(command)
+            .current_dir(directory)
+            // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+            .env("ELFIE_ROOT", directory)
+            .env("ELFIE_BATCH", label)
+            .env("ELFIE_UNITS", units)
+            .env("ELFIE", &self.elfie)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        // The compiler and the verifier run in the copy with GIT_DIR naming the root's git
+        // directory and GIT_WORK_TREE the copy.
+        // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+        if let Where::Copy(mirror) = where_ {
+            // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+            spawning.env("GIT_DIR", &mirror.git_directory).env("GIT_WORK_TREE", &mirror.directory);
+        }
+        // The command could not be started: the code is -1 and the failure is the output.
+        // @lfy def/cli/main.lfy:main#main:main:fd1abf25846b2c26daa7f8517bfc55161489793755d16066f188e885d2c7dd29
+        let mut child = match spawning.spawn() {
+            Ok(child) => child,
+            Err(error) => return Exit { code: -1, stdout: String::new(), stderr: error.to_string() },
+        };
+        // Each line is shown as it arrives, prefixed by the batch; with --json it goes to
+        // standard error, so standard output stays one JSON object per line.
+        // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
+        let logs = self.logs.clone();
+        let out = child.stdout.take().map(|pipe| watch(pipe, label, true, !self.json, self.style.out, false, logs.clone()));
+        // Standard error reaches the log as standard output does, so nothing the command
+        // wrote is lost to a run read after the fact.
+        // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+        let err = child.stderr.take().map(|pipe| watch(pipe, label, true, false, self.style.err, true, logs.clone()));
+        if let Some(mut stdin) = child.stdin.take()
+            && let Err(error) = stdin.write_all(instructions.as_bytes())
+        {
+            append_to(&logs, &format!("the {what} command did not read its input: {error}"));
+        }
+        let status = child.wait();
+        let stdout = out.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
+        let stderr = err.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
+        let status = match status {
+            Ok(status) => status,
+            Err(error) => return Exit { code: -1, stdout, stderr: error.to_string() },
+        };
+        if !status.success() {
+            append_to(&logs, &format!("the {what} command exited with {status}"));
+        }
+        Exit { code: status.code().unwrap_or(-1), stdout, stderr }
+    }
+}
+
+/// Where elfie-compile keeps a batch's own copy of the root.
+// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+const BATCHES: &str = "elfie-compile/cache/batches";
+
+/// What a copy of the root leaves behind: the cache the copies live in, and the folder the
+/// CLI writes its own files to under the root.
+// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+const UNCOPIED: [&str; 2] = ["elfie-compile/cache", "elfie-requests"];
+
+/// What a merge leaves alone: elfie-compile, whose maps are recorded in the root once the
+/// merge is done, and elfie-requests, whose files are written there all along.
+// @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+const UNMERGED: [&str; 2] = ["elfie-compile", "elfie-requests"];
+
+/// Whether a path is under one of these folders, which are spelled relative to the root with
+/// forward slashes as the copy spells its own paths.
+// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+fn under(path: &str, folders: &[&str]) -> bool {
+    folders.iter().any(|folder| path == *folder || path.starts_with(&format!("{folder}/")))
+}
+
+/// What `git` wrote in a directory, when it ran and ended well.
+// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+fn git(directory: &Path, arguments: &[&str]) -> Option<String> {
+    let output =
+        Process::new("git").args(arguments).current_dir(directory).stderr(Stdio::null()).output().ok()?;
+    output.status.success().then(|| String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// The root's git directory, when the root is a git repository.
+// @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+fn git_directory(root: &Path) -> Option<PathBuf> {
+    git(root, &["rev-parse", "--absolute-git-dir"]).map(|text| PathBuf::from(text.trim()))
+}
+
+/// One batch's own copy of the root: the directory its compiler and its verifier run in, and
+/// what each copied file held when the copy was taken, which is the batch's base.
+///
+/// A copy exists because compilers editing one tree break each other's builds and tests. A
+/// batch's work reaches the root only once its outputs are accepted and reviewed, merged file
+/// by file, so the root only ever holds work that passed.
+// @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+struct Mirror {
+    directory: PathBuf,
+    /// What each copied file held, by its path relative to the root.
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    base: BTreeMap<String, Vec<u8>>,
+    /// The root's git directory, so that git in the copy reads the root's history.
+    // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+    git_directory: PathBuf,
+}
+
+impl Mirror {
+    /// Every file git lists in the root, except those under the cache and elfie-requests,
+    /// copied byte for byte to the same path under `elfie-compile/cache/batches/<batch>`.
+    /// Nothing is copied when the root is no git repository, since there is then no list of
+    /// what belongs to the project.
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    fn take(root: &Path, identifier: &str) -> Option<Mirror> {
+        let git_directory = git_directory(root)?;
+        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        let listed = git(root, &["ls-files", "--cached", "--others", "--exclude-standard"])?;
+        let directory = root.join(BATCHES).join(file_name_of(identifier));
+        let _ = fs::remove_dir_all(&directory);
+        let mut base = BTreeMap::new();
+        for path in listed.lines() {
+            let path = path.trim();
+            // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+            if path.is_empty() || under(path, &UNCOPIED) {
+                continue;
+            }
+            // A file git lists that is not there, because it was removed since, is nothing
+            // to copy.
+            // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+            let Ok(held) = fs::read(root.join(path)) else { continue };
+            let to = directory.join(path);
+            // @lfy def/cli/main.lfy:main#main:main:d879c4ed7720d6b2f10f7658bdebae88cfb2ee0f415bb4e65471cec46f12d71d
+            if let Some(parent) = to.parent()
+                && fs::create_dir_all(parent).is_err()
+            {
+                return None;
+            }
+            // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+            if fs::write(&to, &held).is_err() {
+                return None;
+            }
+            base.insert(path.to_string(), held);
+        }
+        Some(Mirror { directory, base, git_directory })
+    }
+
+    /// Every file of the copy outside elfie-compile and elfie-requests that differs from the
+    /// base, was added, or was removed, merged into the root; the paths merged, or the one
+    /// file that could not be merged without a conflict.
+    ///
+    /// Nothing is written until every file has merged, so a conflict merges nothing of the
+    /// batch.
+    // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+    fn merge(&self, root: &Path) -> Result<Vec<String>, String> {
+        let mut now: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+        let mut found = Vec::new();
+        walk_all(&self.directory, &mut found);
+        for path in found {
+            let at = relative(&self.directory, &path);
+            // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+            if under(&at, &UNMERGED) {
+                continue;
+            }
+            if let Ok(held) = fs::read(&path) {
+                now.insert(at, held);
+            }
+        }
+        // Every path the copy holds, and every path the base held and the copy no longer
+        // does: what was added, what differs, and what was removed.
+        // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+        let mut paths: BTreeSet<&String> = now.keys().collect();
+        paths.extend(self.base.keys().filter(|path| !under(path, &UNMERGED)));
+        let mut writes: Vec<(String, Option<Vec<u8>>)> = Vec::new();
+        for path in paths {
+            let base = self.base.get(path);
+            let mine = now.get(path);
+            // The batch left it as it was: there is nothing of it to merge.
+            // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+            if base.map(Vec::as_slice) == mine.map(Vec::as_slice) {
+                continue;
+            }
+            let theirs = fs::read(root.join(path)).ok();
+            // The root's file still holds what the base holds: it is replaced by the copy's,
+            // or removed when the copy removed it.
+            // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+            if theirs.as_deref() == base.map(Vec::as_slice) {
+                // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+                writes.push((path.clone(), mine.cloned()));
+                continue;
+            }
+            // Another batch changed the root's file since the base was taken: the root's file
+            // is the three-way merge of the root's and the copy's against the base. One of
+            // the three missing is a file added or removed on both sides, which no merge
+            // settles.
+            // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+            let (Some(base), Some(mine), Some(theirs)) = (base, mine, theirs.as_deref()) else {
+                // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+                return Err(path.clone());
+            };
+            // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+            match self.merged(theirs, base, mine) {
+                Some(text) => writes.push((path.clone(), Some(text))),
+                // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+                None => return Err(path.clone()),
+            }
+        }
+        let mut merged = Vec::new();
+        for (path, text) in writes {
+            let to = root.join(&path);
+            match text {
+                // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+                Some(text) => {
+                    // @lfy def/cli/main.lfy:main#main:main:d879c4ed7720d6b2f10f7658bdebae88cfb2ee0f415bb4e65471cec46f12d71d
+                    if let Some(parent) = to.parent() {
+                        let _ = fs::create_dir_all(parent);
+                    }
+                    if fs::write(&to, &text).is_err() {
+                        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+                        return Err(path);
+                    }
+                }
+                // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+                None => {
+                    let _ = fs::remove_file(&to);
+                }
+            }
+            merged.push(path);
+        }
+        Ok(merged)
+    }
+
+    /// The three-way merge of the root's file and the copy's against the base, as
+    /// `git merge-file` gives it; nothing when it conflicts.
+    // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+    fn merged(&self, theirs: &[u8], base: &[u8], mine: &[u8]) -> Option<Vec<u8>> {
+        // The three sides go beside the copy's own cache, which no merge reads.
+        // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+        let scratch = self.directory.join("elfie-compile/cache/merge");
+        fs::create_dir_all(&scratch).ok()?;
+        let sides = [("theirs", theirs), ("base", base), ("mine", mine)];
+        for (name, held) in sides {
+            fs::write(scratch.join(name), held).ok()?;
+        }
+        // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+        let output = Process::new("git")
+            .args(["merge-file", "-p", "--quiet", "theirs", "base", "mine"])
+            .current_dir(&scratch)
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        let _ = fs::remove_dir_all(&scratch);
+        // A code of 0 is a clean merge; anything above it counts the conflicts, and anything
+        // below it is git itself failing.
+        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+        (output.status.code() == Some(0)).then_some(output.stdout)
+    }
+
+    /// The copy removed, once its work has reached the root.
+    // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+    fn remove(&self) {
+        let _ = fs::remove_dir_all(&self.directory);
+    }
+}
+
+/// Where one batch's compiler, verifier, and outputs are: the root itself, or a copy of it.
+// @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+enum Where {
+    /// The root itself, which is where a batch runs with --jobs 1 or outside a git
+    /// repository, since nothing else is running to break.
+    // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+    Root(PathBuf),
+    /// Its own copy of the root.
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    Copy(Mirror),
+}
+
+impl Where {
+    /// Where a batch runs: a copy of the root when more than one batch may run at once and
+    /// the root is a git repository, and the root itself otherwise.
+    // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    fn of(root: &Path, identifier: &str, jobs: usize) -> Where {
+        // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+        if jobs <= 1 {
+            return Where::Root(root.to_path_buf());
+        }
+        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        match Mirror::take(root, identifier) {
+            Some(mirror) => Where::Copy(mirror),
+            // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+            None => Where::Root(root.to_path_buf()),
+        }
+    }
+
+    // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+    fn directory(&self) -> &Path {
+        match self {
+            Where::Root(root) => root,
+            Where::Copy(mirror) => &mirror.directory,
+        }
+    }
+}
+
+/// How a batch ended, as the schedule reads it.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+enum Done {
+    /// Its work is in the root: nothing that depends on it waits any longer.
+    // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+    Merged,
+    /// A file of it could not be merged without a conflict, so it runs again from a new copy
+    /// once no other batch is running; this is not a rejection.
+    // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+    Conflicted,
+}
+
+/// Which batches of a round may start: a batch starts once every batch holding a dependency
+/// of one of its units is done, at most --jobs run at once, and among those that can start
+/// they start in plan order.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+struct Planned {
+    batch: Batch,
+    /// The places in the round of the batches holding a dependency of one of its units.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    after: Vec<usize>,
+}
+
+/// What a round of a compile has started, finished, and has left to start.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+#[derive(Default)]
+struct Schedule {
+    /// The places of the batches not started yet, in plan order.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    waiting: Vec<usize>,
+    running: usize,
+    done: BTreeSet<usize>,
+    /// The places of the batches that must run with nothing else, because a file of theirs
+    /// could not be merged.
+    // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+    alone: BTreeSet<usize>,
+    /// Whether a batch that must run with nothing else is running.
+    // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+    exclusive: bool,
+}
+
+/// What a round does next.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+enum Next {
+    /// Start the batch at this place.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    Start(usize),
+    /// Wait for a running batch to finish.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    Wait,
+    /// Nothing is running and nothing can start.
+    // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+    Over,
+}
+
+impl Schedule {
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    fn of(planned: &[Planned]) -> Schedule {
+        Schedule { waiting: (0..planned.len()).collect(), ..Schedule::default() }
+    }
+
+    /// The batch to start, in plan order among those that can: one whose every batch holding
+    /// a dependency is done, while fewer than --jobs are running.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    fn next(&mut self, planned: &[Planned], jobs: usize, halted: bool) -> Next {
+        if self.waiting.is_empty() || halted {
+            // The compile stopped: no batch starts after that, and the batches already
+            // running finish as they would.
+            // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+            return if self.running == 0 { Next::Over } else { Next::Wait };
+        }
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        if self.running >= jobs || self.exclusive {
+            return Next::Wait;
+        }
+        // Among the batches that can start, they start in plan order.
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        let found = self.waiting.iter().position(|&at| {
+            // A batch that must run with nothing else waits until nothing else is running.
+            // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+            if self.alone.contains(&at) && self.running > 0 {
+                return false;
+            }
+            // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+            planned[at].after.iter().all(|waited| self.done.contains(waited))
+        });
+        match found {
+            Some(place) => {
+                let at = self.waiting.remove(place);
+                self.running += 1;
+                // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+                self.exclusive = self.alone.contains(&at);
+                Next::Start(at)
+            }
+            // Nothing can start: either a running batch will let one, or the batches left
+            // wait on a batch that never finished.
+            // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+            None if self.running > 0 => Next::Wait,
+            // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+            None => Next::Over,
+        }
+    }
+
+    /// One batch finished: done, or waiting to run again from a new copy with nothing else
+    /// running.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    fn finish(&mut self, at: usize, done: &Done) {
+        self.running -= 1;
+        self.exclusive = false;
+        match done {
+            // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+            Done::Merged => {
+                self.done.insert(at);
+            }
+            // It runs again from a new copy once no other batch is running; its place goes
+            // back among those waiting, in plan order.
+            // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+            Done::Conflicted => {
+                self.alone.insert(at);
+                let place = self.waiting.iter().position(|&other| other > at).unwrap_or(self.waiting.len());
+                self.waiting.insert(place, at);
+            }
+        }
+    }
+
+    /// The batches of a round that never ran, because what they wait on never finished.
+    // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+    fn unstarted(&self) -> Vec<usize> {
+        self.waiting.clone()
+    }
+}
+
+/// For each batch of a round, the places of the batches holding a dependency of one of its
+/// units.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+fn round_of(plan: &Plan, batches: &[usize]) -> Vec<Planned> {
+    let mut planned: Vec<Planned> = Vec::new();
+    for &index in batches {
+        let batch = plan.batches[index].clone();
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        let needed: BTreeSet<usize> =
+            batch.units.iter().flat_map(|&unit| plan.units[unit].dependencies.iter().copied()).collect();
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        let after = planned
+            .iter()
+            .enumerate()
+            .filter(|(_, earlier)| earlier.batch.units.iter().any(|unit| needed.contains(unit)))
+            .map(|(at, _)| at)
+            .collect();
+        planned.push(Planned { batch, after });
+    }
+    planned
 }
 
 /// What one compile is doing: the plan, the source maps as they are recorded, the counts
@@ -1905,6 +2473,10 @@ struct Run {
     plan: Plan,
     maps: Vec<SourceMap>,
     reporter: Reporter,
+    /// What running the compiler and the verifier takes, held apart so that a batch streams
+    /// its agents while the lock on the rest of this is free for the other batches.
+    // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+    agent: Agent,
     json: bool,
     /// Whether each stream is painted.
     // @lfy def/cli/main.lfy:main
@@ -1939,11 +2511,15 @@ impl Run {
     // @lfy def/cli/main.lfy:main
     fn new(program: Program, plan: Plan, maps: Vec<SourceMap>, reporter: Reporter, invocation: &Invocation) -> Run {
         let verifier = verifier_command(&program.workspace.root);
+        // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+        let agent = Agent::new(invocation.flag("json"), Paint::of(invocation), reporter.logs.clone());
         Run {
             program,
             plan,
             maps,
             reporter,
+            // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+            agent,
             json: invocation.flag("json"),
             // @lfy def/cli/main.lfy:main
             style: Paint::of(invocation),
@@ -2072,17 +2648,17 @@ impl Run {
         (!answer.is_empty()).then_some(answer)
     }
 
-    /// The request of one batch, with its existing outputs read from disk, the source each
-    /// unit's outputs were generated from where git still holds it, and the answer to a
-    /// question asked before appended.
+    /// The request of one batch, with its existing outputs read from the batch's directory,
+    /// the source each unit's outputs were generated from where git still holds it, and the
+    /// answer to a question asked before appended.
     // @lfy def/cli/main.lfy:main
-    fn request_of(&self, batch: &Batch) -> Request {
+    fn request_of(&self, batch: &Batch, directory: &Path) -> Request {
         let existing: Vec<Output> = batch
             .units
             .iter()
             .flat_map(|&unit| self.plan.units[unit].outputs.iter())
             .filter_map(|map| {
-                fs::read_to_string(self.workspace().root.join(&map.output))
+                fs::read_to_string(directory.join(&map.output))
                     .ok()
                     .map(|text| Output { path: map.output.clone(), text })
             })
@@ -2095,7 +2671,7 @@ impl Run {
                 previous.insert(self.workspace().files[unit.file].path.clone(), text);
             }
         }
-        // @lfy def/cli/main.lfy:main#main:main:b5feb1f16aae64bf0678e2a4e4db3b316d77ba634d2bf69d926387ee824f3154
+        // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
         let mut request = generation::request(&self.program, &self.plan, batch, &existing, &previous);
         // The person answers by editing the definitions, or by writing the answer below
         // the question, which the next compile of the batch appends to its instructions.
@@ -2106,80 +2682,36 @@ impl Run {
         request
     }
 
-    /// Streams one agent, the compiler or the verifier, once for one batch: the
-    /// instructions as its input, the root as its directory, and ELFIE_ROOT, ELFIE_BATCH,
-    /// and ELFIE_UNITS (the stems, space separated) as its environment. Its standard output
-    /// is the report. The code is -1 when the command could not be started.
-    // @lfy def/cli/main.lfy:main#main:main:b5feb1f16aae64bf0678e2a4e4db3b316d77ba634d2bf69d926387ee824f3154
-    // @lfy def/cli/main.lfy:main#main:main:6ef5f9b721aaec25b5523db6dd459e4a69f73e287e061cce7b666e32472de0f2
-    fn run_agent(&self, command: &str, root: &Path, label: &str, units: &str, instructions: &str, what: &str) -> Exit {
-        let spawned = Process::new("sh")
-            .arg("-c")
-            .arg(command)
-            .current_dir(root)
-            .env("ELFIE_ROOT", root)
-            .env("ELFIE_BATCH", label)
-            .env("ELFIE_UNITS", units)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
-        // The command could not be started: the code is -1 and the failure is the output.
-        // @lfy def/cli/main.lfy:main#main:main:fd1abf25846b2c26daa7f8517bfc55161489793755d16066f188e885d2c7dd29
-        let mut child = match spawned {
-            Ok(child) => child,
-            Err(error) => return Exit { code: -1, stdout: String::new(), stderr: error.to_string() },
-        };
-        // Each line is shown as it arrives, prefixed by the batch; with --json it goes to
-        // standard error, so standard output stays one JSON object per line.
-        // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
-        let logs = self.reporter.logs.clone();
-        let out =
-            child.stdout.take().map(|pipe| watch(pipe, label, true, !self.json, self.style.out, false, logs.clone()));
-        // Standard error reaches the log as standard output does, so nothing the command
-        // wrote is lost to a run read after the fact.
-        // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
-        let err = child.stderr.take().map(|pipe| watch(pipe, label, true, false, self.style.err, true, logs));
-        if let Some(mut stdin) = child.stdin.take()
-            && let Err(error) = stdin.write_all(instructions.as_bytes())
-        {
-            self.reporter.append(&format!("the {what} command did not read its input: {error}"));
-        }
-        let status = child.wait();
-        let stdout = out.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
-        let stderr = err.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
-        let status = match status {
-            Ok(status) => status,
-            Err(error) => return Exit { code: -1, stdout, stderr: error.to_string() },
-        };
-        if !status.success() {
-            self.reporter.append(&format!("the {what} command exited with {status}"));
-        }
-        Exit { code: status.code().unwrap_or(-1), stdout, stderr }
-    }
-
     /// For each unit of the batch, `accept` runs on the files under the target's output
-    /// directory that carry a marker for the unit.
-    // @lfy def/cli/main.lfy:main#main:main:7fdbb3e978a7f8839b3fcc4f05b5cac618f21eaca6a59b219463460cf01b7f54
-    fn verdicts_of(&mut self, batch: &Batch, request: &Request) -> Vec<Verdict> {
+    /// directory in the batch's directory that carry a marker for the unit.
+    // @lfy def/cli/main.lfy:main#main:main:d0b78b7ebc4d561d8ef46a4e9de06ef0f94dd107b2ceaf69593d09297bbbde51
+    fn verdicts_of(&mut self, batch: &Batch, request: &Request, directory: &Path) -> Vec<Verdict> {
         let mut verdicts = Vec::new();
         for &unit in &batch.units {
             let stem = self.plan.units[unit].stem.clone();
             let reason = self.plan.units[unit].reason.map_or_else(|| "up to date".to_string(), |r| r.as_str().to_string());
             self.reporter.report(Step::Checking, Some(&batch.identifier), Some(&stem), &reason);
-            let outputs = outputs_of(self.workspace(), &self.plan, unit);
+            // @lfy def/cli/main.lfy:main#main:main:d0b78b7ebc4d561d8ef46a4e9de06ef0f94dd107b2ceaf69593d09297bbbde51
+            let outputs = outputs_of(self.workspace(), &self.plan, unit, directory);
             verdicts.push(generation::accept(&self.program, &self.plan, request, unit, &outputs));
         }
         verdicts
     }
 
-    /// One unit's outputs written back and the unit counted as done. The source maps
-    /// [`generation::accept`] derived replace the unit's in the list held for the batch;
-    /// nothing reaches a map file until that list is recorded.
-    // @lfy def/cli/main.lfy:main#main:main:55d90a518d8e16dd63123f4cbe64e8777e307c349f0654b15802be2f033f0937
-    fn write_back(&mut self, unit: usize, verdict: &Verdict, held: &mut Vec<SourceMap>) -> io::Result<()> {
+    /// One unit's outputs written back in the batch's directory and the unit counted as
+    /// done. The source maps [`generation::accept`] derived replace the unit's in the list
+    /// held for the batch; nothing reaches a map file until that list is recorded.
+    // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
+    fn write_back(
+        &mut self,
+        unit: usize,
+        verdict: &Verdict,
+        held: &mut Vec<SourceMap>,
+        directory: &Path,
+    ) -> io::Result<()> {
         for output in &verdict.outputs {
-            let path = self.workspace().root.join(&output.path);
+            // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
+            let path = directory.join(&output.path);
             // @lfy def/cli/main.lfy:main#main:main:d879c4ed7720d6b2f10f7658bdebae88cfb2ee0f415bb4e65471cec46f12d71d
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent)?;
@@ -2200,15 +2732,15 @@ impl Run {
         Ok(())
     }
 
-    /// Every unit of an accepted batch written back, and the source maps its verdicts
-    /// earned held beside the recorded ones: the verifier is pointed at them, and they are
-    /// recorded only once nothing has violated what was asked.
-    // @lfy def/cli/main.lfy:main#main:main:55d90a518d8e16dd63123f4cbe64e8777e307c349f0654b15802be2f033f0937
-    fn hold_batch(&mut self, batch: &Batch, verdicts: &[Verdict]) -> Vec<SourceMap> {
+    /// Every unit of an accepted batch written back in the batch's directory, and the source
+    /// maps its verdicts earned held beside the recorded ones: the verifier is pointed at
+    /// them, and they are recorded only once nothing has violated what was asked.
+    // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
+    fn hold_batch(&mut self, batch: &Batch, verdicts: &[Verdict], directory: &Path) -> Vec<SourceMap> {
         let mut held = self.maps.clone();
         for (&unit, verdict) in batch.units.iter().zip(verdicts) {
             let stem = self.plan.units[unit].stem.clone();
-            if let Err(error) = self.write_back(unit, verdict, &mut held) {
+            if let Err(error) = self.write_back(unit, verdict, &mut held, directory) {
                 complain(self.style.err, Some(&stem), &error.to_string());
                 self.worsen(ExitCode::Failure);
                 continue;
@@ -2219,31 +2751,36 @@ impl Run {
         held
     }
 
-    /// The held source maps recorded: each unit's are recorded in its own map file, so
-    /// recording one unit leaves every other map file byte for byte as it was.
+    /// The source maps one batch held recorded: each of its units' are recorded in its own
+    /// map file, so recording one unit leaves every other map file byte for byte as it was.
+    ///
+    /// Only the batch's own units are taken from what it held, and only they are replaced
+    /// here, because a batch running beside it earned its own maps from a list taken before
+    /// these and would otherwise lose them.
     // @lfy def/cli/main.lfy:main#main:main:5f94d631456802b856fe0bcc8391128da066ebd319c2f4ea466011a8739c6534
     // @lfy def/cli/main.lfy:main#main:main:3d60f0333a4eade80f24de8bdd5d6d7793e6939d89d318938e182a1c4deaf7f1
     // @lfy def/cli/main.lfy:main#main:main:4b47cdc2bc493291e54e816634dc3544ac06e3aaa5172b00447fc5b0ed5f60e6
-    fn record_maps(&mut self, held: Vec<SourceMap>) {
-        self.maps = held;
+    fn record_maps(&mut self, batch: &Batch, held: &[SourceMap]) {
         // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
         self.accepted_batch = true;
         let mut unwritten: Vec<String> = Vec::new();
-        for unit in &self.plan.units {
+        for &index in &batch.units {
+            let unit = &self.plan.units[index];
             // Only a unit written back in this compile has anything new to record.
             // @lfy def/cli/main.lfy:main#main:main:a64dbb7ffadb4cffc5916067dd80d88bf16cb8db4d6aadf2d4406ffe3d0553e4
             if !self.recorded.contains(&unit.stem) {
                 continue;
             }
             let workspace = &self.program.workspace;
-            let target = &workspace.targets[unit.target].identifier;
-            let source = &workspace.files[unit.file].path;
-            let mine: Vec<SourceMap> = self
-                .maps
-                .iter()
-                .filter(|map| &map.target == target && &map.source == source)
-                .cloned()
-                .collect();
+            let target = workspace.targets[unit.target].identifier.clone();
+            let source = workspace.files[unit.file].path.clone();
+            let mine: Vec<SourceMap> =
+                held.iter().filter(|map| map.target == target && map.source == source).cloned().collect();
+            // @lfy def/cli/main.lfy:main#main:main:3d60f0333a4eade80f24de8bdd5d6d7793e6939d89d318938e182a1c4deaf7f1
+            self.maps.retain(|map| !(map.target == target && map.source == source));
+            self.maps.extend(mine.iter().cloned());
+            let workspace = &self.program.workspace;
+            let unit = &self.plan.units[index];
             // @lfy def/cli/main.lfy:main#main:main:5f94d631456802b856fe0bcc8391128da066ebd319c2f4ea466011a8739c6534
             if !generation::record(workspace, unit, &mine) {
                 unwritten.push(generation::map_file(workspace, unit).display().to_string());
@@ -2294,7 +2831,7 @@ impl Run {
     /// The reviews of one batch as one JSON array, written to
     /// `elfie-requests/<batch>.reviews.json` under the root, replacing an earlier file.
     // @lfy def/cli/main.lfy:main#main:main:3f548e42a8495de4daff89eead0a9e15b4a7d683e508070b4b766e72d305e9fa
-    // @lfy def/cli/main.lfy:main#main:main:732abddc3793f53a4dc2b58f6ad56f87f597cad84e015535b519742a047e7e4c
+    // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
     fn write_reviews(&mut self, batch: &Batch, reviews: &[Review]) {
         let value = serde_json::Value::Array(reviews.iter().map(Review::to_json).collect());
         let text = format!("{}\n", serde_json::to_string_pretty(&value).unwrap_or_default());
@@ -2313,70 +2850,99 @@ impl Run {
     }
 
     /// The verifier run once for one batch, its output shown as it arrives and logged, its
-    /// report read, and its reviews written. A run that failed — its problems are not
-    /// empty, so no line of its output read `ELFIE: REVIEWED` or some line was neither a
-    /// review nor a heading, or the command could not be started — is run once more; when
-    /// that run fails too its problems are printed as a failed progress line and the batch
-    /// is verified with the reviews parsed from it as if its report had been complete.
-    // @lfy def/cli/main.lfy:main#main:main:6ef5f9b721aaec25b5523db6dd459e4a69f73e287e061cce7b666e32472de0f2
-    // @lfy def/cli/main.lfy:main#main:main:732abddc3793f53a4dc2b58f6ad56f87f597cad84e015535b519742a047e7e4c
-    fn review_batch(&mut self, batch: &Batch, command: &str, root: &Path, progress: bool, maps: &[SourceMap]) -> ReviewReport {
-        // A verifying progress line is printed before the verifier runs.
-        // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
-        if progress {
-            self.reporter.report(Step::Verifying, Some(&batch.identifier), None, command);
-        }
-        // The source maps are the ones `accept` derived, held but not yet recorded, so
-        // every criterion can be pointed at the region of output that claims to satisfy it.
-        // @lfy def/cli/main.lfy:main#main:main:6ef5f9b721aaec25b5523db6dd459e4a69f73e287e061cce7b666e32472de0f2
-        let request = generation::review(&self.program, &self.plan, batch, maps);
-        let units = stems_of(&self.plan, batch, " ");
-        let report = self.ask_verifier(command, root, &batch.identifier, &units, &request.instructions);
-        self.write_reviews(batch, &report.reviews);
-        report
+    /// report read, and its reviews written. A failed run is run once more; when that run
+    /// fails too its problems are printed as a failed progress line and the batch is verified
+    /// with the reviews parsed from it as if its report had been complete.
+    ///
+    /// It takes the compile locked rather than borrowed, since the lock is free while the
+    /// verifier runs: that is what lets the other batches run theirs at the same time.
+    // @lfy def/cli/main.lfy:main#main:main:48b94869143ec017c1f51605c536962c1e448cced5680bde78d799aa96824461
+    // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+    fn review_batch(
+        run: &Mutex<Run>,
+        batch: &Batch,
+        command: &str,
+        where_: &Where,
+        progress: bool,
+        maps: &[SourceMap],
+    ) -> Verification {
+        let (agent, units, instructions) = {
+            let mut held = locked(run);
+            // A verifying progress line is printed before the verifier runs.
+            // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
+            if progress {
+                held.reporter.report(Step::Verifying, Some(&batch.identifier), None, command);
+            }
+            // The source maps are the ones `accept` derived, held but not yet recorded, so
+            // every criterion can be pointed at the region of output that claims to satisfy
+            // it.
+            // @lfy def/cli/main.lfy:main#main:main:48b94869143ec017c1f51605c536962c1e448cced5680bde78d799aa96824461
+            let request = generation::review(&held.program, &held.plan, batch, maps);
+            (held.agent.clone(), stems_of(&held.plan, batch, " "), request.instructions)
+        };
+        let verification = Run::ask_verifier(run, &agent, command, where_, &batch.identifier, &units, &instructions);
+        // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+        locked(run).write_reviews(batch, &verification.report.reviews);
+        verification
     }
 
     /// The verifier run for one batch, or once for the global criteria and tests, its output
-    /// shown as it arrives and logged and its report read. A run that failed — its problems
-    /// are not empty, so no line of its output read `ELFIE: REVIEWED` or some line was neither
-    /// a review nor a heading, or the command could not be started — is run once more; when
-    /// that run fails too its problems are printed as a failed progress line and the reviews
-    /// parsed from it are read as if its report had been complete.
-    // @lfy def/cli/main.lfy:main#main:main:6e2aee60bf94dda09a96da1352d0c3e54991bd8b09c65b87b99e16e84502bae9
-    // @lfy def/cli/main.lfy:main#main:main:ddecbbbcaa7570ef93a9bc904198bbd770df4b6d4aa6752324f74abf353a8ada
-    fn ask_verifier(&mut self, command: &str, root: &Path, label: &str, units: &str, instructions: &str) -> ReviewReport {
-        let mut report = ReviewReport::default();
+    /// shown as it arrives and logged and its report read. A failed run — no line of its
+    /// output read `ELFIE: REVIEWED`, it held no review at all, or the command could not be
+    /// started — is run once more; when that run fails too its problems are printed as a
+    /// failed progress line and the reviews parsed from it are read as if its report had been
+    /// complete.
+    // @lfy def/cli/main.lfy:main#main:main:e13334a45d8bb1815a5cb6ea0c40120b7e2ee52e9ccc44d15376b76b3fa724e8
+    // @lfy def/cli/main.lfy:main#main:main:9a00d5ab9bc962d57d3c9e59f64a8dbd0034f2260b51fc176602c9b103475660
+    fn ask_verifier(
+        run: &Mutex<Run>,
+        agent: &Agent,
+        command: &str,
+        where_: &Where,
+        label: &str,
+        units: &str,
+        instructions: &str,
+    ) -> Verification {
+        let mut verification = Verification::default();
         for attempt in 1..=2 {
-            // @lfy def/cli/main.lfy:main#main:main:6ef5f9b721aaec25b5523db6dd459e4a69f73e287e061cce7b666e32472de0f2
-            let exit = self.run_agent(command, root, label, units, instructions, "verifier");
+            // The lock is free here, so another batch streams its own agent meanwhile.
+            // @lfy def/cli/main.lfy:main#main:main:48b94869143ec017c1f51605c536962c1e448cced5680bde78d799aa96824461
+            let exit = agent.run(command, where_, label, units, instructions, "verifier");
+            let mut held = locked(run);
             // Every line of the verifier's output and its report are appended to the log.
             // @lfy def/cli/main.lfy:main#main:main:f26bf3b8653ec38619ec8021b98b5bf3f3f9251405593fadddafbf7e2c75caf3
-            self.reporter.append(&format!("--- the review of {label} (attempt {attempt}) ---\n{}", exit.stdout));
-            // @lfy def/cli/main.lfy:main#main:main:6ef5f9b721aaec25b5523db6dd459e4a69f73e287e061cce7b666e32472de0f2
-            report = generation::review_of(&exit.stdout, &self.program);
+            held.reporter.append(&format!("--- the review of {label} (attempt {attempt}) ---\n{}", exit.stdout));
+            // @lfy def/cli/main.lfy:main#main:main:48b94869143ec017c1f51605c536962c1e448cced5680bde78d799aa96824461
+            let mut report = generation::review_of(&exit.stdout, &held.program);
             if exit.code == -1 {
                 report
                     .problems
                     .insert(0, format!("the verifier command could not be run: {}", exit.stderr.trim()));
             }
-            // @lfy def/cli/main.lfy:main#main:main:6e2aee60bf94dda09a96da1352d0c3e54991bd8b09c65b87b99e16e84502bae9
-            if report.problems.is_empty() {
+            // @lfy def/cli/main.lfy:main#main:main:e13334a45d8bb1815a5cb6ea0c40120b7e2ee52e9ccc44d15376b76b3fa724e8
+            // @lfy def/cli/main.lfy:main#main:main:9a00d5ab9bc962d57d3c9e59f64a8dbd0034f2260b51fc176602c9b103475660
+            let failed = verifier_failed(&exit, &report);
+            verification = Verification { report, failed };
+            // A run that ended with the end line and at least one review stands as it is,
+            // whatever else it wrote; the verifier is not run again for that.
+            // @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+            if !failed {
                 break;
             }
             // A run made once more that fails too has its problems printed as a failed
             // progress line, and what it did report is read as if it had been complete.
-            // @lfy def/cli/main.lfy:main#main:main:68395b5964e326e87b500f1f9d73c3a70f64e71e580ed0a46a588e205a9ddf28
+            // @lfy def/cli/main.lfy:main#main:main:2526667ae85d62b2f4e46dcd53587a64569672ad4127a4c8c4cea6ebf71881d8
             if attempt == 2 {
-                let problems = report.problems.clone();
-                self.reporter.report(Step::Failed, Some(label), None, &problems.join("\n"));
-                self.reporter.problems(&problems);
+                let problems = verification.report.problems.clone();
+                held.reporter.report(Step::Failed, Some(label), None, &problems.join("\n"));
+                held.reporter.problems(&problems);
                 if exit.code == -1 {
-                    self.failed += 1;
-                    self.worsen(ExitCode::Failure);
+                    held.failed += 1;
+                    held.worsen(ExitCode::Failure);
                 }
             }
         }
-        report
+        verification
     }
 
     /// A batch whose units were accepted by `accept` is verified against the source maps it
@@ -2384,18 +2950,29 @@ impl Run {
     /// it is rejected with; nothing verifies it with --no-verify or with no verifier named,
     /// and an unverifiable review is counted and never rejects.
     // @lfy def/cli/main.lfy:main#main:main:758b13daa5e7c7b626f2729da688fabd57ede1ef0528f05f4dfcbea26ec5509a
-    fn verify_batch(&mut self, batch: &Batch, root: &Path, held: &[SourceMap]) -> Option<Vec<String>> {
-        // @lfy def/cli/main.lfy:main#main:main:4b47cdc2bc493291e54e816634dc3544ac06e3aaa5172b00447fc5b0ed5f60e6
-        if self.no_verify {
-            return None;
-        }
-        let command = self.verifier.clone()?;
-        let report = self.review_batch(batch, &command, root, true, held);
+    fn verify_batch(run: &Mutex<Run>, batch: &Batch, where_: &Where, held: &[SourceMap]) -> Option<Vec<String>> {
+        let command = {
+            let state = locked(run);
+            // @lfy def/cli/main.lfy:main#main:main:4b47cdc2bc493291e54e816634dc3544ac06e3aaa5172b00447fc5b0ed5f60e6
+            if state.no_verify {
+                return None;
+            }
+            state.verifier.clone()?
+        };
+        let verification = Run::review_batch(run, batch, &command, where_, true, held);
+        let report = &verification.report;
+        let mut state = locked(run);
         // One reviewed line follows, whose message is the counts of satisfied, violated,
         // and unverifiable reviews, each painted only when it is worth noticing.
         // @lfy def/cli/main.lfy:main#main:main:3f548e42a8495de4daff89eead0a9e15b4a7d683e508070b4b766e72d305e9fa
         let counts = review_counts(&report.reviews);
-        self.reporter.report_counts(Step::Reviewed, Some(&batch.identifier), &counts, None);
+        state.reporter.report_counts(Step::Reviewed, Some(&batch.identifier), &counts, None);
+        // A run that stood had anything it wrote beside its reviews printed under its
+        // reviewed line; a failed run had its problems printed as a failed line already.
+        // @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+        if !verification.failed {
+            state.reporter.problems(&report.problems);
+        }
         // An unverifiable review is counted in the reviewed line and never rejects the batch;
         // no violated review leaves the batch accepted.
         // @lfy def/cli/main.lfy:main#main:main:e69fa07a0972795ed49b519edb1e91afc1d89a242334ffb96dea80538ff3e12b
@@ -2422,42 +2999,55 @@ impl Run {
     ///
     /// Gives the stems whose markers answered for a violated review, so that a compile can
     /// plan them and run them once more.
+    ///
+    /// It runs in the root, after every batch has been merged into it, so that what it reads
+    /// is the program's whole output rather than one batch's copy.
     // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-    fn global_review(&mut self, root: &Path) -> Vec<String> {
-        // No global criterion and no global test: no global review runs and no file is
-        // written.
-        // @lfy def/cli/main.lfy:main#main:main:be3d004d2bbdb0016741f66318c37fc38045672858eb8ac8e802ac6fee6024f0
-        if self.program.criteria.is_empty() && self.program.tests.is_empty() {
-            return Vec::new();
-        }
-        // @lfy def/cli/main.lfy:main#main:main:4b47cdc2bc493291e54e816634dc3544ac06e3aaa5172b00447fc5b0ed5f60e6
-        if self.no_verify {
-            return Vec::new();
-        }
-        let Some(command) = self.verifier.clone() else {
-            return Vec::new();
+    // @lfy def/cli/main.lfy:main#main:main:2dcfe6cabe7e1aa71bf93e6eb934b1da6606315fb78fc3dd418d2cc4878dc2e5
+    fn global_review(run: &Mutex<Run>, root: &Path) -> Vec<String> {
+        let (agent, command, requirements, units, instructions) = {
+            let mut held = locked(run);
+            // No global criterion and no global test: no global review runs and no file is
+            // written.
+            // @lfy def/cli/main.lfy:main#main:main:be3d004d2bbdb0016741f66318c37fc38045672858eb8ac8e802ac6fee6024f0
+            if held.program.criteria.is_empty() && held.program.tests.is_empty() {
+                return Vec::new();
+            }
+            // @lfy def/cli/main.lfy:main#main:main:4b47cdc2bc493291e54e816634dc3544ac06e3aaa5172b00447fc5b0ed5f60e6
+            if held.no_verify {
+                return Vec::new();
+            }
+            let Some(command) = held.verifier.clone() else {
+                return Vec::new();
+            };
+            // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
+            let requirements = global_requirements(&held.program);
+            let last = last_global_review(root);
+            // Either a batch was accepted, or what the last global review answered for
+            // changed.
+            // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
+            if !held.accepted_batch && last.as_ref().is_some_and(|last| last.requirements == requirements) {
+                return Vec::new();
+            }
+            // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
+            held.reporter.report(Step::GlobalVerifying, None, None, &command);
+            // Every source map, recorded or held.
+            // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
+            let request = generation::global_review(&held.program, &held.maps);
+            // The units just generated among them.
+            // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
+            let units = held.global_stems();
+            (held.agent.clone(), command, requirements, units, request.instructions)
         };
-        // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-        let requirements = global_requirements(&self.program);
-        let last = last_global_review(root);
-        // Either a batch was accepted, or what the last global review answered for changed.
-        // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-        if !self.accepted_batch && last.as_ref().is_some_and(|last| last.requirements == requirements) {
-            return Vec::new();
-        }
-        // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-        self.reporter.report(Step::GlobalVerifying, None, None, &command);
-        // Every source map, recorded or held.
-        // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-        let request = generation::global_review(&self.program, &self.maps);
-        // The units just generated among them.
-        // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-        let units = self.global_stems();
-        let report = self.ask_verifier(&command, root, GLOBAL, &units, &request.instructions);
-        self.write_global_reviews(root, &requirements, &report);
+        // @lfy def/cli/main.lfy:main#main:main:2dcfe6cabe7e1aa71bf93e6eb934b1da6606315fb78fc3dd418d2cc4878dc2e5
+        let where_ = Where::Root(root.to_path_buf());
+        let verification = Run::ask_verifier(run, &agent, &command, &where_, GLOBAL, &units, &instructions);
+        let report = verification.report;
+        let mut held = locked(run);
+        held.write_global_reviews(root, &requirements, &report);
         // @lfy def/cli/main.lfy:main#main:main:959368e3b0059d177c0bc07849a385193d9f17f351c8c61412cca4591380b4c1
         let counts = review_counts(&report.reviews);
-        self.reporter.report_counts(Step::GlobalReviewed, None, &counts, None);
+        held.reporter.report_counts(Step::GlobalReviewed, None, &counts, None);
         // @lfy def/cli/main.lfy:main#main:main:f3b3525a24fda209b102430025ef51ebb6eab2bd9b4e278ac2b7d72a8e46fd96
         let violated: Vec<&Review> =
             report.reviews.iter().filter(|review| review.status == ReviewStatus::Violated).collect();
@@ -2471,11 +3061,11 @@ impl Run {
             .iter()
             .map(|review| format!("failure at {GLOBAL}: {} ({})", review.note, review.evidence))
             .collect();
-        self.reporter.problems(&problems);
+        held.reporter.problems(&problems);
         // The units whose markers answered for it.
         // @lfy def/cli/main.lfy:main#main:main:f3b3525a24fda209b102430025ef51ebb6eab2bd9b4e278ac2b7d72a8e46fd96
         let ids: BTreeSet<String> = violated.iter().map(|review| review.id.clone()).collect();
-        self.stems_answering_now(&ids)
+        held.stems_answering_now(&ids)
     }
 
     /// The stems of every unit whose source maps hold a marker answering for one of these
@@ -2553,34 +3143,46 @@ impl Run {
     /// for the opinion, so nothing but their existence gates it, and the reviews are given
     /// back to be printed.
     // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
-    fn verify_globally(&mut self, root: &Path) -> Vec<Review> {
-        // No global criterion and no global test: no global review runs and no file is
-        // written, here as in a compile.
-        // @lfy def/cli/main.lfy:main#main:main:be3d004d2bbdb0016741f66318c37fc38045672858eb8ac8e802ac6fee6024f0
-        if self.program.criteria.is_empty() && self.program.tests.is_empty() {
-            return Vec::new();
-        }
-        let Some(command) = self.verifier.clone() else {
-            return Vec::new();
+    fn verify_globally(run: &Mutex<Run>, root: &Path) -> Vec<Review> {
+        let (agent, command, units, instructions, requirements) = {
+            let held = locked(run);
+            // No global criterion and no global test: no global review runs and no file is
+            // written, here as in a compile.
+            // @lfy def/cli/main.lfy:main#main:main:be3d004d2bbdb0016741f66318c37fc38045672858eb8ac8e802ac6fee6024f0
+            if held.program.criteria.is_empty() && held.program.tests.is_empty() {
+                return Vec::new();
+            }
+            let Some(command) = held.verifier.clone() else {
+                return Vec::new();
+            };
+            // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
+            let request = generation::global_review(&held.program, &held.maps);
+            // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
+            let units = held.global_stems();
+            // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
+            let requirements = global_requirements(&held.program);
+            (held.agent.clone(), command, units, request.instructions, requirements)
         };
-        // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
-        let request = generation::global_review(&self.program, &self.maps);
-        // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
-        let units = self.global_stems();
-        let report = self.ask_verifier(&command, root, GLOBAL, &units, &request.instructions);
-        // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
-        let requirements = global_requirements(&self.program);
-        self.write_global_reviews(root, &requirements, &report);
-        report.reviews
+        let where_ = Where::Root(root.to_path_buf());
+        let verification = Run::ask_verifier(run, &agent, &command, &where_, GLOBAL, &units, &instructions);
+        locked(run).write_global_reviews(root, &requirements, &verification.report);
+        verification.report.reviews
     }
 
     /// Runs the compiler on one batch, at most twice, and acts on the outcome; a batch
-    /// whose reviews violate what was asked is run once more beyond that.
-    // @lfy def/cli/main.lfy:main#main:main:b5feb1f16aae64bf0678e2a4e4db3b316d77ba634d2bf69d926387ee824f3154
-    fn compile_batch(&mut self, batch: &Batch, command: &str, root: &Path) {
-        let stems = stems_of(&self.plan, batch, " ");
-        self.reporter.report(Step::Requesting, Some(&batch.identifier), None, &stems);
-        let mut request = self.request_of(batch);
+    /// whose reviews violate what was asked is run once more beyond that. Gives the source
+    /// maps its units earned when it was accepted, to be recorded once its work has reached
+    /// the root, and nothing when it stopped.
+    // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+    fn compile_batch(run: &Mutex<Run>, batch: &Batch, command: &str, where_: &Where) -> Option<Vec<SourceMap>> {
+        let directory = where_.directory().to_path_buf();
+        let (agent, mut request) = {
+            let mut state = locked(run);
+            let stems = stems_of(&state.plan, batch, " ");
+            state.reporter.report(Step::Requesting, Some(&batch.identifier), None, &stems);
+            let request = state.request_of(batch, &directory);
+            (state.agent.clone(), request)
+        };
         let mut attempt = 0;
         // The batch is run once more for a rejected outcome, and once more for violated
         // reviews even when it was already run once more for a rejected outcome.
@@ -2590,77 +3192,93 @@ impl Run {
         let mut retried_for_failure = false;
         loop {
             attempt += 1;
-            let step = if attempt == 1 { Step::Compiling } else { Step::Retrying };
-            self.reporter.report(step, Some(&batch.identifier), None, command);
-            // @lfy def/cli/main.lfy:main#main:main:b5feb1f16aae64bf0678e2a4e4db3b316d77ba634d2bf69d926387ee824f3154
-            let units = stems_of(&self.plan, batch, " ");
-            let exit = self.run_agent(command, root, &batch.identifier, &units, &request.instructions, "compiler");
-            // The code is -1 because the command could not be started: the outcome is failed.
-            // @lfy def/cli/main.lfy:main#main:main:8a37c623bc2cba7e08ed04d5a76ecf0545b959457f78fe3968759a2306298411
-            let outcome = if exit.code == -1 {
-                Outcome {
-                    kind: OutcomeKind::Failed,
-                    message: format!("the compiler command could not be run: {}", exit.stderr.trim()),
-                    verdicts: Vec::new(),
+            let units = {
+                let mut state = locked(run);
+                let step = if attempt == 1 { Step::Compiling } else { Step::Retrying };
+                state.reporter.report(step, Some(&batch.identifier), None, command);
+                // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+                stems_of(&state.plan, batch, " ")
+            };
+            // The lock is free here, so another batch streams its own compiler meanwhile.
+            // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+            let exit = agent.run(command, where_, &batch.identifier, &units, &request.instructions, "compiler");
+            let outcome = {
+                let mut state = locked(run);
+                // The code is -1 because the command could not be started: the outcome is
+                // failed.
+                // @lfy def/cli/main.lfy:main#main:main:8a37c623bc2cba7e08ed04d5a76ecf0545b959457f78fe3968759a2306298411
+                if exit.code == -1 {
+                    Outcome {
+                        kind: OutcomeKind::Failed,
+                        message: format!("the compiler command could not be run: {}", exit.stderr.trim()),
+                        verdicts: Vec::new(),
+                    }
+                } else {
+                    // Process.Exit.stdout is the report, appended to the log.
+                    // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
+                    // @lfy def/cli/main.lfy:main#main:main:fd2e103cd45ada13659acc347b24014460bea62429f97ff35843a450d9ebde3b
+                    let report = exit.stdout;
+                    state
+                        .reporter
+                        .append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
+                    // @lfy def/cli/main.lfy:main#main:main:d0b78b7ebc4d561d8ef46a4e9de06ef0f94dd107b2ceaf69593d09297bbbde51
+                    let verdicts = state.verdicts_of(batch, &request, &directory);
+                    generation::outcome_of(&report, verdicts)
                 }
-            } else {
-                // Process.Exit.stdout is the report, appended to the log.
-                // @lfy def/cli/main.lfy:main#main:main:51f0754df779215b3f09f993a1826cd830a284f574fa4e2ccdf8ff100cdb30e8
-                // @lfy def/cli/main.lfy:main#main:main:fd2e103cd45ada13659acc347b24014460bea62429f97ff35843a450d9ebde3b
-                let report = exit.stdout;
-                self.reporter.append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
-                // @lfy def/cli/main.lfy:main#main:main:7fdbb3e978a7f8839b3fcc4f05b5cac618f21eaca6a59b219463460cf01b7f54
-                let verdicts = self.verdicts_of(batch, &request);
-                generation::outcome_of(&report, verdicts)
             };
             match outcome.kind {
-                // Each unit's outputs are written back and its source maps are held, and the
-                // batch is verified; no review violated, or nothing verifying it, records
-                // the held source maps and the batch is done.
-                // @lfy def/cli/main.lfy:main#main:main:55d90a518d8e16dd63123f4cbe64e8777e307c349f0654b15802be2f033f0937
+                // Each unit's outputs are written back in the batch's directory and its
+                // source maps are held, and the batch is verified; no review violated, or
+                // nothing verifying it, leaves the held source maps to be recorded once the
+                // batch's work has reached the root.
+                // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
                 OutcomeKind::Accepted => {
-                    let held = self.hold_batch(batch, &outcome.verdicts);
+                    // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
+                    let held = locked(run).hold_batch(batch, &outcome.verdicts, &directory);
                     // The batch is verified; no review violated, or nothing verifying it,
-                    // records the held source maps and the batch is done.
+                    // and the batch is done.
                     // @lfy def/cli/main.lfy:main#main:main:758b13daa5e7c7b626f2729da688fabd57ede1ef0528f05f4dfcbea26ec5509a
                     // @lfy def/cli/main.lfy:main#main:main:5f94d631456802b856fe0bcc8391128da066ebd319c2f4ea466011a8739c6534
                     // @lfy def/cli/main.lfy:main#main:main:fa4ae831ea45c283917b32ed93efbfcc7f4638b8d516acfff72f3d2a470888e6
-                    let Some(problems) = self.verify_batch(batch, root, &held) else {
-                        self.record_maps(held);
-                        break;
+                    let Some(problems) = Run::verify_batch(run, batch, where_, &held) else {
+                        return Some(held);
                     };
+                    let mut state = locked(run);
                     // A violated review is handled as a rejected outcome is: the problems
                     // are printed and the batch is run once more with them appended to the
                     // instructions.
                     // @lfy def/cli/main.lfy:main#main:main:cfbd77013d5de5003e04314cb55ac7a6f8c091ff6c8a1c889716c385e8ffd907
-                    self.reporter.report(Step::Rejected, Some(&batch.identifier), None, &problems.join("\n"));
-                    self.reporter.problems(&problems);
+                    state.reporter.report(Step::Rejected, Some(&batch.identifier), None, &problems.join("\n"));
+                    state.reporter.problems(&problems);
                     // A violated review then stops the batch as rejected, and the held source
                     // maps are dropped rather than recorded, so the unit stays planned.
                     // @lfy def/cli/main.lfy:main#main:main:a4b92ae9375a7fc02cbba55aef2deb52de20c605973349f6fbf4dd6af16fa924
                     if retried_for_reviews {
-                        self.unrecord(batch);
-                        self.worsen(ExitCode::Problems);
-                        self.stop(batch);
-                        break;
+                        state.unrecord(batch);
+                        state.worsen(ExitCode::Problems);
+                        state.stop(batch);
+                        return None;
                     }
                     retried_for_reviews = true;
+                    drop(state);
                     append_problems(&mut request, &problems);
                 }
                 // The problems are printed, and the batch is run once more with them
                 // appended to the instructions.
                 // @lfy def/cli/main.lfy:main#main:main:17f6feee3279ee2519b458a9ca13607a4738441827bb862fc9a71d712ea28691
                 OutcomeKind::Rejected => {
-                    let rejected = self.report_rejections(batch, &outcome.verdicts);
+                    let mut state = locked(run);
+                    let rejected = state.report_rejections(batch, &outcome.verdicts);
                     // A second rejection stops the compile.
                     // @lfy def/cli/main.lfy:main#main:main:b4d24a6285bcfe6faf8fa684cd04234bc339a6acb61cf4c5597af955903b8ba1
                     if retried_for_rejection {
-                        self.rejected += rejected;
-                        self.worsen(ExitCode::Problems);
-                        self.stop(batch);
-                        break;
+                        state.rejected += rejected;
+                        state.worsen(ExitCode::Problems);
+                        state.stop(batch);
+                        return None;
                     }
                     retried_for_rejection = true;
+                    drop(state);
                     let problems: Vec<String> =
                         outcome.verdicts.iter().flat_map(|verdict| verdict.problems.iter().cloned()).collect();
                     append_problems(&mut request, &problems);
@@ -2668,44 +3286,47 @@ impl Run {
                 // The reason is printed and written, and the compile stops.
                 // @lfy def/cli/main.lfy:main#main:main:983348c7345facb1e1d5c4b06cffcad12cbe2adb4a8f41febe797ad372d4992e
                 OutcomeKind::Blocked => {
-                    self.blocked += 1;
-                    self.reporter.report(Step::Blocked, Some(&batch.identifier), None, &outcome.message);
+                    let mut state = locked(run);
+                    state.blocked += 1;
+                    state.reporter.report(Step::Blocked, Some(&batch.identifier), None, &outcome.message);
                     // @lfy def/cli/main.lfy:main#main:main:983348c7345facb1e1d5c4b06cffcad12cbe2adb4a8f41febe797ad372d4992e
-                    self.reporter.reason(&outcome.message);
+                    state.reporter.reason(&outcome.message);
                     let note = format!("# The compiler is blocked on the batch {}\n\n{}\n", batch.identifier, outcome.message);
-                    self.write_note(batch, "blocked.md", &note);
-                    self.worsen(ExitCode::Problems);
-                    self.stop(batch);
-                    break;
+                    state.write_note(batch, "blocked.md", &note);
+                    state.worsen(ExitCode::Problems);
+                    state.stop(batch);
+                    return None;
                 }
                 // The question is printed and written, and the compile stops.
                 // @lfy def/cli/main.lfy:main#main:main:7362a1e1444ebeacc62b98e8cda328a14cd00d2aa703aacf5356c7356afd1059
                 OutcomeKind::Clarification => {
-                    self.reporter.report(Step::Clarification, Some(&batch.identifier), None, &outcome.message);
+                    let mut state = locked(run);
+                    state.reporter.report(Step::Clarification, Some(&batch.identifier), None, &outcome.message);
                     // @lfy def/cli/main.lfy:main#main:main:7362a1e1444ebeacc62b98e8cda328a14cd00d2aa703aacf5356c7356afd1059
-                    self.reporter.reason(&outcome.message);
+                    state.reporter.reason(&outcome.message);
                     let note = format!(
                         "# The compiler asked about the batch {}\n\n{}\n\n{ANSWER_HEADING}\n\n<!-- Answer by editing the definitions, or write the answer below this line; the next compile of this batch appends it to the instructions. -->\n",
                         batch.identifier, outcome.message
                     );
-                    self.write_note(batch, "question.md", &note);
-                    self.worsen(ExitCode::Problems);
-                    self.stop(batch);
-                    break;
+                    state.write_note(batch, "question.md", &note);
+                    state.worsen(ExitCode::Problems);
+                    state.stop(batch);
+                    return None;
                 }
                 // The batch is run once more.
                 // @lfy def/cli/main.lfy:main#main:main:8a37c623bc2cba7e08ed04d5a76ecf0545b959457f78fe3968759a2306298411
                 OutcomeKind::Failed => {
-                    self.reporter.report(Step::Failed, Some(&batch.identifier), None, &outcome.message);
+                    let mut state = locked(run);
+                    state.reporter.report(Step::Failed, Some(&batch.identifier), None, &outcome.message);
                     // @lfy def/cli/main.lfy:main#main:main:43f2aa5048680432b93b7802c6b6a48f5fcb659a985ce06c84d0358d44a2277d
-                    self.reporter.problems(std::slice::from_ref(&outcome.message));
+                    state.reporter.problems(std::slice::from_ref(&outcome.message));
                     // A second failure stops the compile.
                     // @lfy def/cli/main.lfy:main#main:main:a2115c940f2947290bc6ebc3b6560b08cc0b512909ff66d8413cfc366f78bcd9
                     if retried_for_failure {
-                        self.failed += 1;
-                        self.worsen(ExitCode::Failure);
-                        self.stop(batch);
-                        break;
+                        state.failed += 1;
+                        state.worsen(ExitCode::Failure);
+                        state.stop(batch);
+                        return None;
                     }
                     retried_for_failure = true;
                 }
@@ -2719,39 +3340,49 @@ impl Run {
     /// there is nothing to run again, so a violated review rejects the batch at once and
     /// those maps are never recorded.
     // @lfy def/cli/main.lfy:main#main:main:a4f5fbdf4d4599c991622bd9b47997c8c03fd47ec8dedfc46405fa17cd22947b
-    fn accept_on_disk(&mut self, batch: &Batch, root: &Path) {
-        let request = self.request_of(batch);
-        let verdicts = self.verdicts_of(batch, &request);
-        let accepted: Vec<Verdict> = verdicts.iter().filter(|v| v.accepted).cloned().collect();
-        let mut held = self.maps.clone();
-        if !accepted.is_empty() {
-            let only = Batch {
-                units: batch.units.iter().copied().zip(&verdicts).filter(|(_, v)| v.accepted).map(|(unit, _)| unit).collect(),
-                identifier: batch.identifier.clone(),
-            };
-            held = self.hold_batch(&only, &accepted);
-        }
-        let rejected = self.report_rejections(batch, &verdicts);
-        // A rejected unit makes the code problems; what was accepted is recorded all the
-        // same, so a compiler that worked through the agent server has its work recorded.
-        // @lfy def/cli/main.lfy:main#main:main:e8df67af0bfbe8da3b5385f4331e5af61c8c556720739d356bf3ecd8ffcb35cd
-        // @lfy def/cli/main.lfy:main#main:main:43faad21948267940be8ff5b048b7787640a1b18bbf51a40dd24d462dd7aeb43
-        if rejected > 0 {
-            self.record_maps(held);
-            self.rejected += rejected;
-            self.worsen(ExitCode::Problems);
-            return;
-        }
+    fn accept_on_disk(run: &Mutex<Run>, batch: &Batch, root: &Path) {
+        // Nothing runs a compiler here, so nothing else is writing the root and the batch
+        // needs no copy of its own.
+        // @lfy def/cli/main.lfy:main#main:main:a4f5fbdf4d4599c991622bd9b47997c8c03fd47ec8dedfc46405fa17cd22947b
+        let where_ = Where::Root(root.to_path_buf());
+        let held = {
+            let mut state = locked(run);
+            let request = state.request_of(batch, root);
+            let verdicts = state.verdicts_of(batch, &request, root);
+            let accepted: Vec<Verdict> = verdicts.iter().filter(|v| v.accepted).cloned().collect();
+            let mut held = state.maps.clone();
+            if !accepted.is_empty() {
+                let only = Batch {
+                    units: batch.units.iter().copied().zip(&verdicts).filter(|(_, v)| v.accepted).map(|(unit, _)| unit).collect(),
+                    identifier: batch.identifier.clone(),
+                };
+                held = state.hold_batch(&only, &accepted, root);
+            }
+            let rejected = state.report_rejections(batch, &verdicts);
+            // A rejected unit makes the code problems; what was accepted is recorded all the
+            // same, so a compiler that worked through the agent server has its work recorded.
+            // @lfy def/cli/main.lfy:main#main:main:e8df67af0bfbe8da3b5385f4331e5af61c8c556720739d356bf3ecd8ffcb35cd
+            // @lfy def/cli/main.lfy:main#main:main:43faad21948267940be8ff5b048b7787640a1b18bbf51a40dd24d462dd7aeb43
+            if rejected > 0 {
+                state.record_maps(batch, &held);
+                state.rejected += rejected;
+                state.worsen(ExitCode::Problems);
+                return;
+            }
+            held
+        };
         // @lfy def/cli/main.lfy:main#main:main:cfbd77013d5de5003e04314cb55ac7a6f8c091ff6c8a1c889716c385e8ffd907
-        if let Some(problems) = self.verify_batch(batch, root, &held) {
-            self.reporter.report(Step::Rejected, Some(&batch.identifier), None, &problems.join("\n"));
-            self.reporter.problems(&problems);
-            self.unrecord(batch);
-            self.worsen(ExitCode::Problems);
-            self.stop(batch);
+        let problems = Run::verify_batch(run, batch, &where_, &held);
+        let mut state = locked(run);
+        if let Some(problems) = problems {
+            state.reporter.report(Step::Rejected, Some(&batch.identifier), None, &problems.join("\n"));
+            state.reporter.problems(&problems);
+            state.unrecord(batch);
+            state.worsen(ExitCode::Problems);
+            state.stop(batch);
         } else {
             // @lfy def/cli/main.lfy:main#main:main:43faad21948267940be8ff5b048b7787640a1b18bbf51a40dd24d462dd7aeb43
-            self.record_maps(held);
+            state.record_maps(batch, &held);
         }
     }
 
@@ -2760,7 +3391,8 @@ impl Run {
     fn write_request(&mut self, batch: &Batch) {
         let stems = stems_of(&self.plan, batch, " ");
         self.reporter.report(Step::Requesting, Some(&batch.identifier), None, &stems);
-        let request = self.request_of(batch);
+        let root = self.workspace().root.clone();
+        let request = self.request_of(batch, &root);
         if let Some(path) = self.write_note(batch, "md", &request.instructions)
             && !self.json
         {
@@ -2807,6 +3439,180 @@ impl Run {
             self.reporter.reason(&line);
         }
     }
+}
+
+/// The bookkeeping of a compile, locked. A thread that panicked while holding it leaves what
+/// it held, which is read as it stands rather than taking the whole compile down with it.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+fn locked(run: &Mutex<Run>) -> std::sync::MutexGuard<'_, Run> {
+    run.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// What asking the verifier came to: its report, and whether the run that gave it failed, so
+/// that the problems of a failed run are not printed twice.
+// @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+#[derive(Default)]
+struct Verification {
+    report: ReviewReport,
+    failed: bool,
+}
+
+/// Whether a run of the verifier failed rather than merely writing something beside its
+/// reviews: no line of its output read `ELFIE: REVIEWED`, it held no review at all, or the
+/// command could not be started. A run that ended with the end line and at least one review
+/// stands as it is, whatever prose surrounds them.
+// @lfy def/cli/main.lfy:main#main:main:e13334a45d8bb1815a5cb6ea0c40120b7e2ee52e9ccc44d15376b76b3fa724e8
+// @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+// @lfy def/cli/main.lfy:main#main:main:9a00d5ab9bc962d57d3c9e59f64a8dbd0034f2260b51fc176602c9b103475660
+fn verifier_failed(exit: &Exit, report: &ReviewReport) -> bool {
+    // @lfy def/cli/main.lfy:main#main:main:e13334a45d8bb1815a5cb6ea0c40120b7e2ee52e9ccc44d15376b76b3fa724e8
+    exit.code == -1 || report.reviews.is_empty() || !exit.stdout.lines().any(|line| line.trim() == REVIEWED)
+}
+
+/// One batch run from beginning to end: its own copy of the root where there is one, the
+/// compiler, the verifier, and then the merge of its work into the root.
+///
+/// A batch whose work passed has every file of its copy merged into the root, its source maps
+/// recorded there, and its copy removed. A batch that stopped merges nothing and leaves its
+/// copy in place for a person to read.
+// @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+fn run_batch(run: &Mutex<Run>, batch: &Batch, command: &str, root: &Path, jobs: usize) -> Done {
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    let where_ = Where::of(root, &batch.identifier, jobs);
+    // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+    let held = Run::compile_batch(run, batch, command, &where_);
+    let Where::Copy(mirror) = &where_ else {
+        // The batch ran in the root: there is nothing to merge, and its source maps are
+        // recorded where they already are.
+        // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+        if let Some(held) = held {
+            // @lfy def/cli/main.lfy:main#main:main:5f94d631456802b856fe0bcc8391128da066ebd319c2f4ea466011a8739c6534
+            locked(run).record_maps(batch, &held);
+        }
+        return Done::Merged;
+    };
+    // The batch stopped: nothing of it is merged and the copy is left in place for a person
+    // to read.
+    // @lfy def/cli/main.lfy:main#main:main:1c335d58e9fffee616b1561e508393d0f678fd2d3598933dee54aa2a082d5003
+    let Some(held) = held else {
+        return Done::Merged;
+    };
+    // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+    match mirror.merge(root) {
+        // Every file merged: the source maps are recorded in the root and the copy is
+        // removed.
+        // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+        Ok(_) => {
+            // @lfy def/cli/main.lfy:main#main:main:5f94d631456802b856fe0bcc8391128da066ebd319c2f4ea466011a8739c6534
+            locked(run).record_maps(batch, &held);
+            // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+            mirror.remove();
+            Done::Merged
+        }
+        // A file could not be merged without a conflict: nothing of the batch is merged, a
+        // retrying line names the file, and the batch runs again from a new copy once no
+        // other batch is running. This is not a rejection, so no count and no code change.
+        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+        Err(path) => {
+            // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+            let message = format!("{path} changed under the batch and could not be merged");
+            locked(run).reporter.report(Step::Retrying, Some(&batch.identifier), None, &message);
+            // The copy goes, since the batch runs again from a new one; what its units were
+            // counted as stands, so the run anew counts them once rather than twice.
+            // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+            mirror.remove();
+            Done::Conflicted
+        }
+    }
+}
+
+/// Every batch of a round run: a batch starts once every batch holding a dependency of one of
+/// its units is done, at most --jobs run at once, and among those that can start they start in
+/// plan order. The batches that never started are the ones that did not complete.
+// @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+fn run_batches(
+    run: &Mutex<Run>,
+    planned: &[Planned],
+    root: &Path,
+    compiler: Option<&str>,
+    accept_only: bool,
+    jobs: usize,
+) {
+    let schedule = Mutex::new(Schedule::of(planned));
+    let finished = Condvar::new();
+    std::thread::scope(|scope| {
+        let mut running = Vec::new();
+        loop {
+            // The lock on the compile is taken and given back before the schedule's, so
+            // that no thread ever holds both.
+            // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+            let halted = locked(run).halted;
+            let mut schedules = schedule.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            match schedules.next(planned, jobs, halted) {
+                // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+                Next::Start(at) => {
+                    drop(schedules);
+                    let batch = planned[at].batch.clone();
+                    // A stopped batch stops only the batches that depend on one of its
+                    // units; those never run, and count as not completed.
+                    // @lfy def/cli/main.lfy:main#main:main:6c99a3fd756dde171135b4dbd26c28b4aee7e003acc1b178a2f2d54429eeea4a
+                    if locked(run).depends_on_stopped(&batch) {
+                        let mut state = locked(run);
+                        // @lfy def/cli/main.lfy:main#main:main:974ee309cbfc12d85b60f2bbb0b8cd1361aa959c94969a5cf6c482e0ec137ba7
+                        state.incomplete.push(batch.identifier.clone());
+                        state.stopped.extend(batch.units.iter().copied());
+                        drop(state);
+                        schedule
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
+                            .finish(at, &Done::Merged);
+                        continue;
+                    }
+                    let schedule = &schedule;
+                    let finished = &finished;
+                    running.push(scope.spawn(move || {
+                        let done = match (accept_only, compiler) {
+                            // @lfy def/cli/main.lfy:main#main:main:a4f5fbdf4d4599c991622bd9b47997c8c03fd47ec8dedfc46405fa17cd22947b
+                            (true, _) => {
+                                Run::accept_on_disk(run, &batch, root);
+                                Done::Merged
+                            }
+                            // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+                            (false, Some(command)) => run_batch(run, &batch, command, root, jobs),
+                            // @lfy def/cli/main.lfy:main#main:main:3d2332fc257e54c75412463666b0f80d03f3f2eaa2fe2cf9847d6c9e5da2401c
+                            (false, None) => {
+                                locked(run).write_request(&batch);
+                                Done::Merged
+                            }
+                        };
+                        schedule.lock().unwrap_or_else(std::sync::PoisonError::into_inner).finish(at, &done);
+                        finished.notify_all();
+                    }));
+                }
+                // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+                Next::Wait => {
+                    drop(finished.wait(schedules));
+                }
+                // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+                Next::Over => {
+                    let unstarted = schedules.unstarted();
+                    drop(schedules);
+                    let mut state = locked(run);
+                    for at in unstarted {
+                        // @lfy def/cli/main.lfy:main#main:main:974ee309cbfc12d85b60f2bbb0b8cd1361aa959c94969a5cf6c482e0ec137ba7
+                        state.incomplete.push(planned[at].batch.identifier.clone());
+                        state.stopped.extend(planned[at].batch.units.iter().copied());
+                    }
+                    break;
+                }
+            }
+        }
+        // The batches already running finish as they would.
+        // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+        for handle in running {
+            let _ = handle.join();
+        }
+    });
 }
 
 /// Every error diagnostic of the program printed; whether there was one.
@@ -2879,76 +3685,69 @@ fn compile(invocation: &Invocation) -> ExitCode {
     remove_orphan_maps(&program.workspace, &plan, target.as_deref());
 
     let reporter = Reporter::new(json, style, 0, log_paths(root));
-    let mut run = Run::new(program, plan, maps.clone(), reporter, invocation);
+    let run = Mutex::new(Run::new(program, plan, maps.clone(), reporter, invocation));
     let compiler = compiler_command(root);
     let accept_only = invocation.flag("accept");
+    // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+    // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+    let jobs = compile_jobs(invocation, root);
     // The units a violated global review plans are compiled once more in the same compile,
     // and the global review runs once more after them.
     // @lfy def/cli/main.lfy:main#main:main:f3b3525a24fda209b102430025ef51ebb6eab2bd9b4e278ac2b7d72a8e46fd96
     let mut round = 1;
     loop {
-        let batches = run.batches_for(target.as_deref());
-        let total: usize = batches.iter().map(|&index| run.plan.batches[index].units.len()).sum();
-        run.reporter.total = total;
-        // The first progress line of a compile is planned, with the count of units planned
-        // and of batches, whether anything was planned or not, so that a compile with
-        // nothing to do still reads as one run.
-        // @lfy def/cli/main.lfy:main#main:main:3489747b8b8c37349030e2e6b46ecf0fd1112f662f7cff22846b43836dd0a62d
-        let planned = format!("{total} units planned, {} batches", batches.len());
-        run.reporter.report(Step::Planned, None, None, &planned);
-        // @lfy def/cli/main.lfy:main#main:main:1c2654d00988fd20e79daf0fdd4ede6f6462a99761112243093d0993e588a150
-        if total == 0 && round == 1 && !json {
+        let round_of_batches = {
+            let mut state = locked(&run);
+            let batches = state.batches_for(target.as_deref());
+            let total: usize = batches.iter().map(|&index| state.plan.batches[index].units.len()).sum();
+            state.reporter.total = total;
+            // The first progress line of a compile is planned, with the count of units
+            // planned and of batches, whether anything was planned or not, so that a compile
+            // with nothing to do still reads as one run.
+            // @lfy def/cli/main.lfy:main#main:main:3489747b8b8c37349030e2e6b46ecf0fd1112f662f7cff22846b43836dd0a62d
+            let planned = format!("{total} units planned, {} batches", batches.len());
+            state.reporter.report(Step::Planned, None, None, &planned);
             // @lfy def/cli/main.lfy:main#main:main:1c2654d00988fd20e79daf0fdd4ede6f6462a99761112243093d0993e588a150
-            println!("{}", paint("every unit is up to date", Tone::Success, style.out));
-        }
-        run.accepted_batch = false;
-        for index in batches {
-            let batch = run.plan.batches[index].clone();
-            // A stopped batch stops only the batches that depend on one of its units.
-            // @lfy def/cli/main.lfy:main#main:main:6c99a3fd756dde171135b4dbd26c28b4aee7e003acc1b178a2f2d54429eeea4a
-            if run.halted || run.depends_on_stopped(&batch) {
-                run.incomplete.push(batch.identifier.clone());
-                run.stopped.extend(batch.units.iter().copied());
-                continue;
+            if total == 0 && round == 1 && !json {
+                // @lfy def/cli/main.lfy:main#main:main:1c2654d00988fd20e79daf0fdd4ede6f6462a99761112243093d0993e588a150
+                println!("{}", paint("every unit is up to date", Tone::Success, style.out));
             }
-            if accept_only {
-                // @lfy def/cli/main.lfy:main#main:main:a4f5fbdf4d4599c991622bd9b47997c8c03fd47ec8dedfc46405fa17cd22947b
-                run.accept_on_disk(&batch, root);
-            } else if let Some(command) = &compiler {
-                // @lfy def/cli/main.lfy:main#main:main:b5feb1f16aae64bf0678e2a4e4db3b316d77ba634d2bf69d926387ee824f3154
-                run.compile_batch(&batch, command, root);
-            } else {
-                // @lfy def/cli/main.lfy:main#main:main:3d2332fc257e54c75412463666b0f80d03f3f2eaa2fe2cf9847d6c9e5da2401c
-                run.write_request(&batch);
-            }
-        }
-        // Every batch has been handled: the global criteria and tests are reviewed once.
+            state.accepted_batch = false;
+            // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+            round_of(&state.plan, &batches)
+        };
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        run_batches(&run, &round_of_batches, root, compiler.as_deref(), accept_only, jobs);
+        // Every batch has been handled and merged into the root: the global criteria and
+        // tests are reviewed once, there.
         // @lfy def/cli/main.lfy:main#main:main:4f8dbdb8fc28bbacb10eb19592784f31634f2e8201f9598ee5917ece46cf13af
-        let violated = run.global_review(root);
+        // @lfy def/cli/main.lfy:main#main:main:2dcfe6cabe7e1aa71bf93e6eb934b1da6606315fb78fc3dd418d2cc4878dc2e5
+        let violated = Run::global_review(&run, root);
         // The second global review of a compile stops it there, and the next compile plans
         // those units with reason violated.
         // @lfy def/cli/main.lfy:main#main:main:bc15bc779dc3c825012b7c066b70d8256fb0fa6cf44002c9343835413372d7c0
         if violated.is_empty() || round == 2 || accept_only || compiler.is_none() {
             if !violated.is_empty() {
-                run.worsen(ExitCode::Problems);
+                locked(&run).worsen(ExitCode::Problems);
             }
             break;
         }
         // @lfy def/cli/main.lfy:main#main:main:f3b3525a24fda209b102430025ef51ebb6eab2bd9b4e278ac2b7d72a8e46fd96
         let (program, plan) = plan_with(root, &maps, &[], &violated);
-        run.replan(program, plan, 0);
+        locked(&run).replan(program, plan, 0);
         round = 2;
     }
+    let mut state = locked(&run);
     // The last progress line of a compile is finished, with the count accepted, rejected,
     // blocked, and failed.
     // @lfy def/cli/main.lfy:main#main:main:3489747b8b8c37349030e2e6b46ecf0fd1112f662f7cff22846b43836dd0a62d
-    run.finish();
+    state.finish();
     // Every batch accepted is success; a rejection, a block, or a question is problems; a
     // command that could not run is failure.
     // @lfy def/cli/main.lfy:main#main:main:ec6dc86241d03ea455096a6fee081b00ee9db78faea2ab5f36b95b1d38e4b536
     // @lfy def/cli/main.lfy:main#main:main:8b6e3fa8c2b970ba9830679ab3f2fa763239f6bdb74b35ccee02b82f3f49cb19
     // @lfy def/cli/main.lfy:main#main:main:fd1abf25846b2c26daa7f8517bfc55161489793755d16066f188e885d2c7dd29
-    run.code
+    state.code
 }
 
 // ---- verify -----------------------------------------------------------------------
@@ -3014,7 +3813,7 @@ fn verify(invocation: &Invocation) -> ExitCode {
     let (program, plan) = plan_with(root, &maps, &requested, &[]);
     let wanted: BTreeSet<&str> = requested.iter().map(String::as_str).collect();
     // Each batch of the plan holding a requested unit, in plan order.
-    // @lfy def/cli/main.lfy:main#main:main:732abddc3793f53a4dc2b58f6ad56f87f597cad84e015535b519742a047e7e4c
+    // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
     // @lfy def/cli/main.lfy:main#main:main:a9fac2a320d06cf381052df6e84319fa6bd0f84d6a12f610bcda1e8150d5ead2
     let batches: Vec<usize> = (0..plan.batches.len())
         .filter(|&index| {
@@ -3025,49 +3824,105 @@ fn verify(invocation: &Invocation) -> ExitCode {
         .collect();
     let total: usize = batches.iter().map(|&index| plan.batches[index].units.len()).sum();
     let reporter = Reporter::new(json, style, total, log_paths(root));
-    let mut run = Run::new(program, plan, maps, reporter, invocation);
+    let run = Mutex::new(Run::new(program, plan, maps, reporter, invocation));
     let verifier = verifier_command(root);
+    // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+    let jobs = jobs_of(invocation);
     // The source maps already recorded are what the verifier is pointed at here: verify
     // compiles nothing, so there are none to hold.
     // @lfy def/cli/main.lfy:main#main:main:3bdfedbcd1b4048a4c9e1327dfe40e4fb739577df3cfa5179384ac518798f07d
-    let recorded = run.maps.clone();
+    let recorded = locked(&run).maps.clone();
     // @lfy def/cli/main.lfy:main#main:main:4e1e5413d9d9a90de9ddb43e0d7498c9c7dae9038e4e9f81de821bbc0c135a2a
-    for index in if global_only { Vec::new() } else { batches } {
-        let batch = run.plan.batches[index].clone();
-        // With no verifier named, the review request of each batch is written for a
-        // verifier run by hand and the code is success.
-        // @lfy def/cli/main.lfy:main#main:main:bd9654344c4cef40114b45abde3e92ca30e92c685747378ea3e269fcf1b63fe4
-        let Some(command) = verifier.clone() else {
-            run.write_review_request(&batch);
-            continue;
-        };
-        // The verifier is run exactly as compile runs it after acceptance, a failed run
-        // being run once more the same way.
-        // @lfy def/cli/main.lfy:main#main:main:732abddc3793f53a4dc2b58f6ad56f87f597cad84e015535b519742a047e7e4c
-        // @lfy def/cli/main.lfy:main#main:main:ddecbbbcaa7570ef93a9bc904198bbd770df4b6d4aa6752324f74abf353a8ada
-        let report = run.review_batch(&batch, &command, root, false, &recorded);
-        print_reviews(&report.reviews, json, style.out);
-        // @lfy def/cli/main.lfy:main#main:main:c23934c293f91e4d0fd7e7b377cabf5d969bb4fb55719a43b8fc70b6d61f9d54
-        if counts_of(&report.reviews).1 > 0 {
-            run.worsen(ExitCode::Problems);
-        }
-    }
+    let wanted = if global_only { Vec::new() } else { batches };
+    // Each batch of the plan holding a requested unit, up to --jobs at once and started in
+    // plan order.
+    // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+    let reviewing = round_of(&locked(&run).plan, &wanted);
+    verify_batches(&run, &reviewing, root, verifier.as_deref(), &recorded, jobs);
     // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
     if globally && verifier.is_some() {
         // Nothing of the compile's own gating applies here: a person asked for the opinion.
         // @lfy def/cli/main.lfy:main#main:main:f71aa5a984a022b464e4eabdb0b20fd093322e8041b14b8ac9747246929ebeb9
-        let reviews = run.verify_globally(root);
+        let reviews = Run::verify_globally(&run, root);
         print_reviews(&reviews, json, style.out);
         // @lfy def/cli/main.lfy:main#main:main:c23934c293f91e4d0fd7e7b377cabf5d969bb4fb55719a43b8fc70b6d61f9d54
         if counts_of(&reviews).1 > 0 {
-            run.worsen(ExitCode::Problems);
+            locked(&run).worsen(ExitCode::Problems);
         }
     }
     // The verifier was started and no review is violated: the code is success; it could not
     // be started: the code is failure.
     // @lfy def/cli/main.lfy:main#main:main:d84f0a9bcbfdcf127934491b8390962cb32846f6fe4b291314cd473d8c2fabbe
     // @lfy def/cli/main.lfy:main#main:main:fd6a921a3570f69a0c04ca8b2b478aca795777e982fe5fe4557e7537db73fe14
-    run.code
+    locked(&run).code
+}
+
+/// Every batch of a verify reviewed, up to --jobs at once and started in plan order, each in
+/// the root: nothing is compiled, so every batch reads the outputs that are already there.
+///
+/// With no verifier named, the review request of each batch is written for a verifier run by
+/// hand and the code is success.
+// @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+fn verify_batches(
+    run: &Mutex<Run>,
+    planned: &[Planned],
+    root: &Path,
+    verifier: Option<&str>,
+    recorded: &[SourceMap],
+    jobs: usize,
+) {
+    let schedule = Mutex::new(Schedule::of(planned));
+    let finished = Condvar::new();
+    std::thread::scope(|scope| {
+        let mut running = Vec::new();
+        loop {
+            let mut schedules = schedule.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+            match schedules.next(planned, jobs, false) {
+                Next::Start(at) => {
+                    drop(schedules);
+                    let batch = planned[at].batch.clone();
+                    let schedule = &schedule;
+                    let finished = &finished;
+                    running.push(scope.spawn(move || {
+                        match verifier {
+                            // @lfy def/cli/main.lfy:main#main:main:4c19bc9880ea93ba9993abbd0c2c10e8797eb913aecd8e30a30223d39a488474
+                            Some(command) => {
+                                // The verifier is run exactly as compile runs it after
+                                // acceptance, a failed run being run once more the same way.
+                                // @lfy def/cli/main.lfy:main#main:main:9a00d5ab9bc962d57d3c9e59f64a8dbd0034f2260b51fc176602c9b103475660
+                                let where_ = Where::Root(root.to_path_buf());
+                                let verification =
+                                    Run::review_batch(run, &batch, command, &where_, false, recorded);
+                                let reviews = verification.report.reviews;
+                                let mut state = locked(run);
+                                // @lfy def/cli/main.lfy:main#main:main:15975ba21f2d3e58d9d76c89d6ee8744c310877b9334ab62dcb7dca472cae18d
+                                print_reviews(&reviews, state.json, state.style.out);
+                                // @lfy def/cli/main.lfy:main#main:main:c23934c293f91e4d0fd7e7b377cabf5d969bb4fb55719a43b8fc70b6d61f9d54
+                                if counts_of(&reviews).1 > 0 {
+                                    state.worsen(ExitCode::Problems);
+                                }
+                            }
+                            // @lfy def/cli/main.lfy:main#main:main:bd9654344c4cef40114b45abde3e92ca30e92c685747378ea3e269fcf1b63fe4
+                            None => locked(run).write_review_request(&batch),
+                        }
+                        schedule
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
+                            .finish(at, &Done::Merged);
+                        finished.notify_all();
+                    }));
+                }
+                Next::Wait => {
+                    drop(finished.wait(schedules));
+                }
+                Next::Over => break,
+            }
+        }
+        for handle in running {
+            let _ = handle.join();
+        }
+    });
 }
 
 /// Every review printed as its status, a space, the file, a colon, the line, a space, the
@@ -3264,6 +4119,12 @@ mod tests {
     /// line.
     const SATISFIED: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"id\":\"<id>\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho 'ELFIE: REVIEWED'\n";
 
+    /// A verifier that satisfies the criterion, writes a line that reads as an object but
+    /// names no criterion, and then ends: a report that ended with a review in it stands,
+    /// whatever else it holds.
+    // @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+    const SATISFIED_WITH_A_STRAY_OBJECT: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho '{\"id\":\"<id>\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho '{\"thought\":\"I also looked at the tests\"}'\necho 'ELFIE: REVIEWED'\n";
+
     /// A verifier that satisfies the criterion and writes a line of its own to standard error,
     /// as an agent writes its progress there.
     const SATISFIED_WITH_NOISE: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> \"$ELFIE_ROOT/verifications.txt\"\necho 'reading the outputs' >&2\necho '{\"id\":\"<id>\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho 'ELFIE: REVIEWED'\n";
@@ -3341,11 +4202,14 @@ mod tests {
         assert_eq!(invocation.option("target"), Some("rust"));
     }
 
-    // @lfy def/cli/main.lfy:parse#parse:parse:4c7ddf6fa8920daad099b001bab04e3b1bad34b80a2d3a47557329a365cfd483
+    // @lfy def/cli/main.lfy:parse#parse:parse:31d286a6e27d0b3b1aee3510e0c91b34c50892ae2bb9d66fe5da061ccb6d6d01
     #[test]
     fn target_takes_the_value_that_follows_it() {
         let invocation = parse_arguments(&args(&["compile", "--target", "rust"])).unwrap();
         assert_eq!(invocation.option("target"), Some("rust"));
+        // --jobs is the other option besides --root that takes a following value.
+        // @lfy def/cli/main.lfy:parse#parse:parse:31d286a6e27d0b3b1aee3510e0c91b34c50892ae2bb9d66fe5da061ccb6d6d01
+        assert_eq!(parse_arguments(&args(&["compile", "--jobs", "8"])).unwrap().option("jobs"), Some("8"));
     }
 
     // @lfy def/cli/main.lfy:parse#parse:parse:c13f6c1685e6037f390557f71f93bf09b652b2e862a8aecc750e49f518a644d3
@@ -3355,7 +4219,7 @@ mod tests {
         assert_eq!(parse_arguments(&args(&["check", "--root=/tmp"])).unwrap().root, "/tmp");
     }
 
-    // @lfy def/cli/main.lfy:parse#parse:parse:dd2b0b0390de36e5311e96979f200953effcf502ba2cd611c18f6bf2ac6c6545
+    // @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
     #[test]
     fn what_names_neither_the_command_nor_an_option_value_is_positional() {
         let invocation =
@@ -3424,7 +4288,7 @@ mod tests {
         assert_eq!(error, "--color must be auto, always, or never");
     }
 
-    // @lfy def/cli/main.lfy:parse#parse:parse:ed22dc20ad3703b09fa1ac3603ce4550564f095a9324278e79dae3216d3015d5
+    // @lfy def/cli/main.lfy:parse#parse:parse:d19a41c8634f25c25ba5bfe17c06df12102331e68a6fe8764d48bf0936fbcb24
     #[test]
     fn every_other_flag_never_takes_the_next_argument() {
         let invocation = parse_arguments(&args(&["--json", "check"])).unwrap();
@@ -3523,19 +4387,20 @@ mod tests {
     }
 
     /// Help prints every command of [`Command`], verify among them, with one line of
-    /// description and the global options, --no-verify, --strict, and --color among them, and
-    /// version prints the version; both return success.
-    // @lfy def/cli/main.lfy:main
+    /// description and the global options, --no-verify, --strict, --jobs, and --color among
+    /// them, and version prints the version; both return success.
+    // @lfy def/cli/main.lfy:main#main:main:1209be9acca3fe8503b9fbe8c9175d7c0272512b07cdcfd341cac2ca4696dfaa
     #[test]
     fn help_and_version_return_success() {
         let text = help_text(false);
+        // @lfy def/cli/main.lfy:main#main:main:1209be9acca3fe8503b9fbe8c9175d7c0272512b07cdcfd341cac2ca4696dfaa
         for command in Command::ALL {
             assert!(text.contains(command.value()), "{text}");
             assert!(text.contains(command.description()), "{text}");
         }
         assert!(text.contains(Command::Verify.value()), "{text}");
-        // @lfy def/cli/main.lfy:main
-        for option in ["--root", "--json", "--no-verify", "--strict", "--color", "--help, -h", "--version"] {
+        // @lfy def/cli/main.lfy:main#main:main:1209be9acca3fe8503b9fbe8c9175d7c0272512b07cdcfd341cac2ca4696dfaa
+        for option in ["--root", "--json", "--no-verify", "--strict", "--jobs", "--color", "--help, -h", "--version"] {
             assert!(text.contains(option), "{option} is missing from {text}");
         }
         // Every description starts in the same column, painted or not.
@@ -4065,7 +4930,7 @@ mod tests {
             .write("def/a.lfy", "d A: `An A` {}\n")
             .write(
                 "compiler.sh",
-                "#!/bin/sh\ncat > \"$ELFIE_ROOT/instructions.txt\"\nprintf '%s\\n' \"$ELFIE_BATCH\" \"$ELFIE_UNITS\" > \"$ELFIE_ROOT/environment.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
+                "#!/bin/sh\ncat > \"$ELFIE_ROOT/instructions.txt\"\nprintf '%s\\n' \"$ELFIE_BATCH\" \"$ELFIE_UNITS\" \"$ELFIE\" > \"$ELFIE_ROOT/environment.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
             )
             .write(
                 "elfie.json",
@@ -4078,7 +4943,15 @@ mod tests {
             );
         // @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
-        assert_eq!(fixture.read("environment.txt"), "a\na\n");
+        // ELFIE is the path of the running executable, so the agent server an agent starts
+        // is this same program.
+        // @lfy def/cli/main.lfy:main#main:main:197d3757fe5da79799c8bd1c6f147465e8333e0f5f9819d87bad4139ec70c195
+        let environment = fixture.read("environment.txt");
+        let mut lines = environment.lines();
+        assert_eq!(lines.next(), Some("a"));
+        assert_eq!(lines.next(), Some("a"));
+        let elfie = std::env::current_exe().unwrap();
+        assert_eq!(lines.next(), Some(elfie.to_string_lossy().as_ref()));
         assert!(fixture.read("instructions.txt").contains("An A"));
         // @lfy def/cli/main.lfy:main
         assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
@@ -4153,12 +5026,14 @@ mod tests {
         let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
         let invocation = parse_arguments(&args(&["compile", "--color=never"])).unwrap();
         let reporter = Reporter::new(false, Paint::of(&invocation), 1, Vec::new());
-        let mut run = Run::new(program, plan, Vec::new(), reporter, &invocation);
-        let batch = run.plan.batches[0].clone();
-        run.compile_batch(&batch, "true", Path::new("/no/such/directory"));
-        assert_eq!(run.code, ExitCode::Failure);
-        assert_eq!(run.failed, 1);
-        assert!(run.halted);
+        let run = Mutex::new(Run::new(program, plan, Vec::new(), reporter, &invocation));
+        let batch = locked(&run).plan.batches[0].clone();
+        let nowhere = Where::Root(PathBuf::from("/no/such/directory"));
+        assert!(Run::compile_batch(&run, &batch, "true", &nowhere).is_none());
+        let state = locked(&run);
+        assert_eq!(state.code, ExitCode::Failure);
+        assert_eq!(state.failed, 1);
+        assert!(state.halted);
     }
 
     /// A review is printed as its status, a space, the file, a colon, the line, a space, the
@@ -4251,19 +5126,43 @@ mod tests {
     /// as a failed line and the batch is verified with the reviews parsed from that run as
     /// if its report had been complete.
     // @lfy def/cli/main.lfy:main#main:main:cb2dacfb1c6b799d86c8db6d7609b3be690848043b299f9d073c26a67afc11e0
+    // @lfy def/cli/main.lfy:main#main:main:e13334a45d8bb1815a5cb6ea0c40120b7e2ee52e9ccc44d15376b76b3fa724e8
+    // @lfy def/cli/main.lfy:main#main:main:2526667ae85d62b2f4e46dcd53587a64569672ad4127a4c8c4cea6ebf71881d8
     #[test]
     fn a_verifier_whose_report_does_not_end_is_run_once_more() {
         let fixture = Fixture::new();
         a_compiler_and_a_verifier(&fixture, UNENDED);
         assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+        // @lfy def/cli/main.lfy:main#main:main:e13334a45d8bb1815a5cb6ea0c40120b7e2ee52e9ccc44d15376b76b3fa724e8
         assert_eq!(lines_of(&fixture, "verifications.txt"), 2, "the verifier ran twice");
         assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
         let log = fixture.read("elfie-requests/compile.log");
-        // @lfy def/cli/main.lfy:main
+        // Its problems are printed as a failed progress line, and the batch is verified with
+        // the reviews parsed from that run as if its report had been complete.
+        // @lfy def/cli/main.lfy:main#main:main:2526667ae85d62b2f4e46dcd53587a64569672ad4127a4c8c4cea6ebf71881d8
         assert!(log.contains("✗ failed"), "{log}");
         assert!(log.contains("1 satisfied, 0 violated, 0 unverifiable"), "{log}");
         // The reviews of that run are written all the same. @lfy def/cli/main.lfy:main
         assert!(fixture.read("elfie-requests/a.reviews.json").contains("covered by a test"));
+    }
+
+    /// A run that ended with the end line and at least one review stands, whatever else it
+    /// wrote: the verifier is not run again, and what it wrote beside its reviews is printed
+    /// under its reviewed line.
+    // @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+    #[test]
+    fn a_review_that_ended_stands_and_what_else_it_wrote_is_printed() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED_WITH_A_STRAY_OBJECT);
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+        // @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+        assert_eq!(lines_of(&fixture, "verifications.txt"), 1, "the verifier ran once");
+        let log = fixture.read("elfie-requests/compile.log");
+        assert!(log.contains("1 satisfied, 0 violated, 0 unverifiable"), "{log}");
+        // What it wrote beside its reviews follows its reviewed line, indented.
+        // @lfy def/cli/main.lfy:main#main:main:7b33e4abb60c999fd74ba8a003a59f6de17412062b9767f21eda5ffd7eaf963c
+        assert!(log.contains("I also looked at the tests"), "{log}");
+        assert!(!log.contains("✗ failed"), "{log}");
     }
 
     /// Every line of the verifier's output reaches the log, the lines it wrote to standard
@@ -4742,5 +5641,264 @@ mod tests {
             .replace("<global>", &global_id(&fixture));
         fixture.write("verifier.sh", &script);
         assert_eq!(fixture.run(&["verify", "--global"]), ExitCode::Problems.code());
+    }
+
+    // ---- running batches together --------------------------------------------------
+
+    /// --jobs takes the value that follows it or the one after its equals sign, and anything
+    /// but a whole number of at least 1 is a usage message naming it.
+    // @lfy def/cli/main.lfy:parse#parse:parse:8a7c0ab826525b9fea70ea111a51d4e84e153e8e61475a1c4494148b8243fc71
+    // @lfy def/cli/main.lfy:parse#parse:parse:31d286a6e27d0b3b1aee3510e0c91b34c50892ae2bb9d66fe5da061ccb6d6d01
+    // @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
+    #[test]
+    fn jobs_takes_a_whole_number_of_at_least_one() {
+        // --jobs followed by a value gives that value, as --target does.
+        // @lfy def/cli/main.lfy:parse#parse:parse:31d286a6e27d0b3b1aee3510e0c91b34c50892ae2bb9d66fe5da061ccb6d6d01
+        let invocation = parse_arguments(&args(&["compile", "--jobs", "2", "lexer/main"])).unwrap();
+        assert_eq!(invocation.option("jobs"), Some("2"));
+        assert_eq!(jobs_of(&invocation), 2);
+        // The value it took is no positional argument.
+        // @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
+        assert_eq!(invocation.arguments, vec!["lexer/main".to_string()]);
+        assert_eq!(jobs_of(&parse_arguments(&args(&["compile", "--jobs=3"])).unwrap()), 3);
+        // 0 is no whole number of at least 1, and neither is anything that is no number.
+        // @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
+        // @lfy def/cli/main.lfy:parse#parse:parse:8a7c0ab826525b9fea70ea111a51d4e84e153e8e61475a1c4494148b8243fc71
+        let error = parse_arguments(&args(&["compile", "--jobs", "0"])).unwrap_err();
+        assert_eq!(error, JOBS_USAGE);
+        assert!(error.contains("--jobs"), "{error}");
+        for arguments in [
+            args(&["compile", "--jobs=0"]),
+            args(&["compile", "--jobs=some"]),
+            args(&["compile", "--jobs", "-1"]),
+            args(&["compile", "--jobs", "1.5"]),
+        ] {
+            assert_eq!(parse_arguments(&arguments).unwrap_err(), JOBS_USAGE, "{arguments:?}");
+        }
+    }
+
+    /// With no --jobs given, four batches run at once.
+    // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+    #[test]
+    fn without_jobs_four_batches_run_at_once() {
+        // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+        assert_eq!(JOBS_BY_DEFAULT, 4);
+        assert_eq!(jobs_of(&parse_arguments(&args(&["compile"])).unwrap()), 4);
+    }
+
+    /// One batch of a round, named and waiting for the places given.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    fn a_planned_batch(identifier: &str, unit: usize, after: Vec<usize>) -> Planned {
+        Planned { batch: Batch { units: vec![unit], identifier: identifier.to_string() }, after }
+    }
+
+    /// A batch starts once every batch holding a dependency of one of its units is done, at
+    /// most --jobs run at once, and among those that can start they start in plan order.
+    // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+    #[test]
+    fn a_batch_starts_once_what_it_waits_for_is_done() {
+        let planned =
+            vec![a_planned_batch("a", 0, vec![]), a_planned_batch("b", 1, vec![]), a_planned_batch("c", 2, vec![0])];
+        let mut schedule = Schedule::of(&planned);
+        // Among those that can start, they start in plan order.
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(0)));
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(1)));
+        // At most --jobs run at once.
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Wait));
+        // c waits on a, which is still running.
+        // @lfy def/cli/main.lfy:main#main:main:6ce3a95e70162dcd0e108bfe5ed94dfd56b3736d592fb8b222a5094127b5f845
+        schedule.finish(1, &Done::Merged);
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Wait));
+        schedule.finish(0, &Done::Merged);
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(2)));
+        schedule.finish(2, &Done::Merged);
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Over));
+    }
+
+    /// The compile stopped: no batch starts after that, and the batches already running
+    /// finish as they would.
+    // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+    #[test]
+    fn a_stopped_compile_starts_no_batch() {
+        let planned = vec![a_planned_batch("a", 0, vec![]), a_planned_batch("b", 1, vec![])];
+        let mut schedule = Schedule::of(&planned);
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(0)));
+        // @lfy def/cli/main.lfy:main#main:main:3c23880977d6965ce85ac281ad2e12af55f114b91a87851d4a296f402ee2550b
+        assert!(matches!(schedule.next(&planned, 2, true), Next::Wait));
+        schedule.finish(0, &Done::Merged);
+        assert!(matches!(schedule.next(&planned, 2, true), Next::Over));
+        // @lfy def/cli/main.lfy:main#main:main:974ee309cbfc12d85b60f2bbb0b8cd1361aa959c94969a5cf6c482e0ec137ba7
+        assert_eq!(schedule.unstarted(), vec![1]);
+    }
+
+    /// A batch whose file could not be merged runs again from a new copy once no other batch
+    /// is running, and nothing else starts while it does.
+    // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+    #[test]
+    fn a_conflicted_batch_runs_again_with_nothing_else_running() {
+        let planned = vec![a_planned_batch("a", 0, vec![]), a_planned_batch("b", 1, vec![])];
+        let mut schedule = Schedule::of(&planned);
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(0)));
+        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+        schedule.finish(0, &Done::Conflicted);
+        // It is waiting again, in plan order, and runs with nothing else.
+        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(0)));
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Wait));
+        schedule.finish(0, &Done::Merged);
+        assert!(matches!(schedule.next(&planned, 2, false), Next::Start(1)));
+    }
+
+    /// With --jobs 1, or outside a git repository, batches run one at a time and the batch's
+    /// directory is the root itself.
+    // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+    #[test]
+    fn one_job_or_no_repository_runs_in_the_root() {
+        let fixture = Fixture::new();
+        let four = parse_arguments(&args(&["compile", "--jobs", "4"])).unwrap();
+        // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+        assert_eq!(Where::of(&fixture.root, "a", 1).directory(), fixture.root);
+        // Outside a git repository --jobs does not hold: one batch runs at a time, in the
+        // root itself, so that no two compilers share a tree.
+        // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+        if git_directory(&fixture.root).is_none() {
+            // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+            assert_eq!(compile_jobs(&four, &fixture.root), 1);
+            // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+            assert_eq!(Where::of(&fixture.root, "a", 4).directory(), fixture.root);
+            // One at a time: with one running, nothing else starts.
+            // @lfy def/cli/main.lfy:main#main:main:499ee7a3765c8bd298923979a12ca327e03f51d363ef956cfd843593ac4f1130
+            let planned =
+                vec![a_planned_batch("a", 0, Vec::new()), a_planned_batch("b", 1, Vec::new())];
+            let mut schedule = Schedule::of(&planned);
+            assert!(matches!(schedule.next(&planned, 1, false), Next::Start(0)));
+            assert!(matches!(schedule.next(&planned, 1, false), Next::Wait));
+        }
+        // In a git repository a batch has its own copy, so --jobs stands as it is given.
+        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        if a_repository(&fixture) {
+            // @lfy def/cli/main.lfy:main#main:main:4e8f52e9f77f1f725382edf134fa02a15a8235fbd901842dc1bdf532bb78e75a
+            assert_eq!(compile_jobs(&four, &fixture.root), 4);
+        }
+    }
+
+    /// A fixture root made a git repository, so that a batch gets its own copy of it; false
+    /// when there is no git to make one with.
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    fn a_repository(fixture: &Fixture) -> bool {
+        git(fixture, &["init", "-q"])
+            && git(fixture, &["config", "user.email", "p@example.com"])
+            && git(fixture, &["config", "user.name", "p"])
+    }
+
+    /// Every file git lists in the root is copied byte for byte, and every file of the copy
+    /// that differs from the base is merged back: replaced where the root still holds what
+    /// the base holds, and three-way merged where another batch changed it.
+    // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+    // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+    // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+    #[test]
+    fn a_copy_of_the_root_merges_back_into_it() {
+        let fixture = Fixture::new();
+        fixture
+            .write("kept.txt", "one\n")
+            .write("gone.txt", "away\n")
+            .write("shared.txt", "a\nb\nc\n")
+            .write("elfie-requests/compile.log", "noise\n");
+        if !a_repository(&fixture) {
+            return;
+        }
+        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        let mirror = Mirror::take(&fixture.root, "x/y").expect("a copy of the root");
+        // Every file git lists is there byte for byte, under a name a file may have.
+        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        assert_eq!(fs::read_to_string(mirror.directory.join("kept.txt")).unwrap(), "one\n");
+        assert!(mirror.directory.ends_with("x-y"), "{:?}", mirror.directory);
+        // Nothing under elfie-requests is copied.
+        // @lfy def/cli/main.lfy:main#main:main:7663634e78e29f09bc9bfa3ec791667abf7a230354c0f31313bbe8cc7b4ecb9b
+        assert!(!mirror.directory.join("elfie-requests/compile.log").exists());
+        // The batch changes one file, adds one, and removes one.
+        fs::write(mirror.directory.join("kept.txt"), "two\n").unwrap();
+        fs::write(mirror.directory.join("added.txt"), "new\n").unwrap();
+        fs::write(mirror.directory.join("shared.txt"), "a\nb\nC\n").unwrap();
+        fs::remove_file(mirror.directory.join("gone.txt")).unwrap();
+        // Another batch changed shared.txt in the root meanwhile, elsewhere in the file.
+        fixture.write("shared.txt", "A\nb\nc\n");
+        let merged = mirror.merge(&fixture.root).expect("every file merges");
+        // The root still held what the base holds: it is replaced by the copy's, or removed.
+        // @lfy def/cli/main.lfy:main#main:main:17684978e617aff4e72859ceb7f5ff7d85e0c699112fcb5e5aa6d8fb18f2a390
+        assert_eq!(fixture.read("kept.txt"), "two\n");
+        assert_eq!(fixture.read("added.txt"), "new\n");
+        assert!(!fixture.root.join("gone.txt").exists());
+        // Another batch changed it: it is the three-way merge against the base.
+        // @lfy def/cli/main.lfy:main#main:main:909b9177e97f545e3adf99e7e4b6c8bbf1cadc9f0982c0a89695dc00cc474e8d
+        assert_eq!(fixture.read("shared.txt"), "A\nb\nC\n");
+        for path in ["added.txt", "gone.txt", "kept.txt", "shared.txt"] {
+            assert!(merged.contains(&path.to_string()), "{path} is not in {merged:?}");
+        }
+        // The copy goes once its work has reached the root.
+        // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+        mirror.remove();
+        assert!(!mirror.directory.exists());
+    }
+
+    /// A file that cannot be merged without a conflict merges nothing of the batch.
+    // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+    #[test]
+    fn a_file_that_cannot_be_merged_merges_nothing_of_the_batch() {
+        let fixture = Fixture::new();
+        fixture.write("shared.txt", "a\n").write("other.txt", "one\n");
+        if !a_repository(&fixture) {
+            return;
+        }
+        let mirror = Mirror::take(&fixture.root, "x").expect("a copy of the root");
+        fs::write(mirror.directory.join("shared.txt"), "mine\n").unwrap();
+        fs::write(mirror.directory.join("other.txt"), "two\n").unwrap();
+        // Another batch changed the same line of the same file.
+        fixture.write("shared.txt", "theirs\n");
+        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+        assert_eq!(mirror.merge(&fixture.root).unwrap_err(), "shared.txt");
+        // Nothing of the batch is merged, the file that did merge cleanly included.
+        // @lfy def/cli/main.lfy:main#main:main:2bc1b8e178c29a51b68a1d7757ec51effe3f4ee46c1f06a71ffe285c65d04366
+        assert_eq!(fixture.read("other.txt"), "one\n");
+        assert_eq!(fixture.read("shared.txt"), "theirs\n");
+    }
+
+    /// A batch running in a copy of the root runs the compiler and the verifier there, with
+    /// git reading the root's history, and its work reaches the root once it is done.
+    // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+    // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+    #[test]
+    fn a_batch_running_in_a_copy_merges_its_outputs_into_the_root() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED);
+        // The compiler writes its output and what git in the copy was pointed at.
+        // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+        fixture.write(
+            "compiler.sh",
+            "#!/bin/sh\ncat > /dev/null\nprintf '%s\\n' \"$GIT_DIR\" \"$GIT_WORK_TREE\" \"$ELFIE_ROOT\" > \"$ELFIE_ROOT/where.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho 'ELFIE: DONE'\n",
+        );
+        if !a_repository(&fixture) {
+            return;
+        }
+        // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+        assert_eq!(fixture.run(&["compile", "--jobs", "2"]), ExitCode::Success.code());
+        // Everything the batch wrote in its copy reached the root.
+        // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+        assert!(fixture.read("out/a.rs").contains("pub struct A"), "the output is in the root");
+        // GIT_DIR names the root's git directory and GIT_WORK_TREE the copy, which is also
+        // ELFIE_ROOT.
+        // @lfy def/cli/main.lfy:main#main:main:256d3040e99b1dbe822f8eb7b21d3d34f15faf77af0dc09bc5f7724644b6453b
+        let text = fixture.read("where.txt");
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines[0], git_directory(&fixture.root).unwrap().to_string_lossy(), "{text}");
+        assert_eq!(lines[1], lines[2], "{text}");
+        assert!(lines[1].contains("elfie-compile/cache/batches/a"), "{text}");
+        // The source maps are recorded in the root and the copy is removed.
+        // @lfy def/cli/main.lfy:main#main:main:32ec9ca39bc2ed83e058c8f7cf792dac4595e470dc4c4ccb73d2412d430942dc
+        assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("out/a.rs"));
+        assert!(!fixture.root.join("elfie-compile/cache/batches/a").exists(), "the copy is gone");
     }
 }
