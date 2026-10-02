@@ -1,10 +1,10 @@
 [
   {
     "dependencies": {
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "80eaa31eafa74101486c5d4b343ace5e727d3bb86b0829adb6a147bb66d5bfbb",
+    "generated": "2026-10-01T18:59:26Z",
+    "hash": "7ebf17845dcda61fc04e5a2b0147ff1c016114a354b275777ff9a3b6a784fce4",
     "markers": [
       {
         "column": null,
@@ -31,7 +31,7 @@
         "file": "def/grammar/terminals/space.lfy",
         "line": 3,
         "outputLine": 16,
-        "requirement": null
+        "requirement": "NewLine:NewLine:2f2c2654a21bda5af8b3afdf4da4bb63961c6466f9e29267a5f5ff945aebf400"
       },
       {
         "column": null,
@@ -53,17 +53,17 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/terminals/space.rs",
-    "requirements": "",
+    "requirements": "83b74e41d9cf59da6ba07a89f53200ae601a8294254a59b6b963b3415cc45892",
     "signature": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
     "source": "def/grammar/terminals/space.lfy",
     "target": "rust"
   },
   {
     "dependencies": {
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "80eaa31eafa74101486c5d4b343ace5e727d3bb86b0829adb6a147bb66d5bfbb",
+    "generated": "2026-10-01T18:59:26Z",
+    "hash": "7ebf17845dcda61fc04e5a2b0147ff1c016114a354b275777ff9a3b6a784fce4",
     "markers": [
       {
         "column": null,
@@ -185,9 +185,9 @@
       {
         "column": null,
         "end": 136,
-        "entity": null,
+        "entity": "appliedUntilNewLine",
         "file": "def/lexer/traits.lfy",
-        "line": 37,
+        "line": 34,
         "outputLine": 133,
         "requirement": null
       },
@@ -203,9 +203,9 @@
       {
         "column": null,
         "end": 141,
-        "entity": null,
+        "entity": "modeOpener",
         "file": "def/lexer/traits.lfy",
-        "line": 14,
+        "line": 12,
         "outputLine": 140,
         "requirement": null
       },
@@ -221,9 +221,9 @@
       {
         "column": null,
         "end": 150,
-        "entity": null,
+        "entity": "appliedUntilNewLine",
         "file": "def/lexer/traits.lfy",
-        "line": 37,
+        "line": 34,
         "outputLine": 149,
         "requirement": null
       },
@@ -349,7 +349,7 @@
         "end": 299,
         "entity": "NewLine",
         "file": "def/grammar/terminals/space.lfy",
-        "line": 4,
+        "line": 3,
         "outputLine": 298,
         "requirement": null
       },
@@ -365,7 +365,7 @@
       {
         "column": null,
         "end": 303,
-        "entity": null,
+        "entity": "body",
         "file": "def/grammar/traits.lfy",
         "line": 63,
         "outputLine": 302,
@@ -472,7 +472,7 @@
       },
       {
         "column": null,
-        "end": 583,
+        "end": 574,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
@@ -481,106 +481,115 @@
       },
       {
         "column": null,
-        "end": 648,
+        "end": 625,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 584,
+        "outputLine": 575,
         "requirement": null
       },
       {
         "column": null,
-        "end": 681,
+        "end": 690,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 649,
+        "outputLine": 626,
         "requirement": null
       },
       {
         "column": null,
-        "end": 727,
+        "end": 723,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 682,
+        "outputLine": 691,
         "requirement": null
       },
       {
         "column": null,
-        "end": 785,
+        "end": 769,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 728,
+        "outputLine": 724,
         "requirement": null
       },
       {
         "column": null,
-        "end": 823,
+        "end": 827,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 786,
+        "outputLine": 770,
         "requirement": null
       },
       {
         "column": null,
-        "end": 845,
+        "end": 865,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 824,
+        "outputLine": 828,
         "requirement": null
       },
       {
         "column": null,
-        "end": 867,
+        "end": 887,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 846,
+        "outputLine": 866,
         "requirement": null
       },
       {
         "column": null,
-        "end": 878,
+        "end": 909,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 868,
+        "outputLine": 888,
         "requirement": null
       },
       {
         "column": null,
-        "end": 931,
+        "end": 920,
+        "entity": "lex",
+        "file": "def/lexer/main.lfy",
+        "line": 19,
+        "outputLine": 910,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 973,
         "entity": "BlockDocumentationOpen",
         "file": "def/grammar/terminals/comment.lfy",
         "line": 11,
-        "outputLine": 879,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 971,
-        "entity": null,
-        "file": "def/lexer/traits.lfy",
-        "line": 37,
-        "outputLine": 932,
+        "outputLine": 921,
         "requirement": null
       },
       {
         "column": null,
         "end": 1013,
+        "entity": "appliedUntilNewLine",
+        "file": "def/lexer/traits.lfy",
+        "line": 34,
+        "outputLine": 974,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1055,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
         "line": 19,
-        "outputLine": 972,
+        "outputLine": 1014,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/lexer/mod.rs",
-    "requirements": "",
+    "requirements": "83b74e41d9cf59da6ba07a89f53200ae601a8294254a59b6b963b3415cc45892",
     "signature": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
     "source": "def/grammar/terminals/space.lfy",
     "target": "rust"

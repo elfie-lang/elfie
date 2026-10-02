@@ -371,11 +371,12 @@ pub fn phase_of(model: &Model, node: NodeRef) -> Phase {
     let mut at = Some(node);
     while let Some(current) = at {
         if runs_at_compile_time(model, current) {
-            return Phase::Compile; // @lfy def/interpret/main.lfy:phaseOf
+            // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
+            return Phase::Compile;
         }
         // A template reference or execution in a definition is read while binding, even
         // though the declaration it describes is kept.
-        // @lfy def/interpret/main.lfy:phaseOf
+        // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5357c505ea2cc6797f85156d4c4bba6d26483c5ab8599dbf3d34660ece727fa0
         if (model.is(current, E::TemplateReference) || model.is(current, E::TemplateExecution))
             && in_definition(model, current)
         {
@@ -383,7 +384,8 @@ pub fn phase_of(model: &Model, node: NodeRef) -> Phase {
         }
         at = model.parent(current);
     }
-    Phase::Runtime // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:656eff97dda857a15287ed1ec2a55aabe3f2b45859e9fd167fc4c667676ad6f8
+    Phase::Runtime
 }
 
 /// Whether this node itself is one of the compile-time forms.
@@ -938,6 +940,53 @@ impl<'m> Interpreter<'m> {
             _ => return None,
         };
         self.prelude_data(name)
+    }
+
+    /// Whether a method on a value is an operation of a data carrying [`BUILTIN`], which
+    /// the interpreter performs itself rather than calling anything: the dispatch is on the
+    /// trait, never on the name alone. A program that declares no data for the value, or no
+    /// `builtin` at all, says nothing against it.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    fn performs_operation(&self, receiver: &Interim, method: &str) -> bool {
+        let ty = match receiver {
+            Interim::String(_) => TypeRef::Primitive("string"),
+            Interim::Number(_) => TypeRef::Primitive("number"),
+            Interim::Bool(_) => TypeRef::Primitive("boolean"),
+            Interim::List(_) => TypeRef::List(Box::new(TypeRef::Unknown(String::new()))),
+            _ => return true,
+        };
+        let Some(data) = self.base_data(&ty) else {
+            return true;
+        };
+        self.carries_builtin(data) && member_symbol(self.model, data, method).is_some()
+    }
+
+    /// Whether a data carries [`BUILTIN`], or its declaration names it: the `is` clause of
+    /// a library data has not always run when a body of another file reaches one of its
+    /// operations, and the trait it names is what decides.
+    // @lfy def/interpret/main.lfy:expand
+    fn carries_builtin(&self, data: EntityId) -> bool {
+        let Some(marker) = self.model.trait_named(BUILTIN) else {
+            return true;
+        };
+        if self.model.entities[data].has_trait(marker) {
+            return true;
+        }
+        let Some(node) = self.model.entities[data].node else {
+            return false;
+        };
+        let holder = self.model.child(node, E::Declared).unwrap_or(node);
+        let Some(clause) = self.model.child(holder, E::IsClause) else {
+            return false;
+        };
+        self.model
+            .descendants(clause)
+            .into_iter()
+            .filter(|&r| self.model.is(r, E::TraitUse))
+            .any(|used| {
+                resolve_trait_use(self.model, used)
+                    .is_some_and(|symbol| self.model.symbols[symbol].entity == marker)
+            })
     }
 
     /// The type a node written in a type position stands for.
@@ -2224,8 +2273,8 @@ impl<'m> Interpreter<'m> {
         };
         // A `Current` with no member name is the scope's current entity, which at the top
         // level of a file is the anonymous entity for the file.
-        // @lfy def/interpret/main.lfy:expand
-        // @lfy def/interpret/main.lfy:expand
+        // @lfy def/interpret/main.lfy:expand#expand:expand:5ddd026bd03742daa5f34a2e30ff1b6ab27670eacf71e443c7b0c445922c7e8e
+        // @lfy def/interpret/main.lfy:expand#expand:expand:576ebb129d910a635135fcc553a89c1865cf0b4d5462f01824e88587cea3abc6
         let current = env.current;
         self.access(Interim::Entity(current), rule, name.as_deref(), env)
     }
@@ -2723,6 +2772,9 @@ impl<'m> Interpreter<'m> {
         env: &mut Env,
     ) -> Interim {
         let receiver = self.eval(left, env);
+        // An operation of a data carrying builtin is performed by the interpreter itself.
+        // @lfy def/interpret/main.lfy:expand
+        let native = self.performs_operation(&receiver, method);
         match (&receiver, method) {
             // An `add` call on the entity's context appends one criterion.
             // @lfy def/interpret/main.lfy:expand
@@ -2770,7 +2822,7 @@ impl<'m> Interpreter<'m> {
                 }
                 Interim::Undefined
             }
-            (Interim::List(items), "map") => {
+            (Interim::List(items), "map") if native => {
                 let Some(&first) = arguments.first() else {
                     return Interim::Undefined;
                 };
@@ -2782,7 +2834,7 @@ impl<'m> Interpreter<'m> {
                     .collect();
                 Interim::List(mapped)
             }
-            (Interim::List(items), "join") => {
+            (Interim::List(items), "join") if native => {
                 let separator = match arguments.first() {
                     Some(&argument) => self.eval(argument, env),
                     None => Interim::String(",".to_string()),
@@ -2791,7 +2843,7 @@ impl<'m> Interpreter<'m> {
                 let texts: Vec<String> = items.iter().map(|item| self.to_text(item)).collect();
                 Interim::String(texts.join(&separator))
             }
-            (Interim::List(items), "push") => {
+            (Interim::List(items), "push") if native => {
                 let mut items = items.clone();
                 for &argument in arguments {
                     let value = self.eval(argument, env);
@@ -2803,14 +2855,14 @@ impl<'m> Interpreter<'m> {
                 }
                 Interim::Number(length as f64)
             }
-            (Interim::List(items), "includes") => {
+            (Interim::List(items), "includes") if native => {
                 let needle = match arguments.first() {
                     Some(&argument) => self.eval(argument, env),
                     None => Interim::Undefined,
                 };
                 Interim::Bool(items.contains(&needle))
             }
-            (Interim::String(text), "includes") => {
+            (Interim::String(text), "includes") if native => {
                 let text = text.clone();
                 let needle = match arguments.first() {
                     Some(&argument) => self.eval(argument, env),
@@ -2818,8 +2870,10 @@ impl<'m> Interpreter<'m> {
                 };
                 Interim::Bool(text.contains(&self.to_text(&needle)))
             }
-            (Interim::String(text), "trim") => Interim::String(text.trim().to_string()),
-            (Interim::String(text), "split") => {
+            (Interim::String(text), "trim") if native => {
+                Interim::String(text.trim().to_string())
+            }
+            (Interim::String(text), "split") if native => {
                 let text = text.clone();
                 let separator = match arguments.first() {
                     Some(&argument) => self.eval(argument, env),
@@ -2923,7 +2977,7 @@ impl<'m> Interpreter<'m> {
                     self.eval(body, &mut inner)
                 }
             }
-            Interim::Entity(entity) => self.call_declared(call, *entity, values),
+            Interim::Entity(entity) => self.call_declared(call, *entity, values, env),
             Interim::Function(node, scope) => {
                 let (node, scope) = (*node, *scope);
                 let mut inner = env.clone();
@@ -2945,8 +2999,14 @@ impl<'m> Interpreter<'m> {
 
     /// Calls a declared fn or function. A fn carrying [`BUILTIN`] is performed natively and
     /// never run; a fn carrying nothing has criteria for a body and nothing to run.
-    // @lfy def/interpret/main.lfy:expand
-    fn call_declared(&mut self, call: NodeRef, entity: EntityId, values: Vec<Interim>) -> Interim {
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    fn call_declared(
+        &mut self,
+        call: NodeRef,
+        entity: EntityId,
+        values: Vec<Interim>,
+        env: &mut Env,
+    ) -> Interim {
         let EntityKind::Fn { agent, .. } = self.model.entities[entity].kind else {
             return self.only_at_runtime();
         };
@@ -2958,18 +3018,20 @@ impl<'m> Interpreter<'m> {
             .trait_named(BUILTIN)
             .is_some_and(|marker| self.model.entities[entity].has_trait(marker));
         if agent {
-            // A call of a fn not carrying builtin has nothing to run.
+            // A fn carrying builtin is performed natively, so compile-time code may call
+            // one; a call of a fn carrying none has nothing to run.
             // @lfy def/interpret/main.lfy:expand
-            if !builtin {
-                let name = self.model.entities[entity]
-                    .identifier
-                    .clone()
-                    .unwrap_or_else(|| "a fn".to_string());
-                self.problem(
-                    call,
-                    format!("{name} is a fn whose body is criteria, so the call has nothing to run"),
-                );
+            if builtin {
+                return self.perform_builtin(call, entity, &values, env);
             }
+            let name = self.model.entities[entity]
+                .identifier
+                .clone()
+                .unwrap_or_else(|| "a fn".to_string());
+            self.problem(
+                call,
+                format!("{name} is a fn whose body is criteria, so the call has nothing to run"),
+            );
             return self.only_at_runtime();
         }
         // A written function runs only for compile-time code; runtime code keeps the call.
@@ -2995,6 +3057,163 @@ impl<'m> Interpreter<'m> {
         };
         self.exec_code(body, &mut inner);
         inner.ret.unwrap_or(Interim::Undefined)
+    }
+
+    // ---- The builtins the interpreter performs --------------------------------------
+
+    /// Performs a builtin fn itself, as the target's own standard library performs it:
+    /// compile-time code may call one, and nothing of its body is ever run. Runtime code
+    /// keeps the call, so folding a runtime expression never reads a file, runs a command,
+    /// or ends the process.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    fn perform_builtin(
+        &mut self,
+        call: NodeRef,
+        entity: EntityId,
+        values: &[Interim],
+        env: &mut Env,
+    ) -> Interim {
+        if !self.runs_functions && phase_of(self.model, call) != Phase::Compile {
+            return self.only_at_runtime();
+        }
+        let Some((module, name)) = self.native_name(entity) else {
+            return self.only_at_runtime();
+        };
+        let performed = match module.as_str() {
+            "file" => perform_file(&name, values),
+            "json" => perform_json(&name, values),
+            "time" => perform_time(&name, values),
+            "process" => self.perform_process(call, &name, values, env),
+            "trait" if name == "apply" => self.perform_apply(call, values, env),
+            _ => None,
+        };
+        // A builtin the interpreter has no native for reads as what only runtime answers.
+        // @lfy def/interpret/main.lfy:expand
+        performed.unwrap_or_else(|| self.only_at_runtime())
+    }
+
+    /// The library module and name of a builtin fn: `("file", "read")` for the `read` of
+    /// `elfie/system/file`. A fn of the program is none of them, however it is named.
+    // @lfy def/interpret/main.lfy:expand
+    fn native_name(&self, entity: EntityId) -> Option<(String, String)> {
+        let node = self.model.entities[entity].node?;
+        let source = &self.model.sources[node.file];
+        if source.origin == Origin::Program {
+            return None;
+        }
+        let module = source
+            .path
+            .rsplit(['/', '\\'])
+            .next()?
+            .strip_suffix(".lfy")?
+            .to_string();
+        Some((module, self.model.entities[entity].identifier.clone()?))
+    }
+
+    /// The builtins of `elfie/system/process`: a command runs through the platform shell.
+    // @lfy def/interpret/main.lfy:expand
+    fn perform_process(
+        &mut self,
+        call: NodeRef,
+        name: &str,
+        values: &[Interim],
+        env: &mut Env,
+    ) -> Option<Interim> {
+        match name {
+            "run" | "stream" => {
+                let exited = run_command(
+                    &text_argument(values, 0)?,
+                    text_argument(values, 1),
+                    text_argument(values, 2),
+                    values.get(3),
+                );
+                // Each line of the output reaches `onLine` before the call returns.
+                // @lfy def/interpret/main.lfy:expand
+                if name == "stream"
+                    && let Some(on_line) = values.get(4)
+                    && !matches!(on_line, Interim::Undefined | Interim::Null)
+                {
+                    let on_line = on_line.clone();
+                    for (text, is_error) in
+                        [(exited.stdout.clone(), false), (exited.stderr.clone(), true)]
+                    {
+                        for line in text.lines() {
+                            let arguments =
+                                vec![Interim::String(line.to_string()), Interim::Bool(is_error)];
+                            self.call_value(call, &on_line, arguments, env);
+                        }
+                    }
+                }
+                Some(Interim::Object(vec![
+                    ("code".to_string(), Interim::Number(f64::from(exited.code))),
+                    ("stdout".to_string(), Interim::String(exited.stdout)),
+                    ("stderr".to_string(), Interim::String(exited.stderr)),
+                ]))
+            }
+            "environment" => Some(
+                std::env::var(text_argument(values, 0)?).map_or(Interim::Undefined, Interim::String),
+            ),
+            "currentDirectory" => Some(
+                std::env::current_dir()
+                    .map(|directory| directory.to_string_lossy().replace('\\', "/"))
+                    .map_or(Interim::Undefined, Interim::String),
+            ),
+            // The process ends at once, its output flushed, and nothing after the call runs.
+            // @lfy def/interpret/main.lfy:expand
+            "exit" => {
+                let code = match values.first() {
+                    Some(Interim::Number(code)) => *code as i32,
+                    _ => 0,
+                };
+                let _ = std::io::Write::flush(&mut std::io::stdout());
+                let _ = std::io::Write::flush(&mut std::io::stderr());
+                std::process::exit(code)
+            }
+            "isTerminal" => {
+                use std::io::IsTerminal;
+                Some(Interim::Bool(match values.first() {
+                    Some(Interim::Bool(true)) => std::io::stderr().is_terminal(),
+                    _ => std::io::stdout().is_terminal(),
+                }))
+            }
+            _ => None,
+        }
+    }
+
+    /// `apply` called as a fn rather than as a member of a trait: the trait is applied to
+    /// what the second argument names, with the rest as [`Applied::arguments`].
+    // @lfy def/interpret/main.lfy:expand
+    fn perform_apply(
+        &mut self,
+        call: NodeRef,
+        values: &[Interim],
+        env: &mut Env,
+    ) -> Option<Interim> {
+        let Some(&Interim::Entity(trait_id)) = values.first() else {
+            return None;
+        };
+        if !self.model.entities[trait_id].is_trait() {
+            return None;
+        }
+        if env.dry {
+            return Some(Interim::Entity(trait_id));
+        }
+        let nodes = self.model.arguments(call);
+        let target = *nodes.get(1)?;
+        let rest = nodes.get(2..).unwrap_or_default().to_vec();
+        let receivers = self.apply_receivers(target, env);
+        let arguments = self.eval_arguments(&rest, env);
+        for receiver in receivers {
+            self.apply_trait(
+                receiver,
+                trait_id,
+                rest.clone(),
+                arguments.clone(),
+                AppliedSource::Apply(call),
+                false,
+            );
+        }
+        Some(Interim::Entity(trait_id))
     }
 
     // ---- Criteria and tests ---------------------------------------------------------
@@ -3303,7 +3522,7 @@ impl<'m> Interpreter<'m> {
 
     /// The [`Prompted`] a call of `like` on an entity's context stands for, when the node is
     /// one.
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:1b8998ed21283dddfecd045cb1ee1d2c46c6a9ab9d55452d0805a7b6da098491
     fn prompted_of(&mut self, r: NodeRef, env: &mut Env) -> Option<Prompted> {
         if !self.model.is(r, E::Call) {
             return None;
@@ -3364,6 +3583,346 @@ impl<'m> Interpreter<'m> {
             return None;
         }
         self.value_of(&value).map(Evaluated::Value)
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// The builtins the interpreter performs
+// ---------------------------------------------------------------------------------------
+
+/// The text an argument holds, when it holds text.
+// @lfy def/interpret/main.lfy:expand
+fn text_argument(values: &[Interim], at: usize) -> Option<String> {
+    match values.get(at) {
+        Some(Interim::String(text)) => Some(text.clone()),
+        _ => None,
+    }
+}
+
+/// The builtins of `elfie/system/file`, performed as `std::fs` performs them.
+// @lfy def/interpret/main.lfy:expand
+fn perform_file(name: &str, values: &[Interim]) -> Option<Interim> {
+    let path = text_argument(values, 0)?;
+    let at = std::path::Path::new(&path);
+    Some(match name {
+        "read" => match std::fs::read_to_string(at) {
+            Ok(text) => Interim::String(text),
+            Err(_) => Interim::Undefined,
+        },
+        "write" | "append" => {
+            let text = text_argument(values, 1).unwrap_or_default();
+            Interim::Bool(write_file(at, &text, name == "append"))
+        }
+        "exists" => Interim::Bool(at.exists()),
+        "list" => {
+            let recursive = matches!(values.get(1), Some(Interim::Bool(true)));
+            Interim::List(
+                list_files(at, recursive)
+                    .into_iter()
+                    .map(Interim::String)
+                    .collect(),
+            )
+        }
+        "createDirectory" => {
+            let _ = std::fs::create_dir_all(at);
+            Interim::Bool(at.is_dir())
+        }
+        "stat" => match std::fs::metadata(at) {
+            Ok(about) => {
+                let size = if about.is_dir() { 0 } else { about.len() };
+                Interim::Object(vec![
+                    ("size".to_string(), Interim::Number(size as f64)),
+                    (
+                        "modified".to_string(),
+                        Interim::Number(seconds_of(about.modified().ok())),
+                    ),
+                    ("isDirectory".to_string(), Interim::Bool(about.is_dir())),
+                ])
+            }
+            Err(_) => Interim::Undefined,
+        },
+        // Only a file is ever removed, so a directory is left alone.
+        // @lfy def/interpret/main.lfy:expand
+        "remove" => Interim::Bool(at.is_file() && std::fs::remove_file(at).is_ok()),
+        _ => return None,
+    })
+}
+
+/// Writes text as the whole content of a file, or after what it holds, creating every
+/// missing directory above it; whether it was written.
+// @lfy def/interpret/main.lfy:expand
+fn write_file(path: &std::path::Path, text: &str, append: bool) -> bool {
+    if let Some(directory) = path.parent()
+        && !directory.as_os_str().is_empty()
+        && std::fs::create_dir_all(directory).is_err()
+    {
+        return false;
+    }
+    if !append {
+        return std::fs::write(path, text).is_ok();
+    }
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .and_then(|mut file| std::io::Write::write_all(&mut file, text.as_bytes()))
+        .is_ok()
+}
+
+/// The files in a directory, as paths relative to it with `/` between the segments, in
+/// ascending text order; directories are not listed.
+// @lfy def/interpret/main.lfy:expand
+fn list_files(directory: &std::path::Path, recursive: bool) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return found;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Ok(kind) = entry.file_type() else { continue };
+        if !kind.is_dir() {
+            found.push(name);
+        } else if recursive {
+            for under in list_files(&entry.path(), true) {
+                found.push(format!("{name}/{under}"));
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+/// A moment as seconds since the Unix epoch, to the millisecond.
+// @lfy def/interpret/main.lfy:expand
+fn seconds_of(time: Option<std::time::SystemTime>) -> f64 {
+    time.and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0.0, |since| since.as_millis() as f64 / 1000.0)
+}
+
+/// The builtins of `elfie/system/time`: an instant is seconds since the Unix epoch, to the
+/// millisecond, which is what `std::time::SystemTime` holds.
+// @lfy def/interpret/main.lfy:expand
+fn perform_time(name: &str, values: &[Interim]) -> Option<Interim> {
+    match name {
+        "now" => Some(Interim::Number(seconds_of(Some(
+            std::time::SystemTime::now(),
+        )))),
+        "parse" => Some(
+            text_argument(values, 0)
+                .and_then(|text| instant_of(&text))
+                .map_or(Interim::Undefined, Interim::Number),
+        ),
+        _ => None,
+    }
+}
+
+/// The instant an RFC 3339 timestamp names, as seconds since the Unix epoch with its
+/// fraction kept to the millisecond; nothing when the text is not one.
+// @lfy def/interpret/main.lfy:expand
+fn instant_of(text: &str) -> Option<f64> {
+    let text = text.trim();
+    let seconds = crate::generation::parse_rfc3339(text)? as f64;
+    let fraction = text
+        .get(19..)
+        .and_then(|rest| rest.strip_prefix('.'))
+        .map_or(0.0, |rest| {
+            let mut digits: String = rest
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .take(3)
+                .collect();
+            while digits.len() < 3 {
+                digits.push('0');
+            }
+            digits.parse::<f64>().unwrap_or(0.0) / 1000.0
+        });
+    Some(seconds + fraction)
+}
+
+/// The builtins of `elfie/system/json`: what JSON text carries, and the text carrying a
+/// value, its keys in the order they were written.
+// @lfy def/interpret/main.lfy:expand
+fn perform_json(name: &str, values: &[Interim]) -> Option<Interim> {
+    match name {
+        "parse" => Some(
+            text_argument(values, 0)
+                .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+                .map_or(Interim::Undefined, |held| json_value(&held)),
+        ),
+        "stringify" => {
+            let pretty = matches!(values.get(1), Some(Interim::Bool(true)));
+            let text = json_text(values.first().unwrap_or(&Interim::Null), pretty, 0);
+            Some(Interim::String(match pretty {
+                true => format!("{text}\n"),
+                false => text,
+            }))
+        }
+        _ => None,
+    }
+}
+
+/// What a JSON value holds.
+// @lfy def/interpret/main.lfy:expand
+fn json_value(value: &serde_json::Value) -> Interim {
+    match value {
+        serde_json::Value::Null => Interim::Null,
+        serde_json::Value::Bool(held) => Interim::Bool(*held),
+        serde_json::Value::Number(held) => Interim::Number(held.as_f64().unwrap_or_default()),
+        serde_json::Value::String(held) => Interim::String(held.clone()),
+        serde_json::Value::Array(items) => Interim::List(items.iter().map(json_value).collect()),
+        serde_json::Value::Object(entries) => Interim::Object(
+            entries
+                .iter()
+                .map(|(key, held)| (key.clone(), json_value(held)))
+                .collect(),
+        ),
+    }
+}
+
+/// A value as JSON text: on one line with no spaces outside strings, or one entry or item
+/// per line indented by two spaces per level, with an empty object or list on one line.
+// @lfy def/interpret/main.lfy:expand
+fn json_text(value: &Interim, pretty: bool, depth: usize) -> String {
+    let (open, close, after) = match pretty {
+        true => (
+            format!("\n{}", "  ".repeat(depth + 1)),
+            format!("\n{}", "  ".repeat(depth)),
+            " ",
+        ),
+        false => (String::new(), String::new(), ""),
+    };
+    let between = format!(",{open}");
+    match value {
+        Interim::Bool(held) => held.to_string(),
+        Interim::Number(held) => json_number(*held),
+        Interim::String(text) => json_string(text),
+        Interim::List(items) if !items.is_empty() => {
+            let written: Vec<String> = items
+                .iter()
+                .map(|item| json_text(item, pretty, depth + 1))
+                .collect();
+            format!("[{open}{}{close}]", written.join(&between))
+        }
+        Interim::List(_) => "[]".to_string(),
+        Interim::Object(pairs) if !pairs.is_empty() => {
+            let written: Vec<String> = pairs
+                .iter()
+                .map(|(key, held)| {
+                    let held = json_text(held, pretty, depth + 1);
+                    format!("{}:{after}{held}", json_string(key))
+                })
+                .collect();
+            format!("{{{open}{}{close}}}", written.join(&between))
+        }
+        Interim::Object(_) => "{}".to_string(),
+        _ => "null".to_string(),
+    }
+}
+
+/// A number as JSON spells it: a whole number without a fraction, and nothing JSON cannot
+/// carry as null.
+// @lfy def/interpret/main.lfy:expand
+fn json_number(number: f64) -> String {
+    if !number.is_finite() {
+        return "null".to_string();
+    }
+    if number.fract() == 0.0 && number.abs() < 1e15 {
+        return format!("{number:.0}");
+    }
+    number.to_string()
+}
+
+/// Text quoted with the escapes JSON requires and no others.
+// @lfy def/interpret/main.lfy:expand
+fn json_string(text: &str) -> String {
+    let mut quoted = String::from("\"");
+    for character in text.chars() {
+        match character {
+            '"' => quoted.push_str("\\\""),
+            '\\' => quoted.push_str("\\\\"),
+            '\n' => quoted.push_str("\\n"),
+            '\r' => quoted.push_str("\\r"),
+            '\t' => quoted.push_str("\\t"),
+            '\u{8}' => quoted.push_str("\\b"),
+            '\u{c}' => quoted.push_str("\\f"),
+            held if held < ' ' => quoted.push_str(&format!("\\u{:04x}", held as u32)),
+            held => quoted.push(held),
+        }
+    }
+    quoted.push('"');
+    quoted
+}
+
+/// What a finished command left: its code, and everything it wrote.
+// @lfy def/interpret/main.lfy:expand
+struct Exited {
+    code: i32,
+    stdout: String,
+    stderr: String,
+}
+
+/// Runs a command through the platform shell and waits for it, capturing its output whole.
+// @lfy def/interpret/main.lfy:expand
+fn run_command(
+    command: &str,
+    input: Option<String>,
+    directory: Option<String>,
+    environment: Option<&Interim>,
+) -> Exited {
+    let (program, flag) = match cfg!(windows) {
+        true => ("cmd", "/C"),
+        false => ("sh", "-c"),
+    };
+    let mut started = std::process::Command::new(program);
+    started.arg(flag).arg(command);
+    if let Some(directory) = directory {
+        started.current_dir(directory);
+    }
+    // Each entry is set on top of the inherited environment; nothing is removed from it.
+    // @lfy def/interpret/main.lfy:expand
+    if let Some(Interim::Object(pairs)) = environment {
+        for (name, value) in pairs {
+            started.env(name, plain_text(value));
+        }
+    }
+    started
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    // The shell could not be started, or the directory is not there.
+    // @lfy def/interpret/main.lfy:expand
+    let failed = |message: String| Exited {
+        code: -1,
+        stdout: String::new(),
+        stderr: message,
+    };
+    let mut child = match started.spawn() {
+        Ok(child) => child,
+        Err(failure) => return failed(failure.to_string()),
+    };
+    if let Some(mut pipe) = child.stdin.take()
+        && let Some(input) = input
+    {
+        let _ = std::io::Write::write_all(&mut pipe, input.as_bytes());
+    }
+    match child.wait_with_output() {
+        Ok(output) => Exited {
+            code: output.status.code().unwrap_or(-1),
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        },
+        Err(failure) => failed(failure.to_string()),
+    }
+}
+
+/// A value as the text an environment variable holds.
+// @lfy def/interpret/main.lfy:expand
+fn plain_text(value: &Interim) -> String {
+    match value {
+        Interim::String(text) => text.clone(),
+        Interim::Number(number) => json_number(*number),
+        Interim::Bool(held) => held.to_string(),
+        _ => String::new(),
     }
 }
 
@@ -3743,7 +4302,7 @@ impl<'m> Lowering<'m> {
 
     /// Lowers every criterion and every test of every entity, once, and sorts each into the
     /// place it belongs: a global one into the program, a local one under its entity.
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:c01b0e65b21560f5c563ce3522ded34903a0bf1bae01f842d10d701f22cbe3ec
     fn take_requirements(&mut self) {
         let global = self.model().global;
         let mut criteria: Vec<LoweredCriterion> = Vec::new();
@@ -3760,7 +4319,7 @@ impl<'m> Lowering<'m> {
             for criterion in own {
                 // A criterion of a target's marker, or of a trait it extends, is guidance
                 // for that target and no criterion of the program.
-                // @lfy def/interpret/main.lfy:lower
+                // @lfy def/interpret/main.lfy:lower#lower:lower:d8ffa57b2b30840df0952e5ea8d4ffe0335f558885ee6ac4d4f91f3047c0edc8
                 if self.guidance.contains(&criterion.contributor) {
                     continue;
                 }
@@ -3788,7 +4347,7 @@ impl<'m> Lowering<'m> {
             match criterion.scope {
                 // A global criterion is in the program once, with global in its id and no
                 // entity, and in no node or file.
-                // @lfy def/interpret/main.lfy:lower
+                // @lfy def/interpret/main.lfy:lower#lower:lower:8b72d813b6781ac6a5965eeefda77688fb7586238258b0ef7bbfaf22db866dd6
                 RequirementScope::Global => self.global_criteria.push(criterion),
                 RequirementScope::Local => {
                     let entity = criterion.entity.expect("a local criterion is for an entity");
@@ -3800,7 +4359,7 @@ impl<'m> Lowering<'m> {
             match case.scope {
                 // A global test is in the program once, with global in its id and no
                 // entity, and in no node or file.
-                // @lfy def/interpret/main.lfy:lower
+                // @lfy def/interpret/main.lfy:lower#lower:lower:699284343b9ef81cb11db5668663aac649e418507ad5cea495ddceee254e4d43
                 RequirementScope::Global => self.global_tests.push(case),
                 RequirementScope::Local => {
                     let entity = case.entity.expect("a local test is for an entity");
@@ -3984,7 +4543,7 @@ impl<'m> Lowering<'m> {
     fn lower_node(&mut self, r: NodeRef) -> Option<LoweredNode> {
         // A node whose phase is compile has no lowered node, and neither does anything
         // inside it; nor does an expression statement whose expression runs at compile time.
-        // @lfy def/interpret/main.lfy:lower
+        // @lfy def/interpret/main.lfy:lower#lower:lower:3dd593ebd9e4eded0e675a008bfbb128a421d899ec79d8273982fb718148de70
         if self.is_dropped(r) {
             return None;
         }
@@ -4042,15 +4601,15 @@ impl<'m> Lowering<'m> {
         });
         // A kept declaration of an entity with members has one child node per member, in
         // member order, after its other kept children.
-        // @lfy def/interpret/main.lfy:lower
+        // @lfy def/interpret/main.lfy:lower#lower:lower:5531392df6668cb6852deb49090314e7229171d099b764df568cd918c1eeb2c0
         if let Some(entity) = entity {
             for member in self.member_nodes(entity, r) {
                 children.push(LoweredChild::Node(member));
             }
         }
         // A criterion or a test for the entity a node declares joins that node.
-        // @lfy def/interpret/main.lfy:lower
-        // @lfy def/interpret/main.lfy:lower
+        // @lfy def/interpret/main.lfy:lower#lower:lower:8ae967486c3764064704fd7f57756f5f55bfb6c3e2550eab46a24b06e02c3040
+        // @lfy def/interpret/main.lfy:lower#lower:lower:8b962cee67dcd0e481fc64461f7e97a28f49d8736c64ea75d7bf8661cbbaeb0b
         let is_file = self.model().is(r, F::SourceFile);
         let criteria = match entity {
             Some(entity) if !is_file => self.criteria.remove(&entity).unwrap_or_default(),
@@ -4112,8 +4671,8 @@ impl<'m> Lowering<'m> {
             let declared = self.model().symbols[member].node;
             // The origin is the statement that declared the member, which for a member a
             // trait added is the statement in the trait's file.
-            // @lfy def/interpret/main.lfy:lower
-            // @lfy def/interpret/main.lfy:lower
+            // @lfy def/interpret/main.lfy:lower#lower:lower:5531392df6668cb6852deb49090314e7229171d099b764df568cd918c1eeb2c0
+            // @lfy def/interpret/main.lfy:lower#lower:lower:dfcda962889085ca36762f22b94e05974c5cc36a48a79b45284c3938ccfe0bb5
             let origin = statement_of(self.model(), declared);
             let held = self.model().symbols[member].entity;
             // A member written as a key of a type or of an enum is that key; one written as
@@ -4142,7 +4701,7 @@ impl<'m> Lowering<'m> {
     // @lfy def/interpret/main.lfy:lower
     fn check_statement(&mut self, r: NodeRef) {
         // A file-level `let` is not allowed, and it is kept.
-        // @lfy def/interpret/main.lfy:lower
+        // @lfy def/interpret/main.lfy:lower#lower:lower:c89173885cbe173a76e8a9a59310d5e69174bce617247c866b7d675aeeb308e2
         if self.model().is(r, S::VariableDeclaration)
             && self.model().has_token(r, K::LetKeyword)
             && self
@@ -4160,7 +4719,7 @@ impl<'m> Lowering<'m> {
         // lowered node, and the function is named, because its body is empty at runtime. A
         // function inside an `ace` never reaches here: the `ace` runs at compile time, so
         // nothing inside it is lowered at all.
-        // @lfy def/interpret/main.lfy:lower
+        // @lfy def/interpret/main.lfy:lower#lower:lower:00e39d7f5a1344853aca9ae87cbbddc75d827ce2cde7fc89742f1aa0a73ffbb4
         if self.model().is(r, S::FunctionDeclaration)
             && let Some(block) = self.model().child(r, S::Block)
         {
@@ -4522,6 +5081,58 @@ mod tests {
         vec![entity, values, main]
     }
 
+    /// A prelude of the builtins the interpreter performs natively: the trait one carries,
+    /// and the fns of `elfie/system` a test calls.
+    fn natives() -> Vec<Source> {
+        let builtin = source(
+            "lib/prelude/builtin.lfy",
+            "trait builtin: `Performed by the compiler` {}",
+            &[],
+            Origin::Library,
+        );
+        let json = source(
+            "lib/system/json.lfy",
+            "use \"../prelude/builtin\";\n\
+             fn parse(text: string) is builtin: `What JSON text carries` => object | undefined;\n\
+             fn stringify(value: object, pretty: boolean = false) is builtin: \
+             `JSON text carrying a value` => string;\n",
+            &[Some("lib/prelude/builtin.lfy")],
+            Origin::Library,
+        );
+        let file = source(
+            "lib/system/file.lfy",
+            "use \"../prelude/builtin\";\n\
+             fn read(path: string) is builtin: `The text of a file` => string | undefined;\n\
+             fn write(path: string, text: string) is builtin: `Whether text was written` \
+             => boolean;\n\
+             fn exists(path: string) is builtin: `Whether something is at a path` => boolean;\n",
+            &[Some("lib/prelude/builtin.lfy")],
+            Origin::Library,
+        );
+        let process = source(
+            "lib/system/process.lfy",
+            "use \"../prelude/builtin\";\n\
+             fn run(command: string) is builtin: `Runs a command and waits for it` => object;\n\
+             fn environment(name: string) is builtin: `The value of a variable` \
+             => string | undefined;\n",
+            &[Some("lib/prelude/builtin.lfy")],
+            Origin::Library,
+        );
+        let main = source(
+            "lib/main.lfy",
+            "use \"./prelude/builtin\";\nuse \"./system/json\";\n\
+             use \"./system/file\";\nuse \"./system/process\";\n",
+            &[
+                Some("lib/prelude/builtin.lfy"),
+                Some("lib/system/json.lfy"),
+                Some("lib/system/file.lfy"),
+                Some("lib/system/process.lfy"),
+            ],
+            Origin::Prelude,
+        );
+        vec![builtin, json, file, process, main]
+    }
+
     /// The prelude, then one file `a.lfy` of the program.
     fn bound_with_prelude(text: &str) -> Model {
         let mut sources = prelude();
@@ -4657,7 +5268,7 @@ mod tests {
 
     // ---- phaseOf -------------------------------------------------------------------
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:d1a7b512063223093fa8bd37dc638be9314f0156dd8d79a4cf80859273b61c2a
     #[test]
     fn a_trait_declaration_runs_at_compile_time() {
         let model = bound("trait t {}\n");
@@ -4665,7 +5276,7 @@ mod tests {
         assert_eq!(phase_of(&model, declaration), Phase::Compile);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:18bed760f0d522c88d3e7716bb2d269bdb11b37a55d0d21f716a1eb4c22a2ae3
     #[test]
     fn a_statement_directly_in_a_file_that_declares_nothing_runs_at_compile_time() {
         let model = bound("trait scoped {}\nd SourceFile {}\nscoped.apply(SourceFile);\n");
@@ -4677,7 +5288,7 @@ mod tests {
         assert_eq!(phase_of(&model, call), Phase::Compile);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:c97e9f5136290c1e11a2756a6ba9e7ca228e99d5b6985ad7ea51c45b628a9249
     #[test]
     fn the_body_of_a_written_function_is_kept_for_runtime() {
         let model = bound("function f() -> number {\n  return 1;\n}\n");
@@ -4688,7 +5299,7 @@ mod tests {
         assert_eq!(phase_of(&model, declaration), Phase::Runtime);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:91de1d9e717023c54a963aa58631c2ee9d223c44cbf41ccbf14570dbd4ebbb86
     #[test]
     fn a_where_runs_at_compile_time() {
         let model = bound("fn f() => number {\n  where (`a`) -> `b`;\n}\n");
@@ -4699,7 +5310,7 @@ mod tests {
         assert_eq!(phase_of(&model, declaration), Phase::Runtime);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:3e3bc11466542f33b6a34c37871336e917685651122b0fb123a4f7b811c4de89
     #[test]
     fn a_file_level_const_is_runtime() {
         let model = bound("const c = 1;\n");
@@ -4707,7 +5318,7 @@ mod tests {
         assert_eq!(phase_of(&model, declaration), Phase::Runtime);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
     #[test]
     fn the_body_of_a_data_and_the_clauses_of_a_declaration_run_at_compile_time() {
         let model = bound("trait t {}\nd A is t {\n  $x: `A member` = string;\n}\n");
@@ -4720,7 +5331,7 @@ mod tests {
         assert_eq!(phase_of(&model, member), Phase::Compile);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
     #[test]
     fn an_extends_clause_an_ace_and_a_with_run_at_compile_time() {
         let model = bound(
@@ -4736,7 +5347,7 @@ mod tests {
         assert_eq!(phase_of(&model, held), Phase::Compile);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
     #[test]
     fn a_call_of_add_on_criteria_and_of_test_on_a_context_run_at_compile_time() {
         let model = bound(
@@ -4759,7 +5370,7 @@ mod tests {
         }
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5357c505ea2cc6797f85156d4c4bba6d26483c5ab8599dbf3d34660ece727fa0
     #[test]
     fn a_template_reference_in_a_definition_runs_at_compile_time() {
         let model = bound("d A {}\nfunction f(): `Reads [[A]]` -> number {\n  return 1;\n}\n");
@@ -4772,7 +5383,7 @@ mod tests {
 
     // ---- expand --------------------------------------------------------------------
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:d2cc081cb564b1648825d86ca4a9c1ac0367fd6b11ab493532a0570be1c2f407
     #[test]
     fn a_trait_declared_after_the_entity_that_carries_it_is_still_applied() {
         let model = declared(vec![source(
@@ -4793,7 +5404,7 @@ mod tests {
         assert!(model.problems.is_empty(), "{:?}", model.problems);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:716ff802438c96c806d453fed8dac48ff9d8794d4fbc780a0a982666df45fa7b
     #[test]
     fn reading_what_a_trait_was_applied_to_waits_for_every_file_that_can_apply_it() {
         let a = source(
@@ -4824,7 +5435,7 @@ mod tests {
         assert!(model.problems.is_empty(), "{:?}", model.problems);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:a553d1617c777bb329d3e59b4063f9acee7795a53ddf5cc2ec6afbc82796fe71
     #[test]
     fn a_call_of_a_fn_that_carries_no_builtin_has_nothing_to_run() {
         let model = declared(vec![source(
@@ -4848,7 +5459,98 @@ mod tests {
         assert_eq!(evaluate(&mut model, value), None);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    #[test]
+    fn a_compile_time_call_of_a_fn_carrying_builtin_is_performed_natively() {
+        let directory = std::env::temp_dir().join("elfie-interpret-builtins");
+        std::fs::create_dir_all(&directory).expect("a directory to write in");
+        let path = directory
+            .join("hello.txt")
+            .to_string_lossy()
+            .replace('\\', "/");
+        let program = format!(
+            "ace const written = write(\"{path}\", \"hello\");\n\
+             ace const back = read(\"{path}\");\n\
+             ace const missing = read(\"{path}.none\");\n\
+             ace const there = exists(\"{path}\");\n\
+             ace const json = stringify(parse('{{\"a\": [1, 2]}}'));\n\
+             ace const shell = run(\"echo hi\").stdout;\n\
+             ace const variable = environment(\"PATH\");\n"
+        );
+        let mut sources = natives();
+        sources.push(source("a.lfy", &program, &[], Origin::Program));
+        let mut model = expand(declared(sources));
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let file = model.file("a.lfy").expect("the program file");
+        let values: Vec<NodeRef> = (0..7)
+            .map(|at| value_of(&model, nth(&model, file, S::VariableDeclaration, at)))
+            .collect();
+        let text = |held: &str| Some(Evaluated::Value(Value::String(held.to_string())));
+        let truth = Some(Evaluated::Value(Value::Boolean(true)));
+        assert_eq!(evaluate(&mut model, values[0]), truth, "write");
+        assert_eq!(evaluate(&mut model, values[1]), text("hello"), "read");
+        assert_eq!(
+            evaluate(&mut model, values[2]),
+            Some(Evaluated::Value(Value::Undefined)),
+            "read of nothing"
+        );
+        assert_eq!(evaluate(&mut model, values[3]), truth, "exists");
+        assert_eq!(
+            evaluate(&mut model, values[4]),
+            text("{\"a\":[1,2]}"),
+            "parse and stringify"
+        );
+        assert_eq!(evaluate(&mut model, values[5]), text("hi\n"), "run");
+        assert_eq!(
+            evaluate(&mut model, values[6]),
+            std::env::var("PATH").ok().map(|held| {
+                Evaluated::Value(Value::String(held))
+            }),
+            "environment"
+        );
+        let _ = std::fs::remove_dir_all(&directory);
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    #[test]
+    fn an_operation_is_performed_natively_only_when_its_data_carries_builtin() {
+        // The dispatch is on the trait the data carries, never on the method's name alone.
+        let performed = |carries: &str| -> Option<Evaluated> {
+            let values = source(
+                "lib/values/base.lfy",
+                &format!(
+                    "trait builtin: `Performed by the compiler` {{}}\n\
+                     d List<T> {carries}{{ $join: `The items' text` \
+                     = (separator: string) => string; }}\n"
+                ),
+                &[],
+                Origin::Library,
+            );
+            let main = source(
+                "lib/main.lfy",
+                "use \"./values/base\";",
+                &[Some("lib/values/base.lfy")],
+                Origin::Prelude,
+            );
+            let program = source(
+                "a.lfy",
+                "ace const joined = [1, 2].join(\"-\");\n",
+                &[],
+                Origin::Program,
+            );
+            let mut model = expand(declared(vec![values, main, program]));
+            let file = model.file("a.lfy").expect("the program file");
+            let value = value_of(&model, first(&model, file, S::VariableDeclaration));
+            evaluate(&mut model, value)
+        };
+        assert_eq!(
+            performed("is builtin "),
+            Some(Evaluated::Value(Value::String("1-2".to_string())))
+        );
+        assert_eq!(performed(""), None);
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:82b5f25deec0f90b1cfe1847e819fd73582a51646773e2693334521a26f2a022
     #[test]
     fn a_trait_applied_to_a_file_reaches_the_file_and_one_applied_by_a_call_its_argument() {
         let model = declared(vec![source(
@@ -4862,14 +5564,14 @@ mod tests {
         let a = entity_named(&model, "A");
         let file = model.file_entities[0];
         // A `Current` with no member name at the top level of a file is the file's entity.
-        // @lfy def/interpret/main.lfy:expand
+        // @lfy def/interpret/main.lfy:expand#expand:expand:576ebb129d910a635135fcc553a89c1865cf0b4d5462f01824e88587cea3abc6
         assert!(model.entities[file].has_trait(t), "the file carries t");
         assert!(model.entities[a].has_trait(t), "A carries t");
         assert_eq!(model.entities[t].entities(), [file, a]);
         assert!(model.problems.is_empty(), "{:?}", model.problems);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:cfb5a2ae9cb7a090bd790fcd0c2c8107da35cf88ca83c37e30b109a8a2b07b9f
     #[test]
     fn an_extended_trait_is_applied_too_and_never_joins_the_entities_of_the_one_it_extends() {
         let model = declared(vec![source(
@@ -4893,12 +5595,12 @@ mod tests {
             "the extended trait's arguments were evaluated from the extending trait"
         );
         // An extender is never one of the entities of what it extends.
-        // @lfy def/interpret/main.lfy:expand
+        // @lfy def/interpret/main.lfy:expand#expand:expand:ce46b20f092d0c4d2c7ec7640b67a98a1cbda521369882f5782e8ca3e8d33bf8
         assert_eq!(model.entities[base].entities(), [a]);
         assert_eq!(model.entities[base].extenders(), [t]);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:e3fd8ad8b33b19a70c578bfce293824df8a73ed5a0ca91556d8acebf48fe8914
     #[test]
     fn the_most_recently_applied_trait_wins_a_member_two_traits_declare() {
         let model = declared(vec![source(
@@ -4921,7 +5623,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:7915534fcdb8c54035024e3639c091b3d60bf7f211c9d176787e957aa4394b40
     #[test]
     fn a_criterion_of_a_trait_body_is_the_entitys_with_the_trait_as_its_contributor() {
         let model = declared(vec![source(
@@ -4943,7 +5645,7 @@ mod tests {
         assert_eq!(from_trait.situation.as_deref(), Some(["s".to_string()].as_slice()));
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:8fbd0dfd17b47e6e0957bf414eba5cd094ae51e8107a98d15ee75d4feed3a430
     #[test]
     fn an_apply_whose_first_argument_is_an_alternation_list_reaches_every_item_of_it() {
         let model = declared(vec![source(
@@ -4966,7 +5668,7 @@ mod tests {
         assert!(model.problems.is_empty(), "{:?}", model.problems);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:dd733fa01ae75eb727e64a5af12ca0989cdcc9221c8dcc486565bb6715e7ff11
     #[test]
     fn a_name_a_statement_needs_that_never_resolves_is_named_once_the_rounds_have_stopped() {
         let model = declared(vec![source(
@@ -4987,7 +5689,7 @@ mod tests {
         assert!(member_symbol(&model, b, "x").is_some());
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3b70cedec3b3c58f4694da5712ea7d46ba55988265604f427d665085e5479be3
     #[test]
     fn reading_what_a_trait_was_applied_to_waits_for_a_statement_that_applies_it_by_extension() {
         // `X` never names `base`; it carries it only because `sub` extends it, and the
@@ -5010,7 +5712,7 @@ mod tests {
         assert!(model.problems.is_empty(), "{:?}", model.problems);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:1ee5f4b0a08eba34d8c061dfcdbf152c3e11233a665f48c77f2394490ee76a30
     #[test]
     fn a_statement_waiting_on_a_trait_nothing_can_apply_any_more_is_named_and_never_runs() {
         // Two statements each wait to read what the other's trait was applied to, so
@@ -5040,7 +5742,7 @@ mod tests {
         assert_eq!(model.entities[two].value("items"), None);
     }
 
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3d895581a785161c5c40577e1b54cee6e2bdfbf014117e300035d9a6807f12d0
     #[test]
     fn running_a_statement_changes_only_the_model_and_never_a_tree() {
         let sources = vec![source(
@@ -5066,7 +5768,7 @@ mod tests {
 
     // ---- evaluate ------------------------------------------------------------------
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:655f8825c2e70d824ae70edabe7443b7721c22be55823451930b947ed3672fc9
     #[test]
     fn an_arithmetic_expression_has_its_value_at_compile_time() {
         let mut model = bound("ace const c = 1 + 2;\n");
@@ -5078,7 +5780,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:2da60593210808873570bc274bbe86668ab461197169994b03a18e4b09823ed7
     #[test]
     fn a_layer_other_than_value_is_read_from_the_model() {
         let mut model = bound("d A {}\nconst n = A@identifier;\n");
@@ -5090,7 +5792,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:483f6fb15be24c2972c33858bda5a3899504f85611640fba84ac5881ce2331c4
     #[test]
     fn a_dereference_is_read_from_the_model() {
         let mut model = bound("d A {}\nconst n = (&A)@identifier;\n");
@@ -5102,7 +5804,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:483f6fb15be24c2972c33858bda5a3899504f85611640fba84ac5881ce2331c4
     #[test]
     fn the_previous_statement_is_read_from_the_model() {
         let mut model = bound("d A {}\nconst n = ^^@identifier;\n");
@@ -5114,7 +5816,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:be4ebeec3fb42e5b9a113fd744d8da7f2b4767acf2f76bd04f0a11ba732663cb
     #[test]
     fn a_call_of_like_gives_a_prompted_of_the_entitys_type() {
         let mut model = bound_with_prelude("const s = string@like(`a word`);\n");
@@ -5131,7 +5833,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:21356f92598162ad149f0e93c1699078677ec1f3df9b03067eeeacbb0b682456
     #[test]
     fn the_same_node_twice_gives_the_same_value_and_the_model_is_not_changed() {
         let mut model = bound("d A {}\nconst n = A@identifier;\nconst m = n;\n");
@@ -5145,7 +5847,7 @@ mod tests {
         assert_eq!(before, model, "evaluating changed the model");
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:75c1561a9fe4d36d73eba468469f7b3cfb1274bb76a30c5df4cb3c62863e6596
     #[test]
     fn what_only_has_a_value_at_runtime_gives_nothing_back_and_adds_no_problem() {
         let mut model = bound("function f(x: number) -> number {\n  return x + 1;\n}\n");
@@ -5158,7 +5860,7 @@ mod tests {
         assert!(model.problems.is_empty(), "{:?}", model.problems);
     }
 
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:6eabf4cd81466f895280d4dd2bf7be3d839f75a1f5ffcdfda67a6c92678b3cca
     #[test]
     fn a_value_that_needs_its_own_gives_nothing_back_and_names_the_cycle() {
         let mut model = bound("const a = b;\nconst b = a;\n");
@@ -5179,7 +5881,7 @@ mod tests {
     /// repository reaches the same traits and the same criteria, with no problem of its
     /// own, and both reach what only a complete trait list and a criterion added to
     /// `global` can.
-    // @lfy def/interpret/main.lfy:expand
+    // @lfy def/interpret/main.lfy:expand#expand:expand:8d3d97a392782f872597ca63ac6714fbff11ea808041a00a431eff0045024957
     #[test]
     fn the_repository_expands_as_the_binders_expand_pass() {
         let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
@@ -5307,7 +6009,7 @@ mod tests {
 
     // ---- lower ---------------------------------------------------------------------
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:19c61e03880d4a18f2b273191a8e8ffae4a8b61376fa29fde230cb24987ab258
     #[test]
     fn a_data_is_kept_with_its_members_and_its_criteria_and_its_trait_is_dropped() {
         let program = lower(workspace(
@@ -5358,7 +6060,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:da4462e6d2b3dd1ccd2d1540c52f12f97141c350c88131325e6ac17e2e542890
     #[test]
     fn an_ace_function_is_dropped_and_the_const_it_answers_holds_its_value() {
         let program = lower(workspace(
@@ -5381,7 +6083,7 @@ mod tests {
         assert!(program.problems.is_empty(), "{:?}", program.problems);
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:4e89a1d22ac01819111757f4bcdbed0a9f1bc3bea27a2cb329463e50bfb781a1
     #[test]
     fn what_the_model_answers_is_folded_and_what_only_runtime_answers_is_kept() {
         let program = lower(workspace(
@@ -5415,7 +6117,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:ddb0c0418b9da6c686e961a3b22818b2b8c151a8614ec2dbeed43fc2390af6fd
     #[test]
     fn a_criterion_added_to_global_or_by_a_trait_applied_to_it_is_global_and_on_no_node() {
         let a = source(
@@ -5463,7 +6165,7 @@ mod tests {
         }
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:5770c9d25caf0fb2ef7bb2b57c8f55ee0200d98e2f2b365f2025766aa3c0a165
     #[test]
     fn a_file_of_only_compile_time_statements_lowers_to_an_empty_source_file() {
         let program = lower(workspace("trait t {}\ntrait u {}\n"));
@@ -5476,7 +6178,7 @@ mod tests {
         assert_eq!(file.file, 0);
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:2fbd03867430231c575f4b7bd56187dd57505ab549bcea0488aa06843b0f9b93
     #[test]
     fn a_function_whose_every_statement_is_compile_time_is_kept_empty_and_named() {
         let program = lower(workspace(
@@ -5510,7 +6212,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:c89173885cbe173a76e8a9a59310d5e69174bce617247c866b7d675aeeb308e2
     #[test]
     fn a_file_level_let_is_not_allowed_and_is_kept() {
         let program = lower(workspace("let n = 1;\n"));
@@ -5525,7 +6227,7 @@ mod tests {
         assert_eq!(kept[0].rule, S::VariableDeclaration.entity());
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:d8ffa57b2b30840df0952e5ea8d4ffe0335f558885ee6ac4d4f91f3047c0edc8
     #[test]
     fn a_criterion_of_a_targets_marker_is_guidance_and_no_criterion_of_the_program() {
         let mut workspace = workspace_of(vec![source(
@@ -5555,7 +6257,7 @@ mod tests {
         assert!(program.criteria.is_empty(), "{:?}", program.criteria);
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:c01b0e65b21560f5c563ce3522ded34903a0bf1bae01f842d10d701f22cbe3ec
     #[test]
     fn a_test_of_an_entity_is_lowered_once_with_its_id_and_its_values() {
         let program = lower(workspace(
@@ -5587,7 +6289,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:74f66400f215c724d23d2684a36b581975ecba82a95f30ba65103866b8f046b6
     #[test]
     fn a_criterion_for_a_files_own_entity_joins_the_file() {
         let program = lower(workspace(
@@ -5606,7 +6308,7 @@ mod tests {
         }
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:8bfaca8a3f0160f288d5a8a901bb6bc7b79163d2bdbed64540cdb5a0802ef829
     #[test]
     fn a_test_for_a_files_own_entity_joins_the_file() {
         let program = lower(workspace("@test({ input = [], expect = 1 });\nd A {}\n"));
@@ -5624,7 +6326,7 @@ mod tests {
         }
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:15a86be20e7c634c57b6fa94d65e2f8ec66bf629a857fccb3e99f8939ff910ef
     #[test]
     fn a_call_of_like_is_one_folded_node_holding_its_prompted() {
         let program = lower(workspace("d A {}\nconst s = A@like(`something an A holds`);\n"));
@@ -5649,7 +6351,7 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:4d2c41e565d8ea1d6a6d81aecabffe5c8b129271cdec20ce5a52e3e74a81479e
     #[test]
     fn runtime_code_that_calls_an_ace_function_with_no_compile_time_argument_is_a_problem() {
         let program = lower(workspace(
@@ -5666,7 +6368,7 @@ mod tests {
         assert!(model.is(program.problems[0].node, E::Call));
     }
 
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:699284343b9ef81cb11db5668663aac649e418507ad5cea495ddceee254e4d43
     #[test]
     fn a_test_added_to_globals_context_is_global_and_on_no_node() {
         let program = lower(workspace(
@@ -5687,7 +6389,7 @@ mod tests {
 
     /// The whole repository lowers: one file per file, every origin a node of its own file,
     /// every id its own, and every lowered file still Elfie.
-    // @lfy def/interpret/main.lfy:lower
+    // @lfy def/interpret/main.lfy:lower#lower:lower:1b2b43554dfbe55aa670fecdc7ea29064add9c5e53ceecd632087bc560d9a63a
     #[test]
     fn the_repository_lowers_to_elfie_with_an_origin_for_everything() {
         let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));

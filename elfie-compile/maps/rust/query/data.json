@@ -1,14 +1,17 @@
 [
   {
     "dependencies": {
+      "def/grammar/rules/expression.lfy": "21d360e148a404d48faf173da1e4af24b1990160c9ea8b696732bcd803559305",
       "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/terminals/identifier.lfy": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
       "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
-      "def/model/traits.lfy": "380026d1ef6bf15fe0537cd7f6d0a2bcf8107ff8647eea988374cd930641a1be"
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c"
     },
-    "generated": "2026-09-21T15:49:52Z",
-    "hash": "04804a543bcd185ac97215dec1fa3e562caa2464746b54ce0bcbb0ca37255f1b",
+    "generated": "2026-10-02T08:52:53Z",
+    "hash": "62d2b765d7641c91960345ce5429a4ffacee8f591aba11395bc8fefcf7597bf1",
     "markers": [
       {
         "column": null,
@@ -723,7 +726,7 @@
       }
     ],
     "output": "crates/elfie-core/src/query/data.rs",
-    "requirements": "",
+    "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d",
     "source": "def/query/data.lfy",
     "target": "rust"

@@ -25,7 +25,7 @@ use crate::parser::{Child, ErrorNode, Node, Tree};
 pub const MAX_WIDTH: usize = 120;
 
 /// The indentation of one enclosing block, object, type, or multi-line list.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:216e628deebc75fbb280f74ad4e8518817a6f92f2757e93a2de1edc445687374
 pub const INDENT: &str = "  ";
 
 /// The source of a tree, laid out the standard way.
@@ -38,7 +38,7 @@ pub const INDENT: &str = "  ";
 /// not place would hide the error.
 // @lfy def/format/main.lfy:format
 pub fn format(tree: &Tree) -> String {
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:2d4526dd8b95ca75df7e4db4572e5ca507ea1fba3964da78bfd366eebe8fb23d
     if !tree.errors.is_empty() {
         return tree.raw(0, tree.tokens.len());
     }
@@ -50,7 +50,7 @@ pub fn format(tree: &Tree) -> String {
 /// What sits between the text written so far and the next token: nothing, one space, or a
 /// line break (with a blank line before it when `blank`). A line break always wins over a
 /// space, which is how trailing spaces never appear.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:857b0799fedb660c017e13a9be1d87d08516ace2c527adf9811e95ab5713f2b3
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pending {
     None,
@@ -100,14 +100,14 @@ const TYPE_ARGUMENTS: Entity = Entity::Expression(Expression::TypeArguments);
 const GENERIC: Entity = Entity::Expression(Expression::Generic);
 
 /// Whether the rule is one link of a `Call` and `Member` chain.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b
 fn is_link(rule: Entity) -> bool {
     matches!(rule, MEMBER | CALL | INDEX)
 }
 
 /// Whether the rule holds its items between a `LessThan` and a `GreaterThan` that are
 /// brackets rather than ordering operators.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:b9bde1379c5c98dfc063df0a199cae5c91d9f6a9ccdce16129ab48f54b27fa05
 fn is_angled(rule: Entity) -> bool {
     matches!(rule, TYPE_PARAMETERS | TYPE_ARGUMENTS | GENERIC)
 }
@@ -138,14 +138,14 @@ fn closes_bracket(rule: Entity) -> bool {
 
 /// No space after `a`: after an opening bracket or boundary, inside a text body, after a
 /// prefix operator that is not a keyword, and after an accessor.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:a997a0a714255ff018ebc6ee002b5fdd5a3c63d555bbcd6c67b0e43f314b9f01
 fn glue_after(a: Tok) -> bool {
     match a.rule {
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:e0a034b32961f9eeac131b9246d7e3a4702b750fe6b9d3199061d8f34ef916da
         Entity::Punctuation(Punctuation::GroupOpen | Punctuation::ListOpen) => true,
         // The `LessThan` of type parameters and type arguments is a bracket, not an
         // ordering operator, so nothing separates it from the first item.
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:b9bde1379c5c98dfc063df0a199cae5c91d9f6a9ccdce16129ab48f54b27fa05
         LESS_THAN if is_angled(a.parent) => true,
         Entity::Literal(Literal::ExecutionOpen | Literal::ReferenceOpen) => true,
         Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
@@ -173,7 +173,7 @@ fn glue_after(a: Tok) -> bool {
         ),
         // Decision: a keyword prefix operator (`await`, `in`, `of`, `from`) keeps the space a
         // keyword always has after it; the "no space" rule is for symbol operators.
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:76356251b6c9f746dff7f234f64051e726f9e827e16d005e12c4a4495138f79a
         rule => a.parent.is_prefix() && !rule.is_keyword(),
     }
 }
@@ -181,10 +181,10 @@ fn glue_after(a: Tok) -> bool {
 /// No space before `b`: before a comma, semicolon, closing bracket or boundary, inside a
 /// text body, before every colon and every question mark that is an operator, and before
 /// the operator of a postfix operation that is not a keyword.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:a997a0a714255ff018ebc6ee002b5fdd5a3c63d555bbcd6c67b0e43f314b9f01
 fn glue_before(a: Tok, b: Tok) -> bool {
     match b.rule {
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:e0a034b32961f9eeac131b9246d7e3a4702b750fe6b9d3199061d8f34ef916da
         Entity::Punctuation(
             Punctuation::Comma
             | Punctuation::Semicolon
@@ -193,7 +193,7 @@ fn glue_before(a: Tok, b: Tok) -> bool {
         ) => true,
         // Type parameters attach to the identifier before them and type arguments to the
         // expression before them, and their `GreaterThan` closes them like a bracket.
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:b9bde1379c5c98dfc063df0a199cae5c91d9f6a9ccdce16129ab48f54b27fa05
         LESS_THAN | GREATER_THAN if is_angled(b.parent) => true,
         Entity::Literal(Literal::ExecutionClose | Literal::ReferenceClose) => true,
         Entity::Literal(Literal::Backtick | Literal::SingleQuote | Literal::DoubleQuote) => {
@@ -203,11 +203,11 @@ fn glue_before(a: Tok, b: Tok) -> bool {
             Literal::TemplateBody | Literal::SingleQuoteBody | Literal::DoubleQuoteBody,
         ) => true,
         // Every colon takes no space before it, the one a `Conditional` holds included.
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:e0a034b32961f9eeac131b9246d7e3a4702b750fe6b9d3199061d8f34ef916da
         Entity::Punctuation(Punctuation::Colon) => true,
         // The question mark marks a name optional, or is the postfix operator of a
         // `Conditional`; either way it follows what precedes it directly.
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:a997a0a714255ff018ebc6ee002b5fdd5a3c63d555bbcd6c67b0e43f314b9f01
         Entity::Punctuation(Punctuation::QuestionMark) => matches!(
             b.parent,
             Entity::Expression(
@@ -231,7 +231,7 @@ fn glue_before(a: Tok, b: Tok) -> bool {
                 Entity::Expression(Expression::Call | Expression::Arguments)
             ) || (b.parent == Entity::Expression(Expression::Parameters)
                 && (a.rule == Entity::Identifier(Identifier::Identifier)
-                    // @lfy def/format/main.lfy:format
+                    // @lfy def/format/main.lfy:format#format:format:b9bde1379c5c98dfc063df0a199cae5c91d9f6a9ccdce16129ab48f54b27fa05
                     || (a.rule == GREATER_THAN && is_angled(a.parent))))
         }
         _ => false,
@@ -240,7 +240,7 @@ fn glue_before(a: Tok, b: Tok) -> bool {
 
 /// Whether no space separates two consecutive tokens; every other pair is separated by
 /// one space, or by the line break the layout decided.
-// @lfy def/format/main.lfy:format
+// @lfy def/format/main.lfy:format#format:format:a997a0a714255ff018ebc6ee002b5fdd5a3c63d555bbcd6c67b0e43f314b9f01
 fn glued(a: Tok, b: Tok) -> bool {
     glue_after(a) || glue_before(a, b)
 }
@@ -267,7 +267,7 @@ impl<'t> Formatter<'t> {
     // The text
 
     /// The result: every line ends with one line feed and so does the result.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
     fn finish(mut self) -> String {
         if self.out.is_empty() {
             // Decision: a tree with no tokens formats to the empty text, which has no line
@@ -289,7 +289,7 @@ impl<'t> Formatter<'t> {
 
     /// The next token begins a new line, after a blank line when `blank`; a run of line
     /// breaks is one line break, and blank when any of them was.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:ba1b1988248774188d9e5e2b74aac108cb2a095cc21056fb197c1c0494b473e4
     fn newline(&mut self, blank: bool) {
         if self.flat {
             self.space();
@@ -301,7 +301,7 @@ impl<'t> Formatter<'t> {
 
     /// Writes what is pending: a space, or a line feed (two for a blank line) and the
     /// indentation. Nothing precedes the first line.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:857b0799fedb660c017e13a9be1d87d08516ace2c527adf9811e95ab5713f2b3
     fn flush(&mut self) {
         match self.pending {
             Pending::None => {}
@@ -351,7 +351,7 @@ impl<'t> Formatter<'t> {
     }
 
     /// Writes the token at `index` as a child of `parent`, keeping its raw text.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
     fn token(&mut self, index: usize, parent: Entity, position: usize) {
         self.token_glued(index, parent, position, false);
     }
@@ -371,7 +371,7 @@ impl<'t> Formatter<'t> {
     }
 
     /// A trivia token: a line break is counted, a space carries nothing.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:857b0799fedb660c017e13a9be1d87d08516ace2c527adf9811e95ab5713f2b3
     fn trivia_token(&mut self, index: usize) {
         if self.tree.tokens[index].rule == Some(NEW_LINE) {
             self.newlines += 1;
@@ -395,7 +395,8 @@ impl<'t> Formatter<'t> {
     /// source (a line break precedes it, or nothing does) it stays on its own line, after
     /// a blank line when `blank` allows one, and what follows begins a new line; sharing a
     /// line with code it stays at the end of that line after one space.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:e633b0389645c532829d8508c244a986728e327dfe3d31919222efa7f3c20bb7
+    // @lfy def/format/main.lfy:format#format:format:d7e4583e7b2e2dbe08cba57c4ef8925f936778f3f3b46bc51b8426482d191f5b
     fn comment(&mut self, node: &Node, blank: bool) {
         if self.flat {
             self.impossible = true;
@@ -408,7 +409,7 @@ impl<'t> Formatter<'t> {
             self.space();
         }
         self.flush();
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
         let text = self.tree.raw(node.start, node.end);
         self.out.push_str(&text);
         self.last = Some(Tok {
@@ -457,14 +458,14 @@ impl<'t> Formatter<'t> {
         match node.rule {
             Entity::Statement(Statement::Block) => self.block(node),
             Entity::Comment(Comment::Comment | Comment::Documentation) => self.comment(node, false),
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
             Entity::Expression(
                 Expression::Object
                 | Expression::Type
                 | Expression::List
                 | Expression::Arguments
                 | Expression::Parameters
-                // @lfy def/format/main.lfy:format
+                // @lfy def/format/main.lfy:format#format:format:7a4b5233002ef9d00778dca9a1fb66f8025f5ac5d973a2bc0644111a9b46eebe
                 | Expression::TypeParameters
                 | Expression::TypeArguments,
             ) => {
@@ -473,7 +474,7 @@ impl<'t> Formatter<'t> {
                 self.bracketed(node, open);
             }
             // The type arguments of a `Generic` follow the expression they apply to.
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:b9bde1379c5c98dfc063df0a199cae5c91d9f6a9ccdce16129ab48f54b27fa05
             GENERIC => {
                 let open = node
                     .children
@@ -499,9 +500,9 @@ impl<'t> Formatter<'t> {
                 self.bracketed(node, open);
             }
             // The traits of an `is` or `extends` clause are a list with no brackets.
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
             TRAIT_USES => self.trait_uses(node),
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b
             rule if is_link(rule) => self.chain(node),
             _ => self.children(node, 0, node.children.len()),
         }
@@ -567,7 +568,8 @@ impl<'t> Formatter<'t> {
     /// Statements in `node.children[from..to]`: each begins on its own line at the current
     /// indentation, a run of blank lines between two of them (or the comments between
     /// them) becomes one blank line, and no blank line precedes the first.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:216e628deebc75fbb280f74ad4e8518817a6f92f2757e93a2de1edc445687374
+    // @lfy def/format/main.lfy:format#format:format:ba1b1988248774188d9e5e2b74aac108cb2a095cc21056fb197c1c0494b473e4
     fn statements(&mut self, node: &Node, from: usize, to: usize) {
         let mut first = true;
         for child in &node.children[from..to] {
@@ -579,12 +581,12 @@ impl<'t> Formatter<'t> {
                     first = false;
                 }
                 Child::Node(inner) if is_trivia(inner.rule) => {
-                    // @lfy def/format/main.lfy:format
+                    // @lfy def/format/main.lfy:format#format:format:ba1b1988248774188d9e5e2b74aac108cb2a095cc21056fb197c1c0494b473e4
                     self.comment(inner, !first);
                     first = false;
                 }
                 Child::Node(inner) => {
-                    // @lfy def/format/main.lfy:format
+                    // @lfy def/format/main.lfy:format#format:format:ba1b1988248774188d9e5e2b74aac108cb2a095cc21056fb197c1c0494b473e4
                     self.newline(!first && self.newlines >= 2);
                     self.node(inner);
                     first = false;
@@ -601,7 +603,7 @@ impl<'t> Formatter<'t> {
     /// A block opens on the line of its statement, holds its statements one level deeper,
     /// and its close stands alone on its own line; an empty block is the two braces
     /// together.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:5cb4f60820e99f5db1df2935ed73258b4147e3357667c5c6125c5f65a1980bee
     fn block(&mut self, node: &Node) {
         let Some(close) = self.last_significant(node) else {
             return;
@@ -618,6 +620,7 @@ impl<'t> Formatter<'t> {
         let Some(close_token) = self.child_token(node, close) else {
             return;
         };
+        // @lfy def/format/main.lfy:format#format:format:b94d70be04b0c91159b9c66ef0de9050647ee30b2ceff3fbef524d7058f75166
         if !content {
             self.token_glued(close_token, node.rule, 1, true);
             return;
@@ -628,6 +631,7 @@ impl<'t> Formatter<'t> {
         self.indent += 1;
         self.statements(node, open + 1, close);
         self.indent -= 1;
+        // @lfy def/format/main.lfy:format#format:format:d37cae8772d67dbcbdb5efe6d6fd0b1508a171c32bb9b254917ba17e596ec5cc
         self.newline(false);
         self.token(close_token, node.rule, 1);
     }
@@ -690,7 +694,8 @@ impl<'t> Formatter<'t> {
     /// Type parameters, type arguments, and the arguments of a `Generic` go multi-line
     /// the same way, but only for length: whatever the source held between the
     /// `LessThan` and the `GreaterThan`, they stay on one line while they fit.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
+    // @lfy def/format/main.lfy:format#format:format:93e705813a7bf98dc54d3c1b11f5118cefc683c3da9a64066f59faffe9b02c96
     fn bracketed(&mut self, node: &Node, open: usize) {
         let Some(close) = self.last_significant(node) else {
             return;
@@ -728,7 +733,8 @@ impl<'t> Formatter<'t> {
             && items.len() == 1
             && self.ends_with_bracket(items[0]);
         let multiline = if is_angled(node.rule) {
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:7a4b5233002ef9d00778dca9a1fb66f8025f5ac5d973a2bc0644111a9b46eebe
+            // @lfy def/format/main.lfy:format#format:format:eb8f7e93d7328ba6f0de2bb7044128ba0dbad46601aaa18de9a859c9223173ec
             !self.flat && !items.is_empty() && self.exceeds(node, open, close)
         } else {
             !self.flat
@@ -741,7 +747,7 @@ impl<'t> Formatter<'t> {
 
     /// Whether the list, laid out on one line from the current column, would run past
     /// [`MAX_WIDTH`] or cannot be laid out on one line at all.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
     fn exceeds(&self, node: &Node, open: usize, close: usize) -> bool {
         let mut measurer = self.measurer();
         measurer.list(node, open, close, false);
@@ -750,7 +756,7 @@ impl<'t> Formatter<'t> {
 
     /// Whether the node, laid out on one line from the current column, would run past
     /// [`MAX_WIDTH`] or cannot be laid out on one line at all.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
     fn wider_than_the_line(&self, node: &Node) -> bool {
         let mut measurer = self.measurer();
         measurer.node(node);
@@ -761,7 +767,7 @@ impl<'t> Formatter<'t> {
     /// past [`MAX_WIDTH`] or cannot be laid out on one line at all.
     // Decision: the width counted is the list itself up to its close; what follows the
     // close on the line (a semicolon, another close) is not counted.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
     fn too_wide(&self, measurer: &Formatter<'t>) -> bool {
         measurer.impossible || self.column() + measurer.out.chars().count() > MAX_WIDTH
     }
@@ -775,7 +781,7 @@ impl<'t> Formatter<'t> {
     ///
     /// One trait is never laid out over lines: with no brackets to hold the break, there
     /// is no line for it to move to, so the trait itself is what wraps.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
     fn trait_uses(&mut self, node: &Node) {
         let entries: Vec<&Child> = node.children.iter().collect();
         let comment = entries
@@ -788,7 +794,7 @@ impl<'t> Formatter<'t> {
             .iter()
             .filter(|child| matches!(child, Child::Node(inner) if !is_trivia(inner.rule)))
             .count();
-        // @lfy def/format/main.lfy:format
+        // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
         let multiline = !self.flat
             && traits > 1
             && (comment || line_break || self.wider_than_the_line(node));
@@ -801,7 +807,7 @@ impl<'t> Formatter<'t> {
             match child {
                 Child::Token(index) if self.is_trivia_token(*index) => self.trivia_token(*index),
                 Child::Token(index) if self.tree.tokens[*index].rule == Some(COMMA) => {
-                    // @lfy def/format/main.lfy:format
+                    // @lfy def/format/main.lfy:format#format:format:93e705813a7bf98dc54d3c1b11f5118cefc683c3da9a64066f59faffe9b02c96
                     if self.item_follows(&entries, at) {
                         self.token(*index, node.rule, 1);
                     }
@@ -809,7 +815,7 @@ impl<'t> Formatter<'t> {
                 Child::Token(index) => self.token(*index, node.rule, 1),
                 Child::Node(inner) if is_trivia(inner.rule) => self.comment(inner, false),
                 Child::Node(inner) => {
-                    // @lfy def/format/main.lfy:format
+                    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
                     if multiline && !first {
                         self.newline(false);
                     }
@@ -825,7 +831,7 @@ impl<'t> Formatter<'t> {
     /// Lays out the entries after the open bracket and then the close, one item per line
     /// with a comma after each when `multiline`, on one line without a trailing comma
     /// otherwise.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
     fn list(&mut self, node: &Node, open: usize, close: usize, multiline: bool) {
         let entries = self.entries(node, open, close);
         let parent = node.rule;
@@ -838,7 +844,7 @@ impl<'t> Formatter<'t> {
             match child {
                 Child::Token(index) if self.is_trivia_token(*index) => self.trivia_token(*index),
                 Child::Token(index) if self.tree.tokens[*index].rule == Some(COMMA) => {
-                    // @lfy def/format/main.lfy:format
+                    // @lfy def/format/main.lfy:format#format:format:93e705813a7bf98dc54d3c1b11f5118cefc683c3da9a64066f59faffe9b02c96
                     if multiline || self.item_follows(&entries, at) {
                         self.token(*index, parent, 1);
                     }
@@ -886,7 +892,7 @@ impl<'t> Formatter<'t> {
     /// outermost link. When the source held a line break before an accessor of the chain,
     /// each `Member` of the chain begins a new line indented one level below the line the
     /// chain begins on.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b
     fn chain(&mut self, node: &Node) {
         let mut links = Vec::new();
         let mut current = node;
@@ -968,13 +974,13 @@ impl<'t> Formatter<'t> {
     }
 
     /// Whether the token is an accessor.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b
     fn accessor_token(&self, index: usize) -> bool {
         self.tree.tokens[index].rule.is_some_and(is_accessor)
     }
 
     /// Whether a `Member` link held a line break before its accessor in the source.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b
     fn breaks(&self, link: &Node) -> bool {
         if link.rule != MEMBER {
             return false;
@@ -1012,7 +1018,7 @@ mod tests {
 
     /// The tokens that are neither space nor line break, as terminal and value, with the
     /// trailing commas the layout adds or removes left out.
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
     fn tokens_of(tree: &Tree) -> Vec<(Entity, String)> {
         let kept: Vec<&crate::lexer::Token> = tree
             .tokens
@@ -1059,13 +1065,13 @@ mod tests {
             .collect()
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:e6252b44e86c62d6e5eeb56cf1e261b63a24c4897b1356c708833282d0752c1a
     #[test]
     fn test_a_constant_declaration() {
         assert_eq!(formatted("const   x=1 ;"), "const x = 1;\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:259b47c3f96e18edc2880529f479860a89cfc7dc50d3087e91d22693756a6fe9
     #[test]
     fn test_a_function_with_one_criterion() {
         assert_eq!(
@@ -1074,7 +1080,8 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:4893b90e7ec34a33843a710654cdf64ea823094ffb904bf759ff240df4bb1ec0
+    // @lfy def/format/main.lfy:format#format:format:2d4526dd8b95ca75df7e4db4572e5ca507ea1fba3964da78bfd366eebe8fb23d
     #[test]
     fn test_a_tree_with_errors_is_the_source_unchanged() {
         let tree = tree("const = 1;");
@@ -1083,7 +1090,7 @@ mod tests {
         assert_eq!(formatted("fn f( {\n  x"), "fn f( {\n  x");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:fff9e8a57eedb49ae3f5b9b5a4bd0f57126127c7aa33b9c426c50fa636110ebb
     #[test]
     fn test_a_generic_signature() {
         assert_eq!(
@@ -1092,7 +1099,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
     #[test]
     fn the_definitions_keep_their_tokens_and_format_to_a_fixed_point() {
         let files = def_files();
@@ -1120,20 +1127,20 @@ mod tests {
                 tokens_of(&first),
                 "{path}: tokens changed"
             );
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
             let twice = format(&reparsed);
             assert!(
                 twice == once,
                 "{path}: not a fixed point:\n--- once\n{once}\n--- twice\n{twice}"
             );
-            // @lfy def/format/main.lfy:format
+            // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
             assert!(once.ends_with('\n') && !once.ends_with("\n\n"), "{path}");
             assert!(!once.contains('\r'), "{path}");
             assert!(!once.contains("\n\n\n"), "{path}");
         }
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
     #[test]
     fn body_comment_and_documentation_text_is_kept_exactly() {
         let source = "/** Doc with [[ref]]\n   over lines **/\nconst x = `a\n  b {{ y }}  c`;  // trailing  \n/// line doc [[x]]\nconst z = /* in\nline */ 'it\\'s';\n";
@@ -1147,7 +1154,7 @@ mod tests {
         assert_eq!(formatted("const n = 1_000.5;"), "const n = 1_000.5;\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a098b43c395afd05932d64e330dcfeb19468663798ec0ea0ff1cb5a4eb6ff5d4
     #[test]
     fn every_line_ends_with_one_line_feed_and_so_does_the_result() {
         assert_eq!(formatted("a;\r\nb;"), "a;\nb;\n");
@@ -1157,7 +1164,7 @@ mod tests {
         assert_eq!(formatted("// only a comment"), "// only a comment\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:216e628deebc75fbb280f74ad4e8518817a6f92f2757e93a2de1edc445687374
     #[test]
     fn each_statement_begins_on_its_own_line_indented_per_enclosing_block() {
         assert_eq!(
@@ -1178,7 +1185,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:ba1b1988248774188d9e5e2b74aac108cb2a095cc21056fb197c1c0494b473e4
     #[test]
     fn blank_lines_between_statements_become_one_and_inside_a_statement_are_removed() {
         assert_eq!(
@@ -1192,7 +1199,7 @@ mod tests {
         assert_eq!(formatted("x\n\n  .a()\n\n  .b();"), "x\n  .a()\n  .b();\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:e633b0389645c532829d8508c244a986728e327dfe3d31919222efa7f3c20bb7
     #[test]
     fn documentation_and_a_comment_on_its_own_line_stay_on_their_own_line() {
         assert_eq!(
@@ -1206,7 +1213,7 @@ mod tests {
         assert_eq!(formatted("x\n  // why\n  .a();"), "x\n  // why\n  .a();\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:d7e4583e7b2e2dbe08cba57c4ef8925f936778f3f3b46bc51b8426482d191f5b
     #[test]
     fn a_comment_that_shares_a_line_with_code_stays_at_the_end_of_that_line() {
         assert_eq!(
@@ -1223,7 +1230,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:857b0799fedb660c017e13a9be1d87d08516ace2c527adf9811e95ab5713f2b3
     #[test]
     fn trailing_spaces_are_removed_and_every_line_break_is_a_line_feed() {
         let out = formatted("const x = 1;   \r\n\t \r\nconst y = [\r\n  1,   \r\n];   ");
@@ -1231,7 +1238,7 @@ mod tests {
         assert!(out.lines().all(|line| !line.ends_with(' ')));
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a997a0a714255ff018ebc6ee002b5fdd5a3c63d555bbcd6c67b0e43f314b9f01
     #[test]
     fn operators_are_spaced_by_their_category() {
         assert_eq!(formatted("x=a+b*-c;"), "x = a + b * -c;\n");
@@ -1272,7 +1279,7 @@ mod tests {
         assert_eq!(formatted("f(. , @ , $ , $&);"), "f(., @, $, $&);\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:e0a034b32961f9eeac131b9246d7e3a4702b750fe6b9d3199061d8f34ef916da
     #[test]
     fn commas_and_colons_take_one_space_after_and_brackets_none_inside() {
         assert_eq!(formatted("f( a , b );"), "f(a, b);\n");
@@ -1301,7 +1308,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:76356251b6c9f746dff7f234f64051e726f9e827e16d005e12c4a4495138f79a
     #[test]
     fn a_keyword_and_a_group_close_before_a_block_open_take_one_space() {
         assert_eq!(formatted("if(a){}else{}"), "if (a) {} else {}\n");
@@ -1319,7 +1326,7 @@ mod tests {
         assert_eq!(formatted("enum E:`d`{a=1}"), "enum E: `d` { a = 1 }\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:b9bde1379c5c98dfc063df0a199cae5c91d9f6a9ccdce16129ab48f54b27fa05
     #[test]
     fn the_angles_of_type_parameters_and_type_arguments_are_brackets() {
         assert_eq!(formatted("fn f < T >(a: T);"), "fn f<T>(a: T);\n");
@@ -1338,7 +1345,7 @@ mod tests {
         assert_eq!(formatted("x = a<b;"), "x = a < b;\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:a7387e9502a3708ad77a105b966eb7a4bca917979066fa92c2210544f4a51cce
     #[test]
     fn a_function_type_is_its_parameters_then_the_arrow_and_the_type() {
         assert_eq!(
@@ -1355,7 +1362,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:5cb4f60820e99f5db1df2935ed73258b4147e3357667c5c6125c5f65a1980bee
     #[test]
     fn a_block_opens_on_the_line_of_its_statement() {
         assert_eq!(formatted("fn f()\n{\n  a;\n}"), "fn f() {\n  a;\n}\n");
@@ -1366,7 +1373,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:d37cae8772d67dbcbdb5efe6d6fd0b1508a171c32bb9b254917ba17e596ec5cc
     #[test]
     fn the_close_of_a_block_that_is_not_empty_stands_alone_on_its_own_line() {
         assert_eq!(formatted("loop { break; }"), "loop {\n  break;\n}\n");
@@ -1377,7 +1384,7 @@ mod tests {
         assert_eq!(formatted("f((a) => { b; });"), "f((a) => {\n  b;\n});\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:b94d70be04b0c91159b9c66ef0de9050647ee30b2ceff3fbef524d7058f75166
     #[test]
     fn an_empty_block_is_the_two_braces_together() {
         assert_eq!(formatted("loop\n{\n}"), "loop {}\n");
@@ -1386,7 +1393,7 @@ mod tests {
         assert_eq!(formatted("d X {\n}"), "d X {}\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:47e2f32d37066953692390caeb29ffd9be54cf13b419f38c24c5979a5ebbc7b6
     #[test]
     fn a_list_with_a_line_break_or_too_long_becomes_one_item_per_line() {
         assert_eq!(formatted("x = [\n1, 2];"), "x = [\n  1,\n  2,\n];\n");
@@ -1429,7 +1436,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:93e705813a7bf98dc54d3c1b11f5118cefc683c3da9a64066f59faffe9b02c96
     #[test]
     fn a_list_on_one_line_loses_its_trailing_comma() {
         assert_eq!(formatted("x = [1, 2,];"), "x = [1, 2];\n");
@@ -1450,7 +1457,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:7a4b5233002ef9d00778dca9a1fb66f8025f5ac5d973a2bc0644111a9b46eebe
     #[test]
     fn type_parameters_and_arguments_go_one_per_line_when_the_line_would_be_too_long() {
         let long = "T".repeat(60);
@@ -1468,7 +1475,7 @@ mod tests {
         );
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:eb8f7e93d7328ba6f0de2bb7044128ba0dbad46601aaa18de9a859c9223173ec
     #[test]
     fn type_parameters_and_arguments_short_enough_stay_on_one_line() {
         // A line break in the source does not wrap them.
@@ -1480,7 +1487,7 @@ mod tests {
         assert_eq!(formatted("x = f<\n  T,\n>(a);"), "x = f<T>(a);\n");
     }
 
-    // @lfy def/format/main.lfy:format
+    // @lfy def/format/main.lfy:format#format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b
     #[test]
     fn a_chain_with_a_line_break_before_an_accessor_puts_each_member_on_its_own_line() {
         assert_eq!(formatted("x.a().b();"), "x.a().b();\n");

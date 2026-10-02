@@ -2688,7 +2688,9 @@ mod tests {
         workspace::load(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")))
     }
 
-    // @lfy def/query/main.lfy:rangeOf
+    // @lfy def/query/main.lfy:rangeOf#rangeOf:rangeOf:184d54244a67bed9cbe0d4b73b5f3e40efe503e054a85464078876d2db5dce9e
+    // @lfy def/query/main.lfy:rangeOf#rangeOf:rangeOf:a074f2cac223591243a334236a9674f496fc69a3571b1b712dd0b518bb104b73
+    // @lfy def/query/main.lfy:rangeOf#rangeOf:rangeOf:fe556e80cc6628a39b77ff083bdcdeffd2de1fe2e8b78c75e1bd4bb3a6510b27
     #[test]
     fn a_range_runs_from_the_first_token_to_just_after_the_last() {
         let fixture = Fixture::one("/** Block\n doc **/\nd A {}\n");
@@ -2717,7 +2719,7 @@ mod tests {
         assert_eq!(range_of_node(&ws, r), range(A, (3, 0), (3, 6)));
     }
 
-    // @lfy def/query/main.lfy:rangeOf
+    // @lfy def/query/main.lfy:rangeOf#rangeOf:rangeOf:1671e179d8f652f78f4da99fbe4e29c412ecce022452599220bdf2f56e8340eb
     #[test]
     fn a_node_covering_no_token_gives_an_empty_range_where_it_would_start() {
         let fixture = Fixture::one("");
@@ -2741,7 +2743,11 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:tokenAt
+    // @lfy def/query/main.lfy:tokenAt#tokenAt:tokenAt:8898f21045b87fd75f3ced36be24af59458589040898749309b06fb57fb0a101
+    // @lfy def/query/main.lfy:tokenAt#tokenAt:tokenAt:1c6e55634512504c13f6eca4ef8737494eda9f8d03d0de961c1ad9b507967e3f
+    // @lfy def/query/main.lfy:tokenAt#tokenAt:tokenAt:8ae124a987e09eee16b2653fe6c2f49ffd1ea64581ac588876d6107e7e318e9d
+    // @lfy def/query/main.lfy:tokenAt#tokenAt:tokenAt:11242f4209b1681d9349ef2a411c531b9e7021ce4e56dec4a84c903298664c1f
+    // @lfy def/query/main.lfy:tokenAt#tokenAt:tokenAt:72752a66406fa5cafef8d7a499c3f43bcc5b065a37985e90be701a447441eac4
     #[test]
     fn the_token_just_after_an_identifier_still_belongs_to_it() {
         let fixture = Fixture::one("const x = 1;");
@@ -2772,7 +2778,8 @@ mod tests {
         assert_eq!(token(&ws, 0, token_at(&ws, A, at(1, 11)).unwrap()).raw, "y");
     }
 
-    // @lfy def/query/main.lfy:nodesAt
+    // @lfy def/query/main.lfy:nodesAt#nodesAt:nodesAt:28c16d15635e35ad598c3dc0c40637b271d8ce76b64980e950ca8e082b19413a
+    // @lfy def/query/main.lfy:nodesAt#nodesAt:nodesAt:0e72d66ea86426e83f18595457ce789b1bbd190de57777c4b96f571e4385dc7b
     #[test]
     fn nodes_at_walks_from_the_root_down_to_the_node_holding_the_token() {
         let fixture = Fixture::one("d A {} const y: `See [[A]]` = 1;");
@@ -2813,7 +2820,11 @@ mod tests {
         assert!(nodes_at(&ws, A, at(9, 0)).is_empty());
     }
 
-    // @lfy def/query/main.lfy:symbolAt
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:90e6a0b87b7551aef79f4fb026c179036bf03baf2f7416c24da8a9d9c56d4427
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:98dc7332576f8fddae2e0d0b1c6c36a99cf2a4b949d8c811d0eb9a58e582dbfb
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:e1dd1ade7a53701537e1cecca8846c6aa545d80ddb2727934b69a4f41d5c3e73
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:49299b3da7368ca5d187315c1871b87eaa56e549cd0d213bef1c20dd647a9f1f
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:cce90b97f1e0ec33c1c384d68d67da790e0540d434d0d71fd61bff8c5326e014
     #[test]
     fn a_name_in_code_and_in_a_template_reference_resolve_alike() {
         let text = "d A {} const y = A;";
@@ -2843,7 +2854,8 @@ mod tests {
         assert_eq!(symbol_at(&ws, A, find_pos(text, "]]", 0)), Some(symbol));
     }
 
-    // @lfy def/query/main.lfy:symbolAt
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:3f1f08ea01c82ad91bd8ce62eaa3ec91ad51848b4801e331ac55c73fb89665a8
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:a250d4c2256bbc023af4a94f9b85d6fa034c7d4d9e15f95c05c6315e0257fa3b
     #[test]
     fn the_path_of_a_use_gives_its_module_symbol_or_nothing() {
         let fixture = Fixture::new();
@@ -2869,7 +2881,11 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:definitionOf
+    // @lfy def/query/main.lfy:definitionOf#definitionOf:definitionOf:f29c91372d644bd463696042d02d9f3116c00ab997633f7b7dfbcab6f3aa4bd6
+    // @lfy def/query/main.lfy:definitionOf#definitionOf:definitionOf:e157b6652fafd0e46146478e8033220ba811f83259038ed5351434d9f56f09fa
+    // @lfy def/query/main.lfy:definitionOf#definitionOf:definitionOf:fc56a9a628477afceb7c71426715b31a458e95c32076d65be3e26ae1b30f5354
+    // @lfy def/query/main.lfy:definitionOf#definitionOf:definitionOf:d2c388f20ed66aa8039ff9a67d0ed4f41ab23668f3678566dce722cd74126e36
+    // @lfy def/query/main.lfy:definitionOf#definitionOf:definitionOf:6bdb2ad37511ee384dca32128cdffedcf3b25ed2de7c71a9df0f53486693c122
     #[test]
     fn definition_is_the_identifier_of_the_declaration() {
         let fixture = Fixture::new();
@@ -2911,7 +2927,11 @@ mod tests {
         assert_eq!(definition_of(&ws, A, at(20, 0)), None);
     }
 
-    // @lfy def/query/main.lfy:referencesTo
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:e5061ebb82757d8b8b3294034eb029427101497774cb517856a1f71126d9c88f
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:4b4cb5cbd24fba6b7a4bf778a6cbde6cae871fe06a7dbd8de7d54dacd7f2a812
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:4a7e0ee568398919f25c923df64342d38cf50069cdb7fa3719f3b97c2bff8e5b
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:0c92a5451736447a79c5450607fed5f04860af19931f8cd6b29f70f74fb212a3
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:a76991681fd16dd670c4a0f8feca6a55b8576d4dea15b95158f8f338dd7c3f7c
     #[test]
     fn references_cover_every_usage_in_file_order() {
         let fixture = Fixture::new();
@@ -2938,7 +2958,8 @@ mod tests {
         assert!(references_to(&ws, A, at(2, 0), true).is_empty());
     }
 
-    // @lfy def/query/main.lfy:referencesTo
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:e5061ebb82757d8b8b3294034eb029427101497774cb517856a1f71126d9c88f
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:4b4cb5cbd24fba6b7a4bf778a6cbde6cae871fe06a7dbd8de7d54dacd7f2a812
     #[test]
     fn references_to_a_trait_member_include_every_receiver() {
         let text = "trait t { $m = string; }\nd A is t { $n = A$m; $o = $m; }\n";
@@ -2957,7 +2978,34 @@ mod tests {
         assert_eq!(references_to(&ws, A, at(2, 18), true), from_declaration);
     }
 
-    // @lfy def/query/main.lfy:hoverAt
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:0bee52b15172b8d5f4b423f6f46e68a0f8502383517282bb98b3038f2ce4311c
+    #[test]
+    fn a_usage_of_a_layer_itself_is_ranged_at_its_accessor() {
+        // `^^` spells no name after its accessor, so its usage is of the previous
+        // layer itself and its range covers the accessor instead of a name token.
+        let text = "d A {}\nconst y = ^^;\nconst z = A;\n";
+        let fixture = Fixture::one(text);
+        let ws = fixture.load();
+        assert!(ws.problems.is_empty(), "{:?}", ws.problems);
+        assert_eq!(
+            references_to(&ws, A, at(1, 2), true),
+            [
+                range(A, (1, 2), (1, 3)),
+                range(A, (2, 10), (2, 12)),
+                range(A, (3, 10), (3, 11)),
+            ]
+        );
+    }
+
+    // @lfy def/query/main.lfy:hoverAt#hoverAt:hoverAt:70e660c693b1e26397c1dd93f63dd693d1ece7542346f60692580c4bebe602d3
+    // @lfy def/query/main.lfy:hoverAt#hoverAt:hoverAt:6bdb2ad37511ee384dca32128cdffedcf3b25ed2de7c71a9df0f53486693c122
+    // @lfy def/query/main.lfy:hoverAt#hoverAt:hoverAt:6984b8eab7d425099b0d1954eacb86b6197332bbbd6525ce36c2f5139b828170
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:5937b6ce6d5708bf2bb3e41b667bc34bda34e495535c6e6f3c03d28e4b157824
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:e17c5067e38fa0a3958c2ef3e01e30d2690690a6415be9560637c938889a02e7
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:597745ff3475cb5901c1b91f16ae723ff4475baf3054259f664b1b670c572a51
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:b395bb2363c1570038cd79a7ed40cf8d984560e819c03a901a14b43ecd099ebe
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:fefa4ecad4c57351195a94f21732ecd7fe7e3d4426b297a4357a002b5c695e10
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:3346a8528f7f9b2ef994f9848d00159b23b48d112a8636505cc86dcf7c10ddcf
     #[test]
     fn hover_shows_kind_identifier_definition_and_documentation() {
         let text = "/// Doc\nd A: `An A` {} const y = A;";
@@ -2971,13 +3019,15 @@ mod tests {
         assert!(hover.criteria.is_empty());
         assert!(hover.traits.is_empty());
         // The range covers the identifier of the declaration, not the token hovered.
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:dd206e88c9f74b8a1eb894c4555a5ee532d2175da65118006de2602e9b8306df
         assert_eq!(hover.range, range(A, (2, 2), (2, 3)));
         assert_eq!(hover.owner, None);
         assert_eq!(hover_at(&ws, A, at(2, 12)), None);
     }
 
-    // @lfy def/query/main.lfy:hoverAt
+    // @lfy def/query/main.lfy:hoverAt#hoverAt:hoverAt:ec108f7d5cd886ee18c6ce6aac56ce50dab60fa374bf7af37fd04989b559a98d
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:56038dc91ecf65d2bdfe79a9075ea17d361e3556abf2f01d835c0433eb98e148
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:229664dd590fb365891c46707cac16113496c17475c6ca3428c046b2517e3a53
     #[test]
     fn a_type_parameter_hovers_with_its_constraint_and_the_declaration_that_lists_it() {
         let text = "d Item {} d Box<T extends Item> { $item: `d` = T; }";
@@ -2987,7 +3037,7 @@ mod tests {
         let hover = hover_at(&ws, A, find_pos(text, "T;", 0)).unwrap();
         assert_eq!(hover.kind, SymbolKind::TypeParameter);
         assert_eq!(hover.identifier, "T");
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:82d2ed0d94372e34fc7af9c288c152a8c2e12fa57a24bd774665c903f95c074c
         assert_eq!(hover.ty.as_deref(), Some("Item"));
         assert_eq!(hover.owner.as_deref(), Some("Box"));
         assert_eq!(hover.definition, None);
@@ -2996,7 +3046,7 @@ mod tests {
         // The declaration itself, in the `TypeParameters` that lists it, hovers alike.
         assert_eq!(hover_at(&ws, A, find_pos(text, "T extends", 0)), Some(hover));
         // A type parameter without a constraint has no type to show.
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:8f5ab872cd3e21284ba6d3d9a3915ba9d3d37b663fc27ec21b270e938e750264
         let text = "d Box<U> { $item: `d` = U; }";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
@@ -3006,7 +3056,7 @@ mod tests {
         assert_eq!(hover.owner.as_deref(), Some("Box"));
     }
 
-    // @lfy def/query/main.lfy:hoverOf
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:49e295d3b11840ac6a54a39ba8e33a8eb493b1872f0f04ec86eae3988197ca5c
     #[test]
     fn a_member_names_the_declaration_that_declares_it_as_its_owner() {
         let text = "trait t { $m = string; }\nd A is t { $n = string; }\nconst v = 1;\n";
@@ -3015,12 +3065,19 @@ mod tests {
         assert_eq!(hover_of(&ws, find(&ws, "A.n")[0]).owner.as_deref(), Some("A"));
         // A member a trait adds is owned by the entity it was reached through.
         assert_eq!(hover_of(&ws, find(&ws, "t.m")[0]).owner.as_deref(), Some("t"));
-        // Anything else reports no owner. @lfy def/query/main.lfy:hoverOf
+        // Anything else reports no owner.
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:9a90fed14cf9b11333b26fd62edb533825a9c1f138ff89d05b998ceb6f939143
         assert_eq!(hover_of(&ws, find(&ws, "v")[0]).owner, None);
         assert_eq!(hover_of(&ws, find(&ws, "A")[0]).owner, None);
     }
 
-    // @lfy def/query/main.lfy:hoverOf
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:5937b6ce6d5708bf2bb3e41b667bc34bda34e495535c6e6f3c03d28e4b157824
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:bc5317180748f756ff3ce1dc261bcaa95143513bb4264535b9448d06ee539dd5
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:e17c5067e38fa0a3958c2ef3e01e30d2690690a6415be9560637c938889a02e7
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:d1384ff4a0cb263629a49f84ee8f4445e10ed67e07b7a07ec5ade3b148dc4416
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:597745ff3475cb5901c1b91f16ae723ff4475baf3054259f664b1b670c572a51
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:d7ba20404e7cdebf2bc1e0786817c5f539de8ea014a4596ecd91a2ead0d49e28
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:b395bb2363c1570038cd79a7ed40cf8d984560e819c03a901a14b43ecd099ebe
     #[test]
     fn hover_of_resolves_references_types_members_and_block_documentation() {
         let text = "/** Block\n doc **/\ntrait t { $m: `Of [[A]]` = string; }\nd A is t {}\nconst v: A = A;\nconst w = 1;\n";
@@ -3033,7 +3090,7 @@ mod tests {
         assert_eq!(hover.kind, SymbolKind::Trait);
         assert_eq!(hover.documentation.as_deref(), Some("Block\ndoc"));
         // The identifier of the declaration, documentation excluded.
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:dd206e88c9f74b8a1eb894c4555a5ee532d2175da65118006de2602e9b8306df
         assert_eq!(hover.range, range(A, (3, 6), (3, 7)));
         let m = find(&ws, "t.m")[0];
         let hover = hover_of(&ws, m);
@@ -3084,23 +3141,28 @@ mod tests {
         type_text_of(workspace, ty.as_ref())
     }
 
-    // @lfy def/query/main.lfy:typeTextOf
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:b29f2ab17865c51c9fee248c87c30d45d61d4ccb9b48e63fe45223606d734cd1
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:4ea052215b48f8dbcb2d0e2cbd0ce998a967002b6e38315cf44a97c95cc88620
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:aab52196230b51385492895a978b5cda431ae192896e41cbb298491c35b690c6
     #[test]
     fn a_generic_is_spelled_with_its_arguments_and_a_list_with_its_brackets() {
         let fixture = Fixture::one("d Box<T> {} const b = Box<string>;");
         let ws = fixture.load();
         assert_eq!(type_text_at(&ws, "b").as_deref(), Some("Box<string>"));
-        // Nothing to spell. @lfy def/query/main.lfy:typeTextOf
+        // Nothing to spell.
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:2b94113644ba3735487d3a97b0b21f8e6e1121c594ee59bd9e071265a4e452e8
         assert_eq!(type_text_of(&ws, None), None);
         // A declaration and a primitive are spelled by their identifier.
-        // @lfy def/query/main.lfy:typeTextOf
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:edee74f43a9abff4425d49ec621a69d8d9f2187536ca9718daa7b4f53181372a
         let fixture = Fixture::one("d A {}\nconst v: A = A;\nconst w: string = \"x\";\n");
         let ws = fixture.load();
         assert_eq!(type_text_at(&ws, "v").as_deref(), Some("A"));
         assert_eq!(type_text_at(&ws, "w").as_deref(), Some("string"));
         // A list is the item then square brackets, `List<T>` and `T[]` alike, and a
         // function type or a union is parenthesized first.
-        // @lfy def/query/main.lfy:typeTextOf
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:33062d1559f19c481bf6b1c58afa173f2e47fc5552d959b1fa7488603e85273e
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:93c976ee9b2a0c560278127ed6b3e5955d62584e4774c72ce4513d5817042161
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:1fd3556efd3bdce029cabed1f57ba717abb1cd6f41bda8517463c75fbdeaebd8
         let fixture = Fixture::with_prelude(
             "d Box<T> {\n  $items: `d` = T[];\n  $listed: `d` = List<T>;\n  $pairs: `d` = (A | B)[];\n}\nd A {}\nd B {}\ntype S<U> { calls = ((item: U) => U)[] }\n",
         );
@@ -3114,7 +3176,9 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:typeTextOf
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:4a96c90b5e69bd1315e4403a97ce4b57f62102d1d36e4ef0780a8337d654743d
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:b6bd675e8cdc1c15ba551fc96016b949e34f090af28569c0ca06c74db3d2bf91
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:1ebefba656cd830aa044a5b466da42044497968a78f97cb3aedd6a97a61cf830
     #[test]
     fn a_function_type_is_spelled_with_its_parameters_and_its_output() {
         let text =
@@ -3129,7 +3193,9 @@ mod tests {
         );
         assert_eq!(type_text_at(&ws, "Box.items").as_deref(), Some("T[]"));
         // An optional parameter takes a question mark after its name and a spread one
-        // three dots before it. @lfy def/query/main.lfy:typeTextOf
+        // three dots before it.
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:ead93c122f4d87f56344f0d4d43c1dba5eb4890a6ec0616bccca1833d30ee448
+        // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:71cbc82af844db09e5de8e281ec7fcf92ecd3fb7c81640e38d65ec84d146dd3c
         let text = "d A {}\ntype S { f = (one: string, two?: number, ...rest: string[]) => A }\n";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
@@ -3139,7 +3205,8 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:typeTextOf
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:5af54fe6fcd6b47238c1df5415f62eca2d8b4c8d406156fec26f1f13110aa1a1
+    // @lfy def/query/main.lfy:typeTextOf#typeTextOf:typeTextOf:3920d8f30e7c921f9aa5181a9f7cb6f2637343cf47069484f143d09ac45bab79
     #[test]
     fn a_member_read_on_a_generic_left_side_spells_the_substituted_type() {
         let text = "d Box<T> { $item: `d` = T; }\nconst b: Box<string> = 1;\nconst c = b.item;\n";
@@ -3160,7 +3227,8 @@ mod tests {
             .collect()
     }
 
-    // @lfy def/query/main.lfy:hoverOf
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:fefa4ecad4c57351195a94f21732ecd7fe7e3d4426b297a4357a002b5c695e10
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:b0185587a83117119f87cb2135f66166a096fba4ee5225cc8b76719e0201ad86
     #[test]
     fn hover_names_the_traits_and_shows_a_member_of_a_kind_data_as_a_member() {
         let text =
@@ -3168,16 +3236,16 @@ mod tests {
         let fixture = Fixture::with_prelude(text);
         let ws = fixture.load();
         // Every trait applied, in application order.
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:fefa4ecad4c57351195a94f21732ecd7fe7e3d4426b297a4357a002b5c695e10
         assert_eq!(hover_of(&ws, find(&ws, "A")[0]).traits, ["t"]);
         // A native data shows `builtin` among them.
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:fefa4ecad4c57351195a94f21732ecd7fe7e3d4426b297a4357a002b5c695e10
         let string = find(&ws, "String");
         assert_eq!(string.len(), 1);
         assert_eq!(hover_of(&ws, string[0]).traits, ["builtin"]);
         // A member of a kind data, reached after the context accessor, hovers as any
         // member: its range is in the library file that declares it.
-        // @lfy def/query/main.lfy:hoverOf
+        // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:b0185587a83117119f87cb2135f66166a096fba4ee5225cc8b76719e0201ad86
         let position = after(find_pos(text, "@acceptanceCriteria", 0), 1);
         let hover = hover_at(&ws, A, position).unwrap();
         assert_eq!(hover.kind, SymbolKind::Member);
@@ -3189,7 +3257,9 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:d0791f4ab3245a6898db9dde5dbf074ee91f0d7161a86dee61cf31cca21bb4ec
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:41d1fd67bed09e66a53efe0835bd8fd1c0ccd4bc0d992a350ae00710f532c600
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:2f6834a48ec282a9c8bcda7fecd60a3e350cd6c72ebc03a766a32d8b5b1493d1
     #[test]
     fn after_the_context_accessor_the_members_of_the_kind_data_are_offered() {
         let fixture = Fixture::with_prelude("d A { $x = string; } const y = A@");
@@ -3210,7 +3280,7 @@ mod tests {
                 .all(|c| c.kind == OfferedKind::Completion(CompletionKind::Context))
         );
         // Each carries the member's definition.
-        // @lfy def/query/main.lfy:completionsAt
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:41d1fd67bed09e66a53efe0835bd8fd1c0ccd4bc0d992a350ae00710f532c600
         assert_eq!(
             completions[0].detail.as_deref(),
             Some("The declared name; undefined when anonymous")
@@ -3224,7 +3294,9 @@ mod tests {
         assert!(completions_at(&ws, A, at(1, 35)).is_empty());
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:a9916cd076e5484103e9ca95b2f5ef1706686e8e83c7e504a0b8ecefe7bd5a2e
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:1983650193e945d4c06887e58d3e623e4ac23231ccd7fe17aa32ec1047f7317e
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:b210279c8cc1507c5a57a7cf6f62fedb15356bd132b00cbf1612db89d6c6576c
     #[test]
     fn after_a_value_accessor_a_string_offers_the_members_of_its_base_data() {
         let text = "const s = \"x\"; const y = s.";
@@ -3250,7 +3322,10 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:a9916cd076e5484103e9ca95b2f5ef1706686e8e83c7e504a0b8ecefe7bd5a2e
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:c8ff7897c9bf974084ef7638b4a77783ca67c5535874920695e1b8b9105fc13d
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:f79374319962d4f078bd589ee3c48ba342831d3c3bf726e7f9be79db955f5daf
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:20e785ec2c224b6bbbecc1556ef7199387d93d0b47fe3f405f50a424c73e86b8
     #[test]
     fn after_a_value_accessor_an_object_and_an_entity_offer_what_the_binder_resolves() {
         let names = |text: &str| -> Vec<String> {
@@ -3280,14 +3355,15 @@ mod tests {
         assert!(list.contains(&"map".to_string()), "{list:?}");
         assert!(list.contains(&"length".to_string()), "{list:?}");
         // A number offers every member of `Number`.
-        // @lfy def/query/main.lfy:completionsAt
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:86287819d5e3f0a412e45d4e9cc142fabcee38ecc6840f23d5a3333cf3c15f3d
         let number = names("const n = 1; const m = n.");
         assert!(number.contains(&"floor".to_string()), "{number:?}");
         assert!(number.contains(&"clamp".to_string()), "{number:?}");
         assert!(!number.contains(&"n".to_string()), "{number:?}");
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:eaca0122809334ea912bf9b2b71054df431482584d1b1ffc93c354f42caccab5
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:aff25f9ffa6cd60694c089eacd9189c8e497d435d15f84f960f975444ab2f98e
     #[test]
     fn after_is_every_visible_trait_is_offered() {
         let fixture = Fixture::one("trait t {} d A is ");
@@ -3313,7 +3389,11 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:c171f9334a9064eef65cd1fc28ebb9f5283e899e25f13846a61c7353857df60a
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:6b63450c2c859c4bbe7ea2985277b7423e13e5722a1dd33ff892a48f5abf1c36
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:a9916cd076e5484103e9ca95b2f5ef1706686e8e83c7e504a0b8ecefe7bd5a2e
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:8d8ea7b96f379d6002460493171edeb585da3598ee4f7fe3d2673e31b2da5fda
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:fd59b94212e923aaed32aaa17a199b14d7f3f3a4b07a01798b63d5b13185cbb1
     #[test]
     fn accessors_offer_members_of_what_they_reach() {
         let text = "d A { $x: `X` = string; $y = number; }\nenum E { one = 1, two = 2 }\nd B { $z = A.; $w = $; $v = $&; $u = E.; $t = q.; $s = A$; }\n";
@@ -3350,7 +3430,7 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:4e3e8ad2181853b2329f338cd5c820b4939f360e2fcc28d4eac377a516b35330
     #[test]
     fn a_module_offers_its_own_symbols_after_the_value_accessor() {
         let fixture = Fixture::new();
@@ -3368,7 +3448,8 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:3bd64aa81d2a389701b72e4555254bdd8670e966f55303e2a6989c6a3fec0039
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:f4b15bd5cc62dba3b4c94e9f9dacedebbb8e614827d9369f44e39c1184799c28
     #[test]
     fn inside_the_string_of_a_use_paths_are_offered() {
         let fixture = Fixture::new();
@@ -3405,7 +3486,7 @@ mod tests {
         assert_eq!(labels(&completions_at(&ws, A, at(5, 8))), ["sub"]);
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:1a9c7678f4ebd72a4250b3e631312473ef8268674718fb3e9308836e932d8fec
     #[test]
     fn inside_a_reference_names_then_rule_entities_are_offered() {
         let text = "trait rule {}\nd Identifier is rule {}\nd A: `See [[A]]` {}\n/// Docs [[y]]\nconst y = 1;\n";
@@ -3430,7 +3511,7 @@ mod tests {
         assert_eq!(labels(&far), ["Identifier"]);
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:8cc4e264838620fe24ed98648a919317adcd0f19125b43038e1f641a8c0d8913
     #[test]
     fn after_the_colon_of_a_definition_types_are_offered() {
         let text = "d A {}\ntrait t {}\nenum E {}\ntype T {}\nconst v = 1;\nconst w: \nconst u: T = { k: };\n";
@@ -3450,7 +3531,9 @@ mod tests {
         assert!(!labels(&completions).contains(&"v"));
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:8cc4e264838620fe24ed98648a919317adcd0f19125b43038e1f641a8c0d8913
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:204c2457516ba343b82bf923a4e5b7d3e2d6da49bb9ec5a26f3dba3d6c738c99
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:6bf26a197be0446516e4af6746ce185df1d0c1ea7ef553ec3f0cb72cc6e58bff
     #[test]
     fn where_a_type_is_offered_a_visible_type_parameter_is_among_the_completions() {
         // Inside the type arguments of a generic, at the end of the file.
@@ -3464,7 +3547,7 @@ mod tests {
                 "T", "Item", "Box", "boolean", "number", "string", "object", "function", "trait"
             ]
         );
-        // @lfy def/query/main.lfy:completionsAt
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:204c2457516ba343b82bf923a4e5b7d3e2d6da49bb9ec5a26f3dba3d6c738c99
         assert_eq!(
             completions[0].kind,
             OfferedKind::Symbol(SymbolKind::TypeParameter)
@@ -3473,7 +3556,9 @@ mod tests {
         assert!(!labels(&completions).contains(&"pair"));
 
         // A `<` and a comma of type arguments the tree does hold, and the `extends` and
-        // the `=` of a type parameter. @lfy def/query/main.lfy:completionsAt
+        // the `=` of a type parameter.
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:8cc4e264838620fe24ed98648a919317adcd0f19125b43038e1f641a8c0d8913
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:204c2457516ba343b82bf923a4e5b7d3e2d6da49bb9ec5a26f3dba3d6c738c99
         let text = "d Item {}\nd Pair<A, B> { $one: `d` = Pair<Item, Item>; }\nd Box<T extends Item = Item> {}\n";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
@@ -3492,7 +3577,8 @@ mod tests {
         assert_eq!(labels(&after_setter)[..3], ["T", "Item", "Pair"]);
 
         // The `<` after the identifier of a declaration lists the names it is generic
-        // over, so no type is offered there. @lfy def/query/main.lfy:completionsAt
+        // over, so no type is offered there.
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:d129bf154e0b883ef5f75240f77013b85004779d9bf26f835f183eeb717c397c
         let text = "d Item {} d Box<";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
@@ -3501,7 +3587,8 @@ mod tests {
         assert!(names.contains(&"true"), "{names:?}");
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:beddcfda7878c84398489ed04b9100d3ca66a779785f71339a12a7aac4ff27d0
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:4b7d916587b5db36e916365e710f1228e3f3850e81107f94e9b34cd6c46af72d
     #[test]
     fn where_a_statement_begins_names_then_statement_keywords_are_offered() {
         let text = "d A {}\nconst v = 1;\nfunction f(p: string) { const q = 2; \n}\n";
@@ -3533,7 +3620,9 @@ mod tests {
         assert!(labels(&completions_at(&ws, A, at(1, 0))).contains(&"const"));
     }
 
-    // @lfy def/query/main.lfy:completionsAt
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:cf670551e41f3f7e627b3270ec592c391e7cb9f9a77c60e2b51ba1094b39791e
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:d0791f4ab3245a6898db9dde5dbf074ee91f0d7161a86dee61cf31cca21bb4ec
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:d129bf154e0b883ef5f75240f77013b85004779d9bf26f835f183eeb717c397c
     #[test]
     fn where_an_expression_begins_names_then_value_and_type_keywords_are_offered() {
         let text = "d A {}\nconst w = v + ;\nconst v = \n";
@@ -3574,7 +3663,8 @@ mod tests {
         assert!(completions_at(&ws, "def/none.lfy", at(1, 0)).is_empty());
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:89894f14d714915dc14a8153e674e036b22d9e918f26fcfc4725c01b489270e6
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:9081d09fe7497f189e9f1595ce2f2ce9f21c0ab185845713df749c40ec6dbb36
     #[test]
     fn an_undeclared_name_is_a_binder_error_at_the_name() {
         let fixture = Fixture::one("const y = z;");
@@ -3587,7 +3677,9 @@ mod tests {
         assert!(diagnostics[0].message.contains('z'));
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:bda5e055c75f47a4e289fbc70bae813935676e1b44427a57fa4c9bee23a0f7da
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:f4c09f821c83cb23843f2356460be67fbd1aab191b7e4eb71a83bd48e2439e02
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:3591e88c1e517b788048aa32485e38f91b33246adf96ea3d290f78bd2d38ec39
     #[test]
     fn a_missing_name_is_a_parser_error_at_the_equals_sign() {
         let fixture = Fixture::one("const = 1;");
@@ -3610,7 +3702,7 @@ mod tests {
         assert!(diagnostics_of(&ws, Some("def/other.lfy")).is_empty());
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:8eb39df1b8c7036fa72ba03e13399e89f19b99508ff87fe86125cb50f6c3c9fa
     #[test]
     fn a_keyword_taken_as_a_name_is_a_parser_error_at_that_keyword() {
         let fixture = Fixture::one("const d = 1;");
@@ -3623,7 +3715,9 @@ mod tests {
         assert_eq!(diagnostics[0].message, "d is a keyword and cannot be a name");
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:7b71c411410f4a67352e35d1dea692d221ca1b0c055125cdedeef1785b20a62c
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:45788e4c5aba41f636eb55e7bb6787d58df3fb0d471d2ae00d710a2b8f6c3c46
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:7344995a5b7190d74a37b784a854835873bf2f0842d3f42716e9ed6ec33b4cf1
     #[test]
     fn load_problems_are_placed_at_the_top_of_their_path_or_of_the_manifest() {
         let fixture = Fixture::new();
@@ -3645,7 +3739,8 @@ mod tests {
         assert_eq!(files, ["elfie.json", "def/a.lfy", "nowhere"]);
         // Each `LoadProblem` sits at the top of its path; the unresolved `Use` is a
         // `Problem` at its node, of stage loader because that node is a `Use`.
-        // @lfy def/query/main.lfy:diagnosticsOf
+        // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:7b71c411410f4a67352e35d1dea692d221ca1b0c055125cdedeef1785b20a62c
+        // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:7344995a5b7190d74a37b784a854835873bf2f0842d3f42716e9ed6ec33b4cf1
         assert_eq!(diagnostics[0].range, Range::empty("elfie.json", at(1, 0)));
         assert_eq!(diagnostics[1].range, range(A, (1, 0), (1, 16)));
         assert_eq!(diagnostics[2].range, Range::empty("nowhere", at(1, 0)));
@@ -3656,7 +3751,9 @@ mod tests {
         assert_eq!(diagnostics[0].range, Range::empty("elfie.json", at(1, 0)));
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:6df72f95158bd04dcd3388f6c70e24ba0281159a37885e0a68a081dd3198143d
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:659c3e35343ca8a0c0f8b062549f92c4b7d902b040a6d5d79f2a6fb736e27351
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:215cb16ac34749dba8b39f3c4b0772c200e5c3bcd0f576c0a3c315cbf26dd26e
     #[test]
     fn invalid_text_and_an_open_mode_are_lexer_errors() {
         let fixture = Fixture::one("const y = 1;\nconst z = `open");
@@ -3691,7 +3788,7 @@ mod tests {
         assert_eq!(positions, sorted);
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:8e851e2cb4180e8b1c677c4d71389d4e1b9374ee37f175153cb37d3aae9034bf
     #[test]
     fn an_unused_use_is_a_binder_warning() {
         let fixture = Fixture::new();
@@ -3720,7 +3817,7 @@ mod tests {
         assert_eq!(warnings[0].range, range(A, (1, 0), (1, 10)));
     }
 
-    // @lfy def/query/main.lfy:diagnosticsOf
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:f01361758d858161eaf85f4f83e2a4e2bb2ddca4f08a388a63da89f4515d1d36
     #[test]
     fn a_file_that_only_re_exports_is_never_warned_about() {
         let fixture = Fixture::new();
@@ -3740,7 +3837,10 @@ mod tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
-    // @lfy def/query/main.lfy:outlineOf
+    // @lfy def/query/main.lfy:outlineOf#outlineOf:outlineOf:75e0f581b2c1e2e67024c96113d0bb4d0de9485bba0f4d0bc52668334b0aca46
+    // @lfy def/query/main.lfy:outlineOf#outlineOf:outlineOf:325f7559c06d74f2e1bf4ca07b4655e819dffa470665b1255ea0a88dd0dc0952
+    // @lfy def/query/main.lfy:outlineOf#outlineOf:outlineOf:7531e7f2b71a725d2add77601ce11b3db84a1ea5f81dda480e507eda5dc79ed9
+    // @lfy def/query/main.lfy:outlineOf#outlineOf:outlineOf:267b17e8c1e5a951c9981534d31e87180bedced640f519c1fea34a6ebcb08ae2
     #[test]
     fn the_outline_nests_members_then_declarations_and_skips_parameters() {
         let text = "use \"./b\" as B;\n/// Doc\nd A is t { $x = string; fn f(p: string) { const q = 1; } $y = number; }\ntrait t { $m = string; }\nenum E { one = 1 }\nfunction g(r: number) { for (const i in [1]) { const s = i; } }\n";
@@ -3787,7 +3887,10 @@ mod tests {
         assert!(outline_of(&ws, "def/none.lfy").is_empty());
     }
 
-    // @lfy def/query/main.lfy:findSymbols
+    // @lfy def/query/main.lfy:findSymbols#findSymbols:findSymbols:88e9675dd098a5864faa0fd7eadc96f57937a4b1389ee9fe2fde45430ea4af24
+    // @lfy def/query/main.lfy:findSymbols#findSymbols:findSymbols:13178e674080b5c706e201a7d26af8467c11a9e94ea94412d33d692ae360d1b1
+    // @lfy def/query/main.lfy:findSymbols#findSymbols:findSymbols:f133971178ba35e56f7538600c180d6f1e36300ecd60b6befa6d4bd852510f4f
+    // @lfy def/query/main.lfy:findSymbols#findSymbols:findSymbols:2cafa010009d2c7783a291a1e27d35e09d9ef1f73122866e4953772fad3a0b32
     #[test]
     fn find_symbols_flattens_dotted_names_across_files_own_first() {
         let fixture = Fixture::new();
@@ -3813,7 +3916,9 @@ mod tests {
         assert!(names("zzz").is_empty());
     }
 
-    // @lfy def/query/main.lfy:renameAt
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:823a0f85531d12e49b75f78010bbb1ed125a887bdcaee1b3a50f0d9137aed0b9
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:1cfa6517d314d6b849e4b5f034888adf621fe9fa21decbb02ea19908d33804c6
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:b5d85561894c750665d6d3f99ffb0079ffdefdcd3c1a5f170ebe222eb7cc2623
     #[test]
     fn a_rename_edits_the_declaration_the_reference_and_the_value() {
         let text = "d A {} const y: `See [[A]]` = A;";
@@ -3848,7 +3953,10 @@ mod tests {
         assert_eq!(edits[1].range, range(A, (2, 10), (2, 11)));
     }
 
-    // @lfy def/query/main.lfy:renameAt
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:b3fa6dbc86d24eb00eade77e10fed4d36515e9a798f0fc3f0f04191c209583ee
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:ae51c574616199669818286421fb3f813b8f790e1b9ee3b80b73b7cbdaa7b374
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:efb7ae0a1a6c186506864630302581803bf852c59b920e2a33c791590b2a2b3b
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:38c28e52447e67ab5d7c6576c2e7a86c91dc2e0e62c4bf70a154374912a4a4c7
     #[test]
     fn a_rename_to_a_keyword_or_a_captured_name_is_refused() {
         let text = "d A {} const y = A;";
@@ -3870,7 +3978,8 @@ mod tests {
         assert!(rename_at(&ws, A, at(1, 2), "C").is_ok());
     }
 
-    // @lfy def/query/main.lfy:renameAt
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:4ab53655b20b4378af6810e32d9f6f84ae0ae4b2b6f07ee2a4e2a739ac8121c2
+    // @lfy def/query/main.lfy:renameAt#renameAt:renameAt:1cfa6517d314d6b849e4b5f034888adf621fe9fa21decbb02ea19908d33804c6
     #[test]
     fn renaming_a_module_changes_the_name_after_as_and_its_usages_only() {
         let fixture = Fixture::new();
@@ -3911,7 +4020,10 @@ mod tests {
         );
     }
 
-    // @lfy def/query/main.lfy:find
+    // @lfy def/query/main.lfy:find#find:find:b98d528d13f3ad60c80470f707d5921a7c0ac7c388801cd1389325c4c31fec3b
+    // @lfy def/query/main.lfy:find#find:find:2ac18c330a03bf5459854635202507f4d782a464b7b6a4abefb327fabbb5a66b
+    // @lfy def/query/main.lfy:find#find:find:61607cb709e91135898032720f10dea2e214fb817b1408e0acc03b32ee2921dd
+    // @lfy def/query/main.lfy:find#find:find:8f765778b0aceda657471a1242f7d919274a829f19155b89b8b0a7e974e37ae0
     #[test]
     fn find_takes_a_name_a_dotted_member_or_a_file_prefix() {
         let fixture = Fixture::new();
@@ -3933,7 +4045,9 @@ mod tests {
         assert!(find(&ws, "def/none.lfy:A").is_empty());
     }
 
-    // @lfy def/query/main.lfy:sourceOf
+    // @lfy def/query/main.lfy:sourceOf#sourceOf:sourceOf:c63b36c1d3589b692ad82fa7d513ed337509b8cd31e314f57705a901f0f0973d
+    // @lfy def/query/main.lfy:sourceOf#sourceOf:sourceOf:44004ceec3f3da5b19d3201155581866ff4c72d679a91c01a53d7f261cfaca5b
+    // @lfy def/query/main.lfy:sourceOf#sourceOf:sourceOf:5e22bbec842c0245139e4ce2c5d6c95b1a30db2a6c8582182205d84b18bfa60d
     #[test]
     fn source_is_the_declaration_with_its_documentation_or_the_whole_file() {
         let text = "/// Doc\nd A: `An A` {}\ntrait t { $m = string; }\nd B is t {}\n";
@@ -3946,7 +4060,20 @@ mod tests {
         assert_eq!(source_of(&ws, model.global), "");
     }
 
-    // @lfy def/query/main.lfy:rangeOf
+    // @lfy def/query/main.lfy:symbolAt#symbolAt:symbolAt:98dc7332576f8fddae2e0d0b1c6c36a99cf2a4b949d8c811d0eb9a58e582dbfb
+    // @lfy def/query/main.lfy:definitionOf#definitionOf:definitionOf:f29c91372d644bd463696042d02d9f3116c00ab997633f7b7dfbcab6f3aa4bd6
+    // @lfy def/query/main.lfy:referencesTo#referencesTo:referencesTo:e5061ebb82757d8b8b3294034eb029427101497774cb517856a1f71126d9c88f
+    // @lfy def/query/main.lfy:sourceOf#sourceOf:sourceOf:c63b36c1d3589b692ad82fa7d513ed337509b8cd31e314f57705a901f0f0973d
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:5937b6ce6d5708bf2bb3e41b667bc34bda34e495535c6e6f3c03d28e4b157824
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:bc5317180748f756ff3ce1dc261bcaa95143513bb4264535b9448d06ee539dd5
+    // @lfy def/query/main.lfy:hoverOf#hoverOf:hoverOf:3346a8528f7f9b2ef994f9848d00159b23b48d112a8636505cc86dcf7c10ddcf
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:41d1fd67bed09e66a53efe0835bd8fd1c0ccd4bc0d992a350ae00710f532c600
+    // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:3bd64aa81d2a389701b72e4555254bdd8670e966f55303e2a6989c6a3fec0039
+    // @lfy def/query/main.lfy:diagnosticsOf#diagnosticsOf:diagnosticsOf:215cb16ac34749dba8b39f3c4b0772c200e5c3bcd0f576c0a3c315cbf26dd26e
+    // @lfy def/query/main.lfy:outlineOf#outlineOf:outlineOf:75e0f581b2c1e2e67024c96113d0bb4d0de9485bba0f4d0bc52668334b0aca46
+    // @lfy def/query/main.lfy:outlineOf#outlineOf:outlineOf:7531e7f2b71a725d2add77601ce11b3db84a1ea5f81dda480e507eda5dc79ed9
+    // @lfy def/query/main.lfy:findSymbols#findSymbols:findSymbols:88e9675dd098a5864faa0fd7eadc96f57937a4b1389ee9fe2fde45430ea4af24
+    // @lfy def/query/main.lfy:find#find:find:61607cb709e91135898032720f10dea2e214fb817b1408e0acc03b32ee2921dd
     #[test]
     fn the_repository_answers_every_query_without_errors() {
         let ws = repository();
@@ -4012,7 +4139,16 @@ mod tests {
         assert!(labels(&completions_at(&ws, main, position)).contains(&"data"));
     }
 
-    // @lfy def/query/main.lfy:semanticTokensOf
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:1e8d2be374f4b20826b3af5c510a954f6e8509830a5378e959337420e44bbd58
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:f95ad0f27c4c05b3d468b9f8dd1e7ea16f19af5dc46b8ad5bf5415d8a5808e47
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:b5097f3e8a9bd502be04b8014dabcf1f1547271685407ae1e2223de4a7075b1e
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:2dd414968daa48cca996be55671bd0fd93c294bc3f0bf64314fd65c70a5b3e6a
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:3d5de36e57170404015c3fd3283d61ce639c92d2761518d47c0cd218f5470c0d
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:4e4adb43507288877e4db588fd52ac3ef62e096cc3a05cffa8b16348c956995c
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:5eefc067fa28b96019e3711925aedc4c3768d4a6b2acb288419a23fd9c448d25
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:c4f711c354ffdeeec2e978fa878ed96e20f487f54db0f996c048c56ca0682c3b
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:257cf12f2043369c4f7b1756bac875bb567b96424f0241706a296272661fa75b
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:1b516fbc1f660e06544efe92032405b2750a6ca6bfd72a56c3064f08dc6e4004
     #[test]
     fn semantic_tokens_classify_declarations_and_layers() {
         let text = "d A { $x: `d` = string; } const y = A$x;";
@@ -4046,7 +4182,7 @@ mod tests {
             ]
         );
         // In position order, never overlapping.
-        // @lfy def/query/main.lfy:semanticTokensOf
+        // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:3b27c9ca5a3e24fd29d4157ee2bfa19d5898698dad2b7c38af7e81e4ceb7a64d
         for pair in tokens.windows(2) {
             assert!(
                 pair[0].range.end <= pair[1].range.start
@@ -4055,7 +4191,16 @@ mod tests {
         }
     }
 
-    // @lfy def/query/main.lfy:semanticTokensOf
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:7553927202180ccb4a1480c855ff7bce209d8347bd717f503c9e26e48a4e853e
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:029fe0d5f7cf290d2e76c084a53f30742dec69b86700d3eacda49a520c6c0641
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:0b2b454fcbc0d730efc2adcd24afe8aa6f8676a59123bc15cc8ef0f1e7887372
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:872b543656cf7d57173852e175460f33b5da0e2b71297f20e47ab49a08119e70
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:4e4adb43507288877e4db588fd52ac3ef62e096cc3a05cffa8b16348c956995c
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:fd59af79b69b792d0a46a4e76d8ebfedb0de64782a023593d40b457931d966b0
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:929a8a48590d4dfcb4256bca6989606d777cf6d9ee2e49acd1a6bfa1f110c5c3
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:83a12d344ec75633f2189b6ffa0a190818b90cce94688ce226a389d7abc2232b
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:257cf12f2043369c4f7b1756bac875bb567b96424f0241706a296272661fa75b
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:a6949a36c8830085a4b8b09ad8dbf92cabaeaefce7ee3bf69cd813bef4ec97f9
     #[test]
     fn semantic_tokens_mark_prose_context_properties_and_unresolved_names() {
         let text = "fn f(): `See [[g]]` => number { @acceptanceCriteria.add({ behavior = `b` }); }";
@@ -4094,11 +4239,14 @@ mod tests {
                 ),
             ]
         );
-        // @lfy def/query/main.lfy:semanticTokensOf
+        // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:267b17e8c1e5a951c9981534d31e87180bedced640f519c1fea34a6ebcb08ae2
         assert!(semantic_tokens_of(&workspace, "def/missing.lfy").is_empty());
     }
 
-    // @lfy def/query/main.lfy:semanticTokensOf
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:1b1f35ba191526e1c9bc80d4ed7166a45c0d7ad501f5cf2e3c488214c2f5b21c
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:643535f5d7e9be9d14aedb4d1ce389d7fe4300a7c6ec0960f0886e2e52dc7fa4
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:21f80d27cb8044e8104268543ce3f58f8129dc1b7e4c98974607cebfa058c2e7
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:d0cff9cba321fbde000dae836c8c6d9c1d38ebb54e5c84ad9ddd5a03a2d930b8
     #[test]
     fn semantic_tokens_classify_a_type_parameter_wherever_its_name_appears() {
         let text = "d Box<T> { $item: `d` = T; } const b = Box<string>;";
@@ -4137,11 +4285,14 @@ mod tests {
             ]
         );
         // `string` is a keyword, so it gets no token.
-        // @lfy def/query/main.lfy:semanticTokensOf
+        // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:1e8d2be374f4b20826b3af5c510a954f6e8509830a5378e959337420e44bbd58
         assert!(!summary.iter().any(|(raw, ..)| raw == "string"));
     }
 
-    // @lfy def/query/main.lfy:semanticTokensOf
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:1e8d2be374f4b20826b3af5c510a954f6e8509830a5378e959337420e44bbd58
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:3d5de36e57170404015c3fd3283d61ce639c92d2761518d47c0cd218f5470c0d
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:fd59af79b69b792d0a46a4e76d8ebfedb0de64782a023593d40b457931d966b0
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:929a8a48590d4dfcb4256bca6989606d777cf6d9ee2e49acd1a6bfa1f110c5c3
     #[test]
     fn semantic_tokens_cover_the_repository_without_keywords() {
         let workspace = workspace::load(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")));
@@ -4171,6 +4322,100 @@ mod tests {
             tokens
                 .iter()
                 .any(|t| t.modifiers.contains(&TokenModifier::Context))
+        );
+    }
+
+    /// Every semantic token of a file as its name, its type, and its modifiers.
+    fn summarize(
+        workspace: &Workspace,
+        file: &str,
+    ) -> Vec<(String, TokenType, Vec<TokenModifier>)> {
+        let id = workspace.model.file(file).unwrap();
+        semantic_tokens_of(workspace, file)
+            .iter()
+            .map(|t| {
+                let index = token_at(workspace, file, t.range.start).unwrap();
+                (
+                    token(workspace, id, index).value.clone(),
+                    t.ty,
+                    t.modifiers.clone(),
+                )
+            })
+            .collect()
+    }
+
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:a984da220516d1eb9f619741ae9b54ac88167c3170597684aa511c4a78237250
+    #[test]
+    fn a_loop_variable_and_an_external_are_variables() {
+        let text =
+            "external E = undefined;\nfunction g() { for (const i in [1]) { const s = i; } }\n";
+        let fixture = Fixture::one(text);
+        let workspace = fixture.load();
+        use TokenModifier::*;
+        assert_eq!(
+            summarize(&workspace, A),
+            vec![
+                ("E".to_string(), TokenType::Variable, vec![Declaration]),
+                ("g".to_string(), TokenType::Function, vec![Declaration]),
+                ("i".to_string(), TokenType::Variable, vec![Declaration]),
+                (
+                    "s".to_string(),
+                    TokenType::Variable,
+                    vec![Declaration, Readonly]
+                ),
+                ("i".to_string(), TokenType::Variable, vec![]),
+            ]
+        );
+    }
+
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:5a6ddde0f77237867aec3554925d122dfb6dc9d6b04bb03baeadc32bbe06532b
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:7534862894ca9876581a9a137fb3189b4e5b6c8ea70f9c11924d979c5339262d
+    // @lfy def/query/main.lfy:semanticTokensOf#semanticTokensOf:semanticTokensOf:c597e906a0e9079e77628eb66872af16f638fc6b43ea00c501a100e1e353e39f
+    #[test]
+    fn a_module_a_value_accessor_and_an_alias_are_classified_by_what_they_reach() {
+        let fixture = Fixture::new();
+        fixture
+            .write(
+                "def/a.lfy",
+                "use \"./b\" as B;\nd A { $x = string; }\nalias C = A;\nconst z = A.x;\nconst w = B.B;\n",
+            )
+            .write("def/b.lfy", "d B {}\n");
+        let workspace = fixture.load();
+        use TokenModifier::*;
+        // The name a Use binds is a namespace; an alias takes the type of the entity it
+        // is bound to; a name after a value accessor carries the value modifier, a
+        // member of a data and a symbol of a module alike.
+        assert_eq!(
+            summarize(&workspace, A),
+            vec![
+                ("B".to_string(), TokenType::Namespace, vec![Declaration]),
+                ("A".to_string(), TokenType::Data, vec![Declaration, Agentic]),
+                ("x".to_string(), TokenType::Property, vec![Declaration]),
+                (
+                    "C".to_string(),
+                    TokenType::Data,
+                    vec![Declaration, Agentic]
+                ),
+                ("A".to_string(), TokenType::Data, vec![Agentic]),
+                (
+                    "z".to_string(),
+                    TokenType::Variable,
+                    vec![Declaration, Readonly]
+                ),
+                ("A".to_string(), TokenType::Data, vec![Agentic]),
+                ("x".to_string(), TokenType::Property, vec![Value]),
+                (
+                    "w".to_string(),
+                    TokenType::Variable,
+                    vec![Declaration, Readonly]
+                ),
+                ("B".to_string(), TokenType::Namespace, vec![]),
+                (
+                    "B".to_string(),
+                    TokenType::Data,
+                    vec![Agentic, Value]
+                ),
+            ]
         );
     }
 }

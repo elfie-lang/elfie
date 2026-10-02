@@ -21,7 +21,7 @@ grammar_rules! {
         // Numbers
         /// When underscores are present they are removed from the token value; see
         /// [`number_value`].
-        NumberLiteral is [terminal()]: "A decimal number; underscores group digits" = r#"[[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) , (/ "." , [[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) /)"#, // @lfy def/grammar/terminals/literal.lfy:DoubleQuoteString.rule
+        NumberLiteral is [terminal()]: "A decimal number; underscores group digits" = r#"[[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) , (/ "." , [[Digit]] , (: [[Digit]] | ( "_" , [[Digit]] ) :) /)"#, // @lfy def/grammar/terminals/literal.lfy:NumberLiteral
 
         // Boundaries
         SingleQuote is [boundary("'")]: "Opens and closes a single quoted string" = r#""'""#, // @lfy def/grammar/terminals/literal.lfy:SingleQuote
@@ -63,7 +63,7 @@ grammar_rules! {
 }
 
 /// The value of a `NumberLiteral` token: the raw text with its underscores removed.
-// @lfy def/grammar/terminals/literal.lfy:NumberLiteral
+// @lfy def/grammar/terminals/literal.lfy:NumberLiteral#NumberLiteral:NumberLiteral:189bf8bdef00a91b5880b253742ad890dddbc8c3fe3343b6c9342e05d086e160
 pub fn number_value(raw: &str) -> String {
     raw.chars().filter(|&c| c != '_').collect()
 }
@@ -152,7 +152,7 @@ mod tests {
         assert_eq!(Literal::Backslash.syntax(), "\"\\\"");
     }
 
-    // @lfy def/grammar/terminals/literal.lfy:DoubleQuoteString.rule
+    // @lfy def/grammar/terminals/literal.lfy:NumberLiteral
     #[test]
     fn numbers_are_digits_grouped_by_underscores_with_an_optional_fraction() {
         let number = Literal::NumberLiteral;
@@ -165,7 +165,7 @@ mod tests {
         assert_eq!(number.longest_match("_1"), None);
         assert!(number.matches("1_0.0_1"));
         assert!(!number.matches("1_"));
-        // @lfy def/grammar/terminals/literal.lfy:NumberLiteral
+        // @lfy def/grammar/terminals/literal.lfy:NumberLiteral#NumberLiteral:NumberLiteral:189bf8bdef00a91b5880b253742ad890dddbc8c3fe3343b6c9342e05d086e160
         assert_eq!(number_value("1_000.000_1"), "1000.0001");
         assert_eq!(number_value("42"), "42");
     }
@@ -219,7 +219,7 @@ mod tests {
         assert_eq!(Literal::NewlineEscape.longest_match("\\\\n"), None);
     }
 
-    // @lfy def/grammar/terminals/literal.lfy:UnicodeEscape
+    // @lfy def/grammar/terminals/literal.lfy:UnicodeEscape#UnicodeEscape:UnicodeEscape:f306ebf51a64b1c7c24aff16932079761423f02eb393c6882922760daa2f03ed
     #[test]
     fn unicode_escapes_that_are_not_a_scalar_value_are_kept_as_written() {
         let double = Entity::Literal(Literal::DoubleQuoteBody);

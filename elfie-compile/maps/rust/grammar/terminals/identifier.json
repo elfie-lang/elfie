@@ -2,15 +2,15 @@
   {
     "dependencies": {
       "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "820b5b53ed570a2a6b99b6cb14469d897cd3a13f745fff6dcb738af7ace3851d",
+    "generated": "2026-10-01T18:59:26Z",
+    "hash": "b1bb35e604f7e494c9628323c688916a1d461c2cb9b631608c16b9d501c98f54",
     "markers": [
       {
         "column": null,
         "end": 200,
-        "entity": null,
+        "entity": "Rule.syntax",
         "file": "def/grammar/traits.lfy",
         "line": 6,
         "outputLine": 98,
@@ -55,51 +55,51 @@
       {
         "column": null,
         "end": 384,
-        "entity": null,
+        "entity": "rule",
         "file": "def/grammar/traits.lfy",
-        "line": 19,
+        "line": 10,
         "outputLine": 355,
         "requirement": null
       },
       {
         "column": null,
         "end": 414,
-        "entity": null,
-        "file": "def/grammar/main.lfy",
-        "line": 22,
+        "entity": "rule",
+        "file": "def/grammar/traits.lfy",
+        "line": 10,
         "outputLine": 385,
-        "requirement": null
+        "requirement": "global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e"
       },
       {
         "column": null,
         "end": 422,
-        "entity": null,
-        "file": "def/grammar/main.lfy",
-        "line": 34,
+        "entity": "rule",
+        "file": "def/grammar/traits.lfy",
+        "line": 10,
         "outputLine": 415,
         "requirement": null
       },
       {
         "column": null,
         "end": 772,
-        "entity": null,
-        "file": "def/grammar/main.lfy",
-        "line": 34,
+        "entity": "rule",
+        "file": "def/grammar/traits.lfy",
+        "line": 10,
         "outputLine": 423,
         "requirement": null
       },
       {
         "column": null,
         "end": 804,
-        "entity": null,
-        "file": "def/grammar/main.lfy",
-        "line": 34,
+        "entity": "rule",
+        "file": "def/grammar/traits.lfy",
+        "line": 10,
         "outputLine": 773,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/grammar/ebnf.rs",
-    "requirements": "",
+    "requirements": "c62fd2ed39ceaa718d04fa4760c787d864ae48ef332e64ab6216ebfbe3c5a701",
     "signature": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
     "source": "def/grammar/terminals/identifier.lfy",
     "target": "rust"
@@ -107,10 +107,10 @@
   {
     "dependencies": {
       "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "820b5b53ed570a2a6b99b6cb14469d897cd3a13f745fff6dcb738af7ace3851d",
+    "generated": "2026-10-01T18:59:26Z",
+    "hash": "b1bb35e604f7e494c9628323c688916a1d461c2cb9b631608c16b9d501c98f54",
     "markers": [
       {
         "column": null,
@@ -146,7 +146,7 @@
         "file": "def/grammar/terminals/identifier.lfy",
         "line": 7,
         "outputLine": 24,
-        "requirement": null
+        "requirement": "Identifier:Identifier:f81825b253d16019732a0cc7a25b0c648a288023645e43ae3d36dce5b7c872a2"
       },
       {
         "column": null,
@@ -164,11 +164,11 @@
         "file": "def/grammar/terminals/identifier.lfy",
         "line": 7,
         "outputLine": 51,
-        "requirement": null
+        "requirement": "Identifier:Identifier:f81825b253d16019732a0cc7a25b0c648a288023645e43ae3d36dce5b7c872a2"
       }
     ],
     "output": "crates/elfie-core/src/grammar/terminals/identifier.rs",
-    "requirements": "",
+    "requirements": "c62fd2ed39ceaa718d04fa4760c787d864ae48ef332e64ab6216ebfbe3c5a701",
     "signature": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
     "source": "def/grammar/terminals/identifier.lfy",
     "target": "rust"

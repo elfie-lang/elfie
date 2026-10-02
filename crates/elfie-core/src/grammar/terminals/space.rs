@@ -13,7 +13,7 @@ grammar_rules! {
 }
 
 /// The value of every `NewLine` token, whichever spelling the raw text uses.
-// @lfy def/grammar/terminals/space.lfy:NewLine
+// @lfy def/grammar/terminals/space.lfy:NewLine#NewLine:NewLine:2f2c2654a21bda5af8b3afdf4da4bb63961c6466f9e29267a5f5ff945aebf400
 pub const NEW_LINE_VALUE: &str = "\n";
 
 #[cfg(test)]

@@ -414,8 +414,6 @@ impl<'t> Parser<'t> {
     }
 
     /// `Current`: an accessor and, only when nothing sits between them, a member name.
-    /// When space, a line break, comments, or documentation exist between the accessor
-    /// and the member name, the member name is not matched.
     // @lfy def/grammar/rules/expression.lfy:Current
     fn parse_current(&mut self, node: &mut Node) -> Option<usize> {
         let accessor = self.parse_rule(Entity::Punctuation(Punctuation::Accessor), node.start, 0)?;
@@ -1017,10 +1015,7 @@ impl<'t> Parser<'t> {
         }
         root.end = len;
         traits::attach_documentation(&mut root, self.tokens);
-        // Documentation that no declaration follows attaches to nothing, unless it is one
-        // of two or more blocks in a row, with no declaration between them, that were all
-        // opened with a `BlockDocumentationOpen`: those attach to the "global" object, the
-        // root of the file being the node that stands for it.
+        // The root of the file is the node that stands for the "global" object.
         // @lfy def/grammar/terminals/comment.lfy:Documentation
         if rule == Entity::File(File::SourceFile) {
             let trailing = traits::documentation_before(&root.children, root.children.len(), self.tokens);

@@ -13,12 +13,12 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;
 
-pub mod checks; // @lfy def/grammar/main.lfy:21
+pub mod checks; // @lfy def/grammar/main.lfy:grammarDocument
 pub mod ebnf;
-pub mod precedence; // @lfy def/grammar/main.lfy:1
-pub mod rules; // @lfy def/grammar/main.lfy:2
+pub mod precedence; // @lfy def/grammar/main.lfy:grammarDocument
+pub mod rules; // @lfy def/grammar/main.lfy:grammarDocument
 pub mod terminals; // @lfy def/grammar/main.lfy:terminalDocument
-pub mod traits; // @lfy def/grammar/main.lfy:2
+pub mod traits; // @lfy def/grammar/main.lfy:grammarDocument
 
 pub use checks::{Check, Violation};
 pub use precedence::Level;
@@ -129,12 +129,12 @@ pub enum Entity {
     Keyword(Keyword),         // @lfy def/grammar/main.lfy:terminalDocument
     Identifier(Identifier),   // @lfy def/grammar/main.lfy:terminalDocument
     Space(Space),             // @lfy def/grammar/main.lfy:terminalDocument
-    Literal(Literal),         // @lfy def/grammar/main.lfy:1
+    Literal(Literal),         // @lfy def/grammar/main.lfy:terminalDocument
     Punctuation(Punctuation), // @lfy def/grammar/main.lfy:terminalDocument
-    Expression(Expression),   // @lfy def/grammar/main.lfy:2
+    Expression(Expression),   // @lfy def/grammar/main.lfy:grammarDocument
     Comment(Comment),         // @lfy def/grammar/main.lfy:terminalDocument
     Statement(Statement),     // @lfy def/grammar/main.lfy:terminalDocument
-    File(File),               // @lfy def/grammar/main.lfy:3
+    File(File),               // @lfy def/grammar/main.lfy:grammarDocument
 }
 
 macro_rules! delegate {
@@ -243,7 +243,7 @@ pub fn grammar_document() -> String {
 
 /// The global acceptance criteria of the grammar: every [`Check`] holds for every rule,
 /// otherwise each failing rule is reported with the check it fails.
-// @lfy def/grammar/main.lfy:21
+// @lfy def/grammar/main.lfy:grammarDocument
 pub fn validate() -> Result<(), Vec<Violation>> {
     checks::validate()
 }
@@ -253,7 +253,7 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
-    // @lfy def/grammar/main.lfy:24
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:8e482e5ac4e7663c971da418a670b72d28fa2e354f31f74b8fc97e55984f29a0
     #[test]
     fn rule_identifiers_are_unique_and_looked_up_by_name() {
         let mut seen = HashSet::new();
@@ -330,12 +330,13 @@ mod tests {
         assert!(document.len() > terminal_document().len());
     }
 
-    // @lfy def/grammar/main.lfy:21
+    // @lfy def/grammar/main.lfy:grammarDocument
     #[test]
     fn the_grammar_satisfies_its_global_acceptance_criteria() {
         assert_eq!(validate(), Ok(()));
     }
 
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e
     #[test]
     fn every_rule_compiles_as_ebnf_and_resolves_its_references() {
         let grammar = ebnf::grammar();

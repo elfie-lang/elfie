@@ -7,7 +7,7 @@ use crate::lexer::Token;
 
 /// One entry of [`Node::children`]: a node, an error node, or a token. A token is given
 /// by its index into [`Tree::tokens`], where the token itself lives.
-// @lfy def/parser/data.lfy:ErrorNode.children
+// @lfy def/parser/data.lfy:Node.children
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Child {
     Node(Node),
@@ -57,21 +57,17 @@ impl Child {
 }
 
 /// A rule satisfied by a run of consecutive tokens.
-///
-/// Joining the raw text of the tokens from `start` up to `end` reproduces the source the
-/// node covers, and each token below the node is reached through exactly one child. An
-/// `alternationList` rule has no node; the item that satisfied it stands in its place.
 // @lfy def/parser/data.lfy:Node
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     /// The rule this node satisfies. [`Node::rule`] gives its EBNF form.
     pub rule: Entity, // @lfy def/parser/data.lfy:Node.rule
     /// Nodes and tokens in source order, trivia included.
-    pub children: Vec<Child>, // @lfy def/parser/data.lfy:ErrorNode.children
+    pub children: Vec<Child>, // @lfy def/parser/data.lfy:Node.children
     /// Index of the first token covered, counting from 0 over [`Tree::tokens`].
-    pub start: usize, // @lfy def/parser/data.lfy:ErrorNode.start
+    pub start: usize, // @lfy def/parser/data.lfy:Node.start
     /// Index after the last token covered.
-    pub end: usize, // @lfy def/parser/data.lfy:ErrorNode.end
+    pub end: usize, // @lfy def/parser/data.lfy:Node.end
     /// `$documentation` of the `documented` trait: the `Documentation` nodes that precede
     /// this node with only trivia between; empty when there are none, and always empty
     /// for rules without the trait.
@@ -329,6 +325,10 @@ mod tests {
     use crate::grammar::rules::file::File;
     use crate::grammar::terminals::identifier::Identifier;
     use crate::lexer::lex;
+    use crate::parser::parse;
+
+    /// A file with statements, blocks, operations, calls and an unparsable token in it.
+    const SOURCE: &str = "const a = f(1, b.c); // tail\n{ return a + 2 * c; ) }\n";
 
     // @lfy def/parser/data.lfy:ErrorNode
     #[test]
@@ -381,5 +381,40 @@ mod tests {
         assert!(rendered.contains("Error 2..3 expected [Semicolon] \"b\""));
         assert_eq!(Child::Token(4).end(), 5);
         assert!(Child::Token(4).as_node().is_none());
+    }
+
+    // @lfy def/parser/data.lfy:Node#Node:Node:982a7f3fb557d8b6d79db84457ee1acdd45b0a0baf4f99fbd64d42dac779bf14
+    #[test]
+    fn every_node_covers_the_source_it_spans_through_one_child_per_token() {
+        let tree = parse(lex(SOURCE, None).unwrap(), None);
+        for node in tree.root.descendants() {
+            let reached = node.token_indices();
+            assert_eq!(
+                reached,
+                (node.start..node.end).collect::<Vec<_>>(),
+                "{}",
+                node.rule.identifier()
+            );
+            let joined: String = reached.iter().map(|&index| tree.token(index).raw.as_str()).collect();
+            assert_eq!(joined, tree.raw(node.start, node.end), "{}", node.rule.identifier());
+        }
+        assert_eq!(tree.root.token_indices(), (0..tree.tokens.len()).collect::<Vec<_>>());
+        assert_eq!(tree.raw(0, tree.tokens.len()), SOURCE);
+    }
+
+    // @lfy def/parser/data.lfy:Node#Node:Node:c9c32197453f4c01b5e6f8acbc6e5317ecddc9b69c6b4c5eed4c959c61a1d754
+    #[test]
+    fn an_alternation_list_has_no_node_and_its_item_stands_in_its_place() {
+        let tree = parse(lex(SOURCE, None).unwrap(), None);
+        for node in tree.root.descendants() {
+            assert!(!node.rule.is_alternation_list(), "{}", node.rule.identifier());
+        }
+        let snippet = parse(
+            lex("a + 2", None).unwrap(),
+            Some(Entity::Expression(Expression::Expression)),
+        );
+        assert_eq!(snippet.root_rule, Entity::Expression(Expression::Expression));
+        assert_eq!(snippet.root.rule, Entity::Expression(Expression::AdditiveOperation));
+        assert!(!snippet.root.rule.is_alternation_list());
     }
 }

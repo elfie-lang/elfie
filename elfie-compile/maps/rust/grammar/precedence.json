@@ -1,8 +1,8 @@
 [
   {
     "dependencies": {},
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "54a934af9a20587aaf2a317936082f2b052db9d6ca81f40f9b45f01de2edb407",
+    "generated": "2026-10-01T18:59:26Z",
+    "hash": "d02603aaa35a4c6e7f88d03691ee7456e2749e49d5f223519b10a518c4f8911e",
     "markers": [
       {
         "column": null,
@@ -195,7 +195,7 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/precedence.rs",
-    "requirements": "",
+    "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "3f2400cb983ea062868eb5df5f7435a8de854f4a01fd4e66d25bda993cc2d30c",
     "source": "def/grammar/precedence.lfy",
     "target": "rust"

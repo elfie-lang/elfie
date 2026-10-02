@@ -2,10 +2,10 @@
   {
     "dependencies": {
       "def/grammar/precedence.lfy": "3f2400cb983ea062868eb5df5f7435a8de854f4a01fd4e66d25bda993cc2d30c",
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "6128bdb81fd2daa0a191b6ff35f1cb89d56750a9a41a16f04dd490f9aa33f32d",
+    "generated": "2026-10-01T18:59:26Z",
+    "hash": "23140d4e1981cca81be0a52dc020544a7547dea80aa2239a7f86ad3d2dc538e3",
     "markers": [
       {
         "column": null,
@@ -64,7 +64,7 @@
       {
         "column": null,
         "end": 17,
-        "entity": "Keyword.rule",
+        "entity": "AliasKeyword",
         "file": "def/grammar/terminals/keyword.lfy",
         "line": 11,
         "outputLine": 17,
@@ -559,9 +559,9 @@
       {
         "column": null,
         "end": 171,
-        "entity": null,
+        "entity": "keyword",
         "file": "def/grammar/traits.lfy",
-        "line": 45,
+        "line": 44,
         "outputLine": 159,
         "requirement": null
       },
@@ -594,7 +594,7 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/terminals/keyword.rs",
-    "requirements": "",
+    "requirements": "62b27c0f44c586226a3411ae618c00a9e4c2323f8eb4c5a99680d598a18eccde",
     "signature": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
     "source": "def/grammar/terminals/keyword.lfy",
     "target": "rust"

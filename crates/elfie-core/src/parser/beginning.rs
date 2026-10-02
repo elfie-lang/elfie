@@ -30,7 +30,7 @@ pub(crate) struct Tables {
 
 impl Tables {
     /// The terminals `rule` can begin with.
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:d9ffb274437835518bafd5ef29689fd2aae3533a27eb2a3249539f93cd3e9de7
     pub fn first(&self, rule: Entity) -> &HashSet<Entity> {
         static EMPTY: OnceLock<HashSet<Entity>> = OnceLock::new();
         self.first
@@ -111,7 +111,7 @@ impl Tables {
 
     /// The rules of `candidates` that can begin with `terminal`, in the order they are
     /// tried.
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:140e8e6b83005b1d43d49be2e061b16a5e12a8406a5e1119ba629e43bed1cff2
     pub fn select(&self, candidates: &[Entity], terminal: Entity) -> Vec<Entity> {
         let selected: Vec<Entity> = candidates
             .iter()
@@ -164,7 +164,7 @@ pub fn is_expression_rule(rule: Entity) -> bool {
 /// The minimum the one expression that satisfies an alternation of expression rules is
 /// parsed with: one below the lowest binding power among its infix and postfix
 /// alternatives, and 0 when it has no infix or postfix alternative.
-// @lfy def/parser/main.lfy:parse
+// @lfy def/parser/main.lfy:parse#parse:parse:50f445f45220780457d4f8bc7459c8ccd6b0b18da824a94fec40ae0387001051
 pub fn expression_alternation_minimum(items: &[Entity]) -> u8 {
     items
         .iter()
@@ -172,7 +172,7 @@ pub fn expression_alternation_minimum(items: &[Entity]) -> u8 {
         .filter_map(|item| item.effective_binding())
         .map(|binding| binding.precedence_value())
         .min()
-        // @lfy def/parser/main.lfy:parse
+        // @lfy def/parser/main.lfy:parse#parse:parse:c61ee6646978cfc71d4fb795be1ba0ae2fafa0b0460626e7db2d1f51eb775bef
         .map_or(0, |power| power - 1)
 }
 
@@ -198,7 +198,7 @@ fn compute_first() -> HashMap<Entity, HashSet<Entity>> {
     loop {
         let mut changed = false;
         for rule in rules() {
-            // @lfy def/parser/main.lfy:parse
+            // @lfy def/parser/main.lfy:parse#parse:parse:b9e7f3fa0a4c512a18f95d508de54d6fcbc7093590a326a4494bebab5fa5eedf
             if rule.is_terminal() || is_operation(rule) {
                 continue;
             }
@@ -251,7 +251,7 @@ impl fmt::Display for Violation {
 /// The global acceptance criteria of the parser, checked against the grammar and the
 /// components: every failing terminal or alternation is reported with the candidates it
 /// selects.
-// @lfy def/parser/main.lfy:parse
+// @lfy def/parser/main.lfy:parse#global:def/parser/main.lfy:1c7fdc9e99e5a132c4b70443a4a57960b652345ba09540a2f414a25b9a1fe1ed
 pub fn validate() -> Result<(), Vec<Violation>> {
     let first = compute_first();
     let mut violations = Vec::new();
@@ -432,7 +432,7 @@ mod tests {
         Entity::Punctuation(rule)
     }
 
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:b9e7f3fa0a4c512a18f95d508de54d6fcbc7093590a326a4494bebab5fa5eedf
     #[test]
     fn infix_and_postfix_rules_begin_with_no_terminal() {
         let tables = tables();
@@ -445,7 +445,7 @@ mod tests {
         assert!(!is_expression_rule(statement(Statement::Block)));
     }
 
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:d9ffb274437835518bafd5ef29689fd2aae3533a27eb2a3249539f93cd3e9de7
     #[test]
     fn other_rules_begin_with_the_terminals_their_syntax_reaches_first() {
         let tables = tables();
@@ -477,7 +477,7 @@ mod tests {
         );
     }
 
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:50f445f45220780457d4f8bc7459c8ccd6b0b18da824a94fec40ae0387001051
     #[test]
     fn an_alternation_of_expression_rules_parses_one_below_its_lowest_operation() {
         let member = expression(Expression::Member);
@@ -486,7 +486,7 @@ mod tests {
         let access = member.effective_binding().unwrap().precedence_value();
         assert_eq!(expression_alternation_minimum(&[expression(Expression::Name), member]), access - 1);
         assert_eq!(expression_alternation_minimum(&[member, index, call]), access - 1);
-        // @lfy def/parser/main.lfy:parse
+        // @lfy def/parser/main.lfy:parse#parse:parse:c61ee6646978cfc71d4fb795be1ba0ae2fafa0b0460626e7db2d1f51eb775bef
         // With no infix or postfix alternative the minimum is 0.
         assert_eq!(expression_alternation_minimum(&[]), 0);
         assert_eq!(
@@ -496,7 +496,7 @@ mod tests {
         assert_eq!(expression_alternation_minimum(&[statement(Statement::Block)]), 0);
     }
 
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:7185c3dbfd8022f2f4a3c0486615c5f13e4b5deb0a6ceaf5cfbab35572ac9968
     #[test]
     fn each_operator_terminal_continues_an_expression_with_one_rule_of_each_category() {
         let tables = tables();
@@ -510,7 +510,7 @@ mod tests {
         assert!(tables.operations(punctuation(Punctuation::Semicolon)).is_empty());
         assert!(tables.operations(Entity::Keyword(Keyword::InKeyword)).is_empty());
         // A terminal that is the operator of both: the postfix rule comes first.
-        // @lfy def/parser/main.lfy:parse
+        // @lfy def/parser/main.lfy:parse#parse:parse:7185c3dbfd8022f2f4a3c0486615c5f13e4b5deb0a6ceaf5cfbab35572ac9968
         assert_eq!(
             tables.operations(punctuation(Punctuation::LessThan)),
             [expression(Expression::Generic), expression(Expression::RelationalOperation)]
@@ -519,10 +519,13 @@ mod tests {
         assert!(tables.tail(expression(Expression::AdditiveOperation)).is_none());
     }
 
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#parse:parse:140e8e6b83005b1d43d49be2e061b16a5e12a8406a5e1119ba629e43bed1cff2
     #[test]
     fn selection_keeps_only_the_candidates_the_terminal_begins_in_tried_before_order() {
         let tables = tables();
+        let expressions: Vec<Entity> = PRIMARIES.iter().chain(PREFIXES).copied().collect();
+        assert_eq!(tables.select(&expressions, punctuation(Punctuation::Semicolon)), vec![]);
+        // @lfy def/parser/main.lfy:parse#parse:parse:3e3cb7eda84448ad65a8c4d5aacb1db8333d8b85312546d59033541dc5f44c25
         assert_eq!(
             tables.select(STATEMENTS, punctuation(Punctuation::BlockOpen)),
             vec![statement(Statement::Block), statement(Statement::ExpressionStatement)]
@@ -531,7 +534,6 @@ mod tests {
             tables.select(STATEMENTS, Entity::Keyword(Keyword::FunctionKeyword)),
             vec![statement(Statement::FunctionDeclaration), statement(Statement::ExpressionStatement)]
         );
-        let expressions: Vec<Entity> = PRIMARIES.iter().chain(PREFIXES).copied().collect();
         assert_eq!(
             tables.select(&expressions, punctuation(Punctuation::GroupOpen)),
             vec![expression(Expression::InlineFunction), expression(Expression::Group)]
@@ -540,10 +542,14 @@ mod tests {
             tables.select(&expressions, punctuation(Punctuation::BlockOpen)),
             vec![expression(Expression::Object), expression(Expression::Type)]
         );
-        assert_eq!(tables.select(&expressions, punctuation(Punctuation::Semicolon)), vec![]);
+        // @lfy def/parser/main.lfy:parse#parse:parse:487fb759a56adec3cc388557fc645e3ecc5740d90cab9e9d221dfdc652216179
+        assert_eq!(
+            tables.select(STATEMENTS, Entity::Keyword(Keyword::UseKeyword)),
+            vec![statement(Statement::Use)]
+        );
     }
 
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#global:def/parser/main.lfy:1c7fdc9e99e5a132c4b70443a4a57960b652345ba09540a2f414a25b9a1fe1ed
     #[test]
     fn tried_before_orders_every_choice_the_grammar_presents() {
         assert_eq!(validate(), Ok(()));

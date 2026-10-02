@@ -78,7 +78,7 @@ pub fn load(root: &Path) -> Workspace {
 /// the same `path` is given again. The result is what [`load`] of the same root gives when
 /// every file replaced this way holds what it was replaced with. A `path` that is neither
 /// under the source directory, nor under a package root, nor resolved to by a `Use` in the
-/// program gives back a workspace equal to `workspace`.
+/// program gives back a workspace matching `workspace`.
 // @lfy def/workspace/main.lfy:change
 pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspace {
     // @lfy def/workspace/main.lfy:change
@@ -104,12 +104,13 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
 }
 
 /// Whether a change at `path` could reach the program: the path is a source file under
-/// the source directory or a package root, a `Use` resolves to it, or it is replaced now.
+/// the source directory or under the root of a package in the program, or a `Use` in the
+/// program resolves to it.
 // @lfy def/workspace/main.lfy:change
 fn in_reach(workspace: &Workspace, path: &str) -> bool {
-    // Decision: the definition names the source directory, the root of a package in the
-    // program, and the uses. A path replaced earlier is in reach too, so that giving it
-    // again can undo the replacement.
+    // These are the three places the criterion names, and nothing besides them puts a
+    // path in reach: a path that is in none of them leaves the result matching the
+    // workspace it was given, replacements and all.
     let is_source = is_source(path);
     (is_source && under(path, &workspace.source_directory))
         || (is_source
@@ -122,7 +123,6 @@ fn in_reach(workspace: &Workspace, path: &str) -> bool {
             .sources
             .iter()
             .any(|source| source.uses.iter().flatten().any(|used| used == path))
-        || workspace.overlays.contains_key(path)
 }
 
 /// [`load`] with the files in `overlays` read as the text given there instead of what is
@@ -1392,7 +1392,10 @@ mod tests {
             .unwrap_or_else(|| panic!("{path} is not in the program"))
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:f6b3751bd385c457dade972ca48003ad8646834fde2550ae9d48f10cf8ff0271
+    // @lfy def/workspace/main.lfy:load#load:load:62b4faedac048472b0892584131d2aca0e6fd7987b34a537d17991af62f3d07d
+    // @lfy def/workspace/main.lfy:load#load:load:9f0992576ed1410f00587a7cf8d3c50161589f2a0ff4ee398fb06562182d994b
+    // @lfy def/workspace/main.lfy:load#load:load:61e5351e7c9765ef86ef906d60e8806eac1fe5c87337507d464bf5b10d0c47d1
     #[test]
     fn an_empty_def_and_no_manifest_give_the_defaults() {
         let fixture = Fixture::empty();
@@ -1424,7 +1427,10 @@ mod tests {
 
     /// The library is the first source that is given, and a missing one is a problem
     /// rather than a reason to try the next.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:d907c299c80f931a0deb7cbd87d12cf1f50320cdcfc62ec0ea02ea3217ce3800
+    // @lfy def/workspace/main.lfy:load#load:load:894c6485f9e8ac83db6e6d6dd3340e9ff0e21ccc789a23347307d15fb610664f
+    // @lfy def/workspace/main.lfy:load#load:load:18303ab51dd7497f5981f5a7ebbbefa64f43fca6e87ab6ac5a8aa9acaa26e95f
+    // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
     #[test]
     fn the_library_is_the_first_source_that_names_one() {
         // The dependency entry elfie.
@@ -1468,7 +1474,10 @@ mod tests {
 
     /// The main file of the package elfie is the prelude, its other files are the
     /// library, and every file outside it is the program.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:c866f7d3a969f48fe5b6606e3e27ea34f62037935306ccc97e6bb293cab19e6b
+    // @lfy def/workspace/main.lfy:load#load:load:9f0992576ed1410f00587a7cf8d3c50161589f2a0ff4ee398fb06562182d994b
+    // @lfy def/workspace/main.lfy:load#load:load:bd0b1a23fb66f1906e8450409d05cadd0110ab5356c796a743fb941d9ee761be
+    // @lfy def/workspace/main.lfy:load#load:load:1a70bf9ff7ad610ada4250ea97c2b74dff227791a63bfff413e8eb49f991aefc
     #[test]
     fn the_library_gives_the_prelude_and_every_other_file_the_program() {
         let fixture = Fixture::empty();
@@ -1494,7 +1503,11 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:34af94d435a344094a311c95695780e09cd2be7f386baa616feb1b6df6ca36d0
+    // @lfy def/workspace/main.lfy:load#load:load:789f453b852db580976af75333afef9fc202eab05a47f26e8682b28ecfc82ba9
+    // @lfy def/workspace/main.lfy:load#load:load:97bed938a5d75f39ac08d69a7e0ac6d7a4a2fd040d8d2d4ffa31571a4bc63d87
+    // @lfy def/workspace/main.lfy:load#load:load:95adb658d370404e9a9733a98206f9323b5efdaf143f4e927a012d32b58d95c3
+    // @lfy def/workspace/main.lfy:load#load:load:b081ce9e0d486c569c1c1c0e6c03c97743a2475743273a7eb2d20dd13b85a5dd
     #[test]
     fn a_used_file_comes_before_the_file_that_uses_it() {
         let fixture = Fixture::empty();
@@ -1512,7 +1525,8 @@ mod tests {
         assert_eq!(uses_of(&workspace, "def/rules/main.lfy"), []);
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:b2116810fef16c47850eccd77150fd52cf7c716a41be87bfbac49d5ca7531a91
+    // @lfy def/workspace/main.lfy:load#load:load:58b433ac3e636c5a378c9d49965ffc04bf659137970af95eceb1e3e742a81b5d
     #[test]
     fn a_cycle_keeps_discovery_order_and_flags_each_use() {
         let fixture = Fixture::empty();
@@ -1540,7 +1554,8 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:901344cabb4e3f5163bfc6613edfc6a6cc386eed876768587fad9c1f451b61b0
+    // @lfy def/workspace/main.lfy:load#load:load:195232c069d5739fe5849c18ff9275884b3c6e14fe131eb1b9558e60ac66fbb1
     #[test]
     fn a_use_of_nothing_gives_a_problem_and_an_undefined_entry() {
         let fixture = Fixture::empty();
@@ -1562,7 +1577,9 @@ mod tests {
         assert_eq!(uses_of(&workspace, "def/main.lfy"), [None]);
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:14ff48a32bf3381366534b9ca3dbdb2f1d46fc634249e46bf5134fb6609d3a39
+    // @lfy def/workspace/main.lfy:load#load:load:553254e418671149fdc2a87c765c1ff91ddcf349bad7d7055bf05a5234721178
+    // @lfy def/workspace/main.lfy:load#load:load:5b7af7fbd12155345c6efdac5d059c7bb99f41a7d25683717e9e54531bdfbee6
     #[test]
     fn the_manifest_names_the_layout() {
         let fixture = Fixture::new();
@@ -1583,7 +1600,9 @@ mod tests {
     /// A manifest that is a JSON object but gives no name, no source directory and no
     /// output directory leaves each of those defaults standing, exactly as a root with no
     /// manifest at all does.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:fd884247a5f63218e2f23f0ba9abdb91e6a342d07f56f61a79d4f23bfe3eeee7
+    // @lfy def/workspace/main.lfy:load#load:load:38338fb46f57a64fa2e744d34eae3279caf9b613709e743808ac4f6fba4a0289
+    // @lfy def/workspace/main.lfy:load#load:load:363f9f54f19137472c9028350b6be63552fa8170379e9af5172405c99624b804
     #[test]
     fn a_manifest_that_gives_no_layout_leaves_the_defaults_standing() {
         let fixture = Fixture::empty();
@@ -1610,7 +1629,8 @@ mod tests {
     /// A manifest is optional: where no `elfie.json` exists under the root, the name is
     /// the name of the root directory, the source directory is `def`, the output
     /// directory is `src`, and no problem is added.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:1961ce42105fadd196d96b94271bcbbaf3555ef783288985d3ae731323ab1832
+    // @lfy def/workspace/main.lfy:load#load:load:ca0d4a3af24ea374acd6c89f1058ecca188891fd80118fb5bf85f30c6b509640
     #[test]
     fn no_manifest_is_no_problem_and_the_defaults_stand() {
         let fixture = Fixture::empty();
@@ -1632,7 +1652,7 @@ mod tests {
         assert!(library(&workspace).native_dependencies.is_empty());
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:b2be41b7274ad80ca5ac81980c9c250fa22e61ce6d503184abbfb8965709e13a
     #[test]
     fn a_bad_manifest_adds_a_problem_and_the_defaults_stand() {
         for text in ["{ not json", "[1, 2]", "\"a string\""] {
@@ -1652,7 +1672,7 @@ mod tests {
         }
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:e6a3d9e7c6343bde8007bc07f7cc1bf459122fbfb7bafc0ff5375ddcf301f38f
     #[test]
     fn a_missing_root_or_source_directory_adds_a_problem_with_no_path() {
         let fixture = Fixture::new();
@@ -1680,7 +1700,8 @@ mod tests {
         assert_eq!(workspace.packages.len(), 2);
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:789f453b852db580976af75333afef9fc202eab05a47f26e8682b28ecfc82ba9
+    // @lfy def/workspace/main.lfy:load#load:load:b081ce9e0d486c569c1c1c0e6c03c97743a2475743273a7eb2d20dd13b85a5dd
     #[test]
     fn every_lfy_file_under_the_source_directory_is_in_the_program_once() {
         let fixture = Fixture::empty();
@@ -1706,7 +1727,7 @@ mod tests {
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:e7a894d9316ecd54b4cc1d1f1709c7e7173c47e17338f9dae68bc46451ddf867
     #[test]
     fn a_file_holds_the_parse_of_its_text_with_its_path_as_the_file() {
         let fixture = Fixture::empty();
@@ -1726,7 +1747,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:e98819dddceb631ccf822f6585d7dfedfde26bd030ba4a7cbbcd5a2d312ebe01
     #[test]
     fn a_file_that_cannot_be_read_is_left_out_with_a_problem() {
         let fixture = Fixture::empty();
@@ -1750,7 +1771,7 @@ mod tests {
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:32c4ce3999a76a9da6916b0795489e2740882845c1a6391b9eaf673eaebe1973
     #[test]
     fn a_dotted_use_resolves_against_the_directory_of_its_file() {
         let fixture = Fixture::empty();
@@ -1771,7 +1792,8 @@ mod tests {
         assert!(position(&workspace, "def/b/data.lfy") < position(&workspace, "def/a/main.lfy"));
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:1686133b540c858b4c1ab7edb631811da85b909c80a52d63d4084d22d6c3251f
+    // @lfy def/workspace/main.lfy:load#load:load:195232c069d5739fe5849c18ff9275884b3c6e14fe131eb1b9558e60ac66fbb1
     #[test]
     fn an_undotted_use_names_a_package_and_resolves_against_its_root() {
         let fixture = Fixture::empty();
@@ -1816,7 +1838,9 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:0ddc30be18742fce83c1bc733c6db516b1f02d4e58205740f7b26d57638aef3a
+    // @lfy def/workspace/main.lfy:load#load:load:97bed938a5d75f39ac08d69a7e0ac6d7a4a2fd040d8d2d4ffa31571a4bc63d87
+    // @lfy def/workspace/main.lfy:load#load:load:c0835208419dfb83a0b84ffda822c8fbd72e4221cd95542e1785d76cd7e2a3f2
     #[test]
     fn a_path_resolves_to_the_file_or_else_to_main_in_the_directory() {
         let fixture = Fixture::empty();
@@ -1837,7 +1861,7 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:95adb658d370404e9a9733a98206f9323b5efdaf143f4e927a012d32b58d95c3
     #[test]
     fn every_file_comes_after_the_files_it_uses() {
         let fixture = Fixture::empty();
@@ -1862,7 +1886,7 @@ mod tests {
         }
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:58b433ac3e636c5a378c9d49965ffc04bf659137970af95eceb1e3e742a81b5d
     #[test]
     fn a_file_using_itself_is_a_cycle_of_one() {
         let fixture = Fixture::empty();
@@ -1877,7 +1901,11 @@ mod tests {
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
+    // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
+    // @lfy def/workspace/main.lfy:load#load:load:ca0d4a3af24ea374acd6c89f1058ecca188891fd80118fb5bf85f30c6b509640
+    // @lfy def/workspace/main.lfy:load#load:load:4bcf5307418fba635aa57b347e7cb64f79e2772a216f52f90f14b6c601ebfb8d
+    // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
     #[test]
     fn each_dependency_gives_a_package_whose_files_are_in_the_program() {
         let fixture = Fixture::empty();
@@ -1964,7 +1992,9 @@ mod tests {
         assert_eq!(problems[0].path.as_deref(), Some("targets/gone"));
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:62b4faedac048472b0892584131d2aca0e6fd7987b34a537d17991af62f3d07d
+    // @lfy def/workspace/main.lfy:load#load:load:4bcf5307418fba635aa57b347e7cb64f79e2772a216f52f90f14b6c601ebfb8d
+    // @lfy def/workspace/main.lfy:load#load:load:ca0d4a3af24ea374acd6c89f1058ecca188891fd80118fb5bf85f30c6b509640
     #[test]
     fn a_bad_native_entry_or_package_manifest_adds_a_problem() {
         let fixture = Fixture::empty();
@@ -1994,7 +2024,8 @@ mod tests {
     }
 
     /// A missing package root is reported even when nothing can be discovered.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
+    // @lfy def/workspace/main.lfy:load#load:load:e6a3d9e7c6343bde8007bc07f7cc1bf459122fbfb7bafc0ff5375ddcf301f38f
     #[test]
     fn a_missing_package_root_is_a_problem_even_with_no_source_directory() {
         let fixture = Fixture::new();
@@ -2020,7 +2051,12 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:e915ed3651926dcf6339d6eebd214a7dd54440dccf94946bfb84592e2144af2a
+    // @lfy def/workspace/main.lfy:load#load:load:7a9539c588d49ec01a1b03a4c16254b4f2bca7ed11658cfaec025126d8da7abb
+    // @lfy def/workspace/main.lfy:load#load:load:e75e1a7149134a11e123466342d8e3472903503757a105167ee5f2aa128b8147
+    // @lfy def/workspace/main.lfy:load#load:load:13297b62279f3fadb9858272e5242b518c4384c58bf21c37d9213fe2efdc49a8
+    // @lfy def/workspace/main.lfy:load#load:load:46664645ccf0ae1bf9de613293fc0450be0dd9e19592b874ade095ab230cd2f6
+    // @lfy def/workspace/main.lfy:load#load:load:324caf15aa6494bd498b50661c227f3efc231bd831b810ee8455ea1c69e8c327
     #[test]
     fn each_target_comes_from_a_package_with_a_marker_and_an_output_directory() {
         let fixture = Fixture::empty();
@@ -2092,7 +2128,8 @@ mod tests {
 
     /// A marker that is neither the trait `target` of the package elfie nor one of its
     /// extenders is left out, however deep the chain of extenders runs.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:16cce9897154a73b9c14b4fe72fbe958c42840d2d64ee8e16be1163877a0f903
+    // @lfy def/workspace/main.lfy:load#load:load:eb93e60a065651e7634da78d161a7685b6430189aace91c6940bfea97b6a7ccd
     #[test]
     fn a_marker_that_does_not_extend_target_is_left_out_with_a_problem() {
         let fixture = Fixture::empty();
@@ -2130,7 +2167,7 @@ mod tests {
     }
 
     /// The entities built for a target.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:a574ab42d15677413f2e53fec3bc9ed504c06c2bb7bb992b891051884265bcfe
     #[test]
     fn the_entities_built_for_a_target_are_the_marked_ones() {
         let fixture = Fixture::empty();
@@ -2159,7 +2196,7 @@ mod tests {
 
     /// When a file's own entity carries the marker, every entity declared in that file's
     /// scope is built.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:a574ab42d15677413f2e53fec3bc9ed504c06c2bb7bb992b891051884265bcfe
     #[test]
     fn a_marked_file_builds_every_entity_of_its_file_scope() {
         let fixture = Fixture::empty();
@@ -2190,7 +2227,7 @@ mod tests {
     }
 
     /// When `global` carries the marker, every entity of every project file is built.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:cd6863f4c158a9e98844495a8f31dc0cdc98d88d7e6b5b00a8d4340d2c482bca
     #[test]
     fn global_carrying_the_marker_builds_every_entity_of_every_project_file() {
         let fixture = Fixture::empty();
@@ -2225,7 +2262,8 @@ mod tests {
         assert!(!built.contains(&"Guidance"), "{built:?}");
     }
 
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:1a70bf9ff7ad610ada4250ea97c2b74dff227791a63bfff413e8eb49f991aefc
+    // @lfy def/workspace/main.lfy:load#load:load:b081ce9e0d486c569c1c1c0e6c03c97743a2475743273a7eb2d20dd13b85a5dd
     #[test]
     fn the_model_is_bound_from_the_files_once() {
         let fixture = Fixture::empty();
@@ -2268,7 +2306,8 @@ mod tests {
 
     /// The same `path` names a different file in each workspace, because it is relative
     /// to that workspace's own root and to nothing else.
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:e20858b36c04a1222bbb5e30cc7a08e1f9fc907a1fa76343fcd01dc323b36dc0
+    // @lfy def/workspace/main.lfy:change#change:change:c2184e9afc7c73ab41f34979bb5caf4d0b47bc512bd9a05774ac2a16f35ffefe
     #[test]
     fn a_change_path_is_relative_to_the_root_of_its_workspace() {
         let one = Fixture::empty();
@@ -2291,7 +2330,9 @@ mod tests {
         assert_eq!(change(&loaded, &absolute, Some("trait t { }\n")), loaded);
     }
 
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:895628dae1b1baf37565a3ffff240d0f54d0a439f28b7fa972933ecd2da95ddf
+    // @lfy def/workspace/main.lfy:change#change:change:f2ae7b0515ac2d4659beee3bd9e54158441b50ef0bc2890c7cf245afeec51118
+    // @lfy def/workspace/main.lfy:change#change:change:b89f4ff865d0361c8560b2cb4065ac5a90a90586070fec77f8d560c9f6651982
     #[test]
     fn a_change_adds_a_file_read_as_the_given_text() {
         let fixture = Fixture::empty();
@@ -2326,8 +2367,9 @@ mod tests {
         assert!(!fixture.root.join("def/extra.lfy").exists());
     }
 
-    // @lfy def/workspace/main.lfy:change
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:3b3d10266814a5ce8c55a7d3a7026b812efcc22038abd92aa59984eab0be26b4
+    // @lfy def/workspace/main.lfy:change#change:change:07a83f96d5491695c4c70bcd43ae88989b4641476fbba210b20f253a537ff0b5
+    // @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
     #[test]
     fn a_change_to_nothing_reads_the_file_from_disk_again() {
         let fixture = Fixture::empty();
@@ -2349,7 +2391,7 @@ mod tests {
         assert!(restored.overlays.is_empty());
     }
 
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:2d77ee8d6c0f68bbe2bd15bf77419431894e057302c497d51c7db36d54c35827
     #[test]
     fn a_change_to_nothing_with_no_file_on_disk_leaves_the_program() {
         let fixture = Fixture::empty();
@@ -2369,7 +2411,8 @@ mod tests {
         assert_eq!(removed, loaded);
     }
 
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:ffba7bf1aadfe9658e1cc3606237a6f446338ee57a72c8a92ba0c5e9f12e2448
+    // @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
     #[test]
     fn a_replacement_stands_until_the_same_path_is_given_again() {
         let fixture = Fixture::empty();
@@ -2399,7 +2442,7 @@ mod tests {
         assert_eq!(third.problems, expected.problems);
     }
 
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:c2184e9afc7c73ab41f34979bb5caf4d0b47bc512bd9a05774ac2a16f35ffefe
     #[test]
     fn a_change_out_of_reach_gives_an_equal_workspace() {
         let fixture = Fixture::empty();
@@ -2423,11 +2466,20 @@ mod tests {
         let changed = change(&loaded, "elsewhere/thing.lfy", Some("trait t { }\n"));
         assert_ne!(changed, loaded);
         assert_eq!(changed.overlays.len(), 1);
+
+        // The use that brought it into reach goes away, and with it the file: a further
+        // change there names none of the three places, so the result matches the
+        // workspace it was given, down to the replacement that stood before.
+        let gone = change(&changed, "def/main.lfy", Some("\n"));
+        assert_eq!(paths(&gone), ["def/main.lfy"]);
+        for text in [Some("trait other { }\n"), None] {
+            assert_eq!(change(&gone, "elsewhere/thing.lfy", text), gone);
+        }
     }
 
     /// A file under the root of a package in the program is in reach of a change, as much
     /// as one under the source directory.
-    // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:c2184e9afc7c73ab41f34979bb5caf4d0b47bc512bd9a05774ac2a16f35ffefe
     #[test]
     fn a_change_under_a_package_root_reaches_the_program() {
         let fixture = Fixture::empty();
@@ -2455,6 +2507,7 @@ mod tests {
         assert_eq!(changed.origin(added), Origin::Library);
     }
 
+    // @lfy def/workspace/main.lfy:load
     #[test]
     fn paths_normalize_and_join() {
         assert_eq!(normalize("def/lexer/../grammar/./main"), "def/grammar/main");

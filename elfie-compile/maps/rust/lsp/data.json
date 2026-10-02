@@ -3,8 +3,8 @@
     "dependencies": {
       "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "33e10679e05a291a3b518419fd64037140cccd427e9656a3fab9ab3209645651",
+    "generated": "2026-10-02T09:51:04Z",
+    "hash": "4601aad8e03c88caa67ba8f8cf3d5638d2e7942f7ae907896dc45591a8723db3",
     "markers": [
       {
         "column": null,
@@ -116,7 +116,7 @@
       }
     ],
     "output": "crates/elfie-lsp/src/data.rs",
-    "requirements": "",
+    "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "2ef92a24a8d5fa613341bfc5feb24af9a54dbff7f5cc11fec99ba30c3b2c7de2",
     "source": "def/lsp/data.lfy",
     "target": "rust"

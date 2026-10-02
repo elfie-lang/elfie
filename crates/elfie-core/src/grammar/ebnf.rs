@@ -262,9 +262,9 @@ fn is_name_char(c: char) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
     /// `XID_Start` as defined by Unicode (`unicode-ident`).
-    IdentifierStart, // @lfy def/grammar/terminals/identifier.lfy:4
+    IdentifierStart, // @lfy def/grammar/terminals/identifier.lfy:IdentifierStart
     /// `XID_Continue` as defined by Unicode (`unicode-ident`).
-    IdentifierContinue, // @lfy def/grammar/terminals/identifier.lfy:5
+    IdentifierContinue, // @lfy def/grammar/terminals/identifier.lfy:IdentifierContinue
     /// Any UTF-8 scalar value.
     Character, // @lfy def/grammar/terminals/literal.lfy:Character
 }
@@ -382,7 +382,7 @@ impl Grammar {
                 errors.push(Error::DuplicateIdentifier(identifier));
             }
         }
-        // @lfy def/grammar/main.lfy:22
+        // @lfy def/grammar/traits.lfy:rule#global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e
         for rule in rules() {
             let identifier = rule.identifier();
             if let Some(Compiled {
@@ -412,7 +412,7 @@ impl Grammar {
     }
 
     /// Whether the rule can be satisfied without taking anything.
-    // @lfy def/grammar/main.lfy:34
+    // @lfy def/grammar/traits.lfy:rule
     pub fn is_nullable(&self, identifier: &str) -> bool {
         self.nullable.contains(identifier)
     }
@@ -420,7 +420,7 @@ impl Grammar {
     /// Whether `expr` can be satisfied without taking anything: optional groups and
     /// repetitions always can, a sequence can when every item can, an alternation when
     /// any alternative can, and a reference when the rule it names can.
-    // @lfy def/grammar/main.lfy:34
+    // @lfy def/grammar/traits.lfy:rule
     pub fn is_expr_nullable(&self, expr: &Expr) -> bool {
         expr_nullable(expr, &self.nullable)
     }
@@ -770,7 +770,7 @@ mod tests {
         assert_eq!(grammar.longest_match("Statement", "break;"), Some(6));
     }
 
-    // @lfy def/grammar/main.lfy:34
+    // @lfy def/grammar/traits.lfy:rule
     #[test]
     fn nullable_rules_are_those_that_can_match_nothing() {
         let grammar = grammar();

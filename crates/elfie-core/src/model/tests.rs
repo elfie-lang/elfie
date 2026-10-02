@@ -223,8 +223,9 @@ fn criteria_texts(model: &Model, entity: EntityId) -> Vec<CriterionText> {
 
 // ---- The @test cases of bind --------------------------------------------------------
 
-/// A trait member joins the entity, `A.x` resolves to it, and the trait knows `A`.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:7519b3ca15731dd0e1e4702fddb113f646ca70eb15ff3ae25388ef2a1b87efab
+// @lfy def/model/main.lfy:resolve#resolve:resolve:53a3ecc3bb2df32dde8139e2bf330f085ed18d7051765d5fc332abe19efd20e5
+// @lfy def/model/main.lfy:entitiesOf#entitiesOf:entitiesOf:795f1df544a42eff96bb897aec16ddf08269e86c932ffadaa5f3906f269dc7cb
 #[test]
 fn test_trait_member_and_application() {
     let model = bind_one("trait t { $x: `d` = string; } d A is t {} const y = A.x;");
@@ -259,8 +260,10 @@ fn test_trait_member_and_application() {
     assert_eq!(resolve(&model, member_node), Some(x));
 }
 
-/// A module symbol, a loop variable in the For scope, and a usage of the module.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:18bec98e5f89f07dd5dc5ff9e0e92c68951628fc984a0dfed7286265f4ec75c7
+// @lfy def/model/main.lfy:bind#bind:bind:2c7feb0a18315034969e6c79d8cd9f5c6b1be581451c56561ced37561934ea78
+// @lfy def/model/main.lfy:resolve#resolve:resolve:38d6961088ad199ed76c8f764b44b1c881e653dd079ba248e2e38c3d317d2632
+// @lfy def/model/main.lfy:usagesOf#usagesOf:usagesOf:f5c6a0b87ff4045a8a8155ddade52ffe53608bfbb7a906aa5191ef0684804f7c
 #[test]
 fn test_module_symbol_and_loop_variable() {
     let main = source(
@@ -292,8 +295,8 @@ fn test_module_symbol_and_loop_variable() {
     assert_eq!(usages_of(&model, module).len(), 1);
 }
 
-/// An unresolved name gives a usage without a symbol and one problem.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:97ba58ba8ffa7b326c0345dcf2b61e3ee0bde0cb8db5094e929cf912e369cb63
+// @lfy def/model/main.lfy:resolve#resolve:resolve:0752010452c7ee73c4f54e7a2440a5284244bf5798e148f4798a6a6da5832785
 #[test]
 fn test_unresolved_name() {
     let model = bind_one("const y = z;");
@@ -307,8 +310,7 @@ fn test_unresolved_name() {
     assert_eq!(model.problems[0].node, z);
 }
 
-/// An extending trait is an extender, not one of the entities.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:b87b86007ded233196a5820ced05751f1521544f9b2ed04aeae3e79d39fbd74a
 #[test]
 fn test_extends_entities_and_extenders() {
     let model = bind_one("trait a {} trait b extends a {} d C is b {}");
@@ -335,9 +337,8 @@ fn test_extends_entities_and_extenders() {
     ));
 }
 
-/// A `with` on a member of a data attaches the block's criteria and tests to the member,
-/// not to the data that declares it.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:42263d0241c3356ad90fb1d99c92f81fe4f41233fc96b26b44139d7fcebd95de
+// @lfy def/model/main.lfy:bind#bind:bind:0bc1644ac8b669b08f062cff9afa6cfd6711e819aef19a8a3615e0b7ef9101a7
 #[test]
 fn test_with_on_a_member_attaches_to_the_member() {
     let model = bind_one(
@@ -364,10 +365,9 @@ fn test_with_on_a_member_attaches_to_the_member() {
     assert!(model.entities[x].tests.is_empty());
 }
 
-/// A program file sees the prelude through the parent of its file scope, and a name of
-/// the prelude resolves there; a library file and the prelude itself have no parent.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:aca4776b504719a25e83650081cfb2797bbc9776038499ce3118a8868655f65d
+// @lfy def/model/main.lfy:bind#bind:bind:ec98cc52ebb62a0594a752006377cac03dcc3616dab157ef152c1f5d556373ec
+// @lfy def/model/main.lfy:bind#bind:bind:a27dae69e541e9a9998d3cf51d5ce00f2d8b6ded5bb5e80401986199c7543f6c
 #[test]
 fn test_a_program_file_resolves_names_in_the_prelude() {
     let entity_file = source_from(
@@ -415,8 +415,8 @@ fn test_a_program_file_resolves_names_in_the_prelude() {
     assert_eq!(read.symbol, Some(identifier));
 }
 
-/// `t.apply(A)` resolves apply through t's kind data and applies the trait.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:6ed2472f490ceb52a44a63e5a5c0f205cf25f19f7937237e043acd81337eed63
+// @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
 #[test]
 fn test_apply_resolves_through_the_kind_data() {
     let text = "trait t {} d A {} t.apply(A);";
@@ -434,10 +434,8 @@ fn test_apply_resolves_through_the_kind_data() {
     assert_eq!(model.entities[a].traits.len(), 1);
     assert_eq!(model.entities[a].traits[0].entity, t);
     assert_eq!(entities_of(&model, t), vec![a]);
-    // Without one the call still applies the trait, and apply resolves to nothing: the
-    // kind data is empty for want of a prelude, so the name is found nowhere and that is
-    // a problem like any other.
-    // @lfy def/model/main.lfy:bind
+    // Without one the call still applies the trait, and apply resolves to nothing.
+    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
     let model = bind_one(text);
     assert_eq!(problems(&model), vec!["t.apply: t has no member apply"]);
     let (t, a) = (entity(&model, "t"), entity(&model, "A"));
@@ -449,9 +447,8 @@ fn test_apply_resolves_through_the_kind_data() {
     );
 }
 
-/// A trait named in an IsClause resolves to the trait itself, not to the member of the
-/// same name the trait gives the entities it is applied to.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1f0ca46c5c91444dedac69e5e7113dd5617e3d65d3ecea38d89a8cbfa20ef031
+// @lfy def/model/main.lfy:bind#bind:bind:a6dfa497363019db0d8aedee13303bc5166951372a1d9c2ddb1fa56a1186abd7
 #[test]
 fn test_rule_named_in_is_clause_resolves_to_the_trait() {
     let b = source(
@@ -487,10 +484,8 @@ fn test_rule_named_in_is_clause_resolves_to_the_trait() {
     assert_eq!(model.entities[b_entity].traits[0].entity, rule_entity);
 }
 
-/// A bare `@`, a Current with no MemberName, resolves to the scope's current entity; at
-/// the top level of a file that is the anonymous entity for the file, so applying a trait
-/// to it applies the trait to the file.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:f34b1d3b9594f6fc1acd60dc401e4349b620b7f8b356e8e9fdba6d4c7dfafc41
+// @lfy def/model/main.lfy:bind#bind:bind:e9582eff7417a58e3a6153e75157993ae2678ab56265096b16ece3649132c47b
 #[test]
 fn test_current_with_no_member_name_applies_to_the_file() {
     let model = bind_with_prelude("trait t {} d A {} t.apply(@);");
@@ -504,9 +499,10 @@ fn test_current_with_no_member_name_applies_to_the_file() {
     assert!(model.entities[a].traits.is_empty());
 }
 
-/// A type parameter is a symbol of the scope its declaration owns, with what it extends
-/// as its type and the type after its setter as its default.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:51623ecc06b57fcf7e1f5bdff53e012b04d2466f53851acc9bee7bfc2b1ad29d
+// @lfy def/model/main.lfy:bind#bind:bind:26f472167d8ca46e9de1cf65f9971b002a542acbfbe55976427680c79664f6dd
+// @lfy def/model/main.lfy:bind#bind:bind:6596753573820dabd954fc7a17e0f207391e854cb1900ebb47cb9506fc2c935d
+// @lfy def/model/main.lfy:bind#bind:bind:0ee53b5e0c008ce71de85c320c18eb1f9b1f0d8252a143d9c28a107beb5e508d
 #[test]
 fn test_type_parameter_of_a_declaration() {
     let model = bind_one("d Item {} d Box<T extends Item = string> { $item: `x` = T; }");
@@ -536,9 +532,9 @@ fn test_type_parameter_of_a_declaration() {
     assert_eq!(model.entities[member_item].ty, Some(TypeRef::Entity(t)));
 }
 
-/// A declaration seen with type arguments, the substitution a member read on it gets, and
-/// the item type a list argument gives.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1d137991bd989915a702655e88f4779e5a01a4e87b7933920cd755553d58aa42
+// @lfy def/model/main.lfy:bind#bind:bind:46b4022825c073c20ea36dfef0380abdaa37504df76653a573913f07721dde4a
+// @lfy def/model/main.lfy:bind#bind:bind:8e746b442e4c9a6b3bc9e00da33f21f79095ae60cd1889a4e2cac569bddcdf6d
 #[test]
 fn test_a_declaration_seen_with_type_arguments() {
     let model = bind_one(
@@ -580,9 +576,8 @@ fn test_a_declaration_seen_with_type_arguments() {
     );
 }
 
-/// More type arguments than the declaration has type parameters is one problem at the
-/// arguments, and the entity is bound with the arguments as written.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:4cdfb137ca0ebb1a6a3ecfdfac6f306e78bcf4e0d77aace1771a0e0f29d96990
+// @lfy def/model/main.lfy:bind#bind:bind:d07e7150d53c64dd6694614b0a458127dcc037d09d6358431cd7f19a8a2ce6f4
 #[test]
 fn test_too_many_type_arguments_is_a_problem() {
     let model = bind_one("d Box<T> {} const b = Box<string, number>;");
@@ -602,9 +597,7 @@ fn test_too_many_type_arguments_is_a_problem() {
 
 // ---- Declare ------------------------------------------------------------------------
 
-/// Each SourceFile is a file scope whose current entity is an anonymous entity for the
-/// file.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:e9582eff7417a58e3a6153e75157993ae2678ab56265096b16ece3649132c47b
 #[test]
 fn file_scope_current_is_the_anonymous_file_entity() {
     let model = bind_one("const x = 1;");
@@ -619,9 +612,8 @@ fn file_scope_current_is_the_anonymous_file_entity() {
     assert_eq!(file.scope, Some(model.file_scopes[0]));
 }
 
-/// A declaration's Block is the child of the declaration's own scope.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:e9582eff7417a58e3a6153e75157993ae2678ab56265096b16ece3649132c47b
+// @lfy def/model/main.lfy:bind#bind:bind:fa131e5b0cb7099b74042a26579d4df9e7c4ad32262563937e8fc7a84b49d736
 #[test]
 fn block_scope_is_child_of_declaration_scope() {
     let model = bind_one("d A { const inner = 1; } function f(p: string) { const q = p; }");
@@ -652,9 +644,7 @@ fn block_scope_is_child_of_declaration_scope() {
     assert_eq!(usage(&model, p[1]).symbol, model.lookup_local(f_scope, "p"));
 }
 
-/// With no source of the prelude origin, no file scope has a parent and a name only the
-/// prelude would give is found nowhere.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:9aadc6796d2f3e4f16b4eaca3972b652a28305d0814f17ab1f48c52c5f6ca2bb
 #[test]
 fn without_a_prelude_no_file_scope_has_a_parent() {
     let library = source("lib/prelude/entity.lfy", "d Entity {}", &[]);
@@ -669,9 +659,7 @@ fn without_a_prelude_no_file_scope_has_a_parent() {
     assert_eq!(model.problems[0].node, read);
 }
 
-/// A name a file declares for itself shadows the prelude's throughout that file, and no
-/// problem is added.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:f184d7cebf099945bfe3b683594350b31349e7301825b68d76a79b73c9d509dd
 #[test]
 fn a_file_name_shadows_the_prelude_without_a_problem() {
     let mut sources = prelude();
@@ -687,8 +675,7 @@ fn a_file_name_shadows_the_prelude_without_a_problem() {
     );
 }
 
-/// A name declared twice in the same scope: a problem at the second, the first wins.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:c6b7a0960a121d339a97ea775da176a2b78800870296bae72fa0330aa22d7b57
 #[test]
 fn duplicate_declaration_is_a_problem_and_the_first_wins() {
     let model = bind_one("const x = 1; d x {} const y = x;");
@@ -704,11 +691,10 @@ fn duplicate_declaration_is_a_problem_and_the_first_wins() {
     assert_eq!(usage(&model, node(&model, 0, E::Name, "x")).symbol, Some(x));
 }
 
-/// A type parameter of a declaration is a symbol of the scope that declaration owns,
-/// beside its parameters and members, so the name is visible throughout the declaration.
-/// One with no extends clause has no type.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:07d1e11737b5a6468ae103e84419db542a0fa0a97d07ed50219ea704a7ab4fa3
+// @lfy def/model/main.lfy:bind#bind:bind:ba58015b3d9ff9df472e88f536cec3e65fef46cef18e3d3a87d286eb284d48e6
+// @lfy def/model/main.lfy:bind#bind:bind:9157b3477350b5ae76e32599cfe5855ea4e0344c35d5c69f89cfb405956675ca
+// @lfy def/model/main.lfy:bind#bind:bind:7e90f7c284b5be141502975a2b098d2779ec3d98cb518d1b1a8853c3b53a46e9
 #[test]
 fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
     let model = bind_one(
@@ -746,9 +732,7 @@ fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
     }
 }
 
-/// A TypeParameter has no DefinitionClause, no IsClause, and no body, so its entity's
-/// definition is undefined and its traits and acceptance criteria are empty.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:44cdaa0dd8ff1d388a4ba9da662d03e720dba1d7fa314159c62c0e2ef2fbaf61
 #[test]
 fn a_type_parameter_has_no_definition_traits_or_criteria() {
     let model = bind_one(
@@ -766,9 +750,9 @@ fn a_type_parameter_has_no_definition_traits_or_criteria() {
     }
 }
 
-/// An ObjectKey in an enum declares an enumMember; one in a plain object declares nothing.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:de2ee272797ce7725fdbaf5ab6d10caca2ea348db8e96a5e734f5a52d980695f
+// @lfy def/model/main.lfy:bind#bind:bind:2dfb72545f7c3d290642c5da47ce2e5e122656af1ab30a73baeefd59d6e4d820
+// @lfy def/model/main.lfy:bind#bind:bind:45a6b381d3024437825c2ee7e471dd217767d5853d91da72139cdaeda76dca94
 #[test]
 fn object_key_declares_only_in_an_enum() {
     let model = bind_one("enum Color { red = 'r', blue = 'b' } const o = { key = 1 };");
@@ -793,8 +777,9 @@ fn object_key_declares_only_in_an_enum() {
     assert!(model.symbols.iter().all(|s| s.name != "key"));
 }
 
-/// `$x: `d` = string;` in a data body declares a member with that definition and type.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:0e756633c85cba82bf7a5348e64ed3d981aaff25b46e0d41245a2e8e0a9e26c7
+// @lfy def/model/main.lfy:bind#bind:bind:bbb55605b75a4aff35d2f4a133cb91dd155e8e1ad8bdaa30a88aa2f9cbf2a1ab
+// @lfy def/model/main.lfy:bind#bind:bind:8e746b442e4c9a6b3bc9e00da33f21f79095ae60cd1889a4e2cac569bddcdf6d
 #[test]
 fn member_statement_declares_a_member() {
     let model = bind_one("d D { $x: `d` = string; $ys = number[]; }");
@@ -825,10 +810,9 @@ fn member_statement_declares_a_member() {
     );
 }
 
-/// A scope's current entity: the declared entity, the With's entity, or the parent's.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:fa131e5b0cb7099b74042a26579d4df9e7c4ad32262563937e8fc7a84b49d736
+// @lfy def/model/main.lfy:bind#bind:bind:a441b88a340d1509080a83bef495d0d6a4b98ddf54ab45f89c9abdf9077f246a
+// @lfy def/model/main.lfy:bind#bind:bind:886eef30c0c22d297465c975c50d97c4dbef4215f13da866a53459087f5bff71
 #[test]
 fn scope_current_entity() {
     let model = bind_one("d A {} with A { const x = 1; } for (const i in [1]) { const j = i; }");
@@ -865,8 +849,8 @@ fn scope_current_entity() {
 
 // ---- Use ----------------------------------------------------------------------------
 
-/// Without `as`, the used file's own symbols, not its imports, are visible.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:3daaf7c3051f43abb7b4c2664e4c94383f3258ebf028136f683006034540f88a
+// @lfy def/model/main.lfy:bind#bind:bind:81cd673c66e8b5ef0d81262e4dd6bcf40b110f884bf038212940017c42f01483
 #[test]
 fn use_without_as_imports_own_symbols_only() {
     let c = source("c.lfy", "d C {}", &[]);
@@ -897,8 +881,9 @@ fn use_without_as_imports_own_symbols_only() {
     );
 }
 
-/// With `as`, a Member on the module resolves in that file's symbols.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:f01fb64d3e7e452e03983fa025e2e70ec00f3fab38e57530b009e9e8adf7bec9
+// @lfy def/model/main.lfy:bind#bind:bind:ff80c9e9250025190f5b25a2ac7ee8d46d800e996782e73367a03a40cab77dfb
+// @lfy def/model/main.lfy:bind#bind:bind:d3ae38480bbebeead4536adbbba75ad7ebb4e4ed4f93bade3e8fc4564fc3f4f2
 #[test]
 fn use_with_as_resolves_members_in_the_module() {
     let b = source("b.lfy", "d B {} trait tb {}", &[]);
@@ -939,9 +924,8 @@ fn use_with_as_resolves_members_in_the_module() {
     assert_eq!(model.symbols[e].kind, SymbolKind::LoopVariable);
 }
 
-/// An `in` loop over a module visits its symbols' entities; an `of` loop their names.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:659c28f53c8aced2b9b367a2d5ef5a82f73561138a260c1d0dd6ff121bc69857
+// @lfy def/model/main.lfy:bind#bind:bind:3d1e39f70281f06dd97d7419a6c202f8938221160fe42d7f258ec7de6438c798
 #[test]
 fn an_in_loop_over_a_module_visits_entities_and_an_of_loop_names() {
     let module = || source("b.lfy", "d B1: `one` {} d B2: `two` {}", &[]);
@@ -987,8 +971,8 @@ fn an_in_loop_over_a_module_visits_entities_and_an_of_loop_names() {
     );
 }
 
-/// A `from` loop over a module visits its symbols' names and their entities together.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:10a6088c6ab81cb4ca33f996b33bb4781657309f2463c5fb93876dec10a950d4
+// @lfy def/model/main.lfy:bind#bind:bind:9955bbe15ed40b6f82e2b6d30522e127d2cadb0bb21faa90c208a166fc0ab091
 #[test]
 fn a_from_loop_over_a_module_visits_names_and_entities() {
     let b = source("b.lfy", "d B1: `one` {} d B2: `two` {}", &[]);
@@ -1027,8 +1011,7 @@ fn a_from_loop_over_a_module_visits_names_and_entities() {
     assert_eq!(names(&model, for_scope), ["name", "item"]);
 }
 
-/// A Use whose entry is undefined imports nothing and is not a problem.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:b05e01c96fecdd7752fc78c1300732e0edb54106c8e363777a9955d769e5549e
 #[test]
 fn use_of_nothing_imports_nothing() {
     let model = bind(vec![source(
@@ -1043,9 +1026,7 @@ fn use_of_nothing_imports_nothing() {
 
 // ---- Expand -------------------------------------------------------------------------
 
-/// The expand pass runs the file-level statements of every file: `X.apply(Y)` applies X to
-/// Y, and to every item of an alternationList, and the resolve pass reads what it left.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
 #[test]
 fn apply_call_applies_the_trait() {
     let model = bind_one(
@@ -1056,7 +1037,7 @@ fn apply_call_applies_the_trait() {
     );
     // No prelude declares Trait here, so apply itself is found nowhere and says so; the
     // call applies the trait all the same.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
     assert_eq!(
         problems(&model),
         vec![
@@ -1089,9 +1070,8 @@ fn apply_call_applies_the_trait() {
     assert!(!model.entities[alt].has_trait(marker));
 }
 
-/// The expand pass runs the trait applications of a declaration: an extends chain applies
-/// every base with arguments evaluated from the extending trait's parameters.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
+// @lfy def/model/main.lfy:bind#bind:bind:571b8356205c135bb2d9b90b56d8df46f15f9cd3fc521eb6dc1aa19a6ee63cf8
 #[test]
 fn extends_chain_applies_every_base() {
     let model = bind_one(
@@ -1127,9 +1107,8 @@ fn extends_chain_applies_every_base() {
     assert_eq!(model.entities[a].extenders(), &[b]);
 }
 
-/// The expand pass runs declaration bodies: the trait body's members, values, and criteria
-/// land on the receiver, with the trait as contributor.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:221ed4d3e6531a5f77ec17c2a8f11672a8fe2c59c92c346a1bf19434f5ddac4d
+// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
 #[test]
 fn applied_trait_body_lands_on_the_receiver() {
     let model = bind_one(
@@ -1158,9 +1137,7 @@ fn applied_trait_body_lands_on_the_receiver() {
     );
 }
 
-/// Two applied traits declaring the same member: the expand pass leaves the most recently
-/// applied trait's definition for the resolve pass to read, and nothing is reported.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
 #[test]
 fn the_most_recently_applied_trait_declares_the_member() {
     let model = bind_one(
@@ -1196,8 +1173,8 @@ fn the_most_recently_applied_trait_declares_the_member() {
     assert_eq!(model.entities[m].definition.as_deref(), Some("over"));
 }
 
-/// A name declared in a child scope shadows the parent's without a problem.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:c1bf94ef6ed00fca9ed870486ad290e18a6640d029d6830b1b8b55b921ffc125
+// @lfy def/model/main.lfy:bind#bind:bind:b0b2e144f0abdb7ee4d31f527036b32110c13cb48b7ec84844691567270a06ee
 #[test]
 fn a_child_scope_shadows_the_parent_without_a_problem() {
     let model = bind_one("const n = 1; d A { const n = 2; const m = n; }");
@@ -1220,9 +1197,7 @@ fn a_child_scope_shadows_the_parent_without_a_problem() {
     );
 }
 
-/// The expand pass runs the ace statements of a file too, so what an ace applies is there
-/// for the resolve pass.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
 #[test]
 fn an_ace_statement_runs_in_the_expand_pass() {
     let model = bind_with_prelude("trait t {} d A {} ace t.apply(A);");
@@ -1234,9 +1209,8 @@ fn an_ace_statement_runs_in_the_expand_pass() {
     assert_eq!(entities_of(&model, t), vec![a]);
 }
 
-/// What the expand pass left of every file, read by the resolve pass: TraitEntity.entities
-/// in file order then application order.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
+// @lfy def/model/main.lfy:bind#bind:bind:067910b6745ea51ce3ab1cbfb3fcad312a3d934bfba10a864d9f5846d4242dcb
 #[test]
 fn trait_entities_in_file_then_application_order() {
     let b = source("b.lfy", "trait t {} d B2 is t {} d B1 is t {}", &[]);
@@ -1247,7 +1221,7 @@ fn trait_entities_in_file_then_application_order() {
     );
     let model = bind(vec![b, a]);
     // Nothing but the apply these files bind without a prelude, which is found nowhere.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
     assert_eq!(problems(&model), vec!["t.apply: t has no member apply"]);
     let t = model.symbols[file_symbol(&model, 0, "t")].entity;
     let ids = |name: &str| model.symbols[model.lookup(model.file_scopes[1], name).unwrap()].entity;
@@ -1258,8 +1232,8 @@ fn trait_entities_in_file_then_application_order() {
 
 // ---- Resolve ------------------------------------------------------------------------
 
-/// A Dereference yields the entity its operand is bound to.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:99a57bc2ff67ce0d744b40d5abbde3870acf40c8165f6cf1b133c60dfd86a027
+// @lfy def/model/main.lfy:bind#bind:bind:32c60bdf82cb7705cb51c3b35fbb3f4e649b4872dd414b35c67e7b2606e884d3
 #[test]
 fn dereference_yields_the_symbol() {
     let model = bind_one("d X {} const y = &X;");
@@ -1273,8 +1247,8 @@ fn dereference_yields_the_symbol() {
     assert_eq!(usage(&model, node(&model, 0, E::Name, "X")).symbol, Some(x));
 }
 
-/// A Previous yields the entity declared by the nearest earlier statement.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:07e3b6151afda7d5560da7b993bf6696deec981b1bc4bbf729faed935d554b89
+// @lfy def/model/main.lfy:bind#bind:bind:e2e8ec5c35e1228584610ea4cd2dee48b4ed6c2d6973fb0e7dc65a72eb78385e
 #[test]
 fn previous_yields_the_earlier_declaration() {
     let model = bind_one("d X {} const y = 1; const z = ^^; d W { const w = ^^; }");
@@ -1299,8 +1273,8 @@ fn previous_yields_the_earlier_declaration() {
     );
 }
 
-/// A template reference resolves in scope, else to the one rule entity with that name.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:0b03717c4f0414186634383cb7963ba8e06452ae1dcd7f981374596221a09046
+// @lfy def/model/main.lfy:bind#bind:bind:f037c79f1549c04cb4e180ca6df046e1cb92277d231bd88fd9490e30745c532f
 #[test]
 fn template_reference_resolves_in_scope_or_to_the_rule() {
     let rules = source(
@@ -1346,10 +1320,8 @@ fn template_reference_resolves_in_scope_or_to_the_rule() {
     assert_eq!(usages_of(&model, foo).len(), 1);
 }
 
-/// Two rule entities sharing an identifier: a problem at the second naming the first's
-/// file, and a reference to that identifier resolves to neither, with a problem of its
-/// own saying it is more than one rule rather than that it is not declared.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:da4fb5f27c3ed1507aa87360e55a3a8894f028a878bd829cce9236d304a1f900
+// @lfy def/model/main.lfy:bind#bind:bind:d20244dc3bdb37be74e170d6902fb9e329aa1be9313397e41f2f3b4021507236
 #[test]
 fn two_rule_entities_with_the_same_identifier_is_a_problem() {
     let a = source(
@@ -1379,10 +1351,9 @@ fn two_rule_entities_with_the_same_identifier_is_a_problem() {
     assert_eq!(usage(&model, reference).symbol, None);
 }
 
-/// A context member name must be the value of a ContextProperty. `X@type` shows that a
-/// keyword is a valid MemberName in this position.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1656dbcd56f681c7b65bd1d291ef5a382398076633d62daca71534bfc4422f0b
+// @lfy def/model/main.lfy:bind#bind:bind:54fc1c46c53026754a5889c33567b8051a8417e687fc955e0812780e98d08641
+// @lfy def/model/main.lfy:bind#bind:bind:3fc430c9d31bb72af4f7f3f71734f2ce9640845b349c5cdf45b3551ab218e478
 #[test]
 fn unknown_context_property_is_a_problem() {
     let model = bind_one("d X { const a = @identifier; const b = @nonsense; const c = X@type; }");
@@ -1407,11 +1378,9 @@ fn unknown_context_property_is_a_problem() {
     );
 }
 
-/// The kind data of an entity gives the context layer its names, and the value layer the
-/// members of it whose value is a function.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1656dbcd56f681c7b65bd1d291ef5a382398076633d62daca71534bfc4422f0b
+// @lfy def/model/main.lfy:bind#bind:bind:f45100ea86a4bf3122e0abff672621b70a23c3d7b26dc3d3999269c6bebd8654
+// @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
 #[test]
 fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     let model = bind_with_prelude(
@@ -1446,7 +1415,7 @@ fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     // Then those members of the kind data whose value is a function, whether a reference
     // to a fn declaration, as `Trait.apply` is, or an inline function, as `Entity.like`
     // is.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
     reads_member(
         &model,
         node(&model, file, E::Member, "t.apply"),
@@ -1461,22 +1430,24 @@ fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     );
     // A member of the kind data whose value is not a function is not one of them, and,
     // the left side being a trait no more lenient than any other, that is a problem.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
     let entities = node(&model, file, E::Member, "t.entities");
     assert_eq!(usage(&model, entities).symbol, None);
     assert_eq!(problems(&model), vec!["t.entities: t has no member entities"]);
 }
 
-/// The kind data of an entity is the prelude data for what it is, and always Entity as
-/// well, so a member of that data is read on it.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:88eb2d2cca1fc9e39dfbb1fd77266bdb656d9b5b76c1c8d103d7ea2000ccaa4d
+// @lfy def/model/main.lfy:bind#bind:bind:a356c2ee0fd08dd5f3953eb8e84bc8af861d7173c6287adb67512ab6d4e029f2
+// @lfy def/model/main.lfy:bind#bind:bind:8b869706f9b3accf44d102a300f31ec9ef4cf241f8ba7f345547a713a9490bd1
+// @lfy def/model/main.lfy:bind#bind:bind:5b74506b3363b1aae065b1fdec5c96d90b2c4e69a5dfc57c8180c308ef498f52
+// @lfy def/model/main.lfy:bind#bind:bind:aaa4ae99059decb2958f1fa1fb24232b78a498e93bdd897a58541892f93ff5ef
+// @lfy def/model/main.lfy:bind#bind:bind:b8f9a63a7bac13dd3728bf50f905856ac618f7587ed7dd57fb9205a2abcee8a4
+// @lfy def/model/main.lfy:bind#bind:bind:80ceff5b377b80eb2b9fa07646b4f629fba299dc5f9d390dd9d0f9893d90b09f
+// @lfy def/model/main.lfy:bind#bind:bind:7e90f7c284b5be141502975a2b098d2779ec3d98cb518d1b1a8853c3b53a46e9
+// @lfy def/model/main.lfy:bind#bind:bind:3ab29a29c8bb813c36da2be4ef0f92692a689f0cf5b0bb0ca24a096573575bf4
+// @lfy def/model/main.lfy:bind#bind:bind:ebbdddbf148f9ae5cf3046d76e5d8a942c87d1d978328ed3821c87b57e45dad6
+// @lfy def/model/main.lfy:bind#bind:bind:76a4d430c727407d21e2a4e3d554a6ef83d1bb4d641267265339c8d06cf90517
+// @lfy def/model/main.lfy:bind#bind:bind:221dcd6b1a848777f435f6732b8d88111936a85d08b720e0a88111ebada5e974
 #[test]
 fn the_kind_data_of_an_entity_is_the_prelude_data_for_what_it_is() {
     let b = source("b.lfy", "d B {}", &[]);
@@ -1518,14 +1489,15 @@ fn the_kind_data_of_an_entity_is_the_prelude_data_for_what_it_is() {
     }
 }
 
-/// A value of a base data resolves that data's members; an object's keys are its own.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:f775fc4695880b8ef1a7560413544e82c0822c160f5752543d23185eae7d3279
+// @lfy def/model/main.lfy:bind#bind:bind:3a7604505d0fae950d2b332953bd4b51a5eb74400f4be99b8f286dff6b272317
+// @lfy def/model/main.lfy:bind#bind:bind:36d3a4f430e1d50dd1a350cd76f198fdd8471baa2fcda7239bee1b6b97bbb3fb
+// @lfy def/model/main.lfy:bind#bind:bind:015539ca26f9f472c0d3afbac23542275020fe8a601de69e1fd2a09140f22ad9
+// @lfy def/model/main.lfy:bind#bind:bind:6dc6ae69739114a0ec8bacb51ae7f36bdf449ed6a1965b5947de642dc19028d5
+// @lfy def/model/main.lfy:bind#bind:bind:daf2463fcb0a875928be7b6f9e61dffa052528a9106f0ee3cd87f1494821a585
+// @lfy def/model/main.lfy:bind#bind:bind:0a973592bab84a386122de72f70f1539acabbc945392d06cf8b501f9c0c877a5
+// @lfy def/model/main.lfy:bind#bind:bind:a5c1bc569ddb92f8dd361e4827d274e8148ec9c79e5f47f9178da3acd27018eb
+// @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
 #[test]
 fn a_value_resolves_the_members_of_its_base_data() {
     let model = bind_with_prelude(
@@ -1559,9 +1531,8 @@ fn a_value_resolves_the_members_of_its_base_data() {
     );
 }
 
-/// The add of `@acceptanceCriteria.add(...)` is the binder's own call: no symbol, no
-/// problem, however long the chain.
-// @lfy def/model/main.lfy:bind
+// However long the chain.
+// @lfy def/model/main.lfy:bind#bind:bind:bf65b85fc78ccacf601d449ba65c2fe1d663a4e31a9ceebaeaa066b1c6b6947a
 #[test]
 fn add_on_the_criteria_of_a_context_is_the_binders_own_call() {
     let model = bind_with_prelude(
@@ -1576,10 +1547,10 @@ fn add_on_the_criteria_of_a_context_is_the_binders_own_call() {
     assert_eq!(model.entities[a].acceptance_criteria.len(), 2);
 }
 
-/// A Member with the value accessor on a data resolves to its member; with the scope
-/// accessor, to the member symbol itself.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
+// @lfy def/model/main.lfy:bind#bind:bind:092cce29356879ba213cc57e7d617f3b488aa91d35f1da0d98ac951bceae5ce4
+// @lfy def/model/main.lfy:bind#bind:bind:f40c2ff49a3803c91a5f9a9283f5a313f9b9224704a3fdbc0e9bf8b09005956f
+// @lfy def/model/main.lfy:bind#bind:bind:2abf4d9fa69146d5d0dfbb26a41bc0da449e5be37ebda475b4de6b9d6c02c1c5
 #[test]
 fn member_on_data_resolves_to_its_member() {
     let model =
@@ -1603,8 +1574,7 @@ fn member_on_data_resolves_to_its_member() {
     assert_eq!(usages_of(&model, m).len(), 2);
 }
 
-/// The scope accessor with no member name after it yields the entity's own scope.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:b8d0de2015d64309085d195ec5dfe0da392e5951c4b4f6f9aa152e60707596c6
 #[test]
 fn the_scope_accessor_with_no_name_yields_the_entitys_scope() {
     let model = bind_one(
@@ -1621,10 +1591,9 @@ fn the_scope_accessor_with_no_name_yields_the_entitys_scope() {
     );
 }
 
-/// The parent scope accessor yields the scope that contains the left side's scope, and
-/// undefined when there is none.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:2a5068f916f94485b682af3154cd51a8d3c0343e4c82670f3036ec3d2c890c5c
+// @lfy def/model/main.lfy:bind#bind:bind:997e81cefd2e242372fae5b5fb01542d9a18bd3ccc915f34d1c6f2d310ef7c15
+// @lfy def/model/main.lfy:bind#bind:bind:edf4385d06011fef0e53dd9f7e5cf657eb9102dc6b160cbe266745dbd4591f35
 #[test]
 fn parent_scope_accessor_yields_the_containing_scope() {
     let model = bind_one(
@@ -1645,8 +1614,7 @@ fn parent_scope_accessor_yields_the_containing_scope() {
     );
 }
 
-/// A member of a name that resolved to nothing adds no second problem.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
 #[test]
 fn a_member_of_an_unresolved_name_is_not_a_second_problem() {
     let model = bind_one("const y = z.deeper;");
@@ -1658,12 +1626,10 @@ fn a_member_of_an_unresolved_name_is_not_a_second_problem() {
     assert_eq!(usage(&model, deeper).symbol, None);
 }
 
-/// Nothing found for a name is a problem whatever the left side is: a trait, a data, a
-/// module, a predicate, or a value, and even when no prelude is bound so the entity's
-/// kind data is empty. What a predicate reads includes the members of the traits the
-/// entities carrying it carry, so a name one of them has is found.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// What a predicate reads includes the members of the traits the entities carrying it
+// carry, so a name one of them has is found.
+// @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+// @lfy def/model/main.lfy:bind#bind:bind:ff80c9e9250025190f5b25a2ac7ee8d46d800e996782e73367a03a40cab77dfb
 #[test]
 fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
     let mut sources = prelude();
@@ -1679,7 +1645,7 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
     let file = model.file("a.lfy").unwrap();
     // A name a carrier of the trait has is found: `x` is one of the entities carrying t,
     // and A, the one of them, carries u as well, so the member u declares is read.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
     let u = model.symbols[file_symbol(&model, file, "u")].entity;
     assert_eq!(
         usage(&model, node(&model, file, E::Member, "x.only")).symbol,
@@ -1704,9 +1670,8 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
         ]
     );
     // With no prelude bound the kind data of every entity is empty, so a name only the
-    // prelude would give is found nowhere; it is a problem there too, a trait no more
-    // lenient than a data.
-    // @lfy def/model/main.lfy:bind
+    // prelude would give is found nowhere.
+    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
     let model = bind_one("trait t {} d A is t {} const p = t.nope; const q = A.nope;");
     assert_eq!(
         problems(&model),
@@ -1718,8 +1683,9 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
     );
 }
 
-/// A Name resolves to the first match walking outward.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:7b5a1fec626e619b600c3faefaa81db781f8ebdd297cba7893369d95d1f212c7
+// @lfy def/model/main.lfy:bind#bind:bind:e45dadaf0f17476dd7dedb3f1b7ce88d5547c50d3539da952553478627450b84
+// @lfy def/model/main.lfy:bind#bind:bind:09acc3b55d81eeaa041cf60ddceb7ff8447246b49a92521bbab0418f51832ea4
 #[test]
 fn name_resolves_to_the_nearest_scope() {
     let model =
@@ -1740,9 +1706,7 @@ fn name_resolves_to_the_nearest_scope() {
     assert_eq!(usages_of(&model, global).len(), 1);
 }
 
-/// A Name that resolves to a type parameter is a usage of the value layer like any name,
-/// and what it yields as a type is the type parameter's entity.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:a755a701a34d1fd778186200ef15ab0ce0f9406e66661bd0fa59fb1fcc6ba830
 #[test]
 fn a_name_of_a_type_parameter_yields_the_parameter() {
     let model = bind_one("d Item {} d Box<T extends Item> { $item: `x` = T; }");
@@ -1761,10 +1725,8 @@ fn a_name_of_a_type_parameter_yields_the_parameter() {
     );
 }
 
-/// A member read on a left side whose type is a type parameter resolves in what the
-/// parameter extends; with no extends clause nothing resolves and nothing is reported.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:d0ff9820f3d48b6bc45af20afec3e2cea3d2a230642bc7e57e4e2bc1adf1828f
+// @lfy def/model/main.lfy:bind#bind:bind:0259c8e9fbd86c6458b4c5593f1bb4c67eeddd54fd8102f5960102fa28338dbb
 #[test]
 fn a_member_on_a_type_parameter_reads_what_it_extends() {
     let model = bind_one(
@@ -1782,11 +1744,10 @@ fn a_member_on_a_type_parameter_reads_what_it_extends() {
 
 // ---- Properties ---------------------------------------------------------------------
 
-/// Entity.identifier, Entity.definition, FnEntity.parameters, and FnEntity.output.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:8d617a98f5a5558d05ad10e6e287da406ab93ec4a4bdacbe24c49a600ef02c2f
+// @lfy def/model/main.lfy:bind#bind:bind:80d447091f53e77fb579e88f41ac1837931ebc308c69fe45415e2f5bfdb498cc
+// @lfy def/model/main.lfy:bind#bind:bind:221dcd6b1a848777f435f6732b8d88111936a85d08b720e0a88111ebada5e974
+// @lfy def/model/main.lfy:bind#bind:bind:d4419aeda4af43795c32ea6f7411da0066cb5743eda3b3264adedc81cc7af5be
 #[test]
 fn identifier_definition_parameters_and_output() {
     let model = bind_one(
@@ -1830,8 +1791,10 @@ fn identifier_definition_parameters_and_output() {
     );
 }
 
-/// Entity.type is the entity itself for a data, trait, type, or enum declaration.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:d9ede97c9e2f6de0aa7e3e8e88e0176270afebba2e167037de479ce59a6f8a92
+// @lfy def/model/main.lfy:bind#bind:bind:0e87162d10144dc4383897118c83c8cc7e3bca9709161f3d01d5397116f56574
+// @lfy def/model/main.lfy:bind#bind:bind:36511244a9400c48a07768df58b5ee4c7b2ebe65a4b0eb0d11a1e395a5eb601c
+// @lfy def/model/main.lfy:bind#bind:bind:9e352bb1b1c868b7701ec0be818e4e42123eedf31e70b48e4f152ac4c5629df0
 #[test]
 fn type_of_a_declaration_is_itself() {
     let model = bind_one("d A {} trait T {} type Ty { k = string, } enum En { a = 'a' }");
@@ -1843,11 +1806,9 @@ fn type_of_a_declaration_is_itself() {
     }
 }
 
-/// Entity.type from a type expression, a member's right side, or a value; Entity.itemType
-/// is the first of the type arguments of the type when that type is the standard
-/// library's List, for a bare List and a list value included.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:e43803f7656aa0ecb508e8e152a7c8112bc400b428e014bfb1debbfb2fa72b74
+// @lfy def/model/main.lfy:bind#bind:bind:bbb55605b75a4aff35d2f4a133cb91dd155e8e1ad8bdaa30a88aa2f9cbf2a1ab
+// @lfy def/model/main.lfy:bind#bind:bind:c396905bbe3b0b2e5c0d1af15e9ef59df60124c2d21f692dcd4787efdac378c0
 #[test]
 fn type_and_item_type() {
     let model = bind_one(
@@ -1878,7 +1839,8 @@ fn type_and_item_type() {
     assert_eq!(one.item_type, None);
     // A bare List, with no argument, has no item type; List of one argument is spelled
     // as a list, so it is the same type as the brackets give.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:8578766ecf0458c14a5e431b3e5fc185c3eb43f56d3ec361b2d4421f3e556b8d
+    // @lfy def/model/main.lfy:bind#bind:bind:0e87162d10144dc4383897118c83c8cc7e3bca9709161f3d01d5397116f56574
     let mut sources = prelude();
     sources.push(source(
         "a.lfy",
@@ -1902,7 +1864,7 @@ fn type_and_item_type() {
     );
     // This prelude's List lists no type parameter, so the one argument is an arity
     // problem; the type is bound with the argument as written all the same.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:d07e7150d53c64dd6694614b0a458127dcc037d09d6358431cd7f19a8a2ce6f4
     assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
     assert_eq!(
         model.problems[0].node,
@@ -1910,10 +1872,8 @@ fn type_and_item_type() {
     );
 }
 
-/// The type of a variable declared from a list value is a list of what the value holds,
-/// so it reads the members of List and has that item type.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:6dc6ae69739114a0ec8bacb51ae7f36bdf449ed6a1965b5947de642dc19028d5
+// @lfy def/model/main.lfy:bind#bind:bind:8578766ecf0458c14a5e431b3e5fc185c3eb43f56d3ec361b2d4421f3e556b8d
 #[test]
 fn a_list_value_has_the_type_of_a_list() {
     let model = bind_with_prelude(
@@ -1934,7 +1894,7 @@ fn a_list_value_has_the_type_of_a_list() {
     };
     // A list of numbers is a list of number: the items are values of that kind, not the
     // one value each was written as.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:c396905bbe3b0b2e5c0d1af15e9ef59df60124c2d21f692dcd4787efdac378c0
     assert_eq!(
         ty("xs"),
         Some(TypeRef::List(Box::new(TypeRef::Primitive("number"))))
@@ -1944,7 +1904,7 @@ fn a_list_value_has_the_type_of_a_list() {
     reads_member(&model, node(&model, file, E::Member, "xs.length"), "List", "length");
     // Items of more than one type are a union of them, each written once; a spread holds
     // what the list it spreads holds.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:8578766ecf0458c14a5e431b3e5fc185c3eb43f56d3ec361b2d4421f3e556b8d
     let a = model.symbols[file_symbol(&model, file, "A")].entity;
     assert_eq!(
         item("many"),
@@ -1958,10 +1918,8 @@ fn a_list_value_has_the_type_of_a_list() {
     assert!(matches!(ty("empty"), Some(TypeRef::List(_))));
 }
 
-/// Entity.typeParameters is empty for a declaration without them, and Entity.typeArguments
-/// is empty for a declaration used without any.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:256cb22304f6c50a7a2c4cb6f724023786d63ac65133bc2132981b78fc82e9a7
+// @lfy def/model/main.lfy:bind#bind:bind:ea6c2a8558d3b9fe34eaf9be8a2eac291626bc1138e5383a4772660515c63560
 #[test]
 fn a_declaration_without_type_parameters_has_none() {
     let model = bind_one("d Plain { $x: `d` = string; } const p: Plain = 1; fn f(): `d` => Plain {}");
@@ -1977,11 +1935,8 @@ fn a_declaration_without_type_parameters_has_none() {
     assert!(model.type_arguments(entity(&model, "p")).is_empty());
 }
 
-/// A FunctionType yields an anonymous function entity whose parameters are declared in the
-/// scope it owns and whose output is the type after its arrow, and a member read on a
-/// left side with type arguments substitutes through both.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:ae23ffc23c95add84b11276b2987d77d26def0d947d817a507989143282af46c
+// @lfy def/model/main.lfy:bind#bind:bind:46b4022825c073c20ea36dfef0380abdaa37504df76653a573913f07721dde4a
 #[test]
 fn a_function_type_is_an_anonymous_function_entity() {
     let model = bind_one("type Pair<T> { f = (item: T) => T, } const p: Pair<string> = 1; const q = p.f;");
@@ -2017,9 +1972,8 @@ fn a_function_type_is_an_anonymous_function_entity() {
     );
 }
 
-/// A declaration seen with type arguments carries the declaration's identifier,
-/// definition, members, criteria, and type parameters, and its type is the declaration.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:ae1a929436e02ee004442ea4f9731ef53b796c391db2557cb93b8802e7d7c54d
+// @lfy def/model/main.lfy:bind#bind:bind:0ee53b5e0c008ce71de85c320c18eb1f9b1f0d8252a143d9c28a107beb5e508d
 #[test]
 fn a_declaration_seen_with_arguments_carries_the_declarations_own() {
     let model = bind_one(
@@ -2042,9 +1996,8 @@ fn a_declaration_seen_with_arguments_carries_the_declarations_own() {
     assert!(model.type_arguments(boxed).is_empty());
 }
 
-/// A member read on a left side with type arguments substitutes through nested arguments,
-/// and a parameter with no argument at its position stays itself.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:46b4022825c073c20ea36dfef0380abdaa37504df76653a573913f07721dde4a
+// @lfy def/model/main.lfy:bind#bind:bind:1314d95fa57fff9074b53571e4db2f0029007b9a8661136a4047fe448c4ec7bf
 #[test]
 fn a_member_read_substitutes_through_nested_arguments() {
     let model = bind_one(
@@ -2072,8 +2025,7 @@ fn a_member_read_substitutes_through_nested_arguments() {
     );
 }
 
-/// An add call or a Where appends one Criterion, in the body or in a With.
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:221ed4d3e6531a5f77ec17c2a8f11672a8fe2c59c92c346a1bf19434f5ddac4d
 #[test]
 fn add_and_where_append_criteria() {
     let model = bind_one(
@@ -2119,8 +2071,9 @@ fn add_and_where_append_criteria() {
     );
 }
 
-/// A call of Entity.test on the entity's context appends each argument as one Test.
-// @lfy def/model/main.lfy:bind
+// The second case reads `A@like(...)` for its expectation.
+// @lfy def/model/main.lfy:bind#bind:bind:feeb121fcaf7cdf84c4e99d215d6f98a9b8adfc8a1b65fe773a848ca2500d192
+// @lfy def/model/main.lfy:bind#bind:bind:353b590c9f9e60df330a455c8c7f77103ef42cf73250507362b2f015efc61f02
 #[test]
 fn test_call_appends_tests() {
     let model = bind_one(
@@ -2140,8 +2093,8 @@ fn test_call_appends_tests() {
     assert!(tests[1].expect.is_some());
 }
 
-/// criteriaOf replaces each template reference by the referenced entity's identifier.
-// @lfy def/model/main.lfy:criteriaOf
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:10ab31f446369520ef4402e3afa3adf6c05b2834fdd52636b18fba986f4fbb8c
+// @lfy def/model/main.lfy:entitiesOf#entitiesOf:entitiesOf:a331a3175b151a93f22cae9f7bc6d21d03ae20eee79f8634427afc93fbb4065a
 #[test]
 fn criteria_of_strips_references() {
     let model = bind_one(
@@ -2191,9 +2144,11 @@ fn object_field<'a>(value: &'a Value, key: &str) -> &'a Value {
 }
 
 /// The whole repository binds with zero problems, and its model reads as expected.
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
-// @lfy def/model/main.lfy:bind
+// @lfy def/model/main.lfy:bind#bind:bind:1bdb59f3a6564ded33f175fcefb221c0e11026b038bb5cd291f62cc31671471f
+// @lfy def/model/main.lfy:bind#bind:bind:067910b6745ea51ce3ab1cbfb3fcad312a3d934bfba10a864d9f5846d4242dcb
+// @lfy def/model/main.lfy:bind#bind:bind:81cd673c66e8b5ef0d81262e4dd6bcf40b110f884bf038212940017c42f01483
+// @lfy def/model/main.lfy:bind#bind:bind:a98f35d7e03d8ae522c60f531f70be526345d64d0177bde5695c27df2036b103
+// @lfy def/model/main.lfy:bind#bind:bind:0b03717c4f0414186634383cb7963ba8e06452ae1dcd7f981374596221a09046
 #[test]
 fn repository_binds_without_problems() {
     let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
@@ -2212,11 +2167,9 @@ fn repository_binds_without_problems() {
     assert!(workspace.problems.is_empty(), "{messages:#?}");
     assert!(model.problems.is_empty(), "{:?}", problems(model));
 
-    // The package elfie is in the program, so its main file is the prelude: a program
-    // file's scope has the prelude's as parent, and every apply of a trait resolves to
-    // the member of Trait the prelude declares.
-    // @lfy def/model/main.lfy:bind
-    // @lfy def/model/main.lfy:bind
+    // The package elfie is in the program, so its main file is the prelude.
+    // @lfy def/model/main.lfy:bind#bind:bind:ec98cc52ebb62a0594a752006377cac03dcc3616dab157ef152c1f5d556373ec
+    // @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
     let components = model
         .sources
         .iter()

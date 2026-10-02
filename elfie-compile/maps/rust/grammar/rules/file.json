@@ -4,32 +4,86 @@
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
       "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
       "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "803f44c5a8d6d38b49e1a95cb3f548d356ea15ca0e6e0be98f2c66474fb07108",
+    "generated": "2026-10-01T23:03:30Z",
+    "hash": "981dadb7936c55b46dfe8c47e1a02c9d7332060bae7745ec54fa0aef437ea2d1",
     "markers": [
       {
         "column": null,
-        "end": 22,
+        "end": 20,
         "entity": "SourceFile",
         "file": "def/grammar/rules/file.lfy",
         "line": 6,
-        "outputLine": 14,
-        "requirement": null
+        "outputLine": 9,
+        "requirement": "SourceFile:rule:97928766b42cd7df993c02d6e9223e100158252eeea6f9063dbbe8dd33834e4a"
       },
       {
         "column": null,
-        "end": 36,
+        "end": 91,
         "entity": "SourceFile",
         "file": "def/grammar/rules/file.lfy",
         "line": 6,
-        "outputLine": 23,
-        "requirement": null
+        "outputLine": 21,
+        "requirement": "SourceFile:rule:97928766b42cd7df993c02d6e9223e100158252eeea6f9063dbbe8dd33834e4a"
+      },
+      {
+        "column": null,
+        "end": 102,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 92,
+        "requirement": "SourceFile:recoverable:d9550fd07931fbd53b6b55c4069ca8833fed6bff3eaee29733d0c44d489b0126"
+      },
+      {
+        "column": null,
+        "end": 110,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 103,
+        "requirement": "SourceFile:recoverable:c50498a552ee44abf7fe3a09d43a5cc50ee96a665edf21d1c85809d2b415ec5d"
+      },
+      {
+        "column": null,
+        "end": 120,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 111,
+        "requirement": "SourceFile:recoverable:61b9ca57b9c6f0db76783555f549078c6ddf19c5836cc5b200cbb1cab28bc77f"
+      },
+      {
+        "column": null,
+        "end": 128,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 121,
+        "requirement": "SourceFile:recoverable:38bd9f4dd6db310a2703c0f185d6dada112bf329e7b2fef529baa93b64847771"
+      },
+      {
+        "column": null,
+        "end": 145,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 129,
+        "requirement": "SourceFile:recoverable:b348bf5366168988f57986944a5d40d08474b6ed588ddff0aaefa74a1e7c150f"
+      },
+      {
+        "column": null,
+        "end": 163,
+        "entity": "SourceFile",
+        "file": "def/grammar/rules/file.lfy",
+        "line": 6,
+        "outputLine": 146,
+        "requirement": "SourceFile:SourceFile:745888c84bd8381f81083e03153142ec9de1e1705ae81e03d5643346a18930dc"
       }
     ],
     "output": "crates/elfie-core/src/grammar/rules/file.rs",
-    "requirements": "",
+    "requirements": "29eaa6eda55a4b391c10475fd7dc0e6575545c9f33f8154ad386579e66f0edfd",
     "signature": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
     "source": "def/grammar/rules/file.lfy",
     "target": "rust"
@@ -39,10 +93,10 @@
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
       "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
       "def/grammar/terminals/space.lfy": "c10e4e189da9fd7d7fa23cf9cf7e9f08ff5baf62f4e5de0609fee80bed7084c2",
-      "def/grammar/traits.lfy": "e743412bf0444a10ee8b621eaf3306ce6d46a7bb5233a6c3bd3d52c8a7e65860"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-09-21T04:14:50Z",
-    "hash": "803f44c5a8d6d38b49e1a95cb3f548d356ea15ca0e6e0be98f2c66474fb07108",
+    "generated": "2026-10-01T23:03:30Z",
+    "hash": "981dadb7936c55b46dfe8c47e1a02c9d7332060bae7745ec54fa0aef437ea2d1",
     "markers": [
       {
         "column": null,
@@ -166,7 +220,7 @@
         "end": 36,
         "entity": "reading",
         "file": "def/model/traits.lfy",
-        "line": 16,
+        "line": 17,
         "outputLine": 34,
         "requirement": null
       },
@@ -220,7 +274,7 @@
         "end": 54,
         "entity": "reading",
         "file": "def/model/traits.lfy",
-        "line": 16,
+        "line": 17,
         "outputLine": 52,
         "requirement": null
       },
@@ -265,7 +319,7 @@
         "end": 70,
         "entity": "declaring",
         "file": "def/model/traits.lfy",
-        "line": 40,
+        "line": 41,
         "outputLine": 68,
         "requirement": null
       },
@@ -418,13 +472,13 @@
         "end": 115,
         "entity": "declaring",
         "file": "def/model/traits.lfy",
-        "line": 40,
+        "line": 41,
         "outputLine": 112,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/model/components.rs",
-    "requirements": "",
+    "requirements": "29eaa6eda55a4b391c10475fd7dc0e6575545c9f33f8154ad386579e66f0edfd",
     "signature": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
     "source": "def/grammar/rules/file.lfy",
     "target": "rust"

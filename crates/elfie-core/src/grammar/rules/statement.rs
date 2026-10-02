@@ -8,9 +8,6 @@ grammar_rules! {
     /// every statement.
     pub enum Statement {
         // Declarations
-        /// Acceptance criteria:
-        /// - `d List<T>;` is a `DataDeclaration` of `List` whose `TypeParameters` hold
-        ///   the one `TypeParameter` `T`.
         DataDeclaration is [statement()]: "A data structure whose implementation is generated from its criteria" = "[[AgentDataKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )", // @lfy def/grammar/rules/statement.lfy:DataDeclaration
         AgentFunctionDeclaration is [statement()]: "A function whose implementation is generated from its criteria" = "[[AgentFunctionKeyword]] , [[Signature]] , (/ [[DoubleArrowRight]] , [[TypeExpression]] /) , ( [[Block]] | [[Semicolon]] )", // @lfy def/grammar/rules/statement.lfy:AgentFunctionDeclaration
         FunctionDeclaration is [statement()]: "A function written out in full" = "[[FunctionKeyword]] , [[Signature]] , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[Block]]", // @lfy def/grammar/rules/statement.lfy:FunctionDeclaration
@@ -23,9 +20,6 @@ grammar_rules! {
         Use is [statement()]: "Brings a file into scope, as one module name or as its declarations" = "[[UseKeyword]] , [[StringLiteral]] , (/ [[AsKeyword]] , [[Identifier]] /) , [[Semicolon]]", // @lfy def/grammar/rules/statement.lfy:Use
 
         // Blocks and control
-        /// Acceptance criteria:
-        /// - A `BlockOpen` at the start of a statement always begins a `Block`, never an
-        ///   `Object`.
         Block is [statement()]: "A sequence of statements with its own scope" = "[[BlockOpen]] , (: [[Statement]] :) , [[BlockClose]]", // @lfy def/grammar/rules/statement.lfy:Block
         If is [statement()]: "A conditional" = "[[IfKeyword]] , [[Group]] , ( [[Block]] | [[ExpressionStatement]] ) , (/ [[Else]] /)", // @lfy def/grammar/rules/statement.lfy:If
         Else is [rule()]: "The other branch; else if is else followed by an if" = "[[ElseKeyword]] , ( [[If]] | [[Block]] | [[ExpressionStatement]] )", // @lfy def/grammar/rules/statement.lfy:Else
@@ -50,11 +44,8 @@ grammar_rules! {
         // Criteria sugar
         Condition is [rule()]: "One condition, possibly negated or nested" = "(/ [[LogicalNot]] /) , ( [[Group]] | [[ConditionGroup]] )", // @lfy def/grammar/rules/statement.lfy:Condition
         ConditionGroup is [rule()]: "One condition, possibly negated or nested" = "(/ [[LogicalNot]] /) , [[GroupOpen]] , [[Conditions]] , [[GroupClose]]", // @lfy def/grammar/rules/statement.lfy:ConditionGroup
-        /// Acceptance criteria:
-        /// - A negated nested group distributes the negation: "and" becomes "or" and "or"
-        ///   becomes "and" inside of the group.
-        /// - When conditions are joined by "or": they merge into one situation.
-        /// - When conditions are joined by "and": they are a list of situations.
+        /// How the joiners and a negation read is settled where the criteria are written
+        /// out; see `model::eval`.
         Conditions is [rule()]: "Conditions joined by and or or" = "[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)", // @lfy def/grammar/rules/statement.lfy:Conditions
         Where is [statement()]: "Adds an acceptance criterion: the conditions are the situation, the expression the behavior" = "[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]", // @lfy def/grammar/rules/statement.lfy:Where
 

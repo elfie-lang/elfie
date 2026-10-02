@@ -76,7 +76,7 @@ grammar_rules! {
 
         // Arithmetic and bitwise
         Plus is [additive("+"), Binding::left(Level::Additive)]: "Addition or concatenation" = r#""+""#, // @lfy def/grammar/terminals/punctuation.lfy:Plus
-        Minus is [additive("-"), Binding::left(Level::Additive)]: "Subtraction; also negation as a prefix" = r#""-""#, // @lfy def/grammar/terminals/punctuation.lfy:BitwiseNot.precedence
+        Minus is [additive("-"), Binding::left(Level::Additive)]: "Subtraction; also negation as a prefix" = r#""-""#, // @lfy def/grammar/terminals/punctuation.lfy:Minus
         /// `alternationList(...additive@entities)`
         Additive is [alternation_list(ADDITIVES)]: "Any additive operator" = "[[Plus]] | [[Minus]]", // @lfy def/grammar/terminals/punctuation.lfy:Additive
 

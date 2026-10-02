@@ -216,7 +216,9 @@ pub enum RepetitionStop {
 /// an element after the repetition and `begins_repeated` whether it can begin the
 /// repeated element. A token that no element after the repetition can begin with and that
 /// is not one of `sync` is covered along with the tokens after it; one of `sync` that no
-/// element after can begin with is covered alone.
+/// element after can begin with is covered alone. As in [`sweep_end`], a closing token of
+/// [`BRACKETS`] that would take the bracket depth below 0 ends the error node before it,
+/// the depth being 0 at `at`, the first token the error node covers.
 // @lfy def/parser/traits.lfy:recoverable
 pub fn repetition_stop(
     tokens: &[Token],
@@ -238,16 +240,27 @@ pub fn repetition_stop(
         return RepetitionStop::ErrorAlone;
     }
     // @lfy def/parser/traits.lfy:recoverable
-    let end = tokens
-        .iter()
-        .enumerate()
-        .skip(at + 1)
-        .find(|(_, token)| {
-            token.rule.is_some_and(|rule| {
-                begins_repeated(rule) || begins_after(rule) || sync.contains(&rule)
-            })
-        })
-        .map_or(tokens.len(), |(index, _)| index);
+    let mut depth = usize::from(rule.is_some_and(opens_bracket)); // @lfy def/parser/traits.lfy:brackets
+    let mut end = tokens.len();
+    for (index, token) in tokens.iter().enumerate().skip(at + 1) {
+        let Some(rule) = token.rule else {
+            continue;
+        };
+        if begins_repeated(rule) || begins_after(rule) || sync.contains(&rule) {
+            end = index;
+            break;
+        }
+        if closes_bracket(rule) {
+            // @lfy def/parser/traits.lfy:recoverable
+            if depth == 0 {
+                end = index;
+                break;
+            }
+            depth -= 1; // @lfy def/parser/traits.lfy:brackets
+        } else if opens_bracket(rule) {
+            depth += 1; // @lfy def/parser/traits.lfy:brackets
+        }
+    }
     RepetitionStop::ErrorUpTo(end)
 }
 

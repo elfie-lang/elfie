@@ -510,7 +510,7 @@ impl Category {
 
 /// The binding of a rule, looking through alternation lists: every alternative must
 /// bind with the same precedence.
-// @lfy def/grammar/main.lfy:28
+// @lfy def/grammar/traits.lfy:prefix
 fn shared_binding(rule: Entity) -> Option<Binding> {
     if let Some(binding) = rule.binding() {
         return Some(binding);

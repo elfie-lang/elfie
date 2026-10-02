@@ -57,22 +57,20 @@ impl Env {
 }
 
 /// The conditions of a `Where`, before they are written out as the situations of a
-/// criterion: conditions joined by "or" merge into one situation, and conditions joined by
-/// "and" are a list of situations.
+/// criterion.
 // @lfy def/grammar/rules/statement.lfy:Conditions
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Situations {
     /// The text of one condition.
     One(String),
-    /// Every one of them holds: a list of situations.
+    /// Every one of them holds.
     All(Vec<Situations>),
-    /// One of them holds: they merge into one situation.
+    /// One of them holds.
     Any(Vec<Situations>),
 }
 
 impl Situations {
-    /// The negation, distributed over a nested group: "and" becomes "or" and "or" becomes
-    /// "and" inside of the group, and only the text of a single condition is negated.
+    /// The negation, with only the text of a single condition negated in place.
     // @lfy def/grammar/rules/statement.lfy:Conditions
     fn negated(self) -> Situations {
         fn each(items: Vec<Situations>) -> Vec<Situations> {
@@ -85,8 +83,7 @@ impl Situations {
         }
     }
 
-    /// One text per situation: the "or" alternatives of each are joined into the one
-    /// situation they merge into.
+    /// One text per situation, the alternatives of each joined by `or`.
     // @lfy def/grammar/rules/statement.lfy:Conditions
     fn texts(self) -> Vec<String> {
         self.merged()
@@ -619,16 +616,13 @@ impl Binder {
             .push(criterion);
     }
 
-    /// When conditions are joined by "or" they merge into one situation; when they are
-    /// joined by "and" they are a list of situations. A negated nested group distributes
-    /// the negation.
+    /// The conditions as one text per situation.
     // @lfy def/grammar/rules/statement.lfy:Conditions
     fn conditions_text(&mut self, conditions: NodeRef, env: &mut Env) -> Vec<String> {
         self.conditions_situations(conditions, env).texts()
     }
 
-    /// The conditions as one [`Situations`]: the conditions an "and" joins all hold, and
-    /// the conditions an "or" joins within each of them hold one at a time.
+    /// The conditions as one [`Situations`], grouped by the keyword that joins them.
     // @lfy def/grammar/rules/statement.lfy:Conditions
     fn conditions_situations(&mut self, conditions: NodeRef, env: &mut Env) -> Situations {
         let trees = self.trees.clone();
@@ -647,8 +641,7 @@ impl Binder {
         Situations::All(all)
     }
 
-    /// One condition as the situations it stands for, with a `!` negating what follows it:
-    /// a nested group distributes the negation over the conditions inside it.
+    /// One condition as the situations it stands for, with a `!` negating what follows it.
     // @lfy def/grammar/rules/statement.lfy:Conditions
     fn condition_situations(&mut self, condition: NodeRef, env: &mut Env) -> Situations {
         let trees = self.trees.clone();
@@ -2289,8 +2282,6 @@ mod tests {
         );
     }
 
-    /// A negated nested group distributes the negation: "and" becomes "or" and "or" becomes
-    /// "and" inside of the group.
     // @lfy def/grammar/rules/statement.lfy:Conditions
     #[test]
     fn a_negated_nested_group_distributes_the_negation() {

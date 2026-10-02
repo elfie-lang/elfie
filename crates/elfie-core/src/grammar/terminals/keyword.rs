@@ -14,7 +14,7 @@ grammar_rules! {
         TraitKeyword is [keyword("trait")]: "Begins a reusable component that can be applied to declarations" = r#""trait""#, // @lfy def/grammar/terminals/keyword.lfy:TraitKeyword
         TypeKeyword is [keyword("type")]: "Begins a structural type" = r#""type""#, // @lfy def/grammar/terminals/keyword.lfy:TypeKeyword
         EnumKeyword is [keyword("enum")]: "Begins a set of named values" = r#""enum""#, // @lfy def/grammar/terminals/keyword.lfy:EnumKeyword
-        AliasKeyword is [keyword("alias")]: "Binds a new name to something already named" = r#""alias""#, // @lfy def/grammar/terminals/keyword.lfy:Keyword.rule
+        AliasKeyword is [keyword("alias")]: "Binds a new name to something already named" = r#""alias""#, // @lfy def/grammar/terminals/keyword.lfy:AliasKeyword
         ConstKeyword is [keyword("const")]: "Declares a name that is bound once" = r#""const""#, // @lfy def/grammar/terminals/keyword.lfy:ConstKeyword
         LetKeyword is [keyword("let")]: "Declares a name that can be rebound" = r#""let""#, // @lfy def/grammar/terminals/keyword.lfy:LetKeyword
         ExternalKeyword is [keyword("external")]: "Declares a name whose definition lives outside the program" = r#""external""#, // @lfy def/grammar/terminals/keyword.lfy:ExternalKeyword

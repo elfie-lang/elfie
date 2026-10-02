@@ -311,7 +311,7 @@ impl Trees {
 
     /// Whether the node is an `ExpressionStatement` in a data or trait body that begins
     /// with `Current` using the scope accessor: a member declaration.
-    // @lfy def/model/main.lfy:bind
+    // @lfy def/model/main.lfy:bind#bind:bind:0e756633c85cba82bf7a5348e64ed3d981aaff25b46e0d41245a2e8e0a9e26c7
     pub fn member_declaration(&self, r: NodeRef) -> Option<NodeRef> {
         if !self.is(r, S::ExpressionStatement) {
             return None;

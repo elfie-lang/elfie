@@ -14,29 +14,17 @@ grammar_rules! {
         LineCommentOpen is [boundary("//")]: "Opens a comment that ends with the line" = r#""//""#, // @lfy def/grammar/terminals/comment.lfy:LineCommentOpen
         LineCommentBody is [body(LINE_COMMENT_BODY_EXCLUDED, &[])]: "Text of a line comment" = "(: ( Character - ( [[NewLine]] ) ) :)", // @lfy def/grammar/terminals/comment.lfy:LineCommentBody
 
-        /// Followed immediately by `/`, it is a `BlockCommentOpen` followed by a
-        /// `BlockCommentClose` instead; followed immediately by `*/`, it is a
-        /// `BlockCommentOpen` followed by a `BlockCommentBody` with the `*` text followed
-        /// by a `BlockCommentClose` instead. See [`block_documentation_open_is_block_comment_open`].
-        BlockDocumentationOpen is [boundary("/**")]: "Opens documentation that ends with its close" = r#""/**""#, // @lfy def/grammar/terminals/comment.lfy:Documentation.rule
+        /// See [`block_documentation_open_is_block_comment_open`] for the text this gives
+        /// way to a `BlockCommentOpen` for.
+        BlockDocumentationOpen is [boundary("/**")]: "Opens documentation that ends with its close" = r#""/**""#, // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
         BlockDocumentationClose is [boundary("**/")]: "Closes block documentation" = r#""**/""#, // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationClose
         BlockDocumentationBody is [body(BLOCK_DOCUMENTATION_BODY_EXCLUDED, &[])]: "Text of block documentation; references are tokens of their own" = "(: ( Character - ( [[BlockDocumentationOpen]] | [[BlockDocumentationClose]] | [[ReferenceOpen]] ) ) :)", // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationBody
         LineDocumentationOpen is [boundary("///")]: "Opens documentation that ends with the line" = r#""///""#, // @lfy def/grammar/terminals/comment.lfy:LineDocumentationOpen
         LineDocumentationBody is [body(LINE_DOCUMENTATION_BODY_EXCLUDED, &[])]: "Text of line documentation" = "(: ( Character - ( [[NewLine]] | [[ReferenceOpen]] | [[ReferenceClose]] ) ) :)", // @lfy def/grammar/terminals/comment.lfy:LineDocumentationBody
 
-        Comment is [rule()]: "A comment; carries no meaning" = "( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )", // @lfy def/grammar/terminals/comment.lfy:Comment
-        /// Acceptance criteria:
-        /// - When a declaration follows the documentation with only `Space`, `NewLine`,
-        ///   `Comment`, or other `Documentation` between them: attaches to that
-        ///   declaration, even when it is one of several documentation blocks in a row.
-        /// - When no declaration follows the documentation and it is not one of two or
-        ///   more documentation blocks in a row that were all opened with
-        ///   `BlockDocumentationOpen`: attaches to nothing.
-        /// - When no declaration exists between two or more documentation blocks, the
-        ///   documentation blocks were all opened with `BlockDocumentationOpen`, and no
-        ///   declaration follows the last of them: attaches to the "global" object.
-        /// - When `LineDocumentationOpen` is the first token and `TemplateReference` is
-        ///   used: a `NewLine` inside the `TemplateReference` is not trivia.
+        Comment is [rule()]: "A comment" = "( [[BlockCommentOpen]] , (: [[BlockCommentBody]] | [[Comment]] :) , [[BlockCommentClose]] ) | ( [[LineCommentOpen]] , (/ [[LineCommentBody]] /) )", // @lfy def/grammar/terminals/comment.lfy:Comment
+        /// What a block attaches to is settled by the parser; see
+        /// `attach_documentation` and the parser's own tests.
         Documentation is [rule()]: "Documentation for the declaration that follows it" = "( [[BlockDocumentationOpen]] , (: [[BlockDocumentationBody]] | [[TemplateReference]] :) , [[BlockDocumentationClose]] ) | ( [[LineDocumentationOpen]] , (: [[LineDocumentationBody]] | [[TemplateReference]] :) )", // @lfy def/grammar/terminals/comment.lfy:Documentation
     }
 }
@@ -61,14 +49,12 @@ pub const LINE_DOCUMENTATION_BODY_EXCLUDED: &[Entity] = &[
     Entity::Literal(Literal::ReferenceClose),
 ];
 
-/// The `where` clauses of `BlockDocumentationOpen`: text that matched it is a
-/// `BlockCommentOpen` instead when `after`, the text immediately following the match,
-/// begins with `/` (the rest is then a `BlockCommentClose`) or with `*/` (the rest is then
-/// a `BlockCommentBody` holding `*` and a `BlockCommentClose`).
+/// Whether text that matched `BlockDocumentationOpen` opens a block comment instead,
+/// judged from `after`: the text immediately following the match.
 // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
 pub fn block_documentation_open_is_block_comment_open(after: &str) -> bool {
-    after.starts_with('/') // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
-        || after.starts_with("*/") // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
+    after.starts_with('/') // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen#BlockDocumentationOpen:BlockDocumentationOpen:df6aa63d7ba075d551f51b49de65b3c0e116ed44151805a4fb677d4e5384c61c
+        || after.starts_with("*/") // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen#BlockDocumentationOpen:BlockDocumentationOpen:4f7b7237b7e7d74d9b517c1c59d69ba04cc8e899f93096832bbce32040759afe
 }
 
 #[cfg(test)]
@@ -110,7 +96,8 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen
+    // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen#BlockDocumentationOpen:BlockDocumentationOpen:df6aa63d7ba075d551f51b49de65b3c0e116ed44151805a4fb677d4e5384c61c
+    // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen#BlockDocumentationOpen:BlockDocumentationOpen:4f7b7237b7e7d74d9b517c1c59d69ba04cc8e899f93096832bbce32040759afe
     #[test]
     fn block_documentation_open_gives_way_to_a_block_comment_open() {
         assert!(block_documentation_open_is_block_comment_open("/"));

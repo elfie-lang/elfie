@@ -120,8 +120,6 @@ impl Invocation {
 
 /// What a compile is doing, as progress reports it.
 // @lfy def/cli/data.lfy:Step
-// Progress is defined here and printed by the compile command, which is not generated yet.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step {
     Planned,         // @lfy def/cli/data.lfy:Step.planned
@@ -141,7 +139,6 @@ pub enum Step {
     Finished,        // @lfy def/cli/data.lfy:Step.finished
 }
 
-#[allow(dead_code)]
 impl Step {
     /// The name of the step, as a progress line and a JSON object spell it.
     pub fn name(self) -> &'static str {
@@ -190,7 +187,6 @@ impl Step {
 
 /// One line of what a compile is doing, for a person or a script watching.
 // @lfy def/cli/data.lfy:Progress
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Progress {
     /// What is happening.

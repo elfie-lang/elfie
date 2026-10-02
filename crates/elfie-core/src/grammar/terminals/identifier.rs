@@ -21,7 +21,7 @@ grammar_rules! {
 impl Identifier {
     /// `where (The text is a Keyword) -> Is that keyword, not an identifier`: the keyword
     /// that text matched by the identifier rule is instead, if any.
-    // @lfy def/grammar/terminals/identifier.lfy:Identifier
+    // @lfy def/grammar/terminals/identifier.lfy:Identifier#Identifier:Identifier:f81825b253d16019732a0cc7a25b0c648a288023645e43ae3d36dce5b7c872a2
     pub fn keyword_of(text: &str) -> Option<Keyword> {
         Keyword::from_text(text)
     }
@@ -48,7 +48,7 @@ mod tests {
         assert!(!Identifier::IdentifierStart.is_terminal());
     }
 
-    // @lfy def/grammar/terminals/identifier.lfy:Identifier
+    // @lfy def/grammar/terminals/identifier.lfy:Identifier#Identifier:Identifier:f81825b253d16019732a0cc7a25b0c648a288023645e43ae3d36dce5b7c872a2
     #[test]
     fn text_that_is_a_keyword_is_that_keyword() {
         assert_eq!(Identifier::keyword_of("const"), Some(Keyword::ConstKeyword));

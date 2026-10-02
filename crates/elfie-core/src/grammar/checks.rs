@@ -10,23 +10,23 @@ use super::traits::{Category, GrammarRule, Terminal};
 use super::{Entity, rules};
 
 /// One of the global checks of the grammar.
-// @lfy def/grammar/main.lfy:21
+// @lfy def/grammar/main.lfy:grammarDocument
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Check {
     /// Every bare name referenced in any rule's syntax is the identifier of a rule entity.
-    BareNamesAreRules, // @lfy def/grammar/main.lfy:22
+    BareNamesAreRules, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e
     /// No two terminal entities have the same syntax.
-    TerminalSyntaxIsUnique, // @lfy def/grammar/main.lfy:26
+    TerminalSyntaxIsUnique, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:76c422dad3532ba972328cec73a8cdb31276b79369b4289021b09512dd330565
     /// Every prefix, infix, and postfix rule either has a binding itself or names an
     /// operator whose every alternative has a binding with one shared precedence.
-    OperatorRulesBind, // @lfy def/grammar/main.lfy:28
+    OperatorRulesBind, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:9762a97e1ef9727b6af134273474945e16a090c3fec34e9cdb6eb02dcb0862c9
     /// No rule has more than one of statement, primary, prefix, infix, and postfix.
-    OneCategory, // @lfy def/grammar/main.lfy:30
+    OneCategory, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:5f29986bf08f9902a7ca5e5dca84541a894954f845ae1fabdc32814f74a8c357
     /// Every escape listed by a body is excluded from that body's plain characters by
     /// `Backslash`.
-    BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:32
+    BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f
     /// No alternative of an alternation can be satisfied without taking a token.
-    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:34
+    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56
 }
 
 impl Check {
@@ -85,12 +85,12 @@ impl fmt::Display for Violation {
 
 /// `global@acceptanceCriteria`: `Ok` when every check holds for every rule, otherwise
 /// every failing rule with the check it fails.
-// @lfy def/grammar/main.lfy:21
+// @lfy def/grammar/main.lfy:grammarDocument
 pub fn validate() -> Result<(), Vec<Violation>> {
     let mut violations = Vec::new();
     let mut syntaxes: HashMap<&'static str, Entity> = HashMap::new();
     for rule in rules() {
-        // @lfy def/grammar/main.lfy:22
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e
         let parsed = match ebnf::parse(rule.syntax()) {
             Ok(expr) => {
                 for reference in expr.references() {
@@ -113,7 +113,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 None
             }
         };
-        // @lfy def/grammar/main.lfy:26
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:76c422dad3532ba972328cec73a8cdb31276b79369b4289021b09512dd330565
         if rule.is_terminal()
             && let Some(other) = syntaxes.insert(rule.syntax(), rule)
         {
@@ -123,7 +123,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: format!("has the same syntax as {}", other.identifier()),
             });
         }
-        // @lfy def/grammar/main.lfy:28
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:9762a97e1ef9727b6af134273474945e16a090c3fec34e9cdb6eb02dcb0862c9
         if let Some(operator) = rule.category().operator()
             && rule.effective_binding().is_none()
         {
@@ -136,9 +136,9 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 ),
             });
         }
-        // @lfy def/grammar/main.lfy:30
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:5f29986bf08f9902a7ca5e5dca84541a894954f845ae1fabdc32814f74a8c357
         // A rule's category is a single value, so this check holds by construction.
-        // @lfy def/grammar/main.lfy:32
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f
         if let Category::Terminal(Terminal::Body { excluded, escapes }) = rule.category()
             && !escapes.is_empty()
             && !excluded.contains(&Entity::Literal(Literal::Backslash))
@@ -149,7 +149,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: "lists escapes but does not exclude Backslash".to_owned(),
             });
         }
-        // @lfy def/grammar/main.lfy:34
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56
         if let Some(expr) = &parsed
             && let Ok(grammar) = ebnf::Grammar::compile_cached()
         {
@@ -183,7 +183,128 @@ mod tests {
     use super::*;
     use crate::grammar::terminals::keyword::Keyword;
 
-    // @lfy def/grammar/main.lfy:21
+    /// Every rule the grammar reports for one check, so a focused test can name its own
+    /// failures instead of every failure of every check.
+    fn violations_of(check: Check) -> Vec<Violation> {
+        validate()
+            .err()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|violation| violation.check == check)
+            .collect()
+    }
+
+    fn assert_no_violations(check: Check) {
+        let violations = violations_of(check);
+        assert!(
+            violations.is_empty(),
+            "{}",
+            violations
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+    }
+
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e
+    #[test]
+    fn every_bare_name_of_every_syntax_names_a_rule() {
+        assert_no_violations(Check::BareNamesAreRules);
+        let mut references = 0;
+        for rule in rules() {
+            let expr = ebnf::parse(rule.syntax())
+                .unwrap_or_else(|error| panic!("{}: {error}", rule.identifier()));
+            for reference in expr.references() {
+                references += 1;
+                assert!(
+                    Entity::lookup(reference).is_some(),
+                    "{} references {reference}",
+                    rule.identifier()
+                );
+            }
+        }
+        assert!(references > 100, "{references}");
+    }
+
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:76c422dad3532ba972328cec73a8cdb31276b79369b4289021b09512dd330565
+    #[test]
+    fn no_two_terminals_have_the_same_syntax() {
+        assert_no_violations(Check::TerminalSyntaxIsUnique);
+        let mut syntaxes: HashMap<&'static str, Entity> = HashMap::new();
+        for rule in rules().filter(|rule| rule.is_terminal()) {
+            assert_eq!(
+                syntaxes.insert(rule.syntax(), rule),
+                None,
+                "{} repeats a syntax",
+                rule.identifier()
+            );
+        }
+        assert!(syntaxes.len() > 100, "{}", syntaxes.len());
+    }
+
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:9762a97e1ef9727b6af134273474945e16a090c3fec34e9cdb6eb02dcb0862c9
+    #[test]
+    fn every_operator_rule_binds_itself_or_through_its_operator() {
+        assert_no_violations(Check::OperatorRulesBind);
+        let mut operators = 0;
+        for rule in rules() {
+            if rule.category().operator().is_none() {
+                continue;
+            }
+            operators += 1;
+            assert!(
+                rule.effective_binding().is_some(),
+                "{} does not bind",
+                rule.identifier()
+            );
+        }
+        assert!(operators > 20, "{operators}");
+    }
+
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:5f29986bf08f9902a7ca5e5dca84541a894954f845ae1fabdc32814f74a8c357
+    #[test]
+    fn no_rule_has_more_than_one_of_the_five_categories() {
+        assert_no_violations(Check::OneCategory);
+        for rule in rules() {
+            let category = rule.category();
+            let held = [
+                matches!(category, Category::Statement),
+                matches!(category, Category::Primary),
+                matches!(category, Category::Prefix { .. }),
+                matches!(category, Category::Infix { .. }),
+                matches!(category, Category::Postfix { .. }),
+            ]
+            .iter()
+            .filter(|held| **held)
+            .count();
+            assert!(held <= 1, "{} holds {held} categories", rule.identifier());
+        }
+    }
+
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f
+    #[test]
+    fn every_body_listing_escapes_excludes_backslash() {
+        assert_no_violations(Check::BodiesExcludeBackslash);
+        let mut bodies = 0;
+        for rule in rules() {
+            let Category::Terminal(Terminal::Body { excluded, escapes }) = rule.category() else {
+                continue;
+            };
+            if escapes.is_empty() {
+                continue;
+            }
+            bodies += 1;
+            assert!(
+                excluded.contains(&Entity::Literal(Literal::Backslash)),
+                "{} lists escapes without excluding Backslash",
+                rule.identifier()
+            );
+        }
+        assert!(bodies >= 3, "{bodies}");
+    }
+
+    // @lfy def/grammar/main.lfy:grammarDocument
     #[test]
     fn the_grammar_passes_every_check() {
         if let Err(violations) = validate() {
@@ -199,7 +320,7 @@ mod tests {
         assert_eq!(Check::ALL.len(), 6);
     }
 
-    // @lfy def/grammar/main.lfy:34
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56
     #[test]
     fn every_alternative_of_every_alternation_takes_a_token() {
         let grammar = ebnf::grammar();

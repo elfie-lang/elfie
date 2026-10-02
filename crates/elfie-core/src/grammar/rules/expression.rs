@@ -36,11 +36,6 @@ grammar_rules! {
         TypeParameters is [rule()]: "The type parameters of a declaration, right after its identifier" = "[[LessThan]] , ( [[TypeParameter]] ) , (: [[Comma]] , ( [[TypeParameter]] ) :) , (/ [[Comma]] /) , [[GreaterThan]]", // @lfy def/grammar/rules/expression.lfy:TypeParameters
         /// `[[LessThan]] , listOf([[TypeExpression]]) , [[GreaterThan]]`
         TypeArguments is [rule()]: "The type arguments of a generic in a type position" = "[[LessThan]] , ( [[TypeExpression]] ) , (: [[Comma]] , ( [[TypeExpression]] ) :) , (/ [[Comma]] /) , [[GreaterThan]]", // @lfy def/grammar/rules/expression.lfy:TypeArguments
-        /// Acceptance criteria:
-        /// - `fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;` is the
-        ///   `Signature` `map` with the `TypeParameters` `T` and `U` and two `Parameter`
-        ///   items: `list` typed as the `TypeItem` `List` with the `TypeArguments` `T`,
-        ///   and `transform` typed as the `FunctionType` from `item` of `T` to `U`.
         Signature is [rule()]: "A function's name, type parameters, parameters, traits, and definition" = "(/ [[Identifier]] /) , (/ [[TypeParameters]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)", // @lfy def/grammar/rules/expression.lfy:Signature
         /// `(/ listOf([[Expression]]) /)`
         Items is [rule()]: "Zero or more comma separated expressions" = "(/ ( [[Expression]] ) , (: [[Comma]] , ( [[Expression]] ) :) , (/ [[Comma]] /) /)", // @lfy def/grammar/rules/expression.lfy:Items
@@ -51,19 +46,8 @@ grammar_rules! {
         /// `alternationList(PrimitiveType, StringLiteral, Template, Number, Nullish, Object, List, TypePredicate, FunctionType, Reference)`
         TypeValue is [alternation_list(TYPE_VALUES)]: "A type value" = "[[PrimitiveType]] | [[StringLiteral]] | [[Template]] | [[Number]] | [[Nullish]] | [[Object]] | [[List]] | [[TypePredicate]] | [[FunctionType]] | [[Reference]]", // @lfy def/grammar/rules/expression.lfy:TypeValue
         FunctionType is [rule()]: "The type of a function: its parameters and what it returns" = "[[Parameters]] , [[DoubleArrowRight]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:FunctionType
-        /// When the `GroupClose` is followed by `DoubleArrowRight` the rule cannot be a
-        /// match; the parentheses are the `Parameters` of a `FunctionType`. See
-        /// [`type_group_cannot_match_before`].
+        /// See [`type_group_cannot_match_before`] for the token that rules a match out.
         TypeGroup is [rule()]: "A parenthesized type" = "[[GroupOpen]] , [[TypeExpression]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:TypeGroup
-        /// Acceptance criteria:
-        /// - `TypeArguments` that follow anything but a `Reference` are reported after
-        ///   parsing.
-        /// - A following `ListOpen` and `ListClose` make the type the standard library's
-        ///   `List` with the type before them as its one type argument: `T[]` is the same
-        ///   type as `List<T>`.
-        /// - In `x: List<List<T>>` the `TypeItem` `List` has the `TypeArguments` holding
-        ///   the `TypeItem` `List` with the `TypeArguments` `T`; the two `GreaterThan`
-        ///   tokens close one list each.
         TypeItem is [rule()]: "A type with its type arguments, or an array of it" = "( [[TypeValue]] | [[TypeGroup]] ) , (/ [[TypeArguments]] /) , (/ [[ListOpen]] , [[ListClose]] /)", // @lfy def/grammar/rules/expression.lfy:TypeItem
         TypeExpression is [rule()]: "An expression in a type position" = "(/ [[BitwiseOr]] | [[Ampersand]] /) , [[TypeItem]] , (: ( [[BitwiseOr]] | [[Ampersand]] ) , [[TypeItem]] :)", // @lfy def/grammar/rules/expression.lfy:TypeExpression
         TypeKey is [rule()]: "A type key name with its definition and value" = "[[Name]] , (/ [[QuestionMark]] /) , (/ [[DefinitionClause]] /) , [[PlainSetter]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:TypeKey
@@ -76,15 +60,10 @@ grammar_rules! {
         Nullish is [primary()]: "Null or undefined" = "[[NullKeyword]] | [[UndefinedKeyword]]", // @lfy def/grammar/rules/expression.lfy:Nullish
         PrimitiveType is [primary()]: "A primitive type used as a value" = "[[BooleanKeyword]] | [[NumberKeyword]] | [[StringKeyword]] | [[ObjectKeyword]] | [[FunctionKeyword]] | [[TraitKeyword]]", // @lfy def/grammar/rules/expression.lfy:PrimitiveType
         Name is [primary()]: "A name in scope" = "[[Identifier]]", // @lfy def/grammar/rules/expression.lfy:Name
-        /// When space, a line break, comments, or documentation exist between the
-        /// `Accessor` and the `MemberName`, the `MemberName` is not matched.
         Current is [primary()]: "A layer of the current entity, or a member of it" = "[[Accessor]] , (/ [[MemberName]] /)", // @lfy def/grammar/rules/expression.lfy:Current
         Previous is [primary()]: "The entity the previous statement declared" = "[[PreviousStatement]]", // @lfy def/grammar/rules/expression.lfy:Previous
-        /// When the `GroupClose` is followed by `IsKeyword`, `Colon`, or `DoubleArrowRight`
-        /// the rule cannot be a match; see [`group_cannot_match_before`].
+        /// See [`group_cannot_match_before`] for the tokens that rule a match out.
         Group is [primary()]: "A parenthesized expression" = "[[GroupOpen]] , [[Expression]] , [[GroupClose]]", // @lfy def/grammar/rules/expression.lfy:Group
-        /// Acceptance criteria:
-        /// - A `BlockOpen` after the `DoubleArrowRight` begins a `Block`, never an `Object`.
         InlineFunction is [primary()]: "A function written as an expression" = "[[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[DoubleArrowRight]] , ( [[Block]] | [[Expression]] )", // @lfy def/grammar/rules/expression.lfy:InlineFunction
         List is [primary()]: "A list" = "[[ListOpen]] , [[Items]] , [[ListClose]]", // @lfy def/grammar/rules/expression.lfy:List
         /// `[[BlockOpen]] , (/ listOf([[ObjectKey]]) /) , [[BlockClose]]`
@@ -97,8 +76,6 @@ grammar_rules! {
         NotOperation is [prefix(Entity::Punctuation(Punctuation::LogicalNot), false), Binding::right(Level::Unary)]: "Logical not" = "[[LogicalNot]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:NotOperation
         NegateOperation is [prefix(Entity::Punctuation(Punctuation::Minus), true), Binding::right(Level::Unary)]: "Negation" = "[[Minus]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:NegateOperation
         BitwiseNotOperation is [prefix(Entity::Punctuation(Punctuation::BitwiseNot), false), Binding::right(Level::Unary)]: "Bitwise not" = "[[BitwiseNot]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:BitwiseNotOperation
-        /// Acceptance criteria:
-        /// - When the operand is not a `Name` or `Current`: reported after parsing.
         Dereference is [prefix(Entity::Punctuation(Punctuation::Ampersand), true), Binding::right(Level::Reference)]: "The entity a name is bound to" = "[[Ampersand]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:Dereference
         SpreadOperation is [prefix(Entity::Punctuation(Punctuation::Spread), false), Binding::right(Level::Definition)]: "Spread, or the rest of a list" = "[[Spread]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:SpreadOperation
         AwaitOperation is [prefix(Entity::Keyword(Keyword::AwaitKeyword), false), Binding::non_associative(Level::Wrapper)]: "The value of a promise" = "[[AwaitKeyword]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:AwaitOperation
@@ -129,21 +106,9 @@ grammar_rules! {
         Cast is [postfix(Entity::Keyword(Keyword::AsKeyword), Some("[[TypeExpression]]"), false)]: "A value read as a type" = "[[Expression]] , [[AsKeyword]] , [[TypeExpression]]", // @lfy def/grammar/rules/expression.lfy:Cast
         /// `postfix(LessThan, listOf([[TypeExpression]]) , [[GreaterThan]])`
         ///
-        /// Acceptance criteria:
-        /// - Binds as `Member` and `Index` do, so `a + f<T>(x)` reads as `a + (f<T>(x))`
-        ///   and `x.f<T>(y)` reads as `((x.f)<T>)(y)`.
-        /// - The rule cannot be a match when the token after the `GreaterThan` is none of
-        ///   the ones [`generic_can_match_before`] lists; `RelationalOperation` is then
-        ///   the parse of the `LessThan`.
-        /// - A `GreaterThanOrEqual` after the arguments cannot close them, because the
-        ///   longest match lexes the two characters as one token: `List<T>=x` compares,
-        ///   it does not assign.
-        /// - The rule cannot be a match when the left expression is parsed to satisfy
-        ///   `Reference`; in a type position the arguments are the `TypeArguments` of the
-        ///   `TypeItem`.
+        /// See [`generic_can_match_before`] for the tokens that may follow the
+        /// `GreaterThan`.
         Generic is [postfix(Entity::Punctuation(Punctuation::LessThan), Some("( [[TypeExpression]] ) , (: [[Comma]] , ( [[TypeExpression]] ) :) , (/ [[Comma]] /) , [[GreaterThan]]"), false), Binding::left(Level::Access)]: "The left expression with type arguments, in an expression position" = "[[Expression]] , [[LessThan]] , ( [[TypeExpression]] ) , (: [[Comma]] , ( [[TypeExpression]] ) :) , (/ [[Comma]] /) , [[GreaterThan]]", // @lfy def/grammar/rules/expression.lfy:Generic
-        /// Acceptance criteria:
-        /// - The `Colon` belongs to this rule; the middle expression ends at it.
         Conditional is [postfix(Entity::Punctuation(Punctuation::QuestionMark), Some("[[Expression]] , [[Colon]] , [[Expression]]"), false), Binding::right(Level::Definition)]: "Chooses between two values" = "[[Expression]] , [[QuestionMark]] , [[Expression]] , [[Colon]] , [[Expression]]", // @lfy def/grammar/rules/expression.lfy:Conditional
 
         // The expression sets
@@ -155,16 +120,12 @@ grammar_rules! {
         Infix is [alternation_list(INFIXES)]: "Any infix operation" = "[[AdditiveOperation]] | [[MultiplicativeOperation]] | [[PowerOperation]] | [[BitwiseOrOperation]] | [[BitwiseXorOperation]] | [[BitwiseAndOperation]] | [[RelationalOperation]] | [[EqualityOperation]] | [[LogicalAndOperation]] | [[CoalescenceOperation]] | [[RangeOperation]] | [[Assignment]]", // @lfy def/grammar/rules/expression.lfy:Infix
         /// `alternationList(...postfix@entities)`
         Postfix is [alternation_list(POSTFIXES)]: "Any postfix operation" = "[[Member]] | [[Index]] | [[Call]] | [[Traits]] | [[Definition]] | [[Cast]] | [[Generic]] | [[Conditional]]", // @lfy def/grammar/rules/expression.lfy:Postfix
-        /// Acceptance criteria:
-        /// - Begins with one `Primary` or `Prefix` and continues with any number of `Infix`
-        ///   and `Postfix` operations, grouped by their binding power.
         Expression is [alternation_list(EXPRESSIONS)]: "Any expression" = "[[Primary]] | [[Prefix]] | [[Infix]] | [[Postfix]]", // @lfy def/grammar/rules/expression.lfy:Expression
     }
 }
 
-/// The `where` clause of `Group`: the rule cannot be a match when `next`, the token that
-/// follows its `GroupClose`, is `IsKeyword`, `Colon`, or `DoubleArrowRight`.
-// @lfy def/grammar/rules/expression.lfy:Group
+/// Whether `next`, the token following a `Group`'s `GroupClose`, rules the match out.
+// @lfy def/grammar/rules/expression.lfy:Group#Group:Group:6c6bf1c4fcc51831740fed7f0e16822717538719a4151bb3d65bb5eb72de678e
 pub fn group_cannot_match_before(next: Entity) -> bool {
     matches!(
         next,
@@ -173,19 +134,16 @@ pub fn group_cannot_match_before(next: Entity) -> bool {
     )
 }
 
-/// The `where` clause of `TypeGroup`: the rule cannot be a match when `next`, the token
-/// that follows its `GroupClose`, is `DoubleArrowRight`, because the parentheses are then
-/// the `Parameters` of a `FunctionType`.
-// @lfy def/grammar/rules/expression.lfy:TypeGroup
+/// Whether `next`, the token following a `TypeGroup`'s `GroupClose`, rules the match out.
+// @lfy def/grammar/rules/expression.lfy:TypeGroup#TypeGroup:TypeGroup:47f116015f417a7abb35982c11601b7f277764414b9d561b0620e5e9b3b03651
 pub fn type_group_cannot_match_before(next: Entity) -> bool {
     next == Entity::Punctuation(Punctuation::DoubleArrowRight)
 }
 
-/// The `where` clause of `Generic`: the rule is a match only when `next`, the first token
-/// after the `GreaterThan` that is not space, a line break, a comment or documentation, is
-/// one of these. Anything else, and the `LessThan` is parsed as a `RelationalOperation`
-/// instead. The end of the input follows nothing and so cannot rule the match out.
-// @lfy def/grammar/rules/expression.lfy:Generic
+/// Whether `next`, the first token after a `Generic`'s `GreaterThan` that is not space, a
+/// line break, a comment or documentation, allows the match. The end of the input follows
+/// nothing and so cannot rule it out.
+// @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:388c23895d8298f1c23807fdccd3ae02249b93771719c30b287d56c2b619a8b0
 pub fn generic_can_match_before(next: Entity) -> bool {
     matches!(
         next,
@@ -362,8 +320,7 @@ mod tests {
         );
     }
 
-    /// `TypeGroup` cannot be a match when a `DoubleArrowRight` follows its `GroupClose`.
-    // @lfy def/grammar/rules/expression.lfy:TypeGroup
+    // @lfy def/grammar/rules/expression.lfy:TypeGroup#TypeGroup:TypeGroup:47f116015f417a7abb35982c11601b7f277764414b9d561b0620e5e9b3b03651
     #[test]
     fn a_type_group_cannot_match_before_a_double_arrow() {
         assert!(type_group_cannot_match_before(Entity::Punctuation(Punctuation::DoubleArrowRight)));
@@ -372,9 +329,8 @@ mod tests {
         assert!(!type_group_cannot_match_before(Entity::Keyword(Keyword::AsKeyword)));
     }
 
-    /// `Generic` binds as `Member` and `Index` do, and only the listed tokens may follow
-    /// its `GreaterThan`.
-    // @lfy def/grammar/rules/expression.lfy:Generic
+    // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:f25ec05b8f239c2a8d9a91d5c863ad19449446c83f0cc3629ecf172270cf7254
+    // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:388c23895d8298f1c23807fdccd3ae02249b93771719c30b287d56c2b619a8b0
     #[test]
     fn a_generic_binds_at_the_access_level_and_only_some_tokens_may_follow_it() {
         assert_eq!(
@@ -420,8 +376,8 @@ mod tests {
         ] {
             assert!(generic_can_match_before(Entity::Punctuation(allowed)), "{allowed:?}");
         }
-        // @lfy def/grammar/rules/expression.lfy:Generic
-        // Anything else leaves the `LessThan` to the `RelationalOperation`: `a < b > c`.
+        // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:c01c83df5948168b55b5cde8414a40ea851e36e2368072597ff3c1c5528bc543
+        // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:5c0d3208b93fa98970c0101847ebdce9bd6ff26a45926d4fe68a18c9a0539af2
         assert!(!generic_can_match_before(Entity::Identifier(Identifier::Identifier)));
         assert!(!generic_can_match_before(Entity::Punctuation(Punctuation::GreaterThan)));
         assert!(!generic_can_match_before(Entity::Punctuation(Punctuation::GreaterThanOrEqual)));
