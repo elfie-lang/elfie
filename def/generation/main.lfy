@@ -306,7 +306,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
         `The rules for kinds: a [[DataDeclaration]] becomes a type; an [[AgentFunctionDeclaration]] becomes a function whose body satisfies every criterion and test; a [[FunctionDeclaration]] is translated statement by statement with nothing added; a [[TraitDeclaration]] emits nothing of its own, its members and criteria belong to each entity that carries it; a [[TypeDeclaration]] and [[EnumDeclaration]] become their nearest equivalents; an [[ExternalDeclaration]] is bound to what the guidance says; a folded value is written as the literal it holds and a [[Prompted]] value is chosen to fit its prompt; a [[Use]] is satisfied by the interfaces`,
         `That every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says, and never a line number`,
         `That each [[LoweredTest]] becomes one test, and each [[LoweredCriterion]] that can be checked mechanically becomes one test, each carrying a [[Marker]] with its id, placed where the guidance says`,
-        `That the tools of the agent server may be called for anything the request leaves out`,
+        `That the tools of the agent server are called before files are searched or read by hand, because they answer from the program and its source maps at once: elfie_entity for a definition with its criteria and tests, elfie_find for where a name is declared, elfie_references for where it is used, elfie_outline for the declarations of a file, elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_changes for what changed in a unit since its outputs were accepted, and elfie_check for whether acceptance would pass`,
         `How to end its report: with one line reading ELFIE: DONE when every output is written; ELFIE: BLOCKED: followed by the reason when an ambiguous criterion, two criteria in conflict, a name that resolves nowhere, or anything else stops it, in which case it writes no output for the unit and quotes the criterion; or ELFIE: CLARIFY: followed by one question when only a person can decide, in which case it writes nothing`,
       ],
     })
@@ -320,7 +320,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
     })
     .add({
       situation = `[[Request.existing]] is not empty`,
-      behavior = `[[Request.instructions]] says, right before the item saying that the tools of the agent server may be called, that only what the difference between [[Request.previous]] and [[Request.sources]] requires changes, that names and structure are kept, and that markers of unchanged items are kept; where [[Request.previous]] has no entry, that the existing output is reconciled with the source`,
+      behavior = `[[Request.instructions]] says, right before the item naming the tools of the agent server, that only what the difference between [[Request.previous]] and [[Request.sources]] requires changes, that names and structure are kept, and that markers of unchanged items are kept; where [[Request.previous]] has no entry, that the existing output is reconciled with the source`,
     });
 
   @test(
@@ -807,7 +807,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a veri
         `A heading naming [[Batch.identifier]] and the target`,
         `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its local criteria on one line prefixed by its id and place, then each of its local tests as input and expectation on one line prefixed by its id and place`,
         `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and then the region's text`,
-        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server may be called for regions the request leaves out; and that the report ends with one line reading ELFIE: REVIEWED`,
+        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server are called before files are searched or read by hand: elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used; and that the report ends with one line reading ELFIE: REVIEWED`,
       ],
     })
     .add({
@@ -855,7 +855,7 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming the global review and the targets`,
         `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, as the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines in a fenced block`,
-        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server may be called for regions the request leaves out; and that the report ends with one line reading ELFIE: REVIEWED`,
+        `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server are called before files are searched or read by hand: elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used; and that the report ends with one line reading ELFIE: REVIEWED`,
       ],
     })
     .add({
@@ -883,33 +883,61 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
 /// report: everything the verifier wrote to standard output
 /// program: the lowered program, whose criteria and tests the ids name
 fn reviewOf(report: string, program: Program): `What a verifier found, read mechanically from its report` => ReviewReport {
+  // Decision: the report is read leniently and only what tries to be a review can be wrong, because
+  // a verifier that adds a sentence or a fence around its lines has still reviewed everything, and
+  // running a second verifier for that costs as much as the first.
   @acceptanceCriteria
     .add({
       behavior = `The end line is the last line of [[report]] reading ELFIE: REVIEWED, with any whitespace around it; lines after it are ignored`,
     })
     .add({
-      situation = `Some line of [[report]] reads ELFIE: REVIEWED, with any whitespace around it`,
-      behavior = `Each line of [[report]] before its last line reading ELFIE: REVIEWED, with any whitespace around it, that [[Json.parse]] reads as an object with exactly the keys id, status, evidence, and note, whose id names a criterion or test of [[program]] and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order, with its file, line, and entity derived from that criterion's or test's origin`,
+      behavior = `The lines read are those before the end line, or every line of [[report]] when there is no end line, each with the whitespace around it removed`,
     })
     .add({
-      situation = `No line of [[report]] reads ELFIE: REVIEWED, with any whitespace around it`,
-      behavior = `Each line of [[report]] that [[Json.parse]] reads as an object with exactly the keys id, status, evidence, and note, whose id names a criterion or test of [[program]] and whose status is one of [[ReviewStatus]], is one [[Review]] in [[ReviewReport.reviews]], in report order, with its file, line, and entity derived from that criterion's or test's origin`,
+      situation = `A line read begins with {`,
+      behavior = `It is a review line`,
     })
     .add({
-      situation = `Two lines of [[report]] that are each read as a [[Review]] have the same id`,
+      situation = `A line read does not begin with {`,
+      behavior = `It is ignored, whatever it says, so prose, headings, and fences around the reviews are never problems`,
+    })
+    .add({
+      situation = [
+        `A review line is read by [[Json.parse]] as an object`,
+        `Its status, compared without regard to case, is one of [[ReviewStatus]]`,
+        `It names a criterion or test of [[program]]`,
+      ],
+      behavior = `It is one [[Review]] in [[ReviewReport.reviews]], in report order, with its evidence and note as given or empty when missing, and its file, line, and entity derived from that criterion's or test's origin; other keys are ignored`,
+    })
+    .add({
+      situation = `A review line's id is the id of a criterion or test of [[program]]`,
+      behavior = `It names that criterion or test`,
+    })
+    .add({
+      situation = [
+        `A review line's id is the id of no criterion or test of [[program]]`,
+        `Exactly one id of a criterion or test of [[program]] begins with it, or is the beginning of it, and the two share at least the receiver, the contributor, and 16 hex digits`,
+      ],
+      behavior = `It names that criterion or test, so an id copied one character short or long still counts`,
+    })
+    .add({
+      situation = [
+        `A review line has no id`,
+        `Its file and line are the file and line where exactly one criterion or test of [[program]] begins`,
+      ],
+      behavior = `It names that criterion or test`,
+    })
+    .add({
+      situation = `A review line is not read as a [[Review]]`,
+      behavior = `It is in [[ReviewReport.problems]] as written, in report order`,
+    })
+    .add({
+      situation = `Two lines of [[report]] that are each read as a [[Review]] name the same criterion or test`,
       behavior = `Only the last is kept in [[ReviewReport.reviews]], at its own place`,
     })
     .add({
-      situation = `Some line of [[report]] reads ELFIE: REVIEWED, with any whitespace around it`,
-      behavior = `Every line of [[report]] before its last line reading ELFIE: REVIEWED, with any whitespace around it, that is not read as a [[Review]], is not blank, and does not begin with # is in [[ReviewReport.problems]] as written, in report order`,
-    })
-    .add({
       situation = `No line of [[report]] reads ELFIE: REVIEWED, with any whitespace around it`,
-      behavior = `Every line of [[report]] that is not read as a [[Review]], is not blank, and does not begin with # is in [[ReviewReport.problems]] as written, in report order`,
-    })
-    .add({
-      situation = `No line of [[report]] reads ELFIE: REVIEWED, with any whitespace around it`,
-      behavior = `Reviews and problems are read from every line of [[report]], and [[ReviewReport.problems]] ends with a line reading: the report did not end`,
+      behavior = `[[ReviewReport.problems]] ends with a line reading: the report did not end`,
     });
 
   @test(
@@ -931,9 +959,16 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
           `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
         ),
       ],
-      expect = ReviewReport@like(
-        `One review, unverifiable at line 7, and two problems: the line whose status is maybe, and the prose line`,
-      ),
+      expect = ReviewReport@like(`One review, unverifiable at line 7, and one problem: the line whose status is maybe`),
+    },
+    {
+      input = [
+        `All tests pass. Report follows.\n\`\`\`\n{"file":"def/a.lfy","line":4,"entity":"A","status":"Satisfied","evidence":"src/a.rs:1-9","note":"ok"}\n\`\`\`\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+      ],
+      expect = ReviewReport@like(`One review, satisfied, placed at def/a.lfy:4 for A, and no problems`),
     },
     {
       input = [
