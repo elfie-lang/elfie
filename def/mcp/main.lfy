@@ -166,12 +166,24 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
 // Decision: the source maps every tool below reads are [[Generation.sourceMapsOf]] the workspace,
 // as elfie_units reads them, so what a tool answers is what the last acceptance recorded in
 // elfie-compile/maps, never a guess from the text on disk.
-/// name: as elfie_find takes it
+/// name: as elfie_find takes it, a requirement id, or the path of an output file relative to the root
 /// target: the identifier of one target; every target when left out
-fn output(session: Session, name: string, target?: string) is tool: `Where the generated code for one entity is: every region of every output that came from it, with its text` => ToolResult {
+fn output(session: Session, name: string, target?: string) is tool: `Where generated code is, with its text: every region that came from one entity, that answers for one criterion or test, or that one output file holds` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `For each [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]], with [[Generation.sourceMapsOf]] the workspace: a line reading the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then the [[Files.read]] text of those lines of the output in a fenced block`,
+      behavior = `Each region is a line reading the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], a space, [[Marker.entity]], and, when the marker names one, [[Marker.requirement]], then the [[Files.read]] text of those lines of the output in a fenced block; every region is read from [[Generation.sourceMapsOf]] the workspace, limited to [[target]] when it is set`,
+    })
+    .add({
+      situation = `[[name]] names an entity, as elfie_find takes it`,
+      behavior = `The regions are every [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]]`,
+    })
+    .add({
+      situation = `[[name]] is the id of a criterion or test of the lowered program, local or global`,
+      behavior = `The text of that criterion or test comes first, then the regions are every [[Marker]] whose [[Marker.requirement]] is [[name]], in source map then output order`,
+    })
+    .add({
+      situation = `[[name]] is the [[SourceMap.output]] of a source map`,
+      behavior = `The regions are every [[Marker]] of that source map, in output order, so the file reads as an outline of what generated it`,
     })
     .add({ situation = `Nothing is generated for [[name]]`, behavior = `The text says so` })
     .add({
