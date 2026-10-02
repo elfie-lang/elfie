@@ -278,7 +278,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `tree`,
-      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value`,
+      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of the one file given, one node or token per line indented by depth, a node as its rule and its token range, a token as its rule and its value, with escapes applied, never its raw characters`,
     })
     .add({
       situation = [`tree`, `The tree of the file given holds an [[ErrorNode]]`],
@@ -324,7 +324,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `compile without --dry-run`,
         `A unit's maps from source-map.json could not be recorded`,
       ],
-      behavior = `source-map.json is left in place and read again by the next compile`,
+      behavior = `source-map.json is left in place rather than removed, so the maps it holds are not lost`,
     })
     .add({
       situation = [
