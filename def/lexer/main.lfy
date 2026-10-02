@@ -115,7 +115,10 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
     .add({ behavior = `Matches against the following terminals only: \n\n {{terminals}}` });
 
   for (const rule in terminal@entities) {
-    where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);
+    // An escape is a terminal too, but only ever part of another one, as the escape rule below says
+    if (!(rule is escape)) {
+      where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);
+    }
   }
 
   for (const rule in keyword@entities) {
