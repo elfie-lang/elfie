@@ -33,7 +33,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
     .add({ situation = `--version is among the arguments`, behavior = `The command is version` })
     .add({
       situation = `--root followed by a directory, or --root= and the directory, is among the arguments`,
-      behavior = `That directory is [[Invocation.root]]`,
+      behavior = `That directory, made absolute against [[Process.currentDirectory]] when it is relative, is [[Invocation.root]], so every path and ELFIE_ROOT built from it names the same place from any directory`,
     })
     .add({
       situation = [
