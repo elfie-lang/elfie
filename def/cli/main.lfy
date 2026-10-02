@@ -501,7 +501,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `--jobs is more than 1`, `The root is a git repository`],
-      behavior = `When a batch starts, every file that [[Process.run]] of git ls-files --cached --others --exclude-standard lists in the root, except those under elfie-compile/cache and elfie-requests, is copied byte for byte to the same path under elfie-compile/cache/batches/<batch> under the root, which is the batch's directory; what each copied file held is kept as the batch's base`,
+      behavior = `When a batch starts, every file that [[Process.run]] of git ls-files --cached --others --exclude-standard lists in the root, except those under elfie-compile/cache and elfie-requests, is copied byte for byte, keeping whether it is executable, to the same path under elfie-compile/cache/batches/<batch> under the root, which is the batch's directory; what each copied file held is kept as the batch's base`,
     })
     .add({
       situation = [`compile`, `The batch's directory is a copy`],
@@ -513,7 +513,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`A file is merged into the root`, `The root's file still holds what the base holds`],
-      behavior = `The root's file is replaced by the copy's, or removed when the copy removed it`,
+      behavior = `The root's file is replaced by the copy's, keeping whether it is executable, or removed when the copy removed it`,
     })
     .add({
       situation = [`A file is merged into the root`, `Another batch changed the root's file since the base was taken`],
