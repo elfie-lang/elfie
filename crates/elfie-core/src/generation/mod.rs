@@ -2835,7 +2835,7 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 // how to fix.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
-// @lfy def/generation/main.lfy:review#review:review:57745688c0ce1b5c41ba94dc00dccd0357843f84dbd23f134a02cb8dd521b290
+// @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
 pub fn review(
     program: &Program,
     plan: &Plan,
@@ -2878,18 +2878,25 @@ pub fn review(
         }
     }
 
-    // Then the regions generated for each of those entities.
+    // Then the regions generated for each of those entities, each listed once.
     // @lfy def/generation/main.lfy:review
     out.push_str("## What was generated\n\n");
+    let mut seen: HashSet<(String, usize)> = HashSet::new();
     for &index in &batch.units {
-        for &entity in &plan.units[index].entities {
+        let unit = &plan.units[index];
+        let path = workspace.files[unit.file].path.as_str();
+        for &entity in &unit.entities {
             let name = qualified_name(model, entity);
             let _ = writeln!(out, "### `{name}`\n");
-            write_regions(
-                &mut out,
-                workspace,
-                matching_regions(workspace, source_maps, &name, Some(target)),
-            );
+            // Only what the unit's own file generated, so an entity of another file with
+            // the same name brings none of its code.
+            // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+            let regions: Vec<(&SourceMap, &Marker)> =
+                matching_regions(workspace, source_maps, &name, Some(target))
+                    .into_iter()
+                    .filter(|(_, marker)| marker.file == path)
+                    .collect();
+            write_regions(&mut out, workspace, regions, &mut seen);
         }
     }
 
@@ -2984,12 +2991,14 @@ fn line_of(model: &Model, node: NodeRef) -> usize {
 }
 
 /// Every region given: the output path, the line range, and the text of those lines in a
-/// fenced block; a line saying so instead when the output cannot be read.
+/// fenced block; a line saying so instead when the output cannot be read. A region `seen`
+/// already holds is repeated as its path and lines alone, without its text.
 // @lfy def/generation/main.lfy:review
 fn write_regions(
     out: &mut String,
     workspace: &Workspace,
     regions: Vec<(&SourceMap, &Marker)>,
+    seen: &mut HashSet<(String, usize)>,
 ) {
     if regions.is_empty() {
         out.push_str("No region of any output was generated for it.\n\n");
@@ -2997,6 +3006,12 @@ fn write_regions(
     }
     for (map, marker) in regions {
         let _ = writeln!(out, "`{}:{}-{}`\n", map.output, marker.output_line, marker.end);
+        // A region listed for an earlier entity is listed once.
+        // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+        if !seen.insert((map.output.clone(), marker.output_line)) {
+            out.push_str("Listed above.\n\n");
+            continue;
+        }
         // @lfy def/generation/main.lfy:review
         match std::fs::read_to_string(workspace.root.join(&map.output)) {
             Ok(text) => {
@@ -3103,7 +3118,9 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
             out.push_str("No unit answered for it, so it cannot be checked against any region.\n\n");
             continue;
         }
-        write_regions(&mut out, workspace, regions);
+        // Each global criterion stands on its own, so every region it names is given whole.
+        // @lfy def/generation/main.lfy:globalReview
+        write_regions(&mut out, workspace, regions, &mut HashSet::new());
     }
 
     // The verifier protocol. @lfy def/generation/main.lfy:globalReview
@@ -6247,7 +6264,7 @@ mod tests {
         assert!(text.contains("```\none\ntwo\nthree\nfour\n```"), "{text}");
         // The protocol: the four keys, the three statuses, the tools that are called before
         // files are read by hand, and the end line.
-        // @lfy def/generation/main.lfy:review#review:review:57745688c0ce1b5c41ba94dc00dccd0357843f84dbd23f134a02cb8dd521b290
+        // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
         for part in [
             "examine and never edit",
             "`id`, `status`, `evidence`, and `note`",
@@ -6264,6 +6281,70 @@ mod tests {
         ] {
             assert!(text.contains(part), "{part} is missing:\n{text}");
         }
+    }
+
+    /// A review excerpts only what the unit's own file generated, and a region a marker of
+    /// a second source map names again is repeated as its path and lines alone.
+    // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+    #[test]
+    fn a_review_holds_the_regions_of_its_own_file_each_once() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write("def/a.lfy", "d A: `An a` {\n  $x = string;\n}\n");
+        fixture.write("def/b.lfy", "d A: `Another a` {\n  $y = string;\n}\n");
+        fixture.write("src/a.rs", "one\ntwo\nthree\nfour\n");
+        fixture.write("src/b.rs", "five\nsix\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let batch = Batch {
+            units: vec![index],
+            identifier: "a".to_string(),
+        };
+        let map = |output: &str, source: &str, markers: Vec<Marker>| SourceMap {
+            target: "rust".to_string(),
+            output: output.to_string(),
+            source: source.to_string(),
+            hash: source_hash("x"),
+            requirements: String::new(),
+            signature: source_hash("i"),
+            dependencies: BTreeMap::new(),
+            generated: "2026-09-18T10:00:00Z".to_string(),
+            markers,
+        };
+        let marker = |file: &str, end: usize| Marker {
+            output_line: 1,
+            file: file.to_string(),
+            entity: Some("A".to_string()),
+            line: 1,
+            column: None,
+            requirement: None,
+            end,
+        };
+        let maps = vec![
+            map("src/a.rs", "def/a.lfy", vec![marker("def/a.lfy", 4)]),
+            // A shared output records every marker it holds, so the same region of
+            // `src/a.rs` is named a second time.
+            map(
+                "src/a.rs",
+                "def/b.lfy",
+                vec![marker("def/a.lfy", 4)],
+            ),
+            map("src/b.rs", "def/b.lfy", vec![marker("def/b.lfy", 2)]),
+        ];
+        let text = review(&program, &plan, &batch, &maps).instructions;
+        // `def/b.lfy` declares an `A` of its own, and none of its code comes.
+        assert!(!text.contains("src/b.rs"), "{text}");
+        assert!(!text.contains("five"), "{text}");
+        // The region of the unit's own file comes once, and its repeat without its text.
+        assert_eq!(text.matches("`src/a.rs:1-4`").count(), 2, "{text}");
+        assert_eq!(
+            text.matches("```\none\ntwo\nthree\nfour\n```").count(),
+            1,
+            "{text}"
+        );
+        assert!(text.contains("Listed above."), "{text}");
     }
 
     /// With no source map for the batch the verifier is given the same instructions with
