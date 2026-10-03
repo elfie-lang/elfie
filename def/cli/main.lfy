@@ -505,11 +505,15 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `The batch's directory is a copy`],
-      behavior = `The compiler and the verifier run there with GIT_DIR naming the root's git directory and GIT_WORK_TREE the copy, so git in the copy reads the root's history`,
+      behavior = `The copy holds a .git file reading gitdir:, a space, and the absolute path of the root's git directory, so git run in the copy reads the root's history; no git variable is added to the environment of the compiler or the verifier, so a repository a test creates elsewhere stays its own`,
     })
     .add({
       situation = [`compile`, `The batch's directory is a copy`, `The batch is done`],
-      behavior = `Every file of the copy outside elfie-compile and elfie-requests that differs from the base, was added, or was removed, is merged into the root, then the source maps are recorded by [[Generation.record]] in the root and the copy is removed`,
+      behavior = `Every file of the copy outside elfie-compile, elfie-requests, and its .git file that differs from the base, was added, or was removed, is merged into the root, then the source maps are recorded by [[Generation.record]] in the root and the copy is removed`,
+    })
+    .add({
+      situation = [`compile`, `The batch's directory is a copy`, `The batch is done`],
+      behavior = `The files of the copy compared with the base are every path of the base, and every file that [[Process.run]] of git ls-files --others --exclude-standard lists in the copy; a path of the base counts as removed only when nothing is at that path in the copy, so no file is ever taken as removed because of where it sits`,
     })
     .add({
       situation = [`A file is merged into the root`, `The root's file still holds what the base holds`],
