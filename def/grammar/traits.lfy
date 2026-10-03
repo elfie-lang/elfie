@@ -28,12 +28,12 @@ ace function alternation(...items: (is rule)[]) {
 }
 
 ace function quoted(text: string) {
-  return text.includes('"') ? `'{{text}}'` : `"{{text}}"`;
+  return text.includes('"')? `'{{text}}'`: `"{{text}}"`;
 }
 
 ace function bodySyntax(excluded: (is rule)[], escapes: (is escape)[]) {
   const plain = `( Character - ( {{alternation(...excluded)}} ) )`;
-  return alternation(...escapes) == `` ? `(: {{plain}} :)` : `(: {{plain}} | {{alternation(...escapes)}} :)`;
+  return alternation(...escapes) == ``? `(: {{plain}} :)`: `(: {{plain}} | {{alternation(...escapes)}} :)`;
 }
 
 // Terminals
@@ -117,7 +117,7 @@ trait infix(operator: is rule) extends rule(`[[Expression]] , [[&operator]] , [[
 }
 
 trait postfix(operator: is rule, tail?: string, disallowSpace?: boolean) extends rule(
-  tail == undefined ? `[[Expression]] , [[&operator]]` : `[[Expression]] , [[&operator]] , {{tail}}`,
+  tail == undefined? `[[Expression]] , [[&operator]]`: `[[Expression]] , [[&operator]] , {{tail}}`,
 ): `An expression followed by an operator and, when [[tail]] is given, more syntax` {
   @acceptanceCriteria
     .add({
