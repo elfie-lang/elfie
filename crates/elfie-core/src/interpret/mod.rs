@@ -4238,6 +4238,23 @@ struct Lowering<'m> {
     global_tests: Vec<LoweredTest>,
     /// Every problem lowering added.
     problems: Vec<Problem>,
+    /// Where the project's own source lives, relative to the workspace root: what an added
+    /// use's alias is named after.
+    // @lfy def/interpret/main.lfy:lower
+    source_directory: String,
+}
+
+/// The uses one lowered file's text takes beyond the ones written in it, and the alias each
+/// entity whose name would otherwise mean two things is spelled through.
+// @lfy def/interpret/main.lfy:lower
+#[derive(Default)]
+struct AddedUses {
+    /// One `Use` per file, in the order the members that need it are spelled.
+    // @lfy def/interpret/main.lfy:lower
+    uses: Vec<String>,
+    /// The alias an entity is spelled through, for every entity of an aliased use.
+    // @lfy def/interpret/main.lfy:lower
+    aliases: HashMap<EntityId, String>,
 }
 
 /// The program as generation sees it: runtime code only, with compile-time results in place.
@@ -4292,6 +4309,7 @@ impl<'m> Lowering<'m> {
             global_criteria: Vec::new(),
             global_tests: Vec::new(),
             problems: Vec::new(),
+            source_directory: workspace.source_directory.clone(),
         }
     }
 
@@ -4517,7 +4535,14 @@ impl<'m> Lowering<'m> {
             criteria: Vec::new(),
             tests: Vec::new(),
         });
-        let text = render(self.model(), &lowered);
+        // A member's type may name an entity of a file this one does not use, because a
+        // trait of another file added the member; the text takes a use of that file so the
+        // name it spells means something.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+        // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+        let added = self.added_uses(source, &lowered);
+        let text = render(self.model(), &lowered, &added.aliases);
+        let text = with_uses(&text, &added.uses);
         let own = self.model().file_entities.get(source).copied();
         // A criterion or a test for the file's own entity joins the file, not a node.
         // @lfy def/interpret/main.lfy:lower
@@ -4535,6 +4560,82 @@ impl<'m> Lowering<'m> {
             criteria,
             tests,
         }
+    }
+
+    /// The uses a lowered file's text takes beyond the ones written in it: one per file a
+    /// member's type names and the file does not use, however many members name it, in the
+    /// order those members are spelled.
+    ///
+    /// Decision: only a file of the program is added. A name the prelude declares is in
+    /// scope in every file already, and a file of a package is used by its package's name,
+    /// which a path relative to the owner's file does not spell.
+    // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+    fn added_uses(&self, source: FileId, lowered: &LoweredNode) -> AddedUses {
+        let mut added = AddedUses::default();
+        let model = self.model();
+        if model.sources[source].origin != Origin::Program {
+            return added;
+        }
+        let mut named = Vec::new();
+        member_type_entities(model, lowered, &mut named);
+        // One use carries every entity of its file, so the file decides whether the names
+        // it brings need an alias and each of them is spelled the same way.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+        let mut by_file: Vec<(FileId, Vec<EntityId>)> = Vec::new();
+        for entity in named {
+            let Some(node) = model.entities[entity].node else {
+                continue;
+            };
+            let declared = node.file;
+            if declared == source || declared >= model.sources.len() {
+                continue;
+            }
+            if model.sources[declared].origin != Origin::Program
+                || model.entities[entity].identifier.is_none()
+            {
+                continue;
+            }
+            let path = &model.sources[declared].path;
+            if model.sources[source]
+                .uses
+                .iter()
+                .flatten()
+                .any(|used| used == path)
+            {
+                continue;
+            }
+            match by_file.iter_mut().find(|(file, _)| *file == declared) {
+                Some((_, entities)) => {
+                    if !entities.contains(&entity) {
+                        entities.push(entity);
+                    }
+                }
+                None => by_file.push((declared, vec![entity])),
+            }
+        }
+        let scope = model.file_scopes[source];
+        for (declared, entities) in by_file {
+            // The use takes an alias when the file already sees another entity by one of
+            // the names it brings, because one name cannot mean two entities.
+            // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+            let taken = entities.iter().any(|&entity| {
+                let name = model.entities[entity].identifier.as_deref().unwrap_or("");
+                model
+                    .lookup(scope, name)
+                    .is_some_and(|symbol| model.symbols[symbol].entity != entity)
+            });
+            let path = use_path(&model.sources[source].path, &model.sources[declared].path);
+            if !taken {
+                added.uses.push(format!("use \"{path}\";"));
+                continue;
+            }
+            let alias = alias_of(&self.source_directory, &model.sources[declared].path);
+            added.uses.push(format!("use \"{path}\" as {alias};"));
+            for entity in entities {
+                added.aliases.insert(entity, alias.clone());
+            }
+        }
+        added
     }
 
     /// One node of the program as generation sees it, or nothing when it runs at compile
@@ -4914,10 +5015,103 @@ fn bracketed(text: &str) -> Vec<String> {
     out
 }
 
+/// Every entity the type of a lowered member node names, in the order the members are
+/// spelled, each once.
+// @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+fn member_type_entities(model: &Model, node: &LoweredNode, out: &mut Vec<EntityId>) {
+    if is_member_node(model, node)
+        && let Some(entity) = node.entity
+        && let Some(ty) = &model.entities[entity].ty
+    {
+        type_entities(ty, out);
+    }
+    for child in node.nodes() {
+        member_type_entities(model, child, out);
+    }
+}
+
+/// Every entity a written type names, in order, each once.
+// @lfy def/interpret/main.lfy:lower
+fn type_entities(ty: &TypeRef, out: &mut Vec<EntityId>) {
+    match ty {
+        TypeRef::Entity(entity) | TypeRef::Predicate(entity) => {
+            if !out.contains(entity) {
+                out.push(*entity);
+            }
+        }
+        TypeRef::List(item) => type_entities(item, out),
+        TypeRef::Union(items) => items.iter().for_each(|item| type_entities(item, out)),
+        _ => {}
+    }
+}
+
+/// The path a use of one file is written with from another: the file's path without its
+/// extension, relative to the directory of the file the use is written in.
+// @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+fn use_path(from: &str, to: &str) -> String {
+    let stem = to.strip_suffix(".lfy").unwrap_or(to);
+    let here: Vec<&str> = from.split('/').collect();
+    let here = &here[..here.len().saturating_sub(1)];
+    let there: Vec<&str> = stem.split('/').collect();
+    let shared = here
+        .iter()
+        .zip(there.iter())
+        .take_while(|(a, b)| a == b)
+        .count();
+    let mut parts: Vec<&str> = vec![".."; here.len() - shared];
+    parts.extend(there[shared..].iter().copied());
+    let path = parts.join("/");
+    if path.starts_with('.') {
+        path
+    } else {
+        format!("./{path}")
+    }
+}
+
+/// The alias an added use takes: the declaring file's path relative to the project's source
+/// directory, without its extension and with each slash replaced by an underscore.
+// @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+fn alias_of(source_directory: &str, path: &str) -> String {
+    let stem = path.strip_suffix(".lfy").unwrap_or(path);
+    let prefix = format!("{}/", source_directory.trim_end_matches('/'));
+    let relative = stem.strip_prefix(&prefix).unwrap_or(stem);
+    relative.replace('/', "_")
+}
+
+/// The text of a lowered file with the uses it takes written after the uses written in it,
+/// or at its head when it writes none.
+// @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+fn with_uses(text: &str, uses: &[String]) -> String {
+    if uses.is_empty() {
+        return text.to_string();
+    }
+    let added = uses.join("\n");
+    let mut after = None;
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        if line.trim_start().starts_with("use ") {
+            after = Some(at + line.len());
+        }
+        at += line.len();
+    }
+    match after {
+        Some(at) => {
+            let (head, tail) = text.split_at(at);
+            let head = if head.ends_with('\n') {
+                head.to_string()
+            } else {
+                format!("{head}\n")
+            };
+            format!("{head}{added}\n{tail}")
+        }
+        None => format!("{added}\n{text}"),
+    }
+}
+
 /// The lowered tree spelled as Elfie source: kept nodes as written, folded nodes as the
 /// literal of their value, and member nodes as a member with its type and value.
 // @lfy def/interpret/main.lfy:lower
-fn render(model: &Model, node: &LoweredNode) -> String {
+fn render(model: &Model, node: &LoweredNode, aliases: &HashMap<EntityId, String>) -> String {
     if let Some(value) = &node.value {
         return spell(model, value);
     }
@@ -4928,7 +5122,7 @@ fn render(model: &Model, node: &LoweredNode) -> String {
             EntityKind::Member | EntityKind::EnumMember
         )
     {
-        return spell_member(model, entity);
+        return spell_member(model, entity, aliases);
     }
     let (members, kept): (Vec<&LoweredChild>, Vec<&LoweredChild>) =
         node.children.iter().partition(|child| match child {
@@ -4938,7 +5132,7 @@ fn render(model: &Model, node: &LoweredNode) -> String {
     let mut out = String::new();
     for child in kept {
         match child {
-            LoweredChild::Node(child) => out.push_str(&render(model, child)),
+            LoweredChild::Node(child) => out.push_str(&render(model, child, aliases)),
             LoweredChild::Token(token) => out.push_str(&token.raw),
         }
     }
@@ -4959,7 +5153,7 @@ fn render(model: &Model, node: &LoweredNode) -> String {
     for child in members {
         if let LoweredChild::Node(child) = child {
             body.push_str("  ");
-            body.push_str(&render(model, child));
+            body.push_str(&render(model, child, aliases));
             body.push('\n');
         }
     }
@@ -4982,7 +5176,7 @@ fn is_member_node(model: &Model, node: &LoweredNode) -> bool {
 
 /// A member as Elfie spells one: its name, its description, and its type or value.
 // @lfy def/interpret/main.lfy:lower
-fn spell_member(model: &Model, entity: EntityId) -> String {
+fn spell_member(model: &Model, entity: EntityId, aliases: &HashMap<EntityId, String>) -> String {
     let record: &Declared = &model.entities[entity];
     let name = record.identifier.clone().unwrap_or_default();
     let mut out = format!("${name}");
@@ -4992,7 +5186,7 @@ fn spell_member(model: &Model, entity: EntityId) -> String {
     let written = record
         .ty
         .as_ref()
-        .map(|ty| crate::model::type_text(model, ty))
+        .map(|ty| member_type_text(model, ty, aliases))
         .unwrap_or_default();
     if written.is_empty() {
         out.push(';');
@@ -5000,6 +5194,43 @@ fn spell_member(model: &Model, entity: EntityId) -> String {
         out.push_str(&format!(" = {written};"));
     }
     out
+}
+
+/// The type of a member as Elfie spells one.
+// @lfy def/interpret/main.lfy:lower
+fn member_type_text(model: &Model, ty: &TypeRef, aliases: &HashMap<EntityId, String>) -> String {
+    match ty {
+        // A list of a union takes parentheses before its brackets, because `A | B[]` is a
+        // union of `A` with a list of `B` and not a list of `A | B`.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:d9eb746b7ffae8611703ed1903b15fe57cbff5934cf81898f4baeae2fbafec33
+        TypeRef::List(item) => {
+            let text = member_type_text(model, item, aliases);
+            if matches!(**item, TypeRef::Union(_)) {
+                format!("({text})[]")
+            } else {
+                format!("{text}[]")
+            }
+        }
+        TypeRef::Union(items) => items
+            .iter()
+            .map(|item| member_type_text(model, item, aliases))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        // An entity brought in by an aliased use is spelled through that alias, so the name
+        // means one entity.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+        TypeRef::Entity(entity) if aliases.contains_key(entity) => {
+            let alias = &aliases[entity];
+            format!("{alias}.{}", crate::model::type_text(model, ty))
+        }
+        TypeRef::Predicate(entity) if aliases.contains_key(entity) => {
+            let alias = &aliases[entity];
+            let name = model.entities[*entity].identifier.clone().unwrap_or_default();
+            format!("is {alias}.{name}")
+        }
+        // Every other type is spelled as the model spells it.
+        ty => crate::model::type_text(model, ty),
+    }
 }
 
 /// A folded value as Elfie spells it; a prompted value as the call that asked for it.
@@ -6057,6 +6288,109 @@ mod tests {
         assert!(
             every(&file.root).iter().all(|node| node.rule != S::Where.entity()),
             "no criterion is a node"
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:lower#lower:lower:d9eb746b7ffae8611703ed1903b15fe57cbff5934cf81898f4baeae2fbafec33
+    #[test]
+    fn a_member_whose_type_is_a_list_of_a_union_is_spelled_with_the_union_parenthesized() {
+        let program = lower(workspace(
+            "d A {}\nd B {}\nd Box {\n  $pairs: `d` = (A | B)[];\n  $one: `d` = A | B;\n\
+             \n  $plain: `d` = A[];\n}\n",
+        ));
+        let file = &program.files[0];
+        assert!(
+            file.text.contains("$pairs: `d` = (A | B)[];"),
+            "the union takes parentheses before the brackets: {}",
+            file.text
+        );
+        // A union that is not the item of a list, and a list whose item is not a union,
+        // take no parentheses.
+        assert!(
+            file.text.contains("$one: `d` = A | B;") && file.text.contains("$plain: `d` = A[];"),
+            "{}",
+            file.text
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+    #[test]
+    fn a_member_type_naming_an_entity_of_an_unused_file_adds_one_use_of_that_file() {
+        let program = lower(workspace_of(vec![
+            source(
+                "def/model/kinds.lfy",
+                "d Kind {}\nd Shape {}\n",
+                &[],
+                Origin::Program,
+            ),
+            source(
+                "def/t.lfy",
+                "use \"./model/kinds\";\ntrait t {\n  $kind: `Which` = Kind;\n  \
+                 $shape: `What` = Shape;\n}\n",
+                &[Some("def/model/kinds.lfy")],
+                Origin::Program,
+            ),
+            source(
+                "def/a.lfy",
+                "use \"./t\";\nd A is t {}\n",
+                &[Some("def/t.lfy")],
+                Origin::Program,
+            ),
+        ]));
+        let file = &program.files[2];
+        // One use, however many members name the file, with its path written relative to
+        // the file the use is written in.
+        assert_eq!(
+            file.text.matches("use \"./model/kinds\";").count(),
+            1,
+            "{}",
+            file.text
+        );
+        let written = file.text.find("use \"./t\";").expect("the use written");
+        let added = file
+            .text
+            .find("use \"./model/kinds\";")
+            .expect("the use added");
+        assert!(written < added, "the added use comes after: {}", file.text);
+        assert!(
+            file.text.contains("$kind: `Which` = Kind;")
+                && file.text.contains("$shape: `What` = Shape;"),
+            "{}",
+            file.text
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+    #[test]
+    fn an_added_use_takes_an_alias_when_the_file_already_sees_the_name() {
+        let program = lower(workspace_of(vec![
+            source("def/model/kinds.lfy", "d Kind {}\n", &[], Origin::Program),
+            source("def/other.lfy", "d Kind {}\n", &[], Origin::Program),
+            source(
+                "def/t.lfy",
+                "use \"./model/kinds\";\ntrait t {\n  $kind: `Which` = Kind;\n}\n",
+                &[Some("def/model/kinds.lfy")],
+                Origin::Program,
+            ),
+            source(
+                "def/a.lfy",
+                "use \"./other\";\nuse \"./t\";\nd A is t {}\n",
+                &[Some("def/other.lfy"), Some("def/t.lfy")],
+                Origin::Program,
+            ),
+        ]));
+        let file = &program.files[3];
+        // The alias is the declaring file's path under the source directory, without its
+        // extension and with each slash an underscore, and the type is spelled through it.
+        assert!(
+            file.text.contains("use \"./model/kinds\" as model_kinds;"),
+            "{}",
+            file.text
+        );
+        assert!(
+            file.text.contains("$kind: `Which` = model_kinds.Kind;"),
+            "{}",
+            file.text
         );
     }
 

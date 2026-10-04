@@ -18,12 +18,13 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewReport, ReviewStatus,
-    SourceMap, Unit, Verdict,
+    self, Batch, Move, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewReport,
+    ReviewStatus, SourceMap, Unit, Verdict,
 };
 use elfie_core::grammar::GrammarRule as _;
 use elfie_core::interpret::{Program, lower};
 use elfie_core::lexer::{Token, lex};
+use elfie_core::model::Problem;
 use elfie_core::parser::{Child, ErrorNode, Node, Tree, parse};
 use elfie_core::query::{self, Diagnostic, Severity};
 use elfie_core::workspace::{self, Workspace};
@@ -693,10 +694,23 @@ fn check(invocation: &Invocation) -> ExitCode {
     // is not up to date is printed as a warning of stage generation.
     // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
     let mut stale = 0usize;
+    let mut cycles = 0usize;
     if invocation.arguments.is_empty() {
         // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
         let maps = generation::source_maps_of(&workspace, None);
         let (program, plan) = planned(root, &maps, &[], false, &violated_ids(root));
+        // A cycle among files that no move could resolve is an error of stage generation at
+        // its node and counts among the problems.
+        // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+        for problem in &plan.problems {
+            cycles += 1;
+            print_plan_problem(&program.workspace, problem, json, on);
+        }
+        // A move is information of stage generation: neither a problem nor a stale unit.
+        // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+        for moved in &plan.moves {
+            print_move(&program.workspace, &plan, moved, json, on);
+        }
         for unit in &plan.units {
             let Some(reason) = unit.reason else { continue };
             stale += 1;
@@ -706,25 +720,30 @@ fn check(invocation: &Invocation) -> ExitCode {
     // The last line counts the files, the problems, and the stale units: the count of files
     // is plain, the problems are a tally in failure, and the stale units one in warning.
     // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
+    // A cycle no move could resolve counts among the problems.
+    // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+    let problems = diagnostics.len() + cycles;
     if json {
         // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
-        println!(
-            "{}",
-            serde_json::json!({ "files": workspace.files.len(), "problems": diagnostics.len(), "stale": stale })
-        );
+        println!("{}", serde_json::json!({ "files": workspace.files.len(), "problems": problems, "stale": stale }));
     } else {
         // @lfy def/cli/main.lfy:main#main:main:e4a92e90c92796a64c208f188a8f672fb3cb8c79eb89b30ec2f4c53b260c6d92
         println!(
             "{} files, {}, {}",
             workspace.files.len(),
-            tally(diagnostics.len(), "problems", Tone::Failure, on),
+            tally(problems, "problems", Tone::Failure, on),
             tally(stale, "stale units", Tone::Warning, on)
         );
     }
     // --strict: the code is problems when anything at all was printed as a warning or
     // error, a stale unit included.
     // @lfy def/cli/main.lfy:main#main:main:03dc28129d1c4a684c116c8cbfb1847cfcb0d7db07da121f8c5ff234afe74ed8
-    if invocation.flag("strict") && (!diagnostics.is_empty() || stale > 0) {
+    if invocation.flag("strict") && (problems > 0 || stale > 0) {
+        ExitCode::Problems
+    } else if cycles > 0 {
+        // A cycle was printed as an error, so the code is problems as any printed error
+        // makes it.
+        // @lfy def/cli/main.lfy:main#main:main:62048c8ca7167afb8dccb82b17611d4f4a1fff7804fe730afa69f230b6c8024e
         ExitCode::Problems
     } else {
         // @lfy def/cli/main.lfy:main#main:main:e31edb81ec3ee9b8748e2d4b9d4c9fdb554fad63e6baa85970c87f5cf7ac7075
@@ -759,6 +778,80 @@ fn print_stale(workspace: &Workspace, unit: &Unit, reason: Reason, json: bool, o
             paint(&format!("{file}:"), Tone::Subject, on),
             paint("generation", Tone::Muted, on),
             paint("warning", severity_tone(Severity::Warning), on)
+        );
+    }
+}
+
+/// One of [`Plan::problems`] printed as an error of stage generation at its node: a cycle
+/// among files that no move could resolve, so there is no order to build them in.
+// @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+// @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+fn print_plan_problem(workspace: &Workspace, problem: &Problem, json: bool, on: bool) {
+    let range = query::range_of_node(workspace, problem.node);
+    if json {
+        // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+        println!(
+            "{}",
+            serde_json::json!({
+                "file": range.file,
+                "line": range.start.line,
+                "column": range.start.column,
+                "stage": "generation",
+                "severity": Severity::Error.value(),
+                "message": problem.message,
+            })
+        );
+    } else {
+        let place = format!("{}:{}:{}:", range.file, range.start.line, range.start.column);
+        println!(
+            "{} {} {}: {}",
+            paint(&place, Tone::Subject, on),
+            paint("generation", Tone::Muted, on),
+            paint(Severity::Error.value(), severity_tone(Severity::Error), on),
+            problem.message
+        );
+    }
+}
+
+/// The identifiers of the entities one of [`Plan::moves`] moved, in the file order of the
+/// file that declares them.
+// @lfy def/cli/main.lfy:main
+fn moved_entities(workspace: &Workspace, moved: &Move) -> String {
+    moved
+        .entities
+        .iter()
+        .map(|&entity| workspace.model.entities[entity].identifier.as_deref().unwrap_or("anonymous"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// One of [`Plan::moves`] printed as information of stage generation at the file of its
+/// origin, naming the target, the identifiers of the entities moved, the stem of the unit
+/// that compiles them, and the cause; it is neither a problem nor a stale unit.
+// @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+fn print_move(workspace: &Workspace, plan: &Plan, moved: &Move, json: bool, on: bool) {
+    let origin = &plan.units[moved.origin];
+    let file = &workspace.files[origin.file].path;
+    let target = &workspace.targets[origin.target].identifier;
+    let entities = moved_entities(workspace, moved);
+    let message = format!("{target} [{entities}] into {} for {}", plan.units[moved.into].stem, moved.cause);
+    if json {
+        // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+        println!(
+            "{}",
+            serde_json::json!({
+                "file": file,
+                "stage": "generation",
+                "severity": Severity::Information.value(),
+                "message": message,
+            })
+        );
+    } else {
+        println!(
+            "{} {} {}: {message}",
+            paint(&format!("{file}:"), Tone::Subject, on),
+            paint("generation", Tone::Muted, on),
+            paint(Severity::Information.value(), severity_tone(Severity::Information), on)
         );
     }
 }
@@ -1709,10 +1802,53 @@ fn file_name_of(identifier: &str) -> String {
     identifier.replace('/', "-")
 }
 
+/// One of [`Plan::moves`] as a dry run prints it: the word move, the target, the stem of the
+/// origin, the word into, the stem of the unit that compiles them, the identifiers of the
+/// entities moved in brackets, the word for, and the cause.
+// @lfy def/cli/main.lfy:main#main:main:2b404ae9321e275e0e78d4323b978e2cbf52dada2775af70f4216688c2534c08
+fn move_line(workspace: &Workspace, plan: &Plan, moved: &Move) -> String {
+    let origin = &plan.units[moved.origin];
+    format!(
+        "move {} {} into {} [{}] for {}",
+        workspace.targets[origin.target].identifier,
+        origin.stem,
+        plan.units[moved.into].stem,
+        moved_entities(workspace, moved),
+        moved.cause
+    )
+}
+
 /// Each unit is printed as `elfie_units` lists it, then each batch with the stems it
 /// holds, and nothing is generated.
 // @lfy def/cli/main.lfy:main#main:main:1b5c2f2cb6fa24c09e7c95e0fdfcf07271d9861aaa40628a6344f360e5a4f3c0
 fn dry_run(workspace: &Workspace, plan: &Plan, target: Option<&str>, json: bool, on: bool) -> ExitCode {
+    // Before the units, each move that resolved a cycle among files.
+    // @lfy def/cli/main.lfy:main#main:main:2b404ae9321e275e0e78d4323b978e2cbf52dada2775af70f4216688c2534c08
+    for moved in &plan.moves {
+        let origin = &plan.units[moved.origin];
+        if target.is_some_and(|name| workspace.targets[origin.target].identifier != name) {
+            continue;
+        }
+        if json {
+            // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+            println!(
+                "{}",
+                serde_json::json!({
+                    "move": origin.stem,
+                    "target": workspace.targets[origin.target].identifier,
+                    "into": plan.units[moved.into].stem,
+                    "entities": moved
+                        .entities
+                        .iter()
+                        .map(|&entity| workspace.model.entities[entity].identifier.clone())
+                        .collect::<Vec<_>>(),
+                    "cause": moved.cause,
+                })
+            );
+        } else {
+            println!("{}", move_line(workspace, plan, moved));
+        }
+    }
     for index in 0..plan.units.len() {
         let unit = &plan.units[index];
         if target.is_some_and(|name| workspace.targets[unit.target].identifier != name) {
@@ -3771,9 +3907,22 @@ fn compile(invocation: &Invocation) -> ExitCode {
     // The units the last global review found violated.
     // @lfy def/cli/main.lfy:main#main:main:d616972fdf1695d2ca0f4f9d8c1d0ab6f76bbe5af87f18daccc1f1c300092e65
     let (program, plan) = planned(root, &maps, &invocation.arguments, invocation.flag("all"), &violated_ids(root));
+    // A cycle among files that no move resolves has no order to build in: its problem is
+    // printed as an error and nothing is generated.
+    // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+    for problem in &plan.problems {
+        print_plan_problem(&program.workspace, problem, json, style.out);
+    }
+    let cycles = !plan.problems.is_empty();
     // @lfy def/cli/main.lfy:main#main:main:1b5c2f2cb6fa24c09e7c95e0fdfcf07271d9861aaa40628a6344f360e5a4f3c0
     if invocation.flag("dry-run") {
-        return dry_run(&program.workspace, &plan, target.as_deref(), json, style.out);
+        let code = dry_run(&program.workspace, &plan, target.as_deref(), json, style.out);
+        // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+        return if cycles { ExitCode::Problems } else { code };
+    }
+    // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+    if cycles {
+        return ExitCode::Problems;
     }
     // Before any batch runs, the maps a target kept in source-map.json are moved into the
     // units' map files and every map file belonging to no unit of the plan is removed.
@@ -4836,6 +4985,85 @@ mod tests {
         // --target limits the plan to one target. @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["compile", "--dry-run", "--target", "rust"]), ExitCode::Success.code());
         assert_eq!(fixture.run(&["compile", "--dry-run", "--target", "go"]), ExitCode::Usage.code());
+    }
+
+    /// `def/a.lfy` and `def/b.lfy` reach each other through the member a trait of
+    /// `def/c.lfy` added to `B`, and `def/b.lfy` is used by every other file of the cycle,
+    /// so `C` moves out of `def/a.lfy`'s unit into `def/b.lfy`'s.
+    // @lfy def/cli/main.lfy:main
+    fn a_move(fixture: &Fixture) -> &Fixture {
+        one_target(fixture)
+            .write("def/b.lfy", "d B: `A b` {\n  $x = string;\n}\n")
+            .write("def/a.lfy", "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n}\n")
+            .write("def/c.lfy", "use \"./a\";\nuse \"./b\";\n\ntrait holder {\n  $c = C;\n}\nholder.apply(B);\n")
+    }
+
+    /// A move is printed before the units of a dry run as the word move, the target, the
+    /// stem of its origin, the word into, the stem of the unit that compiles the entities,
+    /// their identifiers in brackets, the word for, and the cause; in a check it is
+    /// information of stage generation and is neither a problem nor a stale unit.
+    // @lfy def/cli/main.lfy:main#main:main:2b404ae9321e275e0e78d4323b978e2cbf52dada2775af70f4216688c2534c08
+    // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+    #[test]
+    fn a_move_is_printed_before_the_units_and_counts_as_no_problem() {
+        let fixture = Fixture::new();
+        a_move(&fixture);
+        let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+        assert!(program.workspace.problems.is_empty(), "{:?}", program.workspace.problems);
+        assert_eq!(plan.problems, [], "no cycle is left unresolved");
+        assert_eq!(plan.moves.len(), 1, "{:?}", plan.moves);
+        let moved = &plan.moves[0];
+        // The words and their order stay as they are. @lfy def/cli/main.lfy:main
+        assert_eq!(move_line(&program.workspace, &plan, moved), "move rust a into b [C] for B.c");
+        // A move is information of stage generation at the file of its origin.
+        // @lfy def/cli/main.lfy:main
+        print_move(&program.workspace, &plan, moved, false, false);
+        print_move(&program.workspace, &plan, moved, false, true);
+        print_move(&program.workspace, &plan, moved, true, false);
+        assert_eq!(severity_tone(Severity::Information), Tone::Active);
+        // A move is neither a problem nor a stale unit, so a check of a program with one is
+        // success and nothing is generated by a dry run.
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["compile", "--dry-run", "--json"]), ExitCode::Success.code());
+        assert!(!fixture.root.join("out").exists(), "nothing is generated");
+    }
+
+    /// `def/a.lfy` and `def/b.lfy` reach each other through members the traits of `def/t.lfy`
+    /// added, and neither uses the other, so no move resolves the cycle: the problem is
+    /// printed as an error of stage generation, nothing is generated, and the code is
+    /// problems.
+    // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+    // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+    #[test]
+    fn a_cycle_no_move_resolves_is_an_error_and_generates_nothing() {
+        let fixture = Fixture::new();
+        one_target(&fixture)
+            .write("def/a.lfy", "d A {\n  $x = string;\n}\n")
+            .write("def/b.lfy", "d B {\n  $x = string;\n}\n")
+            .write(
+                "def/t.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait toB {\n  $b = B;\n}\n\ntrait toA {\n  $a = A;\n}\ntoB.apply(A);\ntoA.apply(B);\n",
+            );
+        let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+        // The program itself binds cleanly, so the code is problems for the cycle alone.
+        // @lfy def/cli/main.lfy:main
+        let diagnostics = query::diagnostics_of(&program.workspace, None);
+        assert!(!diagnostics.iter().any(|d| d.severity == Severity::Error), "{diagnostics:?}");
+        assert_eq!(plan.moves, []);
+        assert!(!plan.problems.is_empty(), "the cycle leaves a problem");
+        // Printed as an error of stage generation at its node. @lfy def/cli/main.lfy:main
+        print_plan_problem(&program.workspace, &plan.problems[0], false, false);
+        print_plan_problem(&program.workspace, &plan.problems[0], false, true);
+        print_plan_problem(&program.workspace, &plan.problems[0], true, false);
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["check"]), ExitCode::Problems.code());
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+        assert!(!fixture.root.join("out").exists(), "nothing is generated");
+        // A dry run prints the plan and ends with the same code.
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Problems.code());
     }
 
     /// Compile prints the errors and returns problems rather than handing the compiler a

@@ -216,13 +216,16 @@ pub struct Symbol {
     pub name: String, // @lfy def/model/data.lfy:Symbol.name
     /// What the name is bound to; for an alias, the target's entity.
     pub entity: EntityId, // @lfy def/model/data.lfy:Symbol.entity
-    pub kind: SymbolKind, // @lfy def/model/data.lfy:Symbol
+    // @lfy def/model/data.lfy:Symbol#Symbol:Symbol:bfb97fbe7d86474e9b31c1d42b8ba5a0611c60731268534c77937588a987f70a
+    pub kind: SymbolKind,
     /// The node that declared it.
-    pub node: NodeRef, // @lfy def/model/data.lfy:Symbol
+    // @lfy def/model/data.lfy:Symbol#Symbol:Symbol:bfb97fbe7d86474e9b31c1d42b8ba5a0611c60731268534c77937588a987f70a
+    pub node: NodeRef,
     /// The token that spells the name, when one does.
     pub name_token: Option<usize>,
     /// The scope that holds it.
-    pub scope: ScopeId, // @lfy def/model/data.lfy:Symbol
+    // @lfy def/model/data.lfy:Symbol#Symbol:Symbol:bfb97fbe7d86474e9b31c1d42b8ba5a0611c60731268534c77937588a987f70a
+    pub scope: ScopeId,
 }
 
 /// A region in which names resolve. Holds the symbols declared directly in it, in order,
@@ -234,24 +237,31 @@ pub struct Scope {
     /// The enclosing scope. A file scope of a file whose [`Source::origin`] is
     /// [`Origin::Program`] has the prelude scope as its parent; one whose origin is
     /// [`Origin::Library`] or [`Origin::Prelude`] has none.
-    pub parent: Option<ScopeId>, // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:42af5b6a186748d342d067144fcbe6e4a9fd24f9df49fa04198090b72c251659
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
+    pub parent: Option<ScopeId>,
     /// The node that owns it.
     pub owner: NodeRef,
     pub file: FileId,
     /// The symbols declared directly in it, in order.
-    pub symbols: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:42af5b6a186748d342d067144fcbe6e4a9fd24f9df49fa04198090b72c251659
+    pub symbols: Vec<SymbolId>,
     /// The symbols its use statements import, after the symbols declared directly in it;
     /// only a file scope has any.
-    pub imports: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:22fac6d4e670bba6a452d99eaf5fe8c73bd2fe60f299a61bf974a9377bf8b7c9
+    pub imports: Vec<SymbolId>,
     /// The current entity: what the value, context, and scope accessors reach without a
     /// left expression.
-    pub current: EntityId, // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:845999c3f233c583f0345dc819e89ad1e41de058891617b1d24252c7e7f3d21c
+    pub current: EntityId,
 }
 
 /// What applied a trait. A trait applied directly knows the `IsClause`, `ExtendsClause`,
 /// or apply `Call` that applied it; a trait inherited through another application knows
 /// that application.
-// @lfy def/model/data.lfy:Applied
+// @lfy def/model/data.lfy:Applied#Applied:Applied:fab3fd03c628f5350e16842d5f330374a3cbfa3429c02399acc674c7c7ca393d
+// @lfy def/model/data.lfy:Applied#Applied:Applied:ee4c1f2f778b72495977533effacf8eeab17af5bf88c802b226f69b9a8186fef
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppliedSource {
     /// Applied directly by an `IsClause`.
@@ -387,7 +397,7 @@ pub enum EntityKind {
         /// ContextProperty output: the declared return type.
         output: Option<TypeRef>, // @lfy def/model/data.lfy:FnEntity.output
         /// Whether the implementation is generated (`fn`) rather than written (`function`).
-        agent: bool,
+        agent: bool, // @lfy def/model/data.lfy:FnEntity.agentic
     },
     /// A declared trait seen through its context layer.
     // @lfy def/model/data.lfy:TraitEntity
@@ -417,32 +427,35 @@ pub enum EntityKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
     /// The declared name; `None` when anonymous.
-    pub identifier: Option<String>, // @lfy def/model/data.lfy:TraitEntity.identifier
+    pub identifier: Option<String>, // @lfy def/model/data.lfy:Entity.identifier
     /// The description provided for this entity, resolved.
-    pub definition: Option<String>, // @lfy def/model/data.lfy:TraitEntity.definition
+    pub definition: Option<String>, // @lfy def/model/data.lfy:Entity.definition
     /// The node of the string or template the definition was written as.
     pub definition_node: Option<NodeRef>,
     /// The declared or inferred type.
-    pub ty: Option<TypeRef>, // @lfy def/model/data.lfy:TraitEntity.type
+    pub ty: Option<TypeRef>, // @lfy def/model/data.lfy:Entity.type
     /// Acceptance criteria specifying own criteria first, then each trait's in
     /// application order.
-    pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:TraitEntity.acceptanceCriteria
+    pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:Entity.acceptanceCriteria
     /// Every trait applied to it, direct or inherited, in application order.
-    pub traits: Vec<Applied>, // @lfy def/model/data.lfy:TraitEntity.traits
+    pub traits: Vec<Applied>, // @lfy def/model/data.lfy:Entity.traits
     /// What a list-typed entity holds; `None` when the type is not a list.
     pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:Entity.itemType
     /// Every entity referenced via a Reference in definition, documentation, or value.
-    pub references: Vec<UsageId>, // @lfy def/model/data.lfy:TraitEntity.references
+    pub references: Vec<UsageId>, // @lfy def/model/data.lfy:Entity.references
     /// ContextProperty tests: list of all added tests.
-    pub tests: Vec<Test>, // @lfy def/model/data.lfy:TraitEntity.tests
+    pub tests: Vec<Test>, // @lfy def/model/data.lfy:Entity.tests
     /// The value setters evaluated for it (`.name = value` in a trait or data body).
     pub values: Vec<(String, Value)>,
     pub kind: EntityKind,
     /// The declaring node; `None` for global.
-    pub node: Option<NodeRef>, // @lfy def/model/data.lfy:Entity
-    pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:Entity
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:4bcd3ce25e68d0f1922d29c8b47444d8bf160a52009b4311dc9f72cc18b9c38a
+    pub node: Option<NodeRef>,
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:4bcd3ce25e68d0f1922d29c8b47444d8bf160a52009b4311dc9f72cc18b9c38a
+    pub symbol: Option<SymbolId>,
     /// The scope it owns, when it owns one.
-    pub scope: Option<ScopeId>, // @lfy def/model/data.lfy:Entity
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:4bcd3ce25e68d0f1922d29c8b47444d8bf160a52009b4311dc9f72cc18b9c38a
+    pub scope: Option<ScopeId>,
     pub file: Option<FileId>,
 }
 
@@ -543,7 +556,6 @@ pub struct Source {
 /// The program, queryable. Answers every query of the model module for every file it
 /// was bound from and lists every problem in node order.
 // @lfy def/model/data.lfy:Model
-// @lfy def/model/data.lfy:Model
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Model {
     pub sources: Vec<Source>,
@@ -552,7 +564,8 @@ pub struct Model {
     pub entities: Vec<Entity>,
     pub usages: Vec<Usage>,
     /// Every problem in node order.
-    pub problems: Vec<Problem>, // @lfy def/model/data.lfy:Model
+    // @lfy def/model/data.lfy:Model#Model:Model:eea4b6850249e2d00680aefce02776022f87b76c3761ec67543bc0f9d618a12f
+    pub problems: Vec<Problem>,
     /// Per file, one entry per node in preorder.
     pub nodes: Vec<Vec<NodeInfo>>,
     /// The file scope of each file.
@@ -567,6 +580,7 @@ pub struct Model {
     pub(crate) node_keys: HashMap<(FileId, usize, usize, Rule), usize>,
 }
 
+// @lfy def/model/data.lfy:Model#Model:Model:7f6312c0336cc0a062228b497a9b06392771a2b287363f8ed24cbfb40efe8d28
 impl Model {
     /// The node a reference names.
     pub fn node(&self, r: NodeRef) -> &Node {

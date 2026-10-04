@@ -242,6 +242,21 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     .add({
       situation = `A trait added the member of a lowered member node`,
       behavior = `The member node's origin is the statement in the trait's file that declared the member`,
+    })
+    .add({
+      situation = `[[LoweredFile.text]] spells the type of a member node`,
+      behavior = `It is spelled as Elfie source that reads back as that same type`,
+    })
+    .add({
+      situation = `The type of a lowered member node names an entity declared in a file that the member's owner's file does not use`,
+      behavior = `[[LoweredFile.text]] of the owner's file has one [[Use]] of that file after the uses written in it, its path written relative to the owner's file as a use is written, once however many members need it`,
+    })
+    .add({
+      situation = [
+        `The type of a lowered member node names an entity declared in a file that the member's owner's file does not use`,
+        `The owner's file already sees another entity with the same identifier`,
+      ],
+      behavior = `That [[Use]] takes an alias, the declaring file's path relative to [[Workspace.sourceDirectory]] without its extension and with each slash replaced by an underscore, and [[LoweredFile.text]] spells the type through that alias, so the name means one entity`,
     });
 
   // Criteria and tests

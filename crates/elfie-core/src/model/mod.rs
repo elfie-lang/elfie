@@ -33,7 +33,9 @@ pub fn bind(sources: Vec<Source>) -> Model {
     for file in 0..files {
         binder.declare_file(file); // @lfy def/model/main.lfy:bind
     }
-    binder.link_prelude(); // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
+    binder.link_prelude();
     for file in 0..files {
         binder.link_uses(file); // @lfy def/model/main.lfy:bind
     }
@@ -59,7 +61,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
     binder.finish_definitions();
     let mut model = binder.model;
     // Own criteria first, then each trait's in application order.
-    // @lfy def/model/data.lfy:TraitEntity.acceptanceCriteria
+    // @lfy def/model/data.lfy:Entity.acceptanceCriteria
     for (id, entity) in model.entities.iter_mut().enumerate() {
         entity
             .acceptance_criteria
@@ -69,6 +71,7 @@ pub fn bind(sources: Vec<Source>) -> Model {
     // criteria, and traits, which the expand pass filled in after the type pass made it.
     // @lfy def/model/main.lfy:bind
     model.finish_generics();
+    // @lfy def/model/data.lfy:Model#Model:Model:eea4b6850249e2d00680aefce02776022f87b76c3761ec67543bc0f9d618a12f
     model
         .problems
         .sort_by_key(|problem| (problem.node.file, problem.node.index));

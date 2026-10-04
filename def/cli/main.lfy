@@ -219,6 +219,13 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `[[Generation.plan]] is made with no stems requested, from [[Generation.sourceMapsOf]] the workspace and the stems the last global review in elfie-requests/global.reviews.json found violated, and each unit that is not up to date is printed as a warning of stage generation at its source file, naming the target, the unit, and the description of its [[Unit.reason]]; the last line counts the files, the problems, and the stale units`,
     })
     .add({
+      situation = `check with no files given, and the program has no errors`,
+      behavior = [
+        `Each of [[Plan.problems]] is printed as an error of stage generation at its node and counts among the problems`,
+        `Each of [[Plan.moves]] is printed as information of stage generation at the file of [[Move.origin]], naming the target, the identifiers of [[Move.entities]], the stem of [[Move.into]], and [[Move.cause]]; it is neither a problem nor a stale unit`,
+      ],
+    })
+    .add({
       situation = `check without --json`,
       behavior = `In the last line the count of files is plain, the problems are [[Style.tally]] in failure, and the stale units are [[Style.tally]] in warning`,
     })
@@ -309,6 +316,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `[[Generation.plan]] is made with [[Generation.sourceMapsOf]] the workspace and with the stems of the units the last global review, read from elfie-requests/global.reviews.json under the root, found violated as the violated units`,
     })
     .add({
+      situation = [`compile`, `[[Plan.problems]] is not empty`],
+      behavior = `Each of [[Plan.problems]] is printed as an error, nothing is generated, and the code is problems, because a cycle among files that no move resolves has no order to build in`,
+    })
+    .add({
       situation = `compile with --target`,
       behavior = `The source maps are [[Generation.sourceMapsOf]] the workspace for that target alone, so no other target's map files are opened`,
     })
@@ -352,6 +363,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `compile with --dry-run`,
       behavior = `Each planned unit is printed as its target, [[Unit.stem]], its reason or up to date, and the stems of its dependencies, then each batch with the stems it holds, and nothing is generated`,
+    })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `Before the units, each of [[Plan.moves]] is printed as the word move, the target, the stem of [[Move.origin]], the word into, the stem of [[Move.into]], the identifiers of [[Move.entities]] in brackets, the word for, and [[Move.cause]]`,
     })
     .add({
       situation = `compile with --dry-run and without --json`,

@@ -4,7 +4,9 @@
 //! A unit is one source file for one target: outputs and source maps are per file, a
 //! declaration's scope is its file, and a smaller unit would make the compiler merge
 //! into a file it does not own, which is itself an act of generation. A larger unit
-//! would not fit a request, but several units can share one: that is a [`Batch`].
+//! would not fit a request, but several units can share one: that is a [`Batch`]. The one
+//! exception is a cycle among files, which no order of units can build: its entities move
+//! whole into the unit of the lowest file of the cycle, as a [`Move`] records.
 //! [`interface_of`] is the text whose hash tells a dependent whether anything it may rely
 //! on changed; [`plan`] finds every unit of a workspace, which need generating, and how
 //! they are batched; [`request`] gathers everything the compiler is handed for one batch,
@@ -39,7 +41,7 @@ use crate::interpret::{
 };
 use crate::model::{
     self, Applied, AppliedSource, Criterion, Entity, EntityId, EntityKind, FileId, Model, NodeRef,
-    SymbolKind, Value,
+    Problem, SymbolKind, TypeRef, Value,
 };
 use crate::parser::Child;
 use crate::parser::components::is_trivia;
@@ -107,10 +109,97 @@ fn lowered_node_of(file: &LoweredFile, entity: EntityId) -> Option<&LoweredNode>
     nodes.into_iter().find(|node| node.entity == Some(entity))
 }
 
+/// The lowered node that declares an entity, wherever in the program it was declared; an
+/// entity moved into a unit is declared in the file it came from, so the whole program is
+/// looked through rather than one file.
+// @lfy def/generation/main.lfy:plan
+fn lowered_declaration(program: &Program, entity: EntityId) -> Option<&LoweredNode> {
+    program
+        .files
+        .iter()
+        .find_map(|file| lowered_node_of(file, entity))
+}
+
+/// `Unit.text`: the text of the unit's lowered file without the code of the entities moved
+/// out of it, then the lowered code of each entity moved into it; exactly the text of the
+/// lowered file when nothing moved in or out.
+// Decision: the code of a moved entity is found in the text by the spelling lowering gave
+// it, since that text is the rendering of the lowered tree and holds it verbatim; the blank
+// line a removal leaves behind is closed up so that two spellings of the same unit are the
+// same text.
+// @lfy def/generation/main.lfy:plan
+fn unit_text(
+    model: &Model,
+    program: &Program,
+    lowered: usize,
+    moved_out: &[EntityId],
+    moved_in: &[EntityId],
+) -> String {
+    let file = &program.files[lowered];
+    if moved_out.is_empty() && moved_in.is_empty() {
+        return file.text.clone();
+    }
+    let mut text = file.text.clone();
+    for &entity in moved_out {
+        let Some(node) = lowered_node_of(file, entity) else {
+            continue;
+        };
+        let code = lowered_code(model, node);
+        let code = code.trim();
+        if !code.is_empty()
+            && let Some(at) = text.find(code)
+        {
+            text.replace_range(at..at + code.len(), "");
+        }
+    }
+    while let Some(at) = text.find("\n\n\n") {
+        text.replace_range(at..at + 1, "");
+    }
+    for &entity in moved_in {
+        let Some(node) = lowered_declaration(program, entity) else {
+            continue;
+        };
+        let code = lowered_code(model, node);
+        let code = code.trim();
+        if code.is_empty() {
+            continue;
+        }
+        if !text.is_empty() && !text.ends_with("\n\n") {
+            if !text.ends_with('\n') {
+                text.push('\n');
+            }
+            text.push('\n');
+        }
+        text.push_str(code);
+        text.push('\n');
+    }
+    text
+}
+
 /// The local criteria and tests of one entity of a file, criteria first.
 // @lfy def/generation/main.lfy:review
 fn entity_requirements(file: &LoweredFile, entity: EntityId) -> Vec<Requirement> {
     let Some(node) = lowered_node_of(file, entity) else {
+        return Vec::new();
+    };
+    node.criteria
+        .iter()
+        .cloned()
+        .map(Requirement::Criterion)
+        .chain(node.tests.iter().cloned().map(Requirement::Test))
+        .collect()
+}
+
+/// The local criteria and tests of one entity of a unit, criteria first: those of its
+/// declaration in the unit's own lowered file, or, for an entity moved into the unit, those
+/// of its declaration in the file it came from.
+// @lfy def/generation/main.lfy:request
+fn declared_requirements(program: &Program, lowered: usize, entity: EntityId) -> Vec<Requirement> {
+    let own = entity_requirements(&program.files[lowered], entity);
+    if !own.is_empty() || lowered_node_of(&program.files[lowered], entity).is_some() {
+        return own;
+    }
+    let Some(node) = lowered_declaration(program, entity) else {
         return Vec::new();
     };
     node.criteria
@@ -141,7 +230,8 @@ fn local_requirements(file: &LoweredFile) -> Vec<Requirement> {
 /// sorted and joined by line breaks.
 // @lfy def/generation/main.lfy:plan
 fn requirements_hash(program: &Program, unit: &Unit) -> String {
-    let mut ids: Vec<String> = local_requirements(&program.files[unit.lowered])
+    let mut ids: Vec<String> = unit
+        .requirements(program)
         .iter()
         .map(|requirement| requirement.id().to_string())
         .collect();
@@ -383,6 +473,12 @@ pub fn plan(
     let workspace = &program.workspace;
     let model = &workspace.model;
     let mut units: Vec<Unit> = Vec::new();
+    let mut moves: Vec<Move> = Vec::new();
+    // Every move is decided by the definitions alone and never by the target's guidance, so
+    // an entity built for two targets moves the same way for both and the same cycle is
+    // reported once however many targets reach it.
+    // @lfy def/generation/main.lfy:plan
+    let mut problems: Vec<Problem> = Vec::new();
 
     for (target_index, target) in workspace.targets.iter().enumerate() {
         // Selection: which files give a unit, and with which entities.
@@ -408,12 +504,31 @@ pub fn plan(
             local.push((file_index, entities));
         }
 
-        // Dependencies, as positions among this target's units.
+        // Dependencies the uses give, as positions among this target's units.
         // @lfy def/generation/main.lfy:plan
-        let dependencies: Vec<Vec<usize>> = local
+        let uses: Vec<Vec<usize>> = local
             .iter()
             .map(|(file_index, _)| dependencies_of(workspace, *file_index, &unit_of_file))
             .collect();
+
+        // Cycles among the units of this target are resolved before anything else is
+        // derived from them: a move changes which entities a unit holds, and so its
+        // dependencies, its text, and its reason.
+        // @lfy def/generation/main.lfy:plan
+        let files: Vec<usize> = local.iter().map(|(file_index, _)| *file_index).collect();
+        let own: Vec<Vec<EntityId>> = local.iter().map(|(_, entities)| entities.clone()).collect();
+        let mut entities = own.clone();
+        let mut dependencies: Vec<Vec<usize>> = Vec::new();
+        let mut local_moves: Vec<Moved> = Vec::new();
+        resolve_cycles(
+            workspace,
+            &files,
+            &uses,
+            &mut entities,
+            &mut dependencies,
+            &mut local_moves,
+            &mut problems,
+        );
 
         // Order: each unit after its dependencies, otherwise in file order.
         // @lfy def/generation/main.lfy:plan
@@ -425,15 +540,29 @@ pub fn plan(
         }
 
         for &item in &order {
-            let (file_index, entities) = &local[item];
-            let file = &workspace.files[*file_index];
+            let file_index = files[item];
+            let file = &workspace.files[file_index];
+            // What the file declared and no longer holds, and what moved into it, in the
+            // order the moves were made. @lfy def/generation/main.lfy:plan
+            let moved_out: Vec<EntityId> = own[item]
+                .iter()
+                .copied()
+                .filter(|entity| !entities[item].contains(entity))
+                .collect();
+            let moved_in: Vec<EntityId> = entities[item]
+                .iter()
+                .copied()
+                .filter(|entity| !own[item].contains(entity))
+                .collect();
             units.push(Unit {
                 target: target_index,
-                file: *file_index,
-                entities: entities.clone(),
+                file: file_index,
+                entities: entities[item].clone(),
                 // The program's files run parallel to the workspace's, so a file's index
                 // is the index of the file lowered from it.
-                lowered: *file_index,
+                lowered: file_index,
+                // @lfy def/generation/main.lfy:plan
+                text: unit_text(model, program, file_index, &moved_out, &moved_in),
                 stem: stem_of(&file.path, &workspace.source_directory), // @lfy def/generation/main.lfy:plan
                 dependencies: dependencies[item].iter().map(|&d| position[d]).collect(),
                 // @lfy def/generation/main.lfy:plan
@@ -443,6 +572,15 @@ pub fn plan(
                     .cloned()
                     .collect(),
                 reason: None,
+            });
+        }
+        // @lfy def/generation/main.lfy:plan
+        for moved in local_moves {
+            moves.push(Move {
+                entities: moved.entities,
+                origin: position[moved.origin],
+                into: position[moved.into],
+                cause: moved.cause,
             });
         }
     }
@@ -459,9 +597,449 @@ pub fn plan(
         units[index].reason = reason_of(program, &units, &signatures, index, requested, violated);
     }
 
-    let batches = batches_of(program, &units);
+    let batches = batches_of(&units);
     // @lfy def/generation/main.lfy:plan
-    (lowered, Plan { units, batches })
+    (
+        lowered,
+        Plan {
+            units,
+            moves,
+            problems,
+            batches,
+        },
+    )
+}
+
+/// One move, with the units it is between given as positions among one target's units: what
+/// [`resolve_cycles`] records before the units are ordered.
+// @lfy def/generation/main.lfy:plan
+struct Moved {
+    entities: Vec<EntityId>,
+    origin: usize,
+    into: usize,
+    cause: String,
+}
+
+/// Entities moved between the units of one target until no two of them reach each other,
+/// with the dependencies the last round left.
+///
+/// A unit depends on the unit of each file its file uses and on every unit holding an entity
+/// its entities reach, and on the unit an entity of it moved into. A cycle is two or more
+/// units each of which depends on every other, directly or through other units. Its lowest
+/// file is the file of one of its units that the file of every other unit of the cycle uses,
+/// directly or through other files; every entity of another unit of the cycle that an entity
+/// of the lowest file's unit reaches moves into the lowest file's unit, and each unit it
+/// leaves gives one move. A cycle no file of which is used by every other leaves one problem
+/// and nothing moves for it.
+// Decision: when more than one file of a cycle is used by every other — which only a cycle
+// among uses can give, and which no move resolves — the first in file order is taken as the
+// lowest, so the plan is the same however the files were visited.
+// @lfy def/generation/main.lfy:plan
+fn resolve_cycles(
+    workspace: &Workspace,
+    files: &[usize],
+    uses: &[Vec<usize>],
+    entities: &mut [Vec<EntityId>],
+    dependencies: &mut Vec<Vec<usize>>,
+    moved: &mut Vec<Moved>,
+    problems: &mut Vec<Problem>,
+) {
+    let model = &workspace.model;
+    // A cycle that gives no move is left as it is, so the rounds end.
+    // @lfy def/generation/main.lfy:plan
+    let mut settled: Vec<Vec<usize>> = Vec::new();
+    loop {
+        *dependencies = (0..files.len())
+            .map(|unit| {
+                let mut out = uses[unit].clone();
+                // @lfy def/generation/main.lfy:plan
+                let reached = reached_by(model, &entities[unit]);
+                for (other, held) in entities.iter().enumerate() {
+                    if other != unit
+                        && !out.contains(&other)
+                        && held.iter().any(|entity| reached.contains(entity))
+                    {
+                        out.push(other);
+                    }
+                }
+                // @lfy def/generation/main.lfy:plan
+                for record in moved.iter().filter(|record| record.origin == unit) {
+                    if !out.contains(&record.into) {
+                        out.push(record.into);
+                    }
+                }
+                out
+            })
+            .collect();
+
+        let mut again = false;
+        // @lfy def/generation/main.lfy:plan
+        for cycle in cycles(dependencies) {
+            if settled.contains(&cycle) {
+                continue;
+            }
+            // @lfy def/generation/main.lfy:plan
+            let Some(lowest) = lowest_file(workspace, files, &cycle) else {
+                // @lfy def/generation/main.lfy:plan
+                let problem = cycle_problem(workspace, files, entities, &cycle);
+                if !problems.contains(&problem) {
+                    problems.push(problem);
+                }
+                settled.push(cycle);
+                continue;
+            };
+            // @lfy def/generation/main.lfy:plan
+            let reached = reached_by(model, &entities[lowest]);
+            let mut made = false;
+            for &other in cycle.iter().filter(|&&unit| unit != lowest) {
+                let moving: Vec<EntityId> = entities[other]
+                    .iter()
+                    .copied()
+                    .filter(|entity| reached.contains(entity))
+                    .collect();
+                if moving.is_empty() {
+                    continue;
+                }
+                // @lfy def/generation/main.lfy:plan
+                let cause = cause_of(model, &entities[lowest], moving[0]);
+                entities[other].retain(|entity| !moving.contains(entity));
+                entities[lowest].extend(moving.iter().copied());
+                moved.push(Moved {
+                    entities: moving,
+                    origin: other,
+                    into: lowest,
+                    cause,
+                });
+                made = true;
+            }
+            if made {
+                again = true;
+                break;
+            }
+            // A cycle among uses that no reaching accompanies adds nothing: the uses
+            // themselves are a problem the workspace already holds.
+            // @lfy def/generation/main.lfy:plan
+            settled.push(cycle);
+        }
+        if !again {
+            return;
+        }
+    }
+}
+
+/// Every group of two or more items each of which depends on every other, directly or
+/// through other items, each item in at most one group and the groups in item order.
+// @lfy def/generation/main.lfy:plan
+fn cycles(dependencies: &[Vec<usize>]) -> Vec<Vec<usize>> {
+    let count = dependencies.len();
+    let mut reaches = vec![vec![false; count]; count];
+    for (item, row) in dependencies.iter().enumerate() {
+        for &dependency in row {
+            reaches[item][dependency] = true;
+        }
+    }
+    for through in 0..count {
+        for item in 0..count {
+            if reaches[item][through] {
+                let onward = reaches[through].clone();
+                for (to, further) in onward.iter().enumerate() {
+                    if *further {
+                        reaches[item][to] = true;
+                    }
+                }
+            }
+        }
+    }
+    let mut out: Vec<Vec<usize>> = Vec::new();
+    let mut grouped = vec![false; count];
+    for item in 0..count {
+        if grouped[item] {
+            continue;
+        }
+        let group: Vec<usize> = (0..count)
+            .filter(|&other| other == item || (reaches[item][other] && reaches[other][item]))
+            .collect();
+        for &other in &group {
+            grouped[other] = true;
+        }
+        if group.len() > 1 {
+            out.push(group);
+        }
+    }
+    out
+}
+
+/// The unit of a cycle whose file the file of every other unit of the cycle uses, directly or
+/// through other files; the first such in file order, and `None` when there is none.
+// @lfy def/generation/main.lfy:plan
+fn lowest_file(workspace: &Workspace, files: &[usize], cycle: &[usize]) -> Option<usize> {
+    let mut candidates: Vec<usize> = cycle
+        .iter()
+        .copied()
+        .filter(|&lowest| {
+            cycle.iter().all(|&other| {
+                other == lowest || used_by(workspace, files[other], files[lowest])
+            })
+        })
+        .collect();
+    candidates.sort_by_key(|&unit| files[unit]);
+    candidates.first().copied()
+}
+
+/// Whether one file uses another, directly or through other files.
+// @lfy def/generation/main.lfy:plan
+fn used_by(workspace: &Workspace, from: usize, to: usize) -> bool {
+    let mut seen: Vec<usize> = vec![from];
+    let mut next = 0;
+    while next < seen.len() {
+        let file = seen[next];
+        next += 1;
+        let source = workspace.files[file].source;
+        for used in workspace.model.sources[source].uses.iter().flatten() {
+            let Some(index) = workspace.files.iter().position(|file| &file.path == used) else {
+                continue;
+            };
+            if index == to {
+                return true;
+            }
+            if !seen.contains(&index) {
+                seen.push(index);
+            }
+        }
+    }
+    false
+}
+
+/// `Move.cause`: the member, parameter, or output of an entity of the receiving unit whose
+/// type reaches the first entity moved, spelled as the owner's identifier, a dot, and the
+/// member's or parameter's name, or the owner's identifier alone for an output.
+// @lfy def/generation/main.lfy:plan
+fn cause_of(model: &Model, holders: &[EntityId], moved: EntityId) -> String {
+    for &owner in holders {
+        let name = model.entities[owner]
+            .identifier
+            .clone()
+            .unwrap_or_default();
+        for member in all_members(model, owner) {
+            if reaches(model, model.entities[member].ty.as_ref(), moved) {
+                let member = model.entities[member]
+                    .identifier
+                    .clone()
+                    .unwrap_or_default();
+                return format!("{name}.{member}");
+            }
+        }
+        for &symbol in model.entities[owner].parameters() {
+            let parameter = &model.symbols[symbol];
+            if reaches(
+                model,
+                model.entities[parameter.entity].ty.as_ref(),
+                moved,
+            ) {
+                return format!("{name}.{}", parameter.name);
+            }
+        }
+        if reaches(model, model.entities[owner].output(), moved) {
+            return name;
+        }
+    }
+    String::new()
+}
+
+/// The problem a cycle no file of which is used by every other leaves: it names every file of
+/// the cycle, and sits at the first declaration, in file order and then source order, of a
+/// member, parameter, or output whose type reaches an entity of another file of the cycle.
+// @lfy def/generation/main.lfy:plan
+fn cycle_problem(
+    workspace: &Workspace,
+    files: &[usize],
+    entities: &[Vec<EntityId>],
+    cycle: &[usize],
+) -> Problem {
+    let model = &workspace.model;
+    let mut order: Vec<usize> = cycle.to_vec();
+    order.sort_by_key(|&unit| files[unit]);
+    let paths: Vec<String> = order
+        .iter()
+        .map(|&unit| workspace.files[files[unit]].path.clone())
+        .collect();
+    let message = format!(
+        "{} reach each other, and no file of the cycle is used by every other, so no entity of \
+         it can move into the lowest file",
+        paths.join(" and ")
+    );
+    let elsewhere: Vec<EntityId> = order
+        .iter()
+        .flat_map(|&unit| entities[unit].iter().copied())
+        .collect();
+    // Every declaration that reaches across the cycle, and then the first of them in file
+    // order and, within one file, in source order.
+    // @lfy def/generation/main.lfy:plan
+    let mut candidates: Vec<NodeRef> = Vec::new();
+    let mut fallback: Option<NodeRef> = None;
+    for &unit in &order {
+        for &owner in &entities[unit] {
+            let declared = model.entities[owner].file;
+            let foreign = |entity: &EntityId| {
+                elsewhere.contains(entity) && model.entities[*entity].file != declared
+            };
+            fallback = fallback.or(model.entities[owner].node);
+            for member in all_members(model, owner) {
+                if named_entities_of(model, model.entities[member].ty.as_ref())
+                    .iter()
+                    .any(foreign)
+                    && let Some(node) = model.entities[member].node
+                {
+                    candidates.push(node);
+                }
+            }
+            for &symbol in model.entities[owner].parameters() {
+                let parameter = model.symbols[symbol].entity;
+                if named_entities_of(model, model.entities[parameter].ty.as_ref())
+                    .iter()
+                    .any(foreign)
+                    && let Some(node) = model.entities[parameter].node
+                {
+                    candidates.push(node);
+                }
+            }
+            if named_entities_of(model, model.entities[owner].output())
+                .iter()
+                .any(foreign)
+                && let Some(node) = model.entities[owner].node
+            {
+                candidates.push(node);
+            }
+        }
+    }
+    let place = |node: &NodeRef| {
+        (
+            workspace
+                .files
+                .iter()
+                .position(|file| file.source == node.file)
+                .unwrap_or(usize::MAX),
+            node.index,
+        )
+    };
+    candidates.sort_by_key(place);
+    Problem {
+        node: candidates
+            .first()
+            .copied()
+            .or(fallback)
+            .unwrap_or(NodeRef { file: 0, index: 0 }),
+        message,
+    }
+}
+
+/// Whether a type reaches an entity: the entity is named by the type, or by the type of a
+/// member, parameter, or output of something the type names, however deep.
+// @lfy def/generation/main.lfy:plan
+fn reaches(model: &Model, ty: Option<&TypeRef>, entity: EntityId) -> bool {
+    let named = named_entities_of(model, ty);
+    named.contains(&entity) || closure(model, &named).contains(&entity)
+}
+
+/// Every entity a type names, type arguments included.
+// @lfy def/generation/main.lfy:plan
+fn named_entities_of(model: &Model, ty: Option<&TypeRef>) -> Vec<EntityId> {
+    let mut out = Vec::new();
+    if let Some(ty) = ty {
+        type_entities(model, ty, &mut out);
+    }
+    out
+}
+
+/// Every entity one type names, type arguments included, appended.
+// @lfy def/generation/main.lfy:plan
+fn type_entities(model: &Model, ty: &TypeRef, out: &mut Vec<EntityId>) {
+    match ty {
+        TypeRef::Entity(entity) | TypeRef::Predicate(entity) => {
+            if out.contains(entity) {
+                return;
+            }
+            out.push(*entity);
+            // @lfy def/generation/main.lfy:plan
+            for argument in model.type_arguments(*entity) {
+                type_entities(model, &argument, out);
+            }
+        }
+        TypeRef::List(item) => type_entities(model, item, out),
+        TypeRef::Union(items) => {
+            for item in items {
+                type_entities(model, item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Every entity the types of one entity name: its own type, the types of its members, those
+/// a trait added included, the types of its parameters, and its output. Only types are
+/// followed, so a reference in a definition, a criterion, or a test names nothing here.
+// @lfy def/generation/main.lfy:plan
+fn named_by(model: &Model, entity: EntityId, out: &mut Vec<EntityId>) {
+    let record = &model.entities[entity];
+    if let Some(ty) = &record.ty {
+        type_entities(model, ty, out);
+    }
+    if let Some(output) = record.output() {
+        type_entities(model, output, out);
+    }
+    for &symbol in record.parameters() {
+        if let Some(ty) = &model.entities[model.symbols[symbol].entity].ty {
+            type_entities(model, ty, out);
+        }
+    }
+    // @lfy def/generation/main.lfy:plan
+    for member in all_members(model, entity) {
+        if let Some(ty) = &model.entities[member].ty {
+            type_entities(model, ty, out);
+        }
+    }
+}
+
+/// The members an entity declares and the members every trait applied to it added, each
+/// once, the entity's own first.
+// @lfy def/generation/main.lfy:plan
+fn all_members(model: &Model, entity: EntityId) -> Vec<EntityId> {
+    let mut out = members_of(model, entity);
+    for applied in &model.entities[entity].traits {
+        for member in members_of(model, applied.entity) {
+            if !out.contains(&member) {
+                out.push(member);
+            }
+        }
+    }
+    out
+}
+
+/// Every entity a set of entities reaches: what their types name, and what those name, until
+/// nothing new appears.
+// @lfy def/generation/main.lfy:plan
+fn closure(model: &Model, named: &[EntityId]) -> Vec<EntityId> {
+    let mut out: Vec<EntityId> = Vec::new();
+    let mut pending: Vec<EntityId> = named.to_vec();
+    while let Some(entity) = pending.pop() {
+        if out.contains(&entity) {
+            continue;
+        }
+        out.push(entity);
+        named_by(model, entity, &mut pending);
+    }
+    out
+}
+
+/// Every entity the entities of a unit reach: reaching is transitive, so what their types
+/// name is followed until nothing new appears.
+// @lfy def/generation/main.lfy:plan
+fn reached_by(model: &Model, roots: &[EntityId]) -> Vec<EntityId> {
+    let mut named = Vec::new();
+    for &root in roots {
+        named_by(model, root, &mut named);
+    }
+    closure(model, &named)
 }
 
 /// The entities of a file built for a target's marker, in file order.
@@ -629,9 +1207,10 @@ fn reason_of(
     if unit.outputs.is_empty() {
         return Some(Reason::Fresh);
     }
-    // The lowered text, not the source: an edit that leaves the lowered code the same, such
-    // as a comment, changes nothing. @lfy def/generation/main.lfy:plan
-    let hash = source_hash(&program.files[unit.lowered].text);
+    // The lowered text the unit compiles, not the source: an edit that leaves the lowered
+    // code the same, such as a comment, changes nothing.
+    // @lfy def/generation/main.lfy:plan
+    let hash = source_hash(&unit.text);
     if unit.outputs.iter().any(|output| output.hash != hash) {
         return Some(Reason::Changed);
     }
@@ -671,7 +1250,7 @@ fn reason_of(
 /// dependencies, every batch comes after the batches holding the dependencies of its
 /// units.
 // @lfy def/generation/main.lfy:plan
-fn batches_of(program: &Program, units: &[Unit]) -> Vec<Batch> {
+fn batches_of(units: &[Unit]) -> Vec<Batch> {
     // Decision: the criteria give one guidance and one set of native dependencies per
     // request, so a batch holds units of one target; two targets never share a batch even
     // when their stems agree.
@@ -681,8 +1260,9 @@ fn batches_of(program: &Program, units: &[Unit]) -> Vec<Batch> {
         if unit.reason.is_none() {
             continue; // @lfy def/generation/main.lfy:plan
         }
-        // The source a request carries is the lowered text, so that is what is measured.
-        let characters = program.files[unit.lowered].text.chars().count();
+        // The source a request carries is the unit's lowered text, so that is what is
+        // measured.
+        let characters = unit.text.chars().count();
         let joins = batches.last().is_some_and(|open| {
             let first = &units[open.units[0]];
             // Decision: the exception waives the directory, not the size of a batch; a
@@ -799,10 +1379,7 @@ pub fn request(
         .iter()
         .map(|&index| {
             let unit = &plan.units[index];
-            (
-                workspace.files[unit.file].path.clone(),
-                program.files[unit.lowered].text.clone(),
-            )
+            (workspace.files[unit.file].path.clone(), unit.text.clone())
         })
         .collect();
     // @lfy def/generation/main.lfy:request
@@ -813,7 +1390,7 @@ pub fn request(
             let unit = &plan.units[index];
             (
                 workspace.files[unit.file].path.clone(),
-                local_requirements(&program.files[unit.lowered]),
+                unit.requirements(program),
             )
         })
         .collect();
@@ -1205,10 +1782,11 @@ fn instructions(
         if unit.entities.is_empty() {
             out.push_str("The unit has no entities.\n\n");
         }
+        write_moves(&mut out, workspace, plan, index);
         // Each entity's lowered code, and then, apart from the code, its local criteria and
         // tests, each on its own line with its id. @lfy def/generation/main.lfy:request
         for &entity in &unit.entities {
-            write_entity(&mut out, model, lowered, entity);
+            write_entity(&mut out, model, program, unit.lowered, entity);
         }
         // The criteria and tests of the file's own entity belong to no declaration of it.
         // @lfy def/generation/main.lfy:request
@@ -1389,11 +1967,76 @@ fn instructions(
     out
 }
 
+/// What moved into and out of one unit, in that unit's section of the instructions: which
+/// entities, from or into which unit, and because of which cause.
+// @lfy def/generation/main.lfy:request
+fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usize) {
+    let model = &workspace.model;
+    let spelled = |entities: &[EntityId]| -> String {
+        entities
+            .iter()
+            .map(|&entity| format!("`{}`", entity_name(model, entity)))
+            .collect::<Vec<String>>()
+            .join(", ")
+    };
+    // @lfy def/generation/main.lfy:request
+    let into: Vec<&Move> = plan
+        .moves
+        .iter()
+        .filter(|moved| moved.into == index)
+        .collect();
+    if !into.is_empty() {
+        out.push_str(
+            "These entities are compiled in this unit although another file declares them, because \
+             the two files would otherwise reach each other. Write them into this unit's outputs \
+             with markers naming the file that declares them. Wherever this unit's code needs only \
+             them, a `use` of that file is satisfied by them here and never by importing that \
+             file.\n",
+        );
+        for moved in into {
+            let origin = &plan.units[moved.origin];
+            let _ = writeln!(
+                out,
+                "- {} from `{}`, because of `{}`.",
+                spelled(&moved.entities),
+                workspace.files[origin.file].path,
+                moved.cause
+            );
+        }
+        out.push('\n');
+    }
+    // @lfy def/generation/main.lfy:request
+    let outward: Vec<&Move> = plan
+        .moves
+        .iter()
+        .filter(|moved| moved.origin == index)
+        .collect();
+    if !outward.is_empty() {
+        out.push_str(
+            "These entities this file declares are compiled in another unit, because the two files \
+             would otherwise reach each other. Import them from that unit's outputs and never write \
+             them again, and make each of them available from this unit's outputs under the name \
+             and path it would have had, so that code naming it here still finds it.\n",
+        );
+        for moved in outward {
+            let into = &plan.units[moved.into];
+            let _ = writeln!(
+                out,
+                "- {} in the unit `{}` (`{}`).",
+                spelled(&moved.entities),
+                into.stem,
+                workspace.files[into.file].path
+            );
+        }
+        out.push('\n');
+    }
+}
+
 /// One entity of a unit: its name, its kind, its definition, its type, its lowered code,
 /// and then, apart from the code, its local criteria and tests, each on its own line with
 /// its id.
 // @lfy def/generation/main.lfy:request
-fn write_entity(out: &mut String, model: &Model, lowered: &LoweredFile, entity: EntityId) {
+fn write_entity(out: &mut String, model: &Model, program: &Program, lowered: usize, entity: EntityId) {
     let record = &model.entities[entity];
     let _ = writeln!(
         out,
@@ -1407,13 +2050,17 @@ fn write_entity(out: &mut String, model: &Model, lowered: &LoweredFile, entity: 
     if let Some(ty) = &record.ty {
         let _ = writeln!(out, "Type: `{}`\n", model::type_text(model, ty));
     }
+    // An entity moved into the unit is declared in the file it came from, so its code is
+    // looked for across the program when the unit's own lowered file does not hold it.
     // @lfy def/generation/main.lfy:request
-    if let Some(node) = lowered_node_of(lowered, entity) {
+    if let Some(node) = lowered_node_of(&program.files[lowered], entity)
+        .or_else(|| lowered_declaration(program, entity))
+    {
         out.push_str("Lowered code:\n\n```elfie\n");
         out.push_str(lowered_code(model, node).trim());
         out.push_str("\n```\n\n");
     }
-    write_requirements(out, &entity_requirements(lowered, entity));
+    write_requirements(out, &declared_requirements(program, lowered, entity));
 }
 
 /// Every criterion and test of a list, criteria then tests, each on one line beginning with
@@ -1670,10 +2317,21 @@ pub fn accept(
     // naming this unit's file is a claim this unit makes and only its id is checked here.
     // @lfy def/generation/main.lfy:accept
     let global_ids: Vec<&str> = request.globals.iter().map(Requirement::id).collect();
-    let local_ids: Vec<String> = local_requirements(&program.files[planned.lowered])
+    let local_ids: Vec<String> = planned
+        .requirements(program)
         .iter()
         .map(|requirement| requirement.id().to_string())
         .collect();
+    // The files whose markers are this unit's claims: its own, and the file of each entity
+    // moved into it, since a moved entity keeps the marker of the file that declares it.
+    // @lfy def/generation/main.lfy:accept
+    let mut claimed: Vec<&str> = vec![&file.path];
+    for moved in plan.moves.iter().filter(|moved| moved.into == unit) {
+        let path = &workspace.files[plan.units[moved.origin].file].path;
+        if !claimed.contains(&path.as_str()) {
+            claimed.push(path);
+        }
+    }
 
     // Each marker as the compiler wrote it, beside the one the model resolved it to: the
     // first says where the marker sits in the text, the second is what is recorded.
@@ -1697,9 +2355,9 @@ pub fn accept(
             // the ids it spells, or a file outside the program, which is a fixture or prose
             // claiming nothing about it — spells no id this unit answers for, so none of
             // those is checked.
-            // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
+            // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
             if let Some(requirement) = &marker.requirement
-                && marker.file == file.path
+                && claimed.contains(&marker.file.as_str())
                 && !local_ids.iter().any(|id| id == requirement)
                 && !global_ids.iter().any(|&id| id == requirement)
             {
@@ -1730,14 +2388,17 @@ pub fn accept(
         let Some((first, last)) = declaration_lines(model, entity) else {
             continue;
         };
-        let covered = normalized.iter().flatten().any(|(_, marker)| {
-            marker.file == file.path && (first..=last).contains(&marker.line)
-        });
+        // An entity moved into the unit is marked with the file that declares it, not with
+        // the unit's own file. @lfy def/generation/main.lfy:accept
+        let declared = declaring_path(model, entity).unwrap_or(&file.path);
+        let covered = normalized
+            .iter()
+            .flatten()
+            .any(|(_, marker)| marker.file == *declared && (first..=last).contains(&marker.line));
         if !covered {
             problems.push(format!(
-                "the entity {} of {} (lines {first} to {last}) has no marker in any output",
+                "the entity {} of {declared} (lines {first} to {last}) has no marker in any output",
                 entity_name(model, entity),
-                file.path
             ));
         }
     }
@@ -1752,8 +2413,8 @@ pub fn accept(
     }
 
     // Nothing of a source map comes from the compiler's text except the names it spelled.
-    // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
-    let hash = source_hash(&program.files[planned.lowered].text);
+    // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
+    let hash = source_hash(&planned.text);
     let requirements = requirements_hash(program, planned);
     let signature = interface_signature(workspace, planned);
     let dependencies: BTreeMap<String, String> = planned
@@ -1907,8 +2568,15 @@ fn named_entities(model: &Model, source: FileId, extra: &[EntityId]) -> Vec<(Str
             }
         }
     }
+    // An entity moved into the unit is declared in another file, and is named by a marker of
+    // that file; only what this file declares belongs to its table.
+    // @lfy def/generation/main.lfy:accept
     for &entity in extra {
-        if model.entities[entity].node.is_some() && !declarations.contains(&entity) {
+        let record = &model.entities[entity];
+        if record.node.is_some()
+            && record.file == Some(source)
+            && !declarations.contains(&entity)
+        {
             declarations.push(entity);
         }
     }
@@ -1969,6 +2637,13 @@ fn rewrite_markers(output: &Output, markers: &[(Marker, Marker)]) -> Output {
         path: output.path.clone(),
         text,
     }
+}
+
+/// The path of the file that declares an entity; `None` for an entity with no node.
+// @lfy def/generation/main.lfy:accept
+fn declaring_path(model: &Model, entity: EntityId) -> Option<&str> {
+    let node = model.entities[entity].node?;
+    Some(&model.sources.get(node.file)?.path)
 }
 
 /// The first line of an entity's declaring node; `None` for an entity with no node.
@@ -4083,7 +4758,7 @@ mod tests {
         assert_eq!(plan.units.len(), 2);
         // Source, requirements, and every dependency's interface all match what the outputs
         // were generated against, so neither unit has a reason.
-        // @lfy def/generation/main.lfy:plan#plan:plan:06b6862e16f0aec536deaa09240adb61e709acb77652a33463a2a03ce2fcfa6d
+        // @lfy def/generation/main.lfy:plan#plan:plan:40f45c8240354c40ed6f2a0ef91f2c24787a209455f9f1a93d9e45ae9c1b5dd7
         assert!(
             plan.units.iter().all(|unit| unit.reason.is_none()),
             "{:?}",
@@ -4123,7 +4798,7 @@ mod tests {
         let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
         let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
         // The lowered text differs from what the output was generated from.
-        // @lfy def/generation/main.lfy:plan#plan:plan:9e89bebbb10531378f7a43dc25523a6d46c0679e429d287bddc2d3c54d5017c4
+        // @lfy def/generation/main.lfy:plan#plan:plan:699a0b8df170aed10dd0c3f2cdf3492c7eff895d33b7e542b8928c357895c458
         assert_eq!(b.reason, Some(Reason::Changed));
         // b is planned only for itself: its interface is the same.
         // @lfy def/generation/main.lfy:plan#plan:plan:21c936e9eed81333fa424b811e0e619a14ec0d30a43b4bbe09f654365cf1e4f5
@@ -4153,7 +4828,7 @@ mod tests {
         let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
         assert_eq!(b.reason, Some(Reason::Changed));
         // b's interface changed, so what was generated against it is planned again.
-        // @lfy def/generation/main.lfy:plan#plan:plan:b01cae3d6238ad2ce24a209d8745a84fffa0ff56a165c786e1885f9ca6c29ce2
+        // @lfy def/generation/main.lfy:plan#plan:plan:772d227fa53dc6d543215df30f2905bc04c628366f07dcbff492bb5ce7333638
         assert_eq!(a.reason, Some(Reason::Dependency));
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
         assert_eq!(plan.batches[0].units, [b_index, a_index]);
@@ -4299,6 +4974,228 @@ mod tests {
                 .iter()
                 .all(|unit| unit.reason == Some(Reason::Fresh))
         );
+    }
+
+    /// `def/b.lfy` declares `B`; `def/a.lfy` uses it and declares `A`, whose member is a
+    /// `B`, and `C`; `def/c.lfy` applies to `B` a trait adding a member of type `C`. So `A`
+    /// reaches `B` and `B` reaches `C`, and the two units reach each other. `def/b.lfy` is
+    /// the lowest file of the cycle, since `def/a.lfy` uses it and it uses nothing, so `C`
+    /// moves into its unit.
+    fn a_cycle() -> Fixture {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("def/b.lfy", "d B: `A b` {\n  $x = string;\n}\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n}\n",
+            )
+            .write(
+                "def/c.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait holder {\n  $c = C;\n}\nholder.apply(B);\n",
+            );
+        fixture
+    }
+
+    // @lfy def/generation/main.lfy:plan#plan:plan:2cdb31cbcfc707bca4660df6103872460798752df77d09762511674b59705fd1
+    // @lfy def/generation/main.lfy:plan#plan:plan:a7e951707af08726feeec4863ba2c476ce86be7351a7fceb0a1b5c67107175d2
+    // @lfy def/generation/main.lfy:plan#plan:plan:d81d1ef4e67de0793b9e949537e444534d2ad6ac02e6edc4bc79b50d8b4d84e1
+    // @lfy def/generation/main.lfy:plan#plan:plan:f0fa12d22d2eb82c14ea260d5158bc28c7ab1c25c0d1c4bd93ccb0af875bd72b
+    // @lfy def/generation/main.lfy:plan#plan:plan:acd15bee903685dcff92637045899bf35f12aa97b8c925237c64e91e9a64045e
+    // @lfy def/generation/main.lfy:plan#plan:plan:b53913275f65a5f11119db04a67b103968f296b9ea2efe9099c069165c26c54b
+    #[test]
+    fn a_cycle_moves_what_the_lowest_file_reaches_into_the_lowest_files_unit() {
+        let fixture = a_cycle();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        assert_eq!(plan.units.len(), 2, "{:?}", plan.units);
+        let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+
+        // One move, of `C` from the unit of `def/a.lfy` into the unit of `def/b.lfy`, caused
+        // by the member the trait added to `B`.
+        // @lfy def/generation/main.lfy:plan
+        assert_eq!(plan.problems, []);
+        assert_eq!(plan.moves.len(), 1, "{:?}", plan.moves);
+        let moved = &plan.moves[0];
+        assert_eq!(names(&workspace, &moved.entities), ["C"]);
+        assert_eq!((moved.origin, moved.into), (a_index, b_index));
+        assert_eq!(moved.cause, "B.c");
+
+        // The moved entity is of the unit it moved into and of no other, its own file order
+        // first and the moved entity after it.
+        // @lfy def/generation/main.lfy:plan
+        assert_eq!(names(&workspace, &b.entities), ["B", "C"]);
+        assert_eq!(names(&workspace, &a.entities), ["A"]);
+        // The unit it left depends on the unit it moved into, and the cycle is gone.
+        // @lfy def/generation/main.lfy:plan
+        assert_eq!(a.dependencies, [b_index]);
+        assert!(b.dependencies.is_empty(), "{:?}", b.dependencies);
+        assert!(b_index < a_index);
+        assert!(
+            plan.units
+                .iter()
+                .all(|unit| unit.reason == Some(Reason::Fresh))
+        );
+
+        // The text each unit compiles follows its entities: `C` is in the text of the unit it
+        // moved into and in no other. @lfy def/generation/main.lfy:plan
+        assert!(b.text.contains("d C"), "{}", b.text);
+        assert!(!a.text.contains("d C"), "{}", a.text);
+        assert!(a.text.contains("d A"), "{}", a.text);
+    }
+
+    /// `def/a.lfy` and `def/b.lfy` reach each other through members a trait of `def/t.lfy`
+    /// added, and neither uses the other, so no file of the cycle is used by every other.
+    // @lfy def/generation/main.lfy:plan#plan:plan:18d3b4b4669ead4158d75ec75d0b201f947d011f531992f220dc388096694e24
+    // @lfy def/generation/main.lfy:plan#plan:plan:787934ba8c71768cd28052de5fa8da71a7a34ee8c9b4c6dabc87fb6f5826ea01
+    #[test]
+    fn a_cycle_with_no_lowest_file_leaves_one_problem_and_moves_nothing() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("def/a.lfy", "d A {\n  $x = string;\n}\n")
+            .write("def/b.lfy", "d B {\n  $x = string;\n}\n")
+            .write(
+                "def/t.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait toB {\n  $b = B;\n}\n\ntrait toA {\n  $a = A;\n}\ntoB.apply(A);\ntoA.apply(B);\n",
+            );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        // Each reaches the other, and neither file uses the other.
+        assert!(a.dependencies.contains(&b_index));
+        assert!(b.dependencies.contains(&a_index));
+        assert!(!used_by(&workspace, a.file, b.file));
+        assert!(!used_by(&workspace, b.file, a.file));
+
+        // Nothing moves, and one problem names every file of the cycle.
+        // @lfy def/generation/main.lfy:plan
+        assert_eq!(plan.moves, []);
+        assert_eq!(names(&workspace, &plan.units[a_index].entities), ["A"]);
+        assert_eq!(names(&workspace, &plan.units[b_index].entities), ["B"]);
+        assert_eq!(plan.problems.len(), 1, "{:?}", plan.problems);
+        let problem = &plan.problems[0];
+        assert!(problem.message.contains("def/a.lfy"), "{problem:?}");
+        assert!(problem.message.contains("def/b.lfy"), "{problem:?}");
+        // It sits at the member of `A` whose type reaches `B`: the first declaration of the
+        // cycle, in file order and then source order, that reaches across it.
+        // @lfy def/generation/main.lfy:plan
+        let member = workspace
+            .model
+            .entities
+            .iter()
+            .position(|entity| {
+                entity.node == Some(problem.node) && entity.kind == EntityKind::Member
+            })
+            .expect("the problem sits at a member");
+        assert_eq!(
+            workspace.model.entities[member].identifier.as_deref(),
+            Some("b")
+        );
+    }
+
+    /// Two cycles are resolved in two rounds, each round reading the dependencies the last
+    /// round left; afterwards no two units of a target reach each other.
+    // @lfy def/generation/main.lfy:plan#plan:plan:182d8e54974ab9318d1139f6593e0582dbf0b55acc2a9a4f53b1d6b0e396567a
+    #[test]
+    fn moves_repeat_until_no_cycle_is_left() {
+        let fixture = Fixture::with_rust_target();
+        for pair in ["1", "2"] {
+            fixture
+                .write(
+                    &format!("def/b{pair}.lfy"),
+                    &format!("d B{pair} {{\n  $x = string;\n}}\n"),
+                )
+                .write(
+                    &format!("def/a{pair}.lfy"),
+                    &format!(
+                        "use \"./b{pair}\";\n\nd A{pair} {{\n  $b = B{pair};\n}}\n\nd C{pair} {{\n  $x = string;\n}}\n"
+                    ),
+                );
+        }
+        fixture.write(
+            "def/t.lfy",
+            "use \"./a1\";\nuse \"./b1\";\nuse \"./a2\";\nuse \"./b2\";\n\ntrait h1 {\n  $c = C1;\n}\n\ntrait h2 {\n  $c = C2;\n}\nh1.apply(B1);\nh2.apply(B2);\n",
+        );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        assert_eq!(plan.problems, []);
+        assert_eq!(plan.moves.len(), 2, "{:?}", plan.moves);
+        for pair in ["1", "2"] {
+            let (_, b) = unit_of(&workspace, &plan, &format!("def/b{pair}.lfy"));
+            let (_, a) = unit_of(&workspace, &plan, &format!("def/a{pair}.lfy"));
+            assert_eq!(
+                names(&workspace, &b.entities),
+                [format!("B{pair}"), format!("C{pair}")]
+            );
+            assert_eq!(names(&workspace, &a.entities), [format!("A{pair}")]);
+        }
+        // Nothing is left that depends on something that depends on it.
+        // @lfy def/generation/main.lfy:plan
+        let dependencies: Vec<Vec<usize>> = plan
+            .units
+            .iter()
+            .map(|unit| unit.dependencies.clone())
+            .collect();
+        assert_eq!(cycles(&dependencies), Vec::<Vec<usize>>::new());
+    }
+
+    /// Reaching is read from the definitions alone, so an entity built for two targets moves
+    /// the same way for both.
+    // @lfy def/generation/main.lfy:plan#plan:plan:901dffe19bb11758217009988237c988533444c6a85da4d782be8342e83a1aa9
+    #[test]
+    fn every_move_is_the_same_for_every_target() {
+        let fixture = a_cycle();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{
+                    "output": "src",
+                    "dependencies": {
+                        "elfie": { "root": "lib" },
+                        "rust": { "root": "targets/rust" },
+                        "other": { "root": "targets/other" }
+                    },
+                    "targets": {
+                        "rust": { "package": "rust", "marker": "rust" },
+                        "other": { "package": "other", "marker": "other", "output": "other" }
+                    }
+                }"#,
+            )
+            .write(
+                "targets/other/main.lfy",
+                "/// Built elsewhere.\ntrait other extends target {\n}\nother.apply(global);\n",
+            );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_eq!(workspace.targets.len(), 2, "{:?}", workspace.problems);
+        let plan = plan_of(&program, &[], &[], &[]);
+        assert_eq!(plan.units.len(), 4, "{:?}", plan.units);
+        // One move per target, both of `C` and both into the unit of `def/b.lfy`.
+        // @lfy def/generation/main.lfy:plan
+        assert_eq!(plan.moves.len(), 2, "{:?}", plan.moves);
+        let moved: Vec<(Vec<String>, String, String)> = plan
+            .moves
+            .iter()
+            .map(|moved| {
+                (
+                    names(&workspace, &moved.entities),
+                    workspace.files[plan.units[moved.into].file].path.clone(),
+                    moved.cause.clone(),
+                )
+            })
+            .collect();
+        assert_eq!(moved[0], moved[1], "{moved:?}");
+        assert_eq!(moved[0].1, "def/b.lfy");
+        // The cycle is resolved for both, so neither target leaves a problem, and the one
+        // cycle is never reported twice. @lfy def/generation/main.lfy:plan
+        assert_eq!(plan.problems, []);
     }
 
     // @lfy def/generation/main.lfy:plan#plan:plan:68cc4a6ef4fd0e7da9d24e21b1ef05a1e1d173ad7313adf6c3971c21bd01bd3c
@@ -4491,7 +5388,7 @@ mod tests {
         let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
         let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
         // The lowered text is the same; only the ids of the local criteria differ.
-        // @lfy def/generation/main.lfy:plan#plan:plan:eebafe9d96e4636ac4b3c7588ef0769c1d0db7e587d42508eb5ff082b339c3df
+        // @lfy def/generation/main.lfy:plan#plan:plan:7725d70d35f6e8be6804e106099b40d9930e162127a1e2c046e3b3a2ec0ff846
         assert_eq!(b.reason, Some(Reason::Requirements));
         assert_eq!(a.reason, None);
         let map = maps.iter().find(|map| map.source == "def/b.lfy").unwrap();
@@ -4508,6 +5405,58 @@ mod tests {
             "{}",
             request.instructions
         );
+    }
+
+    /// A unit's local criteria and tests are those of each of its entities and of its file's
+    /// own entity, so moving an entity into another unit moves them with it: the receiving
+    /// unit holds them and the unit the entity left holds them no longer.
+    // @lfy def/generation/data.lfy:Unit#Unit:Unit:a71462ec6c4c1494654b6067e77067cac5154c77a93576479d51af4fa014244e
+    #[test]
+    fn a_units_requirements_are_its_entities_and_move_with_them() {
+        let fixture = a_and_b();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        let plan = plan_of(&program, &[], &[], &[]);
+        let ids = |unit: &Unit| {
+            unit.requirements(&program)
+                .iter()
+                .map(|requirement| requirement.id().to_string())
+                .collect::<Vec<String>>()
+        };
+        let (a_index, a_unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (b_index, b_unit) = unit_of(&workspace, &plan, "def/b.lfy");
+
+        // Of the entities of `def/b.lfy`, only `make` carries anything: one criterion and
+        // one test. `def/a.lfy` declares `A` alone, which carries neither.
+        let b_ids = ids(b_unit);
+        assert_eq!(b_ids.len(), 2);
+        assert!(
+            b_ids.iter().all(|id| id.starts_with("make:make:")),
+            "{b_ids:?}"
+        );
+        assert!(ids(a_unit).is_empty());
+
+        // `make` moved into the unit of `def/a.lfy`, as a cycle among the two files would
+        // move it: its criterion and its test are then that unit's, though its declaration
+        // is still in the file it came from, and the unit it left holds neither.
+        let make = *b_unit
+            .entities
+            .iter()
+            .find(|&&entity| entity_name(&workspace.model, entity) == "make")
+            .expect("make is an entity of def/b.lfy");
+        let mut moved = plan.clone();
+        moved.units[a_index].entities.push(make);
+        moved.units[b_index]
+            .entities
+            .retain(|&entity| entity != make);
+        moved.moves.push(Move {
+            entities: vec![make],
+            origin: b_index,
+            into: a_index,
+            cause: "A.b".to_string(),
+        });
+        assert_eq!(ids(&moved.units[a_index]), b_ids);
+        assert!(ids(&moved.units[b_index]).is_empty());
     }
 
     /// A stem the last global review found violated plans its unit again, and a request
@@ -4587,7 +5536,7 @@ mod tests {
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         let batch = &plan.batches[0];
         let request = request(&program, &plan,batch, &[], &BTreeMap::new());
-        // @lfy def/generation/main.lfy:request#request:request:5723990970e3d6af3ad300e749a7ad54b296bbbc6db38d3dbe14f175ffc5861e
+        // @lfy def/generation/main.lfy:request#request:request:113e7c98ca6101bebc1b4aa6b4d4687cbedcb8207e048edaa1c5855a3cbafc1b
         assert_eq!(request.batch, *batch);
         assert_eq!(request.batch.units, [b_index, a_index]);
         // The sources are the lowered text of each unit's file: the body of a fn is its
@@ -4950,6 +5899,62 @@ mod tests {
         assert!(text.contains("never edit their outputs"), "{text}");
     }
 
+    /// The section of a unit entities moved into says which they are, from which file, and
+    /// because of which cause, and the section of the unit they left says which they are and
+    /// which unit compiles them.
+    // @lfy def/generation/main.lfy:request#request:request:b0d84a09feb5618abeb062c9020ac327265ae43381d2c28fe2bd4082868e5f82
+    // @lfy def/generation/main.lfy:request#request:request:507042c08a431ff6775c733247ffd863a1243e818c8f160dd3e29de594e646aa
+    #[test]
+    fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
+        let fixture = a_cycle();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
+        let text = &request.instructions;
+
+        // In the section of `def/b.lfy`, which `C` moved into.
+        // @lfy def/generation/main.lfy:request
+        let into = text
+            .find("### `def/b.lfy`")
+            .expect("a section for def/b.lfy");
+        let out = text
+            .find("### `def/a.lfy`")
+            .expect("a section for def/a.lfy");
+        assert!(into < out, "{text}");
+        let moved_in = text
+            .find("- `C` from `def/a.lfy`, because of `B.c`.")
+            .unwrap_or_else(|| panic!("what moved into def/b.lfy's unit: {text}"));
+        assert!((into..out).contains(&moved_in), "{text}");
+        assert!(
+            text.contains("markers naming the file that declares them"),
+            "{text}"
+        );
+        assert!(
+            text.contains("never by importing that file"),
+            "{text}"
+        );
+
+        // In the section of `def/a.lfy`, which `C` moved out of.
+        // @lfy def/generation/main.lfy:request
+        let moved_out = text
+            .find("- `C` in the unit `b` (`def/b.lfy`).")
+            .unwrap_or_else(|| panic!("what moved out of def/a.lfy's unit: {text}"));
+        assert!(moved_out > out, "{text}");
+        assert!(text.contains("never write them again"), "{text}");
+        assert!(
+            text.contains("under the name and path it would have had"),
+            "{text}"
+        );
+
+        // The source of each unit is the text it compiles, so `C` is in the source of the
+        // unit it moved into and in no other. @lfy def/generation/main.lfy:request
+        assert!(request.sources["def/b.lfy"].contains("d C"), "{text}");
+        assert!(!request.sources["def/a.lfy"].contains("d C"), "{text}");
+    }
+
     // @lfy def/generation/main.lfy:request
     #[test]
     fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
@@ -5141,6 +6146,62 @@ mod tests {
         (plan, request, index)
     }
 
+    /// An entity moved into a unit is marked with the file that declares it, so a marker
+    /// naming that file covers it and the ids such a marker spells are this unit's.
+    // @lfy def/generation/main.lfy:accept#accept:accept:30f5c9fea521522b0db93130ff39c1ed29c688ede1875cc3e82bfa00376c059a
+    // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+    #[test]
+    fn a_moved_entity_is_marked_with_the_file_that_declares_it() {
+        let fixture = a_cycle();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
+        assert_eq!(names(&workspace, &unit.entities), ["B", "C"]);
+        let batch = Batch {
+            units: vec![index],
+            identifier: "b".to_string(),
+        };
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new());
+        let output = Output {
+            path: "src/b.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C\npub struct C;\n"
+                .to_string(),
+        };
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&output),
+        );
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        assert_eq!(
+            verdict.source_maps[0]
+                .markers
+                .iter()
+                .map(|marker| (marker.file.clone(), marker.entity.clone()))
+                .collect::<Vec<_>>(),
+            [
+                ("def/b.lfy".to_string(), Some("B".to_string())),
+                ("def/a.lfy".to_string(), Some("C".to_string())),
+            ]
+        );
+
+        // The id a marker naming the file of a moved entity spells is checked against this
+        // unit's criteria and tests. @lfy def/generation/main.lfy:accept
+        let wrong = Output {
+            path: "src/b.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C#C:C:ffff\npub struct C;\n"
+                .to_string(),
+        };
+        let verdict = accept(&program, &plan, &request, index, &[wrong]);
+        assert!(!verdict.accepted);
+        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
+        assert!(verdict.problems[0].contains("C:C:ffff"), "{:?}", verdict.problems);
+    }
+
     // @lfy def/generation/main.lfy:accept#accept:accept:499eff9789d84e951586fdadbe7b46cae6dc863092bfb6f280bd8ab26aba5483
     #[test]
     fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
@@ -5171,7 +6232,7 @@ mod tests {
         assert_eq!(map.output, "src/a.rs");
         assert_eq!(map.source, "def/a.lfy");
         // Every hash of the source map is derived here, never taken from the compiler's text.
-        // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
+        // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
         assert_eq!(map.hash, source_hash(&request.sources["def/a.lfy"]));
         assert_eq!(
             map.signature,
@@ -5456,7 +6517,7 @@ mod tests {
         // local criterion: the id belongs to that file's unit, so this unit does not check it.
         // An output shared by two units holds the other unit's markers and ids, and checking
         // them here would make the shared output unacceptable to one of them.
-        // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
+        // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
         let make = *b.entities.last().expect("make is an entity of b");
         let (criteria, _) = requirement_ids(&program.files[b.lowered], make);
         let output = named_output(&format!(
@@ -5468,7 +6529,7 @@ mod tests {
         // An id no file of the program knows is not checked either, when the marker names
         // another file: only a marker of this unit's own file makes a claim this unit answers
         // for.
-        // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
+        // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
         let output = named_output(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#make:make:nowhere\nfn make() {}\n",
         );
@@ -5479,7 +6540,7 @@ mod tests {
     /// A marker of the unit's own file may answer for a local criterion of the unit or for a
     /// global one, and for nothing else; the source map records the hash of the unit's
     /// requirement ids.
-    // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
+    // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
     #[test]
     fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_id() {
         let fixture = Fixture::with_rust_target();
@@ -5497,14 +6558,14 @@ mod tests {
 
         // An id of a local criterion and one of a global criterion are both known, so the
         // outputs are accepted and earn their source maps.
-        // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
+        // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
         let output = named_output(&format!(
             "// @lfy def/a.lfy:A#{}\npub struct A;\n// @lfy def/a.lfy:A#{global}\nfn holds() {{}}\n",
             local[0]
         ));
         let verdict = accept(&program, &plan, &request, index, &[output]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
-        // @lfy def/generation/main.lfy:accept#accept:accept:6a1ede84efd02401a68ed3e9a5852d6dfc704e582532c620de68595d4fe74150
+        // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
         assert_eq!(
             verdict.source_maps[0].requirements,
             requirements_hash(&program, unit)
@@ -5516,7 +6577,7 @@ mod tests {
 
         // An id of neither, on a marker of the unit's own file, is rejected by output line
         // and id.
-        // @lfy def/generation/main.lfy:accept#accept:accept:45ec36176d2c984237e6519d40944832cbc76e75c44d4a6e0ff356725704fe84
+        // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
         let output = named_output("// @lfy def/a.lfy:A#A:A:nowhere\npub struct A;\n");
         let verdict = accept(&program, &plan, &request, index, &[output]);
         assert!(!verdict.accepted);

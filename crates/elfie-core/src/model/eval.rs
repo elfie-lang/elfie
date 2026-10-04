@@ -2104,7 +2104,16 @@ impl Binder {
                 .unwrap_or_else(|| "anonymous".to_string()),
             TypeRef::Primitive(p) => (*p).to_string(),
             TypeRef::Literal(v) => self.to_text(v),
-            TypeRef::List(item) => format!("{}[]", self.type_text(item)),
+            // A union or a function type is wrapped in parentheses before the brackets,
+            // so the text reads back as the list of that whole type.
+            TypeRef::List(item) => {
+                let text = self.type_text(item);
+                if matches!(item.as_ref(), TypeRef::Union(_) | TypeRef::Function) {
+                    format!("({text})[]")
+                } else {
+                    format!("{text}[]")
+                }
+            }
             TypeRef::Union(items) => items
                 .iter()
                 .map(|i| self.type_text(i))

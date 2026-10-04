@@ -19,7 +19,8 @@ use "elfie/target/target";
 // Decision: a unit is one source file for one target. Outputs and source maps are per file, a
 // declaration's scope is its file, and a smaller unit would make the compiler merge into a file it
 // does not own, which is itself an act of generation. A larger unit would not fit a request, but
-// several units can share one: that is a batch.
+// several units can share one: that is a batch. The one exception is a cycle among files, which no
+// order of units can build: its entities move whole into the unit of the lowest file of the cycle.
 
 fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may rely on, as one text whose hash tells whether it changed` => string {
   @acceptanceCriteria
@@ -96,6 +97,16 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       situation = `A path in [[Source.uses]] of the unit's file names a file that has no unit for the same target`,
       behavior = `[[Unit.dependencies]] holds, in its place, the units the used file's own uses contribute, transitively`,
     })
+    .add({
+      behavior = [
+        `An entity reaches another when the other is named by its type, by the type of one of its members, a member a trait added included, by the type of one of its parameters, or by its output, type arguments included; reaching is transitive`,
+        `Only types are followed; a reference in a definition, a criterion, or a test reaches nothing`,
+      ],
+    })
+    .add({
+      situation = `An entity of the unit reaches an entity held by another unit of the same target`,
+      behavior = `[[Unit.dependencies]] holds that unit, whether or not the unit's file uses that unit's file`,
+    })
     .add({ behavior = `Each unit appears once among dependencies` })
     .add({
       situation = `There is a cycle among uses`,
@@ -103,6 +114,39 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     })
     .add({
       behavior = `[[Plan.units]] holds every unit of every target, each after its dependencies, otherwise in [[Workspace.targets]] then [[Workspace.files]] order`,
+    });
+
+  // Cycles
+  @acceptanceCriteria
+    .add({
+      behavior = [
+        `A cycle is two or more units of one target each of which depends on every other, directly or through other units`,
+        `The lowest file of a cycle is the file of one of its units that the file of every other unit of the cycle uses, directly or through other files`,
+      ],
+    })
+    .add({
+      situation = `A cycle has a lowest file`,
+      behavior = `Every entity of another unit of the cycle that an entity of the lowest file's unit reaches moves into the lowest file's unit, and each unit it leaves gives one [[Move]] to [[Plan.moves]]`,
+    })
+    .add({
+      situation = `An entity moved into a unit`,
+      behavior = [
+        `It is among [[Unit.entities]] of the unit it moved into and not among those of the unit it left`,
+        `The unit it left depends on the unit it moved into`,
+      ],
+    })
+    .add({
+      behavior = `Moves repeat until no cycle is left, each round reading the dependencies the last round left`,
+    })
+    .add({
+      situation = `A cycle has no lowest file, because no file of the cycle is used by every other`,
+      behavior = [
+        `A [[Problem]] is added to [[Plan.problems]] at the first declaration, in [[Workspace.files]] order and then source order, of a member, parameter, or output whose type reaches an entity of another file of the cycle, naming every file of the cycle`,
+        `Nothing moves for that cycle`,
+      ],
+    })
+    .add({
+      behavior = `Every move is decided by the definitions alone and never by the target's guidance, so an entity built for two targets moves the same way for both`,
     });
 
   // Staleness
@@ -134,7 +178,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
         `Neither [[File.path]] nor [[Unit.stem]] is in [[requested]]`,
         `[[Unit.stem]] is not in [[violated]]`,
         `[[Unit.outputs]] is not empty`,
-        `The SHA-256 of [[LoweredFile.text]] differs from [[SourceMap.hash]] of any output`,
+        `The SHA-256 of [[Unit.text]] differs from [[SourceMap.hash]] of any output`,
       ],
       behavior = `[[Unit.reason]] is changed`,
     })
@@ -143,7 +187,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
         `Neither [[File.path]] nor [[Unit.stem]] is in [[requested]]`,
         `[[Unit.stem]] is not in [[violated]]`,
         `[[Unit.outputs]] is not empty`,
-        `The SHA-256 of [[LoweredFile.text]] equals [[SourceMap.hash]] of every output`,
+        `The SHA-256 of [[Unit.text]] equals [[SourceMap.hash]] of every output`,
         `The SHA-256 of its local criterion and test ids differs from [[SourceMap.requirements]] of any output`,
       ],
       behavior = `[[Unit.reason]] is requirements`,
@@ -153,7 +197,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
         `Neither [[File.path]] nor [[Unit.stem]] is in [[requested]]`,
         `[[Unit.stem]] is not in [[violated]]`,
         `[[Unit.outputs]] is not empty`,
-        `The SHA-256 of [[LoweredFile.text]] equals [[SourceMap.hash]] of every output`,
+        `The SHA-256 of [[Unit.text]] equals [[SourceMap.hash]] of every output`,
         `The SHA-256 of its local criterion and test ids equals [[SourceMap.requirements]] of every output`,
         `The hash of [[interfaceOf]] some dependency differs from what [[SourceMap.dependencies]] of the unit's outputs record for it, or they record nothing for it`,
       ],
@@ -164,7 +208,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
         `Neither [[File.path]] nor [[Unit.stem]] is in [[requested]]`,
         `[[Unit.stem]] is not in [[violated]]`,
         `[[Unit.outputs]] is not empty`,
-        `The SHA-256 of [[LoweredFile.text]] equals [[SourceMap.hash]] of every output`,
+        `The SHA-256 of [[Unit.text]] equals [[SourceMap.hash]] of every output`,
         `The SHA-256 of its local criterion and test ids equals [[SourceMap.requirements]] of every output`,
         `For every dependency, [[SourceMap.dependencies]] of the unit's outputs record a hash for it and it equals the hash of [[interfaceOf]] that dependency`,
       ],
@@ -232,6 +276,28 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     },
     {
       input = [
+        Workspace@like(
+          `One target rust whose marker global carries; def holds b.lfy declaring d B, and a.lfy using ./b and declaring d A with a member of type B and d C with a member of type string; c.lfy applies to B a trait adding a member of type C`,
+        ),
+        [],
+        [],
+      ],
+      expect = Plan@like(
+        `One move of C from a into b, caused by the member the trait added to B; b's unit holds B then C; a's unit holds A and depends on b's; both with reason fresh`,
+      ),
+    },
+    {
+      input = [
+        Workspace@like(
+          `One target rust whose marker global carries; def holds a.lfy declaring d A with a member of type B, and b.lfy declaring d B with a member of type A, neither using the other`,
+        ),
+        [],
+        [],
+      ],
+      expect = Plan@like(`No moves, and one problem at the member of A naming a.lfy and b.lfy`),
+    },
+    {
+      input = [
         Workspace@like(`The same project`),
         [
           SourceMap@like(
@@ -268,7 +334,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
 fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
     .add({
-      behavior = `[[Request.batch]] is [[batch]]; [[Request.sources]] maps each unit's [[File.path]] to [[LoweredFile.text]] of [[Unit.lowered]]; [[Request.requirements]] maps it to every [[LoweredNode.criteria]], [[LoweredNode.tests]], [[LoweredFile.criteria]], and [[LoweredFile.tests]] of the file; [[Request.globals]] is [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]; [[Request.previous]] is [[previous]]`,
+      behavior = `[[Request.batch]] is [[batch]]; [[Request.sources]] maps each unit's [[File.path]] to [[Unit.text]]; [[Request.requirements]] maps it to the unit's local criteria and tests: every [[LoweredNode.criteria]] and [[LoweredNode.tests]] of [[Unit.entities]], then [[LoweredFile.criteria]] and [[LoweredFile.tests]] of the file; [[Request.globals]] is [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]; [[Request.previous]] is [[previous]]`,
     })
     .add({
       behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of a unit of the batch to its text`,
@@ -313,6 +379,14 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
     .add({
       situation = `A unit of [[batch]] has outputs in [[Unit.outputs]]`,
       behavior = `[[Request.instructions]], where it says where the outputs go, says that the outputs of that unit go at the paths in its [[Unit.outputs]]`,
+    })
+    .add({
+      situation = `Entities moved into a unit of [[batch]]`,
+      behavior = `[[Request.instructions]] says, in that unit's section, which of its entities moved in, from which file, and because of which [[Move.cause]]; that they are written into that unit's outputs with markers naming the file that declares them; and that a [[Use]] of that file is satisfied by the moved entities wherever the unit's code needs only them, never by importing that file`,
+    })
+    .add({
+      situation = `Entities moved out of a unit of [[batch]]`,
+      behavior = `[[Request.instructions]] says, in that unit's section, which entities moved out and into which unit; that they are imported from the outputs of that unit and never written again; and that the unit's outputs make each of them available under the name and path it would have had, so code that names them there still finds them`,
     })
     .add({
       situation = `A unit of [[batch]] has the reason requirements`,
@@ -412,7 +486,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Rejected with a problem naming the output line`,
     })
     .add({
-      situation = `A marker naming the unit's [[File.path]] names a requirement id that is neither a local criterion or test of the unit nor one of [[Request.globals]]`,
+      situation = `A marker naming the unit's [[File.path]], or the file of an entity moved into the unit, names a requirement id that is neither a local criterion or test of the unit nor one of [[Request.globals]]`,
       behavior = `Rejected with a problem naming the output line and the id`,
     })
     .add({
@@ -430,8 +504,8 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker naming the unit's [[File.path]] names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
-      behavior = `Accepted, with one [[SourceMap]] per output holding the SHA-256 of [[LoweredFile.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
+      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker naming the unit's [[File.path]] or the file of an entity moved into the unit names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
+      behavior = `Accepted, with one [[SourceMap]] per output holding the SHA-256 of [[Unit.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
       situation = `A marker is followed by another marker in the same output`,

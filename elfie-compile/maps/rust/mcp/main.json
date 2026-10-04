@@ -1,7 +1,7 @@
 [
   {
     "dependencies": {
-      "def/generation/data.lfy": "d0d4bf4276bb4e03bac11b27d67324f6cf60350fe70604a1cd9ca74a2db5cf7f",
+      "def/generation/data.lfy": "491956e9c4c82a88937b70e79a43a9c46d252aa46a2b066dcd271543af415fd6",
       "def/generation/main.lfy": "04f314d151c82908a53da440d4dd91343bce48e8a6eafe38fcb0d4ed9278fea4",
       "def/grammar/main.lfy": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
       "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
@@ -12,7 +12,7 @@
       "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
       "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
     },
-    "generated": "2026-10-02T18:38:48Z",
+    "generated": "2026-10-04T04:04:43Z",
     "hash": "b58b3ecc778fcf33bbb94ec8219db77be68bffd59c382b24ab73d5f953b6e3d1",
     "markers": [
       {

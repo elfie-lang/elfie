@@ -54,7 +54,7 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   $target: `The identifier of the target it was generated for` = string;
   $output: `The output file's path, relative to [[Workspace.root]]` = string;
   $source: `The source file's path, relative to [[Workspace.root]]` = string;
-  $hash: `SHA-256 of [[LoweredFile.text]] of the source file when the output was accepted, as lowercase hex, so an edit that leaves the lowered code the same, such as a comment, changes nothing` = string;
+  $hash: `SHA-256 of [[Unit.text]] of the unit when the output was accepted, as lowercase hex, so an edit that leaves the lowered code the same, such as a comment, changes nothing` = string;
   $requirements: `SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line breaks, when the output was accepted` = string;
   $signature: `SHA-256 of the unit's interface text, as interfaceOf spells it, when the output was accepted` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = object;
@@ -62,15 +62,30 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   $markers: `Every [[Marker]] in the output, in output order, with [[Marker.line]] and [[Marker.end]] derived` = Marker[];
 }
 
-d Unit: `The work the compiler does as one piece: one source file for one target` {
+d Unit: `The work the compiler does as one piece: one source file for one target, with any entities moved into it from other files` {
   $target: `What it is built for` = Target;
   $file: `The source file` = File;
-  $entities: `The entities of the file built for the target that have a lowered node, in file order; never an entity of the elfie package, a trait, or an ace function` = Entity[];
+  $entities: `The entities of the file built for the target that have a lowered node and were not moved out, in file order, then the entities moved into it, in the order of [[Plan.moves]]; never an entity of the elfie package, a trait, or an ace function` = Entity[];
   $lowered: `The file as lowering gave it` = LoweredFile;
+  $text: `The lowered code the unit compiles: [[LoweredFile.text]] of its file without the code of the entities moved out of it, then the lowered code of each entity moved into it; exactly [[LoweredFile.text]] when nothing moved in or out` = string;
   $stem: `[[Path.relative]] of [[File.path]] to the directory it was found under, without its extension; the target's guidance spells the output file from it` = string;
-  $dependencies: `The units of the same target for the files this file uses, transitively through files that have no unit` = Unit[];
+  $dependencies: `The units of the same target for the files this file uses, transitively through files that have no unit, and the units holding the entities its entities reach` = Unit[];
   $outputs: `The outputs the last accepted generation produced, from the unit's map file; empty when none` = SourceMap[];
   $reason: `Why it is planned; undefined when it is up to date` = Reason | undefined;
+  @acceptanceCriteria
+    .add({
+      behavior = `The local criteria and tests of a unit are those of each of [[Unit.entities]] and of its file's own entity; those of an entity moved out of the file belong to the unit it moved into`,
+    });
+}
+
+// Decision: a cycle among files is resolved by moving entities down into the lowest file of the
+// cycle, the one the others already use, so the uses keep saying which file is lower and no output
+// ever imports a file that imports it back, whatever the target's language allows.
+d Move: `Entities of one file compiled in another file's unit, because the files would otherwise reach each other` {
+  $entities: `The entities moved, in the file order of the file that declares them` = Entity[];
+  $origin: `The unit of the file that declares them` = Unit;
+  $into: `The unit that compiles them: the unit of the lowest file of the cycle` = Unit;
+  $cause: `The member, parameter, or output of an entity of [[Move.into]] whose type reaches the first of [[Move.entities]], spelled as the owner's identifier, a dot, and the member's or parameter's name, or the owner's identifier alone for an output` = string;
 }
 
 d Batch: `Planned units compiled together in one request, so shared context is sent once` {
@@ -87,7 +102,7 @@ d Interface: `What a dependent unit may rely on from another unit's output` {
 d Request: `Everything the compiler is handed to produce the outputs of one batch` {
   $batch: `The batch` = Batch;
   $instructions: `The prompt: what to produce, where, the rules for producing it, what of the standard library is [[builtin]] and never generated, and how to report the outcome` = string;
-  $sources: `[[LoweredFile.text]] of each unit's file, by [[File.path]]` = object;
+  $sources: `[[Unit.text]] of each unit, by [[File.path]]` = object;
   $requirements: `The local criteria and tests of each unit, by [[File.path]], each with its id` = object;
   $globals: `Every global criterion and test of [[Plan.program]], each once with its id` = (LoweredCriterion | LoweredTest)[];
   $previous: `The lowered text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = object;
@@ -184,5 +199,7 @@ d Plan: `Every unit of a workspace, which need generating, and how they are batc
   $workspace: `The workspace planned` = Workspace;
   $program: `The workspace lowered, which units, requests, and reviews read` = Program;
   $units: `Every unit of every target, each after its dependencies` = Unit[];
+  $moves: `Every move that resolved a cycle among files, in the order the moves were made` = Move[];
+  $problems: `Every cycle among files that no move could resolve, one [[Problem]] each` = Problem[];
   $batches: `The planned units grouped for compilation, each batch after the batches holding its dependencies` = Batch[];
 }

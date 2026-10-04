@@ -1,7 +1,8 @@
 //! Compiled from `def/generation/data.lfy`: the data of generation.
 //!
-//! A [`Unit`] is one source file for one target; a [`Batch`] is the units compiled
-//! together in one request; a [`Plan`] is every unit of a workspace and how they are
+//! A [`Unit`] is one source file for one target, with any entities a [`Move`] brought into
+//! it; a [`Batch`] is the units compiled together in one request; a [`Plan`] is every unit
+//! of a workspace, the moves that resolved cycles among files, and how they are
 //! batched; a [`Request`] is everything the compiler is handed for one batch; a
 //! [`Verdict`] is whether one unit's [`Output`]s are accepted, and the [`SourceMap`]s they
 //! earn; an [`Outcome`] is what one run of the compiler came to; a [`Change`] is one
@@ -18,8 +19,8 @@ use std::fmt;
 
 use serde_json::{Map, Value, json};
 
-use crate::interpret::{LoweredCriterion, LoweredTest};
-use crate::model::{Criterion, EntityId};
+use crate::interpret::{LoweredCriterion, LoweredNode, LoweredTest, Program};
+use crate::model::{Criterion, EntityId, Problem};
 use crate::workspace::NativeDependency;
 
 /// Why a unit needs generating.
@@ -183,9 +184,9 @@ pub struct SourceMap {
     pub output: String, // @lfy def/generation/data.lfy:SourceMap.output
     /// The source file's path, relative to the workspace root.
     pub source: String, // @lfy def/generation/data.lfy:SourceMap.source
-    /// SHA-256 of the lowered text of the source file when the output was accepted, as
-    /// lowercase hex, so an edit that leaves the lowered code the same, such as a comment,
-    /// changes nothing.
+    /// SHA-256 of [`Unit::text`] of the unit when the output was accepted, as lowercase
+    /// hex, so an edit that leaves the lowered code the same, such as a comment, changes
+    /// nothing.
     pub hash: String, // @lfy def/generation/data.lfy:SourceMap.hash
     /// SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line
     /// breaks, when the output was accepted.
@@ -278,7 +279,8 @@ fn usize_field(object: &Map<String, Value>, name: &str) -> Option<usize> {
         .and_then(|n| usize::try_from(n).ok())
 }
 
-/// The work the compiler does as one piece: one source file for one target.
+/// The work the compiler does as one piece: one source file for one target, with any
+/// entities moved into it from other files.
 // @lfy def/generation/data.lfy:Unit
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Unit {
@@ -286,22 +288,105 @@ pub struct Unit {
     pub target: usize, // @lfy def/generation/data.lfy:Unit.target
     /// The source file, as an index into `Workspace::files`.
     pub file: usize, // @lfy def/generation/data.lfy:Unit.file
-    /// The entities of the file built for the target that have a lowered node, in file
-    /// order; never an entity of the elfie package, a trait, or an ace function.
+    /// The entities of the file built for the target that have a lowered node and were not
+    /// moved out, in file order, then the entities moved into it, in the order of
+    /// [`Plan::moves`], as indices into `Model::entities`; never an entity of the elfie
+    /// package, a trait, or an ace function.
     pub entities: Vec<EntityId>, // @lfy def/generation/data.lfy:Unit.entities
     /// The file as lowering gave it, as an index into `Program::files`.
     pub lowered: usize, // @lfy def/generation/data.lfy:Unit.lowered
+    /// The lowered code the unit compiles: the text of its lowered file without the code of
+    /// the entities moved out of it, then the lowered code of each entity moved into it;
+    /// exactly the text of its lowered file when nothing moved in or out.
+    pub text: String, // @lfy def/generation/data.lfy:Unit.text
     /// The file's path relative to the directory it was found under, without its
     /// extension; the target's guidance spells the output file from it.
     pub stem: String, // @lfy def/generation/data.lfy:Unit.stem
     /// The units of the same target for the files this file uses, transitively through
-    /// files that have no unit, as indices into [`Plan::units`].
+    /// files that have no unit, and the units holding the entities its entities reach, as
+    /// indices into [`Plan::units`].
     pub dependencies: Vec<usize>, // @lfy def/generation/data.lfy:Unit.dependencies
     /// The outputs the last accepted generation produced, from the unit's map file; empty
     /// when none.
     pub outputs: Vec<SourceMap>, // @lfy def/generation/data.lfy:Unit.outputs
     /// Why it is planned; `None` when it is up to date.
     pub reason: Option<Reason>, // @lfy def/generation/data.lfy:Unit.reason
+}
+
+impl Unit {
+    /// The unit's local criteria and tests: for each of [`Unit::entities`], in that order,
+    /// those of its declaration — its own and those of its members — criteria before tests,
+    /// then those of its file's own entity.
+    ///
+    /// A move needs no further account here. [`Unit::entities`] already holds every entity
+    /// moved into the unit and holds none that moved out, so the criteria and tests of a
+    /// moved entity are the receiving unit's and no other unit's; the declaration of such an
+    /// entity is in the file it was moved from, which is why one is looked for across the
+    /// program rather than in the unit's own lowered file alone.
+    // @lfy def/generation/data.lfy:Unit.entities
+    // @lfy def/generation/data.lfy:Unit#Unit:Unit:a71462ec6c4c1494654b6067e77067cac5154c77a93576479d51af4fa014244e
+    pub fn requirements(&self, program: &Program) -> Vec<Requirement> {
+        let mut out: Vec<Requirement> = Vec::new();
+        for &entity in &self.entities {
+            // An entity with no lowered node, such as a trait or an ace function, is never
+            // among a unit's entities, so a declaration is found for every one of them.
+            if let Some(node) = declaration_of(program, self.lowered, entity) {
+                requirements_of(node, &mut out);
+            }
+        }
+        let file = &program.files[self.lowered];
+        out.extend(file.criteria.iter().cloned().map(Requirement::Criterion));
+        out.extend(file.tests.iter().cloned().map(Requirement::Test));
+        out
+    }
+}
+
+/// The lowered node that declares an entity, looked for in one file of the program first and
+/// then in the rest; `None` when no lowered node declares it.
+fn declaration_of(program: &Program, first: usize, entity: EntityId) -> Option<&LoweredNode> {
+    std::iter::once(first)
+        .chain((0..program.files.len()).filter(|&index| index != first))
+        .find_map(|index| node_declaring(&program.files[index].root, entity))
+}
+
+/// The node of a lowered tree that declares an entity, the node itself before its children.
+fn node_declaring(node: &LoweredNode, entity: EntityId) -> Option<&LoweredNode> {
+    if node.entity == Some(entity) {
+        return Some(node);
+    }
+    node.nodes().find_map(|child| node_declaring(child, entity))
+}
+
+/// The criteria and tests of one declaration, appended: those of the node, criteria before
+/// tests, then those of the nodes within it, which are its members.
+fn requirements_of(node: &LoweredNode, out: &mut Vec<Requirement>) {
+    out.extend(node.criteria.iter().cloned().map(Requirement::Criterion));
+    out.extend(node.tests.iter().cloned().map(Requirement::Test));
+    for child in node.nodes() {
+        requirements_of(child, out);
+    }
+}
+
+/// Entities of one file compiled in another file's unit, because the files would otherwise
+/// reach each other.
+// Decision: a cycle among files is resolved by moving entities down into the lowest file of
+// the cycle, the one the others already use, so the uses keep saying which file is lower and
+// no output ever imports a file that imports it back, whatever the target's language allows.
+// @lfy def/generation/data.lfy:Move
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Move {
+    /// The entities moved, in the file order of the file that declares them, as indices into
+    /// `Model::entities`.
+    pub entities: Vec<EntityId>, // @lfy def/generation/data.lfy:Move.entities
+    /// The unit of the file that declares them, as an index into [`Plan::units`].
+    pub origin: usize, // @lfy def/generation/data.lfy:Move.origin
+    /// The unit that compiles them: the unit of the lowest file of the cycle, as an index
+    /// into [`Plan::units`].
+    pub into: usize, // @lfy def/generation/data.lfy:Move.into
+    /// The member, parameter, or output of an entity of [`Move::into`] whose type reaches
+    /// the first of [`Move::entities`], spelled as the owner's identifier, a dot, and the
+    /// member's or parameter's name, or the owner's identifier alone for an output.
+    pub cause: String, // @lfy def/generation/data.lfy:Move.cause
 }
 
 /// Planned units compiled together in one request, so shared context is sent once.
@@ -359,7 +444,7 @@ pub struct Request {
     /// The prompt: what to produce, where, the rules for producing it, what of the standard
     /// library is `builtin` and never generated, and how to report the outcome.
     pub instructions: String, // @lfy def/generation/data.lfy:Request.instructions
-    /// The lowered text of each unit's file, by the file's path.
+    /// [`Unit::text`] of each unit, by the file's path.
     pub sources: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.sources
     /// The local criteria and tests of each unit, by the file's path, each with its id.
     pub requirements: BTreeMap<String, Vec<Requirement>>, // @lfy def/generation/data.lfy:Request.requirements
@@ -728,6 +813,10 @@ pub struct ReviewReport {
 pub struct Plan {
     /// Every unit of every target, each after its dependencies.
     pub units: Vec<Unit>, // @lfy def/generation/data.lfy:Plan.units
+    /// Every move that resolved a cycle among files, in the order the moves were made.
+    pub moves: Vec<Move>, // @lfy def/generation/data.lfy:Plan.moves
+    /// Every cycle among files that no move could resolve, one problem each.
+    pub problems: Vec<Problem>, // @lfy def/generation/data.lfy:Plan.problems
     /// The planned units grouped for compilation, each batch after the batches holding its
     /// dependencies.
     pub batches: Vec<Batch>, // @lfy def/generation/data.lfy:Plan.batches

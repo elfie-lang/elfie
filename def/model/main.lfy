@@ -560,5 +560,18 @@ fn criteriaOf(model: Model, entity: Entity): `Every criterion attached to an ent
   @acceptanceCriteria
     .add({
       behavior = `Returns [[Entity.acceptanceCriteria]] with each template reference replaced by the referenced entity's identifier and each execution by its value, evaluated for [[entity]]`,
+    })
+    .add({
+      situation = `An execution's value is a type`,
+      behavior = `It is replaced by Elfie source that reads back as that same type`,
     });
+  @test({
+    input = [
+      Model@like(
+        `Bound from: d A {} d B {} d X with a member xs of type (A | B)[] and one criterion whose behavior is the word Holds followed by an execution of the type of xs`,
+      ),
+      Entity@like(`X`),
+    ],
+    expect = Criterion[]@like(`One criterion whose behavior is Holds (A | B)[]`),
+  });
 }

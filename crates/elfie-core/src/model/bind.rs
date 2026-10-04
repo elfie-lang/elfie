@@ -343,7 +343,8 @@ impl Binder {
     /// file has been declared by now, so the prelude's scope exists whatever order the
     /// files were given in. With no source of [`Origin::Prelude`] no file scope has a
     /// parent, and a name only the prelude would give is found nowhere.
-    // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/traits.lfy:scoped
@@ -2184,6 +2185,7 @@ impl Model {
     /// `TypeParameters`, in order; empty for a declaration without them. A declaration
     /// seen with arguments owns the declaration's scope, so its type parameters are the
     /// declaration's.
+    // @lfy def/model/data.lfy:Entity.typeParameters
     // @lfy def/model/main.lfy:bind
     pub fn type_parameters(&self, entity: EntityId) -> Vec<EntityId> {
         match self.entities[entity].scope {
@@ -2199,6 +2201,7 @@ impl Model {
 
     /// `Entity.typeArguments`: what each argument the type was written with resolves to,
     /// in order; empty for a declaration used without arguments.
+    // @lfy def/model/data.lfy:Entity.typeArguments
     // @lfy def/model/main.lfy:bind
     pub fn type_arguments(&self, entity: EntityId) -> Vec<TypeRef> {
         match self.entities[entity].value(TYPE_ARGUMENTS) {
