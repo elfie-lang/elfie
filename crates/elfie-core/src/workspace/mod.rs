@@ -183,10 +183,10 @@ fn load_in(
     // Discovery, use, and order. @lfy def/workspace/main.lfy:load
     let mut sources = Vec::new();
     let mut files = Vec::new();
-    if !root.is_dir() {
+    if !loader.directory(".") {
         // @lfy def/workspace/main.lfy:load
         loader.problem(None, format!("the root {} does not exist", root.display()));
-    } else if !root.join(&source_directory).is_dir() {
+    } else if !loader.directory(&source_directory) {
         // @lfy def/workspace/main.lfy:load
         loader.problem(
             None,
@@ -412,6 +412,26 @@ impl Loader<'_> {
         self.overlays.contains_key(path) || self.root.join(path).is_file()
     }
 
+    /// Whether a directory is on disk, and so has files of its own to walk.
+    fn on_disk(&self, directory: &str) -> bool {
+        if is_root(directory) {
+            self.root.is_dir()
+        } else {
+            self.root.join(directory).is_dir()
+        }
+    }
+
+    /// Whether a directory holds anything the program can read: it is on disk, or a
+    /// replaced file is under it.
+    ///
+    /// A replaced file stands in for one on disk, so the directories above it stand in
+    /// for directories on disk: a load with a replacement in place gives what a load of
+    /// a root holding that file would give, directory checks and all.
+    // @lfy def/workspace/main.lfy:change
+    fn directory(&self, directory: &str) -> bool {
+        self.on_disk(directory) || self.overlays.keys().any(|path| under(path, directory))
+    }
+
     /// The text of the file at a path: what it is replaced with, or what is on disk.
     fn read(&self, path: &str) -> std::io::Result<String> {
         match self.overlays.get(path) {
@@ -537,7 +557,7 @@ impl Loader<'_> {
         // Checked here rather than in `discover`, which does not run when the root or
         // the source directory is missing; a missing package root is reported either
         // way.
-        if !self.root.join(&root).is_dir() {
+        if !self.directory(&root) {
             self.problem(
                 Some(&root),
                 format!("the root of the package {identifier} does not exist"),
@@ -632,7 +652,11 @@ impl Loader<'_> {
     fn source_files(&mut self, directory: &str) -> Vec<String> {
         // Decision: discovery order within a directory is the sorted order of the paths.
         let mut out = BTreeSet::new();
-        self.walk(directory, &mut out);
+        // A directory that only replacements stand in for has nothing on disk to walk.
+        // @lfy def/workspace/main.lfy:change
+        if self.on_disk(directory) {
+            self.walk(directory, &mut out);
+        }
         for path in self.overlays.keys() {
             if is_source(path) && under(path, directory) {
                 out.insert(path.clone());
@@ -684,7 +708,7 @@ impl Loader<'_> {
         for (id, package) in packages.iter().enumerate() {
             // A missing package root is already reported by `packages`; no file of it is
             // in the program. @lfy def/workspace/main.lfy:load
-            if !self.root.join(&package.root).is_dir() {
+            if !self.directory(&package.root) {
                 continue;
             }
             for path in self.source_files(&package.root) {
@@ -2191,7 +2215,10 @@ mod tests {
             .find(|target| target.identifier == "rust")
             .expect("the rust target");
         // @lfy def/workspace/main.lfy:load
-        assert_eq!(names(&workspace, &entities_for(&workspace, target)), ["Marked"]);
+        assert_eq!(
+            names(&workspace, &entities_for(&workspace, target)),
+            ["Marked"]
+        );
     }
 
     /// When a file's own entity carries the marker, every entity declared in that file's
@@ -2505,6 +2532,61 @@ mod tests {
         assert_ne!(changed, loaded);
         let added = changed.file("lib/extra.lfy").expect("the added file");
         assert_eq!(changed.origin(added), Origin::Library);
+    }
+
+    /// A replaced file stands in for one on disk down to the directories above it: the
+    /// source directory and a package root that only a replacement puts anything in are
+    /// read as directories, so a change there gives what a load of a root holding that
+    /// file on disk gives, and adds no problem of its own.
+    // @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
+    #[test]
+    fn a_replacement_stands_in_for_the_directory_that_would_hold_it() {
+        // The source directory is not on disk at all.
+        let fixture = Fixture::new();
+        let loaded = fixture.load();
+        assert!(paths(&loaded).is_empty());
+        assert_eq!(load_problems(&loaded).len(), 1, "{:?}", loaded.problems);
+        let text = "trait inSource { }\n";
+        let changed = change(&loaded, "def/main.lfy", Some(text));
+        assert_eq!(paths(&changed), ["def/main.lfy"]);
+        assert!(changed.problems.is_empty(), "{:?}", changed.problems);
+        // @lfy def/workspace/main.lfy:change
+        let expected = {
+            fixture.write("def/main.lfy", text);
+            fixture.load()
+        };
+        assert_eq!(changed.files, expected.files);
+        assert_eq!(changed.model, expected.model);
+        assert_eq!(changed.problems, expected.problems);
+
+        // The root of a package in the program is not on disk either.
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            )
+            .write("def/main.lfy", "");
+        let loaded = fixture.load();
+        assert_eq!(load_problems(&loaded).len(), 1, "{:?}", loaded.problems);
+        let text = "trait inPackage { }\n";
+        let changed = change(&loaded, "pkg/extra.lfy", Some(text));
+        assert!(changed.problems.is_empty(), "{:?}", changed.problems);
+        let added = changed.file("pkg/extra.lfy").expect("the added file");
+        assert_eq!(
+            added
+                .package
+                .map(|package| changed.packages[package].identifier.as_str()),
+            Some("p")
+        );
+        // @lfy def/workspace/main.lfy:change
+        let expected = {
+            fixture.write("pkg/extra.lfy", text);
+            fixture.load()
+        };
+        assert_eq!(changed.files, expected.files);
+        assert_eq!(changed.model, expected.model);
+        assert_eq!(changed.problems, expected.problems);
     }
 
     // @lfy def/workspace/main.lfy:load

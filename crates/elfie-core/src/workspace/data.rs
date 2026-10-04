@@ -47,11 +47,13 @@ pub struct Package {
 pub struct File {
     /// The file's path relative to [`Workspace::root`], with forward slashes; equal to the
     /// `Source::path` it was bound as.
-    pub path: String, // @lfy def/workspace/data.lfy:File
+    pub path: String, // @lfy def/workspace/data.lfy:File.path
     /// The package it came from, as an index into [`Workspace::packages`]; `None` for the
     /// project's own source.
     pub package: Option<usize>, // @lfy def/workspace/data.lfy:File.package
-    /// The `Source` this file extends, as an index into [`Model::sources`].
+    /// The `Source` this file extends, as an index into [`Model::sources`]: its `tree`,
+    /// `uses`, and `origin` are read through [`Workspace::tree`], [`Workspace::uses`], and
+    /// [`Workspace::origin`].
     pub source: usize, // @lfy def/workspace/data.lfy:File
 }
 
@@ -81,6 +83,7 @@ pub struct LoadProblem {
     pub message: String, // @lfy def/workspace/data.lfy:LoadProblem.message
 }
 
+// @lfy def/workspace/data.lfy:LoadProblem
 impl fmt::Display for LoadProblem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.path {
@@ -99,6 +102,8 @@ pub enum WorkspaceProblem {
 }
 
 impl WorkspaceProblem {
+    /// The entry as a [`LoadProblem`], when it is one.
+    // @lfy def/workspace/data.lfy:Workspace.problems
     pub fn as_load(&self) -> Option<&LoadProblem> {
         match self {
             WorkspaceProblem::Load(problem) => Some(problem),
@@ -106,6 +111,8 @@ impl WorkspaceProblem {
         }
     }
 
+    /// The entry as a [`Problem`], when it is one.
+    // @lfy def/workspace/data.lfy:Workspace.problems
     pub fn as_bind(&self) -> Option<&Problem> {
         match self {
             WorkspaceProblem::Bind(problem) => Some(problem),
@@ -114,6 +121,7 @@ impl WorkspaceProblem {
     }
 }
 
+// @lfy def/workspace/data.lfy:Workspace.problems
 impl fmt::Display for WorkspaceProblem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -155,8 +163,10 @@ pub struct Workspace {
     pub overlays: BTreeMap<String, String>, // @lfy def/workspace/main.lfy:change
 }
 
+// @lfy def/workspace/data.lfy:Workspace
 impl Workspace {
     /// The file at a path, when it is in the program.
+    // @lfy def/workspace/data.lfy:Workspace.files
     pub fn file(&self, path: &str) -> Option<&File> {
         self.files.iter().find(|file| file.path == path)
     }
@@ -169,31 +179,33 @@ impl Workspace {
     }
 
     /// `File.tree`: the parse of the file.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/data.lfy:File.tree
     pub fn tree(&self, file: &File) -> &Tree {
         &self.source(file).tree
     }
 
     /// `File.uses`: the path each `Use` in the tree refers to, in the order the uses
     /// appear; `None` where it refers to nothing.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/data.lfy:File.uses
     pub fn uses(&self, file: &File) -> &[Option<String>] {
         &self.source(file).uses
     }
 
     /// `File.origin`: [`Origin::Prelude`] for the main file of the package `elfie`,
     /// [`Origin::Library`] for its other files, [`Origin::Program`] for every other file.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/data.lfy:File.origin
     pub fn origin(&self, file: &File) -> Origin {
         self.source(file).origin
     }
 
     /// Every load problem, in the order it arose.
+    // @lfy def/workspace/data.lfy:Workspace.problems
     pub fn load_problems(&self) -> impl Iterator<Item = &LoadProblem> {
         self.problems.iter().filter_map(WorkspaceProblem::as_load)
     }
 
     /// Every problem of the model, in node order.
+    // @lfy def/workspace/data.lfy:Workspace.problems
     pub fn bind_problems(&self) -> impl Iterator<Item = &Problem> {
         self.problems.iter().filter_map(WorkspaceProblem::as_bind)
     }

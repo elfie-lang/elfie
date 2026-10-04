@@ -5,14 +5,17 @@
       "def/generation/main.lfy": "04f314d151c82908a53da440d4dd91343bce48e8a6eafe38fcb0d4ed9278fea4",
       "def/grammar/main.lfy": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
       "def/grammar/terminals/comment.lfy": "35a6009ccdbbcb55c20bcf2549ef2fed2ca5477e2e8d527496aa942fb461c15c",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/mcp/data.lfy": "8d028d12654fa0fcffbd7ae7f82b77cb07a7bf5b53abfbe0f0818c2349073a29",
       "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
       "def/model/main.lfy": "f6771a0610a481480a025e86957208e8047a62af205361f49b7d8d0fa7c5fda1",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
       "def/query/main.lfy": "f2cf174ad0ea9a9aa0bc2f1b1020a4b2ec302208c66bdbe11d5faecf451ec61b",
       "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8",
       "def/workspace/main.lfy": "d48a17c29d6001942a1a8067af5b2ebc8259da08b0af7bf6fd4c910943ff149a"
     },
-    "generated": "2026-10-04T04:04:43Z",
+    "generated": "2026-10-04T17:55:25Z",
     "hash": "b58b3ecc778fcf33bbb94ec8219db77be68bffd59c382b24ab73d5f953b6e3d1",
     "markers": [
       {

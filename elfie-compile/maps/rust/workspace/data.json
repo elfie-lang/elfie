@@ -2,10 +2,13 @@
   {
     "dependencies": {
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
-      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c"
     },
-    "generated": "2026-10-03T22:23:19Z",
-    "hash": "7e87ce17d1aad5418017bdb8756420bb351d2a6ef9d60c3542edc96796715b42",
+    "generated": "2026-10-04T05:46:03Z",
+    "hash": "cc287165cba85934c7633d6b7762f10c99c658f8eecc747f28018f6c7dc2a7f1",
     "markers": [
       {
         "column": null,
@@ -91,15 +94,15 @@
       {
         "column": null,
         "end": 52,
-        "entity": "File",
+        "entity": "File.path",
         "file": "def/workspace/data.lfy",
-        "line": 16,
+        "line": 139,
         "outputLine": 50,
         "requirement": null
       },
       {
         "column": null,
-        "end": 54,
+        "end": 56,
         "entity": "File.package",
         "file": "def/workspace/data.lfy",
         "line": 17,
@@ -108,191 +111,227 @@
       },
       {
         "column": null,
-        "end": 58,
+        "end": 60,
         "entity": "File",
         "file": "def/workspace/data.lfy",
         "line": 16,
-        "outputLine": 55,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 62,
-        "entity": "Target",
-        "file": "def/workspace/data.lfy",
-        "line": 20,
-        "outputLine": 59,
+        "outputLine": 57,
         "requirement": null
       },
       {
         "column": null,
         "end": 64,
-        "entity": "Target.identifier",
+        "entity": "Target",
         "file": "def/workspace/data.lfy",
-        "line": 21,
-        "outputLine": 63,
+        "line": 20,
+        "outputLine": 61,
         "requirement": null
       },
       {
         "column": null,
-        "end": 67,
-        "entity": "Target.marker",
+        "end": 66,
+        "entity": "Target.identifier",
         "file": "def/workspace/data.lfy",
-        "line": 22,
+        "line": 21,
         "outputLine": 65,
         "requirement": null
       },
       {
         "column": null,
         "end": 69,
-        "entity": "Target.package",
+        "entity": "Target.marker",
         "file": "def/workspace/data.lfy",
-        "line": 23,
-        "outputLine": 68,
+        "line": 22,
+        "outputLine": 67,
         "requirement": null
       },
       {
         "column": null,
-        "end": 73,
-        "entity": "Target.outputDirectory",
+        "end": 71,
+        "entity": "Target.package",
         "file": "def/workspace/data.lfy",
-        "line": 24,
+        "line": 23,
         "outputLine": 70,
         "requirement": null
       },
       {
         "column": null,
-        "end": 78,
-        "entity": "LoadProblem",
+        "end": 75,
+        "entity": "Target.outputDirectory",
         "file": "def/workspace/data.lfy",
-        "line": 27,
-        "outputLine": 74,
+        "line": 24,
+        "outputLine": 72,
         "requirement": null
       },
       {
         "column": null,
         "end": 80,
-        "entity": "LoadProblem.path",
+        "entity": "LoadProblem",
         "file": "def/workspace/data.lfy",
-        "line": 28,
-        "outputLine": 79,
+        "line": 27,
+        "outputLine": 76,
         "requirement": null
       },
       {
         "column": null,
-        "end": 93,
-        "entity": "LoadProblem.message",
+        "end": 82,
+        "entity": "LoadProblem.path",
         "file": "def/workspace/data.lfy",
-        "line": 29,
+        "line": 28,
         "outputLine": 81,
         "requirement": null
       },
       {
         "column": null,
-        "end": 126,
-        "entity": "Workspace.problems",
+        "end": 85,
+        "entity": "LoadProblem.message",
         "file": "def/workspace/data.lfy",
-        "line": 41,
-        "outputLine": 94,
+        "line": 29,
+        "outputLine": 83,
         "requirement": null
       },
       {
         "column": null,
-        "end": 132,
-        "entity": "Workspace",
+        "end": 96,
+        "entity": "LoadProblem",
         "file": "def/workspace/data.lfy",
-        "line": 32,
-        "outputLine": 127,
+        "line": 27,
+        "outputLine": 86,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 105,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 97,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 114,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 106,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 123,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 115,
         "requirement": null
       },
       {
         "column": null,
         "end": 134,
-        "entity": "Workspace.root",
+        "entity": "Workspace.problems",
         "file": "def/workspace/data.lfy",
-        "line": 33,
-        "outputLine": 133,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 136,
-        "entity": "Workspace.name",
-        "file": "def/workspace/data.lfy",
-        "line": 34,
-        "outputLine": 135,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 138,
-        "entity": "Workspace.sourceDirectory",
-        "file": "def/workspace/data.lfy",
-        "line": 35,
-        "outputLine": 137,
+        "line": 41,
+        "outputLine": 124,
         "requirement": null
       },
       {
         "column": null,
         "end": 140,
-        "entity": "Workspace.outputDirectory",
+        "entity": "Workspace",
         "file": "def/workspace/data.lfy",
-        "line": 36,
-        "outputLine": 139,
+        "line": 32,
+        "outputLine": 135,
         "requirement": null
       },
       {
         "column": null,
         "end": 142,
-        "entity": "Workspace.files",
+        "entity": "Workspace.root",
         "file": "def/workspace/data.lfy",
-        "line": 37,
+        "line": 33,
         "outputLine": 141,
         "requirement": null
       },
       {
         "column": null,
         "end": 144,
-        "entity": "Workspace.model",
+        "entity": "Workspace.name",
         "file": "def/workspace/data.lfy",
-        "line": 38,
+        "line": 34,
         "outputLine": 143,
         "requirement": null
       },
       {
         "column": null,
         "end": 146,
-        "entity": "Package",
+        "entity": "Workspace.sourceDirectory",
         "file": "def/workspace/data.lfy",
-        "line": 10,
+        "line": 35,
         "outputLine": 145,
         "requirement": null
       },
       {
         "column": null,
-        "end": 149,
-        "entity": "Workspace.targets",
+        "end": 148,
+        "entity": "Workspace.outputDirectory",
         "file": "def/workspace/data.lfy",
-        "line": 39,
+        "line": 36,
         "outputLine": 147,
         "requirement": null
       },
       {
         "column": null,
-        "end": 151,
-        "entity": "Workspace.nativeDependencies",
+        "end": 150,
+        "entity": "Workspace.files",
         "file": "def/workspace/data.lfy",
-        "line": 40,
-        "outputLine": 150,
+        "line": 37,
+        "outputLine": 149,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 152,
+        "entity": "Workspace.model",
+        "file": "def/workspace/data.lfy",
+        "line": 38,
+        "outputLine": 151,
         "requirement": null
       },
       {
         "column": null,
         "end": 154,
+        "entity": "Package",
+        "file": "def/workspace/data.lfy",
+        "line": 10,
+        "outputLine": 153,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 157,
+        "entity": "Workspace.targets",
+        "file": "def/workspace/data.lfy",
+        "line": 39,
+        "outputLine": 155,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 159,
+        "entity": "Workspace.nativeDependencies",
+        "file": "def/workspace/data.lfy",
+        "line": 40,
+        "outputLine": 158,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 162,
         "entity": "Workspace.problems",
         "file": "def/workspace/data.lfy",
         "line": 41,
-        "outputLine": 152,
+        "outputLine": 160,
         "requirement": null
       },
       {
@@ -301,43 +340,79 @@
         "entity": "change",
         "file": "def/workspace/main.lfy",
         "line": 259,
-        "outputLine": 155,
+        "outputLine": 163,
         "requirement": null
       },
       {
         "column": null,
-        "end": 171,
-        "entity": "File",
+        "end": 168,
+        "entity": "Workspace",
         "file": "def/workspace/data.lfy",
-        "line": 16,
+        "line": 32,
         "outputLine": 166,
         "requirement": null
       },
       {
         "column": null,
-        "end": 178,
-        "entity": "load",
-        "file": "def/workspace/main.lfy",
-        "line": 13,
-        "outputLine": 172,
+        "end": 175,
+        "entity": "Workspace.files",
+        "file": "def/workspace/data.lfy",
+        "line": 37,
+        "outputLine": 169,
         "requirement": null
       },
       {
         "column": null,
-        "end": 185,
-        "entity": "load",
-        "file": "def/workspace/main.lfy",
-        "line": 13,
-        "outputLine": 179,
+        "end": 181,
+        "entity": "File",
+        "file": "def/workspace/data.lfy",
+        "line": 16,
+        "outputLine": 176,
         "requirement": null
       },
       {
         "column": null,
-        "end": 200,
-        "entity": "load",
-        "file": "def/workspace/main.lfy",
-        "line": 13,
-        "outputLine": 186,
+        "end": 188,
+        "entity": "File.tree",
+        "file": "def/workspace/data.lfy",
+        "line": 140,
+        "outputLine": 182,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 195,
+        "entity": "File.uses",
+        "file": "def/workspace/data.lfy",
+        "line": 141,
+        "outputLine": 189,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 201,
+        "entity": "File.origin",
+        "file": "def/workspace/data.lfy",
+        "line": 142,
+        "outputLine": 196,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 207,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 202,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 212,
+        "entity": "Workspace.problems",
+        "file": "def/workspace/data.lfy",
+        "line": 41,
+        "outputLine": 208,
         "requirement": null
       }
     ],
@@ -350,10 +425,13 @@
   {
     "dependencies": {
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
-      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44"
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c"
     },
-    "generated": "2026-10-03T22:23:19Z",
-    "hash": "7e87ce17d1aad5418017bdb8756420bb351d2a6ef9d60c3542edc96796715b42",
+    "generated": "2026-10-04T05:46:03Z",
+    "hash": "cc287165cba85934c7633d6b7762f10c99c658f8eecc747f28018f6c7dc2a7f1",
     "markers": [
       {
         "column": null,

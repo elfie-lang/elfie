@@ -2270,7 +2270,7 @@ mod tests {
             .collect()
     }
 
-    // @lfy def/grammar/rules/statement.lfy:Conditions
+    // @lfy def/grammar/rules/statement.lfy:Conditions#Conditions:Conditions:4e8d792977b3c8f9e20a07018cf7794a729c1f481ac19060257b1806696c4ea1
     #[test]
     fn conditions_joined_by_or_merge_into_one_situation() {
         assert_eq!(
@@ -2279,7 +2279,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/statement.lfy:Conditions
+    // @lfy def/grammar/rules/statement.lfy:Conditions#Conditions:Conditions:0b969abfbe6810138d0768149b1e3c6d2a175d6d6278ffe513fe806f4d622860
     #[test]
     fn conditions_joined_by_and_are_a_list_of_situations() {
         assert_eq!(
@@ -2291,7 +2291,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/statement.lfy:Conditions
+    // @lfy def/grammar/rules/statement.lfy:Conditions#Conditions:Conditions:58b6bf8130cf72cc02805cbf8418b0c4c634ac0d963c09ea762f0e428d6d12c5
     #[test]
     fn a_negated_nested_group_distributes_the_negation() {
         // "or" inside the group becomes "and": one situation per condition.

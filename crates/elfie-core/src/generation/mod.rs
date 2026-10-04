@@ -2489,6 +2489,7 @@ fn resolve_marker(
         &own
     };
     // A marker that names an entity keeps its spelling; its line is derived.
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:6dfd2385181861e88df13c277e13d237ad94dc3f284515619561d5e7c6488ce2
     if let Some(name) = &marker.entity {
         match table.iter().find(|(candidate, _)| candidate == name) {
             Some(&(_, entity)) => {
@@ -4145,9 +4146,11 @@ fn parse_marker(token: &str, output_line: usize) -> Option<Marker> {
         Some(first) => format!("{first}:{middle}"),
         None => middle.to_string(),
     };
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:55eeb537f74d15d3b738387a76843bfe4e688258322b57eb5046ead0be1e71dc
     if !is_source_path(&path) {
         return None;
     }
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:e5a2dc69b3714f2fe9ec245e19aa4b7d2bc03926cf7410cabc1e0a7ed86cf86c
     match last.parse::<usize>() {
         Ok(line) => Some(Marker {
             output_line,
@@ -7901,9 +7904,13 @@ mod tests {
         }
     }
 
-    // @lfy def/generation/data.lfy:Marker
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:55eeb537f74d15d3b738387a76843bfe4e688258322b57eb5046ead0be1e71dc
     #[test]
     fn only_a_lfy_path_and_a_line_or_an_identifier_path_is_read_as_a_marker() {
+        // Text after `@lfy` that is not a space and a `.lfy` path, a colon, and a number or
+        // an identifier path is prose: `@lfydef/a.lfy:4` has no space, and none of these has
+        // the rest.
+        assert!(parse_markers("// @lfydef/a.lfy:4").is_empty());
         let prose = [
             "@LFY see the notes on markers",
             "@LFY notes.md:4",
@@ -7925,7 +7932,7 @@ mod tests {
             let text = line.replace("@LFY", "@lfy");
             assert!(parse_markers(&text).is_empty(), "{text}");
         }
-        // @lfy def/generation/data.lfy:Marker
+        // @lfy def/generation/data.lfy:Marker#Marker:Marker:e5a2dc69b3714f2fe9ec245e19aa4b7d2bc03926cf7410cabc1e0a7ed86cf86c
         let text = "// @LFY def/a.lfy:4\n// @LFY def/deep/a.lfy:Marker\n// @LFY def/a.lfy:_x.y2\n// @LFY def/a.lfy:Marker.file#Marker:Marker:abc\n"
             .replace("@LFY", "@lfy");
         let markers = parse_markers(&text);

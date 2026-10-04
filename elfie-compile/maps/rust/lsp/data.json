@@ -1,9 +1,13 @@
 [
   {
     "dependencies": {
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
+      "def/model/data.lfy": "bad018acc31b1e5682448cb275ec32268ae84cfff4e1fbe4ffa1dde48d38db44",
+      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
       "def/workspace/data.lfy": "7f06fff863f1c6fc273bbace2c4bd04c22ef797d1e9bbe3d78135ad7bf7790b8"
     },
-    "generated": "2026-10-02T09:51:04Z",
+    "generated": "2026-10-04T05:48:28Z",
     "hash": "4601aad8e03c88caa67ba8f8cf3d5638d2e7942f7ae907896dc45591a8723db3",
     "markers": [
       {

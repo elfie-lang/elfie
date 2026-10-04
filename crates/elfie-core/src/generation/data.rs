@@ -872,6 +872,27 @@ mod tests {
         assert_eq!(entity.spelling(), "@lfy def/a.lfy:Marker.file");
     }
 
+    /// The name form carries no place of its own, so no line a compiler wrote can reach a
+    /// source map: a marker naming an entity spells the name alone, whatever
+    /// [`Marker::line`] and [`Marker::column`] hold, and the line recorded is derived from
+    /// the model by [`accept`](super::accept).
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:6dfd2385181861e88df13c277e13d237ad94dc3f284515619561d5e7c6488ce2
+    #[test]
+    fn a_marker_that_names_an_entity_spells_no_line() {
+        let named = Marker {
+            output_line: 3,
+            file: "def/a.lfy".to_string(),
+            entity: Some("Marker.file".to_string()),
+            line: 11,
+            column: Some(2),
+            requirement: None,
+            end: 7,
+        };
+        assert_eq!(named.spelling(), "@lfy def/a.lfy:Marker.file");
+        assert!(!named.spelling().contains("11"));
+        assert!(!named.spelling().contains(":2"));
+    }
+
     // @lfy def/generation/data.lfy:Marker.requirement
     // @lfy def/generation/data.lfy:Marker#Marker:Marker:a0a4e19d85bf94ae097f1675de74253ff9afc262809120446231dad567d2b141
     #[test]

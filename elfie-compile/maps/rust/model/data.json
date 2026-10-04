@@ -3,10 +3,11 @@
     "dependencies": {
       "def/grammar/rules/expression.lfy": "21d360e148a404d48faf173da1e4af24b1990160c9ea8b696732bcd803559305",
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c"
     },
-    "generated": "2026-10-03T22:12:45Z",
+    "generated": "2026-10-04T05:21:58Z",
     "hash": "b9e9d24b4e968cd1a3a58fbe6881e9b7a24902d49130a8164ec462b79ecf49a5",
     "markers": [
       {
@@ -1199,10 +1200,11 @@
     "dependencies": {
       "def/grammar/rules/expression.lfy": "21d360e148a404d48faf173da1e4af24b1990160c9ea8b696732bcd803559305",
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c"
     },
-    "generated": "2026-10-03T22:12:45Z",
+    "generated": "2026-10-04T05:21:58Z",
     "hash": "b9e9d24b4e968cd1a3a58fbe6881e9b7a24902d49130a8164ec462b79ecf49a5",
     "markers": [
       {
@@ -2026,10 +2028,11 @@
     "dependencies": {
       "def/grammar/rules/expression.lfy": "21d360e148a404d48faf173da1e4af24b1990160c9ea8b696732bcd803559305",
       "def/grammar/rules/statement.lfy": "908264ced3f88de9b1bb56cd50ff6d96f2d921587a60fc695cb44241b2fdf26f",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
       "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c"
     },
-    "generated": "2026-10-03T22:12:45Z",
+    "generated": "2026-10-04T05:21:58Z",
     "hash": "b9e9d24b4e968cd1a3a58fbe6881e9b7a24902d49130a8164ec462b79ecf49a5",
     "markers": [
       {
