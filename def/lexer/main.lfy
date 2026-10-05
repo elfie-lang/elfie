@@ -11,6 +11,7 @@ use "./traits";
 fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {
   @acceptanceCriteria
     .add({ behavior = `[[source]] is read as UTF-8 from start to end` })
+    .add({ behavior = `The call ends in time linear in the length of [[source]]` })
     .add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}` })
     .add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to "anonymous"` })
     .add({ behavior = `End of line tokens can match any [[NewLine]] terminal and the values are treated equally` })

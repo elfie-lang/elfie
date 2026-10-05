@@ -16,7 +16,15 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     .add({
       behavior = `Speaks JSON-RPC 2.0 with the framing [[Protocol]] specifies over standard input and output; nothing else is ever written to standard output, and logging goes to standard error`,
     })
-    .add({ behavior = `Requests are answered in the order received` })
+    .add({ behavior = `Messages are handled one at a time, in the order received` })
+    .add({
+      behavior = `A request is answered against the documents and files as every notification received before it left them`,
+    })
+    .add({ behavior = `Responses are sent in the order their requests arrived` })
+    .add({
+      situation = `$/cancelRequest arrives`,
+      behavior = `It is ignored, and the request it names is answered normally`,
+    })
     .add({
       situation = `A request fails inside the server`,
       behavior = `It yields an error response and the server goes on`,

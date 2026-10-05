@@ -31,8 +31,16 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
     .add({
       behavior = `Lists exactly the fns of this file that carry [[tool]], as [[tool]] says, and nothing else: no resources and no prompts, because one surface is enough to keep exact`,
     })
+    .add({ behavior = `Calls are handled one at a time, in the order received` })
     .add({
       behavior = `Every call answers for the program's files and elfie.json as they are on disk when the call arrives`,
+    })
+    .add({
+      situation = [
+        `A call arrives`,
+        `A .lfy file under [[Workspace.sourceDirectory]] is not in the program, and no earlier call saw it`,
+      ],
+      behavior = `The file is read through [[Loader.change]] with undefined before the tool runs`,
     })
     .add({
       situation = [

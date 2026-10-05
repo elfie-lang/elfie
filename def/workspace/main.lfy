@@ -364,6 +364,30 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
       behavior = `The result is what [[load]] of the same root gives when every file replaced this way holds what it was replaced with`,
     })
     .add({ behavior = `A replacement stands until the same [[path]] is given again` })
+    // Decision: change re-binds only the files a change can reach, so an editor stays responsive on a
+    // large program. Uses alone do not bound that set: @entities and additions to another file's
+    // entities, or to global, reach files that never use the changed one.
+    .add({
+      behavior = [
+        `Only the files of the re-bind set are bound again; every other file's symbols, usages, and problems are those of [[workspace]]`,
+        `The re-bind set is the file at [[path]] and every file that uses it, directly or through other files`,
+      ],
+    })
+    .add({
+      situation = `The file at [[path]], before or after the change, applies a trait to an entity another file declares, or adds to that entity's acceptance criteria, knowledge, commands, targets, or tests`,
+      behavior = `That other file and every file that uses it, directly or through other files, are in the re-bind set`,
+    })
+    .add({
+      situation = `The change adds or removes an application of a trait that compile-time code of another file reads the entities of`,
+      behavior = `That other file and every file that uses it, directly or through other files, are in the re-bind set`,
+    })
+    .add({
+      situation = `The file at [[path]], before or after the change, applies a trait to global or adds anything to global`,
+      behavior = `Every file of the program is in the re-bind set`,
+    })
+    .add({
+      behavior = `[[Workspace.targets]] and the problems loading adds about targets are found again from the model the change gives`,
+    })
     .add({
       situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program, nor the source of a knowledge item of the program joined to the root it is read from`,
       behavior = `The result matches [[workspace]]`,

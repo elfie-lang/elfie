@@ -6,6 +6,7 @@ d Node: `A rule satisfied by a run of consecutive tokens` {
   $children: `Nodes, error nodes, and tokens in source order, trivia included` = (Node | ErrorNode | Token)[];
   $start: `Index of the first token covered, counting from 0 over [[Tree.tokens]]` = number;
   $end: `Index after the last token covered` = number;
+  $documentation: `The documentation written for it, when its rule attaches documentation; empty otherwise` = Node[];
   @acceptanceCriteria
     .add({
       behavior = [

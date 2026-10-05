@@ -28,7 +28,7 @@ trait trivia: `Has little to no semantic meaning` {
 }
 
 trait documented: `Attaches the [[Documentation]] written for it` {
-  $documentation: `The [[Documentation]] nodes that precede this node with only [[trivia]] between; empty when there are none` = Node[];
+  where (`A node of the rule is in a tree`) -> `[[Node.documentation]] holds the [[Documentation]] nodes that precede it with only [[trivia]] between`;
 }
 
 trait triedBefore(other: is rule): `Comes ahead of another rule in the order of choice wherever both could begin at the same token` {
