@@ -19,6 +19,10 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       ],
     })
     .add({
+      situation = `[[tokens]] parse with no [[ErrorNode]]`,
+      behavior = `The call ends in time linear in the number of [[tokens]]`,
+    })
+    .add({
       behavior = `[[rule]] is the rule the caller wants satisfied: [[SourceFile]] for a file, [[Statement]] to reparse one statement, [[Expression]] for a snippet`,
     })
     .add({
@@ -93,24 +97,14 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       behavior = `The candidates are its alternatives`,
     })
     .add({ behavior = `The next token that is not [[trivia]] selects every candidate it can begin` })
-    .add({ situation = `One candidate is selected for the next token`, behavior = `That candidate is tried` })
     .add({
-      situation = `More than one candidate is selected for the next token`,
-      behavior = `They are tried in [[triedBefore]] order`,
+      behavior = `Choice is ordered (PEG): the first alternative that matches is taken, and later alternatives are never tried for that span`,
     })
     .add({
-      situation = [
-        `More than one candidate is selected for the next token`,
-        `A candidate fails there`,
-      ],
-      behavior = `The next candidate in [[triedBefore]] order is tried`,
+      behavior = `The alternatives of a choice among candidates are the selected candidates, in [[triedBefore]] order`,
     })
     .add({
-      situation = [
-        `More than one candidate is selected for the next token`,
-        `A candidate does not fail there`,
-      ],
-      behavior = `No candidate after it in [[triedBefore]] order is tried`,
+      behavior = `A later failure never revisits a choice, including whether an optional element was taken and how many iterations a repetition took`,
     })
     .add({
       situation = [
@@ -136,83 +130,37 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       ],
     })
     .add({
-      situation = [
-        `An optional element is reached`,
-        `The next token that is not [[trivia]] can begin it`,
-      ],
-      behavior = `It is tried`,
-    })
-    .add({
-      situation = [
-        `An optional element is reached`,
-        `The next token that is not [[trivia]] cannot begin it`,
-      ],
-      behavior = `It is skipped`,
-    })
-    .add({
-      situation = [
-        `An optional element is reached`,
-        `It is tried and fails`,
-      ],
-      behavior = `It is skipped`,
-    })
-    .add({
       situation = `An optional element is reached`,
-      behavior = `A later failure never revisits the choice of trying or skipping it`,
+      behavior = `It is a choice between the element and nothing, in that order`,
+    })
+    .add({
+      situation = `A repetition is reached`,
+      behavior = `It is greedy: it stops only at the first iteration whose element does not match`,
     })
     .add({
       situation = [
-        `A repetition is reached`,
-        `The next token that is not [[trivia]] can begin the repeated element`,
-      ],
-      behavior = `Another iteration is tried`,
-    })
-    .add({
-      situation = [
-        `A repetition is reached`,
-        `The next token that is not [[trivia]] cannot begin the repeated element`,
+        `A repetition stops`,
+        `Its rule is not [[recoverable]], an element after the repetition can begin with the next token that is not [[trivia]], or the input has ended`,
       ],
       behavior = `The repetition ends`,
-    })
-    .add({
-      situation = [
-        `A repetition is reached`,
-        `An iteration of it fails`,
-      ],
-      behavior = `The iteration leaves its tokens and the repetition ends`,
     });
 
-  // Expressions
+  // Expressions: precedence climbing over binding power
   @acceptanceCriteria
     .add({
-      situation = `An operand or tail expression of an operation does not follow [[GroupOpen]] or [[ListOpen]]`,
-      behavior = `It is parsed with that operation's power as the minimum`,
+      behavior = `Operations are grouped by precedence climbing: an operation takes the expression on its left as its left operand only when its power is greater than the minimum in force, or equal to it with right associativity`,
     })
     .add({
-      situation = `An operation's power is greater than the minimum in force, or equal to it with right associativity`,
-      behavior = `The operation applies to the left operand`,
+      situation = `An operand or tail expression of an operation does not follow [[GroupOpen]] or [[ListOpen]]`,
+      behavior = `Its minimum is that operation's power`,
     })
     .add({
       situation = `An [[Expression]] is an element of a rule that is not an operation, or follows [[GroupOpen]] or [[ListOpen]]`,
-      behavior = `It is parsed with minimum 0`,
+      behavior = `Its minimum is 0`,
     })
     .add({
       situation = `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
-      behavior = `The postfix rule is tried first, its own criteria included`,
-    })
-    .add({
-      situation = [
-        `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
-        `The postfix rule is no match there`,
-      ],
-      behavior = `The infix rule is tried`,
-    })
-    .add({
-      situation = [
-        `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
-        `The postfix rule is a match there`,
-      ],
-      behavior = `The infix rule is not tried`,
+      behavior = `Source that the postfix rule reads, its own criteria included, is read as the postfix rule and never as the infix rule`,
     })
     .add({
       situation = `A criterion of an operation makes it no match when the expression is parsed for a particular rule, as [[Generic]] is no match for [[Reference]]`,
@@ -227,7 +175,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     })
     .add({
       situation = `A rule without [[recoverable]] cannot be satisfied`,
-      behavior = `It produces nothing and leaves its tokens to the rule that referenced it`,
+      behavior = `It does not match, and takes no token`,
     })
     .add({
       situation = [
@@ -253,6 +201,46 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       input = [Token[]@like(`The lexing of: a - b - c`), Expression],
       expect = Tree@like(
         `An [[AdditiveOperation]] root whose left operand is the [[AdditiveOperation]] of a and b and whose right operand is c; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a + b * c`), Expression],
+      expect = Tree@like(
+        `An [[AdditiveOperation]] root whose left operand is a and whose right operand is the [[MultiplicativeOperation]] of b and c; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a * b + c`), Expression],
+      expect = Tree@like(
+        `An [[AdditiveOperation]] root whose left operand is the [[MultiplicativeOperation]] of a and b and whose right operand is c; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a ** b ** c`), Expression],
+      expect = Tree@like(
+        `A [[PowerOperation]] root whose left operand is a and whose right operand is the [[PowerOperation]] of b and c, because [[Power]] is right associative; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: f(x) + 1`), Expression],
+      expect = Tree@like(
+        `An [[AdditiveOperation]] root whose left operand is the [[Call]] of f whose [[Items]] hold x, and whose right operand is 1; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: -1`), Expression],
+      expect = Tree@like(`A [[NegateOperation]] root whose operand is the [[Number]] 1; no errors`),
+    },
+    {
+      input = [Token[]@like(`The lexing of: x = - 1;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding an [[ExpressionStatement]] of the [[Name]] x whose [[ErrorNode]] covers = - 1 with [[ErrorNode.expected]] [[Semicolon]], because a space after [[Minus]] keeps it from being a [[NegateOperation]]; one error`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a b`), Expression],
+      expect = Tree@like(
+        `An [[Expression]] root holding the [[Name]] a and then an [[ErrorNode]] covering b; one error`,
       ),
     },
     {
@@ -341,6 +329,18 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       input = [Token[]@like(`The lexing of: const = 1;`)],
       expect = Tree@like(`A [[SourceFile]] root whose one [[ErrorNode]] has no [[ErrorNode.keyword]]`),
     },
+    {
+      input = [Token[]@like(`The lexing of: const = f(a; b); let y = 2;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding a [[VariableDeclaration]] whose [[ErrorNode]] covers = f(a; b), past the [[Semicolon]] inside the parentheses, followed by a complete [[VariableDeclaration]] of y; one error`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: let # y = 1; where # is a token without a [[Token.rule]]`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[VariableDeclaration]] of y whose [[ErrorNode]] covers the token # alone, between the let keyword and the [[Declared]] y; one error`,
+      ),
+    },
   );
 
   // Rule Beginning
@@ -351,18 +351,12 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     })
     .add({
       situation = `The rule is not an [[GrammarTraits.infix]] or [[GrammarTraits.postfix]]`,
-      behavior = [
-        `It can begin with a terminal when a token of that terminal can be the first token it covers`,
-        `Its syntax is followed through references, through every alternative, and past every element that can be satisfied without taking a token`,
-      ],
+      behavior = `It can begin with a terminal when a token of that terminal can be the first token it covers`,
     })
     .add({
       behavior = `[[trivia]] tokens and tokens without a [[Token.rule]] never begin a rule; the next token is read past them`,
     });
 
-  for (const rule in GrammarTraits.statement@entities, GrammarTraits.primary@entities, GrammarTraits.prefix@entities) {
-    where (`A statement or expression begins`) and (`The next token that is not [[trivia]] has a [[Token.rule]] that [[&rule]] can begin with`) -> `[[&rule]] is tried`;
-  }
   for (const rule in GrammarTraits.infix@entities, GrammarTraits.postfix@entities) {
     where (`The next token is the operator of [[&rule]] and its binding power continues the expression`) -> `A node for [[&rule]] is built from the left operand, the operator, and what follows`;
   }
