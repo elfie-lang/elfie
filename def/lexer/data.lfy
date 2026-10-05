@@ -14,12 +14,3 @@ d Token: `One piece of the source text` {
     })
     .add({ situation = `[[Token.rule]] is null`, behavior = `[[Token]] is flagged as invalid` });
 }
-
-d ModeStack: `Which region of the source the lexer is in, innermost last` {
-  @acceptanceCriteria
-    .add({ behavior = `Starts with the code mode and is never empty` })
-    .add({ situation = `A token opens a mode`, behavior = `The mode is pushed together with the rule that opened it` })
-    .add({ situation = `A token closes the mode at the top`, behavior = `The top entry is popped` })
-    .add({ situation = `A token closes a mode, but that mode is not at the top`, behavior = `Is not a close` })
-    .add({ behavior = `The entry at the top decides which terminals are candidates for the next token` });
-}

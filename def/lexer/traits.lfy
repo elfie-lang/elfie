@@ -1,38 +1,29 @@
-use "./data";
+use "../grammar/terminals/space";
 
 ace function inMode(modes: string[]) {
-  return `The top of the [[ModeStack]] is {{modes.join(` or `)}}`;
+  return `The innermost open region is a {{modes.join(` or `)}} region`;
 }
 
-trait candidateInModes(...modes: string[]): `A terminal is considered only while the condition holds` {
-  $lexCondition: `When this terminal may match` = string;
-  .lexCondition = inMode(modes);
+trait candidateInModes(...modes: string[]): `A terminal lexed only inside the regions named` {
+  @acceptanceCriteria.add({
+    behavior = `Every token of {{@identifier}} begins while the innermost open region is a {{modes.join(` or `)}} region`,
+  });
 }
 
-trait modeOpener(mode: string, when?: string): `Creating this token pushes a mode` {
-  const onToken = `A token is created for {{@definition}}`;
-  with ModeStack {
-    where (onToken) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;
-  }
+trait modeOpener(mode: string, when?: string): `Each token of this terminal opens a region` {
+  where (`A token of {{@identifier}} is lexed`) and (when ?? `Always`) -> `It opens a {{mode}} region whose opener is {{@identifier}}`;
 }
 
-trait modeCloser(mode: string): `Creating this token pops a mode` {
-  const onToken = `A token is created for {{@definition}}`;
-  with ModeStack {
-    where (onToken) and (`{{mode}} is at the top`) -> `{{mode}} is popped`;
-  }
+trait modeCloser(mode: string): `A token of this terminal closes a region` {
+  where (`A token of {{@identifier}} is lexed`) and (`The innermost open region is a {{mode}} region`) -> `It closes that region`;
 }
 
-trait modeToggle(mode: string, when?: string): `The same boundary opens the mode and, seen again, closes it` {
-  const onToken = `A token is created for {{@definition}}`;
-  with ModeStack {
-    where (onToken) and (`{{mode}} is at the top and was opened by {{@definition}}`) -> `{{mode}} is popped`;
-    where (onToken) and !(`{{mode}} is at the top`) and (when ?? `Always`) -> `{{mode}} is pushed, recording {{@definition}} as its opener`;
-  }
+trait modeToggle(mode: string, when?: string): `The same boundary opens a region and, seen again, closes it` {
+  const onToken = `A token of {{@identifier}} is lexed`;
+  where (onToken) and (`The innermost open region is a {{mode}} region whose opener is {{@identifier}}`) -> `It closes that region`;
+  where (onToken) and !(`The innermost open region is a {{mode}} region`) and (when ?? `Always`) -> `It opens a {{mode}} region whose opener is {{@identifier}}`;
 }
 
-trait appliedUntilNewLine(mode: string): `The mode this token opens ends with the line` {
-  with ModeStack {
-    where (`{{mode}} opened by {{@definition}} is at the top`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `{{mode}} is popped before the line break is lexed`;
-  }
+trait appliedUntilNewLine(mode: string): `The region this terminal opens ends with its line` {
+  where (`The innermost open region is a {{mode}} region whose opener is {{@identifier}}`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `That region closes there, so the [[NewLine]] is lexed outside it`;
 }

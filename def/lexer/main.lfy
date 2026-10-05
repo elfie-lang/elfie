@@ -8,14 +8,6 @@ use "./data";
 use "./modes";
 use "./traits";
 
-ace function matches(rule: Rule) {
-  return `The characters at the current position match {{rule.syntax}} from {{rule.identifier}} ([[&rule$&]])`;
-}
-
-ace function push(kind: string) {
-  return `A [[Token]] for {{kind}} is created from the matched characters and appended to the result`;
-}
-
 fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {
   @acceptanceCriteria
     .add({ behavior = `[[source]] is read as UTF-8 from start to end` })
@@ -25,22 +17,24 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
     .add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at` })
     .add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at` })
     .add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token` })
-    .add({ behavior = `A new [[ModeStack]] is created for each call` })
+    .add({ behavior = `The whole [[source]] is one code region, which no token opens or closes` })
+    .add({ behavior = `A region a token opens is nested in the innermost open region before that token` })
+    .add({ behavior = `The innermost open region is the most recently opened region that is still open` })
     .add({
       situation = [
-        `A [[terminal]] has a [[candidateInModes]] condition`,
-        `That condition holds at a position`,
+        `A token is of a terminal that closes some open region`,
+        `That region is not the innermost open one`,
       ],
-      behavior = `The terminal is matched at that position`,
+      behavior = `That region stays open`,
     })
     .add({
-      situation = [
-        `A [[terminal]] has no [[candidateInModes]] condition`,
-        `[[inCode]] holds at a position`,
-      ],
-      behavior = `The terminal is matched at that position`,
+      behavior = `The criteria of each [[terminal]] on which regions its tokens begin in, open, or close are respected`,
     })
-    .add({ behavior = `The longest match is the token` })
+    .add({
+      situation = `A [[terminal]] is not [[candidateInModes]]`,
+      behavior = `A token of it begins only where [[inCode]] holds`,
+    })
+    .add({ behavior = `Of the terminals that may be lexed at a position, the longest match is the token` })
     .add({
       situation = [
         `Tokens are of equal length`,
@@ -57,12 +51,12 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
       behavior = `[[Token.value]] should be equal to [[Token.raw]]`,
     })
     .add({
-      situation = `No terminal matches at a position`,
+      situation = `No terminal that may be lexed at a position matches there`,
       behavior = `One [[Token]] with no [[Token.rule]] is created from the characters up to the next position where some terminal matches, and lexing continues`,
     })
     .add({
-      situation = `The source ends while the [[ModeStack]] holds more than a single code mode`,
-      behavior = `For each remaining mode, an invalid [[Token]] with no [[Token.rule]] and empty [[Token.raw]] is appended whose [[Token.value]] names the mode that was not closed`,
+      situation = `Regions other than the code region are still open at the end of [[source]]`,
+      behavior = `After every other token, each of them gives one [[Token]] with no [[Token.rule]] and empty [[Token.raw]] whose [[Token.value]] names its [[Mode]], innermost last`,
     });
 
   @test(
@@ -104,6 +98,57 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
         Token@like(`Token for [[SingleQuote]] with value "'"`),
       ],
     },
+    {
+      input = ["`{{`{{'c'}}`}}`"],
+      expect = [
+        Token@like(`Token for [[Backtick]] with value "\`"`),
+        Token@like(`Token for [[ExecutionOpen]] with value "\{{"`),
+        Token@like(`Token for [[Backtick]] with value "\`", opening a template nested in the expression`),
+        Token@like(`Token for [[ExecutionOpen]] with value "\{{"`),
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+        Token@like(`Token for [[SingleQuoteBody]] with value "c"`),
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+        Token@like(`Token for [[ExecutionClose]] with value "\}}"`),
+        Token@like(`Token for [[Backtick]] with value "\`", closing the inner template`),
+        Token@like(`Token for [[ExecutionClose]] with value "\}}"`),
+        Token@like(`Token for [[Backtick]] with value "\`", closing the outer template`),
+      ],
+    },
+    {
+      input = ["'abc\nx"],
+      expect = [
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+        Token@like(`Token for [[SingleQuoteBody]] with value "abc"`),
+        Token@like(`Token for [[NewLine]] with value "\\n"`),
+        Token@like(`Token for [[Identifier]] with value "x"`),
+      ],
+    },
+    {
+      input = ['`a {{ b'],
+      expect = [
+        Token@like(`Token for [[Backtick]] with value "\`"`),
+        Token@like(`Token for [[TemplateBody]] with value "a "`),
+        Token@like(`Token for [[ExecutionOpen]] with value "\{{"`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Token for [[Identifier]] with value "b"`),
+        Token@like(`Invalid token with empty raw text and value "template"`),
+        Token@like(`Invalid token with empty raw text and value "template execution"`),
+      ],
+    },
+    {
+      input = ["`{{ '}}' }}`"],
+      expect = [
+        Token@like(`Token for [[Backtick]] with value "\`"`),
+        Token@like(`Token for [[ExecutionOpen]] with value "\{{"`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+        Token@like(`Token for [[SingleQuoteBody]] with value "\}}"`),
+        Token@like(`Token for [[SingleQuote]] with value "'"`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Token for [[ExecutionClose]] with value "\}}"`),
+        Token@like(`Token for [[Backtick]] with value "\`"`),
+      ],
+    },
   );
 
   // The terminal document is the only grammar the lexer knows
@@ -113,13 +158,6 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
       behavior = `Reads a bare name inside a rule as a reference to the terminal or character class with that identifier`,
     })
     .add({ behavior = `Matches against the following terminals only: \n\n {{terminals}}` });
-
-  for (const rule in terminal@entities) {
-    // An escape is a terminal too, but only ever part of another one, as the escape rule below says
-    if (!(rule is escape)) {
-      where (matches(rule.rule)) and (rule.lexCondition ?? inCode) -> push(&rule@definition);
-    }
-  }
 
   for (const rule in keyword@entities) {
     where (`[[&rule]] and [[Identifier]] match the same characters`) -> `[[&rule]] is the token`;
@@ -131,6 +169,4 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
       sideEffects = [`Can never be a token`],
     });
   }
-
-  where (`No candidate matched`) -> push(`invalid text`);
 }

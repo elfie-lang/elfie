@@ -178,7 +178,7 @@ query, format, generation), `crates/elfie-lsp`, `crates/elfie-mcp`, `crates/elfi
 - **Members may share a name with a parameter** (`trait binding(precedence) { $precedence = ... }`);
   every other double declaration in one scope is a problem.
 - **Member lookup is lenient** where the left side's type is a trait predicate, a union, or unknown
-  (`rule.lexCondition`, `tree.tokens.get`); it is strict for modules, data, enums, and types.
+  (`tree.tokens.get`); it is strict for modules, data, enums, and types.
 - **Function bodies** (`function`) are not executed at bind time except for their context statements
   (`@acceptanceCriteria`, `@test`, `where`, `with`, `for`); they are executed as code only when
   called from a template or trait argument (`Grammar.grammarDocument()`).
