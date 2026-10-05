@@ -3,7 +3,6 @@ use "./number";
 
 // Decision: every member test puts the receiver first in input, then the operation's arguments.
 // Decision: only push changes the receiver; every other operation leaves it as it was and returns a new value.
-// Decision: some and every are written with findIndex rather than find, so an item that is itself undefined counts.
 // Decision: map and reduce need a type parameter of their own and flat a receiver of List<List<T>>,
 // neither of which an inline function can declare, so each is a top-level fn taking the list first;
 // the member refers to it, and its criteria and tests live on the fn, receiver still first.
@@ -35,15 +34,10 @@ d List<T> is builtin: `An ordered sequence of values` {
   /// predicate: whether the item at the index is wanted
   $find: `The first item the predicate accepts, or undefined when none` = (
     predicate: (item: T, index: number) => boolean,
-  ) => {
-    for (const item, index from .) {
-      if (predicate(item, index)) {
-        return item;
-      }
-    }
-    return undefined;
-  };
+  ) => T | undefined;
   with List$find {
+    where (`The predicate accepts an item`) -> `It is not called for any later item`;
+    where (`The first item the predicate accepts is itself undefined`) -> `Returns undefined, the same as when none is accepted`;
     @test({ input = [[1, 2, 3], (x) => x > 1], expect = 2 });
     @test({ input = [[1, 2], (x) => x > 5], expect = undefined });
   }
@@ -120,36 +114,34 @@ d List<T> is builtin: `An ordered sequence of values` {
   }
   $flat: `The items of each item, one level deep` = flat;
   /// predicate: whether the item at the index counts
-  $some: `Whether the predicate accepts any item` = (predicate: (item: T, index: number) => boolean) => .findIndex(
-    predicate,
-  ) >= 0;
+  $some: `Whether the predicate accepts any item` = (predicate: (item: T, index: number) => boolean) => boolean;
   with List$some {
+    where (`An item is undefined`) -> `It is passed to the predicate like any other item, and the result is true when the predicate accepts it`;
     @test({ input = [[1, 2], (x) => x > 1], expect = true });
+    @test({ input = [[1, undefined], (x) => x == undefined], expect = true });
+    @test({ input = [[], (x) => true], expect = false });
   }
   /// predicate: whether the item at the index counts
-  $every: `Whether the predicate accepts every item` = (predicate: (item: T, index: number) => boolean) => .findIndex((
-    item,
-    index,
-  ) => !predicate(item, index)) < 0;
+  $every: `Whether the predicate accepts every item` = (predicate: (item: T, index: number) => boolean) => boolean;
   with List$every {
+    where (`An item is undefined`) -> `It is passed to the predicate like any other item, and the result is false when the predicate rejects it`;
     @test({ input = [[1, 2], (x) => x > 1], expect = false });
+    @test({ input = [[1, undefined], (x) => x != undefined], expect = false });
+    @test({ input = [[], (x) => false], expect = true });
   }
-  $unique: `The items with later repeats dropped, the first occurrence kept` = () => {
-    const kept = [];
-    for (const item in .) {
-      if (!kept.includes(item)) kept.push(item);
-    }
-    return kept;
-  };
+  $unique: `The items with later repeats dropped, the first occurrence kept` = () => T[];
   with List$unique {
+    where (`Items are compared`) -> `Equality is that of ==: without casting`;
+    where (`Called`) -> `The kept items are in the order they have in the list`;
     @test({ input = [[1, 2, 1, 3, 2]], expect = [1, 2, 3] });
+    @test({ input = [["1", 1, "1"]], expect = ["1", 1] });
   }
   $reduce: `One value built by folding the reducer over the items from initial` = reduce;
 }
 
 /// list: the receiver
 /// transform: the replacement of the item at the index
-fn map<T, U>(list: List<T>, transform: (item: T, index: number) => U) => List<U> {
+fn map<T, U>(list: List<T>, transform: (item: T, index: number) => U) is builtin: `Each item of the list transformed, in order` => List<U> {
   where (`The list has items`) -> `Calls transform once per item with the item and its index, and returns the results in the same order`;
   where (`The list is empty`) -> `Returns an empty list without calling transform`;
   @test({ input = [[1, 2], (x) => x + 1], expect = [2, 3] });
@@ -157,7 +149,7 @@ fn map<T, U>(list: List<T>, transform: (item: T, index: number) => U) => List<U>
 }
 
 /// list: the receiver, whose items are lists
-fn flat<T>(list: List<List<T>>) => List<T> {
+fn flat<T>(list: List<List<T>>) is builtin: `The items of each item of the list, one level deep` => List<T> {
   where (`The list has items`) -> `Returns the items of each item in order, one level deep, so an item's own items that are lists stay lists`;
   where (`The list is empty`) -> `Returns an empty list`;
   @test({ input = [[[1], [2, [3]]]], expect = [1, 2, [3]] });
@@ -167,7 +159,7 @@ fn flat<T>(list: List<List<T>>) => List<T> {
 /// list: the receiver
 /// reducer: the next accumulated value from the one so far and the item at the index
 /// initial: the accumulated value before the first item
-fn reduce<T, U>(list: List<T>, reducer: (accumulated: U, item: T, index: number) => U, initial: U) => U {
+fn reduce<T, U>(list: List<T>, reducer: (accumulated: U, item: T, index: number) => U, initial: U) is builtin: `One value built by folding the reducer over the list's items from initial` => U {
   where (`The list has items`) -> `Calls reducer once per item in order, with what the previous call returned, initial for the first, and yields what the last call returned`;
   where (`The list is empty`) -> `Yields initial without calling reducer`;
   @test({ input = [[1, 2, 3], (sum, x) => sum + x, 0], expect = 6 });

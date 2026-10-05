@@ -29,9 +29,6 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
 // Guidance only this repository needs
 rust
   @acceptanceCriteria
-  .add({
-    behavior = `Instant is std::time::SystemTime, formatted and parsed by hand as RFC 3339 the way now_rfc3339 in elfie-core does; chrono is not used`,
-  })
   .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })
   .add({ behavior = `Nothing outside the target's output directory is written` });
 

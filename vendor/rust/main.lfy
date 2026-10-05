@@ -52,6 +52,11 @@ trait rust extends targetLanguage: `Rust 2024` {
     .add({
       behavior = `Path is std::path; the file functions are std::fs; Json is serde_json; run and stream are std::process::Command through sh -c; isTerminal is std::io::IsTerminal of stdout or stderr`,
     })
+    .add({ behavior = `Instant is std::time::SystemTime` })
+    .add({
+      situation = `A builtin operation of Instant or of time has no counterpart in std::time, as RFC 3339 text has none`,
+      behavior = `It is written out over std::time`,
+    })
     .add({
       behavior = `A builtin fn or member is never generated, only called; a member of a builtin data written out in full is translated where it is used`,
     });

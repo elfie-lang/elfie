@@ -52,9 +52,11 @@ d Number is builtin: `A number; integer or not` {
   with Number$max {
     @test({ input = [3, 5], expect = 5 });
   }
-  $clamp: `The number held between low and high` = (low: number, high: number) => .max(low).min(high);
+  $clamp: `The number held between low and high` = (low: number, high: number) => number;
   with Number$clamp {
+    where (`low is greater than high`) -> `Returns high, whatever the number`;
     @test({ input = [12, 0, 10], expect = 10 });
+    @test({ input = [5, 10, 0], expect = 0 });
   }
 }
 

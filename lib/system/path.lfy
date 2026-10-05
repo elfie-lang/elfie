@@ -63,15 +63,10 @@ d Path is builtin: `A file system path, as text` {
     );
   }
 
-  $stem: `The file name without its extension` = () => {
-    const name = .fileName();
-    const extension = .extension();
-    if (extension == undefined) {
-      return name;
-    }
-    return name.slice(0, name.length - extension.length - 1);
-  };
+  $stem: `The file name without its extension` = () => string;
   with Path$stem {
+    where (`[[Path.extension]] is undefined`) -> `Returns [[Path.fileName]] unchanged`;
+    where (`[[Path.extension]] is defined`) -> `Returns [[Path.fileName]] without its last dot and the extension after it`;
     @test(
       { input = [`a/b.tar.gz`], expect = `b.tar` },
       { input = [`a/b`], expect = `b` },
@@ -80,16 +75,16 @@ d Path is builtin: `A file system path, as text` {
   }
 
   /// extension: the new extension, without a dot
-  $withExtension: `The same path with its extension replaced, or added when it has none` = (extension: string) => {
-    const name = .stem() + "." + extension;
-    const parent = .parent();
-    if (parent == undefined) {
-      return name;
-    }
-    return parent.join(name);
-  };
+  $withExtension: `The same path with its extension replaced, or added when it has none` = (extension: string) => Path;
   with Path$withExtension {
-    @test({ input = [`a/b.lfy`, `rs`], expect = `a/b.rs` }, { input = [`b`, `rs`], expect = `b.rs` });
+    where (`Any path`) -> `The file name becomes [[Path.stem]], a dot, and the new extension`;
+    where (`The path has segments before its file name`) -> `They are kept unchanged`;
+    @test(
+      { input = [`a/b.lfy`, `rs`], expect = `a/b.rs` },
+      { input = [`b`, `rs`], expect = `b.rs` },
+      { input = [`a/b.tar.gz`, `rs`], expect = `a/b.tar.rs` },
+      { input = [`.bashrc`, `rs`], expect = `.bashrc.rs` },
+    );
   }
 
   /// base: the path the result is relative to
@@ -104,6 +99,7 @@ d Path is builtin: `A file system path, as text` {
       { input = [`src/a/b.rs`, `src`], expect = `a/b.rs` },
       { input = [`src/a/b.rs`, `src/c`], expect = `../a/b.rs` },
       { input = [`src`, `src`], expect = `.` },
+      { input = [`a/b`, `c/d`], expect = `../../a/b` },
       { input = [`/src`, `src`], expect = undefined },
     );
   }
@@ -139,20 +135,11 @@ d Path is builtin: `A file system path, as text` {
   }
 
   /// base: the path that may lead this one
-  $startsWith: `Whether base is this path or a directory above it, segment by segment` = (base: Path) => {
-    const mine = .segments();
-    const theirs = base.segments();
-    if (theirs.length > mine.length) {
-      return false;
-    }
-    for (const index of theirs) {
-      if (mine[index] != theirs[index]) {
-        return false;
-      }
-    }
-    return true;
-  };
+  $startsWith: `Whether base is this path or a directory above it, segment by segment` = (base: Path) => boolean;
   with Path$startsWith {
+    where (`Each of the [[Path.segments]] of base equals this path's segment at the same position`) -> `Returns true`;
+    where (`base has more segments than this path, or one of its segments differs from this path's at the same position`) -> `Returns false, so src/ab does not start with src/a`;
+    where (`The paths are compared`) -> `Neither is normalized first, so a/./b does not start with a/b`;
     @test(
       { input = [`src/a/b.rs`, `src/a`], expect = true },
       { input = [`src/ab/c.rs`, `src/a`], expect = false },
