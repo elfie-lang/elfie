@@ -709,17 +709,9 @@ impl LanguageServer for Backend {
     }
 }
 
-/// The deprecated `rootUri` of an initialize request.
-#[allow(deprecated)]
-fn root_uri(params: &lsp::InitializeParams) -> Option<&Url> {
-    params.root_uri.as_ref()
-}
-
 /// The project the session loads: the root `serve` was given when it was given one, the
 /// client's first workspace folder when the client names one, and the current directory
 /// otherwise.
-// Decision: the deprecated `rootUri` is consulted after the workspace folders and before
-// the current directory, because older clients send nothing else.
 // @lfy def/lsp/main.lfy:serve#serve:serve:30dc14e0f289c1258311c706561d518b00e9be0a7c99c2b8bf4f4fa51f427dfa
 fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf {
     let root = given
@@ -734,7 +726,6 @@ fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf 
                 .to_file_path()
                 .ok()
         })
-        .or_else(|| root_uri(params)?.to_file_path().ok())
         // @lfy def/lsp/main.lfy:serve#serve:serve:9b470be59e32acca9166c801c02dc83923c61108c1efc06fc3e63ba9883fb1eb
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(|| PathBuf::from("."));
@@ -1409,6 +1400,7 @@ mod tests {
     // @lfy def/lsp/main.lfy:serve#serve:serve:ef49892b8f2fb6e936b6a3e996499aed7a9202a5251d85c6530391d13822d99c
     // @lfy def/lsp/main.lfy:serve#serve:serve:9b470be59e32acca9166c801c02dc83923c61108c1efc06fc3e63ba9883fb1eb
     #[test]
+    #[allow(deprecated)]
     fn the_given_root_beats_the_first_folder_which_beats_the_current_directory() {
         let folder = |path: &str| lsp::WorkspaceFolder {
             uri: Url::from_file_path(path).unwrap(),
@@ -1428,6 +1420,15 @@ mod tests {
         assert_eq!(chosen_root(Some(&given), &none), given);
         assert_eq!(
             chosen_root(None, &none),
+            std::env::current_dir().expect("a current directory")
+        );
+        let only_root_uri = lsp::InitializeParams {
+            root_uri: Some(Url::from_file_path("/tmp/elfie-root-uri").unwrap()),
+            ..Default::default()
+        };
+        assert_eq!(chosen_root(Some(&given), &only_root_uri), given);
+        assert_eq!(
+            chosen_root(None, &only_root_uri),
             std::env::current_dir().expect("a current directory")
         );
     }

@@ -1,0 +1,14 @@
+use "elfie/target/framework";
+
+trait react extends targetFramework: `React 19` {
+  .framework = "React 19";
+  .provides = ["react"];
+  .requires = ["javascript-language"];
+  .outputExtensions = ["tsx", "jsx"];
+  @acceptanceCriteria
+    .add({ behavior = `A file that holds JSX ends in .tsx when the language is TypeScript and in .jsx otherwise` })
+    .add({
+      behavior = `Components are function components; state and effects use hooks; a class component is never written`,
+    })
+    .add({ behavior = `Every element of a rendered list has a key that is stable across renders` });
+}

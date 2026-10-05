@@ -42,9 +42,10 @@ use crate::grammar::{Entity as Rule, GrammarRule};
 use crate::lexer::Token;
 use crate::model::Value as Interim;
 use crate::model::{
-    Applied, AppliedSource, ContextProperty, Criterion, Entity as Declared, EntityId, EntityKind,
-    FileId, Layer, Model, NodeRef, Origin, Problem, SYNTHETIC, Scope, ScopeId, Symbol, SymbolId,
-    SymbolKind, Test, TypeRef, accessor_layer, strip_references,
+    Applied, AppliedSource, Command, ContextProperty, Criterion, Entity as Declared, EntityId,
+    EntityKind, FileId, Knowledge, KnowledgeKind, Layer, Model, NodeRef, Operation, Origin,
+    Problem, SYNTHETIC, Scope, ScopeId, Symbol, SymbolId, SymbolKind, Test, TypeRef,
+    accessor_layer, strip_references,
 };
 use crate::parser::components::is_trivia;
 use crate::parser::data::Child;
@@ -64,6 +65,44 @@ const ALTERNATION_LIST: &str = "alternationList";
 // @lfy def/interpret/main.lfy:expand
 const ACCEPTANCE_CRITERIA: &str = "acceptanceCriteria";
 
+/// The member of an entity holding what the compiler is given to read for it.
+// @lfy def/interpret/main.lfy:expand
+const KNOWLEDGE: &str = "knowledge";
+
+/// The member of an entity holding the shell commands for its operations.
+// @lfy def/interpret/main.lfy:expand
+const COMMANDS: &str = "commands";
+
+/// The member of an entity holding the targets it is built for.
+// @lfy def/interpret/main.lfy:expand
+const TARGETS: &str = "targets";
+
+/// The data the package `elfie` declares for one thing a project is compiled into: what an
+/// `ace const` of the project holds to declare a target.
+// @lfy def/interpret/main.lfy:expand
+const TARGET: &str = "Target";
+
+/// The member of a layer holding the trait chosen.
+// @lfy def/interpret/main.lfy:expand
+const SUBJECT: &str = "subject";
+
+/// The member of a layer holding one value per parameter of its trait.
+// @lfy def/interpret/main.lfy:expand
+const ARGUMENTS: &str = "arguments";
+
+/// The slots of a `Target` that hold its layers, in guidance order.
+// @lfy def/interpret/main.lfy:expand
+const SLOTS: [&str; 8] = [
+    "layers",
+    "interfaces",
+    "frameworks",
+    "layout",
+    "runtime",
+    "platforms",
+    "ecosystem",
+    "language",
+];
+
 /// The member of an entity that adds tests.
 // @lfy def/interpret/main.lfy:expand
 const TEST: &str = "test";
@@ -79,6 +118,38 @@ const TYPE_ARGUMENTS: &str = "typeArguments";
 /// `Entity.typeParameters`: what a declaration is generic over.
 // @lfy def/interpret/main.lfy:expand
 const TYPE_PARAMETERS: &str = "typeParameters";
+
+/// One piece of knowledge as a value: the object an `add` call was given, read back.
+// @lfy def/interpret/main.lfy:expand
+fn knowledge_value(item: &Knowledge) -> Interim {
+    Interim::Object(vec![
+        ("topic".to_string(), Interim::String(item.topic.clone())),
+        (
+            "kind".to_string(),
+            Interim::String(item.kind.value().to_string()),
+        ),
+        ("source".to_string(), Interim::String(item.source.clone())),
+        (
+            "quote".to_string(),
+            item.quote.map_or(Interim::Undefined, Interim::Bool),
+        ),
+    ])
+}
+
+/// One command as a value, read back the same way.
+// @lfy def/interpret/main.lfy:expand
+fn command_value(item: &Command) -> Interim {
+    Interim::Object(vec![
+        (
+            "operation".to_string(),
+            Interim::String(item.operation.value().to_string()),
+        ),
+        (
+            "line".to_string(),
+            item.line.clone().map_or(Interim::Undefined, Interim::String),
+        ),
+    ])
+}
 
 /// The statement rules that declare a name, so that a statement directly in a
 /// [`F::SourceFile`] which is none of them runs at compile time.
@@ -360,18 +431,18 @@ impl Model {
 /// A node is compile time when it is, or is inside, an [`S::Ace`], an [`S::TraitDeclaration`],
 /// an [`S::Where`], an [`S::With`], an [`E::IsClause`], an [`E::ExtendsClause`], the
 /// [`S::Block`] of an [`S::DataDeclaration`] or an [`S::AgentFunctionDeclaration`], a call
-/// of `apply` on a trait, of `add` on an entity's `acceptanceCriteria`, or of `test` on an
-/// entity's context, or a statement directly in a [`F::SourceFile`] that is not a
-/// declaration; and when it is a [`E::TemplateReference`] or [`E::TemplateExecution`] in a
-/// definition, a criterion, or a test. Everything else is runtime: a declaration whose
-/// body is compile time is itself runtime, and a file-level `const` is runtime though
-/// [`lower`] folds its value.
+/// of `apply` on a trait, of `add` on an entity's `acceptanceCriteria`, `knowledge`,
+/// `commands`, or `targets`, or of `test` on an entity's context, or a statement directly
+/// in a [`F::SourceFile`] that is not a declaration; and when it is a
+/// [`E::TemplateReference`] or [`E::TemplateExecution`] in a definition, a criterion, or a
+/// test. Everything else is runtime: a declaration whose body is compile time is itself
+/// runtime, and a file-level `const` is runtime though [`lower`] folds its value.
 // @lfy def/interpret/main.lfy:phaseOf
 pub fn phase_of(model: &Model, node: NodeRef) -> Phase {
     let mut at = Some(node);
     while let Some(current) = at {
         if runs_at_compile_time(model, current) {
-            // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
+            // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:e296a93f89da71bf1df9226c1abb709c149b656286c7a3d31029d1a5b088a47a
             return Phase::Compile;
         }
         // A template reference or execution in a definition is read while binding, even
@@ -384,7 +455,7 @@ pub fn phase_of(model: &Model, node: NodeRef) -> Phase {
         }
         at = model.parent(current);
     }
-    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:656eff97dda857a15287ed1ec2a55aabe3f2b45859e9fd167fc4c667676ad6f8
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:7a9dc79252376ddecf2a16dd08071099d9818e4e78e9365827d3eaeca5fd7d8c
     Phase::Runtime
 }
 
@@ -430,14 +501,62 @@ fn runs_at_compile_time(model: &Model, r: NodeRef) -> bool {
 enum CompileCall {
     /// `T.apply(receiver, ...)` on a trait.
     Apply,
-    /// `add(...)` on an entity's `acceptanceCriteria`.
+    /// `add(...)` on a member of an entity's context that holds items.
     Add,
     /// `test(...)` on an entity's context.
     Test,
 }
 
-/// Which compile-time call a `Call` node is, if any: `apply` on a trait, `add` on an
-/// entity's `acceptanceCriteria`, or `test` on an entity's context.
+/// A member of an entity's context that an `add` call appends one item to.
+// @lfy def/interpret/main.lfy:phaseOf
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Added {
+    /// `acceptanceCriteria`: one criterion.
+    Criteria,
+    /// `knowledge`: one piece of knowledge.
+    Knowledge,
+    /// `commands`: one shell command.
+    Commands,
+    /// `targets`: one target the entity is built for.
+    Targets,
+}
+
+/// The member a chain of `add` calls appends to, and the expression that reads it. The
+/// chain is walked back, so the second `add` of `@targets.add(a).add(b)` appends to the
+/// same member as the first.
+// @lfy def/interpret/main.lfy:phaseOf
+fn added_member(model: &Model, receiver: NodeRef) -> Option<(Added, NodeRef)> {
+    let mut at = receiver;
+    loop {
+        if let Some((accessor, Some(name))) = model.accessor_and_name(at)
+            && model.token_is(at.file, accessor, P::ContextAccessor)
+        {
+            return match name.as_str() {
+                ACCEPTANCE_CRITERIA => Some((Added::Criteria, at)),
+                KNOWLEDGE => Some((Added::Knowledge, at)),
+                COMMANDS => Some((Added::Commands, at)),
+                TARGETS => Some((Added::Targets, at)),
+                _ => None,
+            };
+        }
+        // An earlier `add` of the same chain: what it read is what this one appends to.
+        // @lfy def/interpret/main.lfy:phaseOf
+        if !model.is(at, E::Call) {
+            return None;
+        }
+        let callee = model.left(at)?;
+        let (_, Some(method)) = model.accessor_and_name(callee)? else {
+            return None;
+        };
+        if method != "add" {
+            return None;
+        }
+        at = model.left(callee)?;
+    }
+}
+
+/// Which compile-time call a `Call` node is, if any: `apply` on a trait, `add` on a member
+/// of an entity's context that holds items, or `test` on an entity's context.
 // @lfy def/interpret/main.lfy:phaseOf
 fn compile_time_call(model: &Model, call: NodeRef) -> Option<CompileCall> {
     let callee = model.left(call)?;
@@ -460,22 +579,13 @@ fn compile_time_call(model: &Model, call: NodeRef) -> Option<CompileCall> {
         return None;
     }
     let receiver = model.left(callee)?;
-    if method == "add" && reads_context_member(model, receiver, ACCEPTANCE_CRITERIA) {
+    if method == "add" && added_member(model, receiver).is_some() {
         return Some(CompileCall::Add);
     }
     if method == "apply" && names_a_trait(model, receiver) {
         return Some(CompileCall::Apply);
     }
     None
-}
-
-/// Whether an expression reads the named member of something's context.
-// @lfy def/interpret/main.lfy:phaseOf
-fn reads_context_member(model: &Model, r: NodeRef, member: &str) -> bool {
-    let Some((accessor, Some(name))) = model.accessor_and_name(r) else {
-        return false;
-    };
-    model.token_is(r.file, accessor, P::ContextAccessor) && name == member
 }
 
 /// Whether an expression names a trait: a name, or a member of a module, bound to one.
@@ -946,7 +1056,7 @@ impl<'m> Interpreter<'m> {
     /// the interpreter performs itself rather than calling anything: the dispatch is on the
     /// trait, never on the name alone. A program that declares no data for the value, or no
     /// `builtin` at all, says nothing against it.
-    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af71cc06254cf4598250a152400471150f2db61a85952cb745487594c7fb0803
     fn performs_operation(&self, receiver: &Interim, method: &str) -> bool {
         let ty = match receiver {
             Interim::String(_) => TypeRef::Primitive("string"),
@@ -1123,7 +1233,13 @@ impl<'m> Interpreter<'m> {
             // A value is taken when its name is read, unless an `ace` asks for it now.
             // @lfy def/interpret/main.lfy:expand
             if env.ace && kind == SymbolKind::Variable {
-                self.value_of_variable(entity);
+                let value = self.value_of_variable(entity);
+                // An `ace const` of a project file whose value is a `Target` carries every
+                // layer of it as one of its traits.
+                // @lfy def/interpret/main.lfy:expand#expand:expand:3db863ca4682ca00b315c335f7896e613d5aa8c85932d0f37c4105d37f82541f
+                if !env.dry && self.declares_a_target(entity) {
+                    self.apply_layers(r, entity, &value);
+                }
             }
             return;
         }
@@ -1513,6 +1629,191 @@ impl<'m> Interpreter<'m> {
             ace: false,
             ret: None,
         }
+    }
+
+    // ---- Targets and their layers ---------------------------------------------------
+
+    /// The `Target` data of the package `elfie`: the one declared under that name outside
+    /// the project's own source, which tells the `ace const` of a target from any other.
+    // @lfy def/interpret/main.lfy:expand
+    fn target_data(&self) -> Option<EntityId> {
+        for (file, &scope) in self.model.file_scopes.iter().enumerate() {
+            if self.model.sources.get(file).map(|source| source.origin) != Some(Origin::Library) {
+                continue;
+            }
+            for &symbol in &self.model.scopes[scope].symbols {
+                let symbol = &self.model.symbols[symbol];
+                if symbol.kind == SymbolKind::Data && symbol.name == TARGET {
+                    return Some(symbol.entity);
+                }
+            }
+        }
+        None
+    }
+
+    /// Whether an entity is the `ace const` of a project file whose value is a `Target`:
+    /// its declared type is that data, or its value is a call of a function whose output
+    /// is.
+    // @lfy def/interpret/main.lfy:expand
+    fn declares_a_target(&self, entity: EntityId) -> bool {
+        if !matches!(self.model.entities[entity].kind, EntityKind::Variable) {
+            return false;
+        }
+        let Some(node) = self.model.entities[entity].node else {
+            return false;
+        };
+        if self.model.sources.get(node.file).map(|source| source.origin) != Some(Origin::Program) {
+            return false;
+        }
+        if self.model.ancestor(node, S::Ace).is_none()
+            || self.model.has_token(node, K::LetKeyword)
+        {
+            return false;
+        }
+        let Some(target) = self.target_data() else {
+            return false;
+        };
+        let holds = Some(TypeRef::Entity(target));
+        if self.model.entities[entity].ty == holds {
+            return true;
+        }
+        let value = self
+            .model
+            .child_nodes(node)
+            .into_iter()
+            .find(|&child| !self.model.is(child, E::Declared));
+        let Some(value) = value.filter(|&value| self.model.is(value, E::Call)) else {
+            return false;
+        };
+        self.model
+            .left(value)
+            .and_then(|callee| resolve_name_node(self.model, callee))
+            .and_then(|symbol| {
+                self.model.entities[self.model.symbols[symbol].entity]
+                    .output()
+                    .cloned()
+            })
+            == holds
+    }
+
+    /// The trait a layer names and the arguments it was chosen with: a trait on its own,
+    /// applied with no arguments, or the object `layer` yields.
+    // @lfy def/interpret/main.lfy:expand
+    fn layer_of(&self, item: &Interim) -> Option<(EntityId, Vec<Interim>)> {
+        match item {
+            Interim::Entity(entity) if self.model.entities[*entity].is_trait() => {
+                Some((*entity, Vec::new()))
+            }
+            Interim::Object(pairs) => {
+                let Some((_, Interim::Entity(subject))) =
+                    pairs.iter().find(|(key, _)| key == SUBJECT)
+                else {
+                    return None;
+                };
+                if !self.model.entities[*subject].is_trait() {
+                    return None;
+                }
+                let arguments = match pairs.iter().find(|(key, _)| key == ARGUMENTS) {
+                    Some((_, Interim::List(items))) => items.clone(),
+                    _ => Vec::new(),
+                };
+                Some((*subject, arguments))
+            }
+            _ => None,
+        }
+    }
+
+    /// Applies every layer of a target to the `ace const` that declares it, in guidance
+    /// order, with the layer's arguments, so the const carries every layer as one of its
+    /// traits, and with it every layer's criteria rendered from those arguments, every
+    /// layer's knowledge and commands, and every layer's values, in application order.
+    ///
+    /// The arguments were evaluated where the layer was chosen, so the application records
+    /// their values and no argument nodes.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3db863ca4682ca00b315c335f7896e613d5aa8c85932d0f37c4105d37f82541f
+    // @lfy def/interpret/main.lfy:expand#expand:expand:815fee2bf6162862be1337f7f077daaf2e94035e7524b3fafeea42e091999d80
+    fn apply_layers(&mut self, declaration: NodeRef, entity: EntityId, value: &Interim) {
+        let Interim::Object(pairs) = value else {
+            return;
+        };
+        let pairs = pairs.clone();
+        let mut layers: Vec<(EntityId, Vec<Interim>)> = Vec::new();
+        for slot in SLOTS {
+            let Some((_, held)) = pairs.iter().find(|(key, _)| key == slot) else {
+                continue;
+            };
+            let items = match held {
+                Interim::Undefined | Interim::Null => continue,
+                Interim::List(items) => items.clone(),
+                one => vec![one.clone()],
+            };
+            for item in items {
+                match self.layer_of(&item) {
+                    // A trait in two slots with equal arguments is one layer, at its first
+                    // place in guidance order.
+                    // @lfy def/interpret/main.lfy:expand#expand:expand:3db863ca4682ca00b315c335f7896e613d5aa8c85932d0f37c4105d37f82541f
+                    Some(layer) => {
+                        if !layers.contains(&layer) {
+                            layers.push(layer);
+                        }
+                    }
+                    // A slot holding neither a trait nor a layer of one.
+                    // @lfy def/interpret/main.lfy:expand#expand:expand:778397fb023ed656e33ebd67b829d02d552182166bb594092754762c60164b7e
+                    None => self.problem(
+                        declaration,
+                        format!("the {slot} of this target is neither a trait nor a layer of one"),
+                    ),
+                }
+            }
+        }
+        for (subject, arguments) in layers {
+            self.apply_trait(
+                entity,
+                subject,
+                Vec::new(),
+                arguments,
+                AppliedSource::Apply(declaration),
+                false,
+            );
+        }
+    }
+
+    /// The layer of a trait with these arguments: the object holding the trait as its
+    /// subject and the arguments, in order. Nothing is applied by choosing one.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:9f537c93bf7b77603b8fb7c0d9c9d591b5681e208ad06e1883d0e498ecf4b288
+    fn layer_value(
+        &mut self,
+        call: NodeRef,
+        subject: EntityId,
+        arguments: Vec<Interim>,
+    ) -> Interim {
+        self.check_layer_arity(call, subject, arguments.len());
+        Interim::Object(vec![
+            (SUBJECT.to_string(), Interim::Entity(subject)),
+            (ARGUMENTS.to_string(), Interim::List(arguments)),
+        ])
+    }
+
+    /// Names the trait at a call of `layer` that gives a different number of arguments than
+    /// the trait has parameters; a spread parameter takes any number.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af95eaf48e4b2446d179bd084e2088940e3129a6558e6a76aa807cd9b5c62628
+    fn check_layer_arity(&mut self, call: NodeRef, subject: EntityId, given: usize) {
+        let parameters: Vec<SymbolId> = self.model.entities[subject].parameters().to_vec();
+        let spread = parameters
+            .last()
+            .is_some_and(|&last| self.model.is(self.model.symbols[last].node, E::SpreadParameter));
+        let wanted = parameters.len();
+        if given == wanted || (spread && given + 1 >= wanted) {
+            return;
+        }
+        let name = self.model.entities[subject]
+            .identifier
+            .clone()
+            .unwrap_or_else(|| "a trait".to_string());
+        self.problem(
+            call,
+            format!("{name} takes {wanted} arguments as a layer, not {given}"),
+        );
     }
 
     /// The default value of a parameter, read from what follows its setter.
@@ -2308,8 +2609,38 @@ impl<'m> Interpreter<'m> {
         let Some(rule) = self.model.token_at(r.file, accessor).rule else {
             return Interim::Undefined;
         };
-        let value = self.eval(left, env);
+        // A context layer of a name bound to a `const` or a `let` is read from the entity
+        // the declaration is, never from the value it holds, so an `add` on a const's
+        // criteria, knowledge, commands, or targets reaches the const as it reaches any
+        // declared entity.
+        // @lfy def/interpret/main.lfy:expand#expand:expand:5c174f7b4e75a5b3016f3acb1ec16cd062230a30d516158fac34aff9ec1abc04
+        let declared = self
+            .model
+            .token_is(r.file, accessor, P::ContextAccessor)
+            .then(|| self.declared_by(left, env))
+            .flatten();
+        let value = match declared {
+            Some(entity) => Interim::Entity(entity),
+            None => self.eval(left, env),
+        };
         self.access(value, rule, name.as_deref(), env)
+    }
+
+    /// The entity a name bound to a `const` or a `let` declares, when it is one: what its
+    /// context layer is read from.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:5c174f7b4e75a5b3016f3acb1ec16cd062230a30d516158fac34aff9ec1abc04
+    fn declared_by(&self, left: NodeRef, env: &Env) -> Option<EntityId> {
+        if !self.model.is(left, E::Name) {
+            return None;
+        }
+        let name = self.model.name(left)?;
+        if env.get(&name).is_some() {
+            return None;
+        }
+        let symbol = lookup(self.model, env.scope, &name)
+            .or_else(|| lookup(self.model, self.model.enclosing_scope(left), &name))?;
+        let record = &self.model.symbols[symbol];
+        (record.kind == SymbolKind::Variable).then_some(record.entity)
     }
 
     /// Reads one layer of a value.
@@ -2452,6 +2783,11 @@ impl<'m> Interpreter<'m> {
                         .collect(),
                 );
             }
+            // The items added to the entity, in the order they were added.
+            // @lfy def/interpret/main.lfy:expand
+            KNOWLEDGE => return self.added_items(entity, Added::Knowledge),
+            COMMANDS => return self.added_items(entity, Added::Commands),
+            TARGETS => return self.added_items(entity, Added::Targets),
             "defaultValue" | "optional" | "spread" => {
                 if let Some(value) = self.model.entities[entity].value(name) {
                     return value.clone();
@@ -2771,6 +3107,20 @@ impl<'m> Interpreter<'m> {
         arguments: &[NodeRef],
         env: &mut Env,
     ) -> Interim {
+        // An `add` call on a member of the entity's context that holds items appends to it;
+        // `acceptanceCriteria` reads as a value of its own and is handled below.
+        // @lfy def/interpret/main.lfy:expand
+        if method == "add"
+            && let Some((added, read)) = added_member(self.model, left)
+            && added != Added::Criteria
+        {
+            // An earlier `add` of the same chain appends its own item first.
+            // @lfy def/interpret/main.lfy:expand#expand:expand:7ad050ecd77ddb2a438f6d76cc5ac5d7b792aadf01566ef1c4b88c6e13c9a982
+            if self.model.is(left, E::Call) {
+                self.eval(left, env);
+            }
+            return self.add_item(call, added, read, arguments, env);
+        }
         let receiver = self.eval(left, env);
         // An operation of a data carrying builtin is performed by the interpreter itself.
         // @lfy def/interpret/main.lfy:expand
@@ -2821,6 +3171,15 @@ impl<'m> Interpreter<'m> {
                     );
                 }
                 Interim::Undefined
+            }
+            // `t.layer(...)`: the trait chosen as a layer of a target, with its arguments.
+            // @lfy def/interpret/main.lfy:expand#expand:expand:9f537c93bf7b77603b8fb7c0d9c9d591b5681e208ad06e1883d0e498ecf4b288
+            (Interim::Entity(subject), "layer")
+                if self.model.entities[*subject].is_trait() =>
+            {
+                let subject = *subject;
+                let values = self.eval_arguments(arguments, env);
+                self.layer_value(call, subject, values)
             }
             (Interim::List(items), "map") if native => {
                 let Some(&first) = arguments.first() else {
@@ -2997,9 +3356,21 @@ impl<'m> Interpreter<'m> {
         }
     }
 
+    /// Whether a declared function runs wherever its call is written, rather than only
+    /// where the call is compile-time code: an `ace function`, and a function of a package,
+    /// which is none of the program's runtime code.
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:4d7e5d257f6414cfdd082f41206cc8e1e812fa98742be7da870a5603d245ce8d
+    fn runs_wherever_called(&self, node: NodeRef) -> bool {
+        self.model.ancestor(node, S::Ace).is_some()
+            || self.model.sources.get(node.file).map(|source| source.origin)
+                != Some(Origin::Program)
+    }
+
     /// Calls a declared fn or function. A fn carrying [`BUILTIN`] is performed natively and
-    /// never run; a fn carrying nothing has criteria for a body and nothing to run.
-    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    /// never run; a fn carrying nothing has criteria for a body and nothing to run. What
+    /// decides whether a call runs is where the call is written, never where the function
+    /// it calls is declared.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af71cc06254cf4598250a152400471150f2db61a85952cb745487594c7fb0803
     fn call_declared(
         &mut self,
         call: NodeRef,
@@ -3034,9 +3405,14 @@ impl<'m> Interpreter<'m> {
             );
             return self.only_at_runtime();
         }
-        // A written function runs only for compile-time code; runtime code keeps the call.
-        // @lfy def/interpret/main.lfy:evaluate
-        if !self.runs_functions && self.model.ancestor(node, S::Ace).is_none() {
+        // An `ace function`, and a function declared outside the program's runtime code,
+        // run wherever the call is written; every other written function runs only where
+        // the call itself is compile-time code, so runtime code keeps the call.
+        // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:4d7e5d257f6414cfdd082f41206cc8e1e812fa98742be7da870a5603d245ce8d
+        if !self.runs_functions
+            && !self.runs_wherever_called(node)
+            && phase_of(self.model, call) != Phase::Compile
+        {
             return self.only_at_runtime();
         }
         let scope = self.model.entities[entity].scope.unwrap_or(self.universe);
@@ -3065,7 +3441,7 @@ impl<'m> Interpreter<'m> {
     /// compile-time code may call one, and nothing of its body is ever run. Runtime code
     /// keeps the call, so folding a runtime expression never reads a file, runs a command,
     /// or ends the process.
-    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af71cc06254cf4598250a152400471150f2db61a85952cb745487594c7fb0803
     fn perform_builtin(
         &mut self,
         call: NodeRef,
@@ -3085,6 +3461,7 @@ impl<'m> Interpreter<'m> {
             "time" => perform_time(&name, values),
             "process" => self.perform_process(call, &name, values, env),
             "trait" if name == "apply" => self.perform_apply(call, values, env),
+            "trait" if name == "layer" => self.perform_layer(call, values),
             _ => None,
         };
         // A builtin the interpreter has no native for reads as what only runtime answers.
@@ -3214,6 +3591,284 @@ impl<'m> Interpreter<'m> {
             );
         }
         Some(Interim::Entity(trait_id))
+    }
+
+    /// `layer` called as a fn: it yields the object holding the trait as its subject and
+    /// the other arguments, evaluated in order, as its arguments. Nothing is applied by the
+    /// call itself.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:9f537c93bf7b77603b8fb7c0d9c9d591b5681e208ad06e1883d0e498ecf4b288
+    fn perform_layer(&mut self, call: NodeRef, values: &[Interim]) -> Option<Interim> {
+        let Some(&Interim::Entity(subject)) = values.first() else {
+            return None;
+        };
+        if !self.model.entities[subject].is_trait() {
+            return None;
+        }
+        Some(self.layer_value(call, subject, values[1..].to_vec()))
+    }
+
+    // ---- Knowledge, commands, and targets -------------------------------------------
+
+    /// Appends one item per argument to a member of an entity's context that holds items,
+    /// and yields the member's items, so calls chain.
+    // @lfy def/interpret/main.lfy:expand
+    fn add_item(
+        &mut self,
+        call: NodeRef,
+        added: Added,
+        read: NodeRef,
+        arguments: &[NodeRef],
+        env: &mut Env,
+    ) -> Interim {
+        let Some(owner) = self.added_owner(read, env) else {
+            return Interim::Undefined;
+        };
+        for &argument in arguments {
+            match added {
+                // One piece of knowledge with the topic, kind, source, and quote of the
+                // object argument, its contributor the entity whose body holds the call.
+                // @lfy def/interpret/main.lfy:expand#expand:expand:f4570ae50491cb2aa95384f33a9f22e23c5f675f9d363e1a034def48f4fd7874
+                Added::Knowledge => {
+                    let item = self.knowledge_of(argument, env);
+                    self.model.entities[owner].knowledge.push(item);
+                }
+                // One command with the operation and line of the object argument.
+                // @lfy def/interpret/main.lfy:expand#expand:expand:3e921617c4421345a9d754cbc9c58b029ba4c08b8202d92720308685d5438473
+                Added::Commands => {
+                    let item = self.command_of(argument, env);
+                    self.model.entities[owner].commands.push(item);
+                }
+                Added::Targets => self.add_target(call, owner, argument),
+                Added::Criteria => {}
+            }
+        }
+        self.added_items(owner, added)
+    }
+
+    /// The entity whose member an `add` call appends to: the current entity for a bare
+    /// accessor, and what the left side names otherwise. A body run for a receiver appends
+    /// to the receiver, as a criterion of a trait's body attaches to it, so what a trait
+    /// adds to its current entity reaches each entity the trait is applied to.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:4026d9056564c68b5a52f00b24505e30cf2080a1dcecbee8c16e0eab9d8f0276
+    fn added_owner(&mut self, read: NodeRef, env: &mut Env) -> Option<EntityId> {
+        let owner = match self.model.left(read) {
+            Some(left) => match self.eval(left, env) {
+                Interim::Entity(entity) => entity,
+                _ => resolve_name_node(self.model, left)
+                    .map(|symbol| self.model.symbols[symbol].entity)?,
+            },
+            None => env.current,
+        };
+        Some(if env.in_trait && owner == env.current {
+            env.target
+        } else {
+            owner
+        })
+    }
+
+    /// What a member of an entity's context that holds items reads as.
+    // @lfy def/interpret/main.lfy:expand
+    fn added_items(&mut self, owner: EntityId, added: Added) -> Interim {
+        match added {
+            Added::Criteria => Interim::Criteria(owner),
+            Added::Knowledge => Interim::List(
+                self.model.entities[owner]
+                    .knowledge
+                    .iter()
+                    .map(knowledge_value)
+                    .collect(),
+            ),
+            Added::Commands => Interim::List(
+                self.model.entities[owner]
+                    .commands
+                    .iter()
+                    .map(command_value)
+                    .collect(),
+            ),
+            Added::Targets => Interim::List(
+                self.model.entities[owner]
+                    .targets
+                    .iter()
+                    .map(|&target| Interim::Entity(target))
+                    .collect(),
+            ),
+        }
+    }
+
+    /// The fields of the object given to `add`: each key, the node of its value when it is
+    /// written out, and the value.
+    // @lfy def/interpret/main.lfy:expand
+    fn object_fields(
+        &mut self,
+        argument: NodeRef,
+        env: &mut Env,
+    ) -> Vec<(String, Option<NodeRef>, Interim)> {
+        if self.model.is(argument, E::Object) {
+            let mut out = Vec::new();
+            for key in self.model.children_of(argument, E::ObjectKey) {
+                let Some(name) = self.model.declared_name(key) else {
+                    continue;
+                };
+                let node = self
+                    .model
+                    .child_nodes(key)
+                    .into_iter()
+                    .find(|&child| !self.model.is(child, E::Declared));
+                let value = match node {
+                    Some(node) => self.eval(node, env),
+                    None => Interim::Undefined,
+                };
+                out.push((name, node, value));
+            }
+            return out;
+        }
+        match self.eval(argument, env) {
+            Interim::Object(pairs) => pairs
+                .into_iter()
+                .map(|(key, value)| (key, None, value))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// One piece of knowledge from the object given to `add` on an entity's knowledge.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f4570ae50491cb2aa95384f33a9f22e23c5f675f9d363e1a034def48f4fd7874
+    fn knowledge_of(&mut self, argument: NodeRef, env: &mut Env) -> Knowledge {
+        let mut item = Knowledge {
+            topic: String::new(),
+            kind: KnowledgeKind::Reference,
+            source: String::new(),
+            quote: None,
+            contributor: env.contributor,
+        };
+        for (key, node, value) in self.object_fields(argument, env) {
+            match key.as_str() {
+                "topic" => item.topic = self.to_text(&value),
+                "kind" => {
+                    if let Some(kind) = self.knowledge_kind(node, &value) {
+                        item.kind = kind;
+                    }
+                }
+                "source" => item.source = self.to_text(&value),
+                "quote" => item.quote = Some(value.is_truthy()),
+                _ => {}
+            }
+        }
+        item
+    }
+
+    /// One command from the object given to `add` on an entity's commands. The object holds
+    /// an operation, as the criteria of `Command` say, so `build` only stands in for one
+    /// written without.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3e921617c4421345a9d754cbc9c58b029ba4c08b8202d92720308685d5438473
+    fn command_of(&mut self, argument: NodeRef, env: &mut Env) -> Command {
+        let mut item = Command {
+            operation: Operation::Build,
+            line: None,
+            contributor: env.contributor,
+        };
+        for (key, node, value) in self.object_fields(argument, env) {
+            match key.as_str() {
+                "operation" => {
+                    if let Some(operation) = self.operation_named(node, &value) {
+                        item.operation = operation;
+                    }
+                }
+                "line" => item.line = Some(self.to_text(&value)),
+                _ => {}
+            }
+        }
+        item
+    }
+
+    /// The kind a field names: the member of `KnowledgeKind` it reads by name, or the one
+    /// whose value it holds.
+    // @lfy def/interpret/main.lfy:expand
+    fn knowledge_kind(&self, node: Option<NodeRef>, value: &Interim) -> Option<KnowledgeKind> {
+        let named = self.member_named(node);
+        [
+            ("reference", KnowledgeKind::Reference),
+            ("example", KnowledgeKind::Example),
+            ("definition", KnowledgeKind::Definition),
+            ("tool", KnowledgeKind::Tool),
+        ]
+        .into_iter()
+        .find(|&(name, kind)| {
+            named.as_deref() == Some(name) || value.as_str() == Some(kind.value())
+        })
+        .map(|(_, kind)| kind)
+    }
+
+    /// The operation a field names, read the same way.
+    // @lfy def/interpret/main.lfy:expand
+    fn operation_named(&self, node: Option<NodeRef>, value: &Interim) -> Option<Operation> {
+        let named = self.member_named(node);
+        [
+            ("install", Operation::Install),
+            ("add", Operation::Add),
+            ("build", Operation::Build),
+            ("test", Operation::Test),
+            ("lint", Operation::Lint),
+            ("format", Operation::Format),
+            ("run", Operation::Run),
+        ]
+        .into_iter()
+        .find(|&(name, operation)| {
+            named.as_deref() == Some(name) || value.as_str() == Some(operation.value())
+        })
+        .map(|(_, operation)| operation)
+    }
+
+    /// The name a field's value reads after an accessor, such as the member of an enum.
+    // @lfy def/interpret/main.lfy:expand
+    fn member_named(&self, node: Option<NodeRef>) -> Option<String> {
+        node.and_then(|node| self.model.accessor_and_name(node))
+            .and_then(|(_, name)| name)
+    }
+
+    /// `@targets.add(t)`: the entity of the `ace const` the argument names joins the
+    /// entity's targets.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:7ad050ecd77ddb2a438f6d76cc5ac5d7b792aadf01566ef1c4b88c6e13c9a982
+    fn add_target(&mut self, call: NodeRef, owner: EntityId, argument: NodeRef) {
+        // A member, a parameter, and an enum member are built with their owner.
+        // @lfy def/interpret/main.lfy:expand#expand:expand:63c03302863e8a9506787ff745435920925612b85ad9e928c638e78785179bec
+        if matches!(
+            self.model.entities[owner].kind,
+            EntityKind::Member | EntityKind::Parameter | EntityKind::EnumMember
+        ) {
+            self.problem(
+                call,
+                "this is built with its owner, so no target is added to it",
+            );
+            return;
+        }
+        let Some(target) = self.target_const(argument) else {
+            // The argument names no `ace const` of the project holding a `Target`.
+            // @lfy def/interpret/main.lfy:expand#expand:expand:cb2e2e43b664f248e925f8022a5f9174bac25da862d8b20ba1f2128fd349de82
+            let text = self.model.raw(argument).trim().to_string();
+            self.problem(argument, format!("{text} names no target"));
+            return;
+        };
+        // The same target twice.
+        // @lfy def/interpret/main.lfy:expand#expand:expand:6083cc804f2a7dcd7c05532f7f38d90b1b4618032e89efce7057d7ceda8e2b2c
+        if self.model.entities[owner].targets.contains(&target) {
+            let name = self.model.entities[target]
+                .identifier
+                .clone()
+                .unwrap_or_default();
+            self.problem(call, format!("the target {name} was added twice"));
+            return;
+        }
+        self.model.entities[owner].targets.push(target);
+    }
+
+    /// The entity of the `ace const` an expression names, when that const declares a
+    /// target.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:7ad050ecd77ddb2a438f6d76cc5ac5d7b792aadf01566ef1c4b88c6e13c9a982
+    fn target_const(&self, argument: NodeRef) -> Option<EntityId> {
+        let symbol = resolve_name_node(self.model, argument)?;
+        let entity = self.model.symbols[symbol].entity;
+        self.declares_a_target(entity).then_some(entity)
     }
 
     // ---- Criteria and tests ---------------------------------------------------------
@@ -4238,6 +4893,23 @@ struct Lowering<'m> {
     global_tests: Vec<LoweredTest>,
     /// Every problem lowering added.
     problems: Vec<Problem>,
+    /// Where the project's own source lives, relative to the workspace root: what an added
+    /// use's alias is named after.
+    // @lfy def/interpret/main.lfy:lower
+    source_directory: String,
+}
+
+/// The uses one lowered file's text takes beyond the ones written in it, and the alias each
+/// entity whose name would otherwise mean two things is spelled through.
+// @lfy def/interpret/main.lfy:lower
+#[derive(Default)]
+struct AddedUses {
+    /// One `Use` per file, in the order the members that need it are spelled.
+    // @lfy def/interpret/main.lfy:lower
+    uses: Vec<String>,
+    /// The alias an entity is spelled through, for every entity of an aliased use.
+    // @lfy def/interpret/main.lfy:lower
+    aliases: HashMap<EntityId, String>,
 }
 
 /// The program as generation sees it: runtime code only, with compile-time results in place.
@@ -4280,7 +4952,7 @@ pub fn lower(mut workspace: Workspace) -> Program {
 impl<'m> Lowering<'m> {
     // @lfy def/interpret/main.lfy:lower
     fn new(model: &'m mut Model, workspace: &Workspace) -> Lowering<'m> {
-        let guidance = guidance_entities(model, workspace);
+        let guidance = guidance_entities(workspace);
         let mut interpreter = Interpreter::new(model);
         interpreter.runs_functions = false;
         interpreter.writes = false;
@@ -4292,6 +4964,7 @@ impl<'m> Lowering<'m> {
             global_criteria: Vec::new(),
             global_tests: Vec::new(),
             problems: Vec::new(),
+            source_directory: workspace.source_directory.clone(),
         }
     }
 
@@ -4316,14 +4989,14 @@ impl<'m> Lowering<'m> {
                 receiver
             };
             let own = self.model().entities[entity].acceptance_criteria.clone();
-            for criterion in own {
-                // A criterion of a target's marker, or of a trait it extends, is guidance
-                // for that target and no criterion of the program.
-                // @lfy def/interpret/main.lfy:lower#lower:lower:d8ffa57b2b30840df0952e5ea8d4ffe0335f558885ee6ac4d4f91f3047c0edc8
-                if self.guidance.contains(&criterion.contributor) {
-                    continue;
+            // A criterion the declaration of a target holds, its own or from a layer of the
+            // target, is guidance for that target and neither a local nor a global
+            // requirement: every request of the target already carries it as guidance.
+            // @lfy def/interpret/main.lfy:lower#lower:lower:c8758d743e4c5ec530524b86503c2a13954458ab0a9c935f75a1dd0e04bc39c7
+            if !self.guidance.contains(&entity) {
+                for criterion in own {
+                    criteria.push(self.lowered_criterion(entity, is_global, &receiver, &criterion));
                 }
-                criteria.push(self.lowered_criterion(entity, is_global, &receiver, &criterion));
             }
             let cases = self.model().entities[entity].tests.clone();
             for case in cases {
@@ -4517,7 +5190,14 @@ impl<'m> Lowering<'m> {
             criteria: Vec::new(),
             tests: Vec::new(),
         });
-        let text = render(self.model(), &lowered);
+        // A member's type may name an entity of a file this one does not use, because a
+        // trait of another file added the member; the text takes a use of that file so the
+        // name it spells means something.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+        // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+        let added = self.added_uses(source, &lowered);
+        let text = render(self.model(), &lowered, &added.aliases);
+        let text = with_uses(&text, &added.uses);
         let own = self.model().file_entities.get(source).copied();
         // A criterion or a test for the file's own entity joins the file, not a node.
         // @lfy def/interpret/main.lfy:lower
@@ -4535,6 +5215,82 @@ impl<'m> Lowering<'m> {
             criteria,
             tests,
         }
+    }
+
+    /// The uses a lowered file's text takes beyond the ones written in it: one per file a
+    /// member's type names and the file does not use, however many members name it, in the
+    /// order those members are spelled.
+    ///
+    /// Decision: only a file of the program is added. A name the prelude declares is in
+    /// scope in every file already, and a file of a package is used by its package's name,
+    /// which a path relative to the owner's file does not spell.
+    // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+    fn added_uses(&self, source: FileId, lowered: &LoweredNode) -> AddedUses {
+        let mut added = AddedUses::default();
+        let model = self.model();
+        if model.sources[source].origin != Origin::Program {
+            return added;
+        }
+        let mut named = Vec::new();
+        member_type_entities(model, lowered, &mut named);
+        // One use carries every entity of its file, so the file decides whether the names
+        // it brings need an alias and each of them is spelled the same way.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+        let mut by_file: Vec<(FileId, Vec<EntityId>)> = Vec::new();
+        for entity in named {
+            let Some(node) = model.entities[entity].node else {
+                continue;
+            };
+            let declared = node.file;
+            if declared == source || declared >= model.sources.len() {
+                continue;
+            }
+            if model.sources[declared].origin != Origin::Program
+                || model.entities[entity].identifier.is_none()
+            {
+                continue;
+            }
+            let path = &model.sources[declared].path;
+            if model.sources[source]
+                .uses
+                .iter()
+                .flatten()
+                .any(|used| used == path)
+            {
+                continue;
+            }
+            match by_file.iter_mut().find(|(file, _)| *file == declared) {
+                Some((_, entities)) => {
+                    if !entities.contains(&entity) {
+                        entities.push(entity);
+                    }
+                }
+                None => by_file.push((declared, vec![entity])),
+            }
+        }
+        let scope = model.file_scopes[source];
+        for (declared, entities) in by_file {
+            // The use takes an alias when the file already sees another entity by one of
+            // the names it brings, because one name cannot mean two entities.
+            // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+            let taken = entities.iter().any(|&entity| {
+                let name = model.entities[entity].identifier.as_deref().unwrap_or("");
+                model
+                    .lookup(scope, name)
+                    .is_some_and(|symbol| model.symbols[symbol].entity != entity)
+            });
+            let path = use_path(&model.sources[source].path, &model.sources[declared].path);
+            if !taken {
+                added.uses.push(format!("use \"{path}\";"));
+                continue;
+            }
+            let alias = alias_of(&self.source_directory, &model.sources[declared].path);
+            added.uses.push(format!("use \"{path}\" as {alias};"));
+            for entity in entities {
+                added.aliases.insert(entity, alias.clone());
+            }
+        }
+        added
     }
 
     /// One node of the program as generation sees it, or nothing when it runs at compile
@@ -4811,29 +5567,17 @@ impl<'m> Lowering<'m> {
     }
 }
 
-/// Every entity whose criteria are the guidance of a target: each [`Target::marker`] and
-/// every trait it extends, up the whole chain.
+/// Every entity whose criteria are the guidance of a target: the declaration of each one,
+/// which carries its own criteria and those of each of its layers.
 ///
-/// [`Target::marker`]: crate::workspace::Target
+/// [`Target::declaration`]: crate::workspace::Target
 // @lfy def/interpret/main.lfy:lower
-fn guidance_entities(model: &Model, workspace: &Workspace) -> HashSet<EntityId> {
-    let mut out = HashSet::new();
-    let mut open: Vec<EntityId> = workspace
+fn guidance_entities(workspace: &Workspace) -> HashSet<EntityId> {
+    workspace
         .targets
         .iter()
-        .map(|target| target.marker)
-        .collect();
-    while let Some(entity) = open.pop() {
-        if entity >= model.entities.len() || !out.insert(entity) {
-            continue;
-        }
-        for applied in &model.entities[entity].traits {
-            if matches!(applied.source, AppliedSource::Extends(_)) {
-                open.push(applied.entity);
-            }
-        }
-    }
-    out
+        .map(|target| target.declaration)
+        .collect()
 }
 
 /// Numbers the ids that still repeat: the first keeps its id and the second and later ones
@@ -4914,10 +5658,103 @@ fn bracketed(text: &str) -> Vec<String> {
     out
 }
 
+/// Every entity the type of a lowered member node names, in the order the members are
+/// spelled, each once.
+// @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+fn member_type_entities(model: &Model, node: &LoweredNode, out: &mut Vec<EntityId>) {
+    if is_member_node(model, node)
+        && let Some(entity) = node.entity
+        && let Some(ty) = &model.entities[entity].ty
+    {
+        type_entities(ty, out);
+    }
+    for child in node.nodes() {
+        member_type_entities(model, child, out);
+    }
+}
+
+/// Every entity a written type names, in order, each once.
+// @lfy def/interpret/main.lfy:lower
+fn type_entities(ty: &TypeRef, out: &mut Vec<EntityId>) {
+    match ty {
+        TypeRef::Entity(entity) | TypeRef::Predicate(entity) => {
+            if !out.contains(entity) {
+                out.push(*entity);
+            }
+        }
+        TypeRef::List(item) => type_entities(item, out),
+        TypeRef::Union(items) => items.iter().for_each(|item| type_entities(item, out)),
+        _ => {}
+    }
+}
+
+/// The path a use of one file is written with from another: the file's path without its
+/// extension, relative to the directory of the file the use is written in.
+// @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+fn use_path(from: &str, to: &str) -> String {
+    let stem = to.strip_suffix(".lfy").unwrap_or(to);
+    let here: Vec<&str> = from.split('/').collect();
+    let here = &here[..here.len().saturating_sub(1)];
+    let there: Vec<&str> = stem.split('/').collect();
+    let shared = here
+        .iter()
+        .zip(there.iter())
+        .take_while(|(a, b)| a == b)
+        .count();
+    let mut parts: Vec<&str> = vec![".."; here.len() - shared];
+    parts.extend(there[shared..].iter().copied());
+    let path = parts.join("/");
+    if path.starts_with('.') {
+        path
+    } else {
+        format!("./{path}")
+    }
+}
+
+/// The alias an added use takes: the declaring file's path relative to the project's source
+/// directory, without its extension and with each slash replaced by an underscore.
+// @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+fn alias_of(source_directory: &str, path: &str) -> String {
+    let stem = path.strip_suffix(".lfy").unwrap_or(path);
+    let prefix = format!("{}/", source_directory.trim_end_matches('/'));
+    let relative = stem.strip_prefix(&prefix).unwrap_or(stem);
+    relative.replace('/', "_")
+}
+
+/// The text of a lowered file with the uses it takes written after the uses written in it,
+/// or at its head when it writes none.
+// @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+fn with_uses(text: &str, uses: &[String]) -> String {
+    if uses.is_empty() {
+        return text.to_string();
+    }
+    let added = uses.join("\n");
+    let mut after = None;
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        if line.trim_start().starts_with("use ") {
+            after = Some(at + line.len());
+        }
+        at += line.len();
+    }
+    match after {
+        Some(at) => {
+            let (head, tail) = text.split_at(at);
+            let head = if head.ends_with('\n') {
+                head.to_string()
+            } else {
+                format!("{head}\n")
+            };
+            format!("{head}{added}\n{tail}")
+        }
+        None => format!("{added}\n{text}"),
+    }
+}
+
 /// The lowered tree spelled as Elfie source: kept nodes as written, folded nodes as the
 /// literal of their value, and member nodes as a member with its type and value.
 // @lfy def/interpret/main.lfy:lower
-fn render(model: &Model, node: &LoweredNode) -> String {
+fn render(model: &Model, node: &LoweredNode, aliases: &HashMap<EntityId, String>) -> String {
     if let Some(value) = &node.value {
         return spell(model, value);
     }
@@ -4928,7 +5765,7 @@ fn render(model: &Model, node: &LoweredNode) -> String {
             EntityKind::Member | EntityKind::EnumMember
         )
     {
-        return spell_member(model, entity);
+        return spell_member(model, entity, aliases);
     }
     let (members, kept): (Vec<&LoweredChild>, Vec<&LoweredChild>) =
         node.children.iter().partition(|child| match child {
@@ -4938,7 +5775,7 @@ fn render(model: &Model, node: &LoweredNode) -> String {
     let mut out = String::new();
     for child in kept {
         match child {
-            LoweredChild::Node(child) => out.push_str(&render(model, child)),
+            LoweredChild::Node(child) => out.push_str(&render(model, child, aliases)),
             LoweredChild::Token(token) => out.push_str(&token.raw),
         }
     }
@@ -4959,7 +5796,7 @@ fn render(model: &Model, node: &LoweredNode) -> String {
     for child in members {
         if let LoweredChild::Node(child) = child {
             body.push_str("  ");
-            body.push_str(&render(model, child));
+            body.push_str(&render(model, child, aliases));
             body.push('\n');
         }
     }
@@ -4982,7 +5819,7 @@ fn is_member_node(model: &Model, node: &LoweredNode) -> bool {
 
 /// A member as Elfie spells one: its name, its description, and its type or value.
 // @lfy def/interpret/main.lfy:lower
-fn spell_member(model: &Model, entity: EntityId) -> String {
+fn spell_member(model: &Model, entity: EntityId, aliases: &HashMap<EntityId, String>) -> String {
     let record: &Declared = &model.entities[entity];
     let name = record.identifier.clone().unwrap_or_default();
     let mut out = format!("${name}");
@@ -4992,7 +5829,7 @@ fn spell_member(model: &Model, entity: EntityId) -> String {
     let written = record
         .ty
         .as_ref()
-        .map(|ty| crate::model::type_text(model, ty))
+        .map(|ty| member_type_text(model, ty, aliases))
         .unwrap_or_default();
     if written.is_empty() {
         out.push(';');
@@ -5000,6 +5837,43 @@ fn spell_member(model: &Model, entity: EntityId) -> String {
         out.push_str(&format!(" = {written};"));
     }
     out
+}
+
+/// The type of a member as Elfie spells one.
+// @lfy def/interpret/main.lfy:lower
+fn member_type_text(model: &Model, ty: &TypeRef, aliases: &HashMap<EntityId, String>) -> String {
+    match ty {
+        // A list of a union takes parentheses before its brackets, because `A | B[]` is a
+        // union of `A` with a list of `B` and not a list of `A | B`.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:d9eb746b7ffae8611703ed1903b15fe57cbff5934cf81898f4baeae2fbafec33
+        TypeRef::List(item) => {
+            let text = member_type_text(model, item, aliases);
+            if matches!(**item, TypeRef::Union(_)) {
+                format!("({text})[]")
+            } else {
+                format!("{text}[]")
+            }
+        }
+        TypeRef::Union(items) => items
+            .iter()
+            .map(|item| member_type_text(model, item, aliases))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        // An entity brought in by an aliased use is spelled through that alias, so the name
+        // means one entity.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+        TypeRef::Entity(entity) if aliases.contains_key(entity) => {
+            let alias = &aliases[entity];
+            format!("{alias}.{}", crate::model::type_text(model, ty))
+        }
+        TypeRef::Predicate(entity) if aliases.contains_key(entity) => {
+            let alias = &aliases[entity];
+            let name = model.entities[*entity].identifier.clone().unwrap_or_default();
+            format!("is {alias}.{name}")
+        }
+        // Every other type is spelled as the model spells it.
+        ty => crate::model::type_text(model, ty),
+    }
 }
 
 /// A folded value as Elfie spells it; a prompted value as the call that asked for it.
@@ -5133,6 +6007,78 @@ mod tests {
         vec![builtin, json, file, process, main]
     }
 
+    /// A prelude of what declaring a target needs: the trait a builtin carries, the `layer`
+    /// fn of `elfie/prelude/trait`, the `Target` data a const holds with the function that
+    /// gives a record its type, the roles its slots take, and the enums `knowledge` and
+    /// `commands` name.
+    fn targets() -> Vec<Source> {
+        let builtin = source(
+            "lib/prelude/builtin.lfy",
+            "trait builtin: `Performed by the compiler` {}",
+            &[],
+            Origin::Library,
+        );
+        let traits = source(
+            "lib/prelude/trait.lfy",
+            "use \"./builtin\";\n\
+             fn layer(subject: trait, ...arguments: string[]) is builtin: \
+             `A trait chosen as a layer of a target` => object;\n",
+            &[Some("lib/prelude/builtin.lfy")],
+            Origin::Library,
+        );
+        let criteria = source(
+            "lib/criteria/main.lfy",
+            "enum KnowledgeKind: `What a piece of knowledge is` {\n\
+               reference = `documentation to read: a language reference, an API, a guide`,\n\
+               example = `working code to imitate`,\n\
+             }\n\
+             enum Operation: `What a command is for` {\n\
+               build = `build: compile or type-check the outputs`,\n\
+               test = `test: run the tests`,\n\
+             }\n",
+            &[],
+            Origin::Library,
+        );
+        let target = source(
+            "lib/target/main.lfy",
+            "use \"../prelude/builtin\";\n\
+             trait target: `Anything else the compiler is told` {}\n\
+             trait targetLanguage: `What code is written in` {}\n\
+             trait targetLayout: `Where files go` {}\n\
+             d Target is builtin: `One artifact the project is built into` {\n\
+               $output: `Where everything it writes goes` = string;\n\
+               $language: `What its code is written in` = trait;\n\
+               $layout: `Where its files go` = trait;\n\
+               $layers: `Anything else the compiler is told` = trait[];\n\
+             }\n\
+             function targetOf(target: Target): `Gives a record its type` -> Target {\n\
+               return target;\n\
+             }\n",
+            &[Some("lib/prelude/builtin.lfy")],
+            Origin::Library,
+        );
+        let main = source(
+            "lib/main.lfy",
+            "use \"./prelude/builtin\";\nuse \"./prelude/trait\";\n\
+             use \"./criteria/main\";\nuse \"./target/main\";\n",
+            &[
+                Some("lib/prelude/builtin.lfy"),
+                Some("lib/prelude/trait.lfy"),
+                Some("lib/criteria/main.lfy"),
+                Some("lib/target/main.lfy"),
+            ],
+            Origin::Prelude,
+        );
+        vec![builtin, traits, criteria, target, main]
+    }
+
+    /// That prelude, then one file `a.lfy` of the program, as the expand pass leaves it.
+    fn expanded_with_targets(text: &str) -> Model {
+        let mut sources = targets();
+        sources.push(source("a.lfy", text, &[], Origin::Program));
+        expand(declared(sources))
+    }
+
     /// The prelude, then one file `a.lfy` of the program.
     fn bound_with_prelude(text: &str) -> Model {
         let mut sources = prelude();
@@ -5149,6 +6095,9 @@ mod tests {
             entity.acceptance_criteria.clear();
             entity.values.clear();
             entity.tests.clear();
+            entity.knowledge.clear();
+            entity.commands.clear();
+            entity.targets.clear();
             if let EntityKind::Trait {
                 entities,
                 extenders,
@@ -5204,12 +6153,10 @@ mod tests {
             root: PathBuf::from("."),
             name: "fixture".to_string(),
             source_directory: "def".to_string(),
-            output_directory: "crates".to_string(),
             files,
             model,
             packages: Vec::new(),
             targets: Vec::new(),
-            native_dependencies: Vec::new(),
             problems: Vec::new(),
             overlays: BTreeMap::new(),
         }
@@ -5318,7 +6265,7 @@ mod tests {
         assert_eq!(phase_of(&model, declaration), Phase::Runtime);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:e296a93f89da71bf1df9226c1abb709c149b656286c7a3d31029d1a5b088a47a
     #[test]
     fn the_body_of_a_data_and_the_clauses_of_a_declaration_run_at_compile_time() {
         let model = bound("trait t {}\nd A is t {\n  $x: `A member` = string;\n}\n");
@@ -5331,7 +6278,7 @@ mod tests {
         assert_eq!(phase_of(&model, member), Phase::Compile);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:e296a93f89da71bf1df9226c1abb709c149b656286c7a3d31029d1a5b088a47a
     #[test]
     fn an_extends_clause_an_ace_and_a_with_run_at_compile_time() {
         let model = bound(
@@ -5347,13 +6294,28 @@ mod tests {
         assert_eq!(phase_of(&model, held), Phase::Compile);
     }
 
-    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:5c35d4657755c0a2fca56eb0aec633438ff2231492559209fe1f4741f48f986d
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:e296a93f89da71bf1df9226c1abb709c149b656286c7a3d31029d1a5b088a47a
     #[test]
     fn a_call_of_add_on_criteria_and_of_test_on_a_context_run_at_compile_time() {
         let model = bound(
             "fn f(): `Does it` => number {\n  @acceptanceCriteria.add({ behavior = `holds` });\n\
              \n  @test({ input = [], expect = 1 });\n}\n",
         );
+        // Knowledge, commands, and targets are added the same way and run the same way.
+        let others = bound(
+            "d A {\n  @knowledge.add({ topic = `a guide` });\n\
+             \n  @commands.add({ operation = Operation.build });\n  @targets.add(A);\n}\n",
+        );
+        let added: Vec<Option<CompileCall>> = others
+            .descendants(NodeRef { file: 0, index: 0 })
+            .into_iter()
+            .filter(|&node| others.is(node, E::Call))
+            .map(|call| {
+                assert_eq!(phase_of(&others, call), Phase::Compile);
+                compile_time_call(&others, call)
+            })
+            .collect();
+        assert_eq!(added, vec![Some(CompileCall::Add); 3], "{added:?}");
         let calls: Vec<NodeRef> = model
             .descendants(NodeRef { file: 0, index: 0 })
             .into_iter()
@@ -5459,7 +6421,7 @@ mod tests {
         assert_eq!(evaluate(&mut model, value), None);
     }
 
-    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af71cc06254cf4598250a152400471150f2db61a85952cb745487594c7fb0803
     #[test]
     fn a_compile_time_call_of_a_fn_carrying_builtin_is_performed_natively() {
         let directory = std::env::temp_dir().join("elfie-interpret-builtins");
@@ -5511,7 +6473,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&directory);
     }
 
-    // @lfy def/interpret/main.lfy:expand#expand:expand:f6e6c1ef251461cd5a54fdc6dad5574472db86a27fae29fafb2d157194b9a2c7
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af71cc06254cf4598250a152400471150f2db61a85952cb745487594c7fb0803
     #[test]
     fn an_operation_is_performed_natively_only_when_its_data_carries_builtin() {
         // The dispatch is on the trait the data carries, never on the method's name alone.
@@ -5766,6 +6728,223 @@ mod tests {
         assert_eq!(trees, kept, "no tree was changed");
     }
 
+    // @lfy def/interpret/main.lfy:expand#expand:expand:027c6aa720eb36207500444f954f52ce47002c930bb3ddc36452b7a4b2c68c1c
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3db863ca4682ca00b315c335f7896e613d5aa8c85932d0f37c4105d37f82541f
+    // @lfy def/interpret/main.lfy:expand#expand:expand:815fee2bf6162862be1337f7f077daaf2e94035e7524b3fafeea42e091999d80
+    // @lfy def/interpret/main.lfy:expand#expand:expand:9f537c93bf7b77603b8fb7c0d9c9d591b5681e208ad06e1883d0e498ecf4b288
+    // @lfy def/interpret/main.lfy:expand#expand:expand:7ad050ecd77ddb2a438f6d76cc5ac5d7b792aadf01566ef1c4b88c6e13c9a982
+    #[test]
+    fn an_ace_const_holding_a_target_carries_every_layer_in_guidance_order() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {\n  .markerComment = \"#\";\n}\n\
+             trait f(root: string) extends targetLayout {\n  \
+             where (`built`) -> `it is under {{root}}`;\n}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f.layer(\"o\") });\n\
+             d A {\n  @targets.add(t);\n}\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let t = entity_named(&model, "t");
+        let l = entity_named(&model, "l");
+        let f = entity_named(&model, "f");
+        // The layout is a layer before the language, as guidance order has it.
+        let layers: Vec<EntityId> = model.entities[t]
+            .traits
+            .iter()
+            .filter(|applied| matches!(applied.source, AppliedSource::Apply(_)))
+            .map(|applied| applied.entity)
+            .collect();
+        assert_eq!(layers, vec![f, l], "the layout, then the language");
+        // The layer's criterion, with its template value rendered from its argument.
+        let criterion = model.entities[t]
+            .acceptance_criteria
+            .iter()
+            .find(|criterion| criterion.contributor == f)
+            .expect("a criterion contributed by the layout");
+        assert_eq!(
+            criterion.behavior,
+            Some(vec!["it is under o".to_string()]),
+            "{criterion:?}"
+        );
+        // And the language's value.
+        assert_eq!(
+            model.entities[t].value("markerComment"),
+            Some(&Interim::String("#".to_string()))
+        );
+        // The data that named the target holds it.
+        let a = entity_named(&model, "A");
+        assert_eq!(model.entities[a].targets, vec![t]);
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3db863ca4682ca00b315c335f7896e613d5aa8c85932d0f37c4105d37f82541f
+    #[test]
+    fn a_trait_in_two_slots_with_equal_arguments_is_one_layer_at_its_first_place() {
+        let model = expanded_with_targets(
+            "trait both extends targetLayout {}\n\
+             trait l extends targetLanguage {}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = both, \
+             layers = [both] });\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let t = entity_named(&model, "t");
+        let both = entity_named(&model, "both");
+        let layers: Vec<EntityId> = model.entities[t]
+            .traits
+            .iter()
+            .filter(|applied| matches!(applied.source, AppliedSource::Apply(_)))
+            .map(|applied| applied.entity)
+            .collect();
+        // `layers` is the first slot of guidance order, so that is where it stands, once.
+        assert_eq!(layers.iter().filter(|&&held| held == both).count(), 1);
+        assert_eq!(layers.first(), Some(&both), "{layers:?}");
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:778397fb023ed656e33ebd67b829d02d552182166bb594092754762c60164b7e
+    #[test]
+    fn a_slot_holding_neither_a_trait_nor_a_layer_of_one_names_the_slot() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = \"nothing\" });\n",
+        );
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        assert!(
+            model.problems[0].message.contains("the layout of this target"),
+            "{}",
+            model.problems[0].message
+        );
+        // The language was still applied; only the layout was not.
+        let t = entity_named(&model, "t");
+        let l = entity_named(&model, "l");
+        assert!(model.entities[t].has_trait(l));
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:af95eaf48e4b2446d179bd084e2088940e3129a6558e6a76aa807cd9b5c62628
+    #[test]
+    fn a_layer_given_a_different_number_of_arguments_names_the_trait() {
+        let model = expanded_with_targets(
+            "trait l(name: string, root: string) extends targetLanguage {}\n\
+             trait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l.layer(\"a\"), layout = f });\n",
+        );
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        assert!(
+            model.problems[0].message.contains("l takes 2 arguments as a layer, not 1"),
+            "{}",
+            model.problems[0].message
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:f4570ae50491cb2aa95384f33a9f22e23c5f675f9d363e1a034def48f4fd7874
+    // @lfy def/interpret/main.lfy:expand#expand:expand:3e921617c4421345a9d754cbc9c58b029ba4c08b8202d92720308685d5438473
+    // @lfy def/interpret/main.lfy:expand#expand:expand:4026d9056564c68b5a52f00b24505e30cf2080a1dcecbee8c16e0eab9d8f0276
+    #[test]
+    fn knowledge_and_commands_are_appended_with_the_contributor_a_criterion_would_have() {
+        let model = expanded_with_targets(
+            "trait given {\n  \
+             @knowledge.add({ topic = `the trait's guide`, kind = KnowledgeKind.example, \
+             source = \"docs/t.md\" });\n  \
+             @commands.add({ operation = Operation.test, line = \"cargo test\" });\n}\n\
+             d A is given {\n  \
+             @knowledge.add({ topic = `a guide`, kind = KnowledgeKind.reference, \
+             source = \"docs/a.md\", quote = true });\n}\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let a = entity_named(&model, "A");
+        let given = entity_named(&model, "given");
+        // The `is` clause runs before the body, so the trait's item is appended first;
+        // which order the member is read in is `Entity.knowledge`'s business.
+        let topics: Vec<(&str, EntityId)> = model.entities[a]
+            .knowledge
+            .iter()
+            .map(|item| (item.topic.as_str(), item.contributor))
+            .collect();
+        assert_eq!(
+            topics,
+            vec![("the trait's guide", given), ("a guide", a)],
+            "one from the trait, with the trait as its contributor, and one of its own"
+        );
+        let own = &model.entities[a].knowledge[1];
+        assert_eq!(own.kind, KnowledgeKind::Reference);
+        assert_eq!(own.source, "docs/a.md");
+        assert_eq!(own.quote, Some(true));
+        assert_eq!(model.entities[a].knowledge[0].kind, KnowledgeKind::Example);
+        // The command the trait added reaches the entity with the trait as its contributor.
+        assert_eq!(
+            model.entities[a].commands,
+            vec![Command {
+                operation: Operation::Test,
+                line: Some("cargo test".to_string()),
+                contributor: given,
+            }]
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:afb8e82b34ccb77654763edb4ee7918240c8e04550f9dbf2b2075ebd2116b1de
+    // @lfy def/interpret/main.lfy:expand#expand:expand:cb2e2e43b664f248e925f8022a5f9174bac25da862d8b20ba1f2128fd349de82
+    #[test]
+    fn an_argument_that_names_no_ace_const_holding_a_target_is_named_and_adds_nothing() {
+        let model = expanded_with_targets(
+            "d A {\n  \
+             @knowledge.add({ topic = `a guide`, kind = KnowledgeKind.reference, \
+             source = \"docs/a.md\", quote = true });\n  @targets.add(A);\n}\n",
+        );
+        let a = entity_named(&model, "A");
+        assert_eq!(model.entities[a].knowledge.len(), 1);
+        assert_eq!(model.entities[a].knowledge[0].topic, "a guide");
+        assert_eq!(model.entities[a].knowledge[0].contributor, a);
+        assert!(model.entities[a].targets.is_empty());
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        assert!(
+            model.problems[0].message.contains("names no target"),
+            "{}",
+            model.problems[0].message
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:6083cc804f2a7dcd7c05532f7f38d90b1b4618032e89efce7057d7ceda8e2b2c
+    #[test]
+    fn the_same_target_added_twice_is_named_and_appended_once() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\ntrait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f });\n\
+             d A {\n  @targets.add(t).add(t);\n}\n",
+        );
+        let t = entity_named(&model, "t");
+        let a = entity_named(&model, "A");
+        assert_eq!(model.entities[a].targets, vec![t]);
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        assert!(
+            model.problems[0].message.contains("added twice"),
+            "{}",
+            model.problems[0].message
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:63c03302863e8a9506787ff745435920925612b85ad9e928c638e78785179bec
+    #[test]
+    fn a_target_added_to_a_member_says_it_is_built_with_its_owner() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\ntrait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f });\n\
+             d A {\n  $x: `A member` = string;\n}\n\
+             with A$x {\n  @targets.add(t);\n}\n",
+        );
+        let x = model
+            .entities
+            .iter()
+            .position(|entity| {
+                entity.identifier.as_deref() == Some("x")
+                    && matches!(entity.kind, EntityKind::Member)
+            })
+            .expect("the member x");
+        assert!(model.entities[x].targets.is_empty());
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        assert!(
+            model.problems[0].message.contains("built with its owner"),
+            "{}",
+            model.problems[0].message
+        );
+    }
+
     // ---- evaluate ------------------------------------------------------------------
 
     // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:655f8825c2e70d824ae70edabe7443b7721c22be55823451930b947ed3672fc9
@@ -5830,6 +7009,36 @@ mod tests {
                 value_type: string,
                 prompt: "a word".to_string(),
             }))
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:3e472f6364107275a9eb1e7fbdf35e80d3d334ece89274fea50b202686c4c567
+    #[test]
+    fn a_call_of_a_function_declared_outside_the_programs_runtime_code_is_run() {
+        let library = source(
+            "lib/wrap.lfy",
+            "ace function wrap(held: object): `What it was given` -> object {\n  \
+             return held;\n}\n",
+            &[],
+            Origin::Library,
+        );
+        let main = source(
+            "lib/main.lfy",
+            "use \"./wrap\";",
+            &[Some("lib/wrap.lfy")],
+            Origin::Prelude,
+        );
+        let program = source("a.lfy", "ace const c = wrap({ a = 1 });\n", &[], Origin::Program);
+        let mut model = bind(vec![library, main, program]);
+        let file = model.file("a.lfy").expect("the program file");
+        let declaration = first(&model, file, S::VariableDeclaration);
+        let value = value_of(&model, declaration);
+        assert_eq!(
+            evaluate(&mut model, value),
+            Some(Evaluated::Value(Value::Object(BTreeMap::from([(
+                "a".to_string(),
+                Value::Number(1.0),
+            )]))))
         );
     }
 
@@ -6060,6 +7269,109 @@ mod tests {
         );
     }
 
+    // @lfy def/interpret/main.lfy:lower#lower:lower:d9eb746b7ffae8611703ed1903b15fe57cbff5934cf81898f4baeae2fbafec33
+    #[test]
+    fn a_member_whose_type_is_a_list_of_a_union_is_spelled_with_the_union_parenthesized() {
+        let program = lower(workspace(
+            "d A {}\nd B {}\nd Box {\n  $pairs: `d` = (A | B)[];\n  $one: `d` = A | B;\n\
+             \n  $plain: `d` = A[];\n}\n",
+        ));
+        let file = &program.files[0];
+        assert!(
+            file.text.contains("$pairs: `d` = (A | B)[];"),
+            "the union takes parentheses before the brackets: {}",
+            file.text
+        );
+        // A union that is not the item of a list, and a list whose item is not a union,
+        // take no parentheses.
+        assert!(
+            file.text.contains("$one: `d` = A | B;") && file.text.contains("$plain: `d` = A[];"),
+            "{}",
+            file.text
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:lower#lower:lower:9b942ed31fa9b977a6e208d7aceacb3c1b315276cc5b0e480783bae82063427d
+    #[test]
+    fn a_member_type_naming_an_entity_of_an_unused_file_adds_one_use_of_that_file() {
+        let program = lower(workspace_of(vec![
+            source(
+                "def/model/kinds.lfy",
+                "d Kind {}\nd Shape {}\n",
+                &[],
+                Origin::Program,
+            ),
+            source(
+                "def/t.lfy",
+                "use \"./model/kinds\";\ntrait t {\n  $kind: `Which` = Kind;\n  \
+                 $shape: `What` = Shape;\n}\n",
+                &[Some("def/model/kinds.lfy")],
+                Origin::Program,
+            ),
+            source(
+                "def/a.lfy",
+                "use \"./t\";\nd A is t {}\n",
+                &[Some("def/t.lfy")],
+                Origin::Program,
+            ),
+        ]));
+        let file = &program.files[2];
+        // One use, however many members name the file, with its path written relative to
+        // the file the use is written in.
+        assert_eq!(
+            file.text.matches("use \"./model/kinds\";").count(),
+            1,
+            "{}",
+            file.text
+        );
+        let written = file.text.find("use \"./t\";").expect("the use written");
+        let added = file
+            .text
+            .find("use \"./model/kinds\";")
+            .expect("the use added");
+        assert!(written < added, "the added use comes after: {}", file.text);
+        assert!(
+            file.text.contains("$kind: `Which` = Kind;")
+                && file.text.contains("$shape: `What` = Shape;"),
+            "{}",
+            file.text
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:lower#lower:lower:735d918b4b0341569223a3ef637952ee95053da716849bb90159d8c423ae9871
+    #[test]
+    fn an_added_use_takes_an_alias_when_the_file_already_sees_the_name() {
+        let program = lower(workspace_of(vec![
+            source("def/model/kinds.lfy", "d Kind {}\n", &[], Origin::Program),
+            source("def/other.lfy", "d Kind {}\n", &[], Origin::Program),
+            source(
+                "def/t.lfy",
+                "use \"./model/kinds\";\ntrait t {\n  $kind: `Which` = Kind;\n}\n",
+                &[Some("def/model/kinds.lfy")],
+                Origin::Program,
+            ),
+            source(
+                "def/a.lfy",
+                "use \"./other\";\nuse \"./t\";\nd A is t {}\n",
+                &[Some("def/other.lfy"), Some("def/t.lfy")],
+                Origin::Program,
+            ),
+        ]));
+        let file = &program.files[3];
+        // The alias is the declaring file's path under the source directory, without its
+        // extension and with each slash an underscore, and the type is spelled through it.
+        assert!(
+            file.text.contains("use \"./model/kinds\" as model_kinds;"),
+            "{}",
+            file.text
+        );
+        assert!(
+            file.text.contains("$kind: `Which` = model_kinds.Kind;"),
+            "{}",
+            file.text
+        );
+    }
+
     // @lfy def/interpret/main.lfy:lower#lower:lower:da4462e6d2b3dd1ccd2d1540c52f12f97141c350c88131325e6ac17e2e542890
     #[test]
     fn an_ace_function_is_dropped_and_the_const_it_answers_holds_its_value() {
@@ -6227,34 +7539,56 @@ mod tests {
         assert_eq!(kept[0].rule, S::VariableDeclaration.entity());
     }
 
-    // @lfy def/interpret/main.lfy:lower#lower:lower:d8ffa57b2b30840df0952e5ea8d4ffe0335f558885ee6ac4d4f91f3047c0edc8
+    // @lfy def/interpret/main.lfy:lower#lower:lower:c8758d743e4c5ec530524b86503c2a13954458ab0a9c935f75a1dd0e04bc39c7
     #[test]
-    fn a_criterion_of_a_targets_marker_is_guidance_and_no_criterion_of_the_program() {
-        let mut workspace = workspace_of(vec![source(
+    fn a_criterion_of_a_targets_declaration_is_guidance_and_no_criterion_of_the_program() {
+        let mut sources = targets();
+        sources.push(source(
             "a.lfy",
-            "trait shape {\n  where (`built`) -> `shaped`;\n}\n\
-             trait rust extends shape {\n  where (`always`) -> `holds`;\n}\n\
-             rust.apply(global);\nd A {}\n",
+            "trait shape extends targetLanguage {\n  where (`built`) -> `shaped`;\n}\n\
+             ace const rust = targetOf({ output = \"crates\", language = shape });\n\
+             @acceptanceCriteria.add({ behavior = `the file holds` });\nd A {}\n",
             &[],
             Origin::Program,
-        )]);
-        let rust = entity_named(&workspace.model, "rust");
-        workspace.targets.push(crate::workspace::Target {
-            identifier: "rust".to_string(),
-            marker: rust,
-            package: 0,
-            output_directory: "crates".to_string(),
-        });
-        // Global carries both criteria before lowering: the marker's own and the one it
-        // extends.
+        ));
+        let mut workspace = workspace_of(sources);
+        let declaration = entity_named(&workspace.model, "rust");
+        // The const carries the layer's criterion before lowering.
         assert_eq!(
-            workspace.model.entities[workspace.model.global]
+            workspace.model.entities[declaration]
                 .acceptance_criteria
                 .len(),
-            2
+            1,
+            "{:?}",
+            workspace.model.entities[declaration].acceptance_criteria
         );
+        workspace.targets.push(crate::workspace::Target {
+            identifier: "rust".to_string(),
+            declaration,
+            layers: vec![entity_named(&workspace.model, "shape")],
+            output_directory: "crates".to_string(),
+            extensions: Vec::new(),
+            marker_comment: "//".to_string(),
+            script_runner: None,
+            native_dependencies: Vec::new(),
+            commands: Vec::new(),
+            knowledge: Vec::new(),
+        });
         let program = lower(workspace);
-        assert!(program.criteria.is_empty(), "{:?}", program.criteria);
+        // The file's own criterion is still a requirement; the target's guidance is not.
+        let ids: Vec<&str> = program
+            .files
+            .iter()
+            .flat_map(|file| file.criteria.iter())
+            .map(|criterion| criterion.id.as_str())
+            .collect();
+        assert_eq!(ids.len(), 1, "{ids:?}");
+        assert!(
+            every(&program.files[program.files.len() - 1].root)
+                .iter()
+                .all(|node| node.criteria.is_empty()),
+            "no node carries the target's guidance"
+        );
     }
 
     // @lfy def/interpret/main.lfy:lower#lower:lower:c01b0e65b21560f5c563ce3522ded34903a0bf1bae01f842d10d701f22cbe3ec

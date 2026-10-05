@@ -1,0 +1,45 @@
+use "elfie/target/language";
+use "elfie/target/layout";
+
+/// Elfie as a target language, for a target whose outputs are Elfie source. No model can be
+/// expected to know Elfie, so this layer carries what to read, and its criteria say to write only
+/// what that knowledge shows.
+
+trait elfie extends targetLanguage: `Elfie source` {
+  .language = "Elfie";
+  .fileExtension = "lfy";
+  .markerComment = "//";
+  .provides = ["elfie"];
+
+  @knowledge
+    .add({
+      topic = `How to write Elfie: constructs, framing, criteria, tests`,
+      kind = KnowledgeKind.reference,
+      source = "knowledge/writing-elfie.md",
+      quote = true,
+    })
+    .add({ topic = `The grammar, as EBNF`, kind = KnowledgeKind.tool, source = "elfie_grammar" })
+    .add({ topic = `The standard library every file sees`, kind = KnowledgeKind.definition, source = "elfie/main" })
+    .add({ topic = `A complete package, to imitate`, kind = KnowledgeKind.example, source = "knowledge/example" });
+
+  @acceptanceCriteria
+    .add({
+      behavior = `Every declaration is written in Elfie's own syntax as the knowledge gives it; nothing is carried over from another language`,
+    })
+    .add({
+      situation = `The knowledge does not show how something is written`,
+      behavior = `The compiler asks for clarification and writes nothing it has not seen in the knowledge`,
+    })
+    .add({ behavior = `Every name a bracketed reference uses is declared in the file or brought in by a use` });
+
+  @commands
+    .add({ operation = Operation.build, line = "elfie check --strict" })
+    .add({ operation = Operation.format, line = "elfie format --check" });
+}
+
+/// root: the package's directory, relative to the project root
+trait lfyPackage(root: string) extends targetLayout: `An Elfie package: main.lfy at its root, one file per unit` {
+  .requires = ["elfie"];
+  where (`A unit's stem does not end in main`) -> `It is {{root}}/ then the stem, .lfy`;
+  where (`A unit's stem ends in main`) -> `It is main.lfy in the stem's directory under {{root}}`;
+}

@@ -1,0 +1,41 @@
+use "elfie/target";
+use "platforms";
+use "rust" as Rust;
+
+/// The targets of this repository. Every definition is built for rust, which global's targets
+/// hold; the const keeps the name the maps folder elfie-compile/maps/rust was recorded under.
+
+ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targetOf({
+  output = "crates",
+  language = Rust.rust,
+  platforms = [posix],
+  ecosystem = Rust.cargo,
+  layout = Rust.cargoWorkspace.layer(
+    { lsp = "crates/elfie-lsp/src", mcp = "crates/elfie-mcp/src", cli = "crates/elfie-cli/src" },
+    "crates/elfie-core/src",
+    ["cli"],
+  ),
+  dependencies = [
+    { name = "unicode-ident", version = "1" },
+    { name = "serde_json", version = "1" },
+    { name = "sha2", version = "0.11" },
+    { name = "tokio", version = "1" },
+    { name = "tower-lsp", version = "0.20" },
+    { name = "rmcp", version = "3" },
+    { name = "clap", version = "4" },
+  ],
+});
+
+// Guidance only this repository needs
+rust
+  @acceptanceCriteria
+  .add({
+    behavior = `Instant is std::time::SystemTime, formatted and parsed by hand as RFC 3339 the way now_rfc3339 in elfie-core does; chrono is not used`,
+  })
+  .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })
+  .add({ behavior = `Nothing outside the target's output directory is written` });
+
+// Committed code is not rustfmt-clean, so cargo fmt never runs here
+rust@commands.add({ operation = Operation.format });
+
+global@targets.add(rust);

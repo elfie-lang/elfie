@@ -1427,16 +1427,115 @@ mod tests {
 
     /// The directory of the library a fixture carries, relative to its root.
     const LIBRARY_ROOT: &str = "lib";
-    /// The library a fixture carries: the trait `target`, which a target's marker must
-    /// extend, in the prelude every file of the project sees. It also declares the kind
-    /// data `Entity` and `Trait`, so that a target package's `rust.apply(global)` reads
-    /// `apply` as a member of the marker's kind rather than as a name nothing declares.
-    const LIBRARY: &str = concat!(
-        "d Entity: `What every declared thing is seen as through its context layer` {\n}\n\n",
-        "d Trait extends Entity: `A trait seen through its context layer` {\n",
-        "  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;\n}\n\n",
-        "trait target { }\n"
-    );
+    /// The main file of the library a fixture carries: the prelude, which brings the
+    /// vocabulary a target is declared with into the scope of every file of the project.
+    const LIBRARY: &str = "use \"./prelude/builtin\";\nuse \"./prelude/entity\";\n\
+                           use \"./prelude/trait\";\nuse \"./criteria/main\";\n\
+                           use \"./target/main\";\n";
+    /// The trait a builtin carries, which the library's own declarations need.
+    const LIBRARY_BUILTIN: &str = "trait builtin: `Performed by the compiler` { }\n";
+    /// The context layer every entity is seen through: the lists a body adds to live
+    /// there, and `apply` and `layer` are members of a trait's kind rather than names
+    /// nothing declares.
+    const LIBRARY_ENTITY: &str = "\
+d Entity: `A declared thing seen through its context layer` {
+  $knowledge: `What the compiler is given to read for it` = object[];
+  $commands: `Shell commands for its operations` = object[];
+  $targets: `The targets it is built for` = object[];
+}
+d Trait extends Entity: `A trait seen through its context layer` {
+  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;
+  $layer: `The trait as a layer of a target, with arguments for its parameters` = (...arguments: string[]) => object;
+}
+";
+    /// `layer`, which chooses a trait as a layer with arguments.
+    const LIBRARY_TRAIT: &str = "use \"./builtin\";\n\
+                                 fn layer(subject: trait, ...arguments: string[]) is builtin: \
+                                 `A trait chosen as a layer of a target` => object;\n";
+    /// The enums a knowledge item and a command name.
+    const LIBRARY_CRITERIA: &str = "\
+enum KnowledgeKind: `What a piece of knowledge is` {
+  reference = `documentation to read`,
+  example = `working code to imitate`,
+  definition = `Elfie source that defines it`,
+  tool = `a tool of the agent server`,
+}
+enum Operation: `What a command is for` {
+  install = `install`,
+  add = `add`,
+  build = `build`,
+  test = `test`,
+  lint = `lint`,
+  format = `format`,
+  run = `run`,
+}
+";
+    /// `Target`, the roles its slots take, and the function that gives a record written
+    /// in braces its type, as the package `elfie` declares them.
+    const LIBRARY_TARGET: &str = "\
+use \"../prelude/builtin\";
+trait target: `What every layer of a target is` {
+  $markerComment: `How a line comment begins` = string;
+  $provides: `Capabilities this layer gives its target` = string[];
+  $requires: `Capabilities some layer of its target must provide` = string[];
+  $outputExtensions: `Extensions besides the language's own` = string[];
+  .provides = [];
+  .requires = [];
+  .outputExtensions = [];
+}
+trait targetLanguage extends target: `What its code is written in` {
+  $fileExtension: `The extension of its files` = string;
+}
+trait targetRuntime extends target: `What runs its code` { }
+trait targetPlatform extends target: `Where it runs` { }
+trait targetEcosystem extends target: `Where its dependencies come from` {
+  $ecosystem: `What that ecosystem is called` = string;
+  $scriptRunner: `What runs a script its manifest names` = string;
+}
+trait targetFramework extends target: `What its code is built on` { }
+trait targetInterface extends target: `What it offers` { }
+trait targetLayout extends target: `Where its files go` { }
+d Target is builtin: `One artifact the project is built into` {
+  $output: `Where everything it writes goes` = string;
+  $language: `What its code is written in` = trait;
+  $runtime: `What runs its code` = trait | undefined;
+  $platforms: `Where it runs` = trait[] | undefined;
+  $ecosystem: `Where its dependencies come from` = trait | undefined;
+  $frameworks: `What its code is built on` = trait[] | undefined;
+  $interfaces: `What it offers` = trait[] | undefined;
+  $layout: `Where its files go` = trait;
+  $layers: `Anything else the compiler is told` = trait[] | undefined;
+  $dependencies: `What its generated code needs` = object[] | undefined;
+}
+function targetOf(target: Target): `Gives a record written in braces its type` -> Target {
+  return target;
+}
+";
+    /// The language, the layout, and the ecosystem the fixture's target is built from.
+    const ROLES: &str = "\
+trait lang extends targetLanguage: `Rust` {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+}
+trait flat extends targetLayout: `One file per unit` { }
+trait cargo extends targetEcosystem: `Crates from crates.io` {
+  .ecosystem = \"cargo\";
+}
+";
+    /// The `ace const` holding the target `rust`, whose output directory is `out`, added
+    /// to `global` so that every entity of every project file is built for it.
+    const TARGETS: &str = "\
+use \"elfie/target\";
+use \"./roles\";
+
+ace const rust = targetOf({
+  output = \"out\",
+  language = lang,
+  layout = flat,
+  ecosystem = cargo,
+});
+global@targets.add(rust);
+";
     /// The manifest of a fixture: it names the library the fixture carries.
     const LIBRARY_MANIFEST: &str = r#"{ "lib": "lib" }"#;
 
@@ -1455,10 +1554,27 @@ mod tests {
             // Every fixture carries a library of its own and names it in its manifest, so
             // that a test never reads the copy of the library the compiler was built
             // with, whose files would be files of the program like any other.
+            fixture.write(MANIFEST, LIBRARY_MANIFEST).library();
             fixture
-                .write(MANIFEST, LIBRARY_MANIFEST)
-                .write(&format!("{LIBRARY_ROOT}/main.lfy"), LIBRARY);
-            fixture
+        }
+
+        /// The library of the package `elfie`, written under [`LIBRARY_ROOT`]: the
+        /// prelude, the kind data a body's lists live on, and the target vocabulary a
+        /// project's `ace const` declares its targets with.
+        fn library(&self) -> &Fixture {
+            self.write(&format!("{LIBRARY_ROOT}/main.lfy"), LIBRARY)
+                .write(&format!("{LIBRARY_ROOT}/prelude/builtin.lfy"), LIBRARY_BUILTIN)
+                .write(&format!("{LIBRARY_ROOT}/prelude/entity.lfy"), LIBRARY_ENTITY)
+                .write(&format!("{LIBRARY_ROOT}/prelude/trait.lfy"), LIBRARY_TRAIT)
+                .write(&format!("{LIBRARY_ROOT}/criteria/main.lfy"), LIBRARY_CRITERIA)
+                .write(&format!("{LIBRARY_ROOT}/target/main.lfy"), LIBRARY_TARGET)
+        }
+
+        /// The same project with one target `rust` whose output directory is `out`,
+        /// declared as an `ace const` of the project and added to `global`, so that every
+        /// entity of every project file is built for it.
+        fn with_rust_target(&self) -> &Fixture {
+            self.write("def/roles.lfy", ROLES).write("def/targets.lfy", TARGETS)
         }
 
         fn write(&self, path: &str, text: &str) -> &Fixture {
@@ -1717,16 +1833,7 @@ mod tests {
     fn compiled_project() -> Fixture {
         let fixture = Fixture::new();
         fixture
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "lib": "lib",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
-                }"#,
-            )
-            .write("targets/rust/main.lfy", "trait rust extends target: `Built as Rust` {}\nrust.apply(global);\n")
+            .with_rust_target()
             .write("def/a.lfy", "use \"./b\";\nd A: `An A` { $b = B; }\n")
             .write("def/b.lfy", "d B {}\n");
         fixture
@@ -1904,16 +2011,7 @@ mod tests {
     fn project_with_requirements() -> Fixture {
         let fixture = Fixture::new();
         fixture
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "lib": "lib",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
-                }"#,
-            )
-            .write("targets/rust/main.lfy", "trait rust extends target: `Built as Rust` {}\nrust.apply(global);\n")
+            .with_rust_target()
             .write(
                 "def/b.lfy",
                 "fn b(): `A b` => string { @acceptanceCriteria.add({ behavior = `It answers` }); }\nglobal@acceptanceCriteria.add({ behavior = `Nothing is written outside the output directory` });\n",

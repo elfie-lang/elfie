@@ -104,6 +104,9 @@ impl Binder {
             item_type: None,
             references: Vec::new(),
             tests: Vec::new(),
+            knowledge: Vec::new(),
+            commands: Vec::new(),
+            targets: Vec::new(),
             values: Vec::new(),
             kind: EntityKind::Global,
             node: None,
@@ -167,6 +170,9 @@ impl Binder {
             item_type: None,
             references: Vec::new(),
             tests: Vec::new(),
+            knowledge: Vec::new(),
+            commands: Vec::new(),
+            targets: Vec::new(),
             values: Vec::new(),
             kind,
             node,
@@ -240,10 +246,17 @@ impl Binder {
         Some(id)
     }
 
-    /// One usage of the layer the node's rule or accessor reads. Its name is undefined
-    /// when the node spells none after its accessor, so the usage is of that layer itself.
-    // @lfy def/model/traits.lfy:reading
-    // @lfy def/model/traits.lfy:reading
+    /// One usage of the layer that [`accessor_layer`] or `reading_layer` gives the node's
+    /// rule or accessor token.
+    // @lfy def/model/data.lfy:Usage#Usage:reading:ac21cace34f24707815accc4133284f676e8136d3c238c0a1a83cc287fbce07f
+    // @lfy def/model/data.lfy:Usage#Usage:reading:f9666e2c42b94cd9fb83e979bd5504fef2c78d0ac26ec89b455289555cd1c939
+    // @lfy def/model/data.lfy:Usage#Usage:reading:609073365fe6e5381452fd7f8b3d2578555d722eae1cb99cc00895d10ea82ad5
+    // @lfy def/model/data.lfy:Usage#Usage:reading:7dc5ef0b5fa91500246e001f8c08cad34455ae1b67d54b8bbe36f2a891d475bc
+    // @lfy def/model/data.lfy:Usage#Usage:reading:ee33146dc6b219be01564883208e84a9994b9304703fea90f2830a695fc6d751
+    // @lfy def/model/data.lfy:Usage#Usage:reading:6e6f5d3a14fd1410aa67d98ed94a74b127e1f3e1bfbf3b6677c6b61cf5c667a4
+    // @lfy def/model/data.lfy:Usage#Usage:reading:821cf3e93321780941fd9240917de8df4e995d1962a2a9508c03aeb6cb4415c5
+    // @lfy def/model/data.lfy:Usage#Usage:reading:d69e7051ef45630f2599b70224f5da10687332ce1d6c5404a61183128f1cb965
+    // @lfy def/model/data.lfy:Usage#Usage:reading:438adfdcbc75848d58d7798bda90d7a5ced341740dc5b5e1c043e025e8be69fc
     pub fn add_usage(
         &mut self,
         node: NodeRef,
@@ -252,6 +265,17 @@ impl Binder {
         layer: Layer,
         symbol: Option<SymbolId>,
     ) -> UsageId {
+        // `name` is None when the node spells none after its accessor, so the usage reads
+        // the layer itself.
+        // @lfy def/model/data.lfy:Usage#Usage:reading:2266d300efeeadf31e80ddb973da8c589dd2d2ad6e1b968588dd4288d2275474
+        // @lfy def/model/data.lfy:Usage#Usage:reading:750057c4fc4d9129f838bf6b4b1481e9c8a1d2cc10ccf3f41755323e90d064e7
+        // @lfy def/model/data.lfy:Usage#Usage:reading:e7134335094e30bb2a9442049490488f0b9841e20eb6fe7e13b6d29c851a0292
+        // @lfy def/model/data.lfy:Usage#Usage:reading:a726a9242509e1735f015692853f0236adde1b1be1dfa9ee2e98541e39cdf197
+        // @lfy def/model/data.lfy:Usage#Usage:reading:848b7660ad51aa75374dcbb7c9dffd79adbe402fd0c5b541dc600c503e98771c
+        // @lfy def/model/data.lfy:Usage#Usage:reading:4ba008ad8bf3aeb5874d9136f3d6479ff88c61449da7cf050dc35b3b2e80f863
+        // @lfy def/model/data.lfy:Usage#Usage:reading:1e5711daf6bf443fcb4c71b1db5b22fec175542aabde820f693d986b33cf204a
+        // @lfy def/model/data.lfy:Usage#Usage:reading:7bc586c37d4ac4b4f06f40cbbca40a8f34b533fdbd9396893a7ad54263d927c6
+        // @lfy def/model/data.lfy:Usage#Usage:reading:614d0b5ef86f1132a3da25248612701d37f0804fa7013d4f545505e096ce74ce
         self.model.usages.push(Usage {
             node,
             name,
@@ -324,7 +348,18 @@ impl Binder {
     /// the file. Its parent is settled by [`Binder::link_prelude`], once every file has
     /// been declared.
     // @lfy def/model/main.lfy:bind
-    // @lfy def/model/traits.lfy:scoped
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:ae29588403566d0e2ed4fff41fe4c1f240615e902ee3f1d5d65f6b45ec500344
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:0a23b3b09e99d86128592d35af21dcbb02346e5a6af236c2f49abd12d242b1e6
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:1f2045b0cf91592ab208d3478abd4e79c890f6a56e622e8b17e424ba619ba6ea
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:e4f2a169e96baaff904e6417c4eb9dfa16a888274709019efab532751e503f03
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:f58a6fcb6b06704c728440e67f603d0f6120a0ea5ed2814d78dfdcc85332011c
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:4d556f31114a71be31643a2baa758a7f86116bf5a4403dae538be2a6ee7b4974
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:007ecdd1869f9f645e7b6b88087374b3c9a38376e7c6c92059d5ff06ea0b6b96
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:bffc98456accbc9377265748814cae9fada36da1d9a365d3837dcaba91f024b5
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:e15489119fd5b2052bb5b2beee23bd308e80f673cbec99a192b2445e7f98ca73
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:1d001624cf000c4b23d2d142e27fcbe71e52cc02ca3d8cc0953d2ab51dc3f1eb
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:551fe3f518e3c9b25d0c87f9254e6231a8397c601525fe4a520ee664863cdc46
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:5641ea1aa93cd37a3890b8e88bac29ed2dc6efff3467328e4e286729a3e9162f
     pub fn declare_file(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let root = NodeRef { file, index: 0 };
@@ -338,15 +373,13 @@ impl Binder {
         }
     }
 
-    /// A file scope whose file has the program origin takes the prelude scope as its
-    /// parent; one whose origin is the library or the prelude itself has no parent. Every
-    /// file has been declared by now, so the prelude's scope exists whatever order the
-    /// files were given in. With no source of [`Origin::Prelude`] no file scope has a
+    /// Every file has been declared by now, so the prelude's scope exists whatever order
+    /// the files were given in. With no source of [`Origin::Prelude`] no file scope has a
     /// parent, and a name only the prelude would give is found nowhere.
-    // @lfy def/model/data.lfy:Scope
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
-    // @lfy def/model/traits.lfy:scoped
     pub fn link_prelude(&mut self) {
         let trees = self.trees.clone();
         let Some(prelude) = trees
@@ -373,6 +406,24 @@ impl Binder {
         let trees = self.trees.clone();
         let rule = trees.rule(r);
         let mut scope = enclosing;
+        // No holder found in token order leaves `name` None, and the node keeps the
+        // entity without a symbol.
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:4d2a91e83ca5aea2cacf273f0012912887ea8159cc7a89cc8e19a3730642c701
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:334a668473e8e671d1f441c7fcb14ec4e2a4c167834c1efd8f5b97048a130a02
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:8568a44d8dd42c1e6899eb3381465ef8c519d8703d91071d4edd7ad5450307ec
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:936a210507679cd0313500684a7fcfa0fcaa511b47ab95757c961122ea81a29d
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d76c67e8aeddf19cffef70df51a5885c88edbd69823a3c2d11ecb402d009c85e
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:20d08793b58613ffc6bbc7cbf10e2d7dbbbe206dd7b80bbbb873e03040d57eb6
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:dc2523bc6c2f437ecf3fc30806682faa13fe29f9c41d5ff56949e6e54e61028d
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:ed40056b2259ac8fc2d6e740842c702f11103ed3ebbe430355fd4d18e558061f
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:4867c93e94eb751aff41621c85836400bc3d23fccf5e322e92b1ad38735cd7f7
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d809da68be873a6a1d72212df4003d83cb42fbf004f5b3cc06c626f091a66bff
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d1ad24c9fefefd30784b688d9bcc1c1dd0f13e53121edbd9feb62ed532345ada
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:a39a51eba371fd140b6931d23679c06c861f38325a89fcc204716e0f8b02a1de
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:c1c3796dea434a094e80c0ca17e180df8be0cfa87a0b1dc3cf1e07d28c62ad50
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:9deec9b382c94422dcf5fea75de4ae0d32a7ed78b9e5728267a6799a194cfd41
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:68915b22aa9480e9c32aa3605c235cb410c50b7dbe7fdb156174377ef4a4c152
+        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:f5fd20b0c5ae5931eee11e5704a1ffc4141961ede9961189e5b9c0103bd1dcf7
         let declared = declaring(rule).map(|(holder, kind)| {
             let name_token = trees.declared_name_token(r, holder);
             let name = name_token.map(|i| trees.token(r.file, i).value.clone());
@@ -394,10 +445,18 @@ impl Binder {
                 None,
             )
         });
-        // A scoped node other than the SourceFile takes the scope of the nearest scoped
-        // ancestor as its parent, so every name a descendant declares outside a nested
-        // scoped node belongs to it.
-        // @lfy def/model/traits.lfy:scoped
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:ea091e9f8dc1159e0df07fc31ef2dc634bdc41ee9ea42967e9a43f75c75cd06e
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:eb5476aa1ba22ec87812cf0c7f5ae619d785f5d2f712a715e0e1ccab639e4954
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:2109fd4191622ac15c8e2f3f46d20578fcb5e2f2f85ee59b07070faa9aa4c638
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:2081fb4135f0ca7ddb5ab14b1d2b481f0a5b17f776aec05cc92c8d860643b558
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:e8ccfe2435aba8f883115d85d01cf76c64d3db627d57f8eca923e157117699c0
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:a0a86567cd7647d55c1c963f958cecbdfcc68ccf65f410225c1d13ff829964db
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:223da5d3a6eef6bc611b8b0b1189cdc835e66bc7884d9ed96d4bc3002f94aac9
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:2accd0733291e55d2b641e49410abfb0149ddadd060743f3ba9699680be79ca3
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:638dca9748e33fe9f17ca69b969194cf6d082bb161c281c35bb833c83206e216
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:57fc04939821a888dc0ed7f2d2046428a16647f205e7c7f1f26e7bd4fce6e3aa
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:d5d6a54e1bab9228d34a90fdab805cbd0e84edc52cbe8015ef58a5b452707df7
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:7e4221e115aad2242f43218ea173397a5f102e8dacb4bb2a18ac843a3d50c736
         if is_scoped(rule) {
             // A For declares its loop variable, not itself: its current stays the parent's.
             let current = match (&declared, function_type) {
@@ -414,8 +473,24 @@ impl Binder {
             }
         }
         if let Some((entity, kind, Some(name), name_token)) = declared {
-            // A loop variable is added to the scope the For owns instead.
-            // @lfy def/model/traits.lfy:declaring
+            // A loop variable goes to the scope the For owns, so it is visible in the loop
+            // body and nowhere else; the ForFrom inside it shares that same scope.
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:0777e530e733a342a790f4dbd048a3b88c708213eeaf5a57ebb6fa1a14b390ac
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:050b259b4270381a45b6a8f9cde17291301fcfcf2c2dcac97d8da26907330ba4
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:9e1af9679ae8344a05d1999f41417c931ea7e44344117f6aec1d52b7624aa39d
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:81f7098842646b0df37e532b7832c89945bd9f8a48d6bb60240b9ce15342fc61
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:2e2fb81860bffa42ab0b4a0602047b8fb6b01f6c8861e3b483f338d6b6a2f99a
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:4077bf167028eb594fbfd793ccc64693390ee609ccb4bd85242a520a9bcd951b
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d5e7362c158407b4bea80853bb630d37134d64cf3effde9c234f83e27513356f
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:3bcf28883c5a9bb4af4679857191826db66ca9e440ba434c13b9eabbb5fef8bf
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:23f8bb0f2c30db366dcabc96840673d068c8904501370d0534156f757267db38
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:f04cd1b42364f101b545768da5e8b426ecc37228f397e7f87877f0426d713ee7
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:53b45f44db83bd6a67a394ca97f9c970124d3fb1412057a787bb0c332ac21819
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:b6b344def5584cc9013a7ad383077578e5363e6eff06072436ea96472e2e5a5f
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d9f26eaab4ab6fa90e614d2f60ce438efc30a32364d88d18310cf93ec6563ca1
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:b8f4235eda94d381570ae001db511b4eb9d855f395b8362eb0b0152fb1eac411
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:edb5afa3c4cb488ca22885779f85deafc4ee7fa963fed0e9e2ca81da2913b2ea
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:30255184c2e25f9ba14bd2caf6fd2e2c78ad7d3abf6b1f2b56a89e894f022aa7
             let target = if kind == SymbolKind::LoopVariable {
                 if trees.is(r, S::ForFrom) {
                     enclosing
@@ -425,6 +500,22 @@ impl Binder {
             } else {
                 enclosing
             };
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:1b3b296581d0aa77d7e956d1a58a03a03c0e2e8c6cf5f12bf7719cb301f56669
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:c77a467c0f14a0bf606316f585e707dcebd92a84c9d616058eb2e2a0b6db2b6c
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:3b8f7de54d565bd51898bc04295d99aee6abd90d923fb25151fc5f97895d2b28
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:7c659e87e0ecf88ac344eed092378556862620496e9b2a1f60868f74b5acfdd8
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:6de2cb2274ce8b31b1370b2d54a0fe883a94392a419dfbf632539f681e0797f0
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:20d9315f0b4fea3cbb3201bf94ab004f5efffde7e7cb900bdf96398fbf5e6696
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:640764c102cf7118742df1697e75ef61443f7e69246f3beb3c123e35cd18863e
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:39e6535c9525f0a0faeaaeec19928deaa599e5a6005306c9b1356a1d30c492cf
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:522d14553484ab0e8e1d9ca179de1d8ad604c9e1a9421825436a374367f19778
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:9482ba4fe39a3815c520d52009189c581a9d56fdaf7d476fea7e11a76a89d34c
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:5af88149b40b1e36cd68b7c3ccb33650b9aaa8dd7f4bdda85953c7fdd45603f3
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:a43fee45ab29236b31020c5e7608bb2462f161f9a3cb5d0d5f6fa6122f1364ad
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d5668b509dcc604fefe23e68488a73ccd841438ecbcedc2bb0e863edc0da43f2
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:cccec96213525820e1f80ba92739042dee892cafcd242390a9a4fa43d4f817df
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:f667de7758510c92673d2eea8691323d73dca9e92fc9bd5e69e279ae0a4b6c74
+            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:064bd570a7f5d72e9e85d1eed913ee63eb2115be4d71cb60026e284b1a4c538f
             self.add_symbol(target, name, entity, kind, r, name_token);
         }
         // A member declared in a data or trait body.
@@ -1772,10 +1863,12 @@ impl Binder {
         let layer =
             accessor_layer(trees.token(r.file, accessor).rule.expect("accessor")).expect("layer");
         let name_text = name.map(|i| trees.token(r.file, i).value.clone());
-        // The add of `@acceptanceCriteria.add(...)` is the binder's own call, not a
-        // member of the list it reads: it has no symbol and adds no problem.
+        // The add of `@acceptanceCriteria.add(...)`, and of the other lists an entity
+        // carries, is the binder's own call, not a member of the list it reads: it has no
+        // symbol and adds no problem.
         // @lfy def/model/main.lfy:bind
-        let target = if layer == Layer::Value && self.is_criteria_add(r, name_text.as_deref()) {
+        let target = if layer == Layer::Value && self.is_prelude_list_add(r, name_text.as_deref())
+        {
             Target::Unknown
         } else {
             trees
@@ -1787,11 +1880,15 @@ impl Binder {
         self.record_reference(r, usage);
     }
 
-    /// Whether a member named `add` is read with the value accessor on the criteria of
-    /// an entity's context: `@acceptanceCriteria.add(...)`, or the `.add` of the chain
-    /// that follows it.
+    /// Whether a member named `add` is read with the value accessor on one of the lists
+    /// of an entity's context: `@acceptanceCriteria.add(...)`, `@knowledge.add(...)`,
+    /// `@commands.add(...)`, `@targets.add(...)`, or the `.add` of the chain that follows
+    /// one of them.
     // @lfy def/model/main.lfy:bind
-    fn is_criteria_add(&self, r: NodeRef, name: Option<&str>) -> bool {
+    fn is_prelude_list_add(&self, r: NodeRef, name: Option<&str>) -> bool {
+        /// The lists of an entity's context whose `add` the binder answers for itself.
+        const LISTS: [&str; 4] = ["acceptanceCriteria", "knowledge", "commands", "targets"];
+
         if name != Some("add") {
             return false;
         }
@@ -1811,7 +1908,7 @@ impl Binder {
                 return false;
             };
             if trees.token_is(node.file, accessor, P::ContextAccessor) {
-                return trees.token(node.file, spelled).value == "acceptanceCriteria";
+                return LISTS.contains(&trees.token(node.file, spelled).value.as_str());
             }
             if trees.token(node.file, spelled).value == "add"
                 && let Some(left) = trees.left(node)
@@ -2184,6 +2281,7 @@ impl Model {
     /// `TypeParameters`, in order; empty for a declaration without them. A declaration
     /// seen with arguments owns the declaration's scope, so its type parameters are the
     /// declaration's.
+    // @lfy def/model/data.lfy:Entity.typeParameters
     // @lfy def/model/main.lfy:bind
     pub fn type_parameters(&self, entity: EntityId) -> Vec<EntityId> {
         match self.entities[entity].scope {
@@ -2199,6 +2297,7 @@ impl Model {
 
     /// `Entity.typeArguments`: what each argument the type was written with resolves to,
     /// in order; empty for a declaration used without arguments.
+    // @lfy def/model/data.lfy:Entity.typeArguments
     // @lfy def/model/main.lfy:bind
     pub fn type_arguments(&self, entity: EntityId) -> Vec<TypeRef> {
         match self.entities[entity].value(TYPE_ARGUMENTS) {

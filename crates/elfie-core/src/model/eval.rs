@@ -2104,7 +2104,16 @@ impl Binder {
                 .unwrap_or_else(|| "anonymous".to_string()),
             TypeRef::Primitive(p) => (*p).to_string(),
             TypeRef::Literal(v) => self.to_text(v),
-            TypeRef::List(item) => format!("{}[]", self.type_text(item)),
+            // A union or a function type is wrapped in parentheses before the brackets,
+            // so the text reads back as the list of that whole type.
+            TypeRef::List(item) => {
+                let text = self.type_text(item);
+                if matches!(item.as_ref(), TypeRef::Union(_) | TypeRef::Function) {
+                    format!("({text})[]")
+                } else {
+                    format!("{text}[]")
+                }
+            }
             TypeRef::Union(items) => items
                 .iter()
                 .map(|i| self.type_text(i))
@@ -2261,7 +2270,7 @@ mod tests {
             .collect()
     }
 
-    // @lfy def/grammar/rules/statement.lfy:Conditions
+    // @lfy def/grammar/rules/statement.lfy:Conditions#Conditions:Conditions:4e8d792977b3c8f9e20a07018cf7794a729c1f481ac19060257b1806696c4ea1
     #[test]
     fn conditions_joined_by_or_merge_into_one_situation() {
         assert_eq!(
@@ -2270,7 +2279,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/statement.lfy:Conditions
+    // @lfy def/grammar/rules/statement.lfy:Conditions#Conditions:Conditions:0b969abfbe6810138d0768149b1e3c6d2a175d6d6278ffe513fe806f4d622860
     #[test]
     fn conditions_joined_by_and_are_a_list_of_situations() {
         assert_eq!(
@@ -2282,7 +2291,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/statement.lfy:Conditions
+    // @lfy def/grammar/rules/statement.lfy:Conditions#Conditions:Conditions:58b6bf8130cf72cc02805cbf8418b0c4c634ac0d963c09ea762f0e428d6d12c5
     #[test]
     fn a_negated_nested_group_distributes_the_negation() {
         // "or" inside the group becomes "and": one situation per condition.

@@ -1,13 +1,13 @@
 use "../prelude/builtin";
 use "./target";
 
-/// A target whose outputs are source code in one language. The extending trait says what each
+/// The role of a language: what a target's code is written in. The extending trait says what each
 /// kind of declaration becomes and what each builtin of the standard library is bound to; this
-/// trait says that it must, and how the result is judged.
-trait targetLanguage extends target: `A target that is a programming language: every kind of declaration has a spelling in it` {
+/// trait says that it must, how markers are written, and how the result is judged.
+trait targetLanguage extends target: `The role of a language: every kind of declaration has a spelling in it` {
   $language: `The language and edition, as its own tools name it` = string;
   $fileExtension: `The extension of a source file of the language, without the dot` = string;
-  $nativeEcosystem: `The ecosystem native dependencies come from, as elfie.json spells it` = string;
+  $markerComment: `How a line comment begins in the language, so a marker can be written` = string;
 
   // Kinds
   where (`A d declaration is built`) -> `It becomes the type the extending trait says a data becomes, with one field or method per member, and its criteria are satisfied by that type`;
@@ -27,9 +27,15 @@ trait targetLanguage extends target: `A target that is a programming language: e
   where (`The extending trait names no native binding for a builtin the unit uses`) -> `The compiler stops on that unit and names the builtin`;
 
   // Dependencies
-  where (`The project's elfie.json names a native dependency of [[targetLanguage.nativeEcosystem]]`) -> `It is available to every output at the version named, and nothing outside elfie.json's native list is required`;
+  where (`A target lists dependencies`) -> `Each is available to every output at the version named, from the target's ecosystem, and nothing outside the target's dependencies is required`;
+
+  // Markers
+  where (`An item of a unit's output comes from an entity`) -> `It carries a line comment beginning with [[targetLanguage.markerComment]], then @lfy, a space, the source path relative to the root, a colon, and the entity's name, as the generation stage's Marker describes`;
+  where (`An item of a unit's output comes from a member`) -> `The entity's name in its marker is the member's owner's identifier, a dot, and the member's name`;
+  where (`An entity of the unit has no marker in any output`) -> `The unit is rejected, so every entity built for the target is named at least once in the outputs`;
+  where (`A marker would name a line`) -> `It names the entity instead, because a name survives edits that move lines`;
 
   // Quality
   where (`A unit's outputs are written`) -> `The code builds, its tests pass, and its lints are clean by the language's standard tools, with no warnings`;
-  where (`An output file is written`) -> `Its name ends in a dot and [[targetLanguage.fileExtension]]`;
+  where (`An output file is written`) -> `Its name ends in a dot and [[targetLanguage.fileExtension]], or in a dot and one of the output extensions the target's layers allow`;
 }

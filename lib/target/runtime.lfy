@@ -1,0 +1,6 @@
+use "./target";
+
+trait targetRuntime extends target: `The role of a runtime: what runs a target's code when something other than the platform does, such as node or bun` {
+  $runtime: `The runtime and the lowest version it supports, as its own documentation names them` = string;
+  where (`Code is generated`) -> `It calls only what the runtime, the platforms, and the target's dependencies provide`;
+}

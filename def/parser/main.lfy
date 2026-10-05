@@ -368,7 +368,8 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
   }
 }
 
-global@acceptanceCriteria
+global
+  @acceptanceCriteria
   .add({
     behavior = [
       `For every terminal, the statement rules it can begin are completely ordered by [[triedBefore]]`,

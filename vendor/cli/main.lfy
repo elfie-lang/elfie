@@ -1,0 +1,21 @@
+use "elfie/target/interface";
+
+/// A command line as an interface. Entities join it with command; a framework of the target,
+/// such as clap or argparse, says how each is built.
+
+trait commandLine extends targetInterface: `A program people run from a terminal` {
+  .requires = ["process", "argument-parser"];
+  @acceptanceCriteria
+    .add({ behavior = `Every fn carrying [[command]] is one subcommand, or the program itself when it is the only one` })
+    .add({ behavior = `--help prints every command with its description, and --version prints the version` })
+    .add({
+      behavior = `Results go to stdout and problems to stderr; the exit code is 0 only when the command succeeded`,
+    });
+}
+
+/// name: what the user types after the program's name; empty for the program itself
+trait command(name: string): `An fn run from the command line` {
+  where (`The fn is built`) -> `It runs as the subcommand {{name}}, or as the program itself when {{name}} is empty`;
+  where (`The fn has parameters`) -> `Each is an option named like it in kebab case, or a positional argument when its documentation says so`;
+  where (`The fn returns a number`) -> `That number is the exit code`;
+}

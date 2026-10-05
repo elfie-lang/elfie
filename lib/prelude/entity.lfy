@@ -1,4 +1,6 @@
+use "../criteria/command";
 use "../criteria/criterion";
+use "../criteria/knowledge";
 use "./builtin";
 
 // Decision: member tests put the receiver first in input.
@@ -27,6 +29,19 @@ d Entity is builtin: `What every declared thing is seen as through its context l
     });
   }
   $tests: `Every test added, in order` = Test[];
+  $knowledge: `What the compiler is given to read for it: its own items first, then each trait's in application order` = Knowledge[];
+  $commands: `Shell commands for its operations: its own first, then each trait's in application order` = Command[];
+  $targets: `The targets added to it, in the order they were added; each an ace const of the project holding a Target of the package elfie` = Entity[];
+  with Entity$targets {
+    where (`add is called on it with a name that resolves to an ace const of the project holding a Target`) -> `That const is appended, and the list is yielded so calls chain`;
+    where (`add is called on it with anything but the name of such a const`) -> `A problem at the argument says it names no target`;
+    where (`add is called with a const already in the list`) -> `A problem at the call says the target was added twice, and the list is unchanged`;
+    where (`add is called on the targets of a member, a parameter, or an enum member`) -> `A problem at the call says it is built with its owner`;
+    where (`An entity's own list is not empty`) -> `It is built for the targets in it, and no others`;
+    where (`An entity's own list is empty`) and (`The list of the anonymous entity of its file is not empty`) -> `It is built for its file's targets`;
+    where (`An entity's own list and its file's list are empty`) -> `It is built for global's targets`;
+    where (`An entity has no lowered node, or is declared in a file of a package`) -> `It is never built, whatever its lists say`;
+  }
   where (`The context accessor is followed by a name on any entity`) -> `The name resolves among these members`;
   where (`The context accessor is followed by no name on any entity`) -> `The layer alone is the entity itself`;
   where (`A bracketed reference appears in its definition, documentation, or value`) -> `The referenced entity is added to [[Entity.references]]`;

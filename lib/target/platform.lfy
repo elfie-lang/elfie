@@ -1,0 +1,7 @@
+use "./target";
+
+trait targetPlatform extends target: `The role of a platform: where a target runs, such as a POSIX process or a browser; a target may have several` {
+  $platform: `The platform and the versions it supports` = string;
+  where (`Code is generated`) -> `It uses only what the platforms it runs on offer`;
+  where (`A target has more than one platform`) and (`An output runs on only some of them`) -> `The output says which, as the target's framework or layout spells it`;
+}

@@ -1,0 +1,39 @@
+use "elfie/target/interface";
+
+/// Interfaces over HTTP. Entities join them with endpoint and page; a framework of the target,
+/// such as nextjs, says how each is built.
+
+trait restApi extends targetInterface: `Operations served as JSON over HTTP` {
+  .protocol = "HTTP/1.1 with JSON bodies";
+  .requires = ["http-server"];
+  @acceptanceCriteria
+    .add({ behavior = `Every fn carrying [[endpoint]] is one operation, and nothing else answers a request` })
+    .add({ behavior = `An error answers with a JSON body holding a message, never an HTML page or a stack trace` });
+}
+
+/// method: the HTTP method, in capitals
+/// path: the URL path, beginning with a slash; a segment in square brackets is a parameter
+trait endpoint(method: string, path: string): `An fn answering one method on one path` {
+  where (`The fn is built`) -> `It answers {{method}} {{path}}`;
+  where (`The fn has parameters`) -> `One named like a segment of {{path}} is read from that segment; the others come from the query string for GET and DELETE, and from the JSON body otherwise`;
+  where (`A request arrives`) -> `Each argument is checked against its parameter's type before the fn runs`;
+  where (`An argument fails its check`) -> `The answer is 400 with the problems, and the fn does not run`;
+  where (`The fn returns`) -> `The answer is 200 with the value as JSON, unless a criterion names another status`;
+}
+
+trait website extends targetInterface: `Pages people open in a browser` {
+  .protocol = "HTTP/1.1 serving HTML";
+  .requires = ["html-pages", "browser"];
+  @acceptanceCriteria
+    .add({ behavior = `Every fn carrying [[page]] is one page, and its path can be linked to and survives a reload` })
+    .add({
+      behavior = `Pages use semantic HTML, every control can be reached with the keyboard, and every image has alt text`,
+    });
+}
+
+/// path: the URL path, beginning with a slash; a segment in square brackets is a parameter
+trait page(path: string): `An fn rendered as a page` {
+  where (`The fn is built`) -> `It renders the page at {{path}}`;
+  where (`The fn has parameters`) -> `One named like a segment of {{path}} is read from that segment, the others from the query string`;
+  where (`A criterion says what the page shows`) -> `It is rendered on the server unless a criterion asks for interaction`;
+}

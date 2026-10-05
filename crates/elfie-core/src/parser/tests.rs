@@ -572,7 +572,7 @@ fn a_statement_is_selected_among_the_statement_rules_in_tried_before_order() {
     );
     assert!(tree.errors.is_empty());
     // A statement that begins with a block is a Block, never an Object.
-    // @lfy def/grammar/rules/statement.lfy:Block
+    // @lfy def/grammar/rules/statement.lfy:Block#Block:Block:9ae65fb43c49f0258af48de8fea33a1d255a473c4c1c5d69dcefdabb860dc16d
     let tree = file("{ a = 1 }");
     assert!(first_statement(&tree).is(Statement::Block));
     assert_eq!(tree.errors.len(), 1);
@@ -1621,7 +1621,7 @@ fn a_parenthesized_type_is_a_type_group_unless_a_function_type_follows() {
     );
 }
 
-// @lfy def/grammar/rules/statement.lfy:DataDeclaration
+// @lfy def/grammar/rules/statement.lfy:DataDeclaration#DataDeclaration:DataDeclaration:19188569bf634fe25f5552e9fa2093a879e97db3f29137b92336b60bc45a1365
 #[test]
 fn a_declaration_takes_its_type_parameters_after_its_identifier() {
     let source = "d List<T>;";

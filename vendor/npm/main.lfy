@@ -1,0 +1,42 @@
+use "elfie/target/ecosystem";
+
+/// The package managers of the npm registry. A target names one as its ecosystem.
+
+trait npm extends targetEcosystem: `Packages from the npm registry, managed with npm` {
+  .ecosystem = "npm";
+  .manifest = "package.json";
+  .lockfile = "package-lock.json";
+  .scriptRunner = "npm run";
+  .provides = ["npm-registry"];
+  .requires = ["javascript-language"];
+  @commands
+    .add({ operation = Operation.install, line = "npm install" })
+    .add({ operation = Operation.add, line = 'npm install "$NAME${VERSION:+@$VERSION}"' });
+}
+
+trait pnpm extends targetEcosystem: `Packages from the npm registry, managed with pnpm` {
+  .ecosystem = "pnpm";
+  .manifest = "package.json";
+  .lockfile = "pnpm-lock.yaml";
+  .scriptRunner = "pnpm run";
+  .provides = ["npm-registry"];
+  .requires = ["javascript-language"];
+  @commands
+    .add({ operation = Operation.install, line = "pnpm install" })
+    .add({ operation = Operation.add, line = 'pnpm add "$NAME${VERSION:+@$VERSION}"' });
+}
+
+trait yarn extends targetEcosystem: `Packages from the npm registry, managed with Yarn 4` {
+  .ecosystem = "yarn";
+  .manifest = "package.json";
+  .lockfile = "yarn.lock";
+  .scriptRunner = "yarn run";
+  .provides = ["npm-registry"];
+  .requires = ["javascript-language"];
+  @acceptanceCriteria.add({
+    behavior = `.yarnrc.yml sets nodeLinker to node-modules, so every tool finds packages in node_modules`,
+  });
+  @commands
+    .add({ operation = Operation.install, line = "yarn install" })
+    .add({ operation = Operation.add, line = 'yarn add "$NAME${VERSION:+@$VERSION}"' });
+}

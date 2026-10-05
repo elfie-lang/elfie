@@ -11,6 +11,7 @@ d Trait is builtin extends Entity: `A trait seen through its context layer: what
   $entities: `Everything the trait was applied to, directly or by inheritance, in file then application order` = Entity[];
   $extenders: `Every trait that names it in an extends clause` = Trait[];
   $apply: `Applies the trait to a target with arguments for its parameters, and returns the trait` = apply;
+  $layer: `The trait as a layer of a target, with arguments for its parameters` = layer;
   where (`A with block naming another entity appears inside the trait's body`) -> `Its criteria are attached to that entity, once for each entity the trait is applied to, with the trait as their contributor`;
 }
 
@@ -30,5 +31,21 @@ fn apply<A>(subject: Trait, target: Entity | Entity[], ...arguments: A[]) is bui
   @test({
     input = [Trait@like(`a trait b that extends a trait a`), [Entity@like(`a data C`), Entity@like(`a data D`)]],
     expect = Trait@like(`b, with C and D among its entities, both carrying a as well`),
+  });
+}
+
+d Layer<A> is builtin: `A trait chosen as a layer of a target, with arguments for its parameters` {
+  $subject: `The trait chosen` = Trait;
+  $arguments: `One value per parameter of the trait, in order` = A[];
+}
+
+/// subject: the trait chosen
+/// arguments: one value per parameter of the trait, in order
+fn layer<A>(subject: Trait, ...arguments: A[]) is builtin: `A trait chosen as a layer of a target` => Layer<A> {
+  where (`Called`) -> `Returns a [[Layer]] holding the trait and the arguments, evaluated; nothing is applied until a target holding it is declared`;
+  where (`The number of arguments is not the number of the trait's parameters`) -> `A problem at the call names the trait`;
+  @test({
+    input = [Trait@like(`a trait c with parameters name and root`), "a", "crates/a"],
+    expect = Layer@like(`c, with the arguments a and crates/a`),
   });
 }

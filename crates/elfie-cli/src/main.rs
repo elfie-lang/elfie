@@ -18,12 +18,13 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewReport, ReviewStatus,
-    SourceMap, Unit, Verdict,
+    self, Batch, Move, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewReport,
+    ReviewStatus, SourceMap, Unit, Verdict,
 };
 use elfie_core::grammar::GrammarRule as _;
 use elfie_core::interpret::{Program, lower};
 use elfie_core::lexer::{Token, lex};
+use elfie_core::model::Problem;
 use elfie_core::parser::{Child, ErrorNode, Node, Tree, parse};
 use elfie_core::query::{self, Diagnostic, Severity};
 use elfie_core::workspace::{self, Workspace};
@@ -693,10 +694,30 @@ fn check(invocation: &Invocation) -> ExitCode {
     // is not up to date is printed as a warning of stage generation.
     // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
     let mut stale = 0usize;
+    let mut cycles = 0usize;
     if invocation.arguments.is_empty() {
+        // A program that declares no target says so once, at elfie.json: it is neither a
+        // problem nor a stale unit, since there is nothing wrong with it and nothing to
+        // bring up to date.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        if workspace.targets.is_empty() {
+            print_no_target(&root.join("elfie.json").display().to_string(), json, on);
+        }
         // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
         let maps = generation::source_maps_of(&workspace, None);
         let (program, plan) = planned(root, &maps, &[], false, &violated_ids(root));
+        // A cycle among files that no move could resolve is an error of stage generation at
+        // its node and counts among the problems.
+        // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+        for problem in &plan.problems {
+            cycles += 1;
+            print_plan_problem(&program.workspace, problem, json, on);
+        }
+        // A move is information of stage generation: neither a problem nor a stale unit.
+        // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+        for moved in &plan.moves {
+            print_move(&program.workspace, &plan, moved, json, on);
+        }
         for unit in &plan.units {
             let Some(reason) = unit.reason else { continue };
             stale += 1;
@@ -706,29 +727,61 @@ fn check(invocation: &Invocation) -> ExitCode {
     // The last line counts the files, the problems, and the stale units: the count of files
     // is plain, the problems are a tally in failure, and the stale units one in warning.
     // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
+    // A cycle no move could resolve counts among the problems.
+    // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+    let problems = diagnostics.len() + cycles;
     if json {
         // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
-        println!(
-            "{}",
-            serde_json::json!({ "files": workspace.files.len(), "problems": diagnostics.len(), "stale": stale })
-        );
+        println!("{}", serde_json::json!({ "files": workspace.files.len(), "problems": problems, "stale": stale }));
     } else {
         // @lfy def/cli/main.lfy:main#main:main:e4a92e90c92796a64c208f188a8f672fb3cb8c79eb89b30ec2f4c53b260c6d92
         println!(
             "{} files, {}, {}",
             workspace.files.len(),
-            tally(diagnostics.len(), "problems", Tone::Failure, on),
+            tally(problems, "problems", Tone::Failure, on),
             tally(stale, "stale units", Tone::Warning, on)
         );
     }
     // --strict: the code is problems when anything at all was printed as a warning or
     // error, a stale unit included.
     // @lfy def/cli/main.lfy:main#main:main:03dc28129d1c4a684c116c8cbfb1847cfcb0d7db07da121f8c5ff234afe74ed8
-    if invocation.flag("strict") && (!diagnostics.is_empty() || stale > 0) {
+    if invocation.flag("strict") && (problems > 0 || stale > 0) {
+        ExitCode::Problems
+    } else if cycles > 0 {
+        // A cycle was printed as an error, so the code is problems as any printed error
+        // makes it.
+        // @lfy def/cli/main.lfy:main#main:main:62048c8ca7167afb8dccb82b17611d4f4a1fff7804fe730afa69f230b6c8024e
         ExitCode::Problems
     } else {
         // @lfy def/cli/main.lfy:main#main:main:e31edb81ec3ee9b8748e2d4b9d4c9fdb554fad63e6baa85970c87f5cf7ac7075
         ExitCode::Success
+    }
+}
+
+/// One line of information of stage generation at `elfie.json` saying the program declares
+/// no target, so nothing will be built; it is neither a problem nor a stale unit.
+// @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+fn print_no_target(manifest: &str, json: bool, on: bool) {
+    let message = "the program declares no target, so nothing will be built";
+    if json {
+        // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+        println!(
+            "{}",
+            serde_json::json!({
+                "file": manifest,
+                "stage": "generation",
+                "severity": Severity::Information.value(),
+                "message": message,
+            })
+        );
+    } else {
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        println!(
+            "{} {} {}: {message}",
+            paint(&format!("{manifest}:"), Tone::Subject, on),
+            paint("generation", Tone::Muted, on),
+            paint(Severity::Information.value(), severity_tone(Severity::Information), on)
+        );
     }
 }
 
@@ -759,6 +812,80 @@ fn print_stale(workspace: &Workspace, unit: &Unit, reason: Reason, json: bool, o
             paint(&format!("{file}:"), Tone::Subject, on),
             paint("generation", Tone::Muted, on),
             paint("warning", severity_tone(Severity::Warning), on)
+        );
+    }
+}
+
+/// One of [`Plan::problems`] printed as an error of stage generation at its node: a cycle
+/// among files that no move could resolve, so there is no order to build them in.
+// @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+// @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+fn print_plan_problem(workspace: &Workspace, problem: &Problem, json: bool, on: bool) {
+    let range = query::range_of_node(workspace, problem.node);
+    if json {
+        // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+        println!(
+            "{}",
+            serde_json::json!({
+                "file": range.file,
+                "line": range.start.line,
+                "column": range.start.column,
+                "stage": "generation",
+                "severity": Severity::Error.value(),
+                "message": problem.message,
+            })
+        );
+    } else {
+        let place = format!("{}:{}:{}:", range.file, range.start.line, range.start.column);
+        println!(
+            "{} {} {}: {}",
+            paint(&place, Tone::Subject, on),
+            paint("generation", Tone::Muted, on),
+            paint(Severity::Error.value(), severity_tone(Severity::Error), on),
+            problem.message
+        );
+    }
+}
+
+/// The identifiers of the entities one of [`Plan::moves`] moved, in the file order of the
+/// file that declares them.
+// @lfy def/cli/main.lfy:main
+fn moved_entities(workspace: &Workspace, moved: &Move) -> String {
+    moved
+        .entities
+        .iter()
+        .map(|&entity| workspace.model.entities[entity].identifier.as_deref().unwrap_or("anonymous"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// One of [`Plan::moves`] printed as information of stage generation at the file of its
+/// origin, naming the target, the identifiers of the entities moved, the stem of the unit
+/// that compiles them, and the cause; it is neither a problem nor a stale unit.
+// @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+fn print_move(workspace: &Workspace, plan: &Plan, moved: &Move, json: bool, on: bool) {
+    let origin = &plan.units[moved.origin];
+    let file = &workspace.files[origin.file].path;
+    let target = &workspace.targets[origin.target].identifier;
+    let entities = moved_entities(workspace, moved);
+    let message = format!("{target} [{entities}] into {} for {}", plan.units[moved.into].stem, moved.cause);
+    if json {
+        // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+        println!(
+            "{}",
+            serde_json::json!({
+                "file": file,
+                "stage": "generation",
+                "severity": Severity::Information.value(),
+                "message": message,
+            })
+        );
+    } else {
+        println!(
+            "{} {} {}: {message}",
+            paint(&format!("{file}:"), Tone::Subject, on),
+            paint("generation", Tone::Muted, on),
+            paint(Severity::Information.value(), severity_tone(Severity::Information), on)
         );
     }
 }
@@ -1709,10 +1836,53 @@ fn file_name_of(identifier: &str) -> String {
     identifier.replace('/', "-")
 }
 
+/// One of [`Plan::moves`] as a dry run prints it: the word move, the target, the stem of the
+/// origin, the word into, the stem of the unit that compiles them, the identifiers of the
+/// entities moved in brackets, the word for, and the cause.
+// @lfy def/cli/main.lfy:main#main:main:2b404ae9321e275e0e78d4323b978e2cbf52dada2775af70f4216688c2534c08
+fn move_line(workspace: &Workspace, plan: &Plan, moved: &Move) -> String {
+    let origin = &plan.units[moved.origin];
+    format!(
+        "move {} {} into {} [{}] for {}",
+        workspace.targets[origin.target].identifier,
+        origin.stem,
+        plan.units[moved.into].stem,
+        moved_entities(workspace, moved),
+        moved.cause
+    )
+}
+
 /// Each unit is printed as `elfie_units` lists it, then each batch with the stems it
 /// holds, and nothing is generated.
 // @lfy def/cli/main.lfy:main#main:main:1b5c2f2cb6fa24c09e7c95e0fdfcf07271d9861aaa40628a6344f360e5a4f3c0
 fn dry_run(workspace: &Workspace, plan: &Plan, target: Option<&str>, json: bool, on: bool) -> ExitCode {
+    // Before the units, each move that resolved a cycle among files.
+    // @lfy def/cli/main.lfy:main#main:main:2b404ae9321e275e0e78d4323b978e2cbf52dada2775af70f4216688c2534c08
+    for moved in &plan.moves {
+        let origin = &plan.units[moved.origin];
+        if target.is_some_and(|name| workspace.targets[origin.target].identifier != name) {
+            continue;
+        }
+        if json {
+            // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+            println!(
+                "{}",
+                serde_json::json!({
+                    "move": origin.stem,
+                    "target": workspace.targets[origin.target].identifier,
+                    "into": plan.units[moved.into].stem,
+                    "entities": moved
+                        .entities
+                        .iter()
+                        .map(|&entity| workspace.model.entities[entity].identifier.clone())
+                        .collect::<Vec<_>>(),
+                    "cause": moved.cause,
+                })
+            );
+        } else {
+            println!("{}", move_line(workspace, plan, moved));
+        }
+    }
     for index in 0..plan.units.len() {
         let unit = &plan.units[index];
         if target.is_some_and(|name| workspace.targets[unit.target].identifier != name) {
@@ -3771,9 +3941,22 @@ fn compile(invocation: &Invocation) -> ExitCode {
     // The units the last global review found violated.
     // @lfy def/cli/main.lfy:main#main:main:d616972fdf1695d2ca0f4f9d8c1d0ab6f76bbe5af87f18daccc1f1c300092e65
     let (program, plan) = planned(root, &maps, &invocation.arguments, invocation.flag("all"), &violated_ids(root));
+    // A cycle among files that no move resolves has no order to build in: its problem is
+    // printed as an error and nothing is generated.
+    // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+    for problem in &plan.problems {
+        print_plan_problem(&program.workspace, problem, json, style.out);
+    }
+    let cycles = !plan.problems.is_empty();
     // @lfy def/cli/main.lfy:main#main:main:1b5c2f2cb6fa24c09e7c95e0fdfcf07271d9861aaa40628a6344f360e5a4f3c0
     if invocation.flag("dry-run") {
-        return dry_run(&program.workspace, &plan, target.as_deref(), json, style.out);
+        let code = dry_run(&program.workspace, &plan, target.as_deref(), json, style.out);
+        // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+        return if cycles { ExitCode::Problems } else { code };
+    }
+    // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+    if cycles {
+        return ExitCode::Problems;
     }
     // Before any batch runs, the maps a target kept in source-map.json are moved into the
     // units' map files and every map file belonging to no unit of the plan is removed.
@@ -4123,23 +4306,163 @@ mod tests {
         }
     }
 
-    /// A project with one target whose marker `global` carries and one file.
+    /// The project manifest: the standard library beside the project, and the commands
+    /// given. The target itself is declared in the program rather than here, so nothing
+    /// names it, its output, or its dependencies.
+    // @lfy def/cli/main.lfy:main
+    fn manifest(commands: &[(&str, &str)]) -> String {
+        let mut value = serde_json::json!({ "name": "p", "dependencies": { "elfie": { "root": "lib" } } });
+        for (key, command) in commands {
+            value[*key] = serde_json::Value::String((*command).to_string());
+        }
+        format!("{value}\n")
+    }
+
+    /// A project with one target `rust` that `global`'s targets hold, so that every entity
+    /// of every project file is built for it, and one file. The package `elfie` beside it is
+    /// the standard library every fixture is loaded against: its main file is the prelude,
+    /// so `Target`, the roles its slots take, and `targetOf` are in scope everywhere.
+    /// `def/roles.lfy` gives the language, the layout, and the ecosystem the target needs,
+    /// and `def/targets.lfy` declares the `ace const` that holds it; neither file declares
+    /// anything with a lowered node, so neither adds a unit.
     // @lfy def/cli/main.lfy:main
     fn one_target(fixture: &Fixture) -> &Fixture {
-        fixture
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
-                }"#,
-            )
-            .write(
-                "targets/rust/main.lfy",
-                "use \"elfie/target/target\";\n\ntrait rust extends target: `Built as Rust` {\n  .outputDirectory = \"out\";\n  .markerComment = \"//\";\n}\nrust.apply(global);\n",
-            )
+        library(fixture).write("def/roles.lfy", ROLES).write("def/targets.lfy", TARGETS)
     }
+
+    /// The same project with the standard library beside it but no target declared, so that
+    /// nothing is built for anything.
+    // @lfy def/cli/main.lfy:main
+    fn library(fixture: &Fixture) -> &Fixture {
+        fixture
+            .write("elfie.json", &manifest(&[]))
+            .write("lib/main.lfy", LIBRARY)
+            .write("lib/prelude/builtin.lfy", LIBRARY_BUILTIN)
+            .write("lib/prelude/entity.lfy", LIBRARY_ENTITY)
+            .write("lib/prelude/trait.lfy", LIBRARY_TRAIT)
+            .write("lib/criteria/main.lfy", LIBRARY_CRITERIA)
+            .write("lib/target/main.lfy", LIBRARY_TARGET)
+    }
+
+    /// The main file of the package `elfie`: the prelude, which brings the vocabulary a
+    /// target is declared with into the scope of every file of the project.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY: &str = "use \"./prelude/builtin\";\nuse \"./prelude/entity\";\n\
+                           use \"./prelude/trait\";\nuse \"./criteria/main\";\n\
+                           use \"./target/main\";\n";
+    /// The trait a builtin carries, which the library's own declarations need.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_BUILTIN: &str = "trait builtin: `Performed by the compiler` { }\n";
+    /// The context layer every entity is seen through: the lists a body adds to live there,
+    /// and `apply` is a member of a trait's kind rather than a name nothing declares.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_ENTITY: &str = "\
+d Entity: `A declared thing seen through its context layer` {
+  $knowledge: `What the compiler is given to read for it` = object[];
+  $commands: `Shell commands for its operations` = object[];
+  $targets: `The targets it is built for` = object[];
+}
+d Trait extends Entity: `A trait seen through its context layer` {
+  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;
+  $layer: `The trait as a layer of a target, with arguments for its parameters` = (...arguments: string[]) => object;
+}
+";
+    /// `layer`, which chooses a trait as a layer with arguments.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_TRAIT: &str = "use \"./builtin\";\n\
+                                 fn layer(subject: trait, ...arguments: string[]) is builtin: \
+                                 `A trait chosen as a layer of a target` => object;\n";
+    /// The enums a knowledge item and a command name.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_CRITERIA: &str = "\
+enum KnowledgeKind: `What a piece of knowledge is` {
+  reference = `documentation to read`,
+  example = `working code to imitate`,
+  definition = `Elfie source that defines it`,
+  tool = `a tool of the agent server`,
+}
+enum Operation: `What a command is for` {
+  install = `install`,
+  add = `add`,
+  build = `build`,
+  test = `test`,
+  lint = `lint`,
+  format = `format`,
+  run = `run`,
+}
+";
+    /// `Target`, the roles its slots take, and the function that gives a record written in
+    /// braces its type, as the package `elfie` declares them.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_TARGET: &str = "\
+use \"../prelude/builtin\";
+trait target: `What every layer of a target is` {
+  $markerComment: `How a line comment begins` = string;
+  $provides: `Capabilities this layer gives its target` = string[];
+  $requires: `Capabilities some layer of its target must provide` = string[];
+  $outputExtensions: `Extensions besides the language's own` = string[];
+  .provides = [];
+  .requires = [];
+  .outputExtensions = [];
+}
+trait targetLanguage extends target: `What its code is written in` {
+  $fileExtension: `The extension of its files` = string;
+}
+trait targetRuntime extends target: `What runs its code` { }
+trait targetPlatform extends target: `Where it runs` { }
+trait targetEcosystem extends target: `Where its dependencies come from` {
+  $ecosystem: `What that ecosystem is called` = string;
+  $scriptRunner: `What runs a script its manifest names` = string;
+}
+trait targetFramework extends target: `What its code is built on` { }
+trait targetInterface extends target: `What it offers` { }
+trait targetLayout extends target: `Where its files go` { }
+d Target is builtin: `One artifact the project is built into` {
+  $output: `Where everything it writes goes` = string;
+  $language: `What its code is written in` = trait;
+  $runtime: `What runs its code` = trait | undefined;
+  $platforms: `Where it runs` = trait[] | undefined;
+  $ecosystem: `Where its dependencies come from` = trait | undefined;
+  $frameworks: `What its code is built on` = trait[] | undefined;
+  $interfaces: `What it offers` = trait[] | undefined;
+  $layout: `Where its files go` = trait;
+  $layers: `Anything else the compiler is told` = trait[] | undefined;
+  $dependencies: `What its generated code needs` = object[] | undefined;
+}
+function targetOf(target: Target): `Gives a record written in braces its type` -> Target {
+  return target;
+}
+";
+
+    /// The language, the layout, and the ecosystem the fixture's target is built from: only
+    /// traits, so this file declares nothing with a lowered node and adds no unit.
+    // @lfy def/cli/main.lfy:main
+    const ROLES: &str = "\
+trait lang extends targetLanguage: `Rust` {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+}
+trait flat extends targetLayout: `One file per unit` { }
+trait cargo extends targetEcosystem: `Crates from crates.io` {
+  .ecosystem = \"cargo\";
+}
+";
+
+    /// The `ace const` holding the target `rust`, writing to `out`, added to `global` so
+    /// that every entity of every project file is built for it.
+    // @lfy def/cli/main.lfy:main
+    const TARGETS: &str = "\
+use \"elfie/target\";
+use \"./roles\";
+
+ace const rust = targetOf({
+  output = \"out\",
+  language = lang,
+  layout = flat,
+  ecosystem = cargo,
+});
+global@targets.add(rust);
+";
 
     /// A project with one target, `def/a.lfy` declaring A with a criterion on line 3, a
     /// compiler that writes an output with a marker for A and ends with `ELFIE: DONE`, and
@@ -4153,16 +4476,7 @@ mod tests {
                 "#!/bin/sh\ncat >> \"$ELFIE_ROOT/instructions.txt\"\necho compile >> \"$ELFIE_ROOT/attempts.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho 'ELFIE: DONE'\n",
             )
             .write("verifier.sh", &verifier_script(fixture, verifier))
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "sh compiler.sh",
-                    "verifier": "sh verifier.sh"
-                }"#,
-            )
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]))
     }
 
     /// Every criterion and test id of one lowered node and the nodes below it, in order.
@@ -4615,6 +4929,35 @@ mod tests {
         assert_eq!(fixture.run(&["check", "def/a.lfy"]), ExitCode::Success.code());
     }
 
+    /// A program declaring no target says so once, as information of stage generation at
+    /// elfie.json: it is neither a problem nor a stale unit, so the code is success even
+    /// with --strict.
+    // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+    #[test]
+    fn check_says_once_that_the_program_declares_no_target() {
+        let fixture = Fixture::new();
+        library(&fixture).write("def/a.lfy", "const x = 1;\n");
+        // Nothing adds a target to global, so there is none to build for.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        let workspace = workspace::load(&fixture.root);
+        assert!(workspace.targets.is_empty(), "{:?}", workspace.targets.len());
+        // The line is information, which is neither a problem nor a stale unit.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        let manifest = fixture.root.join("elfie.json").display().to_string();
+        print_no_target(&manifest, false, false);
+        print_no_target(&manifest, false, true);
+        print_no_target(&manifest, true, false);
+        assert_eq!(severity_tone(Severity::Information), Tone::Active);
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["check", "--strict"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["check", "--json"]), ExitCode::Success.code());
+        // A program that does declare one says nothing of the kind.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        one_target(&fixture);
+        assert!(!workspace::load(&fixture.root).targets.is_empty());
+    }
+
     /// The count of stale units matches the plan, and the message names the target, the
     /// unit, and the description of the reason.
     // @lfy def/cli/main.lfy:main
@@ -4815,7 +5158,7 @@ mod tests {
 
     /// Compile with --dry-run prints one unit with reason fresh and one batch holding it,
     /// generates nothing, and returns success.
-    // @lfy def/cli/main.lfy:main#main:main:429f48f7dff6be9a0e438f5d769234845188d197ea4f7f520f3518d707132956
+    // @lfy def/cli/main.lfy:main#main:main:13ac07944d31f4503a5b719ea69b91838998614508f9fc1675e8dfd9d60a0e84
     #[test]
     fn dry_run_prints_the_units_then_the_batches() {
         let fixture = Fixture::new();
@@ -4836,6 +5179,85 @@ mod tests {
         // --target limits the plan to one target. @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["compile", "--dry-run", "--target", "rust"]), ExitCode::Success.code());
         assert_eq!(fixture.run(&["compile", "--dry-run", "--target", "go"]), ExitCode::Usage.code());
+    }
+
+    /// `def/a.lfy` and `def/b.lfy` reach each other through the member a trait of
+    /// `def/c.lfy` added to `B`, and `def/b.lfy` is used by every other file of the cycle,
+    /// so `C` moves out of `def/a.lfy`'s unit into `def/b.lfy`'s.
+    // @lfy def/cli/main.lfy:main
+    fn a_move(fixture: &Fixture) -> &Fixture {
+        one_target(fixture)
+            .write("def/b.lfy", "d B: `A b` {\n  $x = string;\n}\n")
+            .write("def/a.lfy", "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n}\n")
+            .write("def/c.lfy", "use \"./a\";\nuse \"./b\";\n\ntrait holder {\n  $c = C;\n}\nholder.apply(B);\n")
+    }
+
+    /// A move is printed before the units of a dry run as the word move, the target, the
+    /// stem of its origin, the word into, the stem of the unit that compiles the entities,
+    /// their identifiers in brackets, the word for, and the cause; in a check it is
+    /// information of stage generation and is neither a problem nor a stale unit.
+    // @lfy def/cli/main.lfy:main#main:main:2b404ae9321e275e0e78d4323b978e2cbf52dada2775af70f4216688c2534c08
+    // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+    #[test]
+    fn a_move_is_printed_before_the_units_and_counts_as_no_problem() {
+        let fixture = Fixture::new();
+        a_move(&fixture);
+        let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+        assert!(program.workspace.problems.is_empty(), "{:?}", program.workspace.problems);
+        assert_eq!(plan.problems, [], "no cycle is left unresolved");
+        assert_eq!(plan.moves.len(), 1, "{:?}", plan.moves);
+        let moved = &plan.moves[0];
+        // The words and their order stay as they are. @lfy def/cli/main.lfy:main
+        assert_eq!(move_line(&program.workspace, &plan, moved), "move rust a into b [C] for B.c");
+        // A move is information of stage generation at the file of its origin.
+        // @lfy def/cli/main.lfy:main
+        print_move(&program.workspace, &plan, moved, false, false);
+        print_move(&program.workspace, &plan, moved, false, true);
+        print_move(&program.workspace, &plan, moved, true, false);
+        assert_eq!(severity_tone(Severity::Information), Tone::Active);
+        // A move is neither a problem nor a stale unit, so a check of a program with one is
+        // success and nothing is generated by a dry run.
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["compile", "--dry-run", "--json"]), ExitCode::Success.code());
+        assert!(!fixture.root.join("out").exists(), "nothing is generated");
+    }
+
+    /// `def/a.lfy` and `def/b.lfy` reach each other through members the traits of `def/t.lfy`
+    /// added, and neither uses the other, so no move resolves the cycle: the problem is
+    /// printed as an error of stage generation, nothing is generated, and the code is
+    /// problems.
+    // @lfy def/cli/main.lfy:main#main:main:7e2b7c73e6191c7545515716ca1f1e149897cc65e8bc0760fd520ff29ff72c2d
+    // @lfy def/cli/main.lfy:main#main:main:fb31b907359896e316fb97def9fd25ac4d7cd345b7601d0b45f8e2a8c45aba19
+    #[test]
+    fn a_cycle_no_move_resolves_is_an_error_and_generates_nothing() {
+        let fixture = Fixture::new();
+        one_target(&fixture)
+            .write("def/a.lfy", "d A {\n  $x = string;\n}\n")
+            .write("def/b.lfy", "d B {\n  $x = string;\n}\n")
+            .write(
+                "def/t.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait toB {\n  $b = B;\n}\n\ntrait toA {\n  $a = A;\n}\ntoB.apply(A);\ntoA.apply(B);\n",
+            );
+        let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+        // The program itself binds cleanly, so the code is problems for the cycle alone.
+        // @lfy def/cli/main.lfy:main
+        let diagnostics = query::diagnostics_of(&program.workspace, None);
+        assert!(!diagnostics.iter().any(|d| d.severity == Severity::Error), "{diagnostics:?}");
+        assert_eq!(plan.moves, []);
+        assert!(!plan.problems.is_empty(), "the cycle leaves a problem");
+        // Printed as an error of stage generation at its node. @lfy def/cli/main.lfy:main
+        print_plan_problem(&program.workspace, &plan.problems[0], false, false);
+        print_plan_problem(&program.workspace, &plan.problems[0], false, true);
+        print_plan_problem(&program.workspace, &plan.problems[0], true, false);
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["check"]), ExitCode::Problems.code());
+        assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+        assert!(!fixture.root.join("out").exists(), "nothing is generated");
+        // A dry run prints the plan and ends with the same code.
+        // @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Problems.code());
     }
 
     /// Compile prints the errors and returns problems rather than handing the compiler a
@@ -5067,15 +5489,7 @@ mod tests {
                 "compiler.sh",
                 "#!/bin/sh\ncat > \"$ELFIE_ROOT/instructions.txt\"\nprintf '%s\\n' \"$ELFIE_BATCH\" \"$ELFIE_UNITS\" \"$ELFIE\" > \"$ELFIE_ROOT/environment.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
             )
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "sh compiler.sh"
-                }"#,
-            );
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         // @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
         // ELFIE is the path of the running executable, so the agent server an agent starts
@@ -5111,15 +5525,7 @@ mod tests {
         one_target(&fixture)
             .write("def/a.lfy", "d A: `An A` {}\n")
             .write("compiler.sh", "#!/bin/sh\ncat > /dev/null\necho 'attempt' >> \"$ELFIE_ROOT/attempts.txt\"\n")
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "sh compiler.sh"
-                }"#,
-            );
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
         assert_eq!(fixture.read("attempts.txt").lines().count(), 2, "the batch is run once more");
         // @lfy def/cli/main.lfy:main
@@ -5146,15 +5552,7 @@ mod tests {
         let fixture = Fixture::new();
         one_target(&fixture)
             .write("def/a.lfy", "d A: `An A` {}\n")
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "exit 127"
-                }"#,
-            );
+            .write("elfie.json", &manifest(&[("compiler", "exit 127")]));
         // The command runs and produces nothing, so the outcome is rejected rather than
         // failed; a command that cannot be spawned at all is the failure.
         assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
@@ -5340,15 +5738,7 @@ mod tests {
         assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
         // A project naming no verifier is the same. @lfy def/cli/main.lfy:main
         let plain = Fixture::new();
-        a_compiler_and_a_verifier(&plain, VIOLATED).write(
-            "elfie.json",
-            r#"{
-                "name": "p",
-                "dependencies": { "rust": { "root": "targets/rust" } },
-                "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                "compiler": "sh compiler.sh"
-            }"#,
-        );
+        a_compiler_and_a_verifier(&plain, VIOLATED).write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         assert_eq!(plain.run(&["compile"]), ExitCode::Success.code());
         assert!(!plain.root.join("verifications.txt").exists());
         assert!(!plain.root.join("elfie-requests/a.reviews.json").exists());
@@ -5428,15 +5818,7 @@ mod tests {
         let fixture = Fixture::new();
         a_compiler_and_a_verifier(&fixture, SATISFIED);
         assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
-        fixture.write(
-            "elfie.json",
-            r#"{
-                "name": "p",
-                "dependencies": { "rust": { "root": "targets/rust" } },
-                "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                "compiler": "sh compiler.sh"
-            }"#,
-        );
+        fixture.write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         assert_eq!(fixture.run(&["verify"]), ExitCode::Success.code());
         let request = fixture.read("elfie-requests/a.review.md");
         assert!(request.contains("def/a.lfy"), "{request}");

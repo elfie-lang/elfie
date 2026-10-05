@@ -1,0 +1,93 @@
+use "cli";
+use "elfie/target/ecosystem";
+use "elfie/target/framework";
+use "elfie/target/language";
+use "elfie/target/layout";
+use "elfie/target/runtime";
+
+/// Python: the language, CPython as its runtime, uv as its ecosystem, the layouts of a single
+/// script and of an installable package, and argparse for command lines.
+
+trait python extends targetLanguage: `Python 3, fully annotated` {
+  .language = "Python 3";
+  .fileExtension = "py";
+  .markerComment = "#";
+  .provides = ["python"];
+  @acceptanceCriteria
+    .add({
+      situation = `A d declaration's members are not alternatives`,
+      behavior = `It becomes a dataclass with frozen and slots set`,
+    })
+    .add({
+      situation = `A d declaration's members are alternatives`,
+      behavior = `It becomes a type alias of a union of one dataclass per alternative`,
+    })
+    .add({ behavior = `An enum declaration becomes an enum.StrEnum whose values are the members' values` })
+    .add({
+      behavior = `A fn becomes a module-level def with every parameter and the return annotated; member and parameter names are written in snake case`,
+    })
+    .add({
+      behavior = `List is list[T]; String is str; Boolean is bool; Nullish is None; Object is dict[str, T]; Path is pathlib.Path`,
+    })
+    .add({ situation = `A criterion says a Number value counts things or is a whole amount`, behavior = `Number is int` })
+    .add({
+      situation = `No criterion says a Number value counts things or is a whole amount`,
+      behavior = `Number is float`,
+    })
+    .add({
+      behavior = `Every @test case, and every criterion a test can check, becomes a pytest test function named test_ then its entity in snake case`,
+    });
+}
+
+/// version: the lowest Python 3 it runs on, such as 3.12
+trait cpython(version: string) extends targetRuntime: `CPython` {
+  .runtime = "CPython " + version + " or later";
+  .provides = ["python-runtime"];
+  .requires = ["python"];
+  where (`Code is generated`) -> `It uses nothing added to Python after {{version}}`;
+}
+
+trait uv extends targetEcosystem: `Packages from PyPI, managed with uv` {
+  .ecosystem = "uv";
+  .manifest = "pyproject.toml";
+  .lockfile = "uv.lock";
+  .scriptRunner = "uv run";
+  .provides = ["uv", "pypi"];
+  .requires = ["python"];
+  @commands
+    .add({ operation = Operation.install, line = "uv sync" })
+    .add({ operation = Operation.add, line = 'uv add "$NAME$VERSION"' })
+    .add({ operation = Operation.test, line = "uv run --with pytest pytest" })
+    .add({ operation = Operation.lint, line = "uvx ruff check . && uvx pyright" })
+    .add({ operation = Operation.format, line = "uvx ruff format --check ." });
+}
+
+/// file: the script's file name, in the target's output directory
+trait uvScript(file: string) extends targetLayout: `One script run with uv run, its dependencies declared inline` {
+  .requires = ["python-runtime", "uv"];
+  where (`A unit holds an fn that carries [[command]]`) -> `It is {{file}}, beginning with a PEP 723 script block whose requires-python is the runtime's lowest version and whose dependencies are the target's`;
+  where (`A unit holds no fn that carries [[command]]`) -> `It is the stem, .py, beside {{file}}, with an __init__.py in each directory on the way, imported by its dotted stem`;
+  where (`Two units hold an fn that carries [[command]]`) -> `The compiler stops on the second and names both, because a script has one entry`;
+  @commands
+    .add({ operation = Operation.install })
+    .add({ operation = Operation.add, line = "uv add --script " + file + ' "$NAME$VERSION"' })
+    .add({ operation = Operation.run, line = "uv run " + file });
+}
+
+/// name: the project name pyproject.toml gives
+/// root: the project's directory, relative to the project root
+trait uvProject(name: string, root: string) extends targetLayout: `An installable package managed with uv, its source under src` {
+  .requires = ["python-runtime", "uv"];
+  where (`A unit's stem does not end in main`) -> `It is the stem, .py, under {{root}}/src and the import name, which is {{name}} with each dash written as an underscore`;
+  where (`A unit's stem ends in main`) -> `It is __init__.py in the stem's directory under {{root}}/src and the import name`;
+  where (`Any unit is written`) -> `{{root}}/pyproject.toml names project {{name}}, sets requires-python to the runtime's lowest version, lists the target's dependencies, and builds with hatchling`;
+  where (`An fn carries [[command]] with an empty name`) -> `pyproject.toml's project.scripts names it as {{name}}`;
+}
+
+trait argparse extends targetFramework: `Command lines parsed with argparse from the standard library` {
+  .framework = "argparse";
+  .provides = ["argument-parser"];
+  .requires = ["python"];
+  where (`An fn carries [[command]]`) -> `It is one subparser, or the parser itself when its name is empty, whose arguments are its parameters`;
+  where (`A module holds an fn carrying [[command]]`) -> `The module ends with if __name__ == "__main__": raise SystemExit(main()), where main parses the arguments and calls it`;
+}
