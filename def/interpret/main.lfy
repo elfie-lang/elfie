@@ -110,7 +110,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
     })
     .add({
       situation = `A [[Current]] with no [[MemberName]] is run`,
-      behavior = `It resolves to the scope's current entity`,
+      behavior = `It resolves to [[Scope.current]] of its scope`,
     })
     .add({
       situation = `A [[Member]] with [[ContextAccessor]] is run whose left is a [[Name]] bound to a const or let`,
@@ -135,7 +135,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
     .add({
       situation = `A trait is applied to an entity`,
       behavior = [
-        `Each member declared in the trait's body joins the entity's scope`,
+        `Each member declared in the trait's body joins the entity's [[Entity.scope]]`,
         `The trait body's value setters are evaluated with the parameters bound to the arguments as the entity's values`,
         `Each criterion of the trait body is appended to [[Entity.acceptanceCriteria]] with [[Criterion.contributor]] set to the trait`,
       ],
@@ -367,7 +367,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     })
     .add({
       situation = `[[LoweredFile.text]] spells the type of a member node`,
-      behavior = `It is spelled as Elfie source that reads back as that same type`,
+      behavior = `It is [[typeTextOf]] that type, with each entity that an added [[Use]] takes an alias for spelled through that alias`,
     })
     .add({
       situation = `The type of a lowered member node names an entity that the member's owner's file does not see, through its own declarations, its uses, or the prelude`,

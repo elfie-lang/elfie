@@ -27,13 +27,16 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         `Binding never stops; every failure it meets is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
       ],
     })
-    .add({ behavior = `A file's symbols, usages, and problems appear once in the model, however many files use it` });
+    .add({ behavior = `A file's symbols, usages, and problems appear once in the model, however many files use it` })
+    .add({
+      behavior = `Every [[Problem]] added while binding, those [[Interpreter.expand]] and [[Interpreter.evaluate]] add among them, has [[Problem.stage]] [[Stage.binder]]`,
+    });
 
   // Declare
   @acceptanceCriteria
     .add({
       behavior = [
-        `Each [[SourceFile]] is a file scope whose current entity is an anonymous entity for the file`,
+        `Each [[SourceFile]] is a file scope whose [[Scope.current]] is an anonymous entity for the file`,
         `Every [[scoped]] node creates a scope and every [[declaring]] node a symbol and an entity, as those traits say; a declaration's [[Block]] is the child of the declaration's own scope`,
         `Names in a scope are visible throughout that scope`,
       ],
@@ -83,19 +86,19 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `A scope belongs to a declaration`,
-      behavior = `Its current entity is the declared entity`,
+      behavior = `Its [[Scope.current]] is the declared entity`,
     })
     .add({
       situation = `A scope belongs to a [[With]]`,
-      behavior = `Its current entity is the entity the [[With]] expression resolves to`,
+      behavior = `Its [[Scope.current]] is the entity the [[With]] expression resolves to`,
     })
     .add({
       situation = `A scope belongs to a node that is not a declaration, a [[With]], or a [[SourceFile]]`,
-      behavior = `Its current entity is the parent scope's current entity`,
+      behavior = `Its [[Scope.current]] is [[Scope.current]] of its [[Scope.parent]]`,
     })
     .add({
       situation = `The expression of a [[With]] is a [[Member]] using [[ScopeAccessor]], so it resolves to a member symbol`,
-      behavior = `The current entity of the scope the [[With]] owns is that member's entity, so criteria and tests inside the block attach to the member and not to the entity that declares it`,
+      behavior = `[[Scope.current]] of the scope the [[With]] owns is that member's entity, so criteria and tests inside the block attach to the member and not to the entity that declares it`,
     });
 
   // use
@@ -217,7 +220,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
         `It uses [[ScopeAccessor]] and spells no [[MemberName]]`,
       ],
-      behavior = `It resolves to the entity's scope`,
+      behavior = `It resolves to the entity's [[Entity.scope]]`,
     })
     .add({
       situation = [
@@ -319,7 +322,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
   @acceptanceCriteria
     .add({
       behavior = [
-        `[[Entity.identifier]] is the symbol's name`,
+        `[[Entity.identifier]] is [[Symbol.name]] of its [[Entity.symbol]]`,
         `[[Entity.definition]] is the string or template in the declaration's [[DefinitionClause]] or [[Definition]]`,
         `[[FnEntity.parameters]] is the symbols of its [[Parameter]] and [[SpreadParameter]] nodes in order`,
         `[[FnEntity.output]] is what the type after the arrow resolves to`,
@@ -561,7 +564,7 @@ fn criteriaOf(model: Model, entity: Entity): `Every criterion attached to an ent
     })
     .add({
       situation = `An execution's value is a type`,
-      behavior = `It is replaced by Elfie source that reads back as that same type`,
+      behavior = `It is replaced by [[typeTextOf]] that type`,
     });
   @test({
     input = [

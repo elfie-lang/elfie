@@ -6,6 +6,7 @@ use "elfie/criteria/criterion" as Criteria;
 use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
 use "elfie/prelude/trait" as Traits;
+use "elfie/values/list" as Lists;
 
 enum Layer: `The three layers of every entity, the parent scope, and the two ways of pointing at an entity itself` {
   value = `value`,
@@ -45,43 +46,34 @@ enum SymbolKind: `What kind of declaration a symbol came from` {
 d Symbol: `A name bound to an entity in one scope` {
   $name: `The name` = string;
   $entity: `What the name is bound to; for an alias, the target's entity` = Entity;
-  @acceptanceCriteria
-    .add({
-      behavior = `Knows the node that declared it, the scope that holds it, and its [[SymbolKind]]`,
-    });
+  $node: `The node that declared it` = Node;
+  $scope: `The scope that holds it` = Scope;
+  $kind: `What kind of declaration it came from` = SymbolKind;
 }
 
 d Scope: `A region in which names resolve` {
+  $symbols: `The symbols declared directly in it, in order` = Symbol[];
+  $parent: `The scope that contains it; undefined for the outermost` = Scope | undefined;
+  $current: `The current entity: what the value, context, and scope accessors reach without a left expression` = Entity;
   @acceptanceCriteria
-    .add({ behavior = `Holds the symbols declared directly in it, in order, and knows its parent` })
     .add({
-      behavior = `A file scope holds the symbols its use statements import, after the symbols declared directly in it`,
+      situation = `The scope is a file scope`,
+      behavior = `[[Scope.symbols]] holds the symbols its use statements import, after the symbols declared directly in it`,
     })
     .add({
       situation = `A file scope belongs to a file whose [[Source.origin]] is [[Origin.program]]`,
-      behavior = `Its parent is the prelude scope`,
+      behavior = `[[Scope.parent]] is the prelude scope`,
     })
     .add({
       situation = `A file scope belongs to a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
-      behavior = `It has no parent`,
-    })
-    .add({
-      behavior = `Knows the current entity: what the value, context, and scope accessors reach without a left expression`,
+      behavior = `[[Scope.parent]] is undefined`,
     });
 }
 
 d Applied: `One trait on one entity` {
   $entity: `The trait` = Entity;
   $arguments: `Argument nodes, in order` = Node[];
-  @acceptanceCriteria
-    .add({
-      situation = `The trait was applied directly`,
-      behavior = `Knows the [[IsClause]], [[ExtendsClause]], or apply [[Call]] that applied it`,
-    })
-    .add({
-      situation = `The trait was inherited through another application`,
-      behavior = `Knows the application it was inherited through`,
-    });
+  $source: `What applied it: the [[IsClause]], [[ExtendsClause]], or apply [[Call]] when the trait was applied directly; the [[Applied]] it was inherited through otherwise` = Node | Applied;
 }
 
 // Context
@@ -105,11 +97,13 @@ d Test extends Criteria.Test: `One test, as the prelude declares it` {}
 /// [[Prelude.Entity.traits]], and [[Prelude.Entity.references]], so those three are overridden.
 d Entity extends Prelude.Entity: `A declared thing seen through its context layer` {
   $acceptanceCriteria: `Own criteria first, then each trait's in application order` = Criterion[];
-  $traits: `Every trait applied to it, direct or inherited, in application order, each with what applied it` = Applied[];
+  $traits: `Every trait applied to it, direct or inherited, in application order, each with its [[Applied.source]]` = Applied[];
   $references: `Every use of a [[Reference]] in its definition, documentation, or value` = Usage[];
+  $node: `The node that declared it` = Node;
+  $symbol: `The symbol that names it; undefined for an anonymous entity` = Symbol | undefined;
+  $scope: `The scope it owns, holding its parameters, members, and body; undefined when it owns none` = Scope | undefined;
 
   @acceptanceCriteria
-    .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)` })
     .add({
       behavior = `Holds the knowledge, commands, and targets added to it, as [[Prelude.Entity]] declares them; each knowledge item and command holds the entity that contributed it, as a [[Criterion]] does, and each target is the entity of the const added`,
     });
@@ -133,9 +127,18 @@ d Usage: `One use of a name or of an entity` {
   $symbol: `What it resolved to; undefined when unresolved` = Symbol | undefined;
 }
 
+enum Stage: `The stage that reported a diagnostic` {
+  loader = `loader`,
+  lexer = `lexer`,
+  parser = `parser`,
+  binder = `binder`,
+  generation = `generation`,
+}
+
 d Problem: `Something that did not resolve; binding continues past it` {
   $node: `Where` = Node;
   $message: `What and why` = string;
+  $stage: `Which stage added it` = Stage;
 }
 
 d Source: `One file to bind, with its [[Use]] statements already resolved` {
@@ -146,7 +149,110 @@ d Source: `One file to bind, with its [[Use]] statements already resolved` {
 }
 
 d Model: `The program, queryable` {
+  $problems: `Every [[Problem]], in node order` = Problem[];
   @acceptanceCriteria
-    .add({ behavior = `Answers every query of this module for every file it was bound from` })
-    .add({ behavior = `Lists every [[Problem]] in node order` });
+    .add({ behavior = `Answers every query of this module for every file it was bound from` });
+}
+
+// Spelling
+
+// Decision: this is the one spelling of a type as Elfie source. It lives beside the data and
+// not in the binder, so the binder, the interpreter, queries, and generation can all name it
+// without a use cycle; it feeds hashes, so every reader must spell a type exactly this way.
+fn typeTextOf(model: Model, entity: Entity | undefined): `How a type is spelled as Elfie source, wherever one is shown, rendered, or hashed` => string | undefined {
+  @acceptanceCriteria
+    .add({ situation = `[[entity]] is undefined`, behavior = `Returns undefined` })
+    .add({ situation = `[[entity]] is defined`, behavior = `Returns Elfie source that reads back as that same type` })
+    .add({
+      situation = [
+        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
+        `[[entity]] is a declaration or a primitive`,
+      ],
+      behavior = `It is spelled by its identifier`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
+        `[[entity]] is a type parameter`,
+      ],
+      behavior = `It is spelled by its name`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
+        `[[entity]] is a type that declares no name and is not a union`,
+      ],
+      behavior = `It is spelled by the source text of its type expression, without leading or trailing whitespace`,
+    })
+    .add({
+      situation = `[[entity]] is a union`,
+      behavior = `Each of its members as [[typeTextOf]] spells it, in order, joined by a space, a vertical bar, and a space`,
+    })
+    .add({
+      situation = `[[entity]] has [[Entity.typeArguments]] and is not [[Lists.List]] with one of [[Entity.typeArguments]]`,
+      behavior = `The identifier, then a less-than sign, then each argument as [[typeTextOf]] spells it, joined by a comma and a space, then a greater-than sign`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
+        `The argument is not a function type, a union, or an intersection`,
+      ],
+      behavior = `The argument as [[typeTextOf]] spells it, then square brackets, so the sugar wins`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
+        `The argument is a function type, a union, or an intersection`,
+      ],
+      behavior = `The argument as [[typeTextOf]] spells it, parenthesized, then square brackets, so the sugar wins`,
+    })
+    .add({
+      situation = `[[entity]] is the entity of a [[FunctionType]]`,
+      behavior = `A parenthesized list of its parameters, joined by a comma and a space, then a space, a double arrow, a space, and [[FnEntity.output]] as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is the entity of a [[FunctionType]]`,
+        `A parameter of it is neither optional nor spread`,
+      ],
+      behavior = `That parameter is spelled as its name, a colon, a space, and its type as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is the entity of a [[FunctionType]]`,
+        `A parameter of it is optional`,
+      ],
+      behavior = `That parameter is spelled as its name, a question mark, a colon, a space, and its type as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = [
+        `[[entity]] is the entity of a [[FunctionType]]`,
+        `A parameter of it is a spread one`,
+      ],
+      behavior = `That parameter is spelled as three dots, its name, a colon, a space, and its type as [[typeTextOf]] spells it`,
+    })
+    .add({
+      situation = `[[entity]] is a member's type read on a left side with [[Entity.typeArguments]]`,
+      behavior = `What is spelled is the type after the base's type arguments replace its type parameters, so item of a Box of string spells string`,
+    });
+
+  @test(
+    {
+      input = [Model@like(`Bound from: d Box<T> {} const b = Box<string>;`), Entity@like(`The type of b`)],
+      expect = `Box<string>`,
+    },
+    {
+      input = [
+        Model@like(
+          `Bound from: d Box<T> { $items: \`d\` = T[]; $map: \`e\` = (transform: (item: T) => T) => T[]; }`,
+        ),
+        Entity@like(`The type of the parameter transform`),
+      ],
+      expect = `(item: T) => T`,
+    },
+    {
+      input = [Model@like(`Bound from: d Box<T> { $items: \`d\` = T[]; }`), Entity@like(`The type of the member items`)],
+      expect = `T[]`,
+    },
+  );
 }

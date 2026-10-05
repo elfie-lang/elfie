@@ -1,6 +1,5 @@
 use "../interpret/data";
 use "../model/data";
-use "../model/main" as Binder;
 use "../workspace/data";
 use "elfie/prelude/builtin";
 use "elfie/system/path";
@@ -97,7 +96,10 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
       behavior = `The output part is a space, an em dash, a space, the word output, a space, and the output between backticks`,
     })
     .add({
-      behavior = `Wherever the interface text spells a type, it spells it as [[Binder.criteriaOf]] would, and an entity of the elfie package by its identifier alone, such as List or [[Path]], never by a path or a module name`,
+      behavior = `Wherever the interface text spells a type, it is [[typeTextOf]] that type`,
+    })
+    .add({
+      behavior = `Wherever the interface text spells a type, an entity of the elfie package is spelled by its identifier alone, such as List or [[Path]], never by a path or a module name`,
     })
     .add({
       situation = `A change to the unit's file leaves every line of its interface text the same, such as a new criterion or a moved line`,

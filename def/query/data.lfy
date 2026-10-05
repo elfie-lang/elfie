@@ -58,13 +58,6 @@ enum Severity: `How bad a diagnostic is` {
   hint = `hint`,
 }
 
-enum Stage: `The stage that reported a diagnostic` {
-  loader = `loader`,
-  lexer = `lexer`,
-  parser = `parser`,
-  binder = `binder`,
-}
-
 d Diagnostic: `One problem, placed` {
   $range: `Where it is` = Range;
   $severity: `How bad it is` = Severity;
@@ -77,7 +70,7 @@ d Hover: `Everything an editor or agent shows for one entity` {
   $kind: `The kind of the entity's symbol` = SymbolKind;
   $identifier: `The entity's name` = string;
   $definition: `[[Entity.definition]] with every template reference and execution resolved for the entity` = string | undefined;
-  $type: `[[Entity.type]] spelled as it is written: an identifier, a generic with its arguments, T[] for a list, a function type with its parameters and output, a type parameter by its name; undefined when there is none` = string | undefined;
+  $type: `[[Entity.type]] as [[typeTextOf]] spells it; undefined when there is none` = string | undefined;
   $owner: `The identifier of the declaration that lists a type parameter or declares a member; undefined for anything else` = string | undefined;
   $traits: `The identifier of each of [[Entity.traits]] in application order; builtin among them for a native thing` = string[];
   $documentation: `The text of the [[Documentation]] attached to the declaration, without the boundaries and with references kept as written` = string | undefined;

@@ -31,6 +31,9 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       ],
     })
     .add({
+      behavior = `Every [[Problem]] loading adds itself, such as at a [[Use]] that resolves nowhere, at a use cycle, or at a target, has [[Problem.stage]] [[Stage.loader]]`,
+    })
+    .add({
       behavior = `[[Workspace.files]] are the [[Source]]s the model was bound from, so each holds the path every [[Use]] in it resolved to`,
     });
 

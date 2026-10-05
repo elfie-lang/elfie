@@ -88,5 +88,5 @@ d Program: `A workspace with every file lowered: what generation reads` {
   $files: `One per file of [[Workspace.files]], in the same order` = LoweredFile[];
   $criteria: `Every global criterion, each once, in the order they were added` = LoweredCriterion[];
   $tests: `Every global test, each once, in the order they were added` = LoweredTest[];
-  $problems: `Every problem lowering added, in node order` = Problem[];
+  $problems: `Every problem lowering added, in node order, each with [[Problem.stage]] [[Stage.generation]]` = Problem[];
 }

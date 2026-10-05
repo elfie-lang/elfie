@@ -9,8 +9,8 @@ use "./data";
 
 trait scoped: `Owns a scope` {
   with Scope {
-    where (`A [[Node]] for {{@identifier}} is bound`) and (`The node is not a [[SourceFile]]`) -> `A [[Scope]] is created whose parent is the scope of the nearest [[scoped]] ancestor, and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
-    where (`A [[Node]] for {{@identifier}} is bound`) and (`The node is a [[SourceFile]]`) -> `A [[Scope]] is created whose parent is the prelude scope or null as the binder's declare pass says, and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
+    where (`A [[Node]] for {{@identifier}} is bound`) and (`The node is not a [[SourceFile]]`) -> `A [[Scope]] is created whose [[Scope.parent]] is the scope of the nearest [[scoped]] ancestor, and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
+    where (`A [[Node]] for {{@identifier}} is bound`) and (`The node is a [[SourceFile]]`) -> `A [[Scope]] is created whose [[Scope.parent]] is the prelude scope or undefined as the binder's declare pass says, and every name declared by a descendant outside a nested [[scoped]] node belongs to it`;
   }
 }
 
@@ -34,7 +34,7 @@ trait applyingExtensions: `Takes on what its [[TraitUses]] name, and passes it t
   with Entity {
     where (`A [[Node]] for {{@identifier}} is bound`) -> `Each [[TraitUse]] becomes one [[Applied]] on the declared entity, with the trait resolved by name and the arguments from its [[Arguments]]`;
     where (`A [[TraitUse]] of a [[Node]] for {{@identifier}} resolves to a trait`) -> `The entity that node declares joins that trait's [[TraitEntity.extenders]] and not its [[TraitEntity.entities]]`;
-    where (`An entity later receives the entity declared by a [[Node]] for {{@identifier}}`) -> `It receives each [[TraitUse]] of that node too, recorded as an [[Applied]] whose source is the receiving application, and joins each one's [[TraitEntity.entities]]`;
+    where (`An entity later receives the entity declared by a [[Node]] for {{@identifier}}`) -> `It receives each [[TraitUse]] of that node too, recorded as an [[Applied]] whose [[Applied.source]] is the receiving application, and joins each one's [[TraitEntity.entities]]`;
   }
 }
 
