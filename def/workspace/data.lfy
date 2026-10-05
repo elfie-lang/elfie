@@ -1,5 +1,7 @@
 use "../grammar/rules/statement";
 use "../model/data";
+use "elfie/criteria/command" as Commands;
+use "elfie/target" as Targets;
 
 d NativeDependency: `Something the generated code needs from the target's own ecosystem` {
   $identifier: `The name that ecosystem knows it by` = string;
@@ -16,21 +18,20 @@ d File extends Source: `One .lfy file in the program, ready to bind` {
   $package: `The package it came from; undefined for the project's own source` = Package | undefined;
 }
 
-// Decision: a target is declared in the program, as an ace const holding the package elfie's
-// Target, rather than in elfie.json; this record is what the loader resolved it to. It keeps the
-// name Target because the library's record is only seen where a file uses the package elfie's
-// target module.
+// Decision: a target is declared in the program, as an ace const holding a [[Targets.Target]],
+// rather than in elfie.json; this record is what the loader resolved it to. It keeps the name Target
+// because the library's record is only seen where a file uses the package elfie's target module.
 d Target: `One thing the project is compiled into, as the loader resolved it from the ace const that declares it` {
   $identifier: `The name of the const that declares it` = string;
-  $declaration: `The ace const that declares it; its traits are the target's layers, applied to it, and its criteria, knowledge, and commands are the target's` = Entity;
-  $layers: `The traits of its layers in guidance order: layers, interfaces, frameworks, layout, runtime, platforms, ecosystem, language, each slot in its own order, each trait once` = Entity[];
+  $declaration: `The ace const that declares it, with its layers applied as [[Targets.Target]] says` = Entity;
+  $layers: `The trait of each of its layers, in the guidance order [[Targets.Target]] gives` = Entity[];
   $outputDirectory: `Where its generated code is written, relative to [[Workspace.root]]` = string;
-  $extensions: `The extensions, without the dot, its outputs may have: its language's file extension, then every output extension its layers set` = string[];
-  $markerComment: `How a line comment begins in its language, as its language layer sets it` = string;
-  $scriptRunner: `What runs a script its ecosystem's manifest names, as its ecosystem layer sets it; undefined when it has no ecosystem or the ecosystem sets none` = string | undefined;
+  $extensions: `The extensions, without the dot, its outputs may have` = string[];
+  $markerComment: `How a line comment begins in its language` = string;
+  $scriptRunner: `What runs a script its ecosystem's manifest names; undefined when it has no ecosystem or the ecosystem sets none` = string | undefined;
   $nativeDependencies: `What its generated code needs, from its dependencies, each in the ecosystem its ecosystem layer names` = NativeDependency[];
-  $commands: `The one command of each operation the target has a command for, in the order [[Operation]] lists them` = Command[];
-  $knowledge: `What the compiler is given to read for the target: the declaration's knowledge, its own first and then each layer's` = Knowledge[];
+  $commands: `The one command of each operation the target has a command for, in the order [[Commands.Operation]] lists them` = Command[];
+  $knowledge: `What the compiler is given to read for the target: [[Entity.knowledge]] of [[Target.declaration]]` = Knowledge[];
 }
 
 d LoadProblem: `Something that went wrong before there was a node to point at` {

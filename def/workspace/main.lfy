@@ -6,26 +6,19 @@ use "../model/data";
 use "../model/main" as Binder;
 use "../parser/main" as Parser;
 use "./data";
+use "elfie/criteria/command" as Commands;
 use "elfie/system/file" as FileSystem;
 use "elfie/system/path";
 use "elfie/system/process" as Process;
 use "elfie/prelude/trait" as Traits;
 use "elfie/target" as Targets;
-use "elfie/target/ecosystem";
-use "elfie/target/framework";
-use "elfie/target/interface";
-use "elfie/target/language";
-use "elfie/target/layout";
-use "elfie/target/platform";
-use "elfie/target/runtime";
-use "elfie/target/target";
 
-fn load(root: string): `Load a project from disk and bind it` => Workspace {
+fn load(root: string): `A project loaded from disk and bound` => Workspace {
   // Workspace
   @acceptanceCriteria
+    .add({ behavior = `[[Workspace.root]] is [[root]]` })
     .add({
       behavior = [
-        `[[Workspace.root]] is [[root]]`,
         `Loading never stops for a failure`,
         `Every failure while loading is a [[LoadProblem]] or a [[Problem]], and the rest of the project still loads`,
       ],
@@ -33,11 +26,12 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     .add({
       behavior = `Every [[Problem]] loading adds itself, such as at a [[Use]] that resolves nowhere, at a use cycle, or at a target, has [[Problem.stage]] [[Stage.loader]]`,
     })
-    .add({
-      behavior = `[[Workspace.files]] are the [[Source]]s the model was bound from, so each holds the path every [[Use]] in it resolved to`,
-    });
+    .add({ behavior = `[[Workspace.files]] are the [[Source]]s the model was bound from` })
+    .add({ behavior = `Each of [[Workspace.files]] holds, in [[Source.uses]], the path every [[Use]] in it resolved to` });
 
   // Layout
+  // Decision: keys the loader does not read, such as targets, output, or native, which earlier
+  // versions read, are ignored, so a manifest written for another version or another tool still loads.
   @acceptanceCriteria
     .add({
       situation = `elfie.json under [[root]] is a JSON object that gives a name`,
@@ -56,35 +50,41 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       behavior = `[[Workspace.sourceDirectory]] is def`,
     })
     .add({
-      situation = `elfie.json under [[root]], or an entry of it, has a key the loader does not read, such as targets, output, or native, which earlier versions read`,
-      behavior = `The key is ignored and adds no problem, so a manifest written for another version or another tool still loads`,
+      situation = `elfie.json under [[root]], or an entry of it, has a key the loader does not read`,
+      behavior = `The key is ignored and adds no problem`,
     })
     .add({
       situation = `A key the loader reads has a value of the wrong kind, such as a dependency whose root is not a string`,
-      behavior = `A [[LoadProblem]] for elfie.json names the key and what it should be, and the rest of the manifest is still read`,
+      behavior = `A [[LoadProblem]] for elfie.json names the key and what it should be`,
+    })
+    .add({
+      situation = `A key the loader reads has a value of the wrong kind`,
+      behavior = `The rest of the manifest is still read`,
     })
     .add({
       situation = `[[FileSystem.exists]] finds elfie.json under [[root]] but [[FileSystem.read]] of it is undefined, or its text is not a JSON object`,
-      behavior = `A [[LoadProblem]] for it is added, [[Workspace.name]] is the name of the [[root]] directory, and [[Workspace.sourceDirectory]] is def`,
+      behavior = [
+        `A [[LoadProblem]] for elfie.json is added`,
+        `[[Workspace.name]] is the name of the [[root]] directory and [[Workspace.sourceDirectory]] is def`,
+      ],
     })
     .add({
       situation = `No elfie.json exists under [[root]]`,
-      behavior = `[[Workspace.name]] is the name of the [[root]] directory, [[Workspace.sourceDirectory]] is def, and no problem is added, since a manifest is optional`,
+      behavior = `[[Workspace.name]] is the name of the [[root]] directory and [[Workspace.sourceDirectory]] is def`,
     })
+    .add({ situation = `No elfie.json exists under [[root]]`, behavior = `No problem is added for it` })
     .add({
       situation = `[[FileSystem.exists]] is false for [[root]], or for [[Workspace.sourceDirectory]] under it`,
-      behavior = `A [[LoadProblem]] with no path is added and [[Workspace.files]] is empty`,
+      behavior = [`A [[LoadProblem]] with no path is added`, `[[Workspace.files]] is empty`],
     });
 
   // Discovery
   @acceptanceCriteria
     .add({
-      behavior = [
-        `Every file [[FileSystem.list]] gives recursively under [[Workspace.sourceDirectory]] whose [[Path.extension]] is lfy is in the program, with no [[File.package]]`,
-        `Every file a [[Use]] in a file of the program refers to is in the program`,
-        `A file is in [[Workspace.files]] once, however many files use it`,
-      ],
+      behavior = `Every file [[FileSystem.list]] gives recursively under [[Workspace.sourceDirectory]] whose [[Path.extension]] is lfy is in the program, with no [[File.package]]`,
     })
+    .add({ behavior = `Every file a [[Use]] in a file of the program refers to is in the program` })
+    .add({ behavior = `A file is in [[Workspace.files]] once, however many files use it` })
     .add({
       behavior = `[[File.path]] is the file's path relative to [[Workspace.root]]: [[Path.join]] of the directory listed and the path [[FileSystem.list]] gave under it`,
     })
@@ -93,7 +93,7 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     })
     .add({
       situation = `[[FileSystem.read]] of a file is undefined`,
-      behavior = `A [[LoadProblem]] for its path is added and it is left out of the program`,
+      behavior = [`A [[LoadProblem]] for its path is added`, `It is left out of the program`],
     });
 
   // use
@@ -115,12 +115,8 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       behavior = `The [[Use]] resolves to the file at [[Path.join]] of the path and main.lfy`,
     })
     .add({
-      situation = `[[FileSystem.exists]] is true for both the joined path of a [[Use]] plus .lfy and [[Path.join]] of that path and main.lfy`,
-      behavior = `The [[Use]] resolves to the path plus .lfy`,
-    })
-    .add({
       situation = `A [[Use]] resolves to no file`,
-      behavior = `A [[Problem]] is added at the [[Use]] and its entry in [[Source.uses]] is undefined`,
+      behavior = [`A [[Problem]] is added at the [[Use]]`, `Its entry in [[Source.uses]] is undefined`],
     });
 
   // Order
@@ -128,7 +124,11 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     .add({ behavior = `[[Workspace.files]] places every file after the files it uses` })
     .add({
       situation = `The use statements form a cycle`,
-      behavior = `A [[Problem]] is added at each [[Use]] in the cycle and those files keep the order they were discovered in`,
+      behavior = `A [[Problem]] is added at each [[Use]] in the cycle`,
+    })
+    .add({
+      situation = `The use statements form a cycle`,
+      behavior = `The files of the cycle keep the order they were discovered in`,
     });
 
   // Dependencies
@@ -139,15 +139,14 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     })
     .add({
       situation = `[[FileSystem.exists]] is false for a [[Package.root]]`,
-      behavior = `A [[LoadProblem]] for it is added and no file of it is in the program`,
+      behavior = [`A [[LoadProblem]] for it is added`, `No file of it is in the program`],
     });
 
   // The package elfie
   @acceptanceCriteria
+    .add({ behavior = `The [[Package]] named elfie is in the program whether or not elfie.json names it` })
     .add({
-      behavior = [
-        `The [[Package]] named elfie is in the program whether or not elfie.json names it, and every file [[FileSystem.list]] gives recursively under its [[Package.root]] whose [[Path.extension]] is lfy is in the program and carries it as its [[File.package]]`,
-      ],
+      behavior = `Every file [[FileSystem.list]] gives recursively under the [[Package.root]] of the [[Package]] named elfie whose [[Path.extension]] is lfy is in the program and carries it as its [[File.package]]`,
     })
     .add({
       situation = `elfie.json has the dependency entry elfie`,
@@ -163,66 +162,58 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     })
     .add({
       situation = `elfie.json has neither the dependency entry elfie nor the top level key lib, and [[Process.environment]] gives no directory for ELFIE_LIB`,
-      behavior = `The [[Package.root]] of the [[Package]] named elfie is the copy of the library the compiler was built with, which the target's guidance says how it travels`,
+      behavior = `The [[Package.root]] of the [[Package]] named elfie is the copy of the library the compiler was built with`,
     })
     .add({
       behavior = [
-        `[[Source.origin]] of the file main.lfy at the [[Package.root]] of the [[Package]] named elfie is [[Origin.prelude]], of every other file of that package [[Origin.library]], and of every file not in that package [[Origin.program]]`,
+        `[[Source.origin]] of the file main.lfy at the [[Package.root]] of the [[Package]] named elfie is [[Origin.prelude]]`,
+        `[[Source.origin]] of every other file of that package is [[Origin.library]]`,
+        `[[Source.origin]] of every file not in that package is [[Origin.program]]`,
       ],
     });
 
   // Targets
   @acceptanceCriteria
     .add({
-      behavior = [
-        `Every ace const of a project file whose value is a [[Targets.Target]] gives one [[Target]]: its declared type is [[Targets.Target]], or its value is a call of a function whose output is [[Targets.Target]]`,
-        `[[Target.identifier]] is the const's name and [[Target.declaration]] is the const's entity`,
-        `A const of a file of a package gives no target, whatever it holds`,
-      ],
+      behavior = `Each target const, as [[Targets.Target]] defines one, gives one [[Target]], whose [[Target.identifier]] is the const's name and whose [[Target.declaration]] is the const's entity`,
     })
     .add({
       behavior = `A target's slots are read from [[Interpreter.evaluate]] of the const's value: the keys output, language, runtime, platforms, ecosystem, frameworks, interfaces, layout, layers, and dependencies, where each layer is a trait, or an object holding a trait as subject and its arguments as arguments, as [[Traits.Layer]] is`,
     })
+    .add({ behavior = `[[Target.layers]] holds the trait of each layer of every slot` })
     .add({
-      behavior = [
-        `[[Target.layers]] is the trait of each layer of the slots layers, interfaces, frameworks, layout, runtime, platforms, ecosystem, and language, in that order and each slot in its own order`,
-        `A trait in two slots with equal arguments is in [[Target.layers]] once, at its first place`,
-      ],
+      situation = `A trait is in two slots with equal arguments`,
+      behavior = `It is in [[Target.layers]] once, at its first place`,
     })
     .add({
       behavior = `[[Target.outputDirectory]] is the output the const's value gives, with any trailing slash removed`,
     })
+    .add({ behavior = `[[Target.markerComment]] is the value the declaration's setters give markerComment` })
     .add({
-      behavior = [
-        `[[Target.markerComment]] is the value the declaration's setters give markerComment, and [[Target.extensions]] is the value they give fileExtension followed by every item of every value they give outputExtensions, each once`,
-        `[[Target.scriptRunner]] is the value they give scriptRunner, undefined when none does`,
-      ],
+      behavior = `[[Target.extensions]] is the value the declaration's setters give fileExtension, followed by every item of every value they give outputExtensions, each once`,
+    })
+    .add({
+      behavior = `[[Target.scriptRunner]] is the value the declaration's setters give scriptRunner, undefined when none does`,
     })
     .add({
       behavior = `[[Target.nativeDependencies]] holds one [[NativeDependency]] per item of the dependencies slot, in order: its name as [[NativeDependency.identifier]], its version as [[NativeDependency.version]], and as [[NativeDependency.ecosystem]] the value the declaration's setters give ecosystem`,
     })
     .add({
-      behavior = [
-        `[[Target.commands]] holds, for each [[Operation]] in the order it lists them, the first command with that operation among the declaration's commands that neither a layer nor a trait a layer extends contributed, whoever else contributed them, such as the file that adds one with an add call on the const's commands; and only when there is none, the first among those the layers and the traits they extend contributed, in guidance order`,
-        `An operation whose first command has no line has no command in [[Target.commands]], and an operation no command names has none either`,
-      ],
-    })
-    .add({
-      behavior = `[[Target.knowledge]] is the declaration's knowledge that neither a layer nor a trait a layer extends contributed, in the order added, then the knowledge of the layers and the traits they extend, in guidance order`,
-    })
-    .add({
-      behavior = `[[Workspace.targets]] holds the targets in the order their consts are declared: file by file in [[Workspace.files]] order, then source order`,
+      behavior = `[[Target.commands]] holds, for each [[Commands.Operation]], the command of [[Target.declaration]] for it that the precedence of [[Commands.Command]] chooses from [[Entity.commands]]`,
     });
 
   // Problems with targets
   @acceptanceCriteria
     .add({
-      situation = `A slot of a target holds a layer whose trait extends neither the role of that slot nor a trait that extends it, directly or through other traits`,
-      behavior = `A [[Problem]] at the const's declaration names the target, the slot, and the trait; the roles are [[targetLanguage]] for language, [[targetRuntime]] for runtime, [[targetPlatform]] for platforms, [[targetEcosystem]] for ecosystem, [[targetFramework]] for frameworks, [[targetInterface]] for interfaces, [[targetLayout]] for layout, and [[target]] for layers`,
+      situation = `A slot of a target holds a layer whose trait does not extend, directly or through other traits, the role [[Targets.Target]] gives that slot`,
+      behavior = `A [[Problem]] at the const's declaration names the target, the slot, and the trait`,
     })
     .add({
       situation = `A target's value gives no output, no language, or no layout`,
-      behavior = `A [[Problem]] at the const's declaration names the target and what is missing, and the target is left out of [[Workspace.targets]]`,
+      behavior = [
+        `A [[Problem]] at the const's declaration names the target and what is missing`,
+        `The target is left out of [[Workspace.targets]]`,
+      ],
     })
     .add({
       situation = `An item of a value the declaration's setters give requires is not an item of any value they give provides`,
@@ -235,20 +226,33 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
     .add({
       situation = `Two targets have the same output directory, or the output directory of one is inside the other's`,
       behavior = `A [[Problem]] at the declaration of each names both targets and the directory`,
+    });
+
+  // Knowledge
+  @acceptanceCriteria
+    .add({
+      situation = `A knowledge item of an entity of the program has the kind reference or example`,
+      behavior = `Its source path is [[Path.join]] of the [[Package.root]] of the package of the file its contributor is declared in, or of [[Workspace.root]] when that file is the project's own, and its [[Knowledge.source]]`,
     })
     .add({
-      situation = `A knowledge item of an entity of the program has the kind reference or example, and [[FileSystem.exists]] is false for its source joined to the [[Package.root]] of the package of the file its contributor is declared in, or to [[Workspace.root]] when that file is the project's own`,
+      situation = [
+        `A knowledge item of an entity of the program has the kind reference or example`,
+        `[[FileSystem.exists]] is false for its source path`,
+      ],
       behavior = `A [[Problem]] at the declaration of the entity holding it says the source does not exist`,
     })
     .add({
       situation = `A knowledge item's source begins with http:// or https://`,
-      behavior = `A [[Problem]] at the declaration of the entity holding it says knowledge is vendored, so a compile never depends on the network`,
+      behavior = `A [[Problem]] at the declaration of the entity holding it says knowledge is vendored`,
     });
 
   // Binding
   @acceptanceCriteria
     .add({
-      behavior = `[[Workspace.model]] is one [[Binder.bind]] of every file of the program, [[Workspace.files]], each with its [[Source.origin]], so the model answers for every file and its prelude scope is the file scope of the main file of the package elfie`,
+      behavior = `[[Workspace.model]] is one [[Binder.bind]] of every file of the program, [[Workspace.files]], each with its [[Source.origin]]`,
+    })
+    .add({
+      behavior = `The prelude scope of [[Workspace.model]] is the file scope of the main file of the package elfie`,
     });
 
   @test(
@@ -294,7 +298,7 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
           `A root whose elfie.json names a target t with package p and marker m, in the shape earlier versions read`,
         ),
       ],
-      expect = Workspace@like(`No targets and no problems, because elfie.json's key targets is ignored`),
+      expect = Workspace@like(`No targets and no problems`),
     },
     {
       input = [
@@ -333,7 +337,7 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
         ),
       ],
       expect = Workspace@like(
-        `One target t whose commands are build cargo build alone, because the file's format command with no line comes before the layer's`,
+        `One target t whose commands are build cargo build alone`,
       ),
     },
     {
@@ -344,12 +348,27 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       ],
       expect = Workspace@like(`Two targets, and a [[Problem]] at each declaration naming t, u, and the directory out/u`),
     },
+    {
+      input = [string@like(`A root whose elfie.json reads {"name": "x", and whose def holds main.lfy`)],
+      expect = Workspace@like(
+        `[[Workspace.name]] from the directory, source directory def, def/main.lfy in [[Workspace.files]], and one [[LoadProblem]] for elfie.json`,
+      ),
+    },
+    {
+      input = [
+        string@like(
+          `A root whose def holds main.lfy reading: use "./x"; and both x.lfy and a directory x holding main.lfy`,
+        ),
+      ],
+      expect = Workspace@like(`The [[Use]] resolved to def/x.lfy, and no problems`),
+    },
   );
 }
 
+/// path: the file's path, relative to the workspace's [[Workspace.root]]
+/// text: what the file is read as; undefined to read it from the disk again
 fn change(workspace: Workspace, path: string, text: string | undefined): `A workspace with one file read as something other than what is on disk` => Workspace {
   @acceptanceCriteria
-    .add({ behavior = `[[path]] is relative to [[Workspace.root]] of [[workspace]]` })
     .add({ behavior = `[[workspace]] is left as it was and the result is a new [[Workspace]]` })
     .add({
       situation = `[[text]] is set`,
@@ -372,7 +391,8 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
     // entities, or to global, reach files that never use the changed one.
     .add({
       behavior = [
-        `Only the files of the re-bind set are bound again; every other file's symbols, usages, and problems are those of [[workspace]]`,
+        `Only the files of the re-bind set are bound again`,
+        `Every file outside the re-bind set keeps the symbols, usages, and problems it has in [[workspace]]`,
         `The re-bind set is the file at [[path]] and every file that uses it, directly or through other files`,
       ],
     })
@@ -392,7 +412,7 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
       behavior = `[[Workspace.targets]] and the problems loading adds about targets are found again from the model the change gives`,
     })
     .add({
-      situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program, nor the source of a knowledge item of the program joined to the root it is read from`,
+      situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program, nor the source path [[load]] gives a knowledge item of the program`,
       behavior = `The result matches [[workspace]]`,
     });
 
@@ -408,6 +428,14 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
     {
       input = [Workspace@like(`A project whose def holds main.lfy and extra.lfy`), `def/extra.lfy`, undefined],
       expect = Workspace@like(`Two files again, matching a fresh [[load]] of the root`),
+    },
+    {
+      input = [
+        Workspace@like(`A project whose def holds only main.lfy`),
+        `notes/todo.lfy`,
+        string@like(`A file declaring one trait`),
+      ],
+      expect = Workspace@like(`The same files, symbols, and problems as the workspace given`),
     },
   );
 }
