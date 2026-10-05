@@ -56,10 +56,12 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     .add({ behavior = `Registers for watched file changes to every .lfy file and to elfie.json under the root` });
 
   // Documents
+  // Decision: documents are synchronized in full, because Loader.change takes a whole text;
+  // incremental synchronization would only be reassembled into it.
   @acceptanceCriteria
     .add({
       situation = `A document is opened or changed`,
-      behavior = `[[Session.workspace]] becomes [[Loader.change]] of it with the full text the editor sent, because full synchronization is what change takes; incremental synchronization would only be reassembled into it`,
+      behavior = `[[Session.workspace]] becomes [[Loader.change]] of it with the full text the editor sent`,
     })
     .add({
       situation = `A document is closed`,

@@ -32,12 +32,26 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
       behavior = `Lists exactly the fns of this file that carry [[tool]], as [[tool]] says, and nothing else: no resources and no prompts, because one surface is enough to keep exact`,
     })
     .add({
-      situation = `A call arrives`,
-      behavior = `First, every file of the program whose modification time or size differs from [[Session.seen]] is re-read through [[Loader.change]] with undefined, a file that vanished the same way; then the tool runs`,
+      behavior = `Every call answers for the program's files and elfie.json as they are on disk when the call arrives`,
+    })
+    .add({
+      situation = [
+        `A call arrives`,
+        `A file of the program has a modification time or size other than [[Session.seen]] holds for it`,
+      ],
+      behavior = `The file is re-read through [[Loader.change]] with undefined before the tool runs`,
+    })
+    .add({
+      situation = [`A call arrives`, `A file of the program has vanished since it was last read`],
+      behavior = `The file is dropped through [[Loader.change]] with undefined before the tool runs`,
     })
     .add({
       situation = `A call arrives and elfie.json has changed since the last call`,
       behavior = `The workspace is loaded again before the tool runs`,
+    })
+    .add({
+      situation = `An edit to a file keeps both its size and its modification time`,
+      behavior = `The edit is not seen by the next call`,
     })
     .add({ behavior = `Returns 0 when standard input closes` });
 

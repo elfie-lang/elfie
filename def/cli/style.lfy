@@ -78,7 +78,7 @@ fn paint(text: string, tone: Tone, on: boolean): `Text wrapped in the escapes th
     .add({ situation = `[[on]] is false`, behavior = `Returns [[text]] unchanged` })
     .add({ situation = `[[text]] is empty`, behavior = `Returns [[text]] unchanged` })
     .add({
-      behavior = `[[width]] of what is returned is [[width]] of [[text]], so a painted column lines up as its plain text would`,
+      behavior = `Adds nothing to [[text]] but escape sequences that begin with the escape character and [ and end with m`,
     });
 
   @test(
@@ -88,34 +88,26 @@ fn paint(text: string, tone: Tone, on: boolean): `Text wrapped in the escapes th
   );
 }
 
-/// text: what is measured, painted or not
-fn width(text: string): `How many columns text takes in a terminal` => number {
-  @acceptanceCriteria
-    .add({
-      behavior = `Counts characters, not bytes, and skips every escape sequence that begins with the escape character and [ and ends with m, so painted and plain text measure the same`,
-    });
-
-  @test(
-    { input = [`batch`], expect = 5 },
-    { input = [`\u001b[1mbatch\u001b[0m`], expect = 5 },
-    { input = [`✓ ok`], expect = 4 },
-  );
-}
-
 /// text: what is padded, painted or not
 /// columns: the width to fill
 fn padded(text: string, columns: number): `Text followed by spaces up to a width, so the columns after it line up` => string {
   @acceptanceCriteria
     .add({
-      situation = `[[width]] of [[text]] is less than [[columns]]`,
-      behavior = `Appends spaces until [[width]] of the result is [[columns]]`,
+      situation = `[[text]] takes fewer than [[columns]] columns`,
+      behavior = `Appends spaces until the result takes [[columns]] columns`,
     })
+    .add({ situation = `[[text]] takes [[columns]] columns or more`, behavior = `Returns [[text]] unchanged, never cut` })
+    .add({ behavior = `Each character takes one column, however many bytes it has` })
     .add({
-      situation = `[[width]] of [[text]] is [[columns]] or more`,
-      behavior = `Returns [[text]] unchanged, never cut`,
+      behavior = `Escape sequences that begin with the escape character and [ and end with m count for no columns`,
     });
 
-  @test({ input = [`ab`, 4], expect = `ab  ` }, { input = [`abcdef`, 4], expect = `abcdef` });
+  @test(
+    { input = [`ab`, 4], expect = `ab  ` },
+    { input = [`abcdef`, 4], expect = `abcdef` },
+    { input = [`\u001b[1mab\u001b[0m`, 4], expect = `\u001b[1mab\u001b[0m  ` },
+    { input = [`✓ ok`, 5], expect = `✓ ok ` },
+  );
 }
 
 /// seconds: a length of time, as [[Progress.elapsed]] holds it
