@@ -22,12 +22,12 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
   @acceptanceCriteria
     .add({
       behavior = [
-        `Binding runs three passes over every file: declare (scopes, symbols, entities), expand (traits, members, criteria, and every other compile-time statement), resolve (usages, properties, templates)`,
+        `Binding is three passes, each over every file before the next begins: declare (scopes, symbols, entities), expand (traits, members, criteria, and every other compile-time statement), and resolve (usages, properties, templates)`,
         `[[sources]] are bound in the order given, which places every file after the files it uses`,
         `Binding never stops; every failure it meets is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
       ],
     })
-    .add({ behavior = `Each [[Source]] is bound once, however many others use it` });
+    .add({ behavior = `A file's symbols, usages, and problems appear once in the model, however many files use it` });
 
   // Declare
   @acceptanceCriteria
@@ -545,12 +545,6 @@ fn resolve(model: Model, node: Node): `The symbol a node uses or declares` => Sy
       situation = `[[node]] has no [[Usage]] in [[model]] and declares no symbol in [[model]]`,
       behavior = `Returns undefined`,
     });
-}
-
-fn entitiesOf(model: Model, traitEntity: TraitEntity): `Everything that has a trait` => Entity[] {
-  @acceptanceCriteria
-    .add({ situation = `[[traitEntity]] is a trait`, behavior = `Returns [[TraitEntity.entities]] of [[traitEntity]]` })
-    .add({ situation = `[[traitEntity]] is not a trait`, behavior = `Returns an empty list` });
 }
 
 fn usagesOf(model: Model, target: Symbol): `Every use of a symbol` => Usage[] {

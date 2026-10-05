@@ -17,8 +17,9 @@ use "elfie/target" as Targets;
 // add names, which Rust does not, so reading everything a trait was applied to waits until
 // nothing can apply it any more.
 // Decision: expand, evaluate, and lower live in one module although the binder calls the first
-// two and lowering runs after the workspace is loaded, because they share one classification,
-// phaseOf, and one value model; the pipeline order is stated by each fn, not by the module.
+// two, the workspace calls evaluate to read targets, and lowering runs after the workspace is
+// loaded, because they share one classification, phaseOf, and one value model; the pipeline
+// order is stated by each fn, not by the module.
 // Decision: the parse tree is never rewritten, because the query, format, and LSP stages rely on
 // it reproducing the source. Lowering builds a new tree whose nodes point back to it, as
 // rust-analyzer does for macro expansions.
@@ -57,14 +58,27 @@ fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is
 }
 
 fn expand(model: Model): `Run every piece of compile-time code that can add names, until nothing new appears` => Model {
-  // Loop
+  // Guarantees
+  @acceptanceCriteria
+    .add({
+      behavior = `A [[Phase.compile]] statement sees names as the rest of the program does: throughout their [[Scope]], wherever they are declared, including the names that other compile-time statements add`,
+    })
+    .add({
+      behavior = `[[TraitEntity.entities]] read in compile-time code holds every entity the trait is applied to anywhere in the program, in file order then application order`,
+    })
+    .add({
+      situation = `Every statement left to run is waiting to read what a trait was applied to, and none can run`,
+      behavior = `A [[Problem]] naming the waiting statements and the traits they wait on is added at each, and none of them runs`,
+    });
+
+  // Passes and rounds
   @acceptanceCriteria
     .add({
       behavior = [
         `Runs as the binder's expand pass: after the declare pass and before the resolve pass, over every file in bind order`,
-        `Each round runs every [[Phase.compile]] statement not yet run whose names now resolve: trait applications, ace statements, declaration bodies, and file-level statements`,
+        `It is a fixpoint in rounds: each round runs every [[Phase.compile]] statement not yet run whose names now resolve`,
+        `A statement that reads [[TraitEntity.entities]] of a trait runs only in a round where no statement not yet run can apply that trait`,
         `Rounds repeat until one runs nothing`,
-        `Names are resolved only as far as a statement needs them to run; the resolve pass resolves the rest`,
       ],
     })
     .add({
@@ -131,10 +145,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = `Most recently applied trait definition wins`,
     })
     .add({
-      behavior = [
-        `[[TraitEntity.entities]] is every entity the trait was applied to, in file order then application order, complete before the resolve pass reads it and before any statement reads it, because a statement that reads it waits until no statement left to run can apply the trait`,
-        `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
-      ],
+      behavior = `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
     });
 
   // Knowledge, commands, and targets
@@ -205,17 +216,6 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = `A [[Problem]] at the call names the trait`,
     });
 
-  // What a trait was applied to
-  @acceptanceCriteria
-    .add({
-      situation = `A statement reads what a trait was applied to, through its entities on the context layer`,
-      behavior = `It waits until no statement left to run can apply that trait, then reads the full list`,
-    })
-    .add({
-      situation = `Every statement left to run is waiting to read what a trait was applied to, and none can run`,
-      behavior = `A [[Problem]] naming the waiting statements and the traits they wait on is added at each, and none of them runs`,
-    });
-
   // Calls
   @acceptanceCriteria
     .add({
@@ -266,13 +266,16 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
   );
 }
 
-fn evaluate(model: Model, node: Node): `The value of an expression, computed at compile time when something asks for it` => Value | Prompted {
+fn evaluate(model: Model, node: Node): `The value of an expression, computed at compile time` => Value | Prompted {
   @acceptanceCriteria
     .add({
       behavior = [
-        `Evaluates [[node]] in the scope it is written in, against [[model]] as [[expand]] left it`,
+        `Evaluates [[node]] in the scope it is written in, against [[model]]`,
         `The same node evaluated twice gives the same value, and the model is not changed by evaluating it`,
       ],
+    })
+    .add({
+      behavior = `A compile-time value may be read anywhere in its scope, before or after its declaration; only a cycle leaves it undefined`,
     })
     .add({
       situation = `[[node]] is a call of like on an entity's context`,
@@ -280,7 +283,7 @@ fn evaluate(model: Model, node: Node): `The value of an expression, computed at 
     })
     .add({
       situation = `[[node]] reads a layer other than value, dereferences, or reads the previous statement, and what it reads depends only on the model`,
-      behavior = `Returns the value it reads, so runtime code that uses it can be folded`,
+      behavior = `Returns the value it reads`,
     })
     .add({
       situation = `[[node]] is or holds a call of an ace function, or of a function declared outside the program's runtime code, whose arguments do not depend on a parameter or variable that only has a value at runtime`,
@@ -288,7 +291,7 @@ fn evaluate(model: Model, node: Node): `The value of an expression, computed at 
     })
     .add({
       situation = `[[node]] depends on a parameter or variable that only has a value at runtime`,
-      behavior = `Returns undefined and adds no [[Problem]]; the caller decides whether that is one`,
+      behavior = `Returns undefined and adds no [[Problem]]`,
     })
     .add({
       situation = `Evaluating [[node]] needs its own value, directly or through other nodes`,
@@ -297,6 +300,10 @@ fn evaluate(model: Model, node: Node): `The value of an expression, computed at 
 
   @test(
     { input = [Model@like(`bound from: ace const c = 1 + 2;`), Node@like(`the right side`)], expect = Value@like(`3`) },
+    {
+      input = [Model@like(`bound from: ace const a = b + 1; ace const b = 2;`), Node@like(`the right side of a`)],
+      expect = Value@like(`3`),
+    },
     {
       input = [Model@like(`bound from: d A {} const n = A@identifier;`), Node@like(`A@identifier`)],
       expect = Value@like(`the string A`),
