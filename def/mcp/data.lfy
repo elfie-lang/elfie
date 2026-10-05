@@ -1,6 +1,9 @@
+use "../generation/data";
+use "../interpret/data";
 use "../workspace/data";
+use "elfie/system/json" as Json;
 
-d ToolArgument: `One argument of a tool` {
+d ToolArgument: `One argument of a tool, as the server lists it` {
   $name: `As the parameter is named` = string;
   $description: `What it is for` = string;
   $type: `string, number, or boolean` = string;
@@ -8,9 +11,9 @@ d ToolArgument: `One argument of a tool` {
 }
 
 d Tool: `One tool as the server lists it` {
-  $name: `elfie_ followed by the fn's identifier` = string;
-  $description: `The fn's definition` = string;
-  $arguments: `In parameter order` = ToolArgument[];
+  $name: `What a call names it by` = string;
+  $description: `What it does` = string;
+  $arguments: `One per argument a call may give, in parameter order` = ToolArgument[];
 }
 
 d ToolResult: `What a call returns` {
@@ -21,4 +24,26 @@ d ToolResult: `What a call returns` {
 d Session: `One agent's connection` {
   $workspace: `The program as of the last call` = Workspace;
   $seen: `The modification time and size of every file of the program when it was last read, by path` = object;
+}
+
+// Decision: the CLI and the agent server both plan with the units the last global review found
+// violated, so the file it is kept in and which units it found violated are stated here, once.
+// It lives with the agent server's data because the CLI uses the agent server and never the
+// other way round.
+d GlobalReview extends ReviewReport: `The last global review of a project, as elfie-requests/global.reviews.json under its root holds it` {
+  $requirements: `The SHA-256 of the ids of every global criterion and test it reviewed, as lowercase hex` = string;
+  @acceptanceCriteria
+    .add({
+      behavior = `elfie-requests/global.reviews.json under the root holds [[Json.stringify]] of the last [[GlobalReview]]: one object with the keys requirements, reviews, and problems`,
+    })
+    .add({
+      behavior = `The ids [[GlobalReview.requirements]] hashes are those of [[Program.criteria]] then [[Program.tests]], in that order`,
+    })
+    .add({
+      situation = `elfie-requests/global.reviews.json under the root is missing`,
+      behavior = `There is no last [[GlobalReview]], and no unit is among its violated units`,
+    })
+    .add({
+      behavior = `The violated units of the last [[GlobalReview]] are the stems of every unit whose [[Unit.outputs]] hold a [[Marker]] whose [[Marker.requirement]] is the [[Review.id]] of one of [[GlobalReview.reviews]] whose [[Review.status]] is violated`,
+    });
 }

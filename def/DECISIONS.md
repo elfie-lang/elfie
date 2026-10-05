@@ -164,7 +164,7 @@ query, format, generation), `crates/elfie-lsp`, `crates/elfie-mcp`, `crates/elfi
   criteria with the trait as contributor, `if`/`match`/`for`/`with` execute. Extended traits are
   applied first, with their arguments evaluated from the extending trait's parameters. This is what
   makes `rule@entities`, `binding.apply(., operator.precedence, ...)`, `{{terminals}}` (the whole
-  EBNF document, produced by running `terminalDocument()`), and `for (const rule in
+  EBNF document, produced by running `terminalDocument()`, now `Grammar.ebnf(terminal)`), and `for (const rule in
   terminal@entities) { where ... }` come out right. The interpreter lives in `model/eval.rs`.
 - **A trait's own body also runs, dry:** criteria and tests attach to the trait itself (so a target
   marker's guidance is `criteria_of(marker)`), but applies, setters, and `with` blocks are skipped,
@@ -181,7 +181,7 @@ query, format, generation), `crates/elfie-lsp`, `crates/elfie-mcp`, `crates/elfi
   (`tree.tokens.get`); it is strict for modules, data, enums, and types.
 - **Function bodies** (`function`) are not executed at bind time except for their context statements
   (`@acceptanceCriteria`, `@test`, `where`, `with`, `for`); they are executed as code only when
-  called from a template or trait argument (`Grammar.grammarDocument()`).
+  called from a template or trait argument (`Grammar.grammarDocument()`, now `Grammar.ebnf(rule)`).
 - **Node identity** is `(file, preorder index)` with a path back to the node; a node is also found
   by `(file, start, end, rule)`, which is unique because nested nodes with the same span differ in
   rule.

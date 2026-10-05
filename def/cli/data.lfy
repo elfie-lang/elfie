@@ -1,18 +1,19 @@
 use "elfie/system/process" as Process;
 use "elfie/system/time" as Time;
+use "elfie/values/object";
 
-enum Command: `What the command line can do` {
-  help = `help`,
-  version = `version`,
-  init = `init`,
-  check = `check`,
-  format = `format`,
-  tree = `tree`,
-  tokens = `tokens`,
-  compile = `compile`,
-  verify = `verify`,
-  lsp = `lsp`,
-  mcp = `mcp`,
+enum Command: `What the command line can do; each value is the word that names it` {
+  help: `Lists every command and option with what it does` = `help`,
+  version: `Prints the version of the executable` = `version`,
+  init: `Creates elfie.json and the source directory of a new project` = `init`,
+  check: `Reports the problems of the program and the units whose outputs are stale` = `check`,
+  format: `Lays out definition files the standard way, or with --check reports those that would change` = `format`,
+  tree: `Prints how one file parses` = `tree`,
+  tokens: `Prints how one file lexes` = `tokens`,
+  compile: `Generates the outputs of the units that need it, or with --dry-run prints the plan` = `compile`,
+  verify: `Reviews generated outputs against their criteria and tests without compiling` = `verify`,
+  lsp: `Serves an editor over the Language Server Protocol` = `lsp`,
+  mcp: `Serves agents over the Model Context Protocol` = `mcp`,
 }
 
 enum ExitCode: `What the process ends with, through [[Process.exit]]` {
@@ -26,7 +27,7 @@ d Invocation: `One parsed command line` {
   $command: `What to do` = Command;
   $root: `The project directory` = string;
   $arguments: `The positional arguments after the command, in order` = string[];
-  $options: `Named options by name without their dashes; true for a flag, the text for a valued option` = object;
+  $options: `Options by name without dashes: true for a flag, the text for a valued option` = Object<string | boolean>;
 }
 
 enum Step: `What a compile is doing, as progress reports it` {
@@ -54,5 +55,5 @@ d Progress: `One line of what a compile is doing, for a person or a script watch
   $done: `Units accepted so far` = number;
   $total: `Units planned` = number;
   $elapsed: `Seconds since the compile began, as [[Time.elapsed]] from its start gives them` = number;
-  $message: `The detail: the reason a unit is planned, a problem, a question, the count of batches, or for reviewed and globalReviewed the counts of satisfied, violated, and unverifiable reviews, in that order` = string;
+  $message: `The detail: the reason a unit is planned, a problem, a question, the counts of the plan, or for reviewed and globalReviewed the counts of satisfied, violated, and unverifiable reviews, in that order` = string;
 }

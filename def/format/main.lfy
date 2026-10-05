@@ -1,6 +1,8 @@
 use "../grammar/rules/expression";
 use "../grammar/rules/statement";
 use "../grammar/terminals/comment";
+use "../grammar/terminals/identifier";
+use "../grammar/terminals/literal";
 use "../grammar/terminals/punctuation";
 use "../grammar/terminals/space";
 use "../grammar/traits";
@@ -11,31 +13,30 @@ use "../parser/traits";
 // Decision: the formatter works on the lossless [[Tree]] rather than on tokens, so layout follows
 // the rule a token belongs to. It is its own module because both the command line and the language
 // server format, and neither should own the rules.
+// Decision: a tree with errors is returned unchanged, because moving tokens the parser could not
+// place would hide the error.
 
 fn format(tree: Tree): `The source of a tree, laid out the standard way` => string {
   // Invariants
   @acceptanceCriteria
     .add({
-      behavior = [
-        `The tokens of the result, [[trivia]] aside, are [[Tree.tokens]] with the same [[Token.value]] in the same order`,
-        `Formatting the result again gives the same result`,
-        `The text of every [[body]] token, [[Comment]], and [[Documentation]] is kept exactly, even its line breaks`,
-        `Every line ends with one line feed and the result ends with one`,
-      ],
+      behavior = `The tokens of the result, [[trivia]] aside, are [[Tree.tokens]] with the same [[Token.value]] in the same order`,
     })
+    .add({ behavior = `Formatting the result again gives the same result` })
     .add({
-      situation = `[[Tree.errors]] is not empty`,
-      behavior = `The result is the source unchanged, because moving tokens the parser could not place would hide the error`,
-    });
+      behavior = `The text of every [[body]] token, [[Comment]], and [[Documentation]] is kept exactly, even its line breaks`,
+    })
+    .add({ behavior = `Every line ends with one line feed` })
+    .add({ behavior = `The result ends with one line feed` })
+    .add({ situation = `[[Tree.errors]] is not empty`, behavior = `The result is the source unchanged` });
 
   // Lines and indentation
   @acceptanceCriteria
     .add({
       behavior = `Each [[Statement]] begins on its own line, indented two spaces per enclosing [[Block]], [[Object]], [[Type]], or multi-line [[List]], [[Arguments]], or [[Parameters]]`,
     })
-    .add({
-      behavior = `A run of blank lines between statements becomes one blank line; blank lines inside a statement are removed`,
-    })
+    .add({ behavior = `A run of blank lines between statements becomes one blank line` })
+    .add({ behavior = `Blank lines inside a statement are removed` })
     .add({
       situation = `A [[Documentation]], or a [[Comment]] on its own line`,
       behavior = `It stays on its own line before what follows it, indented like it`,
@@ -44,22 +45,25 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
       situation = `A [[Comment]] shares a line with code`,
       behavior = `It stays at the end of that line after one space`,
     })
-    .add({ behavior = `Trailing spaces are removed and every [[NewLine]] becomes a line feed` });
+    .add({ behavior = `Trailing spaces are removed` })
+    .add({ behavior = `Every [[NewLine]] becomes a line feed` });
 
   // Spacing
   @acceptanceCriteria
+    .add({ behavior = `One space on both sides of every [[infix]] operator, [[SingleArrow]], and [[DoubleArrowRight]]` })
+    .add({ behavior = `No space between a [[prefix]] operator and its operand` })
+    .add({ behavior = `No space between a [[postfix]] operator and the expression before it` })
+    .add({ behavior = `One space after each [[Comma]] and [[Colon]], and none before` })
     .add({
-      behavior = `One space on both sides of every [[infix]] operator, [[SingleArrow]], and [[DoubleArrowRight]]; none between a [[prefix]] operator and its operand, nor between a [[postfix]] operator and the expression before it`,
+      behavior = `No space after [[GroupOpen]], [[ListOpen]], [[ReferenceOpen]], or [[ExecutionOpen]], and none before their closes`,
     })
+    .add({ behavior = `One space between a keyword and what follows it` })
+    .add({ behavior = `One space between a [[GroupClose]] and a [[BlockOpen]] after it` })
     .add({
-      behavior = `One space after each [[Comma]] and [[Colon]] and none before; none after [[GroupOpen]], [[ListOpen]], [[ReferenceOpen]], or [[ExecutionOpen]] and none before their closes`,
+      behavior = `No space after the [[LessThan]] and none before the [[GreaterThan]] of [[TypeParameters]], [[TypeArguments]], and [[Generic]]`,
     })
-    .add({
-      behavior = `One space between a keyword and what follows it, and between a closing [[GroupClose]] and a [[BlockOpen]]`,
-    })
-    .add({
-      behavior = `The [[LessThan]] and [[GreaterThan]] of [[TypeParameters]], [[TypeArguments]], and [[Generic]] are brackets, not operators: no space after the [[LessThan]] and none before the [[GreaterThan]]; [[TypeParameters]] attach to the [[Identifier]] before them and [[TypeArguments]] and [[Generic]] to the expression before them without a space`,
-    })
+    .add({ behavior = `[[TypeParameters]] attach to the [[Identifier]] before them without a space` })
+    .add({ behavior = `[[TypeArguments]] and [[Generic]] attach to the expression before them without a space` })
     .add({
       behavior = `A [[FunctionType]] is laid out as its [[Parameters]] are, then one space, the [[DoubleArrowRight]], one space, and the type`,
     })
@@ -71,15 +75,19 @@ fn format(tree: Tree): `The source of a tree, laid out the standard way` => stri
   @acceptanceCriteria
     .add({
       situation = `A [[List]], [[Object]], [[Type]], [[Arguments]], [[Parameters]], [[Items]], or [[TraitUses]] held a [[NewLine]] between its brackets in the source, or the line would exceed 120 characters`,
-      behavior = `It is multi-line: one item per line, each ending with a [[Comma]], the close on its own line`,
+      behavior = `It is multi-line: one item per line, each ending with a [[Comma]], and the close on its own line`,
     })
     .add({
       situation = `A [[List]], [[Object]], [[Type]], [[Arguments]], [[Parameters]], [[Items]], or [[TraitUses]] held no [[NewLine]] between its brackets in the source, and the line would not exceed 120 characters`,
-      behavior = `It stays on one line and a trailing [[Comma]] before the close is removed`,
+      behavior = `It stays on one line`,
+    })
+    .add({
+      situation = `A [[List]], [[Object]], [[Type]], [[Arguments]], [[Parameters]], [[Items]], or [[TraitUses]] held no [[NewLine]] between its brackets in the source, and the line would not exceed 120 characters`,
+      behavior = `A trailing [[Comma]] before its close is removed`,
     })
     .add({
       situation = `[[TypeParameters]], [[TypeArguments]], or the arguments of a [[Generic]] would make the line exceed 120 characters`,
-      behavior = `They are multi-line like [[Arguments]]: one item per line, each ending with a [[Comma]], the [[GreaterThan]] on its own line`,
+      behavior = `They are multi-line: one item per line, each ending with a [[Comma]], and the [[GreaterThan]] on its own line`,
     })
     .add({
       situation = `[[TypeParameters]], [[TypeArguments]], or the arguments of a [[Generic]] would not make the line exceed 120 characters`,

@@ -1,4 +1,3 @@
-use "../grammar/terminals/comment";
 use "./data";
 
 // Decision: each tool is an ordinary fn carrying this trait, so the tool list is the context
@@ -6,11 +5,18 @@ use "./data";
 // documentation because a [[Parameter]] has no place for a description of its own.
 
 trait tool: `Exposed to agents as one tool of the server` {
-  where (`The server lists its tools`) -> `{{@identifier}} is listed as elfie_{{@identifier}}, described by {{@definition}}, with one argument per parameter that is not the [[Session]], named and typed as the parameter is`;
-  where (`The server lists its tools, and a parameter of {{@identifier}} that is not the [[Session]] is neither optional nor has a default`) -> `The argument for that parameter is listed as required`;
-  where (`The server lists its tools, and a parameter of {{@identifier}} that is not the [[Session]] is optional or has a default`) -> `The argument for that parameter is listed as not required`;
-  where (`The fn has [[Documentation]] with a line that begins with a parameter's name and a colon`) -> `The rest of that line describes that argument`;
-  where (`A call names elfie_{{@identifier}}`) -> `The arguments are checked against the parameters, the fn is called with the session and them, and what it returns is the call's result`;
-  where (`An argument is missing, unknown, or of the wrong type`) -> `The result is an error naming the argument, and the fn is not called`;
-  where (`The fn fails`) -> `The result is an error carrying the failure, and the server goes on`;
+  where (`The server lists its tools`) -> `{{@identifier}} is listed as one [[Tool]]`;
+  where (`The server lists its tools`) -> `The [[Tool.name]] of {{@identifier}} is elfie_{{@identifier}}`;
+  where (`The server lists its tools`) -> `The [[Tool.description]] of {{@identifier}} is {{@definition}}`;
+  where (`The server lists its tools`) -> `The [[Tool.arguments]] of {{@identifier}} hold one [[ToolArgument]] per parameter that is not the [[Session]]`;
+  where (`The server lists its tools`) -> `The [[ToolArgument.name]] and [[ToolArgument.type]] of an argument of {{@identifier}} are the name and type of its parameter`;
+  where (`The server lists its tools`) -> `The [[ToolArgument.description]] of an argument of {{@identifier}} is the description of its parameter`;
+  where (`The server lists its tools`) and (`A parameter of {{@identifier}} that is not the [[Session]] is neither optional nor has a default`) -> `The [[ToolArgument.required]] of its argument is true`;
+  where (`The server lists its tools`) and (`A parameter of {{@identifier}} that is not the [[Session]] is optional or has a default`) -> `The [[ToolArgument.required]] of its argument is false`;
+  where (`A call names elfie_{{@identifier}}`) and (`Every argument it gives is a parameter of {{@identifier}}, of the parameter's type, and every required argument is given`) -> `{{@identifier}} is called with the session and the arguments`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} returns`) -> `The [[ToolResult]] it returns is the call's result`;
+  where (`A call names elfie_{{@identifier}}`) and (`An argument is missing, unknown, or of the wrong type`) -> `The result is an error naming the argument`;
+  where (`A call names elfie_{{@identifier}}`) and (`An argument is missing, unknown, or of the wrong type`) -> `{{@identifier}} is not called`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} fails`) -> `The result is an error carrying the failure`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} fails`) -> `The server goes on`;
 }

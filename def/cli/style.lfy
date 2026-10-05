@@ -10,10 +10,10 @@ use "elfie/system/process" as Process;
 // Decision: color never reaches a file, a pipe, JSON, or compile.log, so what a script or an agent
 // reads is the same text it read before color existed; only a person at a terminal sees escapes.
 
-enum ColorChoice: `When the CLI colors what it prints, as --color names it` {
-  auto = `auto`,
-  always = `always`,
-  never = `never`,
+enum ColorChoice: `When the CLI colors what it prints; each value is the word --color takes` {
+  auto: `Color a stream only when the environment and the stream allow it, as [[colorsOn]] decides` = `auto`,
+  always: `Color both streams` = `always`,
+  never: `Color neither stream` = `never`,
 }
 
 enum Tone: `What a piece of printed text means; its value is the ANSI SGR parameters that color it` {
@@ -25,11 +25,12 @@ enum Tone: `What a piece of printed text means; its value is the ANSI SGR parame
   muted: `Detail read only when wanted: counters, times, prefixes, dependencies, in dim` = `2`,
 }
 
+// Decision: CLICOLOR_FORCE keeps color on with auto, so a person can keep color through a pager.
 /// choice: what --color asked for
-/// isError: true for standard error, false for standard output
-fn colorsOn(choice: ColorChoice, isError: boolean): `Whether text printed to one stream is colored` => boolean {
+/// stream: the stream the text is printed to
+fn colorsOn(choice: ColorChoice, stream: Process.Stream): `Whether text printed to one stream is colored` => boolean {
   @acceptanceCriteria
-    .add({ situation = `[[choice]] is always`, behavior = `Returns true, whatever the environment says` })
+    .add({ situation = `[[choice]] is always`, behavior = `Returns true` })
     .add({ situation = `[[choice]] is never`, behavior = `Returns false` })
     .add({
       situation = [`[[choice]] is auto`, `[[Process.environment]] gives NO_COLOR as any text but the empty one`],
@@ -42,30 +43,33 @@ fn colorsOn(choice: ColorChoice, isError: boolean): `Whether text printed to one
     .add({
       situation = [
         `[[choice]] is auto`,
-        `[[Process.environment]] gives NO_COLOR as undefined or empty, and TERM as anything but dumb`,
+        `[[Process.environment]] gives NO_COLOR as undefined or empty`,
+        `[[Process.environment]] gives TERM as anything but dumb`,
         `[[Process.environment]] gives CLICOLOR_FORCE as any text but the empty one and 0`,
       ],
-      behavior = `Returns true, so a person can keep color through a pager`,
+      behavior = `Returns true`,
     })
     .add({
       situation = [
         `[[choice]] is auto`,
-        `[[Process.environment]] gives NO_COLOR as undefined or empty, and TERM as anything but dumb`,
+        `[[Process.environment]] gives NO_COLOR as undefined or empty`,
+        `[[Process.environment]] gives TERM as anything but dumb`,
         `[[Process.environment]] gives CLICOLOR_FORCE as undefined, empty, or 0`,
       ],
-      behavior = `Returns [[Process.isTerminal]] of [[isError]]`,
+      behavior = `Returns [[Process.isTerminal]] of [[stream]]`,
     });
 
   @test(
-    { input = [ColorChoice.always, false], expect = true },
-    { input = [ColorChoice.never, true], expect = false },
+    { input = [ColorChoice.always, Process.Stream.output], expect = true },
+    { input = [ColorChoice.never, Process.Stream.error], expect = false },
     {
-      input = [ColorChoice.auto, false],
+      input = [ColorChoice.auto, Process.Stream.output],
       expect = boolean@like(`false while standard output is piped and CLICOLOR_FORCE is not set`),
     },
   );
 }
 
+// Decision: the reset always follows painted text, so no color runs past it.
 /// text: what is printed
 /// tone: what it means
 /// on: whether the stream it goes to is colored, as [[colorsOn]] decides
@@ -73,13 +77,10 @@ fn paint(text: string, tone: Tone, on: boolean): `Text wrapped in the escapes th
   @acceptanceCriteria
     .add({
       situation = [`[[on]] is true`, `[[text]] is not empty`],
-      behavior = `Returns the escape character, [, the value of [[tone]], m, the text, and the escape character, [, 0, m; the reset always follows, so no color runs past the text`,
+      behavior = `Returns the escape character, [, the value of [[tone]], m, [[text]], and the escape character, [, 0, m`,
     })
     .add({ situation = `[[on]] is false`, behavior = `Returns [[text]] unchanged` })
-    .add({ situation = `[[text]] is empty`, behavior = `Returns [[text]] unchanged` })
-    .add({
-      behavior = `Adds nothing to [[text]] but escape sequences that begin with the escape character and [ and end with m`,
-    });
+    .add({ situation = `[[text]] is empty`, behavior = `Returns [[text]] unchanged` });
 
   @test(
     { input = [`ok`, Tone.success, true], expect = `\u001b[32mok\u001b[0m` },
@@ -96,10 +97,10 @@ fn padded(text: string, columns: number): `Text followed by spaces up to a width
       situation = `[[text]] takes fewer than [[columns]] columns`,
       behavior = `Appends spaces until the result takes [[columns]] columns`,
     })
-    .add({ situation = `[[text]] takes [[columns]] columns or more`, behavior = `Returns [[text]] unchanged, never cut` })
+    .add({ situation = `[[text]] takes [[columns]] columns or more`, behavior = `Returns [[text]] unchanged` })
     .add({ behavior = `Each character takes one column, however many bytes it has` })
     .add({
-      behavior = `Escape sequences that begin with the escape character and [ and end with m count for no columns`,
+      behavior = `Escape sequences that begin with the escape character and [ and end with m take no columns`,
     });
 
   @test(
@@ -125,7 +126,7 @@ fn duration(seconds: number): `A length of time, short enough to scan in a colum
       situation = `[[seconds]] is 3600 or more`,
       behavior = `Returns the whole hours, h, the remaining whole minutes as two digits, and m, as 1h02m`,
     })
-    .add({ behavior = `Every part is truncated, never rounded up, so 59.99 seconds is 59.9s and never 60.0s` });
+    .add({ behavior = `Every part is truncated, never rounded up` });
 
   @test(
     { input = [0.42], expect = `0.4s` },
@@ -139,11 +140,20 @@ fn duration(seconds: number): `A length of time, short enough to scan in a colum
 /// step: what a compile is doing
 fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Tone {
   @acceptanceCriteria
-    .add({ behavior = `accepted, reviewed, and globalReviewed are success` })
-    .add({ behavior = `rejected and failed are failure` })
-    .add({ behavior = `retrying, blocked, and clarification are warning` })
-    .add({ behavior = `requesting, compiling, checking, verifying, and globalVerifying are active` })
-    .add({ behavior = `planned and finished are subject` });
+    .add({
+      situation = `[[step]] is [[Step.accepted]], [[Step.reviewed]], or [[Step.globalReviewed]]`,
+      behavior = `Returns [[Tone.success]]`,
+    })
+    .add({ situation = `[[step]] is [[Step.rejected]] or [[Step.failed]]`, behavior = `Returns [[Tone.failure]]` })
+    .add({
+      situation = `[[step]] is [[Step.retrying]], [[Step.blocked]], or [[Step.clarification]]`,
+      behavior = `Returns [[Tone.warning]]`,
+    })
+    .add({
+      situation = `[[step]] is [[Step.requesting]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], or [[Step.globalVerifying]]`,
+      behavior = `Returns [[Tone.active]]`,
+    })
+    .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns [[Tone.subject]]` });
 
   @test(
     { input = [Step.accepted], expect = Tone.success },
@@ -153,15 +163,24 @@ fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Ton
   );
 }
 
+// Decision: each step has a glyph, so the eye finds the outcomes in a long compile without reading.
 /// step: what a compile is doing
-fn glyphOf(step: Step): `One character that marks a progress line's step, so the eye finds the outcomes without reading` => string {
+fn glyphOf(step: Step): `One character that marks a progress line's step` => string {
   @acceptanceCriteria
-    .add({ behavior = `planned and finished are ◆` })
-    .add({ behavior = `requesting and checking are ·` })
-    .add({ behavior = `compiling, verifying, and globalVerifying are ▸` })
-    .add({ behavior = `accepted, reviewed, and globalReviewed are ✓` })
-    .add({ behavior = `rejected and failed are ✗` })
-    .add({ behavior = `retrying is ↻, blocked is ■, and clarification is ?` });
+    .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns ◆` })
+    .add({ situation = `[[step]] is [[Step.requesting]] or [[Step.checking]]`, behavior = `Returns ·` })
+    .add({
+      situation = `[[step]] is [[Step.compiling]], [[Step.verifying]], or [[Step.globalVerifying]]`,
+      behavior = `Returns ▸`,
+    })
+    .add({
+      situation = `[[step]] is [[Step.accepted]], [[Step.reviewed]], or [[Step.globalReviewed]]`,
+      behavior = `Returns ✓`,
+    })
+    .add({ situation = `[[step]] is [[Step.rejected]] or [[Step.failed]]`, behavior = `Returns ✗` })
+    .add({ situation = `[[step]] is [[Step.retrying]]`, behavior = `Returns ↻` })
+    .add({ situation = `[[step]] is [[Step.blocked]]`, behavior = `Returns ■` })
+    .add({ situation = `[[step]] is [[Step.clarification]]`, behavior = `Returns ?` });
 
   @test(
     { input = [Step.accepted], expect = `✓` },
@@ -173,7 +192,12 @@ fn glyphOf(step: Step): `One character that marks a progress line's step, so the
 /// severity: how bad a diagnostic is
 fn severityTone(severity: Severity): `The tone a diagnostic's severity is painted in` => Tone {
   @acceptanceCriteria
-    .add({ behavior = `error is failure, warning is warning, information and hint are active` });
+    .add({ situation = `[[severity]] is [[Severity.error]]`, behavior = `Returns [[Tone.failure]]` })
+    .add({ situation = `[[severity]] is [[Severity.warning]]`, behavior = `Returns [[Tone.warning]]` })
+    .add({
+      situation = `[[severity]] is [[Severity.information]] or [[Severity.hint]]`,
+      behavior = `Returns [[Tone.active]]`,
+    });
 
   @test({ input = [Severity.error], expect = Tone.failure }, { input = [Severity.hint], expect = Tone.active });
 }
@@ -181,7 +205,9 @@ fn severityTone(severity: Severity): `The tone a diagnostic's severity is painte
 /// status: what a verifier found
 fn statusTone(status: ReviewStatus): `The tone a review's status is painted in` => Tone {
   @acceptanceCriteria
-    .add({ behavior = `satisfied is success, violated is failure, unverifiable is warning` });
+    .add({ situation = `[[status]] is [[ReviewStatus.satisfied]]`, behavior = `Returns [[Tone.success]]` })
+    .add({ situation = `[[status]] is [[ReviewStatus.violated]]`, behavior = `Returns [[Tone.failure]]` })
+    .add({ situation = `[[status]] is [[ReviewStatus.unverifiable]]`, behavior = `Returns [[Tone.warning]]` });
 
   @test(
     { input = [ReviewStatus.satisfied], expect = Tone.success },
@@ -190,12 +216,16 @@ fn statusTone(status: ReviewStatus): `The tone a review's status is painted in` 
 }
 
 /// reason: why a unit needs generating, or undefined when it is up to date
-fn reasonTone(reason: Reason | undefined): `The tone a unit's reason is painted in` => Tone {
+fn reasonTone(reason: Reason | undefined): `The tone a unit's reason, or up to date, is painted in` => Tone {
   @acceptanceCriteria
-    .add({ behavior = `requested is active and fresh is success` })
-    .add({ behavior = `changed, requirements, and dependency are warning` })
-    .add({ behavior = `violated is failure` })
-    .add({ behavior = `undefined, printed as up to date, is muted` });
+    .add({ situation = `[[reason]] is [[Reason.requested]]`, behavior = `Returns [[Tone.active]]` })
+    .add({ situation = `[[reason]] is [[Reason.fresh]]`, behavior = `Returns [[Tone.success]]` })
+    .add({
+      situation = `[[reason]] is [[Reason.changed]], [[Reason.requirements]], or [[Reason.dependency]]`,
+      behavior = `Returns [[Tone.warning]]`,
+    })
+    .add({ situation = `[[reason]] is [[Reason.violated]]`, behavior = `Returns [[Tone.failure]]` })
+    .add({ situation = `[[reason]] is undefined`, behavior = `Returns [[Tone.muted]]` });
 
   @test(
     { input = [Reason.changed], expect = Tone.warning },
@@ -204,17 +234,20 @@ fn reasonTone(reason: Reason | undefined): `The tone a unit's reason is painted 
   );
 }
 
+// Decision: a count of 0 is muted, so a summary shows at a glance which counts matter.
 /// count: how many
 /// label: what was counted, as rejected
 /// tone: the tone the count is painted in when it is not 0
 /// on: whether the stream is colored
 fn tally(count: number, label: string, tone: Tone, on: boolean): `A count and what it counts, painted only when it is worth noticing` => string {
   @acceptanceCriteria
-    .add({ behavior = `The text is the count, a space, and [[label]]` })
-    .add({ situation = `[[count]] is not 0`, behavior = `Returns [[paint]] of the text in [[tone]]` })
+    .add({
+      situation = `[[count]] is not 0`,
+      behavior = `Returns [[paint]] of [[count]], a space, and [[label]], in [[tone]]`,
+    })
     .add({
       situation = `[[count]] is 0`,
-      behavior = `Returns [[paint]] of the text in muted, so a summary shows at a glance which counts matter`,
+      behavior = `Returns [[paint]] of [[count]], a space, and [[label]], in [[Tone.muted]]`,
     });
 
   @test(

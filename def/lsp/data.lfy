@@ -9,7 +9,6 @@ d Document: `A file the editor holds open, whose text the editor owns until it c
 enum Encoding: `How the client counts columns` {
   utf8 = `utf-8`,
   utf16 = `utf-16`,
-  utf32 = `utf-32`,
 }
 
 d Session: `One editor's connection` {
