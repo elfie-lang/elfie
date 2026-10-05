@@ -21,11 +21,10 @@ use "elfie/target/runtime";
 use "elfie/target/target";
 
 fn load(root: string): `Load a project from disk and bind it` => Workspace {
-  // Passes
+  // Workspace
   @acceptanceCriteria
     .add({
       behavior = [
-        `Loading reads the project layout, discovers every file, orders the files by what they use, then binds them once`,
         `[[Workspace.root]] is [[root]]`,
         `Loading never stops for a failure`,
         `Every failure while loading is a [[LoadProblem]] or a [[Problem]], and the rest of the project still loads`,
@@ -84,7 +83,10 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
       ],
     })
     .add({
-      behavior = `[[File.path]] is the file's path relative to [[Workspace.root]]: [[Path.join]] of the directory listed and the path [[FileSystem.list]] gave under it; [[File.tree]] is what [[Parser.parse]] gives for [[Lexer.lex]] of [[FileSystem.read]] of the file with that path as the file, satisfying [[SourceFile]]`,
+      behavior = `[[File.path]] is the file's path relative to [[Workspace.root]]: [[Path.join]] of the directory listed and the path [[FileSystem.list]] gave under it`,
+    })
+    .add({
+      behavior = `[[File.tree]] is the file's tree, rooted at [[SourceFile]], whose tokens name [[File.path]] as their file: [[Parser.parse]] of [[Lexer.lex]] of the text [[FileSystem.read]] gives, with [[File.path]] as the file`,
     })
     .add({
       situation = `[[FileSystem.read]] of a file is undefined`,
@@ -95,7 +97,7 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   @acceptanceCriteria
     .add({
       situation = `A [[Use]] names a path beginning with a dot`,
-      behavior = `It is [[Path.join]] of [[Path.parent]] of the file that holds it and the path, then [[Path.normalize]]`,
+      behavior = `The path is resolved against the directory of the file that holds it, with . segments removed and .. segments resolved textually: [[Path.normalize]] of [[Path.join]] of [[Path.parent]] of that file and the path`,
     })
     .add({
       situation = `A [[Use]] names a path beginning with anything else`,
@@ -170,7 +172,7 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   @acceptanceCriteria
     .add({
       behavior = [
-        `After binding, every ace const of a project file whose value is a [[Targets.Target]] gives one [[Target]]: its declared type is [[Targets.Target]], or its value is a call of a function whose output is [[Targets.Target]]`,
+        `Every ace const of a project file whose value is a [[Targets.Target]] gives one [[Target]]: its declared type is [[Targets.Target]], or its value is a call of a function whose output is [[Targets.Target]]`,
         `[[Target.identifier]] is the const's name and [[Target.declaration]] is the const's entity`,
         `A const of a file of a package gives no target, whatever it holds`,
       ],
@@ -243,7 +245,7 @@ fn load(root: string): `Load a project from disk and bind it` => Workspace {
   // Binding
   @acceptanceCriteria
     .add({
-      behavior = `[[Workspace.model]] is [[Binder.bind]] of [[Workspace.files]], called once, with each file's [[Source.origin]] set, [[Origin.prelude]] for main.lfy of the package elfie, [[Origin.library]] for its other files, and [[Origin.program]] for every other file, so that the prelude scope is the file scope of the main file of the package elfie`,
+      behavior = `[[Workspace.model]] is one [[Binder.bind]] of every file of the program, [[Workspace.files]], each with its [[Source.origin]], so the model answers for every file and its prelude scope is the file scope of the main file of the package elfie`,
     });
 
   @test(

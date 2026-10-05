@@ -1,5 +1,6 @@
 use "../interpret/data";
 use "../model/data";
+use "../model/main" as Binder;
 use "../workspace/data";
 use "elfie/prelude/builtin";
 use "elfie/system/path";
@@ -55,10 +56,53 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   $source: `The source file's path, relative to [[Workspace.root]]` = string;
   $hash: `SHA-256 of [[Unit.text]] of the unit when the output was accepted, as lowercase hex, so an edit that leaves the lowered code the same, such as a comment, changes nothing` = string;
   $requirements: `SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line breaks, when the output was accepted` = string;
-  $signature: `SHA-256 of the unit's interface text, as interfaceOf spells it, when the output was accepted` = string;
+  $signature: `SHA-256 of the unit's interface text when the output was accepted, as lowercase hex` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = object;
   $generated: `When the output was accepted: [[Time.Instant.rfc3339]] of [[Time.now]] at acceptance` = string;
   $markers: `Every [[Marker]] in the output, in output order, with [[Marker.line]] and [[Marker.end]] derived` = Marker[];
+
+  // Interface text
+  @acceptanceCriteria
+    .add({
+      behavior = `The interface text [[SourceMap.signature]] hashes is one line per entity of [[Unit.entities]], in the order of [[Unit.entities]], each line ended by a line break, and nothing else`,
+    })
+    .add({
+      situation = `An entity of [[Unit.entities]] is a data, type, trait, or enum`,
+      behavior = `Its line is followed by one line per member or enum member it declares, in declaration order, each beginning with two spaces`,
+    })
+    .add({
+      behavior = `A line begins with a hyphen, a space, the identifier between backticks, a space, and the kind between parentheses`,
+    })
+    .add({
+      situation = `The entity of a line has no identifier`,
+      behavior = `The word anonymous stands for its identifier`,
+    })
+    .add({
+      behavior = `A kind is spelled data: DataDeclaration, type: TypeDeclaration, trait: TraitDeclaration, enum: EnumDeclaration, agent function: AgentFunctionDeclaration for a fn, function: FunctionDeclaration for a function, variable: VariableDeclaration, alias: AliasDeclaration, external: ExternalDeclaration, member, or enum member`,
+    })
+    .add({
+      behavior = `After the kind, a line holds, in this order and each only when its entity has one: the definition part, the type part, the parameters part, and the output part`,
+    })
+    .add({ behavior = `The definition part is a colon, a space, and the definition` })
+    .add({
+      behavior = `The type part is a space, an em dash (—), a space, the word type, a space, and the type between backticks`,
+    })
+    .add({
+      behavior = `The parameters part is a space, an em dash, a space, the word parameters, a space, and the parameters in order between parentheses, joined by a comma and a space`,
+    })
+    .add({
+      behavior = `A parameter in the parameters part is spelled as its name, then, when it has a type, a colon, a space, and its type`,
+    })
+    .add({
+      behavior = `The output part is a space, an em dash, a space, the word output, a space, and the output between backticks`,
+    })
+    .add({
+      behavior = `Wherever the interface text spells a type, it spells it as [[Binder.criteriaOf]] would, and an entity of the elfie package by its identifier alone, such as List or [[Path]], never by a path or a module name`,
+    })
+    .add({
+      situation = `A change to the unit's file leaves every line of its interface text the same, such as a new criterion or a moved line`,
+      behavior = `[[SourceMap.signature]] is the same as before the change, so dependents are not regenerated for it`,
+    });
 }
 
 d Unit: `The work the compiler does as one piece: one source file for one target, with any entities moved into it from other files` {
@@ -148,7 +192,7 @@ enum ChangeKind: `What differs for one entity between a unit's file as last acce
   added = `the entity is declared now and was not before`,
   removed = `the entity was declared before and is not now`,
   definition = `its definition differs`,
-  declaredType = `its type differs, as interfaceOf spells it`,
+  declaredType = `its type differs, as the interface text of [[SourceMap.signature]] spells it`,
   signature = `its parameters or its output differ`,
   criteria = `its criteria differ in count or in the text of any`,
   tests = `its tests differ`,

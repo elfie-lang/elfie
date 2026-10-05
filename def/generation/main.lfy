@@ -3,7 +3,6 @@ use "../interpret/data";
 use "../interpret/main" as Interpreter;
 use "../lexer/data";
 use "../model/data";
-use "../model/main" as Binder;
 use "../workspace/data";
 use "../workspace/main" as Loader;
 use "./data";
@@ -23,25 +22,9 @@ use "elfie/target/target";
 // order of units can build: its entities move whole into the unit of the lowest file of the cycle.
 
 fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may rely on, as one text whose hash tells whether it changed` => string {
-  @acceptanceCriteria
-    .add({
-      behavior = `One line per entity of [[Unit.entities]] in file order: its identifier, its kind, its definition, and its type, each as [[Binder.criteriaOf]] would spell them`,
-    })
-    .add({
-      situation = `An entity of [[Unit.entities]] is a fn`,
-      behavior = `Its line also gives its parameters with their types and its output, after its type, each as [[Binder.criteriaOf]] would spell them`,
-    })
-    .add({
-      situation = `An entity of [[Unit.entities]] is a data, type, trait, or enum`,
-      behavior = `After the line giving its identifier, kind, definition, and type, one line per member or enum member it declares, in order: the member's name, definition, and type, since a dependent relies on those as much as on the declaration itself`,
-    })
-    .add({
-      behavior = `Wherever the text spells a type, it spells an entity of the elfie package by its identifier alone, such as List or [[Path]], never by a path or a module name`,
-    })
-    .add({
-      situation = `A change to the unit's file leaves every line the same, such as a new criterion or a moved line`,
-      behavior = `The text is the same as before the change, so dependents are not regenerated for it`,
-    });
+  @acceptanceCriteria.add({
+    behavior = `Returns the interface text of [[unit]] that [[SourceMap.signature]] hashes, exactly as [[SourceMap]] spells it`,
+  });
 }
 
 /// violated: the stems of units whose outputs answer for a global criterion or test the last global review found violated
@@ -621,7 +604,11 @@ fn sourceMapsOf(workspace: Workspace, target?: string): `Every source map record
     })
     .add({
       situation = `[[target]] is set`,
-      behavior = `Only the folder of that target is read; the map files of other targets are never opened`,
+      behavior = `Returns only the source maps of the map files under the folder of that target`,
+    })
+    .add({
+      situation = `[[target]] is set`,
+      behavior = `A map file of another target, even one that cannot be read, does not change the result`,
     })
     .add({
       situation = `[[Files.exists]] does not find the [[SourceMap.output]] of a recorded map`,
@@ -645,7 +632,8 @@ fn sourceMapsOf(workspace: Workspace, target?: string): `Every source map record
       ],
       behavior = `That target has no source maps`,
     })
-    .add({ behavior = `Nothing is written, and nothing under elfie-compile/cache is read` });
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `Deleting elfie-compile/cache changes nothing it returns, and so no plan` });
 
   @test(
     {
