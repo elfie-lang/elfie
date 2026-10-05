@@ -1,7 +1,6 @@
 use "./builtin";
 use "./entity";
 
-// Decision: member tests put the receiver first in input.
 // Decision: apply is a top-level fn because its arguments need a type parameter of their own and
 // an inline function cannot declare one; the member refers to it, and its criteria and tests
 // live on the fn with the trait as the first parameter. The parameter is named subject because
@@ -28,6 +27,7 @@ fn apply<A>(subject: Trait, target: Entity | Entity[], ...arguments: A[]) is bui
   where (`The trait has an extends clause`) -> `Each extended trait is applied to the target too, up the whole chain, with its arguments evaluated from the extending trait's parameters`;
   where (`The trait has an extends clause`) -> `The extended traits' value setters are evaluated before the extending trait's`;
   where (`A trait is reached more than once for one entity, through several extends paths or applications, with equal arguments`) -> `It is applied once, at its first application`;
+  where (`There are more arguments than the trait has parameters and none of them is spread, or fewer than it has parameters that are neither optional nor spread`) -> `A problem at the call names the trait`;
   @test({
     input = [Trait@like(`a trait t with a member x of type string`), Entity@like(`a data A with no members`)],
     expect = Trait@like(`t, with A among its entities and A now having the member x`),
@@ -46,8 +46,9 @@ d Layer<A> is builtin: `A trait chosen as a layer of a target, with arguments fo
 /// subject: the trait chosen
 /// arguments: one value per parameter of the trait, in order
 fn layer<A>(subject: Trait, ...arguments: A[]) is builtin: `A trait chosen as a layer of a target` => Layer<A> {
-  where (`Called`) -> `Returns a [[Layer]] holding the trait and the arguments, evaluated; nothing is applied until a target holding it is declared`;
-  where (`The number of arguments is not the number of the trait's parameters`) -> `A problem at the call names the trait`;
+  where (`Called`) -> `Returns a [[Layer]] holding the trait and the arguments, evaluated`;
+  where (`Called`) -> `The call applies the trait to nothing`;
+  where (`There are more arguments than the trait has parameters and none of them is spread, or fewer than it has parameters that are neither optional nor spread`) -> `A problem at the call names the trait`;
   @test({
     input = [Trait@like(`a trait c with parameters name and root`), "a", "crates/a"],
     expect = Layer@like(`c, with the arguments a and crates/a`),

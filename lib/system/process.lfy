@@ -1,6 +1,5 @@
 use "../prelude/builtin";
 
-// Decision: every member test puts the receiver first in input, then the arguments.
 // Decision: a command is one string for the platform shell, not a program and an argument list,
 // because the commands the compiler runs come from elfie.json and scripts as one line of text.
 // Decision: the test of stream passes a real inline function and says what it must have been
@@ -19,20 +18,30 @@ d Exit is builtin: `What a finished command left` {
   }
 }
 
+enum Stream: `One of the two text streams a process writes` {
+  output = `standard output`,
+  error = `standard error`,
+}
+
 /// command: the command line, for the platform shell
 /// input: its standard input; empty when left out
 /// directory: its working directory; the current one when left out
 /// environment: variables added to the inherited environment, by name; an entry replaces an inherited one
 fn run(command: string, input?: string, directory?: string, environment?: object) is builtin: `Runs a command through the platform shell and waits for it, capturing its output whole` => Exit {
-  where (`Any call`) -> `[[command]] is run by the platform shell (sh -c on Unix, cmd /C on Windows) and the call returns only when it has exited`;
-  where (`[[input]] is set`) -> `It is written to the command's standard input, which is then closed`;
+  where (`[[input]] is set`) -> `[[input]] is written to the command's standard input`;
+  where (`[[input]] is set`) -> `The command's standard input is closed once [[input]] is written`;
   where (`[[input]] is unset`) -> `The command's standard input is empty`;
-  where (`[[directory]] is set and relative`) -> `The command runs with it as its working directory, relative to the current directory`;
-  where (`[[directory]] is set and absolute`) -> `The command runs with it as its working directory`;
+  where (`[[directory]] is set`) -> `The command runs with [[directory]] as its working directory`;
+  where (`[[directory]] is set`) and (`[[directory]] is relative`) -> `[[directory]] is resolved against the current directory`;
   where (`[[directory]] is unset`) -> `The command runs with the current directory as its working directory`;
-  where (`[[environment]] is set`) -> `Each of its entries is set in the command's environment on top of the inherited one; nothing is removed from the inherited environment`;
-  where (`The command exits`) -> `[[Exit.code]] is its code, and [[Exit.stdout]] and [[Exit.stderr]] hold everything it wrote, decoded as UTF-8`;
-  where (`The shell cannot be started, or [[directory]] does not exist`) -> `Returns an [[Exit]] with code -1 and the failure in [[Exit.stderr]]`;
+  where (`[[environment]] is set`) -> `Each of its entries is set in the command's environment on top of the inherited one`;
+  where (`[[environment]] is set`) -> `No variable of the inherited environment is removed`;
+  where (`The shell cannot be started, or [[directory]] does not exist`) -> `Returns an [[Exit]] whose [[Exit.code]] is -1`;
+  where (`The shell cannot be started, or [[directory]] does not exist`) -> `[[Exit.stderr]] describes the failure`;
+  @acceptanceCriteria
+    .add({ behavior = `[[command]] is run by the platform shell: sh -c on Unix, cmd /C on Windows` })
+    .add({ behavior = `The call returns only once the command has exited` })
+    .add({ behavior = `[[Exit.stdout]] and [[Exit.stderr]] are decoded as UTF-8` });
   @test(
     { input = [`echo hi`], expect = { code = 0, stdout = `hi\n`, stderr = `` } },
     { input = [`exit 3`], expect = Exit@like(`code 3`) },
@@ -52,24 +61,27 @@ fn run(command: string, input?: string, directory?: string, environment?: object
 /// input: its standard input; empty when left out
 /// directory: its working directory; the current one when left out
 /// environment: variables added to the inherited environment, by name; an entry replaces an inherited one
-/// onLine: called with each line as it arrives and a boolean that is true for standard error, false for standard output
+/// onLine: called with each line as it arrives and the [[Stream]] it was written to
 fn stream(
   command: string,
   input?: string,
   directory?: string,
   environment?: object,
-  onLine?: (line: string, isError: boolean) => undefined,
+  onLine?: (line: string, stream: Stream) => undefined,
 ) is builtin: `Runs a command as run does, passing each line of its output to onLine as it arrives` => Exit {
-  where (`Any call`) -> `Behaves as [[run]] with the same arguments, and returns the same [[Exit]], its output still held whole`;
-  where (`[[onLine]] is set and the command writes a line to standard output or standard error`) -> `[[onLine]] is called with the line, without its line ending, and whether it came from standard error, before the call returns and in the order the lines arrived`;
-  where (`[[onLine]] is set and the command ends with an unfinished line`) -> `That text is passed to [[onLine]] as a line, as each finished line is`;
-  where (`[[onLine]] is unset`) -> `Behaves exactly as [[run]]`;
+  where (`[[onLine]] is set`) and (`The command writes a line to standard output or standard error`) -> `[[onLine]] is called once with the line, without its line ending, and the [[Stream]] it was written to`;
+  where (`[[onLine]] is set`) and (`The command writes a line to standard output or standard error`) -> `[[onLine]] is called for the line before the [[Exit]] is returned`;
+  where (`[[onLine]] is set`) -> `[[onLine]] receives the lines in the order they arrived`;
+  where (`[[onLine]] is set`) and (`The command ends a stream with text after its last line ending`) -> `[[onLine]] is called with that text and the [[Stream]] it was written to`;
+  @acceptanceCriteria
+    .add({ behavior = `Runs [[command]] as [[run]] does with the same arguments` })
+    .add({
+      behavior = `Returns the [[Exit]] that [[run]] would, with the whole output in [[Exit.stdout]] and [[Exit.stderr]]`,
+    });
   @test(
     {
-      input = [`echo a; echo b >&2`, undefined, undefined, undefined, (line, isError) => undefined],
-      expect = Exit@like(
-        `code 0, stdout a and a newline, stderr b and a newline, and onLine called with a and false, then b and true`,
-      ),
+      input = [`echo a; echo b >&2`, undefined, undefined, undefined, (line, stream) => undefined],
+      expect = Exit@like(`onLine was called with a and output, then with b and error`),
     },
     { input = [`echo hi`], expect = { code = 0, stdout = `hi\n`, stderr = `` } },
   );
@@ -86,26 +98,23 @@ fn environment(name: string) is builtin: `The value of an environment variable; 
 }
 
 fn currentDirectory() is builtin: `The process's working directory, as an absolute path` => string {
-  where (`Called`) -> `Returns the directory relative paths resolve against, absolute, with / as the separator`;
-  @test({ input = [], expect = string@like(`An absolute path of a directory that exists`) });
+  @acceptanceCriteria
+    .add({ behavior = `Returns the directory relative paths resolve against` })
+    .add({ behavior = `The result has / as its separator` });
 }
 
 /// code: the exit code the process ends with
 fn exit(code: number) is builtin: `Ends the process with an exit code; never returns` => undefined {
   @acceptanceCriteria
     .add({
-      situation = `Called`,
-      behavior = `The process ends at once with [[code]]; standard output and standard error are flushed first, and nothing after the call runs`,
+      behavior = `The process ends at once with [[code]] as its exit code`,
       sideEffects = [`The process ends`],
-    });
+    })
+    .add({ behavior = `Standard output and standard error are flushed before the process ends` });
 }
 
-/// isError: true to ask about standard error, false for standard output
-fn isTerminal(isError: boolean) is builtin: `Whether standard output, or standard error, is written to a terminal rather than a file or a pipe` => boolean {
-  where (`The stream is attached to a terminal`) -> `Returns true`;
-  where (`The stream is redirected to a file, a pipe, or nothing`) -> `Returns false`;
-  @test(
-    { input = [false], expect = boolean@like(`true in a terminal, false when standard output is piped`) },
-    { input = [true], expect = boolean@like(`true in a terminal, false when standard error is redirected`) },
-  );
+/// stream: the stream asked about
+fn isTerminal(stream: Stream) is builtin: `Whether a stream is written to a terminal rather than a file or a pipe` => boolean {
+  where (`[[stream]] is attached to a terminal`) -> `Returns true`;
+  where (`[[stream]] is redirected to a file, a pipe, or nothing`) -> `Returns false`;
 }

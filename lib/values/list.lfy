@@ -1,8 +1,6 @@
 use "../prelude/builtin";
 use "./number";
 
-// Decision: every member test puts the receiver first in input, then the operation's arguments.
-// Decision: only push changes the receiver; every other operation leaves it as it was and returns a new value.
 // Decision: map and reduce need a type parameter of their own and flat a receiver of List<List<T>>,
 // neither of which an inline function can declare, so each is a top-level fn taking the list first;
 // the member refers to it, and its criteria and tests live on the fn, receiver still first.
@@ -10,7 +8,8 @@ use "./number";
 // passes both along.
 
 d List<T> is builtin: `An ordered sequence of values` {
-  where (`A list is written`) -> `Items go in square brackets, such as [a, b]; ...a inside the brackets spreads a's items in place, such as [...a, ...b]`;
+  where (`A list is written`) -> `Items go in square brackets, such as [a, b]`;
+  where (`...a is written inside the brackets of a list`) -> `The items of a are spread in place, such as [...a, ...b]`;
   where (`A list is indexed with .[i]`) and (`i is in range`) -> `Yields the item at i counting from 0`;
   where (`A list is indexed with .[i]`) and (`i is out of range`) -> `Yields undefined`;
   where (`A list is indexed with a range .[a ... b]`) -> `Yields a new list of the items from a up to but not including b`;
@@ -18,6 +17,9 @@ d List<T> is builtin: `An ordered sequence of values` {
   where (`A for loop with of visits a list`) -> `It visits the indices`;
   where (`A for loop written (const item, index from list) visits a list`) -> `It visits both the items and the indices`;
   where (`A type is written T[]`) -> `It is [[List]] with T as its one type argument`;
+  @acceptanceCriteria
+    .add({ behavior = `No member but [[List.push]] changes the list it is called on` })
+    .add({ behavior = `Every member but [[List.push]] that yields a list yields a new one` });
 
   $length: `The count of items` = number;
   with List$length {
@@ -71,7 +73,6 @@ d List<T> is builtin: `An ordered sequence of values` {
   }
   $push: `Appends the item to the list itself and yields the new length` = (item: T) => number;
   with List$push {
-    where (`Called`) -> `The receiver is changed in place: it gains the item at its end`;
     @test({ input = [[1], 2], expect = 2 });
     @test({ input = [[], "a"], expect = 1 });
   }
@@ -86,17 +87,8 @@ d List<T> is builtin: `An ordered sequence of values` {
     @test({ input = [[1, 2, 3], 0, 2], expect = [1, 2] });
   }
   $first: `The first item, or undefined when empty` = () => .[0];
-  with List$first {
-    @test({ input = [[7, 8]], expect = 7 });
-  }
   $last: `The last item, or undefined when empty` = () => .[.length - 1];
-  with List$last {
-    @test({ input = [[7, 8]], expect = 8 });
-  }
   $isEmpty: `Whether there are no items` = () => .length == 0;
-  with List$isEmpty {
-    @test({ input = [[]], expect = true });
-  }
   /// compare: negative when a goes first, positive when b does, zero when either
   $sort: `The items in order` = (compare?: (a: T, b: T) => number) => T[];
   with List$sort {
@@ -116,7 +108,7 @@ d List<T> is builtin: `An ordered sequence of values` {
   /// predicate: whether the item at the index counts
   $some: `Whether the predicate accepts any item` = (predicate: (item: T, index: number) => boolean) => boolean;
   with List$some {
-    where (`An item is undefined`) -> `It is passed to the predicate like any other item, and the result is true when the predicate accepts it`;
+    where (`An item is undefined`) -> `It is passed to the predicate like any other item`;
     @test({ input = [[1, 2], (x) => x > 1], expect = true });
     @test({ input = [[1, undefined], (x) => x == undefined], expect = true });
     @test({ input = [[], (x) => true], expect = false });
@@ -124,7 +116,7 @@ d List<T> is builtin: `An ordered sequence of values` {
   /// predicate: whether the item at the index counts
   $every: `Whether the predicate accepts every item` = (predicate: (item: T, index: number) => boolean) => boolean;
   with List$every {
-    where (`An item is undefined`) -> `It is passed to the predicate like any other item, and the result is false when the predicate rejects it`;
+    where (`An item is undefined`) -> `It is passed to the predicate like any other item`;
     @test({ input = [[1, 2], (x) => x > 1], expect = false });
     @test({ input = [[1, undefined], (x) => x != undefined], expect = false });
     @test({ input = [[], (x) => false], expect = true });
@@ -132,7 +124,7 @@ d List<T> is builtin: `An ordered sequence of values` {
   $unique: `The items with later repeats dropped, the first occurrence kept` = () => T[];
   with List$unique {
     where (`Items are compared`) -> `Equality is that of ==: without casting`;
-    where (`Called`) -> `The kept items are in the order they have in the list`;
+    @acceptanceCriteria.add({ behavior = `The kept items are in the order they have in the list` });
     @test({ input = [[1, 2, 1, 3, 2]], expect = [1, 2, 3] });
     @test({ input = [["1", 1, "1"]], expect = ["1", 1] });
   }
@@ -142,7 +134,8 @@ d List<T> is builtin: `An ordered sequence of values` {
 /// list: the receiver
 /// transform: the replacement of the item at the index
 fn map<T, U>(list: List<T>, transform: (item: T, index: number) => U) is builtin: `Each item of the list transformed, in order` => List<U> {
-  where (`The list has items`) -> `Calls transform once per item with the item and its index, and returns the results in the same order`;
+  where (`The list has items`) -> `Calls transform once per item, with the item and its index`;
+  where (`The list has items`) -> `Returns the results in the order of the items`;
   where (`The list is empty`) -> `Returns an empty list without calling transform`;
   @test({ input = [[1, 2], (x) => x + 1], expect = [2, 3] });
   @test({ input = [[], (x) => x], expect = [] });
@@ -150,7 +143,8 @@ fn map<T, U>(list: List<T>, transform: (item: T, index: number) => U) is builtin
 
 /// list: the receiver, whose items are lists
 fn flat<T>(list: List<List<T>>) is builtin: `The items of each item of the list, one level deep` => List<T> {
-  where (`The list has items`) -> `Returns the items of each item in order, one level deep, so an item's own items that are lists stay lists`;
+  where (`The list has items`) -> `Returns the items of each item, in order`;
+  where (`An item of an item is itself a list`) -> `It stays a list in the result`;
   where (`The list is empty`) -> `Returns an empty list`;
   @test({ input = [[[1], [2, [3]]]], expect = [1, 2, [3]] });
   @test({ input = [[[], [1]]], expect = [1] });
@@ -160,7 +154,10 @@ fn flat<T>(list: List<List<T>>) is builtin: `The items of each item of the list,
 /// reducer: the next accumulated value from the one so far and the item at the index
 /// initial: the accumulated value before the first item
 fn reduce<T, U>(list: List<T>, reducer: (accumulated: U, item: T, index: number) => U, initial: U) is builtin: `One value built by folding the reducer over the list's items from initial` => U {
-  where (`The list has items`) -> `Calls reducer once per item in order, with what the previous call returned, initial for the first, and yields what the last call returned`;
+  where (`The list has items`) -> `Calls reducer once per item, in order, with the item and its index`;
+  where (`The list has items`) -> `The first call receives initial as the accumulated value`;
+  where (`The list has more than one item`) -> `Each later call receives what the previous call returned as the accumulated value`;
+  where (`The list has items`) -> `Yields what the last call returned`;
   where (`The list is empty`) -> `Yields initial without calling reducer`;
   @test({ input = [[1, 2, 3], (sum, x) => sum + x, 0], expect = 6 });
   @test({ input = [[], (sum, x) => sum + x, 5], expect = 5 });

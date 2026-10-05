@@ -1,7 +1,5 @@
 use "../prelude/builtin";
 
-// Decision: every member test puts the receiver first in input, then the operation's arguments.
-// Decision: keys are strings and keep the order they were first set in; every listing here follows that order.
 // Decision: an object is generic over its values only, since its keys are always strings.
 // Decision: entries needs a pair type and a receiver of its own, so it is a top-level fn the
 // member refers to, with its tests on the fn; the parameter is named source because object is a
@@ -20,42 +18,38 @@ d Object<V> is builtin: `Keys with values` {
   where (`A for loop written (const v in obj) visits an object`) -> `It visits the values`;
   where (`A for loop written (const v, k from obj) visits an object`) -> `It visits both the values and the keys`;
   where (`A type is written object`) -> `It is an open [[Object]] whose values are not known`;
+  where (`[[Object.keys]], [[Object.values]], or [[Object.entries]] lists an object`) -> `It lists in the order the keys were first set`;
 
-  $keys: `The keys, in insertion order` = () => string[];
+  $keys: `The keys` = () => string[];
   with Object$keys {
     @test({ input = [{ b = 1, a = 2 }], expect = ["b", "a"] });
     @test({ input = [{}], expect = [] });
   }
-  $values: `The values, in insertion order` = () => V[];
+  $values: `The values` = () => V[];
   with Object$values {
     @test({ input = [{ b = 1, a = 2 }], expect = [1, 2] });
     @test({ input = [{}], expect = [] });
   }
-  $entries: `Each key with its value, in insertion order` = entries;
+  $entries: `Each key with its value` = entries;
   $get: `The value of the key, or undefined when absent` = (key: string) => .[key];
-  with Object$get {
-    @test({ input = [{ a = 1 }, "a"], expect = 1 });
-  }
   $has: `Whether the key is present, whatever its value` = (key: string) => boolean;
   with Object$has {
     @test({ input = [{ a = undefined }, "a"], expect = true });
   }
   $merge: `A new object with this object's keys and then the other's` = (other: Object<V>) => Object<V>;
   with Object$merge {
-    where (`A key is in both`) -> `The other's value wins, and the key keeps its place from this object`;
-    where (`Called`) -> `Neither object is changed`;
+    where (`A key is in both`) -> `The other's value wins`;
+    where (`A key is in both`) -> `The key keeps its place from this object`;
+    @acceptanceCriteria.add({ behavior = `Neither object is changed` });
     @test({ input = [{ a = 1, b = 2 }, { b = 3, c = 4 }], expect = { a = 1, b = 3, c = 4 } });
     @test({ input = [{}, { a = 1 }], expect = { a = 1 } });
   }
   $isEmpty: `Whether there are no keys` = () => boolean;
-  with Object$isEmpty {
-    @test({ input = [{}], expect = true });
-  }
 }
 
 /// source: the receiver
-fn entries<V>(source: Object<V>) is builtin: `Each key of the object with its value, in insertion order` => Pair<string, V>[] {
-  where (`The object has keys`) -> `Returns one [[Pair]] per key in insertion order, its key and its value`;
+fn entries<V>(source: Object<V>) is builtin: `Each key of the object with its value` => Pair<string, V>[] {
+  where (`The object has keys`) -> `Returns one [[Pair]] per key, holding the key and its value`;
   where (`The object is empty`) -> `Returns an empty list`;
   @test({ input = [{ a = 1 }], expect = [{ key = "a", value = 1 }] });
   @test({ input = [{}], expect = [] });

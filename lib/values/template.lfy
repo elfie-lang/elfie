@@ -2,7 +2,6 @@ use "../prelude/builtin";
 use "../prelude/entity";
 use "./list";
 
-// Decision: every member test puts the receiver first in input, then the operation's arguments.
 // Decision: a template resolves where it is written, so a member never takes a scope; text renders in the scope the template was bound in.
 
 d Template is builtin: `Text with references and evaluated expressions` {

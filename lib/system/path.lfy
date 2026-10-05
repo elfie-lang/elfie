@@ -1,27 +1,28 @@
 use "../prelude/builtin";
 
-// Decision: every member test puts the receiver first in input, then the arguments.
-// Decision: members that produce a path give a [[Path]], not a string, so that calls chain; a
-// Path is a string all the same, and a parameter typed Path takes any string.
+// Decision: members that produce a path give a [[Path]], not a string, so that calls chain.
 // Decision: segments is a signature rather than .split("/") because a Path has no split of its
 // own; its criterion says what the split would give.
 
 d Path is builtin: `A file system path, as text` {
-  where (`Any path the language sees`) -> `Its separator is /, whatever the platform`;
+  where (`A string is passed where a [[Path]] is expected`) -> `It is accepted as a [[Path]]`;
+  where (`A [[Path]] is used where a string is expected`) -> `It is accepted as the string it is`;
   where (`The target hands a path to a platform whose separator differs, or reads one back from it`) -> `The target converts the separator`;
   where (`A path is written in the compiler's own definitions`) and (`The definition does not say what the path is relative to`) -> `It is relative to the workspace root`;
   where (`A path is written in the compiler's own definitions`) and (`The definition says what the path is relative to`) -> `It is relative to what the definition says`;
-  where (`A path ends in a separator`) -> `The trailing separator names nothing and every member ignores it`;
+  where (`A path ends in a separator`) -> `Every member ignores the trailing separator`;
+  @acceptanceCriteria.add({ behavior = `The separator of every path the language sees is /, whatever the platform` });
 
   /// segments: what is appended, in order
   $join: `The path with each segment appended after one separator` = (...segments: string[]) => Path;
   with Path$join {
-    where (`A segment is empty`) -> `It adds nothing, so a/ and b join as a/b`;
+    where (`A segment is empty`) -> `It adds nothing`;
     where (`A segment is absolute`) -> `It replaces everything before it`;
     where (`There are no segments`) -> `The result is the path itself, unchanged`;
     @test(
       { input = [`a`, `b`, `c.lfy`], expect = `a/b/c.lfy` },
       { input = [`a/`, `b`], expect = `a/b` },
+      { input = [`a`, ``, `b`], expect = `a/b` },
       { input = [`a`, `/b`], expect = `/b` },
     );
   }
@@ -54,7 +55,7 @@ d Path is builtin: `A file system path, as text` {
   with Path$extension {
     where (`The file name has a dot that is not its first character`) -> `Returns the text after the last such dot`;
     where (`The file name has no dot, or only a leading one`) -> `Returns undefined`;
-    where (`A dot appears in a directory segment only`) -> `It does not count; a.b/c has no extension`;
+    where (`A dot appears in a directory segment only`) -> `It does not count`;
     @test(
       { input = [`a/b.tar.gz`], expect = `gz` },
       { input = [`a/b`], expect = undefined },
@@ -77,7 +78,7 @@ d Path is builtin: `A file system path, as text` {
   /// extension: the new extension, without a dot
   $withExtension: `The same path with its extension replaced, or added when it has none` = (extension: string) => Path;
   with Path$withExtension {
-    where (`Any path`) -> `The file name becomes [[Path.stem]], a dot, and the new extension`;
+    @acceptanceCriteria.add({ behavior = `The file name becomes [[Path.stem]], a dot, and the new extension` });
     where (`The path has segments before its file name`) -> `They are kept unchanged`;
     @test(
       { input = [`a/b.lfy`, `rs`], expect = `a/b.rs` },
@@ -92,9 +93,11 @@ d Path is builtin: `A file system path, as text` {
     base: Path,
   ) => Path | undefined;
   with Path$relative {
-    where (`The path and base are both absolute, or both relative`) -> `Both are normalized, and the result is the segments of the path after the ones it shares with base, preceded by one .. for each segment base has beyond the shared ones`;
+    // Decision: relative is undefined between an absolute and a relative path, because nothing
+    // relates them.
+    where (`The path and base are both absolute, or both relative`) -> `Both are normalized before they are compared`;
+    where (`The path and base are both absolute, or both relative`) -> `The result is the segments of the path after the ones it shares with base, preceded by one .. for each segment base has beyond the shared ones`;
     where (`The path and base name the same place`) -> `Returns .`;
-    where (`One of the path and base is absolute and the other is not`) -> `Returns undefined, because nothing relates them`;
     @test(
       { input = [`src/a/b.rs`, `src`], expect = `a/b.rs` },
       { input = [`src/a/b.rs`, `src/c`], expect = `../a/b.rs` },
@@ -107,17 +110,19 @@ d Path is builtin: `A file system path, as text` {
   $isAbsolute: `Whether the path begins at a root rather than at the current directory` = () => boolean;
   with Path$isAbsolute {
     where (`The path begins with /`) -> `Returns true`;
-    where (`The path was read back from a platform with drive letters and begins with one`) -> `Returns true`;
-    where (`The path does not begin with /, and does not begin with a drive letter after being read back from a platform with drive letters`) -> `Returns false`;
+    where (`The path was read back from a platform with drive letters`) and (`It begins with a drive letter`) -> `Returns true`;
+    where (`The path does not begin with /`) and !(`The path was read back from a platform with drive letters`) -> `Returns false`;
+    where (`The path was read back from a platform with drive letters`) and (`It begins with neither / nor a drive letter`) -> `Returns false`;
     @test({ input = [`/a/b`], expect = true }, { input = [`a/b`], expect = false }, { input = [``], expect = false });
   }
 
   $normalize: `The path with . segments removed and .. segments resolved textually, never by looking at the disk` = () => Path;
   with Path$normalize {
     where (`A segment is .`) -> `It is dropped`;
-    where (`A segment is .. and a segment other than .. precedes it`) -> `Both are dropped`;
-    where (`A segment is .. at the start of a relative path, or after other leading .. segments`) -> `It stays`;
-    where (`A segment is .. at the root of an absolute path`) -> `It is dropped, since the root has no parent`;
+    // Decision: .. at the root of an absolute path is dropped, since the root has no parent.
+    where (`A segment is ..`) and (`A segment other than .. precedes it`) -> `Both are dropped`;
+    where (`A segment is ..`) and (`The path is relative`) and (`Only .. segments precede it`) -> `It stays`;
+    where (`A segment is ..`) and (`It is at the root of an absolute path`) -> `It is dropped`;
     where (`Nothing is left`) and (`The path is relative`) -> `Returns .`;
     where (`Nothing is left`) and (`The path is absolute`) -> `Returns /`;
     @test(
@@ -130,7 +135,9 @@ d Path is builtin: `A file system path, as text` {
 
   $segments: `The text between the separators, in order` = () => string[];
   with Path$segments {
-    where (`Any path`) -> `Returns what splitting the text at every separator gives, so an absolute path has an empty first segment and an empty path one empty segment`;
+    @acceptanceCriteria.add({ behavior = `Returns what splitting the text at every separator gives` });
+    where (`The path is absolute`) -> `The first segment is empty`;
+    where (`The path is empty`) -> `Returns one empty segment`;
     @test({ input = [`a/b/c.lfy`], expect = [`a`, `b`, `c.lfy`] }, { input = [`/a`], expect = [``, `a`] });
   }
 
@@ -138,12 +145,13 @@ d Path is builtin: `A file system path, as text` {
   $startsWith: `Whether base is this path or a directory above it, segment by segment` = (base: Path) => boolean;
   with Path$startsWith {
     where (`Each of the [[Path.segments]] of base equals this path's segment at the same position`) -> `Returns true`;
-    where (`base has more segments than this path, or one of its segments differs from this path's at the same position`) -> `Returns false, so src/ab does not start with src/a`;
-    where (`The paths are compared`) -> `Neither is normalized first, so a/./b does not start with a/b`;
+    where (`base has more segments than this path, or one of its segments differs from this path's at the same position`) -> `Returns false`;
+    @acceptanceCriteria.add({ behavior = `Neither path is normalized before they are compared` });
     @test(
       { input = [`src/a/b.rs`, `src/a`], expect = true },
       { input = [`src/ab/c.rs`, `src/a`], expect = false },
       { input = [`src`, `src`], expect = true },
+      { input = [`a/./b`, `a/b`], expect = false },
     );
   }
 }

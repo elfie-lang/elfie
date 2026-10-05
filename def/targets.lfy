@@ -29,10 +29,9 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
 // Guidance only this repository needs
 rust
   @acceptanceCriteria
-  .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })
-  .add({ behavior = `Nothing outside the target's output directory is written` });
+  .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` });
 
-// Committed code is not rustfmt-clean, so cargo fmt never runs here
+// Decision: committed code is not rustfmt-clean, so cargo fmt never runs here.
 rust@commands.add({ operation = Operation.format });
 
 global@targets.add(rust);

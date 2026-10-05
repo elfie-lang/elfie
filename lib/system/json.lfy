@@ -1,6 +1,5 @@
 use "../prelude/builtin";
 
-// Decision: every member test puts the receiver first in input, then the arguments.
 // Decision: parse is also the name of the function in ./time; a file that uses both aliases one
 // with use ... as.
 
@@ -22,9 +21,11 @@ d Json is builtin: `A value that JSON can carry: an object, a list, a string, a 
     path: string,
   ) => Json | undefined;
   with Json$at {
-    where (`A step names a key and the value at that point is an object with that key`) -> `The walk continues into that entry`;
-    where (`A step is a whole number and the value at that point is a list with that index`) -> `The walk continues into that item`;
-    where (`At some step the value is neither an object with the key the step names nor a list with the index the step names as a whole number, or the walk runs out of value`) -> `Returns undefined`;
+    where (`The value at a step is an object`) and (`The object has an entry under the key the step names`) -> `The walk continues into that entry`;
+    where (`The value at a step is an object`) and (`The object has no entry under the key the step names`) -> `Returns undefined`;
+    where (`The value at a step is a list`) and (`The step is a whole number that is an index of the list`) -> `The walk continues into the item at that index`;
+    where (`The value at a step is a list`) and !(`The step is a whole number that is an index of the list`) -> `Returns undefined`;
+    where (`The value at a step is neither an object nor a list`) -> `Returns undefined`;
     where (`The path is empty`) -> `Returns the value itself`;
     @test(
       { input = [{ a = { b = [1, 2] } }, `a.b.1`], expect = 2 },
@@ -35,15 +36,13 @@ d Json is builtin: `A value that JSON can carry: an object, a list, a string, a 
 
   $isObject: `Whether the value is an object` = () => boolean;
   with Json$isObject {
-    where (`The value is an object, even an empty one`) -> `Returns true`;
-    where (`The value is a list, a string, a number, a boolean, or null`) -> `Returns false`;
+    where (`The value is an empty object`) -> `Returns true`;
     @test({ input = [{ a = 1 }], expect = true }, { input = [[1]], expect = false }, { input = [null], expect = false });
   }
 
   $isList: `Whether the value is a list` = () => boolean;
   with Json$isList {
-    where (`The value is a list, even an empty one`) -> `Returns true`;
-    where (`The value is an object, a string, a number, a boolean, or null`) -> `Returns false`;
+    where (`The value is an empty list`) -> `Returns true`;
     @test(
       { input = [[1]], expect = true },
       { input = [{ a = 1 }], expect = false },
@@ -54,7 +53,8 @@ d Json is builtin: `A value that JSON can carry: an object, a list, a string, a 
 
 /// text: JSON text
 fn parse(text: string) is builtin: `The value JSON text carries; undefined when the text is not JSON` => Json | undefined {
-  where (`[[text]] is one JSON value, with any whitespace around it`) -> `Returns that value, with the keys of each object in the order the text gives them`;
+  where (`[[text]] is one JSON value, with any whitespace around it`) -> `Returns that value`;
+  where (`[[text]] holds an object`) -> `The object's keys keep the order the text gives them`;
   where (`[[text]] is empty, is not JSON, or holds more than one value`) -> `Returns undefined`;
   where (`An object repeats a key`) -> `The last one wins`;
   @test(
@@ -65,17 +65,26 @@ fn parse(text: string) is builtin: `The value JSON text carries; undefined when 
   );
 }
 
+enum Layout: `How stringify lays out its text` {
+  compact = `One line, with no spaces outside strings`,
+  readable = `One entry or item per line, indented by nesting level`,
+}
+
 /// value: what to write
-/// pretty: whether to indent it across lines
-fn stringify(value: Json, pretty: boolean = false) is builtin: `JSON text carrying a value` => string {
-  where (`[[pretty]] is false`) -> `Returns the value on one line with no spaces outside strings, and no newline at the end`;
-  where (`[[pretty]] is true`) -> `Returns one entry or item per line, indented by two spaces per level, a space after each colon, and a newline at the end`;
-  where (`[[pretty]] is true`) and (`The value holds an empty object or list`) -> `The empty object or list stays on one line`;
+/// layout: how the text is laid out
+fn stringify(value: Json, layout: Layout = Layout.compact) is builtin: `JSON text carrying a value` => string {
+  where (`[[layout]] is [[Layout.compact]]`) -> `The text has no line break`;
+  where (`[[layout]] is [[Layout.compact]]`) -> `The text has no space outside strings`;
+  where (`[[layout]] is [[Layout.readable]]`) -> `Each entry or item is on a line of its own`;
+  where (`[[layout]] is [[Layout.readable]]`) -> `Each line is indented by two spaces per level of nesting`;
+  where (`[[layout]] is [[Layout.readable]]`) -> `A space follows each colon`;
+  where (`[[layout]] is [[Layout.readable]]`) -> `The text ends with a newline`;
+  where (`[[layout]] is [[Layout.readable]]`) and (`The value holds an empty object or list`) -> `The empty object or list stays on one line`;
   where (`The value holds an object`) -> `Its keys are written in insertion order`;
   where (`The value holds a string`) -> `It is quoted with the escapes JSON requires and no others`;
   @test(
     { input = [{ a = [1, 2], b = `x` }], expect = `{"a":[1,2],"b":"x"}` },
-    { input = [{ a = [1] }, true], expect = `{\n  "a": [\n    1\n  ]\n}\n` },
-    { input = [{}, true], expect = `{}\n` },
+    { input = [{ a = [1] }, Layout.readable], expect = `{\n  "a": [\n    1\n  ]\n}\n` },
+    { input = [{}, Layout.readable], expect = `{}\n` },
   );
 }

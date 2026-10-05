@@ -20,45 +20,32 @@ trait rust extends targetLanguage: `Rust 2024` {
       behavior = `The d declaration becomes a struct`,
     })
     .add({ situation = `A d declaration's members are alternatives`, behavior = `The d declaration becomes an enum` })
-    .add({
-      behavior = `A type declaration becomes a struct; an enum declaration an enum with a method giving each member's value`,
-    })
-    .add({
-      behavior = `A fn declaration becomes a pub fn whose body satisfies every criterion and test; a function declaration is translated statement by statement`,
-    })
-    .add({
-      behavior = `A trait declaration becomes nothing of its own; the members it adds become fields or methods of each entity that carries it, and its criteria become that entity's`,
-    })
-    .add({ behavior = `An external declaration is bound to the crate its native dependency names` })
-    .add({
-      behavior = `Every @test case becomes a #[test], and every acceptance criterion that a test can check becomes one, marked with its entity and the criterion's id`,
-    });
+    .add({ behavior = `A type declaration becomes a struct` })
+    .add({ behavior = `An enum declaration becomes an enum with a method giving each member's value` })
+    .add({ behavior = `A fn declaration becomes a pub fn` })
+    .add({ behavior = `The dependency an external declaration names is a crate` })
+    .add({ behavior = `A test is a #[test] function` });
 
   // Standard library
   @acceptanceCriteria
-    .add({ behavior = `List is Vec<T>; Boolean is bool; Nullish is Option<T>` })
+    .add({ behavior = `List is Vec<T>` })
+    .add({ behavior = `Boolean is bool` })
+    .add({ behavior = `Nullish is Option<T>` })
     .add({ situation = `A String value is not only read`, behavior = `String is String` })
     .add({ situation = `A String value is only read`, behavior = `String is &str` })
-    .add({
-      situation = `No criterion says a Number value counts things: a length, an index, a line, or a column`,
-      behavior = `Number is f64`,
-    })
-    .add({
-      situation = `A criterion says a Number value counts things: a length, an index, a line, or a column`,
-      behavior = `Number is usize`,
-    })
+    .add({ behavior = `A Number that is a length, an index, a line, or a column is usize` })
+    .add({ behavior = `Any other Number is f64` })
     .add({ situation = `An Object holds JSON`, behavior = `Object is serde_json::Map` })
     .add({ situation = `The use of an Object names the value type`, behavior = `Object is BTreeMap<String, _>` })
-    .add({
-      behavior = `Path is std::path; the file functions are std::fs; Json is serde_json; run and stream are std::process::Command through sh -c; isTerminal is std::io::IsTerminal of stdout or stderr`,
-    })
+    .add({ behavior = `Path is std::path` })
+    .add({ behavior = `The file functions are std::fs` })
+    .add({ behavior = `Json is serde_json` })
+    .add({ behavior = `run and stream are std::process::Command through sh -c` })
+    .add({ behavior = `isTerminal is std::io::IsTerminal of stdout or stderr` })
     .add({ behavior = `Instant is std::time::SystemTime` })
     .add({
       situation = `A builtin operation of Instant or of time has no counterpart in std::time, as RFC 3339 text has none`,
       behavior = `It is written out over std::time`,
-    })
-    .add({
-      behavior = `A builtin fn or member is never generated, only called; a member of a builtin data written out in full is translated where it is used`,
     });
 
   // Generics
@@ -72,13 +59,19 @@ trait rust extends targetLanguage: `Rust 2024` {
     })
     .add({
       situation = `The target has no trait matching the data or trait of an extends constraint on a type parameter`,
-      behavior = `The bound is dropped and a comment on the item names the constraint`,
+      behavior = `The bound is dropped`,
     })
     .add({
-      behavior = `List<T> and T[] are Vec<T>; a type argument that is a primitive maps to the same Rust type as that primitive does outside a type argument`,
+      situation = `The target has no trait matching the data or trait of an extends constraint on a type parameter`,
+      behavior = `A comment on the item names the constraint`,
     })
     .add({
-      behavior = `A parameter whose type is a function type (A) => B is impl Fn(A) -> B; a member of a data whose type is a function type is Box<dyn Fn(A) -> B>`,
+      behavior = `A type argument that is a primitive maps to the same Rust type as that primitive does outside a type argument`,
+    })
+    .add({ situation = `A parameter's type is a function type (A) => B`, behavior = `The parameter is impl Fn(A) -> B` })
+    .add({
+      situation = `A member of a data has a function type (A) => B`,
+      behavior = `The member is Box<dyn Fn(A) -> B>`,
     });
 }
 
@@ -96,6 +89,9 @@ trait cargo extends targetEcosystem: `Crates from crates.io, managed with Cargo`
     .add({ operation = Operation.format, line = "cargo fmt --check" });
 }
 
+// Decision: cargoCrate stops rather than edit the Cargo.toml at the project root, because that file
+// is outside the crate's directory.
+
 /// name: the package name its Cargo.toml gives
 /// root: the crate's directory, relative to the project root
 /// source: the directory, relative to the source directory, whose main.lfy is the crate's root module
@@ -104,19 +100,23 @@ trait cargoCrate(name: string, root: string, source: string, binary: boolean) ex
   .requires = ["rust", "cargo"];
   const rootFile = binary? "main.rs": "lib.rs";
   where (`A unit's stem is {{source}}/main`) -> `It is {{root}}/src/{{rootFile}}`;
-  where (`A unit's stem ends in main and is not {{source}}/main`) -> `It is mod.rs in its directory under {{root}}/src, with any leading {{source}}/ dropped, and declares each other output of that directory as a module`;
+  where (`A unit's stem ends in main and is not {{source}}/main`) -> `It is mod.rs in its directory under {{root}}/src, with any leading {{source}}/ dropped`;
+  where (`A unit's stem ends in main and is not {{source}}/main`) -> `Its mod.rs declares each other output of that directory as a module`;
   where (`A unit's stem does not end in main`) -> `It is {{root}}/src/ then the stem with any leading {{source}}/ dropped, then .rs`;
   where (`A directory under {{root}}/src holds outputs and no unit writes its mod.rs`) -> `The compiler stops on the first unit there and names the directory`;
-  where (`Any unit is written`) -> `{{root}}/Cargo.toml names package {{name}}, edition 2024, and the target's dependencies`;
-  where (`The Cargo.toml at the project root does not list {{root}} among its workspace members`) -> `The compiler stops on the first unit and says so, because that file is outside {{root}}`;
+  where (`Any unit is written`) -> [
+    `{{root}}/Cargo.toml names package {{name}}`,
+    `{{root}}/Cargo.toml sets edition 2024`,
+    `{{root}}/Cargo.toml lists the target's dependencies`,
+  ];
+  where (`The Cargo.toml at the project root does not list {{root}} among its workspace members`) -> `The compiler stops on the first unit and says so`;
 }
 
 /// crates: each key is the first segment of a stem; its value the source directory, relative to the project root, that such units are written under
 /// fallback: the source directory for units whose first segment is no key of crates
 /// binaries: the keys of the crates whose root module is src/main.rs
-trait cargoWorkspace(crates: object, fallback: string, binaries: string[]) extends targetLayout,
-  cratePerPrefix(crates, fallback),
-  modulePerFile("", "rs"): `Several member crates of one Cargo workspace, chosen by the first segment of each stem` {
+trait cargoWorkspace(crates: Object<string>, fallback: string, binaries: string[]) extends cratePerPrefix(crates, fallback),
+  modulePerFile("rs"): `Several member crates of one Cargo workspace, chosen by the first segment of each stem` {
   .requires = ["rust", "cargo"];
   @acceptanceCriteria
     .add({
@@ -144,6 +144,7 @@ trait clap extends targetFramework: `Command lines parsed with clap 4 and its de
   .framework = "clap 4";
   .provides = ["argument-parser"];
   .requires = ["rust"];
-  where (`An fn carries [[command]] with a name`) -> `It is one variant of a #[derive(Subcommand)] enum whose fields are its parameters with #[arg] attributes, and main dispatches on it`;
+  where (`An fn carries [[command]] with a name`) -> `It is one variant of a #[derive(Subcommand)] enum whose fields are its parameters with #[arg] attributes`;
+  where (`An fn carries [[command]] with a name`) -> `main dispatches on its variant`;
   where (`An fn carries [[command]] with an empty name`) -> `Its parameters are the fields of the #[derive(Parser)] struct itself`;
 }

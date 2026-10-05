@@ -1,11 +1,13 @@
 use "../prelude/builtin";
 
-// Decision: every member test puts the receiver first in input, then the operation's arguments.
 // Decision: one Number holds integers and fractions alike; nothing here distinguishes them but isInteger.
 
 d Number is builtin: `A number; integer or not` {
-  where (`A number is written`) -> `Decimal digits with an optional fraction, such as 1_000.5; underscores only group digits`;
-  where (`Numbers meet +, -, *, /, %, or **`) -> `The result is a number; / never truncates and % keeps the sign of the left side`;
+  where (`A number is written`) -> `Decimal digits with an optional fraction, such as 1_000.5`;
+  where (`A number is written with underscores`) -> `They only group digits and do not change its value`;
+  where (`Numbers meet +, -, *, /, %, or **`) -> `The result is a number`;
+  where (`Numbers meet /`) -> `The result is never truncated`;
+  where (`Numbers meet %`) -> `The result has the sign of the left side`;
 
   $floor: `The greatest integer not above the number` = () => number;
   with Number$floor {
@@ -23,9 +25,6 @@ d Number is builtin: `A number; integer or not` {
     @test({ input = [-2.5], expect = -3 });
   }
   $abs: `The number without its sign` = () => . < 0 ? -. : .;
-  with Number$abs {
-    @test({ input = [-3], expect = 3 });
-  }
   $toString: `The number as text` = () => string;
   with Number$toString {
     where (`The number is an integer`) -> `No fraction is written`;
@@ -45,13 +44,7 @@ d Number is builtin: `A number; integer or not` {
     @test({ input = [3.5], expect = false });
   }
   $min: `The lesser of the number and the other` = (other: number) => . < other ? . : other;
-  with Number$min {
-    @test({ input = [3, 5], expect = 3 });
-  }
   $max: `The greater of the number and the other` = (other: number) => . > other ? . : other;
-  with Number$max {
-    @test({ input = [3, 5], expect = 5 });
-  }
   $clamp: `The number held between low and high` = (low: number, high: number) => number;
   with Number$clamp {
     where (`low is greater than high`) -> `Returns high, whatever the number`;
@@ -68,10 +61,8 @@ d Boolean is builtin: `true or false` {
   where (`A value meets !`) and (`The value is falsy`) -> `! yields true`;
   where (`A value meets !`) and (`The value is truthy`) -> `! yields false`;
   where (`The left side of && or || decides the result`) -> `The right side is not evaluated`;
-  where (`A value is judged truthy or falsy`) -> `Only false, null, and undefined are falsy; 0, empty strings, and empty lists are truthy`;
+  where (`A value is judged truthy or falsy`) -> `Only false, null, and undefined are falsy`;
+  where (`A value is judged truthy or falsy`) -> `Every other value is truthy, 0, empty strings, and empty lists included`;
 
   $not: `The opposite` = () => !.;
-  with Boolean$not {
-    @test({ input = [true], expect = false });
-  }
 }

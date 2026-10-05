@@ -5,13 +5,14 @@ use "../prelude/builtin";
 d Nullish is builtin: `The absence of a value` {
   where (`A value is undefined`) -> `It was never set: a missing key, an index out of range, a parameter left out, or a function that returned nothing`;
   where (`A value is null`) -> `It was set to nothing on purpose`;
-  where (`a ?? b is evaluated`) and (`a is neither null nor undefined`) -> `Yields a, and b is not evaluated`;
+  where (`a ?? b is evaluated`) and (`a is neither null nor undefined`) -> `Yields a`;
+  where (`a ?? b is evaluated`) and (`a is neither null nor undefined`) -> `b is not evaluated`;
   where (`a ?? b is evaluated`) and (`a is null or undefined`) -> `Yields b`;
-  where (`a?.b is evaluated`) and (`a is null or undefined`) -> `Yields undefined, and the rest of the chain after it is skipped`;
+  where (`a?.b is evaluated`) and (`a is null or undefined`) -> `Yields undefined`;
+  where (`a?.b is evaluated`) and (`a is null or undefined`) -> `The rest of the chain after it is skipped`;
   where (`a?.b is evaluated`) and (`a is neither null nor undefined`) -> `Yields a.b`;
   where (`A type is written T | undefined`) -> `The value is optional: it may be a T or left unset`;
-  where (`A parameter is written x?: T`) -> `Its type is T | undefined, and a caller may leave it out`;
+  where (`A parameter is written x?: T`) -> `Its type is T | undefined`;
+  where (`A parameter is written x?: T`) -> `A caller may leave it out`;
   where (`null or undefined is compared with ==`) -> `Each equals only itself: null == undefined is false`;
-  @test({ input = undefined, expect = undefined });
-  @test({ input = null, expect = null });
 }

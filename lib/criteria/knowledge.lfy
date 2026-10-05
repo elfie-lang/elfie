@@ -4,6 +4,7 @@ use "../prelude/builtin";
 // entity.lfy uses it; the contributor is typed as object for the same reason.
 // Decision: knowledge is vendored, never fetched, so every compile reads the same text and none
 // depends on the network.
+// Decision: the compiler is given knowledge because it may not already know it.
 
 enum KnowledgeKind: `What a piece of knowledge is` {
   reference = `documentation to read: a language reference, an API, a guide`,
@@ -12,13 +13,18 @@ enum KnowledgeKind: `What a piece of knowledge is` {
   tool = `a tool of the agent server the compiler calls`,
 }
 
-d Knowledge is builtin: `Something the compiler is given to read, because it may not already know it` {
+d Knowledge is builtin: `Something the compiler is given to read` {
   $topic: `What it teaches, in a few words` = string;
   $kind: `What it is` = KnowledgeKind;
   $source: `A path relative to the root of the package or project that declares it; a use path for a definition; the tool's name for a tool` = string;
+  with Knowledge$source {
+    where (`The kind is reference or example`) and (`No file exists at the source`) -> `A problem says the source does not exist`;
+    where (`The source begins with http:// or https://`) -> `A problem says knowledge is vendored, never fetched`;
+    where (`The compiler is given an item of kind reference or example`) -> `It reads the file at the source, never anything from the network`;
+  }
   $quote: `Whether the request quotes it in full; when false or left out, the request names it and the compiler reads it` = boolean | undefined;
   $contributor: `The entity whose body holds it, seen through its context layer: the entity itself or one of its traits` = object;
   where (`An add call on an entity's knowledge is bound with an object holding a topic, a kind, and a source`) -> `One item with those fields is appended to that entity's knowledge, in the order the calls are written`;
-  where (`An item is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the item joins each entity the trait is applied to, after that entity's own`;
+  where (`An item is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the item joins each entity the trait is applied to`;
   where (`An item is written in an entity's own body`) -> `The contributor is the entity itself`;
 }

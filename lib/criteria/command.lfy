@@ -2,8 +2,11 @@ use "../prelude/builtin";
 
 // Decision: like criterion.lfy, this file uses nothing from the prelude but builtin, because
 // entity.lfy uses it; the contributor is typed as object for the same reason.
+// Decision: a target names a shell command for each operation, so the compiler need not know
+// the tool.
 // Decision: a command is handed to the compiler in its request and never run by Elfie itself, so
 // acceptance stays structural.
+// Guidance order is defined on the Target of lib/target/main.lfy, which this file cannot use.
 
 enum Operation: `What a command is for` {
   install = `install: fetch every dependency the manifest lists`,
@@ -15,12 +18,22 @@ enum Operation: `What a command is for` {
   run = `run: start what was built`,
 }
 
-d Command is builtin: `A shell command for one operation, so the compiler need not know the tool` {
+d Command is builtin: `A shell command for one operation` {
   $operation: `What it is for` = Operation;
-  $line: `What sh -c runs in the target's output directory; undefined to say the operation is not run` = string | undefined;
+  $line: `What sh -c runs in the target's output directory` = string | undefined;
   $contributor: `The entity whose body holds it, seen through its context layer: the entity itself or one of its traits` = object;
   where (`An add call on an entity's commands is bound with an object holding an operation`) -> `One command with that operation and line is appended to that entity's commands, in the order the calls are written`;
-  where (`A command is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the command joins each entity the trait is applied to, after that entity's own`;
+  where (`A command is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the command joins each entity the trait is applied to`;
   where (`A command is written in an entity's own body`) -> `The contributor is the entity itself`;
-  where (`A command runs`) -> `RUN_SCRIPT is set to the script runner of the target's ecosystem, and for an add command NAME and VERSION are set to the dependency's name and version, VERSION empty when none is pinned`;
+
+  // Choosing
+  where (`A target const has, for an operation, a command that none of its traits contributed`) -> `The first such command is the operation's command, whatever its traits hold`;
+  where (`A target const has commands for an operation`) and (`Its traits contributed every one of them`) -> `The operation's command is the first of them in guidance order`;
+  where (`An operation's command has no line`) -> `The operation has no command`;
+
+  // Running
+  where (`A command runs`) -> `RUN_SCRIPT is set to the script runner of the target's ecosystem`;
+  where (`An add command runs`) -> `NAME is set to the dependency's name`;
+  where (`An add command runs`) and (`The dependency pins a version`) -> `VERSION is set to that version`;
+  where (`An add command runs`) and (`The dependency pins no version`) -> `VERSION is empty`;
 }

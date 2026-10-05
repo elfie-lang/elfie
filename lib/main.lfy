@@ -13,6 +13,5 @@ use "./values/object";
 use "./values/nullish";
 use "./values/template";
 use "./criteria/criterion";
-use "./criteria/testing";
 use "./criteria/knowledge";
 use "./criteria/command";
