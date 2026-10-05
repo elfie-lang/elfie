@@ -1,18 +1,54 @@
+use "../grammar/rules/expression";
 use "../grammar/terminals/comment";
+use "../grammar/terminals/identifier";
+use "../grammar/terminals/keyword";
+use "../grammar/terminals/space";
 use "../lexer/data";
 use "../model/data";
 use "../model/main" as Binder;
 use "../model/traits";
+use "../parser/data";
 
 d Position: `A place in a file's text` {
   $line: `The line, counting from 1 as [[Token.line]] does` = number;
   $column: `The column within the line, counting characters from 0 as [[Token.column]] does` = number;
+  @acceptanceCriteria
+    .add({ behavior = `A position in a file belongs to the token of that file whose range covers it` })
+    .add({
+      situation = [
+        `The position is exactly between two tokens`,
+        `The earlier token is an [[Identifier]], a [[Keyword]], or a [[MemberName]]`,
+      ],
+      behavior = `A position between two tokens belongs to the earlier token`,
+    })
+    .add({
+      situation = [
+        `The position is exactly between two tokens`,
+        `The earlier token is not an [[Identifier]], a [[Keyword]], or a [[MemberName]]`,
+      ],
+      behavior = `A position between two tokens belongs to the later token`,
+    })
+    .add({ situation = `The position is past the end of its file`, behavior = `It belongs to no token` })
+    .add({ behavior = `A [[Node]] contains a position when it covers the token the position belongs to` });
 }
 
 d Range: `A run of text in one file` {
   $file: `The file's path, as [[Token.file]] holds it` = string;
   $start: `Where it begins` = Position;
   $end: `The position just after the last character; equal to [[Range.start]] when empty` = Position;
+  @acceptanceCriteria
+    .add({ behavior = `The range of a [[Token]] is in its [[Token.file]]` })
+    .add({ behavior = `The range of a [[Token]] starts at its [[Token.line]] and [[Token.column]]` })
+    .add({
+      behavior = `The range of a [[Token]] ends just after the last character of its [[Token.raw]], each [[NewLine]] inside it ending a line`,
+    })
+    .add({
+      behavior = `The range of a [[Node]] or an [[ErrorNode]] runs from the start of the range of the first token it covers to the end of the range of the last`,
+    })
+    .add({
+      situation = `A [[Node]] or an [[ErrorNode]] covers no token`,
+      behavior = `Its range is empty, at the position where it would start`,
+    });
 }
 
 enum Severity: `How bad a diagnostic is` {

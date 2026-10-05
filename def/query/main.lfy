@@ -24,77 +24,51 @@ use "elfie/values/string" as Strings;
 
 // Lookup Queries
 
-fn rangeOf(workspace: Workspace, node: Node | ErrorNode | Token): `Where a node, error node, or token sits` => Range {
-  @acceptanceCriteria
-    .add({ behavior = `[[Range.file]] is [[Token.file]] of the first token covered` })
-    .add({ behavior = `[[Range.start]] is [[Token.line]] and [[Token.column]] of the first token covered` })
-    .add({
-      behavior = `[[Range.end]] is the position just after the last character of [[Token.raw]] of the last token covered, with every [[NewLine]] inside the tokens ending a line`,
-    })
-    .add({
-      situation = `[[node]] covers no token`,
-      behavior = `The range is empty at the position the node would start at`,
-    });
-}
-
-fn tokenAt(workspace: Workspace, file: string, position: Position): `The token under a position` => Token | undefined {
-  @acceptanceCriteria
-    .add({ behavior = `[[file]] is relative to [[Workspace.root]], as [[File.path]] is` })
-    .add({ behavior = `Returns the token of [[file]] whose range covers [[position]]` })
-    .add({
-      situation = [
-        `[[position]] is exactly between two tokens`,
-        `The earlier token is an [[Identifier]], a [[Keyword]], or a [[MemberName]]`,
-      ],
-      behavior = `It belongs to the earlier token`,
-    })
-    .add({
-      situation = [
-        `[[position]] is exactly between two tokens`,
-        `The earlier token is not an [[Identifier]], a [[Keyword]], or a [[MemberName]]`,
-      ],
-      behavior = `It belongs to the later token`,
-    })
-    .add({
-      situation = `[[file]] is not in [[Workspace.files]] or [[position]] is past the end of the file`,
-      behavior = `Returns undefined`,
-    });
-}
-
-fn nodesAt(workspace: Workspace, file: string, position: Position): `Every node covering a position, outermost first` => Node[] {
-  @acceptanceCriteria
-    .add({
-      behavior = `The first node is [[Tree.root]] of the file and each next node is a child of the one before it; the last holds [[tokenAt]] as a direct child`,
-    })
-    .add({ situation = `[[tokenAt]] is undefined`, behavior = `Returns an empty list` });
-}
-
 fn symbolAt(workspace: Workspace, file: string, position: Position): `The symbol declared or used at a position` => Symbol | undefined {
   @acceptanceCriteria
+    .add({ behavior = `[[file]] is relative to [[Workspace.root]], as [[File.path]] is` })
     .add({
-      situation = `[[tokenAt]] is an [[Identifier]] or a keyword standing as a [[MemberName]]`,
-      behavior = `Walking [[nodesAt]] innermost outward, the first node for which [[Binder.resolve]] gives a symbol, and whose name that token spells, gives the symbol`,
+      situation = `The token [[position]] belongs to is an [[Identifier]] or a keyword standing as a [[MemberName]]`,
+      behavior = `Returns the symbol that [[Binder.resolve]] gives for a node containing [[position]], whose name that token spells`,
     })
     .add({
-      situation = `[[tokenAt]] is inside a [[TemplateReference]], including one inside [[Documentation]]`,
+      situation = [
+        `The token [[position]] belongs to is an [[Identifier]] or a keyword standing as a [[MemberName]]`,
+        `Nested nodes containing [[position]] each declare or resolve to a symbol whose name that token spells`,
+      ],
+      behavior = `The innermost node's symbol is returned`,
+    })
+    .add({
+      situation = [
+        `The token [[position]] belongs to is an [[Identifier]] or a keyword standing as a [[MemberName]]`,
+        `No node containing [[position]] declares or resolves to a symbol whose name that token spells`,
+      ],
+      behavior = `Returns undefined`,
+    })
+    .add({
+      situation = `The token [[position]] belongs to is inside a [[TemplateReference]], including one inside [[Documentation]]`,
       behavior = `The [[Usage]] of the [[Reference]] gives the symbol, so references in prose resolve like code`,
     })
     .add({
       situation = [
-        `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+        `The token [[position]] belongs to is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
         `The [[Use]] has an [[AsKeyword]]`,
       ],
       behavior = `Returns the module symbol the [[Use]] declares`,
     })
     .add({
       situation = [
-        `[[tokenAt]] is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+        `The token [[position]] belongs to is the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
         `The [[Use]] has no [[AsKeyword]]`,
       ],
       behavior = `Returns undefined`,
     })
     .add({
-      situation = `[[tokenAt]] is undefined, or is not an [[Identifier]], not a keyword standing as a [[MemberName]], not inside a [[TemplateReference]], and not the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
+      situation = `[[file]] is not in [[Workspace.files]], or [[position]] belongs to no token`,
+      behavior = `Returns undefined`,
+    })
+    .add({
+      situation = `The token [[position]] belongs to is not an [[Identifier]], not a keyword standing as a [[MemberName]], not inside a [[TemplateReference]], and not the [[DoubleQuoteBody]] or [[SingleQuoteBody]] of a [[Use]]`,
       behavior = `Returns undefined`,
     });
 
@@ -124,7 +98,7 @@ fn definitionOf(workspace: Workspace, file: string, position: Position): `Where 
   @acceptanceCriteria
     .add({
       situation = `[[symbolAt]] is not undefined and is not a module symbol, and the position is not on the path of a [[Use]]`,
-      behavior = `Returns [[rangeOf]] the identifier that spells the name in the declaring node of [[symbolAt]], as [[declaring]] finds it`,
+      behavior = `Returns the [[Range]] of the identifier that spells the name in the declaring node of [[symbolAt]], as [[declaring]] finds it`,
     })
     .add({
       situation = `The symbol is a module symbol, or the position is on the path of a [[Use]]`,
@@ -474,8 +448,9 @@ fn hoverAt(workspace: Workspace, file: string, position: Position): `Everything 
 
 fn completionsAt(workspace: Workspace, file: string, position: Position): `What could be typed at a position` => Completion[] {
   @acceptanceCriteria
+    .add({ behavior = `[[file]] is relative to [[Workspace.root]], as [[File.path]] is` })
     .add({
-      behavior = `The context is decided by the nearest token before [[position]] that is not [[trivia]], and by the innermost node of [[nodesAt]]`,
+      behavior = `The completion context is decided by the nearest token before [[position]] that is not [[trivia]], and by the innermost node containing [[position]]`,
     })
     .add({
       behavior = `Every completion appears once, filtered to labels that begin with the identifier characters already typed before [[position]], case sensitive`,
