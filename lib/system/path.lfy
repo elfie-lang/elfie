@@ -69,7 +69,7 @@ d Path is builtin: `A file system path, as text` {
     if (extension == undefined) {
       return name;
     }
-    return name[0..(name.length - extension.length - 1)];
+    return name.slice(0, name.length - extension.length - 1);
   };
   with Path$stem {
     @test(

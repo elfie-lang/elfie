@@ -3,7 +3,7 @@ use "../lexer/data";
 
 d Node: `A rule satisfied by a run of consecutive tokens` {
   $rule: `The rule this node satisfies` = Rule;
-  $children: `Nodes and tokens in source order, trivia included` = (Node | Token)[];
+  $children: `Nodes, error nodes, and tokens in source order, trivia included` = (Node | ErrorNode | Token)[];
   $start: `Index of the first token covered, counting from 0 over [[Tree.tokens]]` = number;
   $end: `Index after the last token covered` = number;
   @acceptanceCriteria
@@ -13,11 +13,16 @@ d Node: `A rule satisfied by a run of consecutive tokens` {
         `Each child [[Token]] is reached through exactly one child`,
       ],
     })
-    .add({ behavior = `An [[alternationList]] rule has no node; the item that satisfied it stands in its place` });
+    .add({
+      situation = `An [[alternationList]] rule is satisfied anywhere but at the root of a [[Tree]]`,
+      behavior = `It has no node; the item that satisfied it stands in its place`,
+    });
 }
 
-d ErrorNode extends Node: `Tokens the parser could not fit into the open rule` {
-  $rule: `No rule being satisfied due to error` = undefined;
+d ErrorNode: `Tokens the parser could not fit into the open rule; it satisfies no rule` {
+  $children: `The tokens covered, in source order` = Token[];
+  $start: `Index of the first token covered, counting from 0 over [[Tree.tokens]]` = number;
+  $end: `Index after the last token covered` = number;
   $expected: `Identifiers of what could have continued the open rule at [[Node.start]]` = string[];
   $keyword: `The keyword token the open rule would have taken as a name, when that is why it stopped` = Token | undefined;
 }

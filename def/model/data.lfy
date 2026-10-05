@@ -7,7 +7,7 @@ use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
 use "elfie/prelude/trait" as Traits;
 
-enum Layer: `The three layers of every entity, plus the two ways of pointing at an entity itself` {
+enum Layer: `The three layers of every entity, the parent scope, and the three ways of pointing at an entity itself` {
   value = `value`,
   context = `context`,
   scope = `scope`,

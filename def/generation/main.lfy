@@ -203,7 +203,10 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       behavior = `The unit joins the open batch`,
     })
     .add({
-      situation = `There is no open batch, or a planned unit and the open batch do not share the first segment of [[Unit.stem]], or the batch holds 6 units or more, or the sources of the batch and the unit together are 60,000 characters or more`,
+      situation = [
+        `There is no open batch, or a planned unit and the open batch do not share the first segment of [[Unit.stem]], or the batch holds 6 units or more, or the sources of the batch and the unit together are 60,000 characters or more`,
+        `The unit's reason is not dependency, or not all of its planned dependencies are in the open batch`,
+      ],
       behavior = `The unit opens a new batch`,
     })
     .add({
@@ -835,7 +838,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a veri
         [SourceMap@like(`For rust and src/a.rs from a.lfy, with one marker a.lfy:A on line 1 ending on line 30`)],
       ],
       expect = ReviewRequest@like(
-        `Instructions headed a and rust; A with its definition, two criterion lines prefixed def/a.lfy:4 and def/a.lfy:7, one test line prefixed def/a.lfy:10; one region src/a.rs:1-30 with the file's thirty lines in a fenced block; then the protocol naming the six keys and the three statuses and ending with ELFIE: REVIEWED`,
+        `Instructions headed a and rust; A with its definition, two criterion lines prefixed def/a.lfy:4 and def/a.lfy:7, one test line prefixed def/a.lfy:10; one region src/a.rs:1-30 with the file's thirty lines in a fenced block; then the protocol naming the four keys and the three statuses and ending with ELFIE: REVIEWED`,
       ),
     },
     {

@@ -45,7 +45,7 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
     {
       input = [string@like(`A root whose def holds a.lfy reading: const y = z;`)],
       expect = number@like(
-        `A tools/list answer naming elfie_problems, elfie_find, elfie_entity, elfie_references, elfie_outline, elfie_grammar, elfie_units, elfie_request, elfie_check, elfie_output, elfie_source, elfie_changes, and elfie_review; a call of elfie_problems answering with one binder error at z`,
+        `A tools/list answer naming elfie_problems, elfie_find, elfie_entity, elfie_references, elfie_outline, elfie_grammar, elfie_units, elfie_request, elfie_check, elfie_output, elfie_source, elfie_changes, elfie_review, and elfie_globalReview; a call of elfie_problems answering with one binder error at z`,
       ),
     },
   );

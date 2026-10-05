@@ -177,7 +177,7 @@ d Review: `A verifier's finding for one criterion or test` {
 
 d ReviewReport: `Everything a verifier found for one batch, read mechanically from its report` {
   $reviews: `Each review, in report order, one per id` = Review[];
-  $problems: `The lines of the verifier's output that were neither a review nor the end line` = string[];
+  $problems: `Each review line that was not read as a [[Review]], then the line reading the report did not end when there was no end line` = string[];
 }
 
 d Plan: `Every unit of a workspace, which need generating, and how they are batched` {

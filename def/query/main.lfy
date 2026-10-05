@@ -132,11 +132,11 @@ fn definitionOf(workspace: Workspace, file: string, position: Position): `Where 
     })
     .add({
       situation = `The symbol is an alias`,
-      behavior = `Returns the [[AliasDeclaration]], not what it aliases`,
+      behavior = `Returns the range of the name in its [[AliasDeclaration]], not of what it aliases`,
     })
     .add({
       situation = `The symbol is a member added by a trait`,
-      behavior = `Returns the member statement inside the trait body`,
+      behavior = `Returns the range of the member's name in its statement inside the trait body`,
     })
     .add({ situation = `[[symbolAt]] is undefined`, behavior = `Returns undefined` });
 }
@@ -409,7 +409,7 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
       situation = `[[entity]] is a type parameter`,
       behavior = `[[Hover.owner]] is the identifier of the declaration whose [[TypeParameters]] lists it`,
     })
-    .add({ situation = `[[entity]] is a member`, behavior = `[[Hover.owner]] is [[Kinds.Member.owner]] of it` })
+    .add({ situation = `[[entity]] is a member`, behavior = `[[Hover.owner]] is the identifier of its [[Kinds.Member.owner]]` })
     .add({ situation = `[[entity]] is neither a type parameter nor a member`, behavior = `[[Hover.owner]] is undefined` })
     .add({
       behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`,

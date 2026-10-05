@@ -23,7 +23,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
   @acceptanceCriteria
     .add({
       situation = [`An argument does not begin with a dash`, `No argument is --help, -h, or --version`],
-      behavior = `The first argument that does not begin with a dash names the [[Command]]`,
+      behavior = `The first argument that does not begin with a dash and is not the value that --root, --target, --jobs, or --color takes names the [[Command]]`,
     })
     .add({
       situation = [`No argument that does not begin with a dash is given`, `No argument is --version`],
@@ -62,7 +62,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
     })
     .add({
       situation = `--target or --jobs is followed by a value`,
-      behavior = `The option of that name gives that value, since they are the options besides --root that take a following value`,
+      behavior = `The option of that name gives that value`,
     })
     .add({
       situation = `--color is followed by auto, always, or never`,
@@ -106,6 +106,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
     { input = [[`frobnicate`]], expect = string@like(`A usage message naming frobnicate`) },
     { input = [[`check`, `--color=sometimes`]], expect = string@like(`A usage message naming --color`) },
     { input = [[`--color`, `never`, `check`]], expect = Invocation@like(`check with the option color never`) },
+    { input = [[`--target`, `rust`, `compile`]], expect = Invocation@like(`compile with the option target rust`) },
     { input = [[`compile`, `--jobs`, `0`]], expect = string@like(`A usage message naming --jobs`) },
   );
 }

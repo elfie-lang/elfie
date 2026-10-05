@@ -265,7 +265,7 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
       behavior = `The file at [[path]] is read as [[text]] instead of what [[FileSystem.read]] gives`,
     })
     .add({
-      situation = `[[text]] is undefined`,
+      situation = `[[text]] is undefined and [[FileSystem.exists]] is true for [[path]]`,
       behavior = `The file at [[path]] is read with [[FileSystem.read]] again`,
     })
     .add({

@@ -58,7 +58,7 @@ trait rust extends targetLanguage, cratePerPrefix(
     })
     .add({ behavior = `An external declaration is bound to the crate its native dependency names` })
     .add({
-      behavior = `Every @test case becomes a #[test], and every acceptance criterion that a test can check becomes one, marked with the line of the criterion`,
+      behavior = `Every @test case becomes a #[test]`,
     });
 
   // Standard library
