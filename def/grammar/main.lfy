@@ -1,29 +1,30 @@
 use "./terminals/literal";
 use "./traits";
 
-function terminalDocument(): `The EBNF of every terminal` -> string {
+// Decision: two functions rather than one taking the trait, because a statement that reads what a
+// trait was applied to must name the trait itself on its context layer for the binder to wait for
+// every application; a trait passed as a value is read before that.
+function terminalDocument(): `The EBNF of every terminal, one per line` -> string {
   let lines: `One rule per line` = [];
-  for (const rule in terminal@entities) {
-    lines.push(rule.rule.text);
+  for (const entity in terminal@entities) {
+    lines.push(entity.rule.text);
   }
   return lines.join("\n");
 }
 
-function grammarDocument(): `The EBNF of every rule` -> string {
+function grammarDocument(): `The EBNF of every rule, one per line` -> string {
   let lines: `One rule per line` = [];
-  for (const rule in rule@entities) {
-    lines.push(rule.rule.text);
+  for (const entity in rule@entities) {
+    lines.push(entity.rule.text);
   }
-
   return lines.join("\n");
 }
 
+// Decision: identifiers are unique, so a bare name in any rule's syntax names exactly one rule.
 global
   @acceptanceCriteria
   .add({ behavior = `Every bare name referenced in any rule's syntax is the identifier of a [[rule]] entity` })
-  .add({
-    behavior = `No two [[rule]] entities share an identifier, so a name that resolves nowhere in scope names exactly one rule`,
-  })
+  .add({ behavior = `No two [[rule]] entities share an identifier` })
   .add({ behavior = `No two [[terminal]] entities have the same syntax` })
   .add({
     behavior = `Every [[prefix]], [[infix]], and [[postfix]] rule either has [[binding]] itself or names an operator whose every alternative has [[binding]] with one shared precedence`,
@@ -32,4 +33,11 @@ global
   .add({
     behavior = `Every [[escape]] listed by a [[body]] is excluded from that body's plain characters by [[Backslash]]`,
   })
-  .add({ behavior = `No alternative of an alternation can be satisfied without taking a token.` });
+  .add({ behavior = `No alternative of an alternation can be satisfied without taking a token` })
+  .add({
+    behavior = `Every alternative of an alternation inside a rule's syntax that shares a first terminal with another alternative of that alternation is a single rule reference`,
+  })
+  .add({
+    situation = `An alternative of an alternation shares a first terminal with another alternative and is not a single rule reference`,
+    behavior = `A compile time error names the alternation and the alternatives that share the terminal`,
+  });

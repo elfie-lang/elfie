@@ -5,13 +5,15 @@ use "../terminals/literal";
 use "../terminals/punctuation";
 use "../traits";
 
-ace function listOf(syntax: string, wrapper?: 'group' | 'list' | 'object'): `Creates a EBNF list separated by commas` -> string {
+/// syntax: the EBNF of one item
+ace function listOf(syntax: string): `An EBNF list of one or more [[syntax]] items separated by commas, with an optional trailing comma` -> string {
   return `( {{syntax}} ) , (: [[Comma]] , ( {{syntax}} ) :) , (/ [[Comma]] /)`;
 }
 
 // Helpers: rules other rules are built from
 
-d MemberName is alternationList(Identifier, TypeKeyword): `A name after an accessor; The type keyword is allowed because it is a context property` {}
+// Decision: the type keyword is allowed after an accessor because type is a context property.
+d MemberName is alternationList(Identifier, TypeKeyword): `A name after an accessor` {}
 d TraitUse is rule(`[[Identifier]] , (: [[ValueAccessor]] , [[Identifier]] :) , (/ [[Arguments]] /)`): `A trait, with arguments when it takes any` {}
 d TraitUses is rule(listOf(`[[TraitUse]]`)): `One or more traits` {}
 d IsClause is rule(`[[IsKeyword]] , [[TraitUses]]`): `Traits applied to a declaration` {}
@@ -33,9 +35,7 @@ d TypeParameters is rule(`[[LessThan]] , {{listOf(`[[TypeParameter]]`)}} , [[Gre
 d TypeArguments is rule(`[[LessThan]] , {{listOf(`[[TypeExpression]]`)}} , [[GreaterThan]]`): `The type arguments of a generic in a type position` {}
 d Signature is rule(
   `(/ [[Identifier]] /) , (/ [[TypeParameters]] /) , [[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /)`,
-): `A function's name, type parameters, parameters, traits, and definition` {
-  where (`The source is fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;`) -> `The [[Signature]] is map with the [[TypeParameters]] T and U and two [[Parameter]] items: list typed as the [[TypeItem]] List with the [[TypeArguments]] T, and transform typed as the [[FunctionType]] from item of T to U; the return type is List with the [[TypeArguments]] U`;
-}
+): `A function's name, type parameters, parameters, traits, and definition` {}
 d Items is rule(`(/ {{listOf(`[[Expression]]`)}} /)`): `Zero or more comma separated expressions` {}
 d Arguments is rule(`[[GroupOpen]] , [[Items]] , [[GroupClose]]`): `A parenthesized list` {}
 d Reference is rule(`( [[Name]] | [[Current]] | [[Dereference]] | [[Member]] | [[Index]] ) `): `A reference chain` {}
@@ -55,14 +55,14 @@ d TypeValue is alternationList(
 ): `A type value` {}
 d FunctionType is rule(`[[Parameters]] , [[DoubleArrowRight]] , [[TypeExpression]]`): `The type of a function: its parameters and what it returns` {}
 d TypeGroup is rule(`[[GroupOpen]] , [[TypeExpression]] , [[GroupClose]]`): `A parenthesized type` {
-  where (`[[GroupClose]] is followed by [[DoubleArrowRight]]`) -> `Rule cannot be a match; the parentheses are the [[Parameters]] of a [[FunctionType]]`;
+  // Decision: parentheses followed by => are the Parameters of a FunctionType instead.
+  where (`[[GroupClose]] is followed by [[DoubleArrowRight]]`) -> `Rule cannot be a match`;
 }
 d TypeItem is rule(
   `( [[TypeValue]] | [[TypeGroup]] ) , (/ [[TypeArguments]] /) , (/ [[ListOpen]] , [[ListClose]] /)`,
 ): `A type with its type arguments, or an array of it` {
   where (`[[TypeArguments]] follow anything but a [[Reference]]`) -> `Reported after parsing`;
-  where (`[[ListOpen]] and [[ListClose]] follow`) -> `The type is the standard library's List with the type before them as its one type argument: T[] is the same type as List<T>`;
-  where (`The source is x: List<List<T>>`) -> `The [[TypeItem]] List with the [[TypeArguments]] holding the [[TypeItem]] List with the [[TypeArguments]] T; the two [[GreaterThan]] tokens close one list each`;
+  where (`[[ListOpen]] and [[ListClose]] follow`) -> `The type is the standard library's List with the type before them as its one type argument`;
 }
 d TypeExpression is rule(
   `(/ [[BitwiseOr]] | [[Ampersand]] /) , [[TypeItem]] , (: ( [[BitwiseOr]] | [[Ampersand]] ) , [[TypeItem]] :)`,
@@ -84,19 +84,14 @@ d PrimitiveType is primary(
   `[[BooleanKeyword]] | [[NumberKeyword]] | [[StringKeyword]] | [[ObjectKeyword]] | [[FunctionKeyword]] | [[TraitKeyword]]`,
 ): `A primitive type used as a value` {}
 d Name is primary(`[[Identifier]]`): `A name in scope` {}
-d Current is primary(`[[Accessor]] , (/ [[MemberName]] /)`): `A layer of the current entity, or a member of it` {
-  where (`[[Space]], [[NewLine]], [[Comment]], or [[Documentation]] exists between [[Accessor]] and [[MemberName]]`) -> `[[MemberName]] is not matched`;
-}
+d Current is primary(`[[Accessor]] , (/ [[MemberName]] /)`), unspaced(Accessor): `A layer of the current entity, or a member of it` {}
 d Previous is primary(`[[PreviousStatement]]`): `The entity the previous statement declared` {}
 d Group is primary(`[[GroupOpen]] , [[Expression]] , [[GroupClose]]`): `A parenthesized expression` {
   where (`[[GroupClose]] is followed by [[IsKeyword]], [[Colon]], or [[DoubleArrowRight]]`) -> `Rule cannot be a match`;
 }
 d InlineFunction is primary(
   `[[Parameters]] , (/ [[IsClause]] /) , (/ [[DefinitionClause]] /) , (/ [[SingleArrow]] , [[TypeExpression]] /) , [[DoubleArrowRight]] , ( [[Block]] | [[Expression]] )`,
-): `A function written as an expression` {
-  @acceptanceCriteria
-    .add({ behavior = `A [[BlockOpen]] after the [[DoubleArrowRight]] begins a [[Block]], never an [[Object]]` });
-}
+): `A function written as an expression` {}
 d List is primary(`[[ListOpen]] , [[Items]] , [[ListClose]]`): `A list` {}
 d Object is primary(`[[BlockOpen]] , (/ {{listOf(`[[ObjectKey]]`)}} /) , [[BlockClose]]`): `An object` {}
 d TypePredicate is primary(`[[IsKeyword]] , [[TraitUse]]`): `The type of anything with a trait` {}
@@ -105,9 +100,9 @@ d Type is primary(`[[BlockOpen]] , (/ {{listOf(`[[TypeKey]]`)}} /) , [[BlockClos
 // Prefix operations
 
 d NotOperation is prefix(LogicalNot): `Logical not` {}
-d NegateOperation is prefix(Minus, true), binding(Level.unary, 'right'): `Negation` {}
+d NegateOperation is prefix(Minus), unspaced(Minus), binding(Level.unary, 'right'): `Negation` {}
 d BitwiseNotOperation is prefix(BitwiseNot): `Bitwise not` {}
-d Dereference is prefix(Ampersand, true): `The entity a name is bound to` {
+d Dereference is prefix(Ampersand), unspaced(Ampersand): `The entity a name is bound to` {
   @acceptanceCriteria
     .add({
       situation = `An operand that is not a [[Name]] or [[Current]]`,
@@ -137,7 +132,7 @@ d Assignment is infix(Setter): `Sets the left side` {}
 
 // Postfix operations
 
-d Member is postfix(Accessor, `(/ [[MemberName]] /)`, true): `A member of a layer of the left expression, or that layer itself` {}
+d Member is postfix(Accessor, `(/ [[MemberName]] /)`), unspaced(Accessor): `A member of a layer of the left expression, or that layer itself` {}
 d Index is postfix(ListOpen, `(/ [[Expression]] /) , [[ListClose]]`): `An element of the left expression, or with nothing inside, the array type of it` {}
 d Call is postfix(GroupOpen, `[[Items]] , [[GroupClose]]`): `Calls the left expression` {}
 d Traits is postfix(IsKeyword, `[[TraitUses]]`): `Whether traits are applied to the left expression` {}
@@ -146,24 +141,19 @@ d Cast is postfix(AsKeyword, `[[TypeExpression]]`): `A value read as a type` {}
 d Generic is postfix(LessThan, `{{listOf(`[[TypeExpression]]`)}} , [[GreaterThan]]`), binding(
   Level.access,
 ): `The left expression with type arguments, in an expression position` {
-  where (`The token after [[GreaterThan]] that is not [[Space]], [[NewLine]], [[Comment]], or [[Documentation]] is not one of [[Semicolon]], [[Comma]], [[GroupClose]], [[ListClose]], [[BlockClose]], [[PlainSetter]], [[GroupOpen]], [[ValueAccessor]], [[ListOpen]], [[BitwiseOr]], [[Ampersand]], or [[DoubleArrowRight]]`) -> `Rule cannot be a match; [[RelationalOperation]] is the parse of the [[LessThan]]`;
-  where (`[[GreaterThanOrEqual]] follows the arguments`) -> `Rule cannot be a match, because the longest match lexes the two characters as one token: List<T>=x compares, it does not assign`;
-  where (`The left expression is parsed to satisfy [[Reference]]`) -> `Rule cannot be a match; in a type position the arguments are the [[TypeArguments]] of the [[TypeItem]]`;
-  @acceptanceCriteria
-    .add({
-      behavior = `Binds as [[Member]] and [[Index]] do, so a + f<T>(x) reads as a + (f<T>(x)) and x.f<T>(y) reads as ((x.f)<T>)(y)`,
-    });
-  where (`The source is $items = List<T>;`) -> `An [[Assignment]] whose right side is the [[Generic]] of the [[Name]] List with the type argument T, because [[Semicolon]] follows the [[GreaterThan]]`;
-  where (`The source is f<string>(x)`) -> `A [[Call]] whose left expression is the [[Generic]] of f with the type argument string, because [[GroupOpen]] follows the [[GreaterThan]]`;
-  where (`The source is a < b`) -> `A [[RelationalOperation]], because no [[GreaterThan]] follows b`;
-  where (`The source is a < b > c`) -> `Two [[RelationalOperation]] nodes reading as (a < b) > c, because the [[Identifier]] c follows the [[GreaterThan]]`;
+  where (`The token after [[GreaterThan]] that is not [[Space]], [[NewLine]], [[Comment]], or [[Documentation]] is not one of [[Semicolon]], [[Comma]], [[GroupClose]], [[ListClose]], [[BlockClose]], [[PlainSetter]], [[GroupOpen]], [[ValueAccessor]], [[ListOpen]], [[BitwiseOr]], [[Ampersand]], or [[DoubleArrowRight]]`) -> `Rule cannot be a match`;
+  // Decision: the longest match lexes >= as one token, so List<T>=x compares and does not assign.
+  where (`[[GreaterThanOrEqual]] follows the arguments`) -> `Rule cannot be a match`;
+  // Decision: in a type position the arguments are the TypeArguments of the TypeItem instead.
+  where (`The left expression is parsed to satisfy [[Reference]]`) -> `Rule cannot be a match`;
 }
 d Conditional is postfix(QuestionMark, `[[Expression]] , [[Colon]] , [[Expression]]`), binding(
   Level.definition,
   'right',
 ): `Chooses between two values` {
-  @acceptanceCriteria
-    .add({ behavior = `The [[Colon]] belongs to this rule; the middle expression ends at it` });
+  @acceptanceCriteria.add({
+    behavior = [`The [[Colon]] belongs to this rule`, `The middle expression ends at the [[Colon]]`],
+  });
 }
 
 // The expression sets

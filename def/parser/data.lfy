@@ -1,31 +1,36 @@
+use "../grammar/terminals/identifier";
 use "../grammar/traits";
 use "../lexer/data";
 
-d Node: `A rule satisfied by a run of consecutive tokens` {
-  $rule: `The rule this node satisfies` = Rule;
-  $children: `Nodes, error nodes, and tokens in source order, trivia included` = (Node | ErrorNode | Token)[];
+trait spanning: `Covers a run of consecutive tokens of a [[Tree]]` {
   $start: `Index of the first token covered, counting from 0 over [[Tree.tokens]]` = number;
   $end: `Index after the last token covered` = number;
-  $documentation: `The documentation written for it, when its rule attaches documentation; empty otherwise` = Node[];
   @acceptanceCriteria
     .add({
-      behavior = [
-        `Joining [[Token.raw]] of the tokens from [[Node.start]] up to [[Node.end]] reproduces the source this node covers`,
-        `Each child [[Token]] is reached through exactly one child`,
-      ],
-    })
-    .add({
-      situation = `An [[alternationList]] rule is satisfied anywhere but at the root of a [[Tree]]`,
-      behavior = `It has no node; the item that satisfied it stands in its place`,
+      behavior = `Joining [[Token.raw]] of [[Tree.tokens]] from index start up to index end reproduces the source it covers`,
     });
 }
 
-d ErrorNode: `Tokens the parser could not fit into the open rule; it satisfies no rule` {
+d Node is spanning: `A rule satisfied by a run of consecutive tokens` {
+  $rule: `The rule this node satisfies` = Rule;
+  $children: `In source order, trivia included` = (Node | ErrorNode | Token)[];
+  $documentation: `The documentation written for it, when its rule attaches documentation; empty otherwise` = Node[];
+  @acceptanceCriteria
+    .add({ behavior = `Each child [[Token]] is reached through exactly one child` })
+    .add({
+      situation = `An [[alternationList]] rule is satisfied anywhere but at the root of a [[Tree]]`,
+      behavior = [`It has no node`, `The item that satisfied it stands in its place`],
+    });
+}
+
+d ErrorNode is spanning: `Tokens the parser could not fit into the open rule; it satisfies no rule` {
   $children: `The tokens covered, in source order` = Token[];
-  $start: `Index of the first token covered, counting from 0 over [[Tree.tokens]]` = number;
-  $end: `Index after the last token covered` = number;
-  $expected: `Identifiers of what could have continued the open rule at [[ErrorNode.start]]` = string[];
+  $expected: `Identifiers of the terminals that could have continued the open rule at [[ErrorNode.start]]` = string[];
   $keyword: `The keyword token the open rule would have taken as a name, when that is why it stopped` = Token | undefined;
+  with ErrorNode$keyword {
+    where (`A covered token is of a [[keyword]] terminal that the open rule would have taken as an [[Identifier]] of the same text`) -> `[[ErrorNode.keyword]] is the first such token`;
+    where (`No covered token is of a [[keyword]] terminal that the open rule would have taken as an [[Identifier]] of the same text`) -> `[[ErrorNode.keyword]] is undefined`;
+  }
 }
 
 d Tree: `The result of parsing one token list` {

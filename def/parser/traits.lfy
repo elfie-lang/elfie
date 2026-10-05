@@ -15,43 +15,44 @@ ace const brackets: `Token pairs that nest, with the first token opening and the
 with brackets {
   @acceptanceCriteria
     .add({
-      behavior = `A token is at the same [[brackets]] depth as the first token an [[ErrorNode]] covers when every bracket pair opened between the two tokens, that first token included, also closes between them`,
+      situation = `Every bracket pair opened between a token and the first token an [[ErrorNode]] covers, that first token included, also closes between them`,
+      behavior = `The token is at the same [[brackets]] depth as that first token`,
     });
 }
 
-ace function listed(rules: (is rule)[]) {
-  return rules.map((rule) => `[[&rule]]`).join(`, `);
+/// rules: the rules referenced, in order
+ace function listed(rules: (is rule)[]): `A reference to each of [[rules]], separated by commas` -> string {
+  return alternation(rules, `, `);
 }
 
-trait trivia: `Has little to no semantic meaning` {
-  where (`Tokens satisfying {{@identifier}} sit between two elements of a rule that references no [[body]] terminal`) and (`No explicit exception is given in the tokens for how to handle {{@identifier}}`) -> `They become children of that rule's node and satisfy no element`;
+trait trivia: `Allowed between any two tokens; satisfies no element` {
+  where (`Tokens satisfying {{@identifier}} sit between two elements of a rule that references no [[body]] terminal`) -> `They become children of that rule's node`;
 }
 
 trait documented: `Attaches the [[Documentation]] written for it` {
   where (`A node of the rule is in a tree`) -> `[[Node.documentation]] holds the [[Documentation]] nodes that precede it with only [[trivia]] between`;
 }
 
-trait triedBefore(other: is rule): `Comes ahead of another rule in the order of choice wherever both could begin at the same token` {
-  where (`Source reads as both {{@identifier}} and [[&other]] from the same token`) -> `It is read as {{@identifier}}`;
+/// others: the rules it is tried before
+trait triedBefore(...others: (is rule)[]): `Comes ahead of other rules in the order of choice wherever both could begin at the same token` {
+  where (`Source reads as both {{@identifier}} and one of {{listed(others)}} from the same token`) -> `It is read as {{@identifier}}`;
 }
 
-trait recoverable(...sync: (is terminal)[]): `Closes with an error node instead of failing once it has taken a token` {
+/// sync: the terminals at which recovery resumes
+trait recoverable(...sync: (is terminal)[]): `Closes with an error node instead of failing` {
   where (`A required element of {{@identifier}} cannot be satisfied after the rule has taken a token`) and (`A later token is one of {{listed(
     sync,
-  )}} at the same [[brackets]] depth`) -> `An [[ErrorNode]] naming the terminals that could begin the element in [[ErrorNode.expected]] covers the tokens up to the next {{listed(
-    sync,
-  )}} at the same [[brackets]] depth; the remaining elements are then tried there as if optional`;
+  )}} at the same [[brackets]] depth`) -> `An [[ErrorNode]] covers the tokens up to the next {{listed(sync)}} at the same [[brackets]] depth`;
   where (`A required element of {{@identifier}} cannot be satisfied after the rule has taken a token`) and (`No later token is one of {{listed(
     sync,
-  )}} at the same [[brackets]] depth`) -> `An [[ErrorNode]] naming the terminals that could begin the element in [[ErrorNode.expected]] covers the tokens up to the end of the input; the remaining elements are then tried there as if optional`;
-  where (`An [[ErrorNode]] of {{@identifier}} is covering tokens up to a later token`) and (`A closing token of [[brackets]] closes a bracket opened before the first token the [[ErrorNode]] covers`) -> `The [[ErrorNode]] ends before it, as if it were one of {{listed(
-    sync,
-  )}}`;
-  where (`A repetition of {{@identifier}} stops on one of {{listed(sync)}} that no element after the repetition can begin with`) -> `An [[ErrorNode]] covers that token alone, and the repetition continues after it`;
+  )}} at the same [[brackets]] depth`) -> `An [[ErrorNode]] covers the tokens up to the end of the input`;
+  where (`A required element of {{@identifier}} cannot be satisfied after the rule has taken a token`) -> `The remaining elements of {{@identifier}} are tried as if optional, starting after its [[ErrorNode]]`;
+  where (`An [[ErrorNode]] of {{@identifier}} is covering tokens up to a later token`) and (`A closing token of [[brackets]] closes a bracket opened before the first token the [[ErrorNode]] covers`) -> `The [[ErrorNode]] ends before that closing token`;
+  where (`A repetition of {{@identifier}} stops on one of {{listed(sync)}} that no element after the repetition can begin with`) -> `An [[ErrorNode]] covers that token alone`;
   where (`A repetition of {{@identifier}} stops on a token that no element after the repetition can begin with and that is not one of {{listed(
     sync,
   )}}`) -> `An [[ErrorNode]] covers that token and the tokens after it up to the next token that begins the repeated element, begins an element after the repetition, or is one of {{listed(
     sync,
-  )}}; the repetition continues there`;
-  @acceptanceCriteria.add({ behavior = `[[ErrorNode.expected]] follows its definition in every case` });
+  )}}`;
+  where (`A repetition of {{@identifier}} stops on a token that no element after the repetition can begin with`) -> `The repetition continues after the [[ErrorNode]] that covers that token`;
 }

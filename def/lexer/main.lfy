@@ -1,4 +1,6 @@
 use "../grammar/main" as Grammar;
+use "../grammar/terminals/comment";
+use "../grammar/terminals/identifier";
 use "../grammar/terminals/keyword";
 use "../grammar/terminals/literal";
 use "../grammar/terminals/punctuation";
@@ -8,16 +10,10 @@ use "./data";
 use "./modes";
 use "./traits";
 
-fn lex(source: string, file?: string): `Turn source text into tokens` => Token[] {
+fn lex(source: string, file: string = "anonymous"): `Turn source text into tokens` => Token[] {
   @acceptanceCriteria
-    .add({ behavior = `[[source]] is read as UTF-8 from start to end` })
     .add({ behavior = `The call ends in time linear in the length of [[source]]` })
-    .add({ situation = `[[file]] is set`, behavior = `[[Token.file]] is set to {{file}}` })
-    .add({ situation = `[[file]] is not defined`, behavior = `[[Token.file]] is set to "anonymous"` })
-    .add({ behavior = `End of line tokens can match any [[NewLine]] terminal and the values are treated equally` })
-    .add({ behavior = `[[Token.line]] is set to the line number (1-indexed) in [[source]] that this starts at` })
-    .add({ behavior = `[[Token.column]] is set to the 0-indexed column in the line that this token starts at` })
-    .add({ behavior = `[[Token.raw]] is the original set of all characters that makes up the token` })
+    .add({ behavior = `Every [[Token.file]] is [[file]]` })
     .add({ behavior = `The whole [[source]] is one code region, which no token opens or closes` })
     .add({ behavior = `A region a token opens is nested in the innermost open region before that token` })
     .add({ behavior = `The innermost open region is the most recently opened region that is still open` })
@@ -29,35 +25,24 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
       behavior = `That region stays open`,
     })
     .add({
-      behavior = `The criteria of each [[terminal]] on which regions its tokens begin in, open, or close are respected`,
-    })
-    .add({
-      situation = `A [[terminal]] is not [[candidateInModes]]`,
+      situation = `A [[terminal]] is neither [[lexedIn]] nor an [[escape]]`,
       behavior = `A token of it begins only where [[inCode]] holds`,
     })
     .add({ behavior = `Of the terminals that may be lexed at a position, the longest match is the token` })
     .add({
-      situation = [
-        `Tokens are of equal length`,
-        `No other criteria specifies which token wins`,
-      ],
-      behavior = `A compile-time lexer error naming both terminals`,
-    })
-    .add({
-      situation = `Terminal has criteria for what [[Token.value]] should be`,
-      behavior = `Terminal criteria is respected`,
-    })
-    .add({
-      situation = `Terminal does not have criteria for what [[Token.value]] should be`,
-      behavior = `[[Token.value]] should be equal to [[Token.raw]]`,
+      situation = `Two terminals that may be lexed at a position have longest matches of equal length there`,
+      behavior = `Building the lexer fails with an error naming both terminals`,
     })
     .add({
       situation = `No terminal that may be lexed at a position matches there`,
-      behavior = `One [[Token]] with no [[Token.rule]] is created from the characters up to the next position where some terminal matches, and lexing continues`,
+      behavior = `One [[Token]] with null [[Token.rule]] is created from the characters up to the next position where some terminal that may be lexed there matches`,
     })
     .add({
       situation = `Regions other than the code region are still open at the end of [[source]]`,
-      behavior = `After every other token, each of them gives one [[Token]] with no [[Token.rule]] and empty [[Token.raw]] whose [[Token.value]] names its [[Mode]], innermost last`,
+      behavior = [
+        `Each of them gives one [[Token]] with null [[Token.rule]], empty [[Token.raw]], and [[Token.value]] equal to its [[Mode]]`,
+        `These tokens come after every other token, innermost last`,
+      ],
     });
 
   @test(
@@ -150,6 +135,81 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
         Token@like(`Token for [[Backtick]] with value "\`"`),
       ],
     },
+    {
+      input = ['iffy'],
+      expect = [Token@like(`Token for [[Identifier]] with value "iffy"`)],
+    },
+    {
+      input = ['/**/'],
+      expect = [
+        Token@like(`Token for [[BlockCommentOpen]] with value "/*"`),
+        Token@like(`Token for [[BlockCommentClose]] with value "*/"`),
+      ],
+    },
+    {
+      input = ['/***/'],
+      expect = [
+        Token@like(`Token for [[BlockCommentOpen]] with value "/*"`),
+        Token@like(`Token for [[BlockCommentBody]] with value "*"`),
+        Token@like(`Token for [[BlockCommentClose]] with value "*/"`),
+      ],
+    },
+    {
+      input = ['/* a /* b */ c */'],
+      expect = [
+        Token@like(`Token for [[BlockCommentOpen]] with value "/*"`),
+        Token@like(`Token for [[BlockCommentBody]] with value " a "`),
+        Token@like(`Token for [[BlockCommentOpen]] with value "/*", opening a nested block comment`),
+        Token@like(`Token for [[BlockCommentBody]] with value " b "`),
+        Token@like(`Token for [[BlockCommentClose]] with value "*/", closing the nested block comment`),
+        Token@like(`Token for [[BlockCommentBody]] with value " c "`),
+        Token@like(`Token for [[BlockCommentClose]] with value "*/", closing the outer block comment`),
+      ],
+    },
+    {
+      input = ["a\r\nb"],
+      expect = [
+        Token@like(`Token for [[Identifier]] with value "a"`),
+        Token@like(`Token for [[NewLine]] with raw text "\\r\\n" and value "\\n"`),
+        Token@like(`Token for [[Identifier]] with value "b"`),
+      ],
+    },
+    {
+      input = ["/*\n*/x"],
+      expect = [
+        Token@like(`Token for [[BlockCommentOpen]] on line 1, column 0`),
+        Token@like(`Token for [[BlockCommentBody]] with value "\\n" on line 1, column 2`),
+        Token@like(`Token for [[BlockCommentClose]] on line 2, column 0`),
+        Token@like(`Token for [[Identifier]] with value "x" on line 2, column 2`),
+      ],
+    },
+    {
+      input = [`"\\uD800"`],
+      expect = [
+        Token@like(`Token for [[DoubleQuote]] with value '"'`),
+        Token@like(`Token for [[DoubleQuoteBody]] with value "\\uD800", the escape kept as written`),
+        Token@like(`Token for [[DoubleQuote]] with value '"'`),
+      ],
+    },
+    {
+      input = ['a<=b<c'],
+      expect = [
+        Token@like(`Token for [[Identifier]] with value "a"`),
+        Token@like(`Token for [[LessThanOrEqual]] with value "<="`),
+        Token@like(`Token for [[Identifier]] with value "b"`),
+        Token@like(`Token for [[LessThan]] with value "<"`),
+        Token@like(`Token for [[Identifier]] with value "c"`),
+      ],
+    },
+    {
+      input = ['x ##y'],
+      expect = [
+        Token@like(`Token for [[Identifier]] with value "x"`),
+        Token@like(`Token for [[Space]] with value " "`),
+        Token@like(`Invalid token with raw text "##"`),
+        Token@like(`Token for [[Identifier]] with value "y"`),
+      ],
+    },
   );
 
   // The terminal document is the only grammar the lexer knows
@@ -159,15 +219,4 @@ fn lex(source: string, file?: string): `Turn source text into tokens` => Token[]
       behavior = `Reads a bare name inside a rule as a reference to the terminal or character class with that identifier`,
     })
     .add({ behavior = `Matches against the following terminals only: \n\n {{terminals}}` });
-
-  for (const rule in keyword@entities) {
-    where (`[[&rule]] and [[Identifier]] match the same characters`) -> `[[&rule]] is the token`;
-  }
-
-  for (const rule in escape@entities) {
-    @acceptanceCriteria.add({
-      behavior = `Matched only as part of another terminal`,
-      sideEffects = [`Can never be a token`],
-    });
-  }
 }

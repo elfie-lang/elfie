@@ -8,9 +8,7 @@ use "./expression";
 
 d DataDeclaration is statement(
   `[[AgentDataKeyword]] , [[Identifier]] , (/ [[TypeParameters]] /) , (/ [[IsClause]] /) , (/ [[ExtendsClause]] /) , (/ [[DefinitionClause]] /) , ( [[Block]] | [[Semicolon]] )`,
-): `A data structure whose implementation is generated from its criteria` {
-  where (`The source is d List<T>;`) -> `A [[DataDeclaration]] of List whose [[TypeParameters]] hold the one [[TypeParameter]] T`;
-}
+): `A data structure whose implementation is generated from its criteria` {}
 d AgentFunctionDeclaration is statement(
   `[[AgentFunctionKeyword]] , [[Signature]] , (/ [[DoubleArrowRight]] , [[TypeExpression]] /) , ( [[Block]] | [[Semicolon]] )`,
 ): `A function whose implementation is generated from its criteria` {}
@@ -35,10 +33,7 @@ d Use is statement(`[[UseKeyword]] , [[StringLiteral]] , (/ [[AsKeyword]] , [[Id
 
 // Blocks and control
 
-d Block is statement(`[[BlockOpen]] , (: [[Statement]] :) , [[BlockClose]]`): `A sequence of statements with its own scope` {
-  @acceptanceCriteria
-    .add({ behavior = `A [[BlockOpen]] at the start of a statement always begins a [[Block]], never an [[Object]]` });
-}
+d Block is statement(`[[BlockOpen]] , (: [[Statement]] :) , [[BlockClose]]`): `A sequence of statements with its own scope` {}
 d If is statement(`[[IfKeyword]] , [[Group]] , ( [[Block]] | [[ExpressionStatement]] ) , (/ [[Else]] /)`): `A conditional` {}
 d Else is rule(`[[ElseKeyword]] , ( [[If]] | [[Block]] | [[ExpressionStatement]] )`): `The other branch; else if is else followed by an if` {}
 d ForFrom is rule(`[[Comma]] , [[Declared]] , [[FromKeyword]] , {{listOf(`[[Expression]]`)}}`): `Loop over keys and values` {}
@@ -62,16 +57,10 @@ d ExpressionStatement is statement(`[[Expression]] , [[Semicolon]]`): `An expres
 
 // Criteria sugar
 
-d Condition is rule(`(/ [[LogicalNot]] /) , ( [[Group]] | [[ConditionGroup]] )`): `One condition, possibly negated or nested` {}
-d ConditionGroup is rule(`(/ [[LogicalNot]] /) , [[GroupOpen]] , [[Conditions]] , [[GroupClose]]`): `One condition, possibly negated or nested` {}
-d Conditions is rule(`[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)`): `Conditions joined by and or or` {
-  @acceptanceCriteria
-    .add({
-      behavior = `A negated nested group distributes the negation: "and" becomes "or" and "or" becomes "and" inside of the group`,
-    })
-    .add({ situation = `Conditions are joined by "or"`, behavior = `They merge into one situation` })
-    .add({ situation = `Conditions are joined by "and"`, behavior = `They are a list of situations` });
-}
-d Where is statement(`[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]`): `Adds an acceptance criterion: the conditions are the situation, the expression the behavior` {}
+// What a where statement means is in lib/criteria/criterion.lfy.
+d Condition is rule(`(/ [[LogicalNot]] /) , ( [[Group]] | [[ConditionGroup]] )`): `One condition, possibly negated` {}
+d ConditionGroup is rule(`(/ [[LogicalNot]] /) , [[GroupOpen]] , [[Conditions]] , [[GroupClose]]`): `Conditions nested in parentheses, possibly negated` {}
+d Conditions is rule(`[[Condition]] , (: ( [[AndKeyword]] | [[OrKeyword]] ) , [[Condition]] :)`): `Conditions joined by and or or` {}
+d Where is statement(`[[WhereKeyword]] , [[Conditions]] , [[SingleArrow]] , [[ExpressionStatement]]`): `An acceptance criterion written as conditions and a consequence` {}
 
 d Statement is alternationList(...statement@entities): `Any statement` {}

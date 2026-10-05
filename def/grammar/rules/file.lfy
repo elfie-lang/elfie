@@ -4,12 +4,7 @@ use "../traits";
 use "./statement";
 
 d SourceFile is rule(`(: [[Statement]] :)`): `A file: statements in order` {
-  @acceptanceCriteria
-    .add({
-      situation = [
-        `[[Space]], [[NewLine]], [[Comment]], or [[Documentation]] appear between two tokens`,
-        `No rule exists on either token specifing that [[Space]], [[NewLine]], [[Comment]], or [[Documentation]] are not allowed for a match`,
-      ],
-      behavior = `[[Space]], [[NewLine]], [[Comment]], and [[Documentation]] may appear between any two tokens outside text bodies`,
-    });
+  @acceptanceCriteria.add({
+    behavior = `[[Space]], [[NewLine]], [[Comment]], and [[Documentation]] may appear between any two tokens outside text bodies`,
+  });
 }

@@ -2,19 +2,6 @@ use "../grammar/terminals/comment";
 use "../grammar/terminals/literal";
 use "./traits";
 
-enum Mode: `Regions of the source that change which terminals may match` {
-  code = `code`,
-  blockComment = `block comment`,
-  lineComment = `line comment`,
-  blockDocumentation = `block documentation`,
-  lineDocumentation = `line documentation`,
-  singleQuote = `single quoted string`,
-  doubleQuote = `double quoted string`,
-  template = `template`,
-  execution = `template execution`,
-  reference = `template reference`,
-}
-
 // Conditions
 const inCode: `Anywhere ordinary tokens are read, including inside template expressions and references` = inMode([
   Mode.code,
@@ -22,50 +9,46 @@ const inCode: `Anywhere ordinary tokens are read, including inside template expr
   Mode.reference,
 ]);
 
-// Text regions: the boundary opens the mode, only the body and the close are candidates inside it
-modeToggle.apply(SingleQuote, Mode.singleQuote, inCode);
-candidateInModes.apply(SingleQuote, Mode.code, Mode.execution, Mode.reference, Mode.singleQuote);
-appliedUntilNewLine.apply(SingleQuote, Mode.singleQuote);
-candidateInModes.apply(SingleQuoteBody, Mode.singleQuote);
+// Text regions: the boundary opens and closes the region; inside it only the body and the boundary are lexed
+delimiter.apply(SingleQuote, Mode.singleQuote);
+lexedIn.apply(SingleQuote, Mode.code, Mode.execution, Mode.reference, Mode.singleQuote);
+lineBounded.apply(SingleQuote, Mode.singleQuote);
+lexedIn.apply(SingleQuoteBody, Mode.singleQuote);
 
-modeToggle.apply(DoubleQuote, Mode.doubleQuote, inCode);
-candidateInModes.apply(DoubleQuote, Mode.code, Mode.execution, Mode.reference, Mode.doubleQuote);
-appliedUntilNewLine.apply(DoubleQuote, Mode.doubleQuote);
-candidateInModes.apply(DoubleQuoteBody, Mode.doubleQuote);
+delimiter.apply(DoubleQuote, Mode.doubleQuote);
+lexedIn.apply(DoubleQuote, Mode.code, Mode.execution, Mode.reference, Mode.doubleQuote);
+lineBounded.apply(DoubleQuote, Mode.doubleQuote);
+lexedIn.apply(DoubleQuoteBody, Mode.doubleQuote);
 
-modeToggle.apply(Backtick, Mode.template, inCode);
-candidateInModes.apply(Backtick, Mode.code, Mode.execution, Mode.reference, Mode.template);
-candidateInModes.apply(TemplateBody, Mode.template);
-modeOpener.apply(ExecutionOpen, Mode.execution, inMode([Mode.template]));
-candidateInModes.apply(ExecutionOpen, Mode.template);
-modeCloser.apply(ExecutionClose, Mode.execution);
-candidateInModes.apply(ExecutionClose, Mode.execution);
-modeOpener.apply(
-  ReferenceOpen,
-  Mode.reference,
-  inMode([Mode.template, Mode.blockDocumentation, Mode.lineDocumentation]),
-);
-candidateInModes.apply(ReferenceOpen, Mode.template, Mode.blockDocumentation, Mode.lineDocumentation);
-modeCloser.apply(ReferenceClose, Mode.reference);
-candidateInModes.apply(ReferenceClose, Mode.reference);
+delimiter.apply(Backtick, Mode.template);
+lexedIn.apply(Backtick, Mode.code, Mode.execution, Mode.reference, Mode.template);
+lexedIn.apply(TemplateBody, Mode.template);
+opener.apply(ExecutionOpen, Mode.execution);
+lexedIn.apply(ExecutionOpen, Mode.template);
+closer.apply(ExecutionClose, Mode.execution);
+lexedIn.apply(ExecutionClose, Mode.execution);
+opener.apply(ReferenceOpen, Mode.reference);
+lexedIn.apply(ReferenceOpen, Mode.template, Mode.blockDocumentation, Mode.lineDocumentation);
+closer.apply(ReferenceClose, Mode.reference);
+lexedIn.apply(ReferenceClose, Mode.reference);
 
 // Comments nest; documentation does not
-modeOpener.apply(BlockCommentOpen, Mode.blockComment, inMode([Mode.code, Mode.blockComment, Mode.execution]));
-candidateInModes.apply(BlockCommentOpen, Mode.code, Mode.blockComment, Mode.execution);
-modeCloser.apply(BlockCommentClose, Mode.blockComment);
-candidateInModes.apply(BlockCommentClose, Mode.blockComment);
-candidateInModes.apply(BlockCommentBody, Mode.blockComment);
-modeOpener.apply(LineCommentOpen, Mode.lineComment, inMode([Mode.code]));
-candidateInModes.apply(LineCommentOpen, Mode.code);
-appliedUntilNewLine.apply(LineCommentOpen, Mode.lineComment);
-candidateInModes.apply(LineCommentBody, Mode.lineComment);
+opener.apply(BlockCommentOpen, Mode.blockComment);
+lexedIn.apply(BlockCommentOpen, Mode.code, Mode.blockComment, Mode.execution);
+closer.apply(BlockCommentClose, Mode.blockComment);
+lexedIn.apply(BlockCommentClose, Mode.blockComment);
+lexedIn.apply(BlockCommentBody, Mode.blockComment);
+opener.apply(LineCommentOpen, Mode.lineComment);
+lexedIn.apply(LineCommentOpen, Mode.code);
+lineBounded.apply(LineCommentOpen, Mode.lineComment);
+lexedIn.apply(LineCommentBody, Mode.lineComment);
 
-modeOpener.apply(BlockDocumentationOpen, Mode.blockDocumentation, inMode([Mode.code, Mode.execution]));
-candidateInModes.apply(BlockDocumentationOpen, Mode.code, Mode.execution);
-modeCloser.apply(BlockDocumentationClose, Mode.blockDocumentation);
-candidateInModes.apply(BlockDocumentationClose, Mode.blockDocumentation);
-candidateInModes.apply(BlockDocumentationBody, Mode.blockDocumentation);
-modeOpener.apply(LineDocumentationOpen, Mode.lineDocumentation, inMode([Mode.code]));
-candidateInModes.apply(LineDocumentationOpen, Mode.code);
-appliedUntilNewLine.apply(LineDocumentationOpen, Mode.lineDocumentation);
-candidateInModes.apply(LineDocumentationBody, Mode.lineDocumentation);
+opener.apply(BlockDocumentationOpen, Mode.blockDocumentation);
+lexedIn.apply(BlockDocumentationOpen, Mode.code, Mode.execution);
+closer.apply(BlockDocumentationClose, Mode.blockDocumentation);
+lexedIn.apply(BlockDocumentationClose, Mode.blockDocumentation);
+lexedIn.apply(BlockDocumentationBody, Mode.blockDocumentation);
+opener.apply(LineDocumentationOpen, Mode.lineDocumentation);
+lexedIn.apply(LineDocumentationOpen, Mode.code);
+lineBounded.apply(LineDocumentationOpen, Mode.lineDocumentation);
+lexedIn.apply(LineDocumentationBody, Mode.lineDocumentation);

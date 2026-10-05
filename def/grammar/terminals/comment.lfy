@@ -25,10 +25,6 @@ d Documentation is rule(
 ): `Documentation for the declaration that follows it` {
   @acceptanceCriteria
     .add({
-      situation = `A declaration follows the documentation with only [[Space]], [[NewLine]], [[Comment]], or other [[Documentation]] between them`,
-      behavior = `Attaches to that declaration, even when it is one of several documentation blocks in a row`,
-    })
-    .add({
       situation = [
         `No declaration follows the documentation`,
         `It is not one of two or more documentation blocks in a row that were all opened with [[BlockDocumentationOpen]]`,

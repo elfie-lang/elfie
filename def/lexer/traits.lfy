@@ -1,29 +1,43 @@
 use "../grammar/terminals/space";
 
-ace function inMode(modes: string[]) {
+enum Mode: `Regions of the source that change which terminals may match` {
+  code = `code`,
+  blockComment = `block comment`,
+  lineComment = `line comment`,
+  blockDocumentation = `block documentation`,
+  lineDocumentation = `line documentation`,
+  singleQuote = `single quoted string`,
+  doubleQuote = `double quoted string`,
+  template = `template`,
+  execution = `template execution`,
+  reference = `template reference`,
+}
+
+ace function inMode(modes: Mode[]): `The condition that the innermost open region is one of [[modes]]` -> string {
   return `The innermost open region is a {{modes.join(` or `)}} region`;
 }
 
-trait candidateInModes(...modes: string[]): `A terminal lexed only inside the regions named` {
+trait lexedIn(...modes: Mode[]): `A terminal lexed only inside the regions named` {
   @acceptanceCriteria.add({
     behavior = `Every token of {{@identifier}} begins while the innermost open region is a {{modes.join(` or `)}} region`,
   });
 }
 
-trait modeOpener(mode: string, when?: string): `Each token of this terminal opens a region` {
-  where (`A token of {{@identifier}} is lexed`) and (when ?? `Always`) -> `It opens a {{mode}} region whose opener is {{@identifier}}`;
+trait opener(mode: Mode): `Each token of this terminal opens a region` {
+  where (`A token of {{@identifier}} is lexed`) -> `It opens a {{mode}} region whose opener is {{@identifier}}`;
 }
 
-trait modeCloser(mode: string): `A token of this terminal closes a region` {
+trait closer(mode: Mode): `A token of this terminal closes a region` {
   where (`A token of {{@identifier}} is lexed`) and (`The innermost open region is a {{mode}} region`) -> `It closes that region`;
 }
 
-trait modeToggle(mode: string, when?: string): `The same boundary opens a region and, seen again, closes it` {
+trait delimiter(mode: Mode): `The same boundary opens a region and, seen again, closes it` {
   const onToken = `A token of {{@identifier}} is lexed`;
-  where (onToken) and (`The innermost open region is a {{mode}} region whose opener is {{@identifier}}`) -> `It closes that region`;
-  where (onToken) and !(`The innermost open region is a {{mode}} region`) and (when ?? `Always`) -> `It opens a {{mode}} region whose opener is {{@identifier}}`;
+  const inOwnRegion = `The innermost open region is a {{mode}} region whose opener is {{@identifier}}`;
+  where (onToken) and (inOwnRegion) -> `It closes that region`;
+  where (onToken) and !(inOwnRegion) -> `It opens a {{mode}} region whose opener is {{@identifier}}`;
 }
 
-trait appliedUntilNewLine(mode: string): `The region this terminal opens ends with its line` {
-  where (`The innermost open region is a {{mode}} region whose opener is {{@identifier}}`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `That region closes there, so the [[NewLine]] is lexed outside it`;
+trait lineBounded(mode: Mode): `The region this terminal opens ends with its line` {
+  where (`The innermost open region is a {{mode}} region whose opener is {{@identifier}}`) and (`The next characters are a [[NewLine]] or the end of the source`) -> `That region closes before them`;
 }

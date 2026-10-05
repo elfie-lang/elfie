@@ -6,6 +6,7 @@ use "../grammar/terminals/literal";
 use "../grammar/terminals/punctuation";
 use "../grammar/terminals/space";
 use "../grammar/traits";
+use "./main";
 use "./traits";
 
 // Trivia
@@ -21,7 +22,7 @@ for (const rule in statement@entities) {
 }
 recoverable.apply(SourceFile, Semicolon, BlockOpen, BlockClose);
 
-// More targetted recovery
+// Narrower recovery
 recoverable.apply(Parameters, GroupClose);
 recoverable.apply(Arguments, GroupClose);
 recoverable.apply(Call, GroupClose);
@@ -31,11 +32,27 @@ recoverable.apply(TemplateReference, ReferenceClose);
 recoverable.apply(TemplateExecution, ExecutionClose);
 
 // What to try for first when things begin with the same token
-triedBefore.apply(Block, Expression);
-triedBefore.apply(Block, ExpressionStatement);
+triedBefore.apply(Block, Expression, ExpressionStatement);
 triedBefore.apply(FunctionDeclaration, ExpressionStatement);
 triedBefore.apply(TraitDeclaration, ExpressionStatement);
 triedBefore.apply(Object, Type);
 triedBefore.apply(TypeValue, TypeGroup);
 triedBefore.apply(InlineFunction, Group);
 triedBefore.apply(ConditionGroup, Group);
+
+global
+  @acceptanceCriteria
+  .add({ behavior = `For every terminal, the statement rules it can begin are completely ordered by [[triedBefore]]` })
+  .add({
+    behavior = `For every terminal, the primary and prefix rules it can begin are completely ordered by [[triedBefore]]`,
+  })
+  .add({
+    behavior = `For every terminal and every alternation inside a rule's syntax, the alternatives it can begin are completely ordered by [[triedBefore]]`,
+  })
+  .add({
+    situation = `A terminal or an alternation can begin candidates that [[triedBefore]] does not completely order`,
+    behavior = [
+      `[[parse]] is not compiled`,
+      `A compile time error names the terminal or alternation and the candidates it selects`,
+    ],
+  });

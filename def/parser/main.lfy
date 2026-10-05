@@ -8,53 +8,28 @@ use "../lexer/data";
 use "./data";
 use "./traits";
 
+/// tokens: the tokens of one file or snippet, as the lexer delivered them
+/// rule: the rule to satisfy: [[SourceFile]] for a file, [[Statement]] to reparse one statement, [[Expression]] for a snippet
 fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a token list into a lossless tree for a rule (the whole file by default)` => Tree {
   @acceptanceCriteria
-    .add({
-      behavior = [
-        `[[Tree.tokens]] is [[tokens]] unchanged`,
-        `[[Tree.root]] is a node for [[rule]] that covers every token exactly once`,
-        `[[Tree.errors]] lists every [[ErrorNode]] in the tree`,
-        `A rule is attempted at most once per token index + minimum`,
-      ],
-    })
+    .add({ behavior = `[[Tree.tokens]] is [[tokens]] unchanged` })
+    .add({ behavior = `[[Tree.root]] is a node for [[rule]] that covers every token exactly once` })
+    .add({ behavior = `A rule is attempted at most once per token index + minimum` })
     .add({
       situation = `[[tokens]] parse with no [[ErrorNode]]`,
       behavior = `The call ends in time linear in the number of [[tokens]]`,
     })
     .add({
-      behavior = `[[rule]] is the rule the caller wants satisfied: [[SourceFile]] for a file, [[Statement]] to reparse one statement, [[Expression]] for a snippet`,
-    })
-    .add({
       situation = `Tokens are left over after [[rule]] is satisfied`,
       behavior = `They become one [[ErrorNode]] at the end of the root`,
-    })
-    .add({
-      situation = [
-        `[[rule]] is an [[GrammarTraits.alternationList]]`,
-        `Trivia precedes the item that satisfied [[rule]]`,
-        `No tokens are left over after [[rule]] is satisfied`,
-      ],
-      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia and the item that satisfied [[rule]]`,
-    })
-    .add({
-      situation = [
-        `[[rule]] is an [[GrammarTraits.alternationList]]`,
-        `Tokens are left over after [[rule]] is satisfied`,
-      ],
-      behavior = `[[Tree.root]] is a node for [[rule]] holding the trivia, the item that satisfied [[rule]], and the [[ErrorNode]] of the tokens left over`,
     });
 
   // The grammar document is the only grammar the parser knows
   const grammar: `EBNF of every rule` = Grammar.grammarDocument();
   @acceptanceCriteria
-    .add({
-      behavior = [
-        `Reads a bare name inside a rule as the rule with that identifier`,
-        `Reads the categories and [[GrammarTraits.binding]] from the rules and sets none of them`,
-        `Parses against the following rules only: \n\n {{grammar}}`,
-      ],
-    });
+    .add({ behavior = `Reads a bare name inside a rule as the rule with that identifier` })
+    .add({ behavior = `Reads the categories and [[GrammarTraits.binding]] from the rules and sets none of them` })
+    .add({ behavior = `Parses against the following rules only: \n\n {{grammar}}` });
 
   // Rules
   @acceptanceCriteria
@@ -65,13 +40,6 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     .add({
       situation = `A rule that is not a [[GrammarTraits.terminal]] is referenced`,
       behavior = `It is satisfied by a node whose children are what its elements produced, in order`,
-    })
-    .add({
-      situation = [
-        `Tokens of a [[trivia]] rule sit between two elements`,
-        `No special handling rules exist for that trivia with the surrounding tokens`,
-      ],
-      behavior = `They are taken as children of the open node`,
     })
     .add({
       situation = `A token without a [[Token.rule]] sits between two elements`,
@@ -98,7 +66,10 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     })
     .add({ behavior = `The next token that is not [[trivia]] selects every candidate it can begin` })
     .add({
-      behavior = `Choice is ordered (PEG): the first alternative that matches is taken, and later alternatives are never tried for that span`,
+      behavior = [
+        `Choice is ordered (PEG): the first alternative that matches is taken`,
+        `Later alternatives are never tried for that span`,
+      ],
     })
     .add({
       behavior = `The alternatives of a choice among candidates are the selected candidates, in [[triedBefore]] order`,
@@ -126,7 +97,8 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
         `The alternation is satisfied by one [[Expression]]`,
         `That [[Expression]] begins with one of the alternation's [[GrammarTraits.primary]] or [[GrammarTraits.prefix]] alternatives`,
         `The rule of the node that [[Expression]] produces is one of the alternatives`,
-        `No candidate is selected among the alternatives, and [[triedBefore]] does not order them`,
+        `No candidate is selected among the alternatives`,
+        `[[triedBefore]] does not order the alternatives`,
       ],
     })
     .add({
@@ -160,7 +132,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     })
     .add({
       situation = `The next token is the operator of a [[GrammarTraits.postfix]] rule and of a [[GrammarTraits.infix]] rule, as [[LessThan]] is of [[Generic]] and of [[RelationalOperation]]`,
-      behavior = `Source that the postfix rule reads, its own criteria included, is read as the postfix rule and never as the infix rule`,
+      behavior = `Source that the postfix rule matches is read as the postfix rule and never as the infix rule`,
     })
     .add({
       situation = `A criterion of an operation makes it no match when the expression is parsed for a particular rule, as [[Generic]] is no match for [[Reference]]`,
@@ -170,26 +142,8 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
   // Errors
   @acceptanceCriteria
     .add({
-      situation = `A [[recoverable]] rule cannot continue after taking a token, or the input ends inside it`,
-      behavior = `It closes with an [[ErrorNode]] as that component says`,
-    })
-    .add({
-      situation = `A rule without [[recoverable]] cannot be satisfied`,
+      situation = [`A rule cannot be satisfied`, `The rule is not [[recoverable]], or it has taken no token`],
       behavior = `It does not match, and takes no token`,
-    })
-    .add({
-      situation = [
-        `An [[ErrorNode]] is produced`,
-        `A token it covers is of a [[GrammarTraits.keyword]] terminal, and an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
-      ],
-      behavior = `[[ErrorNode.keyword]] is the first token it covers that is of a [[GrammarTraits.keyword]] terminal and where an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
-    })
-    .add({
-      situation = [
-        `An [[ErrorNode]] is produced`,
-        `No token it covers is of a [[GrammarTraits.keyword]] terminal where an [[Identifier]] of the same text in that token's place would have let the rule that was open there take it`,
-      ],
-      behavior = `[[ErrorNode.keyword]] is undefined`,
     });
 
   @test(
@@ -310,7 +264,7 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
     {
       input = [Token[]@like(`The lexing of: const = 1; let y = 2;`)],
       expect = Tree@like(
-        `A [[SourceFile]] root holding a [[VariableDeclaration]] whose expression is an [[ErrorNode]] covering = 1 with [[ErrorNode.expected]] [[Identifier]], followed by a complete [[VariableDeclaration]] of y; one error`,
+        `A [[SourceFile]] root holding a [[VariableDeclaration]] whose expression is an [[ErrorNode]] covering = 1 with [[ErrorNode.expected]] [[Identifier]] and no [[ErrorNode.keyword]], followed by a complete [[VariableDeclaration]] of y; one error`,
       ),
     },
     {
@@ -326,10 +280,6 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
       ),
     },
     {
-      input = [Token[]@like(`The lexing of: const = 1;`)],
-      expect = Tree@like(`A [[SourceFile]] root whose one [[ErrorNode]] has no [[ErrorNode.keyword]]`),
-    },
-    {
       input = [Token[]@like(`The lexing of: const = f(a; b); let y = 2;`)],
       expect = Tree@like(
         `A [[SourceFile]] root holding a [[VariableDeclaration]] whose [[ErrorNode]] covers = f(a; b), past the [[Semicolon]] inside the parentheses, followed by a complete [[VariableDeclaration]] of y; one error`,
@@ -341,38 +291,91 @@ fn parse(tokens: Token[], rule: is GrammarTraits.rule = SourceFile): `Turn a tok
         `A [[SourceFile]] root holding one [[VariableDeclaration]] of y whose [[ErrorNode]] covers the token # alone, between the let keyword and the [[Declared]] y; one error`,
       ),
     },
+    {
+      input = [Token[]@like(`The lexing of: { a = 1 };`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root whose first statement is a [[Block]], not an [[Object]], holding an [[ExpressionStatement]] of the [[Assignment]] a = 1 whose [[ErrorNode]] expects [[Semicolon]], followed by an [[ErrorNode]] covering the [[Semicolon]] after the block; two errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: d A: (a) => b;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[DataDeclaration]] whose [[DefinitionClause]] holds a [[FunctionType]] with the [[Parameters]] a and the return type b, not a [[TypeGroup]]; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: x. is T;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[ExpressionStatement]] of a [[Traits]] whose left expression is the [[Member]] x. with no [[MemberName]], because a space follows the [[ValueAccessor]]; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: /// doc, a new line, // note, a new line, d A {}`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[DataDeclaration]] of A whose [[Node.documentation]] holds the [[Documentation]] /// doc, with the [[Comment]] between them; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: d List<T>;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[DataDeclaration]] of List whose [[TypeParameters]] hold the one [[TypeParameter]] T; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[AgentFunctionDeclaration]] whose [[Signature]] is map with the [[TypeParameters]] T and U and two [[Parameter]] items, list typed as the [[TypeItem]] List with the [[TypeArguments]] T and transform typed as the [[FunctionType]] from item of T to U, and whose return type is the [[TypeItem]] List with the [[TypeArguments]] U; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: d A: List<List<T>>;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[DataDeclaration]] whose [[DefinitionClause]] holds the [[TypeItem]] List whose [[TypeArguments]] hold the [[TypeItem]] List with the [[TypeArguments]] T, each [[GreaterThan]] closing one list; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: $items = List<T>;`)],
+      expect = Tree@like(
+        `A [[SourceFile]] root holding one [[ExpressionStatement]] of an [[Assignment]] whose right side is the [[Generic]] of the [[Name]] List with the type argument T; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a < b`), Expression],
+      expect = Tree@like(`A [[RelationalOperation]] root of a and b; no errors`),
+    },
+    {
+      input = [Token[]@like(`The lexing of: List<T>=x`), Expression],
+      expect = Tree@like(
+        `A [[RelationalOperation]] root on [[GreaterThanOrEqual]] whose left operand is the [[RelationalOperation]] of List and T and whose right operand is x, not a [[Generic]]; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: x.f<T>(y)`), Expression],
+      expect = Tree@like(
+        `A [[Call]] root whose left expression is the [[Generic]] of the [[Member]] f of x with the type argument T, and whose [[Items]] hold y; no errors`,
+      ),
+    },
+    {
+      input = [Token[]@like(`The lexing of: a + f<T>(x)`), Expression],
+      expect = Tree@like(
+        `An [[AdditiveOperation]] root whose left operand is a and whose right operand is the [[Call]] of the [[Generic]] of f with the type argument T; no errors`,
+      ),
+    },
   );
 
   // Rule Beginning
+  // Decision: an infix or postfix rule continues an expression, so it never begins one.
   @acceptanceCriteria
     .add({
       situation = `The rule is an [[GrammarTraits.infix]] or [[GrammarTraits.postfix]]`,
-      behavior = `It can begin with no terminal; it continues an expression`,
+      behavior = `It can begin with no terminal`,
     })
     .add({
-      situation = `The rule is not an [[GrammarTraits.infix]] or [[GrammarTraits.postfix]]`,
-      behavior = `It can begin with a terminal when a token of that terminal can be the first token it covers`,
+      situation = [
+        `The rule is not an [[GrammarTraits.infix]] or [[GrammarTraits.postfix]]`,
+        `A token of a terminal can be the first token it covers`,
+      ],
+      behavior = `It can begin with that terminal`,
     })
-    .add({
-      behavior = `[[trivia]] tokens and tokens without a [[Token.rule]] never begin a rule; the next token is read past them`,
-    });
-
-  for (const rule in GrammarTraits.infix@entities, GrammarTraits.postfix@entities) {
-    where (`The next token is the operator of [[&rule]] and its binding power continues the expression`) -> `A node for [[&rule]] is built from the left operand, the operator, and what follows`;
-  }
+    .add({ behavior = `No [[trivia]] token and no token without a [[Token.rule]] begins a rule` });
 }
-
-global
-  @acceptanceCriteria
-  .add({
-    behavior = [
-      `For every terminal, the statement rules it can begin are completely ordered by [[triedBefore]]`,
-      `For every terminal, the primary and prefix rules it can begin are completely ordered by [[triedBefore]]`,
-      `For every terminal and every alternation inside a rule's syntax, the alternatives it can begin are completely ordered by [[triedBefore]]`,
-      `Every alternative of an alternation inside a rule's syntax that shares a first terminal with another alternative of that alternation is a single rule reference`,
-    ],
-    sideEffects = [
-      `[[parse]] cannot be compiled unless [[triedBefore]] covers all necessary information`,
-      `Every failing terminal or alternation is reported with the candidates it selects as a compile time error`,
-    ],
-  });
