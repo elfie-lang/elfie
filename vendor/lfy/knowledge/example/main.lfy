@@ -1,0 +1,18 @@
+/// An example package to imitate: one data, one fn with criteria and a test, and a trait.
+
+trait persisted: `Kept in the store and read back unchanged` {
+  where (`An entity carrying it is written`) -> `Reading it back gives an equal value`;
+}
+
+d Order is persisted: `A customer's order` {
+  $id: `Unique and never changes` = string;
+  $total: `What it costs, in whole cents` = number;
+}
+
+/// orders: the orders to add up
+fn totalOf(orders: Order[]): `What a list of orders costs together` => number {
+  @acceptanceCriteria
+    .add({ behavior = `Returns the sum of [[Order.total]] over [[orders]]` })
+    .add({ situation = `[[orders]] is empty`, behavior = `Returns 0` });
+  @test({ input = [[{ id = "a", total = 150 }, { id = "b", total = 250 }]], expect = 400 });
+}

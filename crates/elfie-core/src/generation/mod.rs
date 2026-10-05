@@ -21,7 +21,7 @@
 //! unit.
 //! Nothing here shells out.
 
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -40,8 +40,8 @@ use crate::interpret::{
     Evaluated, LoweredChild, LoweredCriterion, LoweredFile, LoweredNode, LoweredTest, Program,
 };
 use crate::model::{
-    self, Applied, AppliedSource, Criterion, Entity, EntityId, EntityKind, FileId, Model, NodeRef,
-    Problem, SymbolKind, TypeRef, Value,
+    self, AppliedSource, Command, Criterion, Entity, EntityId, EntityKind, FileId, Knowledge,
+    KnowledgeKind, Model, NodeRef, Operation, Problem, SymbolKind, TypeRef,
 };
 use crate::parser::Child;
 use crate::parser::components::is_trivia;
@@ -440,14 +440,16 @@ fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, ind
 
 /// Every unit of a workspace, which need generating, and how they are batched.
 ///
-/// An entity is built for a target when it carries the target's marker, when the
-/// anonymous entity of its file does, or when `global` does; the last two select every
-/// entity declared in the file scope. Every file without a package that has at least one
-/// built entity for a target gives one unit holding those entities in file order; a file
-/// that has a package gives no unit, since a package is compiled by its own project. That
-/// holds for the `elfie` package, the standard library, even when the marker is applied to
-/// `global`: none of its entities is ever in a unit's entities, though a unit's interface
-/// may still name them as types.
+/// An entity is built for each target among its own targets; where it has none, for each
+/// target among the targets of the anonymous entity of its file, and where that has none
+/// either, for each target among the targets of `global`. Every file without a package that
+/// has at least one built entity for a target gives one unit holding those entities in file
+/// order; a file that has a package gives no unit, since a package is compiled by its own
+/// project. That holds for the `elfie` package, the standard library, even when `global`
+/// holds a target: none of its entities is ever in a unit's entities, though a unit's
+/// interface may still name them as types. An entity of a unit whose member, parameter, or
+/// output reaches an entity of a project file that is not built for the unit's target
+/// leaves one problem at that member, parameter, or output.
 /// Units come in target order then file order, each after its dependencies. A unit's
 /// reason is the first of: requested, violated, fresh, changed, requirements, dependency;
 /// `None` when it is up to date. Callers pass [`source_maps_of`] the workspace, which
@@ -485,6 +487,9 @@ pub fn plan(
         // @lfy def/generation/main.lfy:plan
         let mut unit_of_file: Vec<Option<usize>> = vec![None; workspace.files.len()];
         let mut local: Vec<(usize, Vec<EntityId>)> = Vec::new();
+        // Every entity a project file declares that has a lowered node: what could have
+        // been built for this target. @lfy def/generation/main.lfy:plan
+        let mut buildable: Vec<EntityId> = Vec::new();
         for (file_index, file) in workspace.files.iter().enumerate() {
             if file.package.is_some() {
                 continue; // @lfy def/generation/main.lfy:plan
@@ -493,7 +498,9 @@ pub fn plan(
             // among a unit's entities, so no output has to carry a marker for it.
             // @lfy def/generation/main.lfy:plan
             let lowered = lowered_entities(&program.files[file_index]);
-            let entities: Vec<EntityId> = built_entities(model, file.source, target.marker)
+            buildable.extend(lowered.iter().copied());
+            // @lfy def/generation/main.lfy:plan#plan:plan:1b7fdf3d190f89a93b4da6eaafc7774096e2d8f5a64d61a43e54f3fec690750c
+            let entities: Vec<EntityId> = built_entities(model, file.source, target.declaration)
                 .into_iter()
                 .filter(|entity| lowered.contains(entity))
                 .collect();
@@ -502,6 +509,19 @@ pub fn plan(
             }
             unit_of_file[file_index] = Some(local.len());
             local.push((file_index, entities));
+        }
+
+        // An entity of a unit whose type reaches an entity of a project file that is not
+        // built for this target: the reached code would not be there to use.
+        // @lfy def/generation/main.lfy:plan#plan:plan:28729b42d15d20d9238283f1a0077d5bcf0dffd32f4bf589ea2c0f639e467065
+        let built: Vec<EntityId> = local
+            .iter()
+            .flat_map(|(_, entities)| entities.iter().copied())
+            .collect();
+        for problem in unbuilt_problems(workspace, &built, &buildable, &target.identifier) {
+            if !problems.contains(&problem) {
+                problems.push(problem);
+            }
         }
 
         // Dependencies the uses give, as positions among this target's units.
@@ -846,6 +866,68 @@ fn cause_of(model: &Model, holders: &[EntityId], moved: EntityId) -> String {
     String::new()
 }
 
+/// One problem per entity of a unit of one target whose member, parameter, or output
+/// reaches an entity of a project file that has a lowered node and is not built for that
+/// target: each sits at that member, parameter, or output, and names both entities and the
+/// target.
+// @lfy def/generation/main.lfy:plan#plan:plan:28729b42d15d20d9238283f1a0077d5bcf0dffd32f4bf589ea2c0f639e467065
+fn unbuilt_problems(
+    workspace: &Workspace,
+    built: &[EntityId],
+    buildable: &[EntityId],
+    target: &str,
+) -> Vec<Problem> {
+    let model = &workspace.model;
+    let mut out: Vec<Problem> = Vec::new();
+    let missing = |ty: Option<&TypeRef>| -> Vec<EntityId> {
+        closure(model, &named_entities_of(model, ty))
+            .into_iter()
+            .filter(|entity| buildable.contains(entity) && !built.contains(entity))
+            .collect()
+    };
+    let mut add = |node: Option<NodeRef>, place: String, reached: Vec<EntityId>| {
+        let Some(node) = node else { return };
+        for entity in reached {
+            let problem = Problem {
+                node,
+                message: format!(
+                    "{place} reaches {}, which is not built for the target {target}",
+                    entity_name(model, entity)
+                ),
+            };
+            if !out.contains(&problem) {
+                out.push(problem);
+            }
+        }
+    };
+    for &owner in built {
+        let name = entity_name(model, owner);
+        for member in all_members(model, owner) {
+            let record = &model.entities[member];
+            add(
+                record.node,
+                format!("the member {name}.{}", entity_name(model, member)),
+                missing(record.ty.as_ref()),
+            );
+        }
+        for &symbol in model.entities[owner].parameters() {
+            let parameter = model.symbols[symbol].entity;
+            let spelled = format!("the parameter {name}.{}", model.symbols[symbol].name);
+            add(
+                model.entities[parameter].node,
+                spelled,
+                missing(model.entities[parameter].ty.as_ref()),
+            );
+        }
+        add(
+            model.entities[owner].node,
+            format!("the output of {name}"),
+            missing(model.entities[owner].output()),
+        );
+    }
+    out
+}
+
 /// The problem a cycle no file of which is used by every other leaves: it names every file of
 /// the cycle, and sits at the first declaration, in file order and then source order, of a
 /// member, parameter, or output whose type reaches an entity of another file of the cycle.
@@ -1042,14 +1124,23 @@ fn reached_by(model: &Model, roots: &[EntityId]) -> Vec<EntityId> {
     closure(model, &named)
 }
 
-/// The entities of a file built for a target's marker, in file order.
-// @lfy def/generation/main.lfy:plan
-fn built_entities(model: &Model, source: usize, marker: EntityId) -> Vec<EntityId> {
-    let global_has = model.entities[model.global].has_trait(marker);
-    let file_has = model
+/// The entities of a file built for one target, named by the `ace const` that declares
+/// it, in file order.
+///
+/// An entity whose own targets are not empty is built for each of them and for no other;
+/// one whose own targets are empty takes the targets of the anonymous entity of its file,
+/// and, where those are empty too, the targets of `global`. Only an entity declared in the
+/// file scope of the file is built: a member, a parameter, or an enum member goes with the
+/// entity that holds it.
+// @lfy def/generation/main.lfy:plan#plan:plan:c3b45b9c75fa54e5426018d8de412d9c76d287a296f9384ce03c03717a3ee93c
+fn built_entities(model: &Model, source: usize, declaration: EntityId) -> Vec<EntityId> {
+    // @lfy def/generation/main.lfy:plan#plan:plan:f50e1e1e7d1202cefb738ac1a35aaf701a527d714a98bf508187d9e62711111d
+    let global: &[EntityId] = &model.entities[model.global].targets;
+    // @lfy def/generation/main.lfy:plan#plan:plan:9d9bdedaf21744127b3df06a905fda651438a8d0a428da8e1f1411fa653c7e11
+    let of_file: &[EntityId] = model
         .file_entities
         .get(source)
-        .is_some_and(|&entity| model.entities[entity].has_trait(marker));
+        .map_or(&[], |&entity| model.entities[entity].targets.as_slice());
     let mut out: Vec<EntityId> = Vec::new();
     if let Some(&scope) = model.file_scopes.get(source) {
         for &symbol in &model.scopes[scope].symbols {
@@ -1064,42 +1155,21 @@ fn built_entities(model: &Model, source: usize, marker: EntityId) -> Vec<EntityI
             {
                 continue;
             }
-            if global_has || file_has || entity.has_trait(marker) {
+            // @lfy def/generation/main.lfy:plan#plan:plan:b289c015fc19940e37cc73ea07c7ad9132652a5f7e844d6c739186fb3606576c
+            let chosen: &[EntityId] = if !entity.targets.is_empty() {
+                entity.targets.as_slice()
+            } else if of_file.is_empty() {
+                global
+            } else {
+                of_file
+            };
+            if chosen.contains(&declaration) {
                 out.push(symbol.entity);
             }
         }
     }
-    // Decision: an entity that carries the marker itself but is declared below the file
-    // scope (say, inside a block) is built too, since `entitiesOf` the marker lists it;
-    // members, parameters, and other parts of a declaration are not, since they are built
-    // with the declaration that holds them.
-    for &entity in model::entities_of(model, marker).iter() {
-        let record = &model.entities[entity];
-        if record.file == Some(source)
-            && record.node.is_some()
-            && is_declaration(&record.kind)
-            && !out.contains(&entity)
-        {
-            out.push(entity);
-        }
-    }
     out.sort_by_key(|&entity| model.entities[entity].node.map(|node| node.index));
     out
-}
-
-/// Whether an entity kind is a declaration a unit can be made of.
-fn is_declaration(kind: &EntityKind) -> bool {
-    matches!(
-        kind,
-        EntityKind::Data
-            | EntityKind::Type
-            | EntityKind::Enum
-            | EntityKind::Fn { .. }
-            | EntityKind::Trait { .. }
-            | EntityKind::Variable
-            | EntityKind::Alias
-            | EntityKind::External
-    )
 }
 
 /// The units (as positions among one target's units) a file depends on: the unit of each
@@ -1339,10 +1409,12 @@ fn source_text(workspace: &Workspace, file: &File) -> String {
 /// local criteria and tests, each with its id; the globals are every global criterion and
 /// test of the program; `existing` is kept only where its path is among the outputs of a
 /// unit of the batch; there is one interface per dependency of the batch that is not itself
-/// in it; the guidance is every criterion of the target's marker and of every trait it
-/// extends, as [`guidance_of`] gathers them; and the native dependencies are the
-/// workspace's followed by the target package's. The instructions quote every criterion and
-/// test already resolved, so a compiler with no access to the model can still work.
+/// in it; the guidance is every criterion of the target's declaration, of each of its
+/// layers, and of every trait those layers extend, as [`guidance_for`] gathers them; the
+/// native dependencies and the commands are the target's; and the knowledge is the
+/// target's, then that of each entity of the batch's units, then that of each entity of an
+/// interface, each item once. The instructions quote every criterion and test already
+/// resolved, so a compiler with no access to the model can still work.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
 // @lfy def/generation/main.lfy:request
@@ -1369,6 +1441,8 @@ pub fn request(
             interfaces: Vec::new(),
             guidance: Vec::new(),
             native_dependencies: Vec::new(),
+            knowledge: Vec::new(),
+            commands: Vec::new(),
         };
     };
     let target = &workspace.targets[plan.units[first].target];
@@ -1437,18 +1511,32 @@ pub fn request(
             });
         }
     }
-    let guidance = guidance_of(model, target.marker); // @lfy def/generation/main.lfy:request
-    // @lfy def/generation/main.lfy:request
-    let native_dependencies: Vec<NativeDependency> = workspace
-        .native_dependencies
-        .iter()
-        .chain(
-            workspace.packages[target.package]
-                .native_dependencies
-                .iter(),
-        )
-        .cloned()
-        .collect();
+    let guidance = guidance_for(model, target);
+    // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+    let native_dependencies: Vec<NativeDependency> = target.native_dependencies.clone();
+    let commands: Vec<Command> = target.commands.clone();
+    // The target's knowledge, then that of each entity of the batch's units, then that of
+    // each entity of an interface, each item once.
+    // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+    let mut knowledge: Vec<Knowledge> = Vec::new();
+    let hold = |items: &[Knowledge], knowledge: &mut Vec<Knowledge>| {
+        for item in items {
+            if !knowledge.contains(item) {
+                knowledge.push(item.clone());
+            }
+        }
+    };
+    hold(&target.knowledge, &mut knowledge);
+    for &index in &batch.units {
+        for &entity in &plan.units[index].entities {
+            hold(&model.entities[entity].knowledge, &mut knowledge);
+        }
+    }
+    for interface in &interfaces {
+        for &entity in &interface.entities {
+            hold(&model.entities[entity].knowledge, &mut knowledge);
+        }
+    }
 
     let instructions = instructions(
         program,
@@ -1463,6 +1551,8 @@ pub fn request(
             interfaces: &interfaces,
             guidance: &guidance,
             native_dependencies: &native_dependencies,
+            knowledge: &knowledge,
+            commands: &commands,
         },
     );
 
@@ -1477,6 +1567,8 @@ pub fn request(
         interfaces,
         guidance,
         native_dependencies,
+        knowledge,
+        commands,
     }
 }
 
@@ -1492,123 +1584,93 @@ struct Quoted<'r> {
     interfaces: &'r [Interface],
     guidance: &'r [Criterion],
     native_dependencies: &'r [NativeDependency],
+    knowledge: &'r [Knowledge],
+    commands: &'r [Command],
 }
 
-/// The guidance a target's marker gives: its own criteria, then those of every trait it
-/// extends, transitively and nearest first, so a marker extending `targetLanguage` gives
-/// its own criteria, then those of `targetLanguage`, then those of `target`. A trait
-/// reached twice contributes once, at its first place. A trait the marker extends with
-/// arguments, such as `cratePerPrefix` and `modulePerFile`, contributes in extends order
-/// after the marker's own, with each of its template values evaluated from those
-/// arguments; every template value of the guidance is evaluated for the marker's
-/// application.
-// Decision: a trait's own criteria keep a template value of its parameters as written,
-// since the parameters are unbound where the trait is declared; the value is substituted
-// here, where the application that bound them is known.
-// @lfy def/generation/main.lfy:request
-pub fn guidance_of(model: &Model, marker: EntityId) -> Vec<Criterion> {
-    let mut out: Vec<Criterion> = Vec::new();
-    let mut seen: Vec<EntityId> = vec![marker];
-    // Nearest first: each trait is visited a whole level after the trait that extends it.
-    // @lfy def/generation/main.lfy:request
-    let mut queue: VecDeque<(EntityId, Vec<(String, String)>)> =
-        VecDeque::from([(marker, Vec::new())]);
-    while let Some((entity, arguments)) = queue.pop_front() {
-        for mut criterion in model::criteria_of(model, entity) {
-            // @lfy def/generation/main.lfy:request
-            substitute(&mut criterion, &arguments);
-            out.push(criterion);
+/// The guidance of a target: the criteria of its declaration that neither a layer nor a
+/// trait a layer extends gave, in order; then those each of its layers contributed, layer by
+/// layer in guidance order; then those of every trait the layers extend, transitively and
+/// nearest first, each trait once.
+///
+/// Every template value is already rendered from the arguments the layer was applied with,
+/// since applying a layer to the declaration resolved each of its criteria for that
+/// application; a trait the layers extend whose criteria the declaration does not carry
+/// still gives its own.
+// Decision: the criteria are read off the declaration rather than off each trait, because a
+// trait's own criteria keep a template value of its parameters as written — the parameters
+// are unbound where the trait is declared — and the application that bound them is what the
+// declaration holds.
+// @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
+    let held = model::criteria_of(model, target.declaration);
+    // A trait reached through two layers is inherited by the declaration once per path, so
+    // what one contributor gave is taken once.
+    // @lfy def/generation/main.lfy:request#request:request:7ba99d5e747662531bb244f8f0f9640426e9b36113f67099d0a02904a6a282e5
+    let once = |criteria: Vec<Criterion>| -> Vec<Criterion> {
+        let mut out: Vec<Criterion> = Vec::new();
+        for criterion in criteria {
+            if !out.contains(&criterion) {
+                out.push(criterion);
+            }
         }
+        out
+    };
+    // The layers, then every trait they extend, gathered before anything is taken, because
+    // what comes first is what none of them gave. Nearest first: a trait is reached a whole
+    // level after the trait that extends it, and a trait reached twice keeps its first
+    // place.
+    // @lfy def/generation/main.lfy:request#request:request:7ba99d5e747662531bb244f8f0f9640426e9b36113f67099d0a02904a6a282e5
+    let mut layered: Vec<EntityId> = Vec::new();
+    for &layer in &target.layers {
+        if layered.contains(&layer) {
+            continue; // @lfy def/generation/main.lfy:request
+        }
+        layered.push(layer);
+    }
+    let mut reached = 0;
+    while reached < layered.len() {
+        let entity = layered[reached];
+        reached += 1;
         for applied in &model.entities[entity].traits {
             if !matches!(applied.source, AppliedSource::Extends(_))
-                || seen.contains(&applied.entity)
+                || layered.contains(&applied.entity)
             {
                 continue; // @lfy def/generation/main.lfy:request
             }
-            seen.push(applied.entity);
-            queue.push_back((applied.entity, arguments_of(model, applied, &arguments)));
+            layered.push(applied.entity);
         }
     }
-    out
-}
-
-/// The parameters of an applied trait bound to the text of the arguments it was applied
-/// with, in declaration order.
-// @lfy def/generation/main.lfy:request
-fn arguments_of(
-    model: &Model,
-    applied: &Applied,
-    outer: &[(String, String)],
-) -> Vec<(String, String)> {
-    model.entities[applied.entity]
-        .parameters()
-        .iter()
-        .enumerate()
-        .map(|(index, &symbol)| {
-            let text = match applied.values.get(index) {
-                Some(Value::Undefined) | None => {
-                    // An argument written in terms of the extending trait's own parameters
-                    // could not be evaluated where it stands; its text carries them, and
-                    // the application that bound them is the one outside.
-                    match applied.arguments.get(index) {
-                        Some(&node) => substitute_text(model.raw(node).trim(), outer),
-                        None => String::new(),
-                    }
-                }
-                Some(value) => model::value_text(model, value),
-            };
-            (model.symbols[symbol].name.clone(), text)
-        })
-        .collect()
-}
-
-/// A criterion with every template value of its texts substituted.
-// @lfy def/generation/main.lfy:request
-fn substitute(criterion: &mut Criterion, arguments: &[(String, String)]) {
-    if arguments.is_empty() {
-        return;
-    }
-    for texts in [
-        criterion.situation.as_mut(),
-        criterion.behavior.as_mut(),
-        criterion.side_effects.as_mut(),
-    ]
-    .into_iter()
-    .flatten()
-    {
-        for text in texts {
-            *text = substitute_text(text, arguments);
+    // Whoever else gave the declaration a criterion comes first: the declaration's own body,
+    // or the file that adds one with an add call on the const's acceptanceCriteria.
+    // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+    let mut out: Vec<Criterion> = once(
+        held.iter()
+            .filter(|criterion| !layered.contains(&criterion.contributor))
+            .cloned()
+            .collect(),
+    );
+    let by = |contributor: EntityId| -> Vec<Criterion> {
+        let mine = once(
+            held.iter()
+                .filter(|criterion| criterion.contributor == contributor)
+                .cloned()
+                .collect(),
+        );
+        if !mine.is_empty() {
+            return mine;
         }
+        once(
+            model::criteria_of(model, contributor)
+                .into_iter()
+                .filter(|criterion| criterion.contributor == contributor)
+                .collect(),
+        )
+    };
+    // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+    for &entity in &layered {
+        out.extend(by(entity));
     }
-}
-
-/// A text with each `{{name}}` naming one of the arguments replaced by its value, and
-/// every other template value left as written.
-// @lfy def/generation/main.lfy:request
-fn substitute_text(text: &str, arguments: &[(String, String)]) -> String {
-    if arguments.is_empty() || !text.contains("{{") {
-        return text.to_string();
-    }
-    let mut out = String::new();
-    let mut rest = text;
-    while let Some(start) = rest.find("{{") {
-        out.push_str(&rest[..start]);
-        let after = &rest[start + 2..];
-        let Some(end) = after.find("}}") else {
-            out.push_str("{{");
-            rest = after;
-            continue;
-        };
-        let inner = &after[..end];
-        match arguments.iter().find(|(name, _)| name == inner.trim()) {
-            Some((_, value)) => out.push_str(value),
-            None => {
-                let _ = write!(out, "{{{{{inner}}}}}");
-            }
-        }
-        rest = &after[end + 2..];
-    }
-    out.push_str(rest);
     out
 }
 
@@ -1631,6 +1693,8 @@ fn instructions(
         interfaces,
         guidance,
         native_dependencies,
+        knowledge,
+        commands,
     } = *quoted;
     let model = &workspace.model;
     let mut out = String::new();
@@ -1693,9 +1757,9 @@ fn instructions(
     out.push_str("## Guidance\n\n");
     let _ = writeln!(
         out,
-        "The target's marker `{}`, and every trait it extends, give this guidance for building \
-         against the target:\n",
-        entity_name(model, target.marker)
+        "The declaration of the target `{}`, each of its layers in guidance order, and every trait \
+         those layers extend give this guidance for building against the target:\n",
+        target.identifier
     );
     if guidance.is_empty() {
         out.push_str("(none)\n");
@@ -1731,6 +1795,9 @@ fn instructions(
     }
     out.push('\n');
 
+    // The knowledge. @lfy def/generation/main.lfy:request
+    write_knowledge(&mut out, workspace, knowledge);
+
     // Each interface. @lfy def/generation/main.lfy:request
     out.push_str("## Interfaces\n\n");
     if interfaces.is_empty() {
@@ -1763,6 +1830,9 @@ fn instructions(
         }
         out.push('\n');
     }
+
+    // The commands. @lfy def/generation/main.lfy:request
+    write_commands(&mut out, target, commands);
 
     // One section per unit of the batch, in order. @lfy def/generation/main.lfy:request
     out.push_str("## The units to compile\n\n");
@@ -1965,6 +2035,168 @@ fn instructions(
     );
 
     out
+}
+
+/// What the compiler is given to read, in the order the request gathered it: a reference
+/// or an example either quoted in full or named to be read; a definition as the files its
+/// use path resolves to; a tool as the tool of the agent server to call.
+// @lfy def/generation/main.lfy:request
+fn write_knowledge(out: &mut String, workspace: &Workspace, knowledge: &[Knowledge]) {
+    out.push_str("## Knowledge\n\n");
+    if knowledge.is_empty() {
+        out.push_str("The compiler is given nothing of its own to read.\n\n");
+        return;
+    }
+    out.push_str("The compiler is given this to read, because it may not already know it:\n\n");
+    let mut quoted: Vec<(String, String, String)> = Vec::new();
+    for item in knowledge {
+        match item.kind {
+            // @lfy def/generation/main.lfy:request#request:request:18fa49f6ae0fe059f4d8b65429f7356e822363b0bb901d611f266ca1393c940b
+            KnowledgeKind::Tool => {
+                let _ = writeln!(
+                    out,
+                    "- {}: call the tool `{}` of the agent server before relying on what it \
+                     answers.",
+                    item.topic, item.source
+                );
+            }
+            // @lfy def/generation/main.lfy:request#request:request:179394ea2be57b4a87b41dac2988b30f36b058129a701fc79ff34cc290769606
+            KnowledgeKind::Definition => {
+                let files = definition_files(workspace, item);
+                let named = if files.is_empty() {
+                    format!("`{}`", item.source)
+                } else {
+                    files
+                        .iter()
+                        .map(|path| format!("`{path}`"))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                };
+                let _ = writeln!(out, "- {}: read {named} as Elfie.", item.topic);
+            }
+            KnowledgeKind::Reference | KnowledgeKind::Example => {
+                let path = under_root(&knowledge_root(workspace, item), &item.source);
+                if item.quote == Some(true) {
+                    // @lfy def/generation/main.lfy:request#request:request:1e12c61514619140b53196fc805053e31c6c2ea0a866877135393d8bad20973e
+                    let text = std::fs::read_to_string(workspace.root.join(&path))
+                        .unwrap_or_else(|error| format!("(`{path}` could not be read: {error})"));
+                    quoted.push((item.topic.clone(), path, text));
+                } else {
+                    // @lfy def/generation/main.lfy:request#request:request:150b2f04d99c0e10d3fa0a47b44b85712f1b4f40f249081a39b2ceda0240df29
+                    let _ = writeln!(
+                        out,
+                        "- {}: read `{path}` before writing anything it covers.",
+                        item.topic
+                    );
+                }
+            }
+        }
+    }
+    out.push('\n');
+    for (topic, path, text) in quoted {
+        let _ = writeln!(
+            out,
+            "### {topic}\n\nFrom `{path}`:\n\n````\n{}\n````\n",
+            text.trim_end()
+        );
+    }
+}
+
+/// The directory a knowledge item's source is relative to: the root of the package of the
+/// file its contributor is declared in, and the project's own root when that file is the
+/// project's own.
+// @lfy def/generation/main.lfy:request
+fn knowledge_root(workspace: &Workspace, item: &Knowledge) -> String {
+    workspace.model.entities[item.contributor]
+        .file
+        .and_then(|source| workspace.files.iter().find(|file| file.source == source))
+        .and_then(|file| file.package)
+        .map_or(String::new(), |package| {
+            workspace.packages[package].root.clone()
+        })
+}
+
+/// The files of the program the source of a knowledge item of the kind `definition`
+/// resolves to: it is a use path, read from the file its contributor is declared in.
+// @lfy def/generation/main.lfy:request
+fn definition_files(workspace: &Workspace, item: &Knowledge) -> Vec<String> {
+    let from = workspace.model.entities[item.contributor]
+        .file
+        .and_then(|source| workspace.files.iter().find(|file| file.source == source));
+    let base = if item.source.starts_with('.') {
+        let directory = from.map_or("", |file| directory_of(&file.path));
+        normalized(&under_root(directory, &item.source))
+    } else {
+        let (first, rest) = item
+            .source
+            .split_once('/')
+            .unwrap_or((item.source.as_str(), ""));
+        match workspace
+            .packages
+            .iter()
+            .find(|package| package.identifier == first)
+        {
+            Some(package) => normalized(&under_root(&package.root, rest)),
+            None => normalized(&item.source),
+        }
+    };
+    let named = format!("{base}{EXTENSION}");
+    let main = under_root(&base, &format!("main{EXTENSION}"));
+    workspace
+        .files
+        .iter()
+        .filter(|file| file.path == named || file.path == main)
+        .map(|file| file.path.clone())
+        .collect()
+}
+
+/// The commands the compiler runs instead of knowing the tools, one line per operation.
+// @lfy def/generation/main.lfy:request
+fn write_commands(out: &mut String, target: &Target, commands: &[Command]) {
+    out.push_str("## Commands\n\n");
+    let _ = writeln!(
+        out,
+        "These run with `sh -c` in `{}`, with `RUN_SCRIPT` set to {} and, for `add`, `NAME` and \
+         `VERSION` set to the dependency's:\n",
+        target.output_directory,
+        match &target.script_runner {
+            Some(runner) => format!("`{runner}`"),
+            None => "nothing, since the target names none".to_string(),
+        }
+    );
+    if commands.is_empty() {
+        out.push_str("(none)\n");
+    }
+    for command in commands {
+        let _ = writeln!(
+            out,
+            "- `{}`: {}",
+            operation_name(command.operation),
+            match &command.line {
+                Some(line) => format!("`{line}`"),
+                None => "not run".to_string(),
+            }
+        );
+    }
+    out.push_str(
+        "\nA dependency is added only by running the add command, never by editing a manifest or a \
+         lockfile by hand. The build, test, and lint commands are run before the report, and their \
+         results stated in it.\n\n",
+    );
+}
+
+/// The name of an operation, as the standard library spells it.
+// @lfy def/generation/main.lfy:request
+fn operation_name(operation: Operation) -> &'static str {
+    match operation {
+        Operation::Install => "install",
+        Operation::Add => "add",
+        Operation::Build => "build",
+        Operation::Test => "test",
+        Operation::Lint => "lint",
+        Operation::Format => "format",
+        Operation::Run => "run",
+    }
 }
 
 /// What moved into and out of one unit, in that unit's section of the instructions: which
@@ -2273,7 +2505,8 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
 /// earn, and the outputs with their markers normalized.
 ///
 /// Rejected when there are no outputs, when an output's path is not under the target's
-/// output directory, when a marker names an entity that its file does not declare, a line
+/// output directory or its extension is not among the target's, when a marker names an
+/// entity that its file does not declare, a line
 /// of the unit's file beyond its last, or — naming the unit's own file — a requirement id
 /// that is neither a local criterion or test of the unit nor a global one, or when an entity
 /// of the unit has no marker naming it or a line its declaration covers. A marker naming a
@@ -2345,6 +2578,20 @@ pub fn accept(
                 output.path, target.output_directory, target.identifier
             ));
         }
+        // @lfy def/generation/main.lfy:accept#accept:accept:3155ad6c69d739023b377c20c0889d2723058f8a413e52287daad7c0486af5f7
+        if !extension_of(&output.path).is_some_and(|extension| {
+            target
+                .extensions
+                .iter()
+                .any(|allowed| allowed == extension)
+        }) {
+            problems.push(format!(
+                "the output {} has no extension the target {} allows: {}",
+                output.path,
+                target.identifier,
+                target.extensions.join(", ")
+            ));
+        }
         let mut markers = Vec::new();
         // [`parse_markers`] derives each marker's end as the line before the output line
         // of the next marker in the same output, or the last line of the output for the
@@ -2413,7 +2660,7 @@ pub fn accept(
     }
 
     // Nothing of a source map comes from the compiler's text except the names it spelled.
-    // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
+    // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
     let hash = source_hash(&planned.text);
     let requirements = requirements_hash(program, planned);
     let signature = interface_signature(workspace, planned);
@@ -3126,7 +3373,7 @@ fn previous_entities(before: &Program, target: &str, path: &str) -> Vec<EntityId
     built_entities(
         &workspace.model,
         workspace.files[index].source,
-        target.marker,
+        target.declaration,
     )
     .into_iter()
     .filter(|entity| lowered.contains(entity))
@@ -4349,6 +4596,52 @@ fn under(path: &str, directory: &str) -> bool {
     strip_directory(path, directory).is_some()
 }
 
+/// A path under a directory, both relative to the root.
+fn under_root(directory: &str, name: &str) -> String {
+    if is_root(directory) {
+        name.to_string()
+    } else if name.is_empty() {
+        directory.to_string()
+    } else {
+        format!("{directory}/{name}")
+    }
+}
+
+/// `Path.extension`: what follows the last dot of the last segment, without the dot; `None`
+/// when the name has no dot or only a leading one.
+// @lfy def/generation/main.lfy:accept
+fn extension_of(path: &str) -> Option<&str> {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    match name.rfind('.') {
+        Some(0) | None => None,
+        Some(dot) => Some(&name[dot + 1..]),
+    }
+}
+
+/// The directory holding a file, relative to the root; empty for a file at the root.
+fn directory_of(path: &str) -> &str {
+    path.rsplit_once('/').map_or("", |(directory, _)| directory)
+}
+
+/// A path with every `.` dropped and every `..` applied to the segment before it, never
+/// looking at the disk.
+fn normalized(path: &str) -> String {
+    let mut segments: Vec<&str> = Vec::new();
+    for segment in path.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => match segments.last() {
+                Some(&last) if last != ".." => {
+                    segments.pop();
+                }
+                _ => segments.push(".."),
+            },
+            segment => segments.push(segment),
+        }
+    }
+    segments.join("/")
+}
+
 /// A path relative to a directory it is under, both relative to the root.
 fn strip_directory<'p>(path: &'p str, directory: &str) -> Option<&'p str> {
     if is_root(directory) {
@@ -4385,33 +4678,35 @@ mod tests {
             Fixture { root }
         }
 
-        /// A project with one target `rust` whose marker `global` carries, an output
-        /// directory `src`, and an empty `def` directory. The package `elfie` beside it
-        /// is the standard library every fixture is loaded against: its main file is the
-        /// prelude, so the trait `target` a marker must extend is in scope everywhere.
+        /// A project with one target `rust`, an output directory `src`, and an empty `def`
+        /// directory. The package `elfie` beside it is the standard library every fixture
+        /// is loaded against: its main file is the prelude, so `Target`, the roles its
+        /// slots take, and `targetOf` are in scope everywhere. `def/roles.lfy` gives the
+        /// language, the layout, and the ecosystem a target needs, and `def/targets.lfy`
+        /// declares the `ace const` that holds the target and adds it to `global`, so that
+        /// every entity of every project file is built for it.
         fn with_rust_target() -> Fixture {
             let fixture = Fixture::new();
             fixture
                 .write(
                     "elfie.json",
-                    r#"{
-                        "output": "src",
-                        "dependencies": {
-                            "elfie": { "root": "lib" },
-                            "rust": { "root": "targets/rust" }
-                        },
-                        "targets": { "rust": { "package": "rust", "marker": "rust" } },
-                        "native": [ { "identifier": "serde_json", "ecosystem": "cargo", "version": "1" } ]
-                    }"#,
+                    r#"{ "dependencies": { "elfie": { "root": "lib" } } }"#,
                 )
-                .write("lib/main.lfy", LIBRARY)
-                .write(
-                    "targets/rust/elfie.json",
-                    r#"{ "native": [ { "identifier": "sha2", "ecosystem": "cargo" } ] }"#,
-                )
-                .write("targets/rust/main.lfy", RUST_TARGET);
+                .library()
+                .write("def/roles.lfy", ROLES)
+                .write("def/targets.lfy", TARGETS);
             fs::create_dir_all(fixture.root.join("def")).unwrap();
             fixture
+        }
+
+        /// The library of the package `elfie`, written under `lib`.
+        fn library(&self) -> &Fixture {
+            self.write("lib/main.lfy", LIBRARY)
+                .write("lib/prelude/builtin.lfy", LIBRARY_BUILTIN)
+                .write("lib/prelude/entity.lfy", LIBRARY_ENTITY)
+                .write("lib/prelude/trait.lfy", LIBRARY_TRAIT)
+                .write("lib/criteria/main.lfy", LIBRARY_CRITERIA)
+                .write("lib/target/main.lfy", LIBRARY_TARGET)
         }
 
         /// The same project whose standard library also holds one data `Path` a project
@@ -4446,18 +4741,129 @@ mod tests {
         }
     }
 
-    /// The main file of the package `elfie`: the prelude. It declares the trait
-    /// `target`, which the loader requires every target's marker to extend, and no
-    /// criteria of its own, so a fixture's guidance is the marker's alone. It also
-    /// declares the kind data `Entity` and `Trait`, so that `rust.apply(global)` reads
-    /// `apply` as a member of the marker's kind rather than as a name nothing declares.
-    const LIBRARY: &str = "d Entity: `What every declared thing is seen as through its context layer` {\n}\n\nd Trait extends Entity: `A trait seen through its context layer` {\n  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;\n}\n\ntrait target: `What an entity carries to be built for one target` {\n}\n";
+    /// The main file of the package `elfie`: the prelude, which brings the vocabulary a
+    /// target is declared with into the scope of every file of the project.
+    const LIBRARY: &str = "use \"./prelude/builtin\";\nuse \"./prelude/entity\";\n\
+                           use \"./prelude/trait\";\nuse \"./criteria/main\";\n\
+                           use \"./target/main\";\n";
+    /// The trait a builtin carries, which the library's own declarations need.
+    const LIBRARY_BUILTIN: &str = "trait builtin: `Performed by the compiler` { }\n";
+    /// The context layer every entity is seen through: the lists a body adds to live
+    /// there, and `apply` is a member of a trait's kind rather than a name nothing
+    /// declares.
+    const LIBRARY_ENTITY: &str = "\
+d Entity: `A declared thing seen through its context layer` {
+  $knowledge: `What the compiler is given to read for it` = object[];
+  $commands: `Shell commands for its operations` = object[];
+  $targets: `The targets it is built for` = object[];
+}
+d Trait extends Entity: `A trait seen through its context layer` {
+  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;
+  $layer: `The trait as a layer of a target, with arguments for its parameters` = (...arguments: string[]) => object;
+}
+";
+    /// `layer`, which chooses a trait as a layer with arguments.
+    const LIBRARY_TRAIT: &str = "use \"./builtin\";\n\
+                                 fn layer(subject: trait, ...arguments: string[]) is builtin: \
+                                 `A trait chosen as a layer of a target` => object;\n";
+    /// The enums a knowledge item and a command name.
+    const LIBRARY_CRITERIA: &str = "\
+enum KnowledgeKind: `What a piece of knowledge is` {
+  reference = `documentation to read`,
+  example = `working code to imitate`,
+  definition = `Elfie source that defines it`,
+  tool = `a tool of the agent server`,
+}
+enum Operation: `What a command is for` {
+  install = `install`,
+  add = `add`,
+  build = `build`,
+  test = `test`,
+  lint = `lint`,
+  format = `format`,
+  run = `run`,
+}
+";
+    /// `Target`, the roles its slots take, and the function that gives a record written
+    /// in braces its type, as the package `elfie` declares them.
+    const LIBRARY_TARGET: &str = "\
+use \"../prelude/builtin\";
+trait target: `What every layer of a target is` {
+  $markerComment: `How a line comment begins` = string;
+  $provides: `Capabilities this layer gives its target` = string[];
+  $requires: `Capabilities some layer of its target must provide` = string[];
+  $outputExtensions: `Extensions besides the language's own` = string[];
+  .provides = [];
+  .requires = [];
+  .outputExtensions = [];
+}
+trait targetLanguage extends target: `What its code is written in` {
+  $fileExtension: `The extension of its files` = string;
+}
+trait targetRuntime extends target: `What runs its code` { }
+trait targetPlatform extends target: `Where it runs` { }
+trait targetEcosystem extends target: `Where its dependencies come from` {
+  $ecosystem: `What that ecosystem is called` = string;
+  $scriptRunner: `What runs a script its manifest names` = string;
+}
+trait targetFramework extends target: `What its code is built on` { }
+trait targetInterface extends target: `What it offers` { }
+trait targetLayout extends target: `Where its files go` { }
+d Target is builtin: `One artifact the project is built into` {
+  $output: `Where everything it writes goes` = string;
+  $language: `What its code is written in` = trait;
+  $runtime: `What runs its code` = trait | undefined;
+  $platforms: `Where it runs` = trait[] | undefined;
+  $ecosystem: `Where its dependencies come from` = trait | undefined;
+  $frameworks: `What its code is built on` = trait[] | undefined;
+  $interfaces: `What it offers` = trait[] | undefined;
+  $layout: `Where its files go` = trait;
+  $layers: `Anything else the compiler is told` = trait[] | undefined;
+  $dependencies: `What its generated code needs` = object[] | undefined;
+}
+function targetOf(target: Target): `Gives a record written in braces its type` -> Target {
+  return target;
+}
+";
 
-    /// The package of the target `rust`: one marker trait carried by `global`.
-    const RUST_TARGET: &str = "/// Built for Rust.\ntrait rust extends target {\n  @acceptanceCriteria.add({ behavior = `Each unit becomes one module named after its stem` });\n}\nrust.apply(global);\n";
+    /// The language, the layout, and the ecosystem the fixture's target is built from.
+    /// The language carries the one criterion a fixture's guidance is measured by.
+    const ROLES: &str = "\
+trait lang extends targetLanguage: `Rust` {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+  @acceptanceCriteria.add({ behavior = `Each unit becomes one module named after its stem` });
+}
+trait flat extends targetLayout: `One file per unit` { }
+trait cargo extends targetEcosystem: `Crates from crates.io` {
+  .ecosystem = \"cargo\";
+}
+";
+
+    /// The `ace const` holding the target `rust`, added to `global` so that every entity
+    /// of every project file is built for it.
+    const TARGETS: &str = "\
+use \"elfie/target\";
+use \"./roles\";
+
+ace const rust = targetOf({
+  output = \"src\",
+  language = lang,
+  layout = flat,
+  ecosystem = cargo,
+  dependencies = [{ name = \"serde_json\", version = \"1\" }, { name = \"sha2\" }],
+});
+global@targets.add(rust);
+";
 
     const A: &str = "use \"./b\";\n\n/// A record.\nd A: `An a` {\n  $b = B;\n}\n";
     const B: &str = "d B: `A b` {\n  $x = string;\n}\n\nfn make(x: string): `Makes a b` => B {\n  @acceptanceCriteria.add({ situation = `x is empty`, behavior = `the b holds x` });\n  @test({ input = [\"y\"], expect = B@like(`holding y`) });\n}\n";
+
+    /// The same target declaration with nothing added to `global`, so that only an entity
+    /// or a file that holds the target itself is built for it.
+    fn without_global(targets: &str) -> String {
+        targets.replace("global@targets.add(rust);\n", "")
+    }
 
     /// The project of the definition's tests: `def/a.lfy` using `./b`, and `def/b.lfy`.
     fn a_and_b() -> Fixture {
@@ -4544,11 +4950,12 @@ mod tests {
 
     fn assert_bound(workspace: &Workspace) {
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
-        let marker = workspace.targets[0].marker;
-        assert!(workspace.model.entities[marker].is_trait());
+        let declaration = workspace.targets[0].declaration;
         assert!(
-            workspace.model.entities[workspace.model.global].has_trait(marker),
-            "rust.apply(global) must apply the marker to global"
+            workspace.model.entities[workspace.model.global]
+                .targets
+                .contains(&declaration),
+            "global@targets.add(rust) must add the target to global"
         );
     }
 
@@ -4685,10 +5092,11 @@ mod tests {
     }
 
     /// The standard library is compiled by its own project, so none of its entities is
-    /// ever built, however the marker is applied; a unit's interface may still name them.
-    // @lfy def/generation/main.lfy:plan#plan:plan:be06f4de79309f738b40cc1b0e04dd968e510f8fe0f60d51b3dd47fab9a5c82b
+    /// ever built, even though `global` holds the target among its targets; a unit's
+    /// interface may still name them as types.
+    // @lfy def/generation/main.lfy:plan#plan:plan:87a602b422dfb1c2315b5a0c66f06ef773cfacaa36112a52175f3fcd93cf38f1
     #[test]
-    fn the_elfie_package_gives_no_unit_even_though_the_marker_is_applied_to_global() {
+    fn the_elfie_package_gives_no_unit_even_though_global_holds_the_target() {
         let fixture = Fixture::with_elfie_package();
         let program = fixture.program();
         let workspace = program.workspace.clone();
@@ -4701,13 +5109,13 @@ mod tests {
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.units.len(), 1, "{:?}", plan.units);
         assert_eq!(plan.units[0].file, file_index(&workspace, "def/a.lfy"));
-        // `global` carries the marker, so every entity the project's own file declares in
-        // its file scope is built.
-        // @lfy def/generation/main.lfy:plan#plan:plan:ac259fcc44a978f429ea10a8890c972374a471acc83cd96fb7b810b006088e84
+        // Neither `A` nor its file holds a target, so `global`'s targets decide, and every
+        // entity the project's own file declares in its file scope is built.
+        // @lfy def/generation/main.lfy:plan#plan:plan:f50e1e1e7d1202cefb738ac1a35aaf701a527d714a98bf508187d9e62711111d
         assert_eq!(names(&workspace, &plan.units[0].entities), ["A"]);
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:a2118f8faba26a8e6c0652494d6f74c96af2a992b8992f46db97195703466e36
+    // @lfy def/generation/main.lfy:plan#plan:plan:d6ca768a511d5fdd650be5dc4cc490799bb13a803820c6b95c50f95907aa001a
     #[test]
     fn two_files_give_two_fresh_units_with_b_before_a_in_one_batch() {
         let fixture = a_and_b();
@@ -4731,7 +5139,7 @@ mod tests {
         assert_eq!(b.reason, Some(Reason::Fresh));
         assert!(a.outputs.is_empty());
         // One unit per file, holding the entities built for the target in file order.
-        // @lfy def/generation/main.lfy:plan#plan:plan:74330a0de703ad5cdf50520ccae772d3f4740e354b2b63bfe2d46f4e3fd5756b
+        // @lfy def/generation/main.lfy:plan#plan:plan:1b7fdf3d190f89a93b4da6eaafc7774096e2d8f5a64d61a43e54f3fec690750c
         assert_eq!(names(&workspace, &a.entities), ["A"]);
         assert_eq!(names(&workspace, &b.entities), ["B", "make"]);
         // @lfy def/generation/main.lfy:plan
@@ -4837,32 +5245,35 @@ mod tests {
         assert_eq!(plan.batches[0].units, [b_index, a_index]);
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:d15ebad57b16591d5cd11dd65291b904eb647e75f81703360c3226cc3317f612
+    /// A target no entity, no file, and not `global` holds among its targets gives no unit.
+    // @lfy def/generation/main.lfy:plan#plan:plan:cfd8a78a7ab1104d66bbd7d65ce7bb62066a39ae62f6909834bfde20a5a3d84b
     #[test]
-    fn a_marker_nothing_carries_gives_no_units() {
+    fn a_target_nothing_names_gives_no_units() {
         let fixture = a_and_b();
-        fixture.write("targets/rust/main.lfy", "trait rust extends target { }\n");
+        fixture.write("def/targets.lfy", &without_global(TARGETS));
         let program = fixture.program();
         let workspace = program.workspace.clone();
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
         assert_eq!(workspace.targets.len(), 1);
         let plan = plan_of(&program, &[], &[], &[]);
-        // Neither an entity, nor its file's own entity, nor `global` carries the marker, so
-        // nothing is built for the target.
-        // @lfy def/generation/main.lfy:plan#plan:plan:ce4b42de99ea58625b6ea4a3f7b88b97ed5687c5e23dcbed6b6ccd6acc9b238e
+        // @lfy def/generation/main.lfy:plan
         assert!(plan.units.is_empty(), "{:?}", plan.units);
         assert!(plan.batches.is_empty());
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:7c36139cf3ed7d985a135d870fbaef5510ab826c299ee1e57f704e99ec393f65
+    /// An entity whose own targets hold the target is built for it, and an entity of the
+    /// same file whose own targets are empty is not, because neither its file nor `global`
+    /// holds the target either.
+    // @lfy def/generation/main.lfy:plan#plan:plan:b289c015fc19940e37cc73ea07c7ad9132652a5f7e844d6c739186fb3606576c
     #[test]
-    fn an_entity_carrying_the_marker_itself_is_built() {
+    fn an_entity_whose_own_targets_hold_the_target_is_built() {
         let fixture = Fixture::with_rust_target();
         fixture
-            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
+            .write("def/targets.lfy", &without_global(TARGETS))
             .write(
                 "def/a.lfy",
-                "use \"rust\";\n\nd Marked is rust { $x = string; }\nd Plain { $y = string; }\n",
+                "use \"./targets\";\n\nd Marked {\n  $x = string;\n  @targets.add(rust);\n}\n\
+                 d Plain { $y = string; }\n",
             );
         let program = fixture.program();
         let workspace = program.workspace.clone();
@@ -4872,24 +5283,25 @@ mod tests {
         assert_eq!(names(&workspace, &plan.units[0].entities), ["Marked"]);
     }
 
-    /// The marker applied to a file's own entity builds everything that file declares in its
+    /// The target added to a file's own entity builds everything that file declares in its
     /// file scope, and nothing of any other file.
-    // @lfy def/generation/main.lfy:plan#plan:plan:c1c836d62b7c25cbc77c533779c3e617b71ab0a3edce7d38b236098873a17798
+    // @lfy def/generation/main.lfy:plan#plan:plan:9d9bdedaf21744127b3df06a905fda651438a8d0a428da8e1f1411fa653c7e11
     #[test]
-    fn the_marker_on_a_files_own_entity_builds_every_entity_of_that_file() {
+    fn the_target_on_a_files_own_entity_builds_every_entity_of_that_file() {
         let fixture = Fixture::with_rust_target();
         fixture
-            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
+            .write("def/targets.lfy", &without_global(TARGETS))
             .write(
                 "def/a.lfy",
-                "use \"rust\";\nrust.apply(.);\n\nd One { $x = string; }\nd Two { $y = string; }\n",
+                "use \"./targets\";\n@targets.add(rust);\n\nd One { $x = string; }\n\
+                 d Two { $y = string; }\n",
             )
             .write("def/bare.lfy", "d Untouched { $x = string; }\n");
         let program = fixture.program();
         let workspace = program.workspace.clone();
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
         let plan = plan_of(&program, &[], &[], &[]);
-        // One unit, for the file whose own entity carries the marker.
+        // One unit, for the file whose own entity holds the target.
         assert_eq!(plan.units.len(), 1, "{:?}", plan.units);
         assert_eq!(
             plan.units[0].file,
@@ -4898,6 +5310,56 @@ mod tests {
             plan.units
         );
         assert_eq!(names(&workspace, &plan.units[0].entities), ["One", "Two"]);
+        // Only what the file scope declares is built: the members go with the data that
+        // holds them.
+        // @lfy def/generation/main.lfy:plan#plan:plan:c3b45b9c75fa54e5426018d8de412d9c76d287a296f9384ce03c03717a3ee93c
+        assert!(
+            !names(&workspace, &plan.units[0].entities)
+                .iter()
+                .any(|name| name.contains('.')),
+            "{:?}",
+            plan.units[0].entities
+        );
+    }
+
+    /// An entity built for a target whose member reaches an entity of a project file that
+    /// is not built for it leaves one problem, at that member, naming both and the target.
+    // @lfy def/generation/main.lfy:plan#plan:plan:28729b42d15d20d9238283f1a0077d5bcf0dffd32f4bf589ea2c0f639e467065
+    #[test]
+    fn an_entity_reaching_one_not_built_for_its_target_leaves_a_problem_at_the_member() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("def/targets.lfy", &without_global(TARGETS))
+            .write(
+                "def/a.lfy",
+                "use \"./targets\";\nuse \"./b\";\n\nd A {\n  $b = B;\n  @targets.add(rust);\n}\n",
+            )
+            .write("def/b.lfy", "d B { $x = string; }\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let plan = plan_of(&program, &[], &[], &[]);
+        // Only `def/a.lfy` gives a unit, and the `B` its member names is in no unit.
+        assert_eq!(plan.units.len(), 1, "{:?}", plan.units);
+        assert_eq!(plan.problems.len(), 1, "{:?}", plan.problems);
+        let problem = &plan.problems[0];
+        for named in ["A.b", "B", "rust"] {
+            assert!(problem.message.contains(named), "{problem:?}");
+        }
+        // It sits at the member whose type reaches it.
+        // @lfy def/generation/main.lfy:plan
+        let member = workspace
+            .model
+            .entities
+            .iter()
+            .position(|entity| {
+                entity.node == Some(problem.node) && entity.kind == EntityKind::Member
+            })
+            .expect("the problem sits at a member");
+        assert_eq!(
+            workspace.model.entities[member].identifier.as_deref(),
+            Some("b")
+        );
     }
 
     // @lfy def/generation/main.lfy:plan#plan:plan:3fddf2695435bb8dea3228dea358a2ab161da48b37a719e59cc8d5caa41b9747
@@ -4908,14 +5370,8 @@ mod tests {
         let program = fixture.program();
         let workspace = program.workspace.clone();
         assert_bound(&workspace);
-        // The package's main.lfy declares a trait global carries, but has a package.
-        assert!(
-            workspace
-                .file("targets/rust/main.lfy")
-                .unwrap()
-                .package
-                .is_some()
-        );
+        // The library declares data `global` holds the target for, but has a package.
+        assert!(workspace.file("lib/target/main.lfy").unwrap().package.is_some());
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.units.len(), 1, "{:?}", plan.units);
         // The stem keeps the directory the file was found under.
@@ -4999,7 +5455,7 @@ mod tests {
         fixture
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:2cdb31cbcfc707bca4660df6103872460798752df77d09762511674b59705fd1
+    // @lfy def/generation/main.lfy:plan#plan:plan:68e2e70ecc72d488671e852fa7cfa8d7f7c969e753b15735cc176d7a82ed8849
     // @lfy def/generation/main.lfy:plan#plan:plan:a7e951707af08726feeec4863ba2c476ce86be7351a7fceb0a1b5c67107175d2
     // @lfy def/generation/main.lfy:plan#plan:plan:d81d1ef4e67de0793b9e949537e444534d2ad6ac02e6edc4bc79b50d8b4d84e1
     // @lfy def/generation/main.lfy:plan#plan:plan:f0fa12d22d2eb82c14ea260d5158bc28c7ab1c25c0d1c4bd93ccb0af875bd72b
@@ -5051,7 +5507,7 @@ mod tests {
 
     /// `def/a.lfy` and `def/b.lfy` reach each other through members a trait of `def/t.lfy`
     /// added, and neither uses the other, so no file of the cycle is used by every other.
-    // @lfy def/generation/main.lfy:plan#plan:plan:18d3b4b4669ead4158d75ec75d0b201f947d011f531992f220dc388096694e24
+    // @lfy def/generation/main.lfy:plan#plan:plan:b4923bbd4e807e07a830205e8adc5377b41e10ed65314c2ba71fb0cc2ecf3740
     // @lfy def/generation/main.lfy:plan#plan:plan:787934ba8c71768cd28052de5fa8da71a7a34ee8c9b4c6dabc87fb6f5826ea01
     #[test]
     fn a_cycle_with_no_lowest_file_leaves_one_problem_and_moves_nothing() {
@@ -5155,26 +5611,14 @@ mod tests {
     #[test]
     fn every_move_is_the_same_for_every_target() {
         let fixture = a_cycle();
-        fixture
-            .write(
-                "elfie.json",
-                r#"{
-                    "output": "src",
-                    "dependencies": {
-                        "elfie": { "root": "lib" },
-                        "rust": { "root": "targets/rust" },
-                        "other": { "root": "targets/other" }
-                    },
-                    "targets": {
-                        "rust": { "package": "rust", "marker": "rust" },
-                        "other": { "package": "other", "marker": "other", "output": "other" }
-                    }
-                }"#,
-            )
-            .write(
-                "targets/other/main.lfy",
-                "/// Built elsewhere.\ntrait other extends target {\n}\nother.apply(global);\n",
-            );
+        fixture.write(
+            "def/targets.lfy",
+            &format!(
+                "{}\nace const other = targetOf({{ output = \"other\", language = lang, \
+                 layout = flat }});\nglobal@targets.add(other);\n",
+                TARGETS.trim_end()
+            ),
+        );
         let program = fixture.program();
         let workspace = program.workspace.clone();
         assert_eq!(workspace.targets.len(), 2, "{:?}", workspace.problems);
@@ -5582,16 +6026,16 @@ mod tests {
         // Both units are in the batch, so nothing is an interface.
         // @lfy def/generation/main.lfy:request
         assert!(request.interfaces.is_empty());
+        // The declaration has no criterion of its own, the layout and the ecosystem none
+        // either, and the language one; `target` is all that they extend, and it has none.
         // @lfy def/generation/main.lfy:request
-        let marker = workspace.targets[0].marker;
-        // The marker extends nothing, so its own criteria are the whole guidance.
         assert_eq!(
             request.guidance,
-            model::criteria_of(&workspace.model, marker)
+            guidance_for(&workspace.model, &workspace.targets[0])
         );
         assert_eq!(request.guidance.len(), 1);
-        // The project's own native dependencies, then those of the target's package.
-        // @lfy def/generation/main.lfy:request#request:request:e910cf585baaf5e05d5fe9f5bd4b5cab7296dc4193c10d17d0c3d61829985936
+        // What the target's own dependencies, commands, and knowledge give.
+        // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
         assert_eq!(
             request
                 .native_dependencies
@@ -5600,6 +6044,9 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["serde_json", "sha2"]
         );
+        assert_eq!(request.native_dependencies, workspace.targets[0].native_dependencies);
+        assert_eq!(request.commands, workspace.targets[0].commands);
+        assert!(request.knowledge.is_empty(), "{:?}", request.knowledge);
 
         let text = &request.instructions;
         assert!(text.contains("compiler for the target `rust`"), "{text}");
@@ -5666,14 +6113,38 @@ mod tests {
             "{text}"
         );
 
+        // The commands run with `sh -c` in the output directory, and a dependency is added
+        // only by running the add command.
+        // @lfy def/generation/main.lfy:request#request:request:cf8543168241c4d856ad8a9f311c6b59f31b1840f133171e3f365b169fd172f0
+        assert!(text.contains("These run with `sh -c` in `src`"), "{text}");
+        assert!(text.contains("`RUN_SCRIPT`"), "{text}");
+        assert!(
+            text.contains("`NAME` and `VERSION` set to the dependency's"),
+            "{text}"
+        );
+        assert!(
+            text.contains("never by editing a manifest or a lockfile by hand"),
+            "{text}"
+        );
+        assert!(
+            text.contains("The build, test, and lint commands are run before the report"),
+            "{text}"
+        );
+        assert!(
+            text.contains("The compiler is given nothing of its own to read."),
+            "{text}"
+        );
+
         // The sections come in the definition's order.
-        // @lfy def/generation/main.lfy:request#request:request:bf0089e347c69e61e5db853a634f01a203a6c5ce469273cd4e97d53c20a603ce
+        // @lfy def/generation/main.lfy:request#request:request:cf8543168241c4d856ad8a9f311c6b59f31b1840f133171e3f365b169fd172f0
         let headings = [
             "# Compiling",
             "## Where the outputs go",
             "## Guidance",
             "## Native dependencies",
+            "## Knowledge",
             "## Interfaces",
+            "## Commands",
             "## The units to compile",
             "## Global criteria and tests",
             "## Criteria and tests in an output",
@@ -5783,63 +6254,92 @@ mod tests {
         assert_eq!(text.matches(program.criteria[0].id.as_str()).count(), 1, "{text}");
     }
 
-    /// A marker extending a chain of traits, one of them applied with arguments: the
-    /// guidance is the marker's own criteria, then those of every trait it extends,
-    /// nearest first, each trait once, with every template value evaluated.
-    // @lfy def/generation/main.lfy:request#request:request:fb41725e5b0fca4d5183fe2e3d8c131fb6b11eece1a3dcc2836eec83197e69ab
+    /// A target whose declaration is given a criterion by an add call at the top of its
+    /// file, whose layout layer and whose language layer each hold criteria, and whose
+    /// language is applied with an argument: the guidance is what no layer and no trait a
+    /// layer extends gave, then each layer's in guidance order, then those of every trait
+    /// the layers extend, nearest first and each trait once, with every template value
+    /// rendered from the layer's arguments.
+    // @lfy def/generation/main.lfy:request#request:request:3136fb075ce1d830493d6dff63dda34d48d4e912139494a6958f1bc7b9c6b7f1
     #[test]
-    fn the_guidance_holds_the_markers_criteria_then_those_of_every_trait_it_extends() {
+    fn the_guidance_is_the_declarations_criteria_then_its_layers_then_what_they_extend() {
         let fixture = Fixture::with_rust_target();
         fixture
             .write(
-                "targets/rust/main.lfy",
-                "trait base extends target: `A base` {\n\
-                 \x20 where (`An output is written`) -> `Its path is under the output directory`;\n\
-                 }\n\n\
-                 trait layout(root: string) extends base: `A layout` {\n\
-                 \x20 where (`A unit is written`) -> `Its output is {{root}} then its stem`;\n\
-                 }\n\n\
-                 trait targetLanguage extends base: `A language` {\n\
-                 \x20 where (`A d declaration is built`) -> `It becomes a type`;\n\
-                 }\n\n\
-                 trait rust extends targetLanguage, layout(\"crates\"): `Rust` {\n\
-                 \x20 @acceptanceCriteria\n\
-                 \x20   .add({ behavior = `Each unit becomes one module named after its stem` })\n\
-                 \x20   .add({ behavior = `Outputs are built for {{@identifier}}` });\n\
-                 }\n\n\
-                 rust.apply(global);\n",
+                "lib/target/main.lfy",
+                &LIBRARY_TARGET
+                    .replace(
+                        ".outputExtensions = [];",
+                        ".outputExtensions = [];\n  \
+                         where (`An output is written`) -> `Its path is under the output directory`;",
+                    )
+                    .replace(
+                        "$fileExtension: `The extension of its files` = string;",
+                        "$fileExtension: `The extension of its files` = string;\n  \
+                         where (`A d declaration is built`) -> `It becomes a type`;",
+                    )
+                    .replace(
+                        "trait targetLayout extends target: `Where its files go` { }",
+                        "trait targetLayout extends target: `Where its files go` {\n  \
+                         where (`A unit is written`) -> `Its output is under the output directory`;\n}",
+                    ),
+            )
+            .write(
+                "def/roles.lfy",
+                "trait rust(edition: string) extends targetLanguage: `Rust` {\n  \
+                 .fileExtension = \"rs\";\n  .markerComment = \"//\";\n  \
+                 where (`A unit is written`) -> `Each unit becomes one module named after its stem`;\n  \
+                 where (`An output is written`) -> `Outputs are built as Rust {{edition}}`;\n}\n\
+                 trait flat extends targetLayout: `One file per unit` {\n  \
+                 where (`A unit is written`) -> `Its output is its stem and the extension`;\n}\n",
+            )
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\n\
+                 ace const t = targetOf({ output = \"src\", language = rust.layer(\"2024\"), \
+                 layout = flat });\n\
+                 t@acceptanceCriteria.add({ situation = `An output is written`, \
+                 behavior = `Nothing outside the output directory is written` });\n\
+                 global@targets.add(t);\n",
             )
             .write("def/a.lfy", "d A { $x = string; }\n");
         let program = fixture.program();
         let workspace = program.workspace.clone();
         assert_bound(&workspace);
+        assert_eq!(
+            names(&workspace, &workspace.targets[0].layers),
+            ["flat", "rust"]
+        );
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
-        let request = request(&program, &plan,&plan.batches[0], &[], &BTreeMap::new());
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
         let behaviors: Vec<String> = request
             .guidance
             .iter()
             .map(|criterion| criterion.behavior.clone().unwrap_or_default().join(" "))
             .collect();
-        // The marker's own first, with its template value evaluated for the marker; then
-        // targetLanguage and layout, in extends order; then base, reached through both
-        // and contributing once.
-        // @lfy def/generation/main.lfy:request#request:request:f833bfab327ae02fc19b1e38fe79e92576f93942ee68bf07dea0707f680c38f6
+        // What the file's add call gave first, since no layer and no trait a layer extends
+        // gave it; then the layout and the language, in guidance order, with the language's
+        // template value rendered from its argument; then the traits they extend, nearest
+        // first.
+        // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
         assert_eq!(
             behaviors,
             [
+                "Nothing outside the output directory is written",
+                "Its output is its stem and the extension",
                 "Each unit becomes one module named after its stem",
-                "Outputs are built for rust",
+                "Outputs are built as Rust 2024",
+                "Its output is under the output directory",
                 "It becomes a type",
-                "Its output is crates then its stem",
                 "Its path is under the output directory",
             ],
             "{:?}",
             request.guidance
         );
-        // `base` is reached through `targetLanguage` and through `layout`, and contributes
-        // once, at its first place.
-        // @lfy def/generation/main.lfy:request#request:request:dea7eb13b1ae297c9a158429db016c52c5bd257921f2863ab04cc53dc7771671
+        // `target` is reached through `targetLayout` and through `targetLanguage`, and
+        // contributes once, at its first place.
+        // @lfy def/generation/main.lfy:request#request:request:7ba99d5e747662531bb244f8f0f9640426e9b36113f67099d0a02904a6a282e5
         assert_eq!(
             behaviors
                 .iter()
@@ -5861,10 +6361,88 @@ mod tests {
             positions.windows(2).all(|pair| pair[0] < pair[1]),
             "{positions:?}"
         );
-        // A trait applied with arguments has its template values evaluated from them, so no
+        // A layer applied with arguments has its template values rendered from them, so no
         // template is left in the guidance.
-        // @lfy def/generation/main.lfy:request#request:request:367debdff9731b3e0930703972a2edde7b8946687292224290a326a1263bfb55
-        assert!(!text.contains("{{root}}"), "{text}");
+        // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+        assert!(!text.contains("{{edition}}"), "{text}");
+    }
+
+    /// The knowledge of the target, of the batch's entities, and of the entities of an
+    /// interface, each item once: a reference quoted in full, one named to be read, a
+    /// definition as the files its use path resolves to, and a tool of the agent server.
+    // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+    #[test]
+    fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("docs/style.md", "Two spaces, never a tab.\n")
+            .write("docs/shape.md", "A long guide nobody quotes.\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\";\n\nd A {\n  $b = B;\n  @knowledge.add({ topic = `the house style`, \
+                 kind = KnowledgeKind.reference, source = \"docs/style.md\", quote = true });\n  \
+                 @knowledge.add({ topic = `the shape of a module`, kind = KnowledgeKind.example, \
+                 source = \"docs/shape.md\" });\n  @knowledge.add({ topic = `what a b is`, \
+                 kind = KnowledgeKind.definition, source = \"./b\" });\n  \
+                 @knowledge.add({ topic = `the program`, kind = KnowledgeKind.tool, \
+                 source = \"elfie_entity\" });\n}\n",
+            )
+            .write("def/b.lfy", "d B { $x = string; }\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let batch = Batch {
+            units: vec![a_index],
+            identifier: "a".to_string(),
+        };
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new());
+        // Each item once, in the order the request gathers them.
+        // @lfy def/generation/main.lfy:request
+        assert_eq!(
+            request
+                .knowledge
+                .iter()
+                .map(|item| item.topic.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "the house style",
+                "the shape of a module",
+                "what a b is",
+                "the program"
+            ]
+        );
+        let text = &request.instructions;
+        // A reference whose quote is true is quoted in full, from its source joined to the
+        // root of the project its contributor is declared in.
+        // @lfy def/generation/main.lfy:request#request:request:1e12c61514619140b53196fc805053e31c6c2ea0a866877135393d8bad20973e
+        assert!(text.contains("From `docs/style.md`:"), "{text}");
+        assert!(text.contains("Two spaces, never a tab."), "{text}");
+        // One whose quote is left out is named, to be read first.
+        // @lfy def/generation/main.lfy:request#request:request:150b2f04d99c0e10d3fa0a47b44b85712f1b4f40f249081a39b2ceda0240df29
+        assert!(
+            text.contains(
+                "- the shape of a module: read `docs/shape.md` before writing anything it covers."
+            ),
+            "{text}"
+        );
+        assert!(!text.contains("A long guide nobody quotes."), "{text}");
+        // A definition names the files its use path resolves to, read as Elfie.
+        // @lfy def/generation/main.lfy:request#request:request:179394ea2be57b4a87b41dac2988b30f36b058129a701fc79ff34cc290769606
+        assert!(
+            text.contains("- what a b is: read `def/b.lfy` as Elfie."),
+            "{text}"
+        );
+        // A tool is called before anything relies on what it answers.
+        // @lfy def/generation/main.lfy:request#request:request:18fa49f6ae0fe059f4d8b65429f7356e822363b0bb901d611f266ca1393c940b
+        assert!(
+            text.contains(
+                "- the program: call the tool `elfie_entity` of the agent server before relying on \
+                 what it answers."
+            ),
+            "{text}"
+        );
     }
 
     // @lfy def/generation/main.lfy:request#request:request:11b89fec47c462e32fe4f58c1a2c8c62a950c6893d97a50116d46bb998d8957f
@@ -6235,7 +6813,7 @@ mod tests {
         assert_eq!(map.output, "src/a.rs");
         assert_eq!(map.source, "def/a.lfy");
         // Every hash of the source map is derived here, never taken from the compiler's text.
-        // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
+        // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
         assert_eq!(map.hash, source_hash(&request.sources["def/a.lfy"]));
         assert_eq!(
             map.signature,
@@ -6407,6 +6985,30 @@ mod tests {
         );
     }
 
+    // @lfy def/generation/main.lfy:accept#accept:accept:3155ad6c69d739023b377c20c0889d2723058f8a413e52287daad7c0486af5f7
+    #[test]
+    fn an_output_whose_extension_the_target_does_not_allow_is_rejected_by_path() {
+        let fixture = a_with_two_entities();
+        let program = fixture.program();
+        assert_eq!(program.workspace.targets[0].extensions, ["rs"]);
+        let (plan, request, index) = one_unit(&program);
+        let mut output = named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n");
+        output.path = "src/a.txt".to_string();
+        let verdict = accept(&program, &plan, &request, index, &[output]);
+        assert!(!verdict.accepted);
+        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
+        assert!(
+            verdict.problems[0].contains("src/a.txt"),
+            "{}",
+            verdict.problems[0]
+        );
+        assert!(
+            verdict.problems[0].contains("rs"),
+            "{}",
+            verdict.problems[0]
+        );
+    }
+
     // @lfy def/generation/main.lfy:accept#accept:accept:a1c947537070babac5d735f6d5d16856f9de88cadd132d799c85c366ee84bddf
     #[test]
     fn a_marker_naming_an_entity_the_file_does_not_declare_is_rejected_by_output_line_and_name() {
@@ -6561,14 +7163,14 @@ mod tests {
 
         // An id of a local criterion and one of a global criterion are both known, so the
         // outputs are accepted and earn their source maps.
-        // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
+        // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
         let output = named_output(&format!(
             "// @lfy def/a.lfy:A#{}\npub struct A;\n// @lfy def/a.lfy:A#{global}\nfn holds() {{}}\n",
             local[0]
         ));
         let verdict = accept(&program, &plan, &request, index, &[output]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
-        // @lfy def/generation/main.lfy:accept#accept:accept:25e6b8f58b1b0d6bf0490dcc0c31393b4d921c11117fb5b35bf78f2bd9e4daec
+        // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
         assert_eq!(
             verdict.source_maps[0].requirements,
             requirements_hash(&program, unit)

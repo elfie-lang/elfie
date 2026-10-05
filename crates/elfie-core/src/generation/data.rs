@@ -20,7 +20,7 @@ use std::fmt;
 use serde_json::{Map, Value, json};
 
 use crate::interpret::{LoweredCriterion, LoweredNode, LoweredTest, Program};
-use crate::model::{Criterion, EntityId, Problem};
+use crate::model::{Command, Criterion, EntityId, Knowledge, Problem};
 use crate::workspace::NativeDependency;
 
 /// Why a unit needs generating.
@@ -457,12 +457,19 @@ pub struct Request {
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
     /// One interface per dependency outside the batch, in dependency order, each once.
     pub interfaces: Vec<Interface>, // @lfy def/generation/data.lfy:Request.interfaces
-    /// Every criterion of the target's marker, then of every trait it extends down to
-    /// `target`, nearest first, and of every trait applied to it with arguments, each
-    /// resolved for the marker.
+    /// The criteria of the target's declaration: its own, then each of the target's layers
+    /// in order, then the traits they extend, nearest first, each trait once, with template
+    /// values rendered from the layers' arguments.
     pub guidance: Vec<Criterion>, // @lfy def/generation/data.lfy:Request.guidance
-    /// What the generated code may require from the target's ecosystem.
+    /// What the generated code may require from the target's ecosystem: the target's native
+    /// dependencies.
     pub native_dependencies: Vec<NativeDependency>, // @lfy def/generation/data.lfy:Request.nativeDependencies
+    /// What the compiler is given to read: the target's knowledge, then the knowledge of
+    /// each entity of the batch's units, then of each entity of [`Request::interfaces`],
+    /// each item once.
+    pub knowledge: Vec<Knowledge>, // @lfy def/generation/data.lfy:Request.knowledge
+    /// The commands the compiler runs instead of knowing the tools: the target's commands.
+    pub commands: Vec<Command>, // @lfy def/generation/data.lfy:Request.commands
 }
 
 /// Everything a verifier is handed to check outputs against what was asked: the local
@@ -815,7 +822,8 @@ pub struct Plan {
     pub units: Vec<Unit>, // @lfy def/generation/data.lfy:Plan.units
     /// Every move that resolved a cycle among files, in the order the moves were made.
     pub moves: Vec<Move>, // @lfy def/generation/data.lfy:Plan.moves
-    /// Every cycle among files that no move could resolve, one problem each.
+    /// Every cycle among files that no move could resolve, and every entity that reaches one
+    /// not built for its target, one problem each.
     pub problems: Vec<Problem>, // @lfy def/generation/data.lfy:Plan.problems
     /// The planned units grouped for compilation, each batch after the batches holding its
     /// dependencies.

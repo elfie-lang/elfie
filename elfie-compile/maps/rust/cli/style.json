@@ -2,10 +2,10 @@
   {
     "dependencies": {
       "def/cli/data.lfy": "0ce029359a7610563f39eaadf6455a1a55cc6cde4d533741522ac9c1ca2a4286",
-      "def/generation/data.lfy": "491956e9c4c82a88937b70e79a43a9c46d252aa46a2b066dcd271543af415fd6",
+      "def/generation/data.lfy": "c055a024e603a436db821ebf1c9b280f916f43e79dbf4b27cfff74af79ff5b1b",
       "def/query/data.lfy": "65ebc51fc496f7692fe8c264f3589febb495168f45f6b51d0db065525a9c6b8d"
     },
-    "generated": "2026-10-04T04:04:43Z",
+    "generated": "2026-10-05T03:18:25Z",
     "hash": "8f903ea1e3a30a9c533090d412db187952b96281bedcdc271573aea89754a314",
     "markers": [
       {

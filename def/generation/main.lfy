@@ -56,24 +56,30 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       behavior = `It is never among [[Unit.entities]], so no output has to carry a marker for it`,
     })
     .add({
-      situation = `An entity is among [[Binder.entitiesOf]] the [[Target.marker]] of a [[Target]]`,
-      behavior = `The entity is built for that [[Target]]`,
+      situation = `An entity's own targets are not empty`,
+      behavior = `It is built for each [[Target]] whose [[Target.declaration]] is among them, and for no other`,
     })
     .add({
-      situation = `The anonymous entity of a file is among [[Binder.entitiesOf]] the [[Target.marker]] of a [[Target]]`,
-      behavior = `Every entity declared in the file scope of that file is built for that [[Target]]`,
+      situation = [`An entity's own targets are empty`, `The targets of the anonymous entity of its file are not empty`],
+      behavior = `It is built for each [[Target]] whose [[Target.declaration]] is among its file's targets, and for no other`,
     })
     .add({
-      situation = `global is among [[Binder.entitiesOf]] the [[Target.marker]] of a [[Target]]`,
-      behavior = `Every entity declared in the file scope of any file is built for that [[Target]]`,
+      situation = `An entity's own targets and its file's targets are empty`,
+      behavior = `It is built for each [[Target]] whose [[Target.declaration]] is among the targets of global`,
     })
     .add({
-      situation = `Neither an entity, nor the anonymous entity of its file, nor global is among [[Binder.entitiesOf]] the [[Target.marker]] of a [[Target]]`,
-      behavior = `The entity is not built for that [[Target]]`,
+      behavior = `Only an entity declared in the file scope of a file is built: a member, a parameter, or an enum member goes with the entity that holds it`,
     })
     .add({
-      situation = `A file has no [[File.package]] and at least one entity with a lowered node built for a target, that is among [[Binder.entitiesOf]] the [[Target.marker]] itself or through the anonymous entity of its file or global`,
+      situation = `A file has no [[File.package]] and at least one entity with a lowered node built for a target`,
       behavior = `The file gives one [[Unit]] for that target holding those entities in file order`,
+    })
+    .add({
+      situation = [
+        `An entity of a unit reaches an entity of a project file that has a lowered node`,
+        `That entity is not built for the unit's target`,
+      ],
+      behavior = `A [[Problem]] is added to [[Plan.problems]] at the member, parameter, or output whose type reaches it, naming both entities and the target`,
     })
     .add({
       situation = `A file has a [[File.package]]`,
@@ -81,7 +87,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     })
     .add({
       situation = `A file's [[File.package]] is the elfie package, the standard library`,
-      behavior = `It gives no unit even when [[Target.marker]] is applied to global, and none of its entities is ever in [[Unit.entities]]; a unit's [[Interface]] and [[Request.interfaces]] may still name its entities as types`,
+      behavior = `It gives no unit even when global's targets hold a target, and none of its entities is ever in [[Unit.entities]]; a unit's [[Interface]] and [[Request.interfaces]] may still name its entities as types`,
     })
     .add({
       behavior = `[[Unit.stem]] is [[Path.relative]] of [[File.path]] to [[Workspace.sourceDirectory]], without the .lfy extension`,
@@ -268,7 +274,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
   @test(
     {
       input = [
-        Workspace@like(`One target rust whose marker global carries; def holds a.lfy using ./b and b.lfy`),
+        Workspace@like(`One target rust that global's targets hold; def holds a.lfy using ./b and b.lfy`),
         [],
         [],
       ],
@@ -277,7 +283,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     {
       input = [
         Workspace@like(
-          `One target rust whose marker global carries; def holds b.lfy declaring d B, and a.lfy using ./b and declaring d A with a member of type B and d C with a member of type string; c.lfy applies to B a trait adding a member of type C`,
+          `One target rust that global's targets hold; def holds b.lfy declaring d B, and a.lfy using ./b and declaring d A with a member of type B and d C with a member of type string; c.lfy applies to B a trait adding a member of type C`,
         ),
         [],
         [],
@@ -289,7 +295,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     {
       input = [
         Workspace@like(
-          `One target rust whose marker global carries; def holds a.lfy declaring d A with a member of type B, and b.lfy declaring d B with a member of type A, neither using the other`,
+          `One target rust that global's targets hold; def holds a.lfy declaring d A with a member of type B, and b.lfy declaring d B with a member of type A, neither using the other`,
         ),
         [],
         [],
@@ -325,7 +331,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       expect = Plan@like(`b with reason changed and a with reason dependency, in one batch`),
     },
     {
-      input = [Workspace@like(`A project whose only target's marker nothing carries`), [], []],
+      input = [Workspace@like(`A project whose only target no entity, file, or global holds among its targets`), [], []],
       expect = Plan@like(`No units`),
     },
   );
@@ -343,17 +349,36 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
       behavior = `[[Request.interfaces]] holds one [[Interface]] per dependency of any unit of the batch that is not itself in the batch, each once, in dependency order`,
     })
     .add({
-      behavior = `[[Request.guidance]] is [[Binder.criteriaOf]] the [[Target.marker]], then of every trait it extends, transitively and nearest first, so a marker extending [[targetLanguage]] gives its own criteria, then those of [[targetLanguage]], then those of [[target]]`,
+      behavior = [
+        `[[Request.guidance]] is the criteria of the target's [[Target.declaration]] that neither a layer nor a trait a layer extends contributed, whoever else contributed them, such as the file that adds one with an add call on the const's acceptanceCriteria, in order; then those each of [[Target.layers]] contributed, layer by layer in that order; then those of every trait the layers extend, transitively and nearest first`,
+        `A criterion's template values are as the layer's application to the declaration rendered them, from the layer's arguments`,
+      ],
     })
     .add({
-      situation = `A trait is reached twice among the traits the [[Target.marker]] extends`,
+      situation = `A trait is reached twice among the layers and the traits they extend`,
       behavior = `It contributes to [[Request.guidance]] once, at its first place`,
     })
     .add({
-      behavior = `[[Request.guidance]] holds the criteria of every trait applied to the marker with arguments, such as [[cratePerPrefix]] and [[modulePerFile]], in extends order after the marker's own, with each of their template values evaluated from those arguments; every template value of the guidance is evaluated for the marker's application`,
+      behavior = [
+        `[[Request.nativeDependencies]] is [[Target.nativeDependencies]] and [[Request.commands]] is [[Target.commands]]`,
+        `[[Request.knowledge]] is [[Target.knowledge]], then the knowledge of each entity of the batch's units, then that of each entity of [[Request.interfaces]], each item once`,
+      ],
     })
     .add({
-      behavior = `[[Request.nativeDependencies]] is [[Workspace.nativeDependencies]] followed by [[Package.nativeDependencies]] of [[Target.package]]`,
+      situation = `A knowledge item has the kind reference or example and its quote is true`,
+      behavior = `[[Request.instructions]] quotes the [[Files.read]] text of its source, joined to the [[Package.root]] of the package of the file its contributor is declared in, or to [[Workspace.root]] when that file is the project's own`,
+    })
+    .add({
+      situation = `A knowledge item has the kind reference or example and its quote is false or left out`,
+      behavior = `[[Request.instructions]] gives its source joined the same way and says to read it before writing anything it covers`,
+    })
+    .add({
+      situation = `A knowledge item has the kind definition`,
+      behavior = `[[Request.instructions]] gives the files its source, a use path, resolves to and says to read them as Elfie`,
+    })
+    .add({
+      situation = `A knowledge item has the kind tool`,
+      behavior = `[[Request.instructions]] names the tool of the agent server its source names and says to call it before relying on what it answers`,
     });
 
   // Decision: the instructions quote every criterion and test already resolved, so a compiler with no
@@ -364,13 +389,14 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
         `[[Request.instructions]] says, in this order:`,
         `That the reader is the compiler for the target, that its whole job is the outputs for the units of this batch, listed by stem, and that it writes nothing outside them`,
         `Where the outputs go: under [[Target.outputDirectory]], spelled from each [[Unit.stem]] as the guidance says`,
-        `The guidance, then the native dependencies it may require, then each interface: the dependency's output paths and the identifier, kind, definition, and type of each of its entities, to be used by the names its outputs spell and never edited`,
+        `The guidance, then the native dependencies it may require, then the knowledge, then each interface: the dependency's output paths and the identifier, kind, definition, and type of each of its entities, to be used by the names its outputs spell and never edited`,
+        `Then the commands, one line per operation with its line, saying that they run with sh -c in [[Target.outputDirectory]], with RUN_SCRIPT set to [[Target.scriptRunner]] and, for add, NAME and VERSION set to the dependency's; that a dependency is added only by running the add command, never by editing a manifest or a lockfile by hand; and that the build, test, and lint commands are run before the report and their results stated in it`,
         `Then, for each unit of the batch in order, a section holding, for each of its entities, the entity's lowered code and then, apart from the code, its local criteria and tests, each on its own line with its id`,
         `Then one section of the global criteria and tests, each once with its id and marked global, saying that they hold across the whole program, that a unit answers for one only where it is relevant to that unit's code and ignores it otherwise, and that the global review checks each once`,
         `That criteria and tests are never restated in an output as comments or documentation; an output names one only by its id in a [[Marker]]`,
         `That the data and fns of the standard library carrying [[builtin]] are bound to what the guidance names for them and never generated, and that a member of the library written out in full is translated where it is used`,
         `The rules for kinds: a [[DataDeclaration]] becomes a type; an [[AgentFunctionDeclaration]] becomes a function whose body satisfies every criterion and test; a [[FunctionDeclaration]] is translated statement by statement with nothing added; a [[TraitDeclaration]] emits nothing of its own, its members and criteria belong to each entity that carries it; a [[TypeDeclaration]] and [[EnumDeclaration]] become their nearest equivalents; an [[ExternalDeclaration]] is bound to what the guidance says; a folded value is written as the literal it holds and a [[Prompted]] value is chosen to fit its prompt; a [[Use]] is satisfied by the interfaces`,
-        `That every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says, and never a line number`,
+        `That every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says in a line comment beginning with [[Target.markerComment]], and never a line number`,
         `That each [[LoweredTest]] becomes one test, and each [[LoweredCriterion]] that can be checked mechanically becomes one test, each carrying a [[Marker]] with its id, placed where the guidance says`,
         `That the tools of the agent server are called before files are searched or read by hand, because they answer from the program and its source maps at once: elfie_entity for a definition with its criteria and tests, elfie_find for where a name is declared, elfie_references for where it is used, elfie_outline for the declarations of a file, elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_changes for what changed in a unit since its outputs were accepted, and elfie_check for whether acceptance would pass`,
         `How to end its report: with one line reading ELFIE: DONE when every output is written; ELFIE: BLOCKED: followed by the reason when an ambiguous criterion, two criteria in conflict, a name that resolves nowhere, or anything else stops it, in which case it writes no output for the unit and quotes the criterion; or ELFIE: CLARIFY: followed by one question when only a person can decide, in which case it writes nothing`,
@@ -407,14 +433,14 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: object = {}):
     {
       input = [
         Plan@like(
-          `One batch of one unit, for a target whose marker is a trait rust extending [[targetLanguage]], with two criteria of its own and a template value in one of them`,
+          `One batch of one unit, for a target whose language layer is a trait rust extending [[targetLanguage]], with two criteria of its own and a template value in one of them, and whose layout layer is a trait flat with one criterion; the target's declaration has one criterion added to it by an add call at the top of its file`,
         ),
         Batch@like(`the batch`),
         [],
         {},
       ],
       expect = Request@like(
-        `Guidance holding rust's two criteria first, with the template value evaluated for rust, then every criterion of [[targetLanguage]], then every criterion of [[target]], and nothing twice`,
+        `Guidance holding the declaration's own criterion, then flat's, then rust's two with the template value evaluated, then every criterion of [[targetLayout]], [[targetLanguage]], and [[target]], each once`,
       ),
     },
   );
@@ -470,6 +496,10 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Rejected with a problem naming the path`,
     })
     .add({
+      situation = `An output's [[Path.extension]] is not among [[Target.extensions]] of the unit's target`,
+      behavior = `Rejected with a problem naming the path and the extensions the target allows`,
+    })
+    .add({
       situation = `A marker names an entity`,
       behavior = `Its line is derived as the first line of the declaring node of the entity with that name in that file, and the marker is left as written`,
     })
@@ -504,7 +534,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker naming the unit's [[File.path]] or the file of an entity moved into the unit names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
+      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target and its [[Path.extension]] is among [[Target.extensions]], every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker naming the unit's [[File.path]] or the file of an entity moved into the unit names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
       behavior = `Accepted, with one [[SourceMap]] per output holding the SHA-256 of [[Unit.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({

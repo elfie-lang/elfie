@@ -464,3 +464,38 @@ LSP/MCP protocols are deliberately not part of this round.
   removes `source-map.json`. `crates/source-map.json` stays until the compiled CLI does this.
 - **Issue:** `elfie-requests/` (logs, blocked and question files, reviews) still sits under the
   root beside `elfie-compile/`. Moving it under `elfie-compile/` was left out of this change.
+
+## Targets in source (2026-10-04)
+
+Targets moved out of `elfie.json` and into the program. Four designs were compared: records written
+where they are used, traits as targets, a `target` declaration kind, and named targets. The last
+was chosen.
+
+- **A target is an `ace const` of the project holding the package elfie's `Target`.** The const's
+  name is the target's identifier, so `--target`, `elfie-compile/maps/<identifier>`, and the MCP
+  tools keep working. An ace const has no lowered node, so a target is never generated and the file
+  declaring it gives no unit.
+- **`elfie.json` is read permissively.** A key the loader does not read, in the manifest or in one
+  of its entries, is ignored with no problem, so the retired `targets`, `output`, and `native`
+  keys, and keys meant for other tools, never stop a load. A key it does read with a value of the
+  wrong kind is still a load problem.
+- **Roles.** A `Target` has a slot per role: language (1), runtime (0–1), platforms, ecosystem
+  (0–1), frameworks, interfaces, layout (1), and extra layers. The role traits live in
+  `lib/target/`; every layer comes from a package. Layers state capabilities as strings
+  (`provides`, `requires`), and the loader checks them.
+- **Layers are applied to the const** (`Target`'s rule in `lib/target/main.lfy`), in guidance
+  order. This reuses `apply`: each layer's criteria are rendered from its arguments, and its
+  knowledge, commands, and values land on the const. Values are kept in setter order, so the
+  list-valued `provides`, `requires`, and `outputExtensions` gather every layer's items.
+- **Selection is `@targets`**: an entity's own list, else its file's, else `global`'s. Reaching an
+  entity not built for the same target is a plan problem.
+- **Knowledge and commands** are context lists on every entity, filled like criteria. Elfie never
+  runs a command; the request lists them. There is deliberately no flag saying whether the
+  compiler knows a layer: what it may not know is knowledge, and how to use it is criteria.
+- **The compiler's record keeps the name `Target`** (`def/workspace/data.lfy`). Files that need the
+  library's record take it as `Targets.Target`, so nothing else had to be renamed.
+- **Migration.** The step-1 compile is run by the binary that reads the old `elfie.json`, so the
+  new binary carries no fallback for it. The switch to `def/targets.lfy` and `vendor/` happens
+  right after the new binary is built.
+- **Issue:** the formatter wraps a long `fn` signature inside a generic output type
+  (`=> Layer<` / `A,` / `> {`); `layer`'s description was shortened to stay on one line.

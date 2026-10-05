@@ -1130,11 +1130,14 @@ fn left_members(model: &Model, left: NodeRef) -> Option<Vec<SymbolId>> {
         SymbolKind::Data
         | SymbolKind::Trait
         | SymbolKind::Type
-        | SymbolKind::Enum
         | SymbolKind::Function
         | SymbolKind::AgentFunction => Some(entity_members(model, symbol.entity)),
+        // An enum offers its keys alone: not the members of its kind data.
+        // @lfy def/query/main.lfy:completionsAt
+        SymbolKind::Enum => Some(member_symbols(model, symbol.entity)),
         SymbolKind::Alias | SymbolKind::External => match entity.kind {
-            EntityKind::Data | EntityKind::Trait { .. } | EntityKind::Type | EntityKind::Enum => {
+            EntityKind::Enum => Some(member_symbols(model, symbol.entity)),
+            EntityKind::Data | EntityKind::Trait { .. } | EntityKind::Type => {
                 Some(entity_members(model, symbol.entity))
             }
             EntityKind::File => Some(module_symbols(model, entity.file?)),
@@ -3350,6 +3353,10 @@ mod tests {
         assert!(entity.contains(&"like".to_string()), "{entity:?}");
         assert!(entity.contains(&"test".to_string()), "{entity:?}");
         assert!(!entity.contains(&"identifier".to_string()), "{entity:?}");
+        // An enum offers its keys alone, with none of its kind data's members.
+        // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:8d8ea7b96f379d6002460493171edeb585da3598ee4f7fe3d2673e31b2da5fda
+        let enumeration = names("enum E { one = 1, two = 2 } const e = E.");
+        assert_eq!(enumeration, ["one", "two"], "{enumeration:?}");
         // A list offers every member of `List`.
         let list = names("const l: number[] = [1]; const w = l.");
         assert!(list.contains(&"map".to_string()), "{list:?}");
@@ -3724,7 +3731,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "lib": "lib", "dependencies": { "gone": { "root": "nowhere" } }, "targets": { "t": 3 } }"#,
+                r#"{ "lib": "lib", "dependencies": { "gone": { "root": "nowhere" } }, "name": 3 }"#,
             )
             .write("def/a.lfy", "use \"./missing\";\n");
         let ws = fixture.load();

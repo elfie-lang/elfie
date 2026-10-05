@@ -696,6 +696,13 @@ fn check(invocation: &Invocation) -> ExitCode {
     let mut stale = 0usize;
     let mut cycles = 0usize;
     if invocation.arguments.is_empty() {
+        // A program that declares no target says so once, at elfie.json: it is neither a
+        // problem nor a stale unit, since there is nothing wrong with it and nothing to
+        // bring up to date.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        if workspace.targets.is_empty() {
+            print_no_target(&root.join("elfie.json").display().to_string(), json, on);
+        }
         // @lfy def/cli/main.lfy:main#main:main:f10c226ebebfe4eb9abf0d5eae513727904e676d3833fcffe51e2f58db885722
         let maps = generation::source_maps_of(&workspace, None);
         let (program, plan) = planned(root, &maps, &[], false, &violated_ids(root));
@@ -748,6 +755,33 @@ fn check(invocation: &Invocation) -> ExitCode {
     } else {
         // @lfy def/cli/main.lfy:main#main:main:e31edb81ec3ee9b8748e2d4b9d4c9fdb554fad63e6baa85970c87f5cf7ac7075
         ExitCode::Success
+    }
+}
+
+/// One line of information of stage generation at `elfie.json` saying the program declares
+/// no target, so nothing will be built; it is neither a problem nor a stale unit.
+// @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+fn print_no_target(manifest: &str, json: bool, on: bool) {
+    let message = "the program declares no target, so nothing will be built";
+    if json {
+        // @lfy def/cli/main.lfy:main#main:main:941658dd3141e49fe1beca5cd4d12bb2f08da13cb77388c22d9ea9e25a44d6da
+        println!(
+            "{}",
+            serde_json::json!({
+                "file": manifest,
+                "stage": "generation",
+                "severity": Severity::Information.value(),
+                "message": message,
+            })
+        );
+    } else {
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        println!(
+            "{} {} {}: {message}",
+            paint(&format!("{manifest}:"), Tone::Subject, on),
+            paint("generation", Tone::Muted, on),
+            paint(Severity::Information.value(), severity_tone(Severity::Information), on)
+        );
     }
 }
 
@@ -4272,23 +4306,163 @@ mod tests {
         }
     }
 
-    /// A project with one target whose marker `global` carries and one file.
+    /// The project manifest: the standard library beside the project, and the commands
+    /// given. The target itself is declared in the program rather than here, so nothing
+    /// names it, its output, or its dependencies.
+    // @lfy def/cli/main.lfy:main
+    fn manifest(commands: &[(&str, &str)]) -> String {
+        let mut value = serde_json::json!({ "name": "p", "dependencies": { "elfie": { "root": "lib" } } });
+        for (key, command) in commands {
+            value[*key] = serde_json::Value::String((*command).to_string());
+        }
+        format!("{value}\n")
+    }
+
+    /// A project with one target `rust` that `global`'s targets hold, so that every entity
+    /// of every project file is built for it, and one file. The package `elfie` beside it is
+    /// the standard library every fixture is loaded against: its main file is the prelude,
+    /// so `Target`, the roles its slots take, and `targetOf` are in scope everywhere.
+    /// `def/roles.lfy` gives the language, the layout, and the ecosystem the target needs,
+    /// and `def/targets.lfy` declares the `ace const` that holds it; neither file declares
+    /// anything with a lowered node, so neither adds a unit.
     // @lfy def/cli/main.lfy:main
     fn one_target(fixture: &Fixture) -> &Fixture {
-        fixture
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } }
-                }"#,
-            )
-            .write(
-                "targets/rust/main.lfy",
-                "use \"elfie/target/target\";\n\ntrait rust extends target: `Built as Rust` {\n  .outputDirectory = \"out\";\n  .markerComment = \"//\";\n}\nrust.apply(global);\n",
-            )
+        library(fixture).write("def/roles.lfy", ROLES).write("def/targets.lfy", TARGETS)
     }
+
+    /// The same project with the standard library beside it but no target declared, so that
+    /// nothing is built for anything.
+    // @lfy def/cli/main.lfy:main
+    fn library(fixture: &Fixture) -> &Fixture {
+        fixture
+            .write("elfie.json", &manifest(&[]))
+            .write("lib/main.lfy", LIBRARY)
+            .write("lib/prelude/builtin.lfy", LIBRARY_BUILTIN)
+            .write("lib/prelude/entity.lfy", LIBRARY_ENTITY)
+            .write("lib/prelude/trait.lfy", LIBRARY_TRAIT)
+            .write("lib/criteria/main.lfy", LIBRARY_CRITERIA)
+            .write("lib/target/main.lfy", LIBRARY_TARGET)
+    }
+
+    /// The main file of the package `elfie`: the prelude, which brings the vocabulary a
+    /// target is declared with into the scope of every file of the project.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY: &str = "use \"./prelude/builtin\";\nuse \"./prelude/entity\";\n\
+                           use \"./prelude/trait\";\nuse \"./criteria/main\";\n\
+                           use \"./target/main\";\n";
+    /// The trait a builtin carries, which the library's own declarations need.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_BUILTIN: &str = "trait builtin: `Performed by the compiler` { }\n";
+    /// The context layer every entity is seen through: the lists a body adds to live there,
+    /// and `apply` is a member of a trait's kind rather than a name nothing declares.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_ENTITY: &str = "\
+d Entity: `A declared thing seen through its context layer` {
+  $knowledge: `What the compiler is given to read for it` = object[];
+  $commands: `Shell commands for its operations` = object[];
+  $targets: `The targets it is built for` = object[];
+}
+d Trait extends Entity: `A trait seen through its context layer` {
+  $apply: `Applies the trait to a target and returns the trait` = (target: Entity) => Trait;
+  $layer: `The trait as a layer of a target, with arguments for its parameters` = (...arguments: string[]) => object;
+}
+";
+    /// `layer`, which chooses a trait as a layer with arguments.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_TRAIT: &str = "use \"./builtin\";\n\
+                                 fn layer(subject: trait, ...arguments: string[]) is builtin: \
+                                 `A trait chosen as a layer of a target` => object;\n";
+    /// The enums a knowledge item and a command name.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_CRITERIA: &str = "\
+enum KnowledgeKind: `What a piece of knowledge is` {
+  reference = `documentation to read`,
+  example = `working code to imitate`,
+  definition = `Elfie source that defines it`,
+  tool = `a tool of the agent server`,
+}
+enum Operation: `What a command is for` {
+  install = `install`,
+  add = `add`,
+  build = `build`,
+  test = `test`,
+  lint = `lint`,
+  format = `format`,
+  run = `run`,
+}
+";
+    /// `Target`, the roles its slots take, and the function that gives a record written in
+    /// braces its type, as the package `elfie` declares them.
+    // @lfy def/cli/main.lfy:main
+    const LIBRARY_TARGET: &str = "\
+use \"../prelude/builtin\";
+trait target: `What every layer of a target is` {
+  $markerComment: `How a line comment begins` = string;
+  $provides: `Capabilities this layer gives its target` = string[];
+  $requires: `Capabilities some layer of its target must provide` = string[];
+  $outputExtensions: `Extensions besides the language's own` = string[];
+  .provides = [];
+  .requires = [];
+  .outputExtensions = [];
+}
+trait targetLanguage extends target: `What its code is written in` {
+  $fileExtension: `The extension of its files` = string;
+}
+trait targetRuntime extends target: `What runs its code` { }
+trait targetPlatform extends target: `Where it runs` { }
+trait targetEcosystem extends target: `Where its dependencies come from` {
+  $ecosystem: `What that ecosystem is called` = string;
+  $scriptRunner: `What runs a script its manifest names` = string;
+}
+trait targetFramework extends target: `What its code is built on` { }
+trait targetInterface extends target: `What it offers` { }
+trait targetLayout extends target: `Where its files go` { }
+d Target is builtin: `One artifact the project is built into` {
+  $output: `Where everything it writes goes` = string;
+  $language: `What its code is written in` = trait;
+  $runtime: `What runs its code` = trait | undefined;
+  $platforms: `Where it runs` = trait[] | undefined;
+  $ecosystem: `Where its dependencies come from` = trait | undefined;
+  $frameworks: `What its code is built on` = trait[] | undefined;
+  $interfaces: `What it offers` = trait[] | undefined;
+  $layout: `Where its files go` = trait;
+  $layers: `Anything else the compiler is told` = trait[] | undefined;
+  $dependencies: `What its generated code needs` = object[] | undefined;
+}
+function targetOf(target: Target): `Gives a record written in braces its type` -> Target {
+  return target;
+}
+";
+
+    /// The language, the layout, and the ecosystem the fixture's target is built from: only
+    /// traits, so this file declares nothing with a lowered node and adds no unit.
+    // @lfy def/cli/main.lfy:main
+    const ROLES: &str = "\
+trait lang extends targetLanguage: `Rust` {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+}
+trait flat extends targetLayout: `One file per unit` { }
+trait cargo extends targetEcosystem: `Crates from crates.io` {
+  .ecosystem = \"cargo\";
+}
+";
+
+    /// The `ace const` holding the target `rust`, writing to `out`, added to `global` so
+    /// that every entity of every project file is built for it.
+    // @lfy def/cli/main.lfy:main
+    const TARGETS: &str = "\
+use \"elfie/target\";
+use \"./roles\";
+
+ace const rust = targetOf({
+  output = \"out\",
+  language = lang,
+  layout = flat,
+  ecosystem = cargo,
+});
+global@targets.add(rust);
+";
 
     /// A project with one target, `def/a.lfy` declaring A with a criterion on line 3, a
     /// compiler that writes an output with a marker for A and ends with `ELFIE: DONE`, and
@@ -4302,16 +4476,7 @@ mod tests {
                 "#!/bin/sh\ncat >> \"$ELFIE_ROOT/instructions.txt\"\necho compile >> \"$ELFIE_ROOT/attempts.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho 'ELFIE: DONE'\n",
             )
             .write("verifier.sh", &verifier_script(fixture, verifier))
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "sh compiler.sh",
-                    "verifier": "sh verifier.sh"
-                }"#,
-            )
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]))
     }
 
     /// Every criterion and test id of one lowered node and the nodes below it, in order.
@@ -4764,6 +4929,35 @@ mod tests {
         assert_eq!(fixture.run(&["check", "def/a.lfy"]), ExitCode::Success.code());
     }
 
+    /// A program declaring no target says so once, as information of stage generation at
+    /// elfie.json: it is neither a problem nor a stale unit, so the code is success even
+    /// with --strict.
+    // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+    #[test]
+    fn check_says_once_that_the_program_declares_no_target() {
+        let fixture = Fixture::new();
+        library(&fixture).write("def/a.lfy", "const x = 1;\n");
+        // Nothing adds a target to global, so there is none to build for.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        let workspace = workspace::load(&fixture.root);
+        assert!(workspace.targets.is_empty(), "{:?}", workspace.targets.len());
+        // The line is information, which is neither a problem nor a stale unit.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        let manifest = fixture.root.join("elfie.json").display().to_string();
+        print_no_target(&manifest, false, false);
+        print_no_target(&manifest, false, true);
+        print_no_target(&manifest, true, false);
+        assert_eq!(severity_tone(Severity::Information), Tone::Active);
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["check", "--strict"]), ExitCode::Success.code());
+        assert_eq!(fixture.run(&["check", "--json"]), ExitCode::Success.code());
+        // A program that does declare one says nothing of the kind.
+        // @lfy def/cli/main.lfy:main#main:main:ffd0f504f1cdc3014c9c141ed07e37d33602cc0e480a4d4e8acd76d38942b75e
+        one_target(&fixture);
+        assert!(!workspace::load(&fixture.root).targets.is_empty());
+    }
+
     /// The count of stale units matches the plan, and the message names the target, the
     /// unit, and the description of the reason.
     // @lfy def/cli/main.lfy:main
@@ -4964,7 +5158,7 @@ mod tests {
 
     /// Compile with --dry-run prints one unit with reason fresh and one batch holding it,
     /// generates nothing, and returns success.
-    // @lfy def/cli/main.lfy:main#main:main:429f48f7dff6be9a0e438f5d769234845188d197ea4f7f520f3518d707132956
+    // @lfy def/cli/main.lfy:main#main:main:13ac07944d31f4503a5b719ea69b91838998614508f9fc1675e8dfd9d60a0e84
     #[test]
     fn dry_run_prints_the_units_then_the_batches() {
         let fixture = Fixture::new();
@@ -5295,15 +5489,7 @@ mod tests {
                 "compiler.sh",
                 "#!/bin/sh\ncat > \"$ELFIE_ROOT/instructions.txt\"\nprintf '%s\\n' \"$ELFIE_BATCH\" \"$ELFIE_UNITS\" \"$ELFIE\" > \"$ELFIE_ROOT/environment.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
             )
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "sh compiler.sh"
-                }"#,
-            );
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         // @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
         // ELFIE is the path of the running executable, so the agent server an agent starts
@@ -5339,15 +5525,7 @@ mod tests {
         one_target(&fixture)
             .write("def/a.lfy", "d A: `An A` {}\n")
             .write("compiler.sh", "#!/bin/sh\ncat > /dev/null\necho 'attempt' >> \"$ELFIE_ROOT/attempts.txt\"\n")
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "sh compiler.sh"
-                }"#,
-            );
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
         assert_eq!(fixture.read("attempts.txt").lines().count(), 2, "the batch is run once more");
         // @lfy def/cli/main.lfy:main
@@ -5374,15 +5552,7 @@ mod tests {
         let fixture = Fixture::new();
         one_target(&fixture)
             .write("def/a.lfy", "d A: `An A` {}\n")
-            .write(
-                "elfie.json",
-                r#"{
-                    "name": "p",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                    "compiler": "exit 127"
-                }"#,
-            );
+            .write("elfie.json", &manifest(&[("compiler", "exit 127")]));
         // The command runs and produces nothing, so the outcome is rejected rather than
         // failed; a command that cannot be spawned at all is the failure.
         assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
@@ -5568,15 +5738,7 @@ mod tests {
         assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
         // A project naming no verifier is the same. @lfy def/cli/main.lfy:main
         let plain = Fixture::new();
-        a_compiler_and_a_verifier(&plain, VIOLATED).write(
-            "elfie.json",
-            r#"{
-                "name": "p",
-                "dependencies": { "rust": { "root": "targets/rust" } },
-                "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                "compiler": "sh compiler.sh"
-            }"#,
-        );
+        a_compiler_and_a_verifier(&plain, VIOLATED).write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         assert_eq!(plain.run(&["compile"]), ExitCode::Success.code());
         assert!(!plain.root.join("verifications.txt").exists());
         assert!(!plain.root.join("elfie-requests/a.reviews.json").exists());
@@ -5656,15 +5818,7 @@ mod tests {
         let fixture = Fixture::new();
         a_compiler_and_a_verifier(&fixture, SATISFIED);
         assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
-        fixture.write(
-            "elfie.json",
-            r#"{
-                "name": "p",
-                "dependencies": { "rust": { "root": "targets/rust" } },
-                "targets": { "rust": { "package": "rust", "marker": "rust", "output": "out" } },
-                "compiler": "sh compiler.sh"
-            }"#,
-        );
+        fixture.write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         assert_eq!(fixture.run(&["verify"]), ExitCode::Success.code());
         let request = fixture.read("elfie-requests/a.review.md");
         assert!(request.contains("def/a.lfy"), "{request}");

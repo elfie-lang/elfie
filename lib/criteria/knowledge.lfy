@@ -1,0 +1,24 @@
+use "../prelude/builtin";
+
+// Decision: like criterion.lfy, this file uses nothing from the prelude but builtin, because
+// entity.lfy uses it; the contributor is typed as object for the same reason.
+// Decision: knowledge is vendored, never fetched, so every compile reads the same text and none
+// depends on the network.
+
+enum KnowledgeKind: `What a piece of knowledge is` {
+  reference = `documentation to read: a language reference, an API, a guide`,
+  example = `working code to imitate`,
+  definition = `Elfie source that defines it, read like any other`,
+  tool = `a tool of the agent server the compiler calls`,
+}
+
+d Knowledge is builtin: `Something the compiler is given to read, because it may not already know it` {
+  $topic: `What it teaches, in a few words` = string;
+  $kind: `What it is` = KnowledgeKind;
+  $source: `A path relative to the root of the package or project that declares it; a use path for a definition; the tool's name for a tool` = string;
+  $quote: `Whether the request quotes it in full; when false or left out, the request names it and the compiler reads it` = boolean | undefined;
+  $contributor: `The entity whose body holds it, seen through its context layer: the entity itself or one of its traits` = object;
+  where (`An add call on an entity's knowledge is bound with an object holding a topic, a kind, and a source`) -> `One item with those fields is appended to that entity's knowledge, in the order the calls are written`;
+  where (`An item is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the item joins each entity the trait is applied to, after that entity's own`;
+  where (`An item is written in an entity's own body`) -> `The contributor is the entity itself`;
+}

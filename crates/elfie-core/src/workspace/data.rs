@@ -1,15 +1,16 @@
 //! Compiled from `def/workspace/data.lfy`: the data of a loaded project.
 //!
 //! A [`Workspace`] is one project, loaded and bound. Its [`File`]s are the sources the
-//! model was bound from, in bind order; its [`Package`]s and [`Target`]s come from
-//! `elfie.json`; and its problems are every [`LoadProblem`] that arose before there was a
-//! node to point at, followed by every [`Problem`] of the model.
+//! model was bound from, in bind order; its [`Package`]s come from `elfie.json`; its
+//! [`Target`]s are what the loader resolved from the `ace const`s of the program that hold
+//! a `Target` of the package `elfie`; and its problems are every [`LoadProblem`] that arose
+//! before there was a node to point at, followed by every [`Problem`] of the model.
 
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
-use crate::model::{EntityId, Model, Origin, Problem, Source};
+use crate::model::{Command, EntityId, Knowledge, Model, Origin, Problem, Source};
 use crate::parser::Tree;
 
 /// Something the generated code needs from the target's own ecosystem.
@@ -34,8 +35,6 @@ pub struct Package {
     /// Its directory, relative to [`Workspace::root`]; absolute for the package `elfie`
     /// when it is found outside the project.
     pub root: String, // @lfy def/workspace/data.lfy:Package.root
-    /// What code generated from it requires.
-    pub native_dependencies: Vec<NativeDependency>, // @lfy def/workspace/data.lfy:Package.nativeDependencies
 }
 
 /// One `.lfy` file in the program, ready to bind.
@@ -57,19 +56,39 @@ pub struct File {
     pub source: usize, // @lfy def/workspace/data.lfy:File
 }
 
-/// One thing the project is compiled into.
+/// One thing the project is compiled into, as the loader resolved it from the `ace const`
+/// that declares it.
 // @lfy def/workspace/data.lfy:Target
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Target {
-    /// The name the project calls it.
+    /// The name of the const that declares it.
     pub identifier: String, // @lfy def/workspace/data.lfy:Target.identifier
-    /// The trait an entity carries to be built for this target.
-    pub marker: EntityId, // @lfy def/workspace/data.lfy:Target.marker
-    /// The package that declares it, and the guidance for building against it, as an
-    /// index into [`Workspace::packages`].
-    pub package: usize, // @lfy def/workspace/data.lfy:Target.package
+    /// The `ace const` that declares it; its traits are the target's layers, applied to
+    /// it, and its criteria, knowledge, and commands are the target's.
+    pub declaration: EntityId, // @lfy def/workspace/data.lfy:Target.declaration
+    /// The traits of its layers in guidance order: layers, interfaces, frameworks, layout,
+    /// runtime, platforms, ecosystem, language, each slot in its own order, each trait
+    /// once.
+    pub layers: Vec<EntityId>, // @lfy def/workspace/data.lfy:Target.layers
     /// Where its generated code is written, relative to [`Workspace::root`].
     pub output_directory: String, // @lfy def/workspace/data.lfy:Target.outputDirectory
+    /// The extensions, without the dot, its outputs may have: its language's file
+    /// extension, then every output extension its layers set.
+    pub extensions: Vec<String>, // @lfy def/workspace/data.lfy:Target.extensions
+    /// How a line comment begins in its language, as its language layer sets it.
+    pub marker_comment: String, // @lfy def/workspace/data.lfy:Target.markerComment
+    /// What runs a script its ecosystem's manifest names, as its ecosystem layer sets it;
+    /// `None` when it has no ecosystem or the ecosystem sets none.
+    pub script_runner: Option<String>, // @lfy def/workspace/data.lfy:Target.scriptRunner
+    /// What its generated code needs, from its dependencies, each in the ecosystem its
+    /// ecosystem layer names.
+    pub native_dependencies: Vec<NativeDependency>, // @lfy def/workspace/data.lfy:Target.nativeDependencies
+    /// The one command of each operation the target has a command for, in the order
+    /// `Operation` lists them.
+    pub commands: Vec<Command>, // @lfy def/workspace/data.lfy:Target.commands
+    /// What the compiler is given to read for the target: the declaration's knowledge, its
+    /// own first and then each layer's.
+    pub knowledge: Vec<Knowledge>, // @lfy def/workspace/data.lfy:Target.knowledge
 }
 
 /// Something that went wrong before there was a node to point at.
@@ -143,19 +162,15 @@ pub struct Workspace {
     pub name: String, // @lfy def/workspace/data.lfy:Workspace.name
     /// Where the project's own source lives, relative to [`Workspace::root`].
     pub source_directory: String, // @lfy def/workspace/data.lfy:Workspace.sourceDirectory
-    /// Where generated code is written by default, relative to [`Workspace::root`].
-    pub output_directory: String, // @lfy def/workspace/data.lfy:Workspace.outputDirectory
     /// Every file in the program, in the order they were bound.
     pub files: Vec<File>, // @lfy def/workspace/data.lfy:Workspace.files
     /// The program.
     pub model: Model, // @lfy def/workspace/data.lfy:Workspace.model
     /// The packages `elfie.json` names as dependencies, in the order they were read.
     pub packages: Vec<Package>, // @lfy def/workspace/data.lfy:Package
-    /// What the project is compiled into.
+    /// What the project is compiled into, in the order their consts are declared: file by
+    /// file in [`Workspace::files`] order, then source order.
     pub targets: Vec<Target>, // @lfy def/workspace/data.lfy:Workspace.targets
-    /// What code generated from the project's own source requires, as its `elfie.json`
-    /// names it.
-    pub native_dependencies: Vec<NativeDependency>, // @lfy def/workspace/data.lfy:Workspace.nativeDependencies
     /// Every [`LoadProblem`], then every [`Problem`] of [`Workspace::model`].
     pub problems: Vec<WorkspaceProblem>, // @lfy def/workspace/data.lfy:Workspace.problems
     /// The files `change` replaced, by path, holding the text each is read as instead of

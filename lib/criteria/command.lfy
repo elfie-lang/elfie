@@ -1,0 +1,26 @@
+use "../prelude/builtin";
+
+// Decision: like criterion.lfy, this file uses nothing from the prelude but builtin, because
+// entity.lfy uses it; the contributor is typed as object for the same reason.
+// Decision: a command is handed to the compiler in its request and never run by Elfie itself, so
+// acceptance stays structural.
+
+enum Operation: `What a command is for` {
+  install = `install: fetch every dependency the manifest lists`,
+  add = `add: add one dependency`,
+  build = `build: compile or type-check the outputs`,
+  test = `test: run the tests`,
+  lint = `lint: run the linters`,
+  format = `format: check the formatting without changing anything`,
+  run = `run: start what was built`,
+}
+
+d Command is builtin: `A shell command for one operation, so the compiler need not know the tool` {
+  $operation: `What it is for` = Operation;
+  $line: `What sh -c runs in the target's output directory; undefined to say the operation is not run` = string | undefined;
+  $contributor: `The entity whose body holds it, seen through its context layer: the entity itself or one of its traits` = object;
+  where (`An add call on an entity's commands is bound with an object holding an operation`) -> `One command with that operation and line is appended to that entity's commands, in the order the calls are written`;
+  where (`A command is written in a trait's body, or in a with block inside one`) -> `The contributor is the trait, and the command joins each entity the trait is applied to, after that entity's own`;
+  where (`A command is written in an entity's own body`) -> `The contributor is the entity itself`;
+  where (`A command runs`) -> `RUN_SCRIPT is set to the script runner of the target's ecosystem, and for an add command NAME and VERSION are set to the dependency's name and version, VERSION empty when none is pinned`;
+}

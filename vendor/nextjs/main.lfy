@@ -1,0 +1,79 @@
+use "elfie/target";
+use "elfie/target/framework";
+use "elfie/target/layout";
+use "http";
+use "platforms";
+use "react";
+use "typescript";
+
+/// root: the app's directory, relative to the project root
+trait nextjs(root: string) extends targetFramework, targetLayout: `Next.js 15 with the App Router, its source under src` {
+  .framework = "Next.js 15";
+  .provides = ["http-server", "html-pages"];
+  .requires = ["react", "node-api", "npm-registry", "browser"];
+  @acceptanceCriteria
+    .add({
+      situation = `A unit holds an fn that carries [[endpoint]]`,
+      behavior = `It is route.ts in {{root}}/src/app followed by the endpoint's path, exporting one handler per method`,
+    })
+    .add({
+      situation = `A unit holds an fn that carries [[page]]`,
+      behavior = `It is page.tsx in {{root}}/src/app followed by the page's path, whose default export is an async server component`,
+    })
+    .add({
+      situation = `A unit holds fns for more than one path`,
+      behavior = `The compiler stops on the unit and names the paths, because one unit writes one route or page file`,
+    })
+    .add({
+      situation = `A unit holds no fn carrying [[endpoint]] or [[page]]`,
+      behavior = `It is {{root}}/src/lib/ then the stem, imported elsewhere as @/lib/ then the stem`,
+    })
+    .add({ behavior = `An endpoint's arguments are checked with a zod schema of each parameter's type` })
+    .add({
+      behavior = `A component that needs state or a browser API begins with "use client"; every other component renders on the server`,
+    })
+    .add({ behavior = `Code under src/lib that reads a database, a secret, or a file begins with import "server-only"` })
+    .add({ behavior = `package.json's dev, build, and start scripts run next` });
+  @knowledge.add({
+    topic = `Next.js 15 request APIs are asynchronous: params, searchParams, cookies(), and headers() are awaited`,
+    kind = KnowledgeKind.reference,
+    source = "knowledge/next15-async-request-apis.md",
+    quote = true,
+  });
+  @commands
+    .add({ operation = Operation.build, line = "$RUN_SCRIPT build" })
+    .add({ operation = Operation.run, line = "$RUN_SCRIPT start" });
+}
+
+type AppSettings: `What a Next.js app needs beyond its defaults` {
+  root: `The app's directory, relative to the project root` = string,
+  runtime: `node, bun, or another layer providing node-api` = Trait | Layer,
+  ecosystem: `npm, pnpm, yarn, bunPackages, or another layer providing npm-registry` = Trait | Layer,
+  interfaces: `website and restApi when left out` = (Trait | Layer)[] | undefined,
+  frameworks: `Frameworks beyond react and nextjs` = (Trait | Layer)[] | undefined,
+  layers: `Anything else, such as a house style` = (Trait | Layer)[] | undefined,
+  dependencies: `npm packages beyond next, react, react-dom, and zod` = Dependency[] | undefined,
+}
+
+/// settings: where the app lives, what runs it, what manages its packages, and anything beyond the defaults
+ace function app(settings: AppSettings): `A Next.js app in TypeScript, served from a POSIX server and used in browsers` -> Target {
+  const framework = nextjs.layer(settings.root);
+  return targetOf({
+    output = settings.root,
+    language = typescript,
+    runtime = settings.runtime,
+    platforms = [posix, browser],
+    ecosystem = settings.ecosystem,
+    frameworks = [framework, react, ...(settings.frameworks ?? [])],
+    interfaces = settings.interfaces ?? [website, restApi],
+    layout = framework,
+    layers = settings.layers ?? [],
+    dependencies = [
+      { name = "next", version = "^15" },
+      { name = "react", version = "^19" },
+      { name = "react-dom", version = "^19" },
+      { name = "zod", version = "^3" },
+      ...(settings.dependencies ?? []),
+    ],
+  });
+}

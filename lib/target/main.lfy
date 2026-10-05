@@ -1,0 +1,57 @@
+use "../prelude/builtin";
+use "../prelude/trait";
+use "./ecosystem";
+use "./framework";
+use "./interface";
+use "./language";
+use "./layout";
+use "./platform";
+use "./runtime";
+use "./target";
+
+/// A target is an ace const of the project holding a [[Target]]; the const's name is the target's
+/// identifier. Each slot holds layers of one role, so any language, runtime, platform, ecosystem,
+/// framework, interface, and layout can be put together, and their capabilities say whether they
+/// fit. A slot holds a trait alone, or a [[Layer]] when the trait takes arguments.
+
+type Dependency: `Something generated code needs from the target's ecosystem` {
+  name: `The name the ecosystem knows it by` = string,
+  version: `The version asked for, as the ecosystem spells it; none is pinned when left out` = string | undefined,
+}
+
+d Target is builtin: `One artifact the project is built into: a crate, an app, a script` {
+  $output: `The directory everything it writes is under, relative to the project root` = string;
+  $language: `What its code is written in: a layer extending [[targetLanguage]]` = Trait | Layer;
+  $runtime: `What runs its code, when something other than the platform does: a layer extending [[targetRuntime]]` = Trait | Layer | undefined;
+  $platforms: `Where it runs: layers extending [[targetPlatform]]; none when left out` = (Trait | Layer)[] | undefined;
+  $ecosystem: `Where its dependencies come from and what manages them: a layer extending [[targetEcosystem]]` = Trait | Layer | undefined;
+  $frameworks: `What its code is built on, in order: layers extending [[targetFramework]]; none when left out` = (Trait | Layer)[] | undefined;
+  $interfaces: `What it offers the people and programs that use it: layers extending [[targetInterface]]; none when left out` = (Trait | Layer)[] | undefined;
+  $layout: `Where its files go: a layer extending [[targetLayout]]` = Trait | Layer;
+  $layers: `Anything else the compiler is told, such as a house style: layers extending [[target]]; none when left out` = (Trait | Layer)[] | undefined;
+  $dependencies: `What its generated code needs from its ecosystem; none when left out` = Dependency[] | undefined;
+
+  // Declaring
+  where (`An ace const of the project holds a Target`) -> `It is a target, and its identifier is the const's name`;
+  where (`A const of a package holds a Target`) -> `It is not a target; a package provides presets, and each project names its own targets`;
+  where (`A target is declared`) -> `Each of its layers is applied to its const, in guidance order, with the layer's arguments, so the const carries every layer's criteria, knowledge, commands, and values`;
+
+  // Roles
+  where (`A slot holds a layer that does not extend that slot's role`) -> `A problem at the const names the slot and the layer`;
+  where (`The same trait with equal arguments is in two slots, such as a framework that is also the layout`) -> `It is one layer, at its first place in guidance order`;
+  where (`The target has dependencies and no ecosystem`) -> `A problem at the const says dependencies need an ecosystem`;
+
+  // Guidance
+  where (`The compiler is handed a request for a unit of a target`) -> `The guidance is the const's own criteria, then each layer's own criteria in guidance order, then those of the traits the layers extend, nearest first; each trait once`;
+  where (`Guidance order is needed`) -> `It is layers, interfaces, frameworks, layout, runtime, platforms, ecosystem, language, each slot in its own order`;
+  where (`A criterion is guidance of a target`) -> `It is neither a local nor a global requirement; no unit answers for it and no review checks it`;
+
+  // Output
+  where (`Two targets have the same output, or one's output is inside the other's`) -> `A problem at both consts names the directory`;
+  where (`An output's extension is neither the language's file extension nor among the target's output extensions`) -> `The unit is rejected, naming the output`;
+}
+
+/// target: the record, written in braces
+ace function targetOf(target: Target): `Gives a record written in braces its type, so it is a Target` -> Target {
+  return target;
+}

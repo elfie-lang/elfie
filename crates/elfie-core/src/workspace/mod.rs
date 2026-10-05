@@ -4,8 +4,10 @@
 //! the source directory and under every package root, follows every `use` to the file it
 //! names, orders the files so each comes after the files it uses, and binds them once.
 //! Loading never stops for a failure: every failure is a [`LoadProblem`] or a `Problem`
-//! and the rest of the project still loads. [`change`] gives a workspace in which one file
-//! is read as other text, by loading the same root again with that replacement in place.
+//! and the rest of the project still loads. The targets are read from the program itself,
+//! after binding: every `ace const` of a project file holding a `Target` of the package
+//! `elfie` gives one. [`change`] gives a workspace in which one file is read as other text,
+//! by loading the same root again with that replacement in place.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -16,26 +18,27 @@ pub use data::*;
 
 use crate::grammar::rules::expression::Expression;
 use crate::grammar::rules::statement::Statement;
+use crate::grammar::terminals::keyword::Keyword;
 use crate::grammar::terminals::literal::Literal;
+use crate::interpret::{Evaluated, Value as Computed};
 use crate::lexer::lex;
-use crate::model::{self, EntityId, Model, Origin, Problem, Source, SymbolKind};
+use crate::model::{
+    self, Entity, EntityId, EntityKind, FileId, KnowledgeKind, Model, NodeRef, Operation, Origin,
+    Problem, Source, TypeRef,
+};
 use crate::parser::{Node, Tree, parse};
 
-/// The project layout file, at the root of the project and of every package.
+/// The project layout file, at the root of the project.
 ///
 /// Decision: the definition names what `elfie.json` holds but never how it is spelled, so
 /// this compile fixes the spelling as a JSON object with the optional keys `"name"`,
-/// `"source"`, `"output"`, `"dependencies"` (an object of identifier to `{ "root" }`),
-/// `"targets"` (an object of identifier to `{ "package", "marker", "output"? }`), and
-/// `"native"` (a list of `{ "identifier", "ecosystem", "version"? }`). Anything shaped
-/// otherwise is a `LoadProblem` and the rest of the manifest still stands.
+/// `"source"`, `"lib"`, and `"dependencies"` (an object of identifier to `{ "root" }`).
+/// One of those whose value is of the wrong kind is a `LoadProblem` and the rest of the
+/// manifest still stands; any other key is never looked at.
 const MANIFEST: &str = "elfie.json";
 /// `Workspace.sourceDirectory` when `elfie.json` gives none.
 const DEFAULT_SOURCE_DIRECTORY: &str = "def"; // @lfy def/workspace/main.lfy:load
-/// `Workspace.outputDirectory` when `elfie.json` gives none.
-const DEFAULT_OUTPUT_DIRECTORY: &str = "src"; // @lfy def/workspace/main.lfy:load
-/// The file a directory resolves to, and the file whose scope a target marker is looked
-/// up in.
+/// The file a directory resolves to.
 const MAIN_FILE: &str = "main.lfy";
 /// `Path::extension` of a source file.
 const EXTENSION: &str = "lfy"; // @lfy def/workspace/main.lfy:load
@@ -54,8 +57,61 @@ const LIBRARY_VARIABLE: &str = "ELFIE_LIB"; // @lfy def/workspace/main.lfy:load
 /// the path of the library the crate was built beside, baked in at build time. A compiler
 /// carried away from that directory finds the library through `ELFIE_LIB` instead.
 const BUILT_IN_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../lib"); // @lfy def/workspace/main.lfy:load
-/// The trait of the package `elfie` that the marker of every target extends.
-const TARGET_TRAIT: &str = "target"; // @lfy def/workspace/main.lfy:load
+/// The data of the package `elfie` that an `ace const` holds to declare a target.
+const TARGET_DATA: &str = "Target"; // @lfy def/workspace/main.lfy:load
+/// The slots of that data, in the order it declares them, each with the trait a layer of
+/// it must extend; `output` and `dependencies` hold no layer, so they have none.
+const SLOTS: [(&str, Option<&str>); 10] = [
+    ("output", None),
+    ("language", Some("targetLanguage")),
+    ("runtime", Some("targetRuntime")),
+    ("platforms", Some("targetPlatform")),
+    ("ecosystem", Some("targetEcosystem")),
+    ("frameworks", Some("targetFramework")),
+    ("interfaces", Some("targetInterface")),
+    ("layout", Some("targetLayout")),
+    ("layers", Some("target")),
+    ("dependencies", None),
+]; // @lfy def/workspace/main.lfy:load
+/// The slots whose layers make up `Target.layers`, in guidance order.
+const GUIDANCE_ORDER: [&str; 8] = [
+    "layers",
+    "interfaces",
+    "frameworks",
+    "layout",
+    "runtime",
+    "platforms",
+    "ecosystem",
+    "language",
+]; // @lfy def/workspace/main.lfy:load
+/// The slots a target cannot do without.
+const NEEDED_SLOTS: [&str; 3] = ["output", "language", "layout"]; // @lfy def/workspace/main.lfy:load
+/// `Operation`, in the order the enum lists them.
+const OPERATIONS: [Operation; 7] = [
+    Operation::Install,
+    Operation::Add,
+    Operation::Build,
+    Operation::Test,
+    Operation::Lint,
+    Operation::Format,
+    Operation::Run,
+]; // @lfy def/workspace/main.lfy:load
+/// The members of the object a `Layer` is: the trait chosen, and its arguments.
+const SUBJECT: &str = "subject"; // @lfy def/workspace/main.lfy:load
+const ARGUMENTS: &str = "arguments"; // @lfy def/workspace/main.lfy:load
+/// The names a target's setters give what it is read from: the extension of its language's
+/// files, the extensions its layers add, how a line comment begins, what runs a script,
+/// which ecosystem its dependencies come from, and the capabilities its layers give and
+/// need.
+const FILE_EXTENSION: &str = "fileExtension"; // @lfy def/workspace/main.lfy:load
+const OUTPUT_EXTENSIONS: &str = "outputExtensions"; // @lfy def/workspace/main.lfy:load
+const MARKER_COMMENT: &str = "markerComment"; // @lfy def/workspace/main.lfy:load
+const SCRIPT_RUNNER: &str = "scriptRunner"; // @lfy def/workspace/main.lfy:load
+const ECOSYSTEM: &str = "ecosystem"; // @lfy def/workspace/main.lfy:load
+const PROVIDES: &str = "provides"; // @lfy def/workspace/main.lfy:load
+const REQUIRES: &str = "requires"; // @lfy def/workspace/main.lfy:load
+/// What a knowledge source never begins with, because knowledge is vendored.
+const NETWORK: [&str; 2] = ["http://", "https://"]; // @lfy def/workspace/main.lfy:load
 
 /// Load a project from disk and bind it.
 ///
@@ -143,21 +199,16 @@ fn load_in(
 
     // Layout. @lfy def/workspace/main.lfy:load
     let manifest = loader.manifest(MANIFEST);
-    let name = manifest
-        .as_ref()
-        .and_then(|manifest| manifest.get("name")?.as_str())
-        .map(str::to_string)
+    // Only "name", "source", "lib", and "dependencies" are ever looked at; a target, where
+    // its outputs go, and what its generated code needs are declared in the program.
+    // @lfy def/workspace/main.lfy:load
+    let name = loader
+        .string(manifest.as_ref(), "name")
         .unwrap_or_else(|| directory_name(root)); // @lfy def/workspace/main.lfy:load
-    let source_directory = manifest
-        .as_ref()
-        .and_then(|manifest| manifest.get("source")?.as_str())
-        .map(trim_directory)
+    let source_directory = loader
+        .string(manifest.as_ref(), "source")
+        .map(|source| trim_directory(&source))
         .unwrap_or_else(|| DEFAULT_SOURCE_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:load
-    let output_directory = manifest
-        .as_ref()
-        .and_then(|manifest| manifest.get("output")?.as_str())
-        .map(trim_directory)
-        .unwrap_or_else(|| DEFAULT_OUTPUT_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:load
 
     // Dependencies. @lfy def/workspace/main.lfy:load
     let mut packages = loader.packages(manifest.as_ref());
@@ -173,11 +224,6 @@ fn load_in(
             packages.push(loader.package(LIBRARY_PACKAGE, &root));
             packages.len() - 1
         }
-    };
-    let target_specs = loader.target_specs(manifest.as_ref());
-    let native_dependencies = match &manifest {
-        Some(manifest) => loader.native_dependencies(MANIFEST, manifest), // @lfy def/workspace/main.lfy:load
-        None => Vec::new(),
     };
 
     // Discovery, use, and order. @lfy def/workspace/main.lfy:load
@@ -234,80 +280,20 @@ fn load_in(
     // Binding, once. @lfy def/workspace/main.lfy:load
     let mut model = model::bind(sources);
 
-    // A use that resolves to nothing, and a use that is part of a cycle, are problems at
-    // the `Use` itself, which only the bound model can point at.
+    // Only the bound model can point at these: a use that resolves to nothing or is part
+    // of a cycle, the targets the program declares, and the knowledge its entities name.
     // @lfy def/workspace/main.lfy:load
     // @lfy def/workspace/main.lfy:load
-    let mut at_uses = use_problems(&model, &loader.use_problems);
-    if !at_uses.is_empty() {
-        model.problems.append(&mut at_uses);
+    let mut added = use_problems(&model, &loader.use_problems);
+    // Targets. @lfy def/workspace/main.lfy:load
+    let (targets, mut at_targets) = targets_of(&mut model, &files, library);
+    added.append(&mut at_targets);
+    added.append(&mut knowledge_problems(&model, &loader, &files, &packages));
+    if !added.is_empty() {
+        model.problems.append(&mut added);
         model
             .problems
             .sort_by_key(|problem| (problem.node.file, problem.node.index));
-    }
-
-    // Targets. @lfy def/workspace/main.lfy:load
-    let mut targets = Vec::new();
-    // @lfy def/workspace/main.lfy:load
-    let target_trait = library_target(&model, &files, library);
-    for spec in target_specs {
-        let Some(package) = packages
-            .iter()
-            .position(|package| package.identifier == spec.package)
-        else {
-            loader.problem(
-                None,
-                format!(
-                    "the target {} names the package {:?}, which elfie.json does not list as a dependency",
-                    spec.identifier, spec.package
-                ),
-            );
-            continue;
-        };
-        let main = join(&packages[package].root, MAIN_FILE);
-        // @lfy def/workspace/main.lfy:load
-        let symbol = model
-            .file(&main)
-            .and_then(|file| model.file_scopes.get(file).copied())
-            .and_then(|scope| model.lookup(scope, &spec.marker))
-            .and_then(|symbol| model.symbols.get(symbol));
-        match symbol {
-            // @lfy def/workspace/main.lfy:load
-            Some(symbol)
-                if symbol.kind == SymbolKind::Trait
-                    && target_trait
-                        .is_some_and(|target| !extends_target(&model, target, symbol.entity)) =>
-            {
-                loader.problem(
-                    Some(&main),
-                    format!(
-                        "the target {} names the trait {:?}, which neither is the trait target of the package {LIBRARY_PACKAGE} nor extends it",
-                        spec.identifier, spec.marker
-                    ),
-                )
-            }
-            Some(symbol) if symbol.kind == SymbolKind::Trait => targets.push(Target {
-                identifier: spec.identifier, // @lfy def/workspace/main.lfy:load
-                marker: symbol.entity,       // @lfy def/workspace/main.lfy:load
-                package,                     // @lfy def/workspace/main.lfy:load
-                output_directory: spec.output.unwrap_or_else(|| output_directory.clone()), // @lfy def/workspace/main.lfy:load
-            }),
-            // @lfy def/workspace/main.lfy:load
-            Some(symbol) => loader.problem(
-                Some(&main),
-                format!(
-                    "the marker {:?} of the target {} resolves to a {}, not a trait",
-                    spec.marker, spec.identifier, symbol.kind
-                ),
-            ),
-            None => loader.problem(
-                Some(&main),
-                format!(
-                    "the marker {:?} of the target {} resolves to nothing in the file scope of {main}",
-                    spec.marker, spec.identifier
-                ),
-            ),
-        }
     }
 
     // @lfy def/workspace/data.lfy:Workspace.problems
@@ -322,24 +308,13 @@ fn load_in(
         root: root.to_path_buf(), // @lfy def/workspace/main.lfy:load
         name,
         source_directory,
-        output_directory,
         files,
         model,
         packages,
         targets,
-        native_dependencies,
         problems,
         overlays,
     }
-}
-
-/// One target as `elfie.json` spells it, before its marker is resolved.
-// @lfy def/workspace/main.lfy:load
-struct TargetSpec {
-    identifier: String,
-    package: String,
-    marker: String,
-    output: Option<String>,
 }
 
 /// One `Use` of a file: what it spells and what it resolved to.
@@ -412,6 +387,13 @@ impl Loader<'_> {
         self.overlays.contains_key(path) || self.root.join(path).is_file()
     }
 
+    /// Whether anything at all is at a path: a replaced file, or a file or a directory on
+    /// disk. `FileSystem.exists` of a knowledge source, which may name either.
+    // @lfy def/workspace/main.lfy:load
+    fn anything_at(&self, path: &str) -> bool {
+        self.overlays.contains_key(path) || self.root.join(path).exists()
+    }
+
     /// Whether a directory is on disk, and so has files of its own to walk.
     fn on_disk(&self, directory: &str) -> bool {
         if is_root(directory) {
@@ -472,51 +454,26 @@ impl Loader<'_> {
         }
     }
 
-    /// The native dependencies an `elfie.json` names under `"native"`.
+    /// The string a key of the manifest gives; `None` when there is no such key, and
+    /// `None` with the key named for the manifest when its value is not a string.
     // @lfy def/workspace/main.lfy:load
-    fn native_dependencies(
+    fn string(
         &mut self,
-        path: &str,
-        manifest: &serde_json::Map<String, serde_json::Value>,
-    ) -> Vec<NativeDependency> {
-        let mut out = Vec::new();
-        let Some(native) = manifest.get("native") else {
-            return out;
-        };
-        let Some(list) = native.as_array() else {
-            self.problem(Some(path), "\"native\" is not a list".to_string());
-            return out;
-        };
-        for (index, item) in list.iter().enumerate() {
-            let identifier = item.get("identifier").and_then(|v| v.as_str());
-            let ecosystem = item.get("ecosystem").and_then(|v| v.as_str());
-            let version = item.get("version");
-            match (identifier, ecosystem, version) {
-                (Some(identifier), Some(ecosystem), None) => out.push(NativeDependency {
-                    identifier: identifier.to_string(),
-                    ecosystem: ecosystem.to_string(),
-                    version: None,
-                }),
-                (Some(identifier), Some(ecosystem), Some(serde_json::Value::String(version))) => {
-                    out.push(NativeDependency {
-                        identifier: identifier.to_string(),
-                        ecosystem: ecosystem.to_string(),
-                        version: Some(version.clone()),
-                    })
-                }
-                _ => self.problem(
-                    Some(path),
-                    format!(
-                        "\"native\" entry {index} needs string \"identifier\" and \"ecosystem\" and an optional string \"version\""
-                    ),
-                ),
+        manifest: Option<&serde_json::Map<String, serde_json::Value>>,
+        key: &str,
+    ) -> Option<String> {
+        match manifest.and_then(|manifest| manifest.get(key)) {
+            Some(serde_json::Value::String(value)) => Some(value.clone()),
+            None => None,
+            // @lfy def/workspace/main.lfy:load
+            Some(_) => {
+                self.problem(Some(MANIFEST), format!("{key:?} is not a string"));
+                None
             }
         }
-        out
     }
 
-    /// Each dependency `elfie.json` names gives one package, with the native
-    /// dependencies of its own `elfie.json`.
+    /// Each dependency `elfie.json` names gives one package.
     // @lfy def/workspace/main.lfy:load
     fn packages(
         &mut self,
@@ -549,7 +506,7 @@ impl Loader<'_> {
         out
     }
 
-    /// One package at a root, with the native dependencies of its own `elfie.json`.
+    /// One package at a root.
     // @lfy def/workspace/main.lfy:load
     fn package(&mut self, identifier: &str, root: &str) -> Package {
         let root = trim_directory(root);
@@ -563,16 +520,9 @@ impl Loader<'_> {
                 format!("the root of the package {identifier} does not exist"),
             );
         }
-        let native_dependencies = match self.manifest(&join(&root, MANIFEST)) {
-            Some(package_manifest) => {
-                self.native_dependencies(&join(&root, MANIFEST), &package_manifest)
-            } // @lfy def/workspace/main.lfy:load
-            None => Vec::new(),
-        };
         Package {
             identifier: identifier.to_string(),
             root,
-            native_dependencies,
         }
     }
 
@@ -588,63 +538,9 @@ impl Loader<'_> {
         manifest: Option<&serde_json::Map<String, serde_json::Value>>,
         environment: Option<String>,
     ) -> String {
-        let named = match manifest.and_then(|manifest| manifest.get("lib")) {
-            Some(serde_json::Value::String(lib)) => Some(lib.clone()),
-            None => None,
-            Some(_) => {
-                self.problem(Some(MANIFEST), "\"lib\" is not a string".to_string());
-                None
-            }
-        };
-        named
+        self.string(manifest, "lib")
             .or(environment)
             .unwrap_or_else(|| normalize(BUILT_IN_LIBRARY))
-    }
-
-    /// Each target `elfie.json` names, as spelled.
-    // @lfy def/workspace/main.lfy:load
-    fn target_specs(
-        &mut self,
-        manifest: Option<&serde_json::Map<String, serde_json::Value>>,
-    ) -> Vec<TargetSpec> {
-        let mut out = Vec::new();
-        let Some(targets) = manifest.and_then(|manifest| manifest.get("targets")) else {
-            return out;
-        };
-        let Some(targets) = targets.as_object() else {
-            self.problem(Some(MANIFEST), "\"targets\" is not an object".to_string());
-            return out;
-        };
-        for (identifier, target) in targets {
-            let package = target.get("package").and_then(|v| v.as_str());
-            let marker = target.get("marker").and_then(|v| v.as_str());
-            let output = target.get("output");
-            let output = match output {
-                None => None,
-                Some(serde_json::Value::String(output)) => Some(trim_directory(output)),
-                Some(_) => {
-                    self.problem(
-                        Some(MANIFEST),
-                        format!("the target {identifier:?} has an \"output\" that is not a string"),
-                    );
-                    continue;
-                }
-            };
-            let (Some(package), Some(marker)) = (package, marker) else {
-                self.problem(
-                    Some(MANIFEST),
-                    format!("the target {identifier:?} needs string \"package\" and \"marker\""),
-                );
-                continue;
-            };
-            out.push(TargetSpec {
-                identifier: identifier.clone(),
-                package: package.to_string(),
-                marker: marker.to_string(),
-                output,
-            });
-        }
-        out
     }
 
     /// Every `.lfy` file under a directory, sorted by path, replaced files included.
@@ -911,35 +807,41 @@ fn origin_of(path: &str, package: Option<usize>, library: usize, root: &str) -> 
     }
 }
 
-/// The trait `target` of the package `elfie`: the trait of that name declared in one of
-/// its files. `None` when the library in the program declares none, in which case there
-/// is nothing for a target's marker to extend and every marker stands.
+/// The entity of a name the package `elfie` declares: the one with that identifier declared
+/// in one of the package's files that `accept` says yes to. `None` when the library in the
+/// program declares none, in which case the check that reads it has nothing to say.
 ///
-/// Decision: the criterion names `target` of the package elfie, and the main file of the
-/// library does not bring it into the prelude, so it is found by its name among the
-/// entities the package's files declare rather than by a lookup in a scope.
+/// Decision: the criteria name `Target` and the roles of the package elfie, and the main
+/// file of the library does not bring them into the prelude, so each is found by its name
+/// among the entities the package's files declare rather than by a lookup in a scope.
 // @lfy def/workspace/main.lfy:load
-fn library_target(model: &Model, files: &[File], library: usize) -> Option<EntityId> {
+fn library_entity(
+    model: &Model,
+    files: &[File],
+    library: usize,
+    name: &str,
+    accept: impl Fn(&Entity) -> bool,
+) -> Option<EntityId> {
     let sources: HashSet<usize> = files
         .iter()
         .filter(|file| file.package == Some(library))
         .map(|file| file.source)
         .collect();
     model.entities.iter().position(|entity| {
-        entity.is_trait()
-            && entity.identifier.as_deref() == Some(TARGET_TRAIT)
+        accept(entity)
+            && entity.identifier.as_deref() == Some(name)
             && entity.file.is_some_and(|file| sources.contains(&file))
     })
 }
 
-/// Whether a trait is `target` itself, or among its extenders directly or through other
+/// Whether a trait is a role itself, or among its extenders directly or through other
 /// extenders.
 // @lfy def/workspace/main.lfy:load
-fn extends_target(model: &Model, target: EntityId, marker: EntityId) -> bool {
+fn extends(model: &Model, role: EntityId, layer: EntityId) -> bool {
     let mut seen = HashSet::new();
-    let mut pending = vec![target];
+    let mut pending = vec![role];
     while let Some(entity) = pending.pop() {
-        if entity == marker {
+        if entity == layer {
             return true;
         }
         if seen.insert(entity) {
@@ -949,56 +851,505 @@ fn extends_target(model: &Model, target: EntityId, marker: EntityId) -> bool {
     false
 }
 
-/// The entities built for a target: everything the marker trait was applied to, every
-/// entity declared in the file scope of a file whose own entity carries the marker, and,
-/// when `global` carries the marker, every entity of every project file. Each entity
-/// appears once, in that order.
+/// Where a contributor stands among a target's layers: the place in guidance order of the
+/// first layer that is it, or that extends it, and nothing for a contributor that is
+/// neither a layer nor a trait a layer extends, such as the file that adds to the const.
 // @lfy def/workspace/main.lfy:load
-pub fn entities_for(workspace: &Workspace, target: &Target) -> Vec<EntityId> {
-    let model = &workspace.model;
-    let mut out = Vec::new();
-    let mut seen = HashSet::new();
-    // @lfy def/workspace/main.lfy:load
-    for entity in model::entities_of(model, target.marker) {
-        if seen.insert(entity) {
-            out.push(entity);
+fn layer_rank(model: &Model, layers: &[EntityId], contributor: EntityId) -> Option<usize> {
+    layers
+        .iter()
+        .position(|&layer| extends(model, contributor, layer))
+}
+
+/// The items of a target's declaration in the order it reads them: those neither a layer
+/// nor a trait a layer extends contributed, in the order they were added, then those the
+/// layers and the traits they extend contributed, in guidance order.
+// @lfy def/workspace/main.lfy:load
+fn in_guidance_order<Item: Clone>(
+    model: &Model,
+    layers: &[EntityId],
+    items: &[Item],
+    contributor: impl Fn(&Item) -> EntityId,
+) -> Vec<Item> {
+    let mut own = Vec::new();
+    let mut layered: Vec<(usize, &Item)> = Vec::new();
+    for item in items {
+        match layer_rank(model, layers, contributor(item)) {
+            Some(rank) => layered.push((rank, item)),
+            None => own.push(item.clone()),
         }
     }
+    // Stable, so the items of one layer keep the order they were added in.
     // @lfy def/workspace/main.lfy:load
-    for file in &workspace.files {
-        let carries = model
-            .file_entities
-            .get(file.source)
-            .is_some_and(|&entity| model.entities[entity].has_trait(target.marker));
-        if !carries {
+    layered.sort_by_key(|&(rank, _)| rank);
+    own.into_iter()
+        .chain(layered.into_iter().map(|(_, item)| item.clone()))
+        .collect()
+}
+
+/// The child nodes of a node, in source order.
+// @lfy def/workspace/main.lfy:load
+fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
+    let file = node.file;
+    model
+        .node(node)
+        .nodes()
+        .filter_map(|child| model.node_ref(file, child))
+        .collect()
+}
+
+/// Whether a node stands in an `ace` statement, or is one.
+// @lfy def/workspace/main.lfy:load
+fn within_ace(model: &Model, node: NodeRef) -> bool {
+    let mut at = Some(node);
+    while let Some(current) = at {
+        if model.node(current).is(Statement::Ace) {
+            return true;
+        }
+        at = model.parent(current);
+    }
+    false
+}
+
+/// Every `ace const` of a project file whose value is a `Target` of the package `elfie`:
+/// one whose declared type is that data, or whose value is a call of a function whose
+/// output is. A const of a file of a package gives no target, whatever it holds.
+///
+/// They come in the order their consts are declared: file by file in `Workspace::files`
+/// order, then source order, which is the order a node reference carries.
+// @lfy def/workspace/main.lfy:load
+fn target_consts(model: &Model, files: &[File], data: EntityId) -> Vec<EntityId> {
+    let project: HashSet<FileId> = files
+        .iter()
+        .filter(|file| file.package.is_none())
+        .map(|file| file.source)
+        .collect();
+    let holds = Some(TypeRef::Entity(data));
+    let mut out: Vec<(NodeRef, EntityId)> = Vec::new();
+    for (entity, record) in model.entities.iter().enumerate() {
+        if !matches!(record.kind, EntityKind::Variable) {
             continue;
         }
-        let Some(&scope) = model.file_scopes.get(file.source) else {
+        let Some(node) = record.node else { continue };
+        // @lfy def/workspace/main.lfy:load
+        if !project.contains(&node.file) {
+            continue;
+        }
+        if !within_ace(model, node)
+            || model
+                .node(node)
+                .token(Keyword::LetKeyword, model.tokens(node.file))
+                .is_some()
+        {
+            continue;
+        }
+        // @lfy def/workspace/main.lfy:load
+        let declared = record.ty == holds;
+        let called = child_nodes(model, node)
+            .into_iter()
+            .find(|&child| !model.node(child).is(Expression::Declared))
+            .filter(|&value| model.node(value).is(Expression::Call))
+            .and_then(|value| child_nodes(model, value).into_iter().next())
+            .and_then(|callee| model::resolve(model, callee))
+            .and_then(|symbol| model.entities[model.symbols[symbol].entity].output().cloned())
+            == holds;
+        if declared || called {
+            out.push((node, entity));
+        }
+    }
+    out.sort_by_key(|&(node, _)| (node.file, node.index));
+    out.into_iter().map(|(_, entity)| entity).collect()
+}
+
+/// The slots of a target, read from `evaluate` of the const's value: the object it gives,
+/// or none when it gives no object.
+// @lfy def/workspace/main.lfy:load
+fn slots_of(model: &mut Model, declaration: EntityId) -> BTreeMap<String, Computed> {
+    let Some(node) = model.entities[declaration].node else {
+        return BTreeMap::new();
+    };
+    let value = child_nodes(model, node)
+        .into_iter()
+        .find(|&child| !model.node(child).is(Expression::Declared));
+    let Some(value) = value else {
+        return BTreeMap::new();
+    };
+    // @lfy def/workspace/main.lfy:load
+    if let Some(Evaluated::Value(Computed::Object(pairs))) = crate::interpret::evaluate(model, value)
+    {
+        return pairs;
+    }
+    // Decision: `Interpreter.evaluate` as the interface provides it gives nothing for a
+    // call of a written `function`, because it asks whether the function's declaration
+    // stands in an `ace` statement rather than whether the call does; so a const written
+    // as a call of `targetOf`, which the criteria name beside a const with a declared
+    // type, hands back no object. The record the call was given is that object, and
+    // evaluating it reads the same slots, so it is read from there until `evaluate` runs
+    // the call.
+    // @lfy def/workspace/main.lfy:load
+    if !model.node(value).is(Expression::Call) {
+        return BTreeMap::new();
+    }
+    let argument = child_nodes(model, value)
+        .into_iter()
+        .find(|&child| model.node(child).is(Expression::Items))
+        .map(|items| child_nodes(model, items))
+        .and_then(|arguments| arguments.into_iter().next());
+    match argument.and_then(|argument| crate::interpret::evaluate(model, argument)) {
+        Some(Evaluated::Value(Computed::Object(pairs))) => pairs,
+        _ => BTreeMap::new(),
+    }
+}
+
+/// Whether a slot was given anything at all.
+// @lfy def/workspace/main.lfy:load
+fn given(slots: &BTreeMap<String, Computed>, slot: &str) -> bool {
+    !matches!(
+        slots.get(slot),
+        None | Some(Computed::Undefined) | Some(Computed::Null)
+    )
+}
+
+/// The trait each layer of a slot names and the arguments it was chosen with: a trait on
+/// its own, chosen with none, or the object a `Layer` is. A slot holding anything else is
+/// already named where the layers were applied, so nothing is said of it here.
+// @lfy def/workspace/main.lfy:load
+fn layers_of(
+    model: &Model,
+    slots: &BTreeMap<String, Computed>,
+    slot: &str,
+) -> Vec<(EntityId, Vec<Computed>)> {
+    let items = match slots.get(slot) {
+        None | Some(Computed::Undefined) | Some(Computed::Null) => return Vec::new(),
+        Some(Computed::List(items)) => items.clone(),
+        Some(one) => vec![one.clone()],
+    };
+    items
+        .iter()
+        .filter_map(|item| match item {
+            // @lfy def/workspace/main.lfy:load
+            Computed::Entity(entity) if model.entities[*entity].is_trait() => {
+                Some((*entity, Vec::new()))
+            }
+            Computed::Object(pairs) => {
+                let Some(Computed::Entity(subject)) = pairs.get(SUBJECT) else {
+                    return None;
+                };
+                if !model.entities[*subject].is_trait() {
+                    return None;
+                }
+                let arguments = match pairs.get(ARGUMENTS) {
+                    Some(Computed::List(items)) => items.clone(),
+                    _ => Vec::new(),
+                };
+                Some((*subject, arguments))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Every item of every value the setters of an entity give a name, in the order the layers
+/// were applied.
+// @lfy def/workspace/main.lfy:load
+fn items_set(model: &Model, entity: EntityId, name: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for (set, value) in &model.entities[entity].values {
+        if set != name {
+            continue;
+        }
+        let model::Value::List(items) = value else {
             continue;
         };
-        for &symbol in &model.scopes[scope].symbols {
-            let entity = model.symbols[symbol].entity;
-            if seen.insert(entity) {
-                out.push(entity);
-            }
-        }
-    }
-    // Every entity of a project file, not only the ones its file scope declares.
-    // @lfy def/workspace/main.lfy:load
-    if model.entities[model.global].has_trait(target.marker) {
-        let project: HashSet<usize> = workspace
-            .files
-            .iter()
-            .filter(|file| file.package.is_none())
-            .map(|file| file.source)
-            .collect();
-        for (entity, declared) in model.entities.iter().enumerate() {
-            if declared.file.is_some_and(|file| project.contains(&file)) && seen.insert(entity) {
-                out.push(entity);
-            }
-        }
+        out.extend(items.iter().filter_map(|item| item.as_str()).map(str::to_string));
     }
     out
+}
+
+/// The string a setter gave a name; `None` when none did, or when it is no string.
+// @lfy def/workspace/main.lfy:load
+fn string_set(model: &Model, entity: EntityId, name: &str) -> Option<String> {
+    model.entities[entity]
+        .value(name)
+        .and_then(model::Value::as_str)
+        .map(str::to_string)
+}
+
+/// Every target the program declares, in the order their consts are declared, and every
+/// problem their declarations gave.
+// @lfy def/workspace/main.lfy:load
+fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>, Vec<Problem>) {
+    let mut problems: Vec<Problem> = Vec::new();
+    let Some(data) = library_entity(model, files, library, TARGET_DATA, |entity| {
+        matches!(entity.kind, EntityKind::Data)
+    }) else {
+        return (Vec::new(), problems);
+    };
+    // The role each slot's layers must extend, where the library declares it.
+    // @lfy def/workspace/main.lfy:load
+    let roles: Vec<(&str, Option<&str>, Option<EntityId>)> = SLOTS
+        .iter()
+        .map(|&(slot, role)| {
+            let entity = role
+                .and_then(|role| library_entity(model, files, library, role, Entity::is_trait));
+            (slot, role, entity)
+        })
+        .collect();
+
+    let mut targets = Vec::new();
+    for declaration in target_consts(model, files, data) {
+        let at = model.entities[declaration]
+            .node
+            .expect("a target const has a declaring node");
+        let identifier = model.entities[declaration]
+            .identifier
+            .clone()
+            .unwrap_or_default();
+        let slots = slots_of(model, declaration);
+
+        // A layer whose trait does not extend the role of its slot.
+        // @lfy def/workspace/main.lfy:load
+        for &(slot, role, entity) in &roles {
+            let (Some(role), Some(entity)) = (role, entity) else {
+                continue;
+            };
+            for (subject, _) in layers_of(model, &slots, slot) {
+                if extends(model, entity, subject) {
+                    continue;
+                }
+                let name = model.entities[subject].identifier.clone().unwrap_or_default();
+                problems.push(Problem {
+                    node: at,
+                    message: format!(
+                        "the target {identifier} gives the {slot} {name}, which does not extend \
+                         {role}"
+                    ),
+                });
+            }
+        }
+
+        // A target cannot be built without an output, a language, and a layout.
+        // @lfy def/workspace/main.lfy:load
+        let missing: Vec<&str> = NEEDED_SLOTS
+            .into_iter()
+            .filter(|&slot| !given(&slots, slot))
+            .collect();
+        if !missing.is_empty() {
+            problems.push(Problem {
+                node: at,
+                message: format!(
+                    "the target {identifier} gives no {}",
+                    missing.join(" and no ")
+                ),
+            });
+            continue;
+        }
+
+        // A capability a layer needs that no layer gives.
+        // @lfy def/workspace/main.lfy:load
+        let provided = items_set(model, declaration, PROVIDES);
+        for required in items_set(model, declaration, REQUIRES) {
+            if !provided.contains(&required) {
+                problems.push(Problem {
+                    node: at,
+                    message: format!(
+                        "the target {identifier} requires {required} and none of its layers \
+                         provides it"
+                    ),
+                });
+            }
+        }
+
+        // The layers, in guidance order, each trait once at its first place.
+        // @lfy def/workspace/main.lfy:load
+        let mut chosen: Vec<(EntityId, Vec<Computed>)> = Vec::new();
+        for slot in GUIDANCE_ORDER {
+            for layer in layers_of(model, &slots, slot) {
+                // @lfy def/workspace/main.lfy:load
+                if !chosen.contains(&layer) {
+                    chosen.push(layer);
+                }
+            }
+        }
+        let layers: Vec<EntityId> = chosen.into_iter().map(|(subject, _)| subject).collect();
+
+        // What its generated code needs, each in the ecosystem its ecosystem layer names.
+        // @lfy def/workspace/main.lfy:load
+        let ecosystem = string_set(model, declaration, ECOSYSTEM).unwrap_or_default();
+        let mut native_dependencies = Vec::new();
+        if let Some(Computed::List(items)) = slots.get("dependencies") {
+            for item in items {
+                let Computed::Object(pairs) = item else { continue };
+                let Some(Computed::String(name)) = pairs.get("name") else {
+                    continue;
+                };
+                native_dependencies.push(NativeDependency {
+                    identifier: name.clone(), // @lfy def/workspace/main.lfy:load
+                    ecosystem: ecosystem.clone(), // @lfy def/workspace/main.lfy:load
+                    version: match pairs.get("version") {
+                        Some(Computed::String(version)) => Some(version.clone()), // @lfy def/workspace/main.lfy:load
+                        _ => None,
+                    },
+                });
+            }
+        }
+        // @lfy def/workspace/main.lfy:load
+        if !native_dependencies.is_empty() && !given(&slots, ECOSYSTEM) {
+            problems.push(Problem {
+                node: at,
+                message: format!("the dependencies of the target {identifier} need an ecosystem"),
+            });
+        }
+
+        // The extensions its outputs may have: its language's, then every one its layers
+        // add, each once. @lfy def/workspace/main.lfy:load
+        let mut extensions: Vec<String> = string_set(model, declaration, FILE_EXTENSION)
+            .into_iter()
+            .collect();
+        for extension in items_set(model, declaration, OUTPUT_EXTENSIONS) {
+            if !extensions.contains(&extension) {
+                extensions.push(extension);
+            }
+        }
+
+        // One command per operation the target has one for, in the order `Operation` lists
+        // them. What something other than a layer gave the declaration comes first, so the
+        // project has the last word over its layers; an operation whose first command has
+        // no line has none at all.
+        // @lfy def/workspace/main.lfy:load#load:load:3f14c93383986089ff035033d9d411beb32a7ba58ae22f7b4b0b105bee9bb8ce
+        let offered = in_guidance_order(
+            model,
+            &layers,
+            &model.entities[declaration].commands,
+            |command| command.contributor,
+        );
+        let commands = OPERATIONS
+            .into_iter()
+            .filter_map(|operation| {
+                offered
+                    .iter()
+                    .find(|command| command.operation == operation)
+                    .filter(|command| command.line.is_some())
+                    .cloned()
+            })
+            .collect();
+
+        // What the compiler is given to read for it, the declaration's own before its
+        // layers'.
+        // @lfy def/workspace/main.lfy:load#load:load:744ae66bb854af2ca9b87b6bdde697e61172669260c42dcdea808e88ddd17c71
+        let knowledge = in_guidance_order(
+            model,
+            &layers,
+            &model.entities[declaration].knowledge,
+            |item| item.contributor,
+        );
+
+        targets.push(Target {
+            identifier,  // @lfy def/workspace/main.lfy:load
+            declaration, // @lfy def/workspace/main.lfy:load
+            layers,      // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load
+            output_directory: slots
+                .get("output")
+                .and_then(|output| match output {
+                    Computed::String(output) => Some(trim_directory(output)),
+                    _ => None,
+                })
+                .unwrap_or_default(),
+            extensions,
+            // @lfy def/workspace/main.lfy:load
+            marker_comment: string_set(model, declaration, MARKER_COMMENT).unwrap_or_default(),
+            // @lfy def/workspace/main.lfy:load
+            script_runner: string_set(model, declaration, SCRIPT_RUNNER),
+            native_dependencies,
+            commands,
+            knowledge,
+        });
+    }
+
+    // Two targets that write into one directory, or one into the other's.
+    // @lfy def/workspace/main.lfy:load
+    for (first, one) in targets.iter().enumerate() {
+        for other in &targets[first + 1..] {
+            let (outer, inner) = if one.output_directory.len() <= other.output_directory.len() {
+                (one, other)
+            } else {
+                (other, one)
+            };
+            if inner.output_directory != outer.output_directory
+                && !under(&inner.output_directory, &outer.output_directory)
+            {
+                continue;
+            }
+            let message = format!(
+                "the targets {} and {} both write into {}",
+                one.identifier, other.identifier, inner.output_directory
+            );
+            for target in [one, other] {
+                let node = model.entities[target.declaration]
+                    .node
+                    .expect("a target const has a declaring node");
+                problems.push(Problem {
+                    node,
+                    message: message.clone(),
+                });
+            }
+        }
+    }
+    (targets, problems)
+}
+
+/// Every problem the knowledge of the program's entities gives: an item that would be
+/// fetched over the network, and a reference or an example whose source is not there.
+///
+/// A source is relative to the root of the package of the file its contributor is declared
+/// in, and to the project's root when that file is the project's own.
+// @lfy def/workspace/main.lfy:load
+fn knowledge_problems(
+    model: &Model,
+    loader: &Loader,
+    files: &[File],
+    packages: &[Package],
+) -> Vec<Problem> {
+    let mut package_of: HashMap<FileId, usize> = HashMap::new();
+    for file in files {
+        if let Some(package) = file.package {
+            package_of.insert(file.source, package);
+        }
+    }
+    let mut problems = Vec::new();
+    for entity in &model.entities {
+        let Some(node) = entity.node else { continue };
+        for item in &entity.knowledge {
+            // @lfy def/workspace/main.lfy:load
+            if NETWORK.iter().any(|head| item.source.starts_with(head)) {
+                problems.push(Problem {
+                    node,
+                    message: format!(
+                        "the knowledge {:?} is fetched over the network; knowledge is vendored, \
+                         so a compile never depends on the network",
+                        item.source
+                    ),
+                });
+                continue;
+            }
+            if !matches!(item.kind, KnowledgeKind::Reference | KnowledgeKind::Example) {
+                continue;
+            }
+            // @lfy def/workspace/main.lfy:load
+            let root = model.entities[item.contributor]
+                .file
+                .and_then(|file| package_of.get(&file))
+                .map_or(".", |&package| packages[package].root.as_str());
+            if !loader.anything_at(&normalize(&join(root, &item.source))) {
+                problems.push(Problem {
+                    node,
+                    message: format!("the knowledge {:?} does not exist", item.source),
+                });
+            }
+        }
+    }
+    problems
 }
 
 /// Add a file to the program once, however many files use it.
@@ -1253,12 +1604,97 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::*;
+    use crate::model::SymbolKind;
 
     /// The directory of the library a fixture carries, relative to its root.
     const LIBRARY_ROOT: &str = "lib";
-    /// The library a fixture carries: the trait `target`, which a target's marker must
-    /// extend, in the prelude every file of the project sees.
-    const LIBRARY: &str = "trait target { }\n";
+    /// The main file of the library a fixture carries, which is the prelude: it brings the
+    /// vocabulary a target is declared with into the scope of every file of the project.
+    const LIBRARY: &str = "use \"./prelude/builtin\";\nuse \"./prelude/entity\";\n\
+                           use \"./prelude/trait\";\nuse \"./criteria/main\";\n\
+                           use \"./target/main\";\n";
+    /// The trait a builtin carries, which the library's own declarations need.
+    const LIBRARY_BUILTIN: &str = "trait builtin: `Performed by the compiler` { }\n";
+    /// The context layer every entity is seen through, which is where the lists a body
+    /// adds to live.
+    const LIBRARY_ENTITY: &str = "\
+d Entity: `A declared thing seen through its context layer` {
+  $knowledge: `What the compiler is given to read for it` = object[];
+  $commands: `Shell commands for its operations` = object[];
+  $targets: `The targets it is built for` = object[];
+}
+";
+    /// `layer`, which chooses a trait as a layer with arguments.
+    const LIBRARY_TRAIT: &str = "use \"./builtin\";\n\
+                                 fn layer(subject: trait, ...arguments: string[]) is builtin: \
+                                 `A trait chosen as a layer of a target` => object;\n";
+    /// The enums a knowledge item and a command name.
+    const LIBRARY_CRITERIA: &str = "\
+enum KnowledgeKind: `What a piece of knowledge is` {
+  reference = `documentation to read`,
+  example = `working code to imitate`,
+  definition = `Elfie source that defines it`,
+  tool = `a tool of the agent server`,
+}
+enum Operation: `What a command is for` {
+  install = `install`,
+  add = `add`,
+  build = `build`,
+  test = `test`,
+  lint = `lint`,
+  format = `format`,
+  run = `run`,
+}
+";
+    /// `Target`, the roles its slots take, and the function that gives a record written in
+    /// braces its type, as the package `elfie` declares them.
+    const LIBRARY_TARGET: &str = "\
+use \"../prelude/builtin\";
+trait target: `What an entity carries to be built for one target` {
+  $markerComment: `How a line comment begins` = string;
+  $provides: `Capabilities this layer gives its target` = string[];
+  $requires: `Capabilities some layer of its target must provide` = string[];
+  $outputExtensions: `Extensions besides the language's own` = string[];
+  .provides = [];
+  .requires = [];
+  .outputExtensions = [];
+}
+trait targetLanguage extends target: `What its code is written in` {
+  $fileExtension: `The extension of its files` = string;
+}
+trait targetRuntime extends target: `What runs its code` { }
+trait targetPlatform extends target: `Where it runs` { }
+trait targetEcosystem extends target: `Where its dependencies come from` {
+  $ecosystem: `What that ecosystem is called` = string;
+  $scriptRunner: `What runs a script its manifest names` = string;
+}
+trait targetFramework extends target: `What its code is built on` { }
+trait targetInterface extends target: `What it offers` { }
+trait targetLayout extends target: `Where its files go` { }
+d Target is builtin: `One artifact the project is built into` {
+  $output: `Where everything it writes goes` = string;
+  $language: `What its code is written in` = trait;
+  $runtime: `What runs its code` = trait | undefined;
+  $platforms: `Where it runs` = trait[] | undefined;
+  $ecosystem: `Where its dependencies come from` = trait | undefined;
+  $frameworks: `What its code is built on` = trait[] | undefined;
+  $interfaces: `What it offers` = trait[] | undefined;
+  $layout: `Where its files go` = trait;
+  $layers: `Anything else the compiler is told` = trait[] | undefined;
+  $dependencies: `What its generated code needs` = object[] | undefined;
+}
+function targetOf(target: Target): `Gives a record written in braces its type` -> Target {
+  return target;
+}
+";
+    /// A language and a layout to give a target, in `def/roles.lfy`.
+    const ROLES: &str = "\
+trait lang extends targetLanguage {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+}
+trait flat extends targetLayout { }
+";
 
     /// A project directory under the system's temporary directory, removed when dropped.
     struct Fixture {
@@ -1279,8 +1715,19 @@ mod tests {
             // Every fixture holds a library of its own, which [`Fixture::load`] names as
             // the environment would, so that a test never reads the copy of the library
             // the compiler was built with. @lfy def/workspace/main.lfy:load
-            fixture.write(&join(LIBRARY_ROOT, MAIN_FILE), LIBRARY);
+            fixture.library(LIBRARY_ROOT);
             fixture
+        }
+
+        /// The library of the package `elfie`, written at a root of its own.
+        // @lfy def/workspace/main.lfy:load
+        fn library(&self, root: &str) -> &Fixture {
+            self.write(&join(root, MAIN_FILE), LIBRARY)
+                .write(&join(root, "prelude/builtin.lfy"), LIBRARY_BUILTIN)
+                .write(&join(root, "prelude/entity.lfy"), LIBRARY_ENTITY)
+                .write(&join(root, "prelude/trait.lfy"), LIBRARY_TRAIT)
+                .write(&join(root, "criteria/main.lfy"), LIBRARY_CRITERIA)
+                .write(&join(root, "target/main.lfy"), LIBRARY_TARGET)
         }
 
         /// A project with an empty `def` directory.
@@ -1390,6 +1837,32 @@ mod tests {
         workspace.bind_problems().collect()
     }
 
+    /// The one target of a workspace.
+    // @lfy def/workspace/main.lfy:load
+    fn one_target(workspace: &Workspace) -> &Target {
+        let named: Vec<&str> = workspace
+            .targets
+            .iter()
+            .map(|target| target.identifier.as_str())
+            .collect();
+        assert_eq!(named.len(), 1, "{named:?} {:?}", workspace.problems);
+        &workspace.targets[0]
+    }
+
+    /// The name bound by the nearest declaration at or above the node a problem points at.
+    // @lfy def/workspace/main.lfy:load
+    fn at_declaration<'w>(workspace: &'w Workspace, problem: &Problem) -> &'w str {
+        let model = &workspace.model;
+        let mut at = Some(problem.node);
+        while let Some(node) = at {
+            if let Some(symbol) = model.symbol_of(node) {
+                return &model.symbols[symbol].name;
+            }
+            at = model.parent(node);
+        }
+        ""
+    }
+
     /// The path of the file a problem points into, and whether it points at a `Use`.
     fn at_use<'w>(workspace: &'w Workspace, problem: &Problem) -> (&'w str, bool) {
         let source = &workspace.model.sources[problem.node.file];
@@ -1416,7 +1889,7 @@ mod tests {
             .unwrap_or_else(|| panic!("{path} is not in the program"))
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:f6b3751bd385c457dade972ca48003ad8646834fde2550ae9d48f10cf8ff0271
+    // @lfy def/workspace/main.lfy:load#load:load:364469ca73386a0fadcdccb16065c7b1fbd8cf7954391bff47aa5ac292a37ca7
     // @lfy def/workspace/main.lfy:load#load:load:62b4faedac048472b0892584131d2aca0e6fd7987b34a537d17991af62f3d07d
     // @lfy def/workspace/main.lfy:load#load:load:9f0992576ed1410f00587a7cf8d3c50161589f2a0ff4ee398fb06562182d994b
     // @lfy def/workspace/main.lfy:load#load:load:61e5351e7c9765ef86ef906d60e8806eac1fe5c87337507d464bf5b10d0c47d1
@@ -1432,10 +1905,8 @@ mod tests {
             fixture.root.file_name().unwrap().to_string_lossy()
         );
         assert_eq!(workspace.source_directory, "def");
-        assert_eq!(workspace.output_directory, "src");
         assert!(paths(&workspace).is_empty());
         assert!(workspace.targets.is_empty());
-        assert!(workspace.native_dependencies.is_empty());
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
         assert!(workspace.overlays.is_empty());
         // The package elfie is in the program all the same, holding the files of that
@@ -1459,24 +1930,22 @@ mod tests {
     fn the_library_is_the_first_source_that_names_one() {
         // The dependency entry elfie.
         let fixture = Fixture::empty();
-        fixture
-            .write(
-                "elfie.json",
-                r#"{ "lib": "byKey", "dependencies": { "elfie": { "root": "byDependency" } } }"#,
-            )
-            .write("byDependency/main.lfy", LIBRARY)
-            .write("byKey/main.lfy", LIBRARY);
+        fixture.write(
+            "elfie.json",
+            r#"{ "lib": "byKey", "dependencies": { "elfie": { "root": "byDependency" } } }"#,
+        );
+        fixture.library("byDependency");
+        fixture.library("byKey");
         let workspace = fixture.load();
         assert_eq!(library(&workspace).root, "byDependency");
 
         // The top level key lib, relative to the root.
         let fixture = Fixture::empty();
-        fixture
-            .write("elfie.json", r#"{ "lib": "byKey" }"#)
-            .write("byKey/main.lfy", LIBRARY);
+        fixture.write("elfie.json", r#"{ "lib": "byKey" }"#);
+        fixture.library("byKey");
         let workspace = fixture.load();
         assert_eq!(library(&workspace).root, "byKey");
-        assert_eq!(library_paths(&workspace), ["byKey/main.lfy"]);
+        assert!(library_paths(&workspace).contains(&"byKey/main.lfy"));
 
         // What the environment gives for ELFIE_LIB, when elfie.json names neither.
         let fixture = Fixture::empty();
@@ -1507,7 +1976,6 @@ mod tests {
         let fixture = Fixture::empty();
         fixture
             .write("def/main.lfy", "d Marked is target { }\n")
-            .write(&join(LIBRARY_ROOT, MAIN_FILE), LIBRARY)
             .write("lib/values/list.lfy", "d List { }\n");
         let workspace = fixture.load();
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
@@ -1603,30 +2071,23 @@ mod tests {
 
     // @lfy def/workspace/main.lfy:load#load:load:14ff48a32bf3381366534b9ca3dbdb2f1d46fc634249e46bf5134fb6609d3a39
     // @lfy def/workspace/main.lfy:load#load:load:553254e418671149fdc2a87c765c1ff91ddcf349bad7d7055bf05a5234721178
-    // @lfy def/workspace/main.lfy:load#load:load:5b7af7fbd12155345c6efdac5d059c7bb99f41a7d25683717e9e54531bdfbee6
     #[test]
     fn the_manifest_names_the_layout() {
         let fixture = Fixture::new();
         fixture
-            .write(
-                "elfie.json",
-                r#"{ "name": "named", "source": "source/", "output": "out" }"#,
-            )
+            .write("elfie.json", r#"{ "name": "named", "source": "source/" }"#)
             .write("source/main.lfy", "trait t { }\n");
         let workspace = fixture.load();
         assert_eq!(workspace.name, "named");
         assert_eq!(workspace.source_directory, "source");
-        assert_eq!(workspace.output_directory, "out");
         assert_eq!(paths(&workspace), ["source/main.lfy"]);
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    /// A manifest that is a JSON object but gives no name, no source directory and no
-    /// output directory leaves each of those defaults standing, exactly as a root with no
-    /// manifest at all does.
+    /// A manifest that is a JSON object but gives no name and no source directory leaves
+    /// each of those defaults standing, exactly as a root with no manifest at all does.
     // @lfy def/workspace/main.lfy:load#load:load:fd884247a5f63218e2f23f0ba9abdb91e6a342d07f56f61a79d4f23bfe3eeee7
     // @lfy def/workspace/main.lfy:load#load:load:38338fb46f57a64fa2e744d34eae3279caf9b613709e743808ac4f6fba4a0289
-    // @lfy def/workspace/main.lfy:load#load:load:363f9f54f19137472c9028350b6be63552fa8170379e9af5172405c99624b804
     #[test]
     fn a_manifest_that_gives_no_layout_leaves_the_defaults_standing() {
         let fixture = Fixture::empty();
@@ -1644,17 +2105,13 @@ mod tests {
         // def, since elfie.json gives no source directory.
         // @lfy def/workspace/main.lfy:load
         assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
-        // src, since elfie.json gives no output directory.
-        // @lfy def/workspace/main.lfy:load
-        assert_eq!(workspace.output_directory, DEFAULT_OUTPUT_DIRECTORY);
         assert_eq!(paths(&workspace), ["def/main.lfy"]);
     }
 
     /// A manifest is optional: where no `elfie.json` exists under the root, the name is
-    /// the name of the root directory, the source directory is `def`, the output
-    /// directory is `src`, and no problem is added.
-    // @lfy def/workspace/main.lfy:load#load:load:1961ce42105fadd196d96b94271bcbbaf3555ef783288985d3ae731323ab1832
-    // @lfy def/workspace/main.lfy:load#load:load:ca0d4a3af24ea374acd6c89f1058ecca188891fd80118fb5bf85f30c6b509640
+    /// the name of the root directory, the source directory is `def`, and no problem is
+    /// added.
+    // @lfy def/workspace/main.lfy:load#load:load:2aab5e323a05c38556b9c01ff598624261dd793bba90223c51b83ddaad02c11b
     #[test]
     fn no_manifest_is_no_problem_and_the_defaults_stand() {
         let fixture = Fixture::empty();
@@ -1666,17 +2123,11 @@ mod tests {
             fixture.root.file_name().unwrap().to_string_lossy()
         );
         assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
-        assert_eq!(workspace.output_directory, DEFAULT_OUTPUT_DIRECTORY);
         assert_eq!(paths(&workspace), ["def/main.lfy"]);
-        assert!(workspace.native_dependencies.is_empty());
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
-        // A package whose root holds no `elfie.json` of its own is no problem either.
-        // @lfy def/workspace/main.lfy:load
-        assert!(!fixture.root.join(LIBRARY_ROOT).join(MANIFEST).exists());
-        assert!(library(&workspace).native_dependencies.is_empty());
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:b2be41b7274ad80ca5ac81980c9c250fa22e61ce6d503184abbfb8965709e13a
+    // @lfy def/workspace/main.lfy:load#load:load:6358d204bfb21de03d38e1c36ba9b00314a60d5dbab459ca070e67220c2c3d2d
     #[test]
     fn a_bad_manifest_adds_a_problem_and_the_defaults_stand() {
         for text in ["{ not json", "[1, 2]", "\"a string\""] {
@@ -1691,9 +2142,102 @@ mod tests {
                 fixture.root.file_name().unwrap().to_string_lossy()
             );
             assert_eq!(workspace.source_directory, "def");
-            assert_eq!(workspace.output_directory, "src");
             assert_eq!(paths(&workspace), ["def/main.lfy"]);
         }
+    }
+
+    /// Targets, their outputs, and their dependencies are declared in the program, so a
+    /// manifest in the shape earlier versions read loads with no problem at all: the keys
+    /// the loader does not read, inside an entry as well as at the top, are ignored.
+    // @lfy def/workspace/main.lfy:load#load:load:3930201be17af05974f6f1764085a3edc64b3ba3dedbeb1e2f3b5c0cc7f18287
+    // @lfy def/workspace/main.lfy:load#load:load:8e0e8580bd6d20a57045d50d01bfd611f89b99b8dfdd8c42f39034207e1d5df5
+    #[test]
+    fn a_key_the_loader_does_not_read_is_ignored_and_adds_no_problem() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{
+                    "name": "named",
+                    "targets": { "t": { "package": "p", "marker": "m" } },
+                    "output": "crates",
+                    "native": [ { "identifier": "serde", "ecosystem": "cargo" } ],
+                    "dependencies": { "p": { "root": "pkg", "version": "1" } },
+                    "compiler": "scripts/compile.sh"
+                }"#,
+            )
+            .write("def/main.lfy", "")
+            .write("pkg/main.lfy", "");
+        let workspace = fixture.load();
+        // The keys the loader reads still stand.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(workspace.name, "named");
+        let mut sorted = paths(&workspace);
+        sorted.sort_unstable();
+        assert_eq!(sorted, ["def/main.lfy", "pkg/main.lfy"]);
+        // The manifest's key targets is ignored, so the program declares every target.
+        // @lfy def/workspace/main.lfy:load
+        assert!(workspace.targets.is_empty());
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    }
+
+    /// Loading never stops for a failure: a key the loader reads whose value is of the
+    /// wrong kind is named, and every other key of the manifest is read all the same.
+    // @lfy def/workspace/main.lfy:load#load:load:5088119ce3359a85ec36ef5adecc9df2f9525193df649a0f54a42d28b3c495ad
+    #[test]
+    fn a_key_whose_value_is_of_the_wrong_kind_is_named_and_the_rest_is_read() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "elfie.json",
+                r#"{
+                    "name": 3,
+                    "source": [ "def" ],
+                    "lib": true,
+                    "dependencies": { "p": { "root": "pkg" }, "q": { "root": 4 } }
+                }"#,
+            )
+            .write("def/main.lfy", "")
+            .write("pkg/main.lfy", "");
+        let workspace = fixture.load();
+        let problems = load_problems(&workspace);
+        // Each one names elfie.json, the key, and what the key should be.
+        // @lfy def/workspace/main.lfy:load
+        assert!(
+            problems
+                .iter()
+                .all(|problem| problem.path.as_deref() == Some("elfie.json")),
+            "{problems:?}"
+        );
+        for (key, wanted) in [
+            ("\"name\"", "string"),
+            ("\"source\"", "string"),
+            ("\"lib\"", "string"),
+            ("\"q\"", "\"root\""),
+        ] {
+            assert!(
+                problems
+                    .iter()
+                    .any(|problem| problem.message.contains(key)
+                        && problem.message.contains(wanted)),
+                "{key}: {problems:?}"
+            );
+        }
+        assert_eq!(problems.len(), 4, "{problems:?}");
+        // The rest of the manifest is still read: the dependency p gives a package, and
+        // the name and the source directory fall back to their defaults.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            workspace.name,
+            fixture.root.file_name().unwrap().to_string_lossy()
+        );
+        assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
+        let mut sorted = paths(&workspace);
+        sorted.sort_unstable();
+        assert_eq!(sorted, ["def/main.lfy", "pkg/main.lfy"]);
+        // The library stands where the environment names it, since "lib" gave nothing.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(library(&workspace).root, LIBRARY_ROOT);
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:e6a3d9e7c6343bde8007bc07f7cc1bf459122fbfb7bafc0ff5375ddcf301f38f
@@ -1927,8 +2471,6 @@ mod tests {
 
     // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
     // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
-    // @lfy def/workspace/main.lfy:load#load:load:ca0d4a3af24ea374acd6c89f1058ecca188891fd80118fb5bf85f30c6b509640
-    // @lfy def/workspace/main.lfy:load#load:load:4bcf5307418fba635aa57b347e7cb64f79e2772a216f52f90f14b6c601ebfb8d
     // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
     #[test]
     fn each_dependency_gives_a_package_whose_files_are_in_the_program() {
@@ -1937,17 +2479,12 @@ mod tests {
             .write(
                 "elfie.json",
                 r#"{
-                    "dependencies": { "rust": { "root": "targets/rust/" }, "gone": { "root": "targets/gone" } },
-                    "native": [
-                        { "identifier": "tokio", "ecosystem": "cargo", "version": "1" },
-                        { "identifier": "serde", "ecosystem": "cargo" }
-                    ]
+                    "dependencies": { "rust": { "root": "targets/rust/" }, "gone": { "root": "targets/gone" } }
                 }"#,
             )
             .write("def/main.lfy", "")
             .write("targets/rust/main.lfy", "")
-            .write("targets/rust/extra/thing.lfy", "")
-            .write("targets/rust/elfie.json", r#"{ "native": [ { "identifier": "clap", "ecosystem": "cargo", "version": "4" } ] }"#);
+            .write("targets/rust/extra/thing.lfy", "");
         let workspace = fixture.load();
         assert_eq!(workspace.packages.len(), 3); // @lfy def/workspace/main.lfy:load
         let rust = workspace
@@ -1956,37 +2493,6 @@ mod tests {
             .position(|package| package.identifier == "rust")
             .unwrap();
         assert_eq!(workspace.packages[rust].root, "targets/rust");
-        // @lfy def/workspace/main.lfy:load
-        assert_eq!(
-            workspace.packages[rust].native_dependencies,
-            [NativeDependency {
-                identifier: "clap".to_string(),
-                ecosystem: "cargo".to_string(),
-                version: Some("4".to_string())
-            }]
-        );
-        let gone = workspace
-            .packages
-            .iter()
-            .position(|package| package.identifier == "gone")
-            .unwrap();
-        assert!(workspace.packages[gone].native_dependencies.is_empty());
-        // @lfy def/workspace/main.lfy:load
-        assert_eq!(
-            workspace.native_dependencies,
-            [
-                NativeDependency {
-                    identifier: "tokio".to_string(),
-                    ecosystem: "cargo".to_string(),
-                    version: Some("1".to_string())
-                },
-                NativeDependency {
-                    identifier: "serde".to_string(),
-                    ecosystem: "cargo".to_string(),
-                    version: None
-                }
-            ]
-        );
         // @lfy def/workspace/main.lfy:load
         let mut sorted = paths(&workspace);
         sorted.sort_unstable();
@@ -2016,35 +2522,33 @@ mod tests {
         assert_eq!(problems[0].path.as_deref(), Some("targets/gone"));
     }
 
+    /// Loading never stops for a failure: a dependency entry that is not an object with a
+    /// root is named, and every other dependency still gives a package.
     // @lfy def/workspace/main.lfy:load#load:load:62b4faedac048472b0892584131d2aca0e6fd7987b34a537d17991af62f3d07d
-    // @lfy def/workspace/main.lfy:load#load:load:4bcf5307418fba635aa57b347e7cb64f79e2772a216f52f90f14b6c601ebfb8d
-    // @lfy def/workspace/main.lfy:load#load:load:ca0d4a3af24ea374acd6c89f1058ecca188891fd80118fb5bf85f30c6b509640
+    // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
     #[test]
-    fn a_bad_native_entry_or_package_manifest_adds_a_problem() {
+    fn a_dependency_that_names_no_root_is_named_and_the_rest_still_load() {
         let fixture = Fixture::empty();
         fixture
-            .write("elfie.json", r#"{ "dependencies": { "p": { "root": "pkg" }, "q": 3 }, "native": [ { "identifier": "x" } ] }"#)
-            .write("pkg/elfie.json", "nope")
+            .write(
+                "elfie.json",
+                r#"{ "dependencies": { "p": { "root": "pkg" }, "q": 3 } }"#,
+            )
             .write("pkg/main.lfy", "");
         let workspace = fixture.load();
-        assert!(workspace.native_dependencies.is_empty());
-        assert_eq!(workspace.packages.len(), 2);
-        assert!(workspace.packages[0].native_dependencies.is_empty());
-        let problems = load_problems(&workspace);
-        let mut paths: Vec<Option<&str>> = problems
-            .iter()
-            .map(|problem| problem.path.as_deref())
-            .collect();
-        paths.sort_unstable();
         assert_eq!(
-            paths,
-            [
-                Some("elfie.json"),
-                Some("elfie.json"),
-                Some("pkg/elfie.json")
-            ],
-            "{problems:?}"
+            workspace
+                .packages
+                .iter()
+                .map(|package| package.identifier.as_str())
+                .collect::<Vec<_>>(),
+            ["p", LIBRARY_PACKAGE]
         );
+        assert!(paths(&workspace).contains(&"pkg/main.lfy"));
+        let problems = load_problems(&workspace);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(problems[0].path.as_deref(), Some("elfie.json"));
+        assert!(problems[0].message.contains("\"q\""), "{}", problems[0]);
     }
 
     /// A missing package root is reported even when nothing can be discovered.
@@ -2075,104 +2579,78 @@ mod tests {
         );
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:e915ed3651926dcf6339d6eebd214a7dd54440dccf94946bfb84592e2144af2a
-    // @lfy def/workspace/main.lfy:load#load:load:7a9539c588d49ec01a1b03a4c16254b4f2bca7ed11658cfaec025126d8da7abb
-    // @lfy def/workspace/main.lfy:load#load:load:e75e1a7149134a11e123466342d8e3472903503757a105167ee5f2aa128b8147
-    // @lfy def/workspace/main.lfy:load#load:load:13297b62279f3fadb9858272e5242b518c4384c58bf21c37d9213fe2efdc49a8
-    // @lfy def/workspace/main.lfy:load#load:load:46664645ccf0ae1bf9de613293fc0450be0dd9e19592b874ade095ab230cd2f6
-    // @lfy def/workspace/main.lfy:load#load:load:324caf15aa6494bd498b50661c227f3efc231bd831b810ee8455ea1c69e8c327
+    /// An `ace const` of a project file whose value is a `Target` of the package `elfie`
+    /// gives one target, with the layers of its slots in guidance order and the values its
+    /// layers set.
+    // @lfy def/workspace/main.lfy:load#load:load:3d36fd4d532720be47a05eb8515aab69f3fb83add111d5254ae21147d618a1f3
+    // @lfy def/workspace/main.lfy:load#load:load:a917a90f036a011701ebcd1c4eba1e462e6225289deab81a4ee023ed381cb249
+    // @lfy def/workspace/main.lfy:load#load:load:9c4b7f6784e978ab38426f62744c733c2fbdfebea9fe78c455d429cc1f876075
+    // @lfy def/workspace/main.lfy:load#load:load:666f1d127b736248ed7d4d08c806f2162dc72e498eb408f0bd435db09b17e550
+    // @lfy def/workspace/main.lfy:load#load:load:f93277efea1e9ae1024146b1325d3d1bc82ec07b0fc2d632c73a5bbbbfb49f17
+    // @lfy def/workspace/main.lfy:load#load:load:f564aa87edbe96d9c1792965324682dbb6970be8d40d4eb3f241cea06b3e1d23
     #[test]
-    fn each_target_comes_from_a_package_with_a_marker_and_an_output_directory() {
+    fn an_ace_const_of_the_project_holding_a_target_gives_one() {
         let fixture = Fixture::empty();
         fixture
             .write(
-                "elfie.json",
-                r#"{
-                    "output": "generated",
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": {
-                        "rust": { "package": "rust", "marker": "rust", "output": "crates" },
-                        "plain": { "package": "rust", "marker": "rust" },
-                        "orphan": { "package": "missing", "marker": "rust" },
-                        "absent": { "package": "rust", "marker": "nothing" }
-                    }
-                }"#,
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out/\", language = lang, layout = flat });\n",
             )
-            .write("def/main.lfy", "")
-            .write("targets/rust/main.lfy", "trait rust extends target { }\n");
+            .write("def/roles.lfy", ROLES);
         let workspace = fixture.load();
-        // The package a target names is loaded as any other dependency is: its files are
-        // in the program and carry it. @lfy def/workspace/main.lfy:load
-        assert_eq!(workspace.packages.len(), 2);
-        let main = workspace
-            .file("targets/rust/main.lfy")
-            .expect("the main file of the target's package");
-        assert_eq!(
-            main.package
-                .map(|package| workspace.packages[package].identifier.as_str()),
-            Some("rust")
-        );
-        let problems = load_problems(&workspace);
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let target = one_target(&workspace);
+        assert_eq!(target.identifier, "t"); // @lfy def/workspace/main.lfy:load
+        // The declaration is the const's own entity, which carries every layer.
         // @lfy def/workspace/main.lfy:load
-        assert!(
-            problems
-                .iter()
-                .any(|problem| problem.message.contains("orphan")),
-            "{problems:?}"
+        assert_eq!(
+            workspace.model.entities[target.declaration]
+                .identifier
+                .as_deref(),
+            Some("t")
         );
-        assert!(
-            problems
-                .iter()
-                .any(|problem| problem.message.contains("\"nothing\"")
-                    && problem.path.as_deref() == Some("targets/rust/main.lfy")),
-            "{problems:?}"
-        );
-        assert!(
-            workspace
-                .targets
-                .iter()
-                .all(|target| target.identifier != "orphan" && target.identifier != "absent")
-        );
-        let rust = workspace
-            .targets
-            .iter()
-            .find(|target| target.identifier == "rust")
-            .expect("the rust target");
-        assert_eq!(workspace.packages[rust.package].identifier, "rust");
-        assert_eq!(rust.output_directory, "crates"); // @lfy def/workspace/main.lfy:load
-        assert!(workspace.model.entities[rust.marker].is_trait()); // @lfy def/workspace/main.lfy:load
-        let plain = workspace
-            .targets
-            .iter()
-            .find(|target| target.identifier == "plain")
-            .expect("the plain target");
-        assert_eq!(plain.output_directory, "generated"); // @lfy def/workspace/main.lfy:load
-        assert_eq!(plain.marker, rust.marker);
+        // The layout is a layer before the language, as guidance order has it.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(names(&workspace, &target.layers), ["flat", "lang"]);
+        // The output, with its trailing slash removed.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(target.output_directory, "out");
+        assert_eq!(target.extensions, ["rs"]);
+        assert_eq!(target.marker_comment, "//");
+        assert_eq!(target.script_runner, None);
+        assert!(target.native_dependencies.is_empty());
+        assert!(target.commands.is_empty());
+        assert!(target.knowledge.is_empty());
     }
 
-    /// A marker that is neither the trait `target` of the package elfie nor one of its
-    /// extenders is left out, however deep the chain of extenders runs.
-    // @lfy def/workspace/main.lfy:load#load:load:16cce9897154a73b9c14b4fe72fbe958c42840d2d64ee8e16be1163877a0f903
-    // @lfy def/workspace/main.lfy:load#load:load:eb93e60a065651e7634da78d161a7685b6430189aace91c6940bfea97b6a7ccd
+    /// Only an `ace const` of the project's own source holds a target: a `let`, a const
+    /// outside `ace`, and a const of a file of a package hold none. A const whose declared
+    /// type is the data holds one as much as one calling a function that gives one.
+    // @lfy def/workspace/main.lfy:load#load:load:a917a90f036a011701ebcd1c4eba1e462e6225289deab81a4ee023ed381cb249
     #[test]
-    fn a_marker_that_does_not_extend_target_is_left_out_with_a_problem() {
+    fn a_let_a_plain_const_and_a_const_of_a_package_hold_no_target() {
         let fixture = Fixture::empty();
         fixture
             .write(
                 "elfie.json",
-                r#"{
-                    "dependencies": { "p": { "root": "p" } },
-                    "targets": {
-                        "t": { "package": "p", "marker": "m" },
-                        "deep": { "package": "p", "marker": "deep" },
-                        "itself": { "package": "p", "marker": "target" }
-                    }
-                }"#,
+                r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
             )
-            .write("def/main.lfy", "")
             .write(
-                "p/main.lfy",
-                "trait m { }\ntrait near extends target { }\ntrait deep extends near { }\n",
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const typed: Target = { output = \"typed\", language = lang, layout = flat };\n\
+                 ace let loose = targetOf({ output = \"loose\", language = lang, layout = flat });\n\
+                 const plain = targetOf({ output = \"plain\", language = lang, layout = flat });\n",
+            )
+            .write("def/roles.lfy", ROLES)
+            .write(
+                "pkg/main.lfy",
+                "use \"elfie/target\";\n\
+                 trait packaged extends targetLanguage { }\n\
+                 trait packedLayout extends targetLayout { }\n\
+                 ace const inPackage = targetOf({ output = \"pkg\", language = packaged, \
+                 layout = packedLayout });\n",
             );
         let workspace = fixture.load();
         // @lfy def/workspace/main.lfy:load
@@ -2182,111 +2660,452 @@ mod tests {
                 .iter()
                 .map(|target| target.identifier.as_str())
                 .collect::<Vec<_>>(),
-            ["deep", "itself"]
+            ["typed"]
         );
-        let problems = load_problems(&workspace);
-        assert_eq!(problems.len(), 1, "{problems:?}");
-        assert!(problems[0].message.contains(" t "), "{}", problems[0]);
-        assert!(problems[0].message.contains("\"m\""), "{}", problems[0]);
+        assert_eq!(workspace.targets[0].output_directory, "typed");
     }
 
-    /// The entities built for a target.
-    // @lfy def/workspace/main.lfy:load#load:load:a574ab42d15677413f2e53fec3bc9ed504c06c2bb7bb992b891051884265bcfe
+    /// Every slot that holds layers gives them, in guidance order, and a trait in two slots
+    /// with equal arguments is one layer at its first place.
+    // @lfy def/workspace/main.lfy:load#load:load:666f1d127b736248ed7d4d08c806f2162dc72e498eb408f0bd435db09b17e550
     #[test]
-    fn the_entities_built_for_a_target_are_the_marked_ones() {
+    fn the_layers_are_the_slots_in_guidance_order_each_trait_once() {
         let fixture = Fixture::empty();
         fixture
             .write(
-                "elfie.json",
-                r#"{
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust" } }
-                }"#,
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({\n  output = \"out\",\n  language = lang,\n  \
+                 runtime = runs,\n  platforms = [here],\n  ecosystem = shop,\n  \
+                 frameworks = [built],\n  interfaces = [offered],\n  layout = flat,\n  \
+                 layers = [house, flat],\n});\n",
             )
-            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
             .write(
-                "def/main.lfy",
-                "use \"rust\";\nd Marked is rust { }\nd Plain { }\n",
+                "def/roles.lfy",
+                "trait lang extends targetLanguage { }\n\
+                 trait runs extends targetRuntime { }\n\
+                 trait here extends targetPlatform { }\n\
+                 trait shop extends targetEcosystem { }\n\
+                 trait built extends targetFramework { }\n\
+                 trait offered extends targetInterface { }\n\
+                 trait flat extends targetLayout { }\n\
+                 trait house extends target { }\n",
             );
         let workspace = fixture.load();
-        let target = workspace
-            .targets
-            .iter()
-            .find(|target| target.identifier == "rust")
-            .expect("the rust target");
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let target = one_target(&workspace);
+        // `layers` comes first, so `flat` stands there and not again at the layout.
         // @lfy def/workspace/main.lfy:load
         assert_eq!(
-            names(&workspace, &entities_for(&workspace, target)),
-            ["Marked"]
+            names(&workspace, &target.layers),
+            [
+                "house", "flat", "offered", "built", "runs", "here", "shop", "lang"
+            ]
         );
     }
 
-    /// When a file's own entity carries the marker, every entity declared in that file's
-    /// scope is built.
-    // @lfy def/workspace/main.lfy:load#load:load:a574ab42d15677413f2e53fec3bc9ed504c06c2bb7bb992b891051884265bcfe
+    /// What a target's setters give it: the extensions its outputs may have, how a line
+    /// comment begins, what runs a script, and the ecosystem of its dependencies.
+    // @lfy def/workspace/main.lfy:load#load:load:f564aa87edbe96d9c1792965324682dbb6970be8d40d4eb3f241cea06b3e1d23
+    // @lfy def/workspace/main.lfy:load#load:load:835f6845f6033e939a044506a018d0a36680e14a6eb9beaa92012131e186f666
     #[test]
-    fn a_marked_file_builds_every_entity_of_its_file_scope() {
+    fn a_target_reads_the_values_its_layers_set() {
         let fixture = Fixture::empty();
         fixture
             .write(
-                "elfie.json",
-                r#"{
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust" } }
-                }"#,
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({\n  output = \"out\",\n  language = lang,\n  \
+                 layout = flat,\n  ecosystem = shop,\n  \
+                 dependencies = [{ name = \"serde\", version = \"1\" }, { name = \"sha2\" }],\n});\n",
             )
-            .write("targets/rust/main.lfy", "trait rust extends target { }\n")
             .write(
-                "def/marked.lfy",
-                "use \"rust\";\nrust.apply(.);\nd Plain { }\nd Other { }\n",
-            )
-            .write("def/bare.lfy", "d Untouched { }\n");
+                "def/roles.lfy",
+                "trait lang extends targetLanguage {\n  .fileExtension = \"rs\";\n  \
+                 .markerComment = \"//\";\n  .outputExtensions = [\"toml\", \"rs\"];\n}\n\
+                 trait shop extends targetEcosystem {\n  .ecosystem = \"cargo\";\n  \
+                 .scriptRunner = \"cargo run --\";\n}\n\
+                 trait flat extends targetLayout { }\n",
+            );
         let workspace = fixture.load();
-        let target = workspace
-            .targets
-            .iter()
-            .find(|target| target.identifier == "rust")
-            .expect("the rust target");
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let target = one_target(&workspace);
+        // The language's own extension first, then every one its layers add, each once.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(target.extensions, ["rs", "toml"]);
+        assert_eq!(target.marker_comment, "//");
+        assert_eq!(target.script_runner.as_deref(), Some("cargo run --"));
+        // @lfy def/workspace/main.lfy:load
         assert_eq!(
-            names(&workspace, &entities_for(&workspace, target)),
-            ["Plain", "Other"]
+            target.native_dependencies,
+            [
+                NativeDependency {
+                    identifier: "serde".to_string(),
+                    ecosystem: "cargo".to_string(),
+                    version: Some("1".to_string()),
+                },
+                NativeDependency {
+                    identifier: "sha2".to_string(),
+                    ecosystem: "cargo".to_string(),
+                    version: None,
+                },
+            ]
         );
     }
 
-    /// When `global` carries the marker, every entity of every project file is built.
-    // @lfy def/workspace/main.lfy:load#load:load:cd6863f4c158a9e98844495a8f31dc0cdc98d88d7e6b5b00a8d4340d2c482bca
+    /// One command per operation the target has one for, in the order `Operation` lists
+    /// them, and the knowledge of the declaration in order.
+    // @lfy def/workspace/main.lfy:load#load:load:3f14c93383986089ff035033d9d411beb32a7ba58ae22f7b4b0b105bee9bb8ce
+    // @lfy def/workspace/main.lfy:load#load:load:744ae66bb854af2ca9b87b6bdde697e61172669260c42dcdea808e88ddd17c71
     #[test]
-    fn global_carrying_the_marker_builds_every_entity_of_every_project_file() {
+    fn a_target_holds_one_command_per_operation_and_its_declarations_knowledge() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = lang, layout = flat });\n\
+                 with t {\n  @knowledge.add({ topic = `the project's own`, \
+                 kind = KnowledgeKind.tool, source = \"elfie_check\" });\n}\n",
+            )
+            .write(
+                "def/roles.lfy",
+                "trait lang extends targetLanguage {\n  \
+                 @commands.add({ operation = Operation.test, line = \"cargo test\" });\n  \
+                 @commands.add({ operation = Operation.build, line = \"cargo build\" });\n  \
+                 @commands.add({ operation = Operation.build, line = \"never reached\" });\n  \
+                 @commands.add({ operation = Operation.lint });\n  \
+                 @knowledge.add({ topic = `the guide`, kind = KnowledgeKind.reference, \
+                 source = \"docs/guide.md\" });\n  \
+                 @knowledge.add({ topic = `a tool`, kind = KnowledgeKind.tool, \
+                 source = \"elfie_entity\" });\n}\n\
+                 trait flat extends targetLayout { }\n",
+            )
+            .write("docs/guide.md", "how it is written\n");
+        let workspace = fixture.load();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let target = one_target(&workspace);
+        // Build before test, as `Operation` lists them; the first command of an operation
+        // wins, and `lint` has no line, so it has no command at all.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            target
+                .commands
+                .iter()
+                .map(|command| (command.operation, command.line.as_deref()))
+                .collect::<Vec<_>>(),
+            [
+                (Operation::Build, Some("cargo build")),
+                (Operation::Test, Some("cargo test")),
+            ]
+        );
+        // What the file gave the const comes before what its one layer gave it.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            target
+                .knowledge
+                .iter()
+                .map(|item| item.topic.as_str())
+                .collect::<Vec<_>>(),
+            ["the project's own", "the guide", "a tool"]
+        );
+    }
+
+    /// A command the project gives the const itself comes before every command its layers
+    /// gave it, so an operation whose command has no line is not run however a layer
+    /// spells it.
+    // @lfy def/workspace/main.lfy:load#load:load:46b544e43774a3df072b517651d8bcbacfa236b57aab48f219ece1ed7684bfe2
+    #[test]
+    fn a_command_the_file_gives_the_const_comes_before_its_layers() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out/\", language = lang, layout = flat });\n\
+                 with t {\n  @commands.add({ operation = Operation.format });\n}\n",
+            )
+            .write(
+                "def/roles.lfy",
+                "trait lang extends targetLanguage {\n  .fileExtension = \"rs\";\n  \
+                 .markerComment = \"//\";\n  \
+                 @commands.add({ operation = Operation.build, line = \"cargo build\" });\n  \
+                 @commands.add({ operation = Operation.format, \
+                 line = \"cargo fmt --check\" });\n}\n\
+                 trait flat extends targetLayout { }\n",
+            );
+        let workspace = fixture.load();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        let target = one_target(&workspace);
+        // The layer's build command stands; its format command does not, because the one
+        // the file gave the const comes first and names no line.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            target
+                .commands
+                .iter()
+                .map(|command| (command.operation, command.line.as_deref()))
+                .collect::<Vec<_>>(),
+            [(Operation::Build, Some("cargo build"))]
+        );
+    }
+
+    /// The targets come in the order their consts are declared: file by file in bind
+    /// order, then source order.
+    // @lfy def/workspace/main.lfy:load#load:load:5ed9e5077c0cbb9ff30167add3a5f60066247bb6e0a9e0b6ea303db647af75a5
+    #[test]
+    fn the_targets_are_in_the_order_their_consts_are_declared() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/main.lfy",
+                "use \"./roles\";\nuse \"elfie/target\";\n\
+                 ace const third = targetOf({ output = \"c\", language = lang, layout = flat });\n",
+            )
+            .write(
+                "def/roles.lfy",
+                "use \"elfie/target\";\n\
+                 trait lang extends targetLanguage { }\n\
+                 trait flat extends targetLayout { }\n\
+                 ace const first = targetOf({ output = \"a\", language = lang, layout = flat });\n\
+                 ace const second = targetOf({ output = \"b\", language = lang, layout = flat });\n",
+            );
+        let workspace = fixture.load();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+        assert_eq!(paths(&workspace), ["def/roles.lfy", "def/main.lfy"]);
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            workspace
+                .targets
+                .iter()
+                .map(|target| target.identifier.as_str())
+                .collect::<Vec<_>>(),
+            ["first", "second", "third"]
+        );
+    }
+
+    /// A slot holding a layer whose trait does not extend that slot's role is named, and
+    /// the target still stands.
+    // @lfy def/workspace/main.lfy:load#load:load:b251619aed48e08dc83a4b322d9a09864e78bc42fca67da4fe0d6239e2fefd42
+    // @lfy def/workspace/main.lfy:load#load:load:850852d92a73a5a2483681f4ad973850de80c939bcf5118d7a8ef998b4d12671
+    #[test]
+    fn a_layer_that_does_not_extend_its_slots_role_names_the_slot_and_the_trait() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = flat, layout = lang });\n",
+            )
+            .write("def/roles.lfy", ROLES);
+        let workspace = fixture.load();
+        assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
+        let problems = bind_problems(&workspace);
+        assert_eq!(problems.len(), 2, "{problems:?}");
+        // @lfy def/workspace/main.lfy:load
+        for (problem, (slot, name, role)) in problems.iter().zip([
+            ("language", "flat", "targetLanguage"),
+            ("layout", "lang", "targetLayout"),
+        ]) {
+            assert_eq!(at_declaration(&workspace, problem), "t");
+            assert!(problem.message.contains(" t "), "{problem}");
+            assert!(problem.message.contains(slot), "{problem}");
+            assert!(problem.message.contains(name), "{problem}");
+            assert!(problem.message.contains(role), "{problem}");
+        }
+        // A layer in the wrong slot is still a layer of the target.
+        assert_eq!(one_target(&workspace).identifier, "t");
+    }
+
+    /// A target without an output, a language, or a layout is named and left out.
+    // @lfy def/workspace/main.lfy:load#load:load:11e63bade5d611b5f953483b32e186473ddc2004974ec56616e5746b77bcc070
+    #[test]
+    fn a_target_missing_an_output_a_language_or_a_layout_is_left_out() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ language = lang });\n",
+            )
+            .write("def/roles.lfy", ROLES);
+        let workspace = fixture.load();
+        assert!(workspace.targets.is_empty()); // @lfy def/workspace/main.lfy:load
+        let problems = bind_problems(&workspace);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(at_declaration(&workspace, problems[0]), "t");
+        assert!(problems[0].message.contains(" t "), "{}", problems[0]);
+        assert!(problems[0].message.contains("output"), "{}", problems[0]);
+        assert!(problems[0].message.contains("layout"), "{}", problems[0]);
+    }
+
+    /// A capability a layer requires that no layer of the target provides is named.
+    // @lfy def/workspace/main.lfy:load#load:load:e6137be72f47217dc6c217c142c019f7a2fe996e0f2e91068c2f30d7175fe0cb
+    // @lfy def/workspace/main.lfy:load#load:load:83268ea355172afe7a64fbf9ee1a600122557b3953f62145de7cbf3ab7e9e17b
+    #[test]
+    fn a_capability_no_layer_provides_is_named() {
+        let needed = "trait server extends targetFramework {\n  .requires = [\"node-api\"];\n}\n";
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = lang, layout = flat, \
+                 frameworks = [server] });\n",
+            )
+            .write("def/roles.lfy", &format!("{ROLES}{needed}"));
+        let workspace = fixture.load();
+        assert_eq!(one_target(&workspace).identifier, "t");
+        let problems = bind_problems(&workspace);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(at_declaration(&workspace, problems[0]), "t");
+        assert!(problems[0].message.contains(" t "), "{}", problems[0]);
+        assert!(problems[0].message.contains("node-api"), "{}", problems[0]);
+
+        // A layer that provides it leaves nothing to say.
+        // @lfy def/workspace/main.lfy:load
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = lang, layout = flat, \
+                 frameworks = [server], runtime = node });\n",
+            )
+            .write(
+                "def/roles.lfy",
+                &format!(
+                    "{ROLES}{needed}trait node extends targetRuntime {{\n  \
+                     .provides = [\"node-api\"];\n}}\n"
+                ),
+            );
+        let workspace = fixture.load();
+        assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    }
+
+    /// Dependencies need an ecosystem to come from.
+    // @lfy def/workspace/main.lfy:load#load:load:8c54a1933f95101299c7d1fc73f6483a0cb687bec0ecf95ae14ac16aa7131263
+    #[test]
+    fn dependencies_without_an_ecosystem_are_named() {
+        let fixture = Fixture::empty();
+        fixture
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = lang, layout = flat, \
+                 dependencies = [{ name = \"serde\" }] });\n",
+            )
+            .write("def/roles.lfy", ROLES);
+        let workspace = fixture.load();
+        let target = one_target(&workspace);
+        assert_eq!(target.native_dependencies.len(), 1);
+        assert_eq!(target.native_dependencies[0].ecosystem, "");
+        let problems = bind_problems(&workspace);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(at_declaration(&workspace, problems[0]), "t");
+        assert!(problems[0].message.contains("ecosystem"), "{}", problems[0]);
+    }
+
+    /// Two targets that write into one directory, or one into the other's, are named at
+    /// the declaration of each.
+    // @lfy def/workspace/main.lfy:load#load:load:0bb2c8b9bdc22bcaf7b8375709c269d2ce9e4a87d15bad0b911bfef5a5e9dfb3
+    // @lfy def/workspace/main.lfy:load#load:load:95fbbedf0386adb0ad0590c359a7fa6afa27daae3109ef22782249594eba020b
+    #[test]
+    fn two_targets_writing_into_one_directory_name_each_other() {
+        for (output, named) in [("out/u", "out/u"), ("out", "out"), ("elsewhere", "")] {
+            let fixture = Fixture::empty();
+            fixture
+                .write(
+                    "def/targets.lfy",
+                    &format!(
+                        "use \"elfie/target\";\nuse \"./roles\";\n\
+                         ace const t = targetOf({{ output = \"out\", language = lang, \
+                         layout = flat }});\n\
+                         ace const u = targetOf({{ output = \"{output}\", language = lang, \
+                         layout = flat }});\n"
+                    ),
+                )
+                .write("def/roles.lfy", ROLES);
+            let workspace = fixture.load();
+            assert_eq!(workspace.targets.len(), 2, "{:?}", workspace.problems);
+            let problems = bind_problems(&workspace);
+            if named.is_empty() {
+                assert!(problems.is_empty(), "{output}: {problems:?}");
+                continue;
+            }
+            // @lfy def/workspace/main.lfy:load
+            assert_eq!(problems.len(), 2, "{output}: {problems:?}");
+            for (problem, at) in problems.iter().zip(["t", "u"]) {
+                assert_eq!(at_declaration(&workspace, problem), at);
+                assert!(problem.message.contains(" t "), "{problem}");
+                assert!(problem.message.contains(" u "), "{problem}");
+                assert!(problem.message.ends_with(named), "{problem}");
+            }
+        }
+    }
+
+    /// Knowledge is vendored and read from disk: a source that is not there is named, and
+    /// so is one that would be fetched over the network.
+    // @lfy def/workspace/main.lfy:load#load:load:5170cd069bfccbfeb0da6afd8e0b423d9521e2dccd0c7bf2623176d1f3d1eadb
+    // @lfy def/workspace/main.lfy:load#load:load:bc0738a446361cfaa81096bbde52491c556bc0acb26fb38242fd50e928208c6e
+    #[test]
+    fn knowledge_that_is_not_there_or_comes_over_the_network_is_named() {
         let fixture = Fixture::empty();
         fixture
             .write(
                 "elfie.json",
-                r#"{
-                    "dependencies": { "rust": { "root": "targets/rust" } },
-                    "targets": { "rust": { "package": "rust", "marker": "rust" } }
-                }"#,
-            )
-            .write(
-                "targets/rust/main.lfy",
-                "trait rust extends target { }\nd Guidance { }\n",
+                r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
             )
             .write(
                 "def/main.lfy",
-                "use \"rust\";\nrust.apply(global);\nd Plain { $member: `m` = string; }\nd Other { }\n",
-            );
+                "use \"p\";\n\
+                 d Here is given {\n  \
+                 @knowledge.add({ topic = `here`, kind = KnowledgeKind.example, \
+                 source = \"docs/here.md\" });\n}\n\
+                 d Gone {\n  \
+                 @knowledge.add({ topic = `gone`, kind = KnowledgeKind.reference, \
+                 source = \"docs/gone.md\" });\n}\n\
+                 d Fetched {\n  \
+                 @knowledge.add({ topic = `fetched`, kind = KnowledgeKind.reference, \
+                 source = \"https://example.com/guide\" });\n}\n\
+                 d Named {\n  \
+                 @knowledge.add({ topic = `named`, kind = KnowledgeKind.definition, \
+                 source = \"./nowhere\" });\n}\n",
+            )
+            .write("docs/here.md", "an example\n")
+            // A source of a package's trait is relative to that package's root.
+            // @lfy def/workspace/main.lfy:load
+            .write(
+                "pkg/main.lfy",
+                "trait given {\n  \
+                 @knowledge.add({ topic = `the package's guide`, kind = KnowledgeKind.reference, \
+                 source = \"docs/guide.md\" });\n}\n",
+            )
+            .write("pkg/docs/guide.md", "how it is written\n");
         let workspace = fixture.load();
-        let target = workspace
-            .targets
-            .iter()
-            .find(|target| target.identifier == "rust")
-            .expect("the rust target");
-        let built = names(&workspace, &entities_for(&workspace, target));
-        // Every entity of the project's own file, and nothing of the package.
-        assert!(built.contains(&"Plain"), "{built:?}");
-        assert!(built.contains(&"Other"), "{built:?}");
-        // Every entity, not only the ones the file scope declares: a member counts too.
-        assert!(built.contains(&"member"), "{built:?}");
-        assert!(!built.contains(&"Guidance"), "{built:?}");
+        assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
+        let problems = bind_problems(&workspace);
+        // `Here` holds the package's item too, since the trait contributed it, and that
+        // one is under the package's root; only its own missing item is named.
+        // @lfy def/workspace/main.lfy:load
+        assert_eq!(
+            problems
+                .iter()
+                .map(|problem| (
+                    at_declaration(&workspace, problem),
+                    problem.message.as_str()
+                ))
+                .collect::<Vec<_>>(),
+            [
+                ("Gone", "the knowledge \"docs/gone.md\" does not exist"),
+                (
+                    "Fetched",
+                    "the knowledge \"https://example.com/guide\" is fetched over the network; \
+                     knowledge is vendored, so a compile never depends on the network"
+                ),
+            ],
+            "{problems:?}"
+        );
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:1a70bf9ff7ad610ada4250ea97c2b74dff227791a63bfff413e8eb49f991aefc

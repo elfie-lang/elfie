@@ -1,0 +1,144 @@
+use "cli";
+use "elfie/target/ecosystem";
+use "elfie/target/framework";
+use "elfie/target/language";
+use "elfie/target/layout";
+
+/// Rust: the language, Cargo as its ecosystem, the layouts of a crate and of a workspace of crates,
+/// and clap for command lines.
+
+trait rust extends targetLanguage: `Rust 2024` {
+  .language = "Rust 2024";
+  .fileExtension = "rs";
+  .markerComment = "//";
+  .provides = ["rust"];
+
+  // Kinds
+  @acceptanceCriteria
+    .add({
+      situation = `A d declaration's members are not alternatives`,
+      behavior = `The d declaration becomes a struct`,
+    })
+    .add({ situation = `A d declaration's members are alternatives`, behavior = `The d declaration becomes an enum` })
+    .add({
+      behavior = `A type declaration becomes a struct; an enum declaration an enum with a method giving each member's value`,
+    })
+    .add({
+      behavior = `A fn declaration becomes a pub fn whose body satisfies every criterion and test; a function declaration is translated statement by statement`,
+    })
+    .add({
+      behavior = `A trait declaration becomes nothing of its own; the members it adds become fields or methods of each entity that carries it, and its criteria become that entity's`,
+    })
+    .add({ behavior = `An external declaration is bound to the crate its native dependency names` })
+    .add({
+      behavior = `Every @test case becomes a #[test], and every acceptance criterion that a test can check becomes one, marked with its entity and the criterion's id`,
+    });
+
+  // Standard library
+  @acceptanceCriteria
+    .add({ behavior = `List is Vec<T>; Boolean is bool; Nullish is Option<T>` })
+    .add({ situation = `A String value is not only read`, behavior = `String is String` })
+    .add({ situation = `A String value is only read`, behavior = `String is &str` })
+    .add({
+      situation = `No criterion says a Number value counts things: a length, an index, a line, or a column`,
+      behavior = `Number is f64`,
+    })
+    .add({
+      situation = `A criterion says a Number value counts things: a length, an index, a line, or a column`,
+      behavior = `Number is usize`,
+    })
+    .add({ situation = `An Object holds JSON`, behavior = `Object is serde_json::Map` })
+    .add({ situation = `The use of an Object names the value type`, behavior = `Object is BTreeMap<String, _>` })
+    .add({
+      behavior = `Path is std::path; the file functions are std::fs; Json is serde_json; run and stream are std::process::Command through sh -c; isTerminal is std::io::IsTerminal of stdout or stderr`,
+    })
+    .add({
+      behavior = `A builtin fn or member is never generated, only called; a member of a builtin data written out in full is translated where it is used`,
+    });
+
+  // Generics
+  @acceptanceCriteria
+    .add({
+      behavior = `A declaration with type parameters becomes a generic item with the same parameters, in the same order and with the same names`,
+    })
+    .add({
+      situation = `The target has a trait matching the data or trait of an extends constraint on a type parameter`,
+      behavior = `The extends constraint becomes a trait bound`,
+    })
+    .add({
+      situation = `The target has no trait matching the data or trait of an extends constraint on a type parameter`,
+      behavior = `The bound is dropped and a comment on the item names the constraint`,
+    })
+    .add({
+      behavior = `List<T> and T[] are Vec<T>; a type argument that is a primitive maps to the same Rust type as that primitive does outside a type argument`,
+    })
+    .add({
+      behavior = `A parameter whose type is a function type (A) => B is impl Fn(A) -> B; a member of a data whose type is a function type is Box<dyn Fn(A) -> B>`,
+    });
+}
+
+trait cargo extends targetEcosystem: `Crates from crates.io, managed with Cargo` {
+  .ecosystem = "cargo";
+  .manifest = "Cargo.toml";
+  .lockfile = "Cargo.lock";
+  .provides = ["cargo"];
+  .requires = ["rust"];
+  @commands
+    .add({ operation = Operation.add, line = 'cargo add "$NAME${VERSION:+@$VERSION}"' })
+    .add({ operation = Operation.build, line = "cargo build" })
+    .add({ operation = Operation.test, line = "cargo test" })
+    .add({ operation = Operation.lint, line = "cargo clippy --all-targets -- -D warnings" })
+    .add({ operation = Operation.format, line = "cargo fmt --check" });
+}
+
+/// name: the package name its Cargo.toml gives
+/// root: the crate's directory, relative to the project root
+/// source: the directory, relative to the source directory, whose main.lfy is the crate's root module
+/// binary: whether that root module is src/main.rs rather than src/lib.rs
+trait cargoCrate(name: string, root: string, source: string, binary: boolean) extends targetLayout: `One member crate of the Cargo workspace at the project root` {
+  .requires = ["rust", "cargo"];
+  const rootFile = binary? "main.rs": "lib.rs";
+  where (`A unit's stem is {{source}}/main`) -> `It is {{root}}/src/{{rootFile}}`;
+  where (`A unit's stem ends in main and is not {{source}}/main`) -> `It is mod.rs in its directory under {{root}}/src, with any leading {{source}}/ dropped, and declares each other output of that directory as a module`;
+  where (`A unit's stem does not end in main`) -> `It is {{root}}/src/ then the stem with any leading {{source}}/ dropped, then .rs`;
+  where (`A directory under {{root}}/src holds outputs and no unit writes its mod.rs`) -> `The compiler stops on the first unit there and names the directory`;
+  where (`Any unit is written`) -> `{{root}}/Cargo.toml names package {{name}}, edition 2024, and the target's dependencies`;
+  where (`The Cargo.toml at the project root does not list {{root}} among its workspace members`) -> `The compiler stops on the first unit and says so, because that file is outside {{root}}`;
+}
+
+/// crates: each key is the first segment of a stem; its value the source directory, relative to the project root, that such units are written under
+/// fallback: the source directory for units whose first segment is no key of crates
+/// binaries: the keys of the crates whose root module is src/main.rs
+trait cargoWorkspace(crates: object, fallback: string, binaries: string[]) extends targetLayout,
+  cratePerPrefix(crates, fallback),
+  modulePerFile("", "rs"): `Several member crates of one Cargo workspace, chosen by the first segment of each stem` {
+  .requires = ["rust", "cargo"];
+  @acceptanceCriteria
+    .add({
+      situation = [`A file's stem is main`, `The file is not the root of its crate`],
+      behavior = `Within its crate's directory the file is mod.rs`,
+    })
+    .add({
+      situation = [
+        `A file's stem is main`,
+        `The file is the root of a crate whose key is not among {{binaries.join(", ")}}`,
+      ],
+      behavior = `Within its crate's directory the file is lib.rs`,
+    })
+    .add({
+      situation = [
+        `A file's stem is main`,
+        `The file is the root of a crate whose key is among {{binaries.join(", ")}}`,
+      ],
+      behavior = `Within its crate's directory the file is main.rs`,
+    })
+    .add({ behavior = `Each crate's Cargo.toml names only the dependencies its own outputs use, from the target's` });
+}
+
+trait clap extends targetFramework: `Command lines parsed with clap 4 and its derive feature` {
+  .framework = "clap 4";
+  .provides = ["argument-parser"];
+  .requires = ["rust"];
+  where (`An fn carries [[command]] with a name`) -> `It is one variant of a #[derive(Subcommand)] enum whose fields are its parameters with #[arg] attributes, and main dispatches on it`;
+  where (`An fn carries [[command]] with an empty name`) -> `Its parameters are the fields of the #[derive(Parser)] struct itself`;
+}

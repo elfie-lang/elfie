@@ -226,6 +226,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
     })
     .add({
+      situation = [`check with no files given, and the program has no errors`, `[[Workspace.targets]] is empty`],
+      behavior = `One line of information of stage generation at elfie.json says the program declares no target, so nothing will be built; it is neither a problem nor a stale unit`,
+    })
+    .add({
       situation = `check without --json`,
       behavior = `In the last line the count of files is plain, the problems are [[Style.tally]] in failure, and the stale units are [[Style.tally]] in warning`,
     })
@@ -887,7 +891,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
           `compile`,
           `--dry-run`,
           `--root`,
-          string@like(`A root with one target whose marker global carries and one file`),
+          string@like(`A root with one target that global's targets hold and one file`),
         ],
       ],
       expect = number@like(`0, after printing one unit with reason fresh and one batch holding it`),

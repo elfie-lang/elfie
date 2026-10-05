@@ -207,8 +207,7 @@ impl fmt::Display for SymbolKind {
     }
 }
 
-/// A name bound to an entity in one scope. Knows the node that declared it, the scope
-/// that holds it, and its [`SymbolKind`].
+/// A name bound to an entity in one scope.
 // @lfy def/model/data.lfy:Symbol
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Symbol {
@@ -228,15 +227,11 @@ pub struct Symbol {
     pub scope: ScopeId,
 }
 
-/// A region in which names resolve. Holds the symbols declared directly in it, in order,
-/// and knows its parent; a file scope holds the symbols its use statements import, after
-/// the symbols declared directly in it.
+/// A region in which names resolve.
 // @lfy def/model/data.lfy:Scope
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
-    /// The enclosing scope. A file scope of a file whose [`Source::origin`] is
-    /// [`Origin::Program`] has the prelude scope as its parent; one whose origin is
-    /// [`Origin::Library`] or [`Origin::Prelude`] has none.
+    /// The enclosing scope, settled for a file scope once every file is declared.
     // @lfy def/model/data.lfy:Scope#Scope:Scope:42af5b6a186748d342d067144fcbe6e4a9fd24f9df49fa04198090b72c251659
     // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
     // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
@@ -251,15 +246,12 @@ pub struct Scope {
     /// only a file scope has any.
     // @lfy def/model/data.lfy:Scope#Scope:Scope:22fac6d4e670bba6a452d99eaf5fe8c73bd2fe60f299a61bf974a9377bf8b7c9
     pub imports: Vec<SymbolId>,
-    /// The current entity: what the value, context, and scope accessors reach without a
-    /// left expression.
+    /// The current entity.
     // @lfy def/model/data.lfy:Scope#Scope:Scope:845999c3f233c583f0345dc819e89ad1e41de058891617b1d24252c7e7f3d21c
     pub current: EntityId,
 }
 
-/// What applied a trait. A trait applied directly knows the `IsClause`, `ExtendsClause`,
-/// or apply `Call` that applied it; a trait inherited through another application knows
-/// that application.
+/// What applied a trait.
 // @lfy def/model/data.lfy:Applied#Applied:Applied:fab3fd03c628f5350e16842d5f330374a3cbfa3429c02399acc674c7c7ca393d
 // @lfy def/model/data.lfy:Applied#Applied:Applied:ee4c1f2f778b72495977533effacf8eeab17af5bf88c802b226f69b9a8186fef
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -314,6 +306,93 @@ pub struct Test {
     pub input_text: String,
     /// The source text of the expectation.
     pub expect_text: String,
+}
+
+/// What a piece of knowledge is. `KnowledgeKind` of the package `elfie`, translated here
+/// because [`Entity::knowledge`] holds it.
+// @lfy def/model/data.lfy:Entity.knowledge
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum KnowledgeKind {
+    Reference,
+    Example,
+    Definition,
+    Tool,
+}
+
+impl KnowledgeKind {
+    /// The value of the enum member.
+    pub fn value(self) -> &'static str {
+        match self {
+            KnowledgeKind::Reference => {
+                "documentation to read: a language reference, an API, a guide"
+            }
+            KnowledgeKind::Example => "working code to imitate",
+            KnowledgeKind::Definition => "Elfie source that defines it, read like any other",
+            KnowledgeKind::Tool => "a tool of the agent server the compiler calls",
+        }
+    }
+}
+
+/// Something the compiler is given to read, because it may not already know it.
+/// `Knowledge` of the package `elfie`, translated here because [`Entity::knowledge`]
+/// holds it.
+// @lfy def/model/data.lfy:Entity.knowledge
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Knowledge {
+    /// What it teaches, in a few words.
+    pub topic: String,
+    /// What it is.
+    pub kind: KnowledgeKind,
+    /// A path relative to the root of the package or project that declares it; a use path
+    /// for a definition; the tool's name for a tool.
+    pub source: String,
+    /// Whether the request quotes it in full; `None` to let the compiler read it instead.
+    pub quote: Option<bool>,
+    /// The entity whose body holds it: the entity itself or one of its traits.
+    pub contributor: EntityId,
+}
+
+/// What a command is for. `Operation` of the package `elfie`, translated here because
+/// [`Command::operation`] holds it.
+// @lfy def/model/data.lfy:Entity.commands
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Operation {
+    Install,
+    Add,
+    Build,
+    Test,
+    Lint,
+    Format,
+    Run,
+}
+
+impl Operation {
+    /// The value of the enum member.
+    pub fn value(self) -> &'static str {
+        match self {
+            Operation::Install => "install: fetch every dependency the manifest lists",
+            Operation::Add => "add: add one dependency",
+            Operation::Build => "build: compile or type-check the outputs",
+            Operation::Test => "test: run the tests",
+            Operation::Lint => "lint: run the linters",
+            Operation::Format => "format: check the formatting without changing anything",
+            Operation::Run => "run: start what was built",
+        }
+    }
+}
+
+/// A shell command for one operation, so the compiler need not know the tool. `Command`
+/// of the package `elfie`, translated here because [`Entity::commands`] holds it.
+// @lfy def/model/data.lfy:Entity.commands
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Command {
+    /// What it is for.
+    pub operation: Operation,
+    /// What `sh -c` runs in the target's output directory; `None` to say the operation is
+    /// not run.
+    pub line: Option<String>,
+    /// The entity whose body holds it: the entity itself or one of its traits.
+    pub contributor: EntityId,
 }
 
 /// A type as the model knows it.
@@ -404,9 +483,12 @@ pub enum EntityKind {
     Trait {
         parameters: Vec<SymbolId>,
         /// ContextProperty entities: everything the trait was applied to, directly or by
-        /// inheritance.
+        /// inheritance, in file then application order.
+        // @lfy def/model/data.lfy:Entity#Entity:applyingTraits:885abc6aa6f23dc47914f2e331127d72b788b2032d860ea70fb7bf826cf30233
+        // @lfy def/model/data.lfy:Entity#Entity:applyingExtensions:292cf2e904820b531743ac889aa5da8e947e24db6b94538ee712d2afc8563353
         entities: Vec<EntityId>, // @lfy def/model/data.lfy:TraitEntity.entities
         /// ContextProperty extenders: every trait that names it in an ExtendsClause.
+        // @lfy def/model/data.lfy:Entity#Entity:applyingExtensions:0cad2a6ae37aab73add8e0b68b1249ca3a73e24830445553a3c69c76ec60884f
         extenders: Vec<EntityId>, // @lfy def/model/data.lfy:TraitEntity.extenders
     },
     Variable,
@@ -421,8 +503,7 @@ pub enum EntityKind {
     Anonymous,
 }
 
-/// A declared thing seen through its context layer. Knows its declaring node, its
-/// symbol, and the scope it owns (parameters, members, body).
+/// A declared thing seen through its context layer.
 // @lfy def/model/data.lfy:Entity
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
@@ -437,7 +518,10 @@ pub struct Entity {
     /// Acceptance criteria specifying own criteria first, then each trait's in
     /// application order.
     pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:Entity.acceptanceCriteria
-    /// Every trait applied to it, direct or inherited, in application order.
+    /// Every trait applied to it, direct or inherited, in application order, each with
+    /// what applied it.
+    // @lfy def/model/data.lfy:Entity#Entity:applyingTraits:a8b6d4d3d7cc54933301dcfe026cc4267738079adceed510560830d01aae2ee0
+    // @lfy def/model/data.lfy:Entity#Entity:applyingExtensions:49625aa48b0703f6a1c12a97eb8d56fdb19b02bb6918e843148d26465b703698
     pub traits: Vec<Applied>, // @lfy def/model/data.lfy:Entity.traits
     /// What a list-typed entity holds; `None` when the type is not a list.
     pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:Entity.itemType
@@ -445,6 +529,18 @@ pub struct Entity {
     pub references: Vec<UsageId>, // @lfy def/model/data.lfy:Entity.references
     /// ContextProperty tests: list of all added tests.
     pub tests: Vec<Test>, // @lfy def/model/data.lfy:Entity.tests
+    /// What the compiler is given to read for it: its own items first, then each trait's
+    /// in application order.
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:ae547eefefd157485c0e6bd8eea3cb45294d1b7db29458a1edaf12993fd028a0
+    pub knowledge: Vec<Knowledge>, // @lfy def/model/data.lfy:Entity.knowledge
+    /// Shell commands for its operations: its own first, then each trait's in application
+    /// order.
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:ae547eefefd157485c0e6bd8eea3cb45294d1b7db29458a1edaf12993fd028a0
+    pub commands: Vec<Command>, // @lfy def/model/data.lfy:Entity.commands
+    /// The targets added to it, in the order they were added; each the entity of an ace
+    /// const of the project holding a `Target` of the package `elfie`.
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:ae547eefefd157485c0e6bd8eea3cb45294d1b7db29458a1edaf12993fd028a0
+    pub targets: Vec<EntityId>, // @lfy def/model/data.lfy:Entity.targets
     /// The value setters evaluated for it (`.name = value` in a trait or data body).
     pub values: Vec<(String, Value)>,
     pub kind: EntityKind,
@@ -553,8 +649,7 @@ pub struct Source {
     pub origin: Origin, // @lfy def/model/data.lfy:Source.origin
 }
 
-/// The program, queryable. Answers every query of the model module for every file it
-/// was bound from and lists every problem in node order.
+/// The program, queryable.
 // @lfy def/model/data.lfy:Model
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Model {
@@ -563,7 +658,7 @@ pub struct Model {
     pub symbols: Vec<Symbol>,
     pub entities: Vec<Entity>,
     pub usages: Vec<Usage>,
-    /// Every problem in node order.
+    /// Every [`Problem`] the binder recorded.
     // @lfy def/model/data.lfy:Model#Model:Model:eea4b6850249e2d00680aefce02776022f87b76c3761ec67543bc0f9d618a12f
     pub problems: Vec<Problem>,
     /// Per file, one entry per node in preorder.

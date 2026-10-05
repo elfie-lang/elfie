@@ -1,0 +1,16 @@
+use "elfie/target/runtime";
+
+trait node extends targetRuntime: `Node.js 24 LTS` {
+  .runtime = "Node.js 24 or later";
+  .provides = ["javascript-runtime", "node-api"];
+  .requires = ["javascript-language"];
+  @acceptanceCriteria
+    .add({ behavior = `package.json sets engines.node to >=24` })
+    .add({ behavior = `Files are read and written with node:fs/promises, and the environment is read from process.env` })
+    .add({
+      behavior = `Tests use node:test and node:assert; each test file sits beside its output, named like it with .test before the extension, and package.json's test script runs node --test on them`,
+    });
+  @commands
+    .add({ operation = Operation.test, line = "$RUN_SCRIPT test" })
+    .add({ operation = Operation.run, line = "$RUN_SCRIPT start" });
+}

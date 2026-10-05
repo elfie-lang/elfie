@@ -10,18 +10,27 @@ d NativeDependency: `Something the generated code needs from the target's own ec
 d Package: `Elfie source loaded from outside the project` {
   $identifier: `The name a [[Use]] refers to it by` = string;
   $root: `Its directory, relative to [[Workspace.root]]; absolute for the package elfie when it is found outside the project` = string;
-  $nativeDependencies: `What code generated from it requires` = NativeDependency[];
 }
 
 d File extends Source: `One .lfy file in the program, ready to bind` {
   $package: `The package it came from; undefined for the project's own source` = Package | undefined;
 }
 
-d Target: `One thing the project is compiled into` {
-  $identifier: `The name the project calls it` = string;
-  $marker: `The trait an entity carries to be built for this target` = Entity;
-  $package: `The package that declares it, and the guidance for building against it` = Package;
+// Decision: a target is declared in the program, as an ace const holding the package elfie's
+// Target, rather than in elfie.json; this record is what the loader resolved it to. It keeps the
+// name Target because the library's record is only seen where a file uses the package elfie's
+// target module.
+d Target: `One thing the project is compiled into, as the loader resolved it from the ace const that declares it` {
+  $identifier: `The name of the const that declares it` = string;
+  $declaration: `The ace const that declares it; its traits are the target's layers, applied to it, and its criteria, knowledge, and commands are the target's` = Entity;
+  $layers: `The traits of its layers in guidance order: layers, interfaces, frameworks, layout, runtime, platforms, ecosystem, language, each slot in its own order, each trait once` = Entity[];
   $outputDirectory: `Where its generated code is written, relative to [[Workspace.root]]` = string;
+  $extensions: `The extensions, without the dot, its outputs may have: its language's file extension, then every output extension its layers set` = string[];
+  $markerComment: `How a line comment begins in its language, as its language layer sets it` = string;
+  $scriptRunner: `What runs a script its ecosystem's manifest names, as its ecosystem layer sets it; undefined when it has no ecosystem or the ecosystem sets none` = string | undefined;
+  $nativeDependencies: `What its generated code needs, from its dependencies, each in the ecosystem its ecosystem layer names` = NativeDependency[];
+  $commands: `The one command of each operation the target has a command for, in the order [[Operation]] lists them` = Command[];
+  $knowledge: `What the compiler is given to read for the target: the declaration's knowledge, its own first and then each layer's` = Knowledge[];
 }
 
 d LoadProblem: `Something that went wrong before there was a node to point at` {
@@ -33,10 +42,8 @@ d Workspace: `A project, loaded and bound` {
   $root: `The project's directory` = string;
   $name: `The project's name` = string;
   $sourceDirectory: `Where the project's own source lives, relative to [[Workspace.root]]` = string;
-  $outputDirectory: `Where generated code is written by default, relative to [[Workspace.root]]` = string;
   $files: `Every file in the program, in the order they were bound` = File[];
   $model: `The program` = Model;
-  $targets: `What the project is compiled into` = Target[];
-  $nativeDependencies: `What code generated from the project's own source requires, as its elfie.json names it` = NativeDependency[];
+  $targets: `What the project is compiled into, in the order their consts are declared: file by file in [[Workspace.files]] order, then source order` = Target[];
   $problems: `Every [[LoadProblem]], then every [[Problem]] loading or binding added` = (LoadProblem | Problem)[];
 }

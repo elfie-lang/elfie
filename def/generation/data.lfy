@@ -4,7 +4,6 @@ use "../workspace/data";
 use "elfie/prelude/builtin";
 use "elfie/system/path";
 use "elfie/system/time" as Time;
-use "elfie/target/target";
 
 enum Reason: `Why a unit needs generating` {
   fresh = `no output has been generated for it`,
@@ -108,8 +107,10 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
   $previous: `The lowered text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = object;
   $existing: `The current text of each existing output of the batch, by path` = object;
   $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
-  $guidance: `Every criterion of [[Target.marker]], then of every trait it extends down to [[target]], nearest first, and of every trait applied to it with arguments, each resolved for the marker` = Criterion[];
-  $nativeDependencies: `What the generated code may require from the target's ecosystem` = NativeDependency[];
+  $guidance: `The criteria of the target's declaration: its own, then each of [[Target.layers]] in order, then the traits they extend, nearest first, each trait once, with template values rendered from the layers' arguments` = Criterion[];
+  $nativeDependencies: `What the generated code may require from the target's ecosystem: [[Target.nativeDependencies]]` = NativeDependency[];
+  $knowledge: `What the compiler is given to read: [[Target.knowledge]], then the knowledge of each entity of the batch's units, then of each entity of [[Request.interfaces]], each item once` = Knowledge[];
+  $commands: `The commands the compiler runs instead of knowing the tools: [[Target.commands]]` = Command[];
 }
 
 d ReviewRequest: `Everything a verifier is handed to check outputs against what was asked: the local criteria and tests of one batch, or every global one once` {
@@ -200,6 +201,6 @@ d Plan: `Every unit of a workspace, which need generating, and how they are batc
   $program: `The workspace lowered, which units, requests, and reviews read` = Program;
   $units: `Every unit of every target, each after its dependencies` = Unit[];
   $moves: `Every move that resolved a cycle among files, in the order the moves were made` = Move[];
-  $problems: `Every cycle among files that no move could resolve, one [[Problem]] each` = Problem[];
+  $problems: `Every cycle among files that no move could resolve, and every entity that reaches one not built for its target, one [[Problem]] each` = Problem[];
   $batches: `The planned units grouped for compilation, each batch after the batches holding its dependencies` = Batch[];
 }

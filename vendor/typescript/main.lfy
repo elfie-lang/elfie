@@ -1,0 +1,42 @@
+use "elfie/target/language";
+use "elfie/target/layout";
+
+/// TypeScript: the language, and the layout of one npm package.
+
+trait typescript extends targetLanguage: `TypeScript 5 in strict mode, as ES modules` {
+  .language = "TypeScript 5";
+  .fileExtension = "ts";
+  .markerComment = "//";
+  .provides = ["typescript", "javascript-language"];
+  @acceptanceCriteria
+    .add({
+      situation = `A d declaration's members are not alternatives`,
+      behavior = `It becomes an exported type alias of an object type with one readonly property per member`,
+    })
+    .add({
+      situation = `A d declaration's members are alternatives`,
+      behavior = `It becomes an exported discriminated union whose kind property names each alternative`,
+    })
+    .add({
+      behavior = `An enum declaration becomes an exported const object of its members' values and a union type of the same name; a TypeScript enum is never used`,
+    })
+    .add({
+      behavior = `A fn becomes an exported function; it is async when a criterion says it reads or writes outside the process`,
+    })
+    .add({
+      behavior = `List is readonly T[]; String is string; Number is number; Boolean is boolean; Nullish is undefined; Object is Record<string, T>`,
+    })
+    .add({
+      behavior = `tsconfig.json sets strict, noUncheckedIndexedAccess, and verbatimModuleSyntax, and package.json has a typecheck script running tsc --noEmit`,
+    });
+  @commands.add({ operation = Operation.build, line = "$RUN_SCRIPT typecheck" });
+}
+
+/// name: the package name package.json gives
+/// root: the package's directory, relative to the project root
+trait npmLayout(name: string, root: string) extends targetLayout: `One npm package, its source under src` {
+  .requires = ["javascript-language", "npm-registry"];
+  where (`A unit's stem does not end in main`) -> `It is {{root}}/src/ then the stem, then the language's extension`;
+  where (`A unit's stem ends in main`) -> `It is index in the stem's directory under {{root}}/src, with the language's extension`;
+  where (`Any unit is written`) -> `{{root}}/package.json names package {{name}}, sets type to module, and lists the target's dependencies`;
+}

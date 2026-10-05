@@ -1,0 +1,31 @@
+use "elfie/target/platform";
+
+/// Platforms: where a target runs. A target may have several, such as a server and browsers.
+
+trait posix extends targetPlatform: `A process on Linux or macOS` {
+  .platform = "Linux and macOS";
+  .provides = ["posix", "process", "file-system"];
+  @acceptanceCriteria
+    .add({
+      behavior = `Configuration comes from the environment and the command line; nothing is read from a fixed absolute path`,
+    })
+    .add({ behavior = `The process exits 0 on success and with a code other than 0 on failure` });
+}
+
+trait windows extends targetPlatform: `A process on Windows 10 or later` {
+  .platform = "Windows 10 and later";
+  .provides = ["windows", "process", "file-system"];
+  @acceptanceCriteria
+    .add({
+      behavior = `Paths are built with the language's path functions, never by joining with a slash or a backslash`,
+    })
+    .add({ behavior = `Text read from a file may end its lines with CRLF, and is read the same as with LF` });
+}
+
+trait browser extends targetPlatform: `A page in a current browser` {
+  .platform = "Evergreen browsers";
+  .provides = ["browser", "dom"];
+  @acceptanceCriteria
+    .add({ behavior = `Code that runs in the browser reads no file, no environment variable, and no secret` })
+    .add({ behavior = `Every web API used is Baseline Widely available` });
+}

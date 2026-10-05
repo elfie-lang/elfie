@@ -109,7 +109,10 @@ d Entity extends Prelude.Entity: `A declared thing seen through its context laye
   $references: `Every use of a [[Reference]] in its definition, documentation, or value` = Usage[];
 
   @acceptanceCriteria
-    .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)` });
+    .add({ behavior = `Knows its declaring node, its symbol, and the scope it owns (parameters, members, body)` })
+    .add({
+      behavior = `Holds the knowledge, commands, and targets added to it, as [[Prelude.Entity]] declares them; each knowledge item and command holds the entity that contributed it, as a [[Criterion]] does, and each target is the entity of the const added`,
+    });
 }
 
 /// The prelude's [[Functions.Function]] with the parameters held as symbols, whose entities are

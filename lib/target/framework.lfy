@@ -1,0 +1,7 @@
+use "./target";
+
+trait targetFramework extends target: `The role of a framework: what a target's code is built on, such as react or nextjs; a target may have several` {
+  $framework: `The framework and the versions it supports` = string;
+  where (`Code is generated for something the framework covers`) -> `It is written the way the framework's own documentation for that version shows`;
+  where (`An entity carries a trait of an interface of the target`) -> `A framework of the target realizes it; when none does, the compiler stops and names the trait`;
+}

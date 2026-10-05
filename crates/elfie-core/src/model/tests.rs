@@ -51,6 +51,9 @@ fn prelude() -> Vec<Source> {
         "d Entity { $identifier: `The declared name` = string | undefined; \
          $type: `Its type` = Entity | undefined; \
          $acceptanceCriteria: `Its criteria` = Entity[]; \
+         $knowledge: `What it is given to read` = Entity[]; \
+         $commands: `Its commands` = Entity[]; \
+         $targets: `Its targets` = Entity[]; \
          $like: `A value the prompt describes` = (prompt: string) => Entity; \
          $test: `Adds cases` = (...tests: Entity[]) => Entity; }",
         &[],
@@ -1563,6 +1566,30 @@ fn add_on_the_criteria_of_a_context_is_the_binders_own_call() {
     }
     let a = model.symbols[file_symbol(&model, file, "A")].entity;
     assert_eq!(model.entities[a].acceptance_criteria.len(), 2);
+}
+
+// Directly, and on the list an earlier add yields.
+// @lfy def/model/main.lfy:bind#bind:bind:d3f952194240725b31fde86ab04d26ba824b9c911a3712e22195a9e06b402ee6
+#[test]
+fn add_on_the_other_lists_of_a_context_is_the_binders_own_call() {
+    let model = bind_with_prelude(
+        "d A { @knowledge.add(`k`); @commands.add(`c`).add(`d`); @targets.add(A); }",
+    );
+    let file = model.file("a.lfy").unwrap();
+    for raw in [
+        "@knowledge.add",
+        "@commands.add",
+        "@commands.add(`c`).add",
+        "@targets.add",
+    ] {
+        let add = node(&model, file, E::Member, raw);
+        assert_eq!(usage(&model, add).symbol, None, "{raw} resolved to a member");
+        assert!(
+            !model.problems.iter().any(|problem| problem.node == add),
+            "{raw} is a problem: {:?}",
+            problems(&model)
+        );
+    }
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3

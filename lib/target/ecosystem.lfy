@@ -1,0 +1,11 @@
+use "./target";
+
+trait targetEcosystem extends target: `The role of an ecosystem: where a target's dependencies come from, and what manages them` {
+  $ecosystem: `The package manager, as its own tools name it` = string;
+  $manifest: `The file that lists dependencies` = string;
+  $lockfile: `The file that pins them; undefined when there is none` = string | undefined;
+  $scriptRunner: `What runs a script the manifest names, given to commands as RUN_SCRIPT; undefined when there is none` = string | undefined;
+  where (`A target lists dependencies`) -> `Each is a package the ecosystem provides, declared in [[targetEcosystem.manifest]] at the version given`;
+  where (`Generated code needs a package that is not among the target's dependencies`) -> `The compiler stops and names it`;
+  where (`A dependency is added`) -> `It is added by running the target's add command, never by editing the manifest or the lockfile by hand`;
+}

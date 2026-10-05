@@ -273,6 +273,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `It is the add call the criteria of [[Criteria.Criterion]] describe: it has no symbol and adds no [[Problem]]`,
     })
     .add({
+      situation = `A [[Member]] named add is bound with [[ValueAccessor]] on [[Prelude.Entity.knowledge]], [[Prelude.Entity.commands]], or [[Prelude.Entity.targets]] reached with [[ContextAccessor]], directly or on the list an earlier add on the same list yields`,
+      behavior = `It is the add call the prelude describes for that list: it has no symbol and adds no [[Problem]], as for [[Prelude.Entity.acceptanceCriteria]]`,
+    })
+    .add({
       situation = `A [[Dereference]] is bound`,
       behavior = `It yields the entity its operand is bound to, not its value`,
     })
