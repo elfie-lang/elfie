@@ -409,7 +409,10 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
       situation = `[[entity]] is a type parameter`,
       behavior = `[[Hover.owner]] is the identifier of the declaration whose [[TypeParameters]] lists it`,
     })
-    .add({ situation = `[[entity]] is a member`, behavior = `[[Hover.owner]] is the identifier of its [[Kinds.Member.owner]]` })
+    .add({
+      situation = `[[entity]] is a member`,
+      behavior = `[[Hover.owner]] is the identifier of its [[Kinds.Member.owner]]`,
+    })
     .add({ situation = `[[entity]] is neither a type parameter nor a member`, behavior = `[[Hover.owner]] is undefined` })
     .add({
       behavior = `[[Hover.documentation]] is the joined text of the [[documented]] nodes of the declaration, each line without its opener and closer and without one leading space`,
