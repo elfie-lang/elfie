@@ -151,7 +151,7 @@ fn request(session: Session, batch: string, target?: string) is tool: `The full 
 fn check(session: Session, unit: string, target?: string) is tool: `Whether the outputs on disk satisfy the request for one unit, and what is wrong when they do not` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[Generation.accept]] of the unit against the request of its batch and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk`,
+      behavior = `[[Generation.accept]] of the unit against the request of its batch and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk, with the source maps recorded for the target's other units as recorded`,
     })
     .add({
       situation = `[[Generation.accept]] of the unit accepts it`,

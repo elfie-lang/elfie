@@ -111,6 +111,14 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = `Each extended trait is applied too, up the whole chain, with its arguments evaluated from the extending trait's parameters`,
     })
     .add({
+      situation = `An applied trait has an [[ExtendsClause]]`,
+      behavior = `The extended traits' value setters are evaluated before the extending trait's`,
+    })
+    .add({
+      situation = `A trait is reached more than once for one entity, through several extends paths or applications, with equal arguments`,
+      behavior = `It is applied once, at its first application`,
+    })
+    .add({
       situation = `A trait is applied to an entity`,
       behavior = [
         `Each member declared in the trait's body joins the entity's scope`,
@@ -144,7 +152,11 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = `Each item is appended to that entity's knowledge or commands with the trait as its contributor, as the trait's criteria are`,
     })
     .add({
-      situation = `A [[Call]] of add on an entity's targets is run with an argument naming an ace const of a project file whose value is a [[Targets.Target]], because its declared type is [[Targets.Target]] or its value is a call of a function whose output is [[Targets.Target]]`,
+      situation = [
+        `A [[Call]] of add on an entity's targets is run with an argument naming an ace const of a project file whose value is a [[Targets.Target]], because its declared type is [[Targets.Target]] or its value is a call of a function whose output is [[Targets.Target]]`,
+        `The const is not already in that entity's targets`,
+        `The entity is not a member, a parameter, or an enum member`,
+      ],
       behavior = `The const's entity is appended to that entity's targets, and the call yields the list, so calls chain`,
     })
     .add({
@@ -171,7 +183,11 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       ],
     })
     .add({
-      behavior = `So the const carries every layer as one of its traits, every layer's criteria with their template values rendered from the layer's arguments, every layer's knowledge and commands, and every layer's values, in application order`,
+      behavior = `The const's provides, requires, and outputExtensions hold every item any of its layers sets, each once, in guidance order`,
+    })
+    .add({
+      situation = `Two layers of the const set any other member to different values`,
+      behavior = `A [[Problem]] at the const names the member and both layers`,
     })
     .add({
       situation = `A slot of the value holds something that is neither a trait nor such an object`,
@@ -326,7 +342,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       behavior = `A [[Problem]] is added at it saying a file-level let is not allowed, and it is kept`,
     })
     .add({
-      situation = `Runtime code calls an ace function with an argument [[evaluate]] cannot give a value for`,
+      situation = `Runtime code calls an ace function, or a function declared outside the program's runtime code, with an argument [[evaluate]] cannot give a value for`,
       behavior = `A [[Problem]] is added at the call, because the function will not exist at runtime`,
     });
 
@@ -347,15 +363,26 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       behavior = `It is spelled as Elfie source that reads back as that same type`,
     })
     .add({
-      situation = `The type of a lowered member node names an entity declared in a file that the member's owner's file does not use`,
-      behavior = `[[LoweredFile.text]] of the owner's file has one [[Use]] of that file after the uses written in it, its path written relative to the owner's file as a use is written, once however many members need it`,
+      situation = `The type of a lowered member node names an entity that the member's owner's file does not see, through its own declarations, its uses, or the prelude`,
+      behavior = `[[LoweredFile.text]] of the owner's file has one [[Use]] of the declaring file after the uses written in it, once however many members need it`,
+    })
+    .add({
+      situation = [`Such a [[Use]] is added`, `The declaring file is a file of the project`],
+      behavior = `Its path is written relative to the owner's file`,
+    })
+    .add({
+      situation = [`Such a [[Use]] is added`, `The declaring file is a file of a package`],
+      behavior = `Its path is the package's name, a slash, and the file's path relative to the [[Package.root]] without its extension, as a use of a package is written`,
     })
     .add({
       situation = [
-        `The type of a lowered member node names an entity declared in a file that the member's owner's file does not use`,
+        `The type of a lowered member node names an entity that the member's owner's file does not see, through its own declarations, its uses, or the prelude`,
         `The owner's file already sees another entity with the same identifier`,
       ],
-      behavior = `That [[Use]] takes an alias, the declaring file's path relative to [[Workspace.sourceDirectory]] without its extension and with each slash replaced by an underscore, and [[LoweredFile.text]] spells the type through that alias, so the name means one entity`,
+      behavior = [
+        `That [[Use]] takes an alias, and [[LoweredFile.text]] spells the type through that alias, so the name means one entity`,
+        `The alias is an identifier that names nothing else the owner's file sees: the declaring file's path relative to [[Workspace.sourceDirectory]] without its extension, each character that cannot be in an identifier replaced by an underscore, followed by the smallest number that makes it unused when it is not unused already`,
+      ],
     });
 
   // Criteria and tests

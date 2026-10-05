@@ -23,7 +23,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
   @acceptanceCriteria
     .add({
       situation = [`An argument does not begin with a dash`, `No argument is --help, -h, or --version`],
-      behavior = `The first argument that does not begin with a dash and is not the value that --root, --target, --jobs, or --color takes names the [[Command]]`,
+      behavior = `The first argument that does not begin with a dash and is not the value that --root, --tree, --target, --jobs, or --color takes names the [[Command]]`,
     })
     .add({
       situation = [`No argument that does not begin with a dash is given`, `No argument is --version`],
@@ -228,7 +228,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`check with no files given, and the program has no errors`, `[[Workspace.targets]] is empty`],
-      behavior = `One line of information of stage generation at elfie.json says the program declares no target, so nothing will be built; it is neither a problem nor a stale unit`,
+      behavior = `One line of information of stage generation at the root says the program declares no target, so nothing will be built; it is neither a problem nor a stale unit`,
     })
     .add({
       situation = `check without --json`,
@@ -582,7 +582,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
-      behavior = `For each unit of the batch, [[Generation.accept]] runs on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit; [[Generation.outcomeOf]] is read from [[Process.Exit.stdout]], the report, and the verdicts`,
+      behavior = `For each unit of the batch, [[Generation.accept]] runs on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units as recorded; [[Generation.outcomeOf]] is read from [[Process.Exit.stdout]], the report, and the verdicts`,
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,

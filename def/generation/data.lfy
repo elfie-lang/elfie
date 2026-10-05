@@ -200,7 +200,7 @@ d Plan: `Every unit of a workspace, which need generating, and how they are batc
   $workspace: `The workspace planned` = Workspace;
   $program: `The workspace lowered, which units, requests, and reviews read` = Program;
   $units: `Every unit of every target, each after its dependencies` = Unit[];
-  $moves: `Every move that resolved a cycle among files, in the order the moves were made` = Move[];
+  $moves: `Every move that resolved a cycle among files, in [[Plan.units]] order of [[Move.origin]], then in file order of the first of [[Move.entities]]` = Move[];
   $problems: `Every cycle among files that no move could resolve, and every entity that reaches one not built for its target, one [[Problem]] each` = Problem[];
   $batches: `The planned units grouped for compilation, each batch after the batches holding its dependencies` = Batch[];
 }

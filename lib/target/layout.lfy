@@ -4,8 +4,7 @@ use "./target";
 // source directory without .lfy. A layout layer extends one or more of these.
 
 trait targetLayout extends target: `The role of a layout: where each unit's outputs go` {
-  where (`A unit is planned`) -> `Its outputs' paths are spelled from its stem as the layout says, under the target's output directory`;
-  where (`Two units would write the same path`) -> `The compiler stops on the second and names both`;
+  where (`A unit is planned`) -> `Its outputs' paths, relative to the project root, are spelled from its stem as the layout says; each lies under the target's output directory`;
 }
 
 /// root: the directory outputs are spelled under, relative to the root; empty when another layout trait chooses the directory

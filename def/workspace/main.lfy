@@ -363,7 +363,7 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
     })
     .add({ behavior = `A replacement stands until the same [[path]] is given again` })
     .add({
-      situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program`,
+      situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program, nor the source of a knowledge item of the program joined to the root it is read from`,
       behavior = `The result matches [[workspace]]`,
     });
 

@@ -6,7 +6,7 @@ use "elfie/target/interface";
 trait commandLine extends targetInterface: `A program people run from a terminal` {
   .requires = ["process", "argument-parser"];
   @acceptanceCriteria
-    .add({ behavior = `Every fn carrying [[command]] is one subcommand, or the program itself when it is the only one` })
+    .add({ behavior = `Every fn carrying [[command]] is one subcommand, or the program itself when its name is empty` })
     .add({ behavior = `--help prints every command with its description, and --version prints the version` })
     .add({
       behavior = `Results go to stdout and problems to stderr; the exit code is 0 only when the command succeeded`,

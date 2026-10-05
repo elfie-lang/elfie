@@ -116,10 +116,10 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     .add({ behavior = `Each unit appears once among dependencies` })
     .add({
       situation = `There is a cycle among uses`,
-      behavior = `The cycle adds nothing beyond the [[Problem]] the workspace already holds`,
+      behavior = `The cycle adds nothing to [[Plan.problems]] and moves no entity; the [[Problem]] the workspace already holds reports it`,
     })
     .add({
-      behavior = `[[Plan.units]] holds every unit of every target, each after its dependencies, otherwise in [[Workspace.targets]] then [[Workspace.files]] order`,
+      behavior = `[[Plan.units]] holds every unit of every target, each after its dependencies outside any cycle, otherwise in [[Workspace.targets]] then [[Workspace.files]] order`,
     });
 
   // Cycles
@@ -127,7 +127,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     .add({
       behavior = [
         `A cycle is two or more units of one target each of which depends on every other, directly or through other units`,
-        `The lowest file of a cycle is the file of one of its units that the file of every other unit of the cycle uses, directly or through other files`,
+        `The lowest file of a cycle is the file of one of its units that the file of every other unit of the cycle uses, directly or through other files, and that itself uses none of them`,
       ],
     })
     .add({
@@ -142,17 +142,20 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       ],
     })
     .add({
-      behavior = `Moves repeat until no cycle is left, each round reading the dependencies the last round left`,
+      behavior = `After planning, no cycle that has a lowest file is left`,
     })
     .add({
-      situation = `A cycle has no lowest file, because no file of the cycle is used by every other`,
+      situation = [
+        `A cycle has no lowest file`,
+        `The files of the cycle's units form no cycle among uses`,
+      ],
       behavior = [
         `A [[Problem]] is added to [[Plan.problems]] at the first declaration, in [[Workspace.files]] order and then source order, of a member, parameter, or output whose type reaches an entity of another file of the cycle, naming every file of the cycle`,
         `Nothing moves for that cycle`,
       ],
     })
     .add({
-      behavior = `Every move is decided by the definitions alone and never by the target's guidance, so an entity built for two targets moves the same way for both`,
+      behavior = `Every move is decided by the definitions and the target's units alone, never by the target's guidance`,
     });
 
   // Staleness
@@ -255,13 +258,20 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
     .add({
       situation = [
         `There is no open batch, or a planned unit and the open batch do not share the first segment of [[Unit.stem]], or the batch holds 6 units or more, or the sources of the batch and the unit together are 60,000 characters or more`,
-        `The unit's reason is not dependency, or not all of its planned dependencies are in the open batch`,
+        `There is no open batch, or the unit's reason is not dependency, or it has no planned dependency, or not all of its planned dependencies are in the open batch, or the batch holds 6 units or more, or the sources of the batch and the unit together are 60,000 characters or more`,
       ],
       behavior = `The unit opens a new batch`,
     })
+    // Decision: a dependency unit is compiled against what the batch holding its dependencies
+    // produces, so it joins that batch across directories, within the same size limits.
     .add({
-      situation = `A planned unit's reason is dependency and its only planned dependencies are in the open batch`,
-      behavior = `The unit joins that batch even across directories, since it is compiled against what the batch produces`,
+      situation = [
+        `A planned unit's reason is dependency`,
+        `There is an open batch`,
+        `The unit has at least one planned dependency, and every one of them is in the open batch`,
+        `The batch holds fewer than 6 units, and the sources of the batch and the unit together are under 60,000 characters`,
+      ],
+      behavior = `The unit joins the open batch, even when they do not share the first segment of [[Unit.stem]]`,
     })
     .add({ behavior = `Every batch comes after the batches holding the dependencies of its units` })
     .add({
@@ -490,10 +500,15 @@ fn outcomeOf(report: string, verdicts: Verdict[]): `How one run of the compiler 
   );
 }
 
-fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs satisfy a request for one unit structurally, the source maps they earn, and the outputs with their markers normalized` => Verdict {
+/// recorded: the source maps recorded for the other units of the unit's target
+fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[] = []): `Whether outputs satisfy a request for one unit structurally, the source maps they earn, and the outputs with their markers normalized` => Verdict {
   // Markers
   @acceptanceCriteria
     .add({ situation = `[[outputs]] is empty`, behavior = `Rejected with a problem saying so` })
+    .add({
+      situation = `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
+      behavior = `Rejected with a problem naming the path and the other unit's source`,
+    })
     .add({
       situation = `An output's path does not [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target`,
       behavior = `Rejected with a problem naming the path`,
@@ -511,11 +526,11 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `Rejected with a problem naming the output line and the name`,
     })
     .add({
-      situation = `A marker names a line of the unit's file that falls inside an entity's declaration`,
+      situation = `A marker names a line of the unit's file, or of the file declaring an entity moved into the unit, that falls inside an entity's declaration`,
       behavior = `The marker is rewritten in [[Verdict.outputs]] to name that entity, since a name survives edits and a line does not`,
     })
     .add({
-      situation = `An output holds a [[Marker]] naming a line of the unit's [[File.path]] beyond its last`,
+      situation = `An output holds a [[Marker]] naming a line of the unit's [[File.path]], or of the file declaring an entity moved into the unit, beyond that file's last line`,
       behavior = `Rejected with a problem naming the output line`,
     })
     .add({
@@ -537,7 +552,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
   // Source maps, mechanically
   @acceptanceCriteria
     .add({
-      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target and its [[Path.extension]] is among [[Target.extensions]], every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] beyond its last, every requirement id a marker naming the unit's [[File.path]] or the file of an entity moved into the unit names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
+      situation = `[[outputs]] is not empty, every output's path [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target and its [[Path.extension]] is among [[Target.extensions]], every entity a marker names in a file of the program is declared by that file, no marker names a line of the unit's [[File.path]] or of the file declaring an entity moved into the unit beyond that file's last line, every requirement id a marker naming the unit's [[File.path]] or the file of an entity moved into the unit names is a local criterion or test of the unit or one of [[Request.globals]], and every entity of the unit has a marker in some output naming it or a line its declaring node covers`,
       behavior = `Accepted, with one [[SourceMap]] per output holding the SHA-256 of [[Unit.text]] of the unit, the SHA-256 of its local criterion and test ids as [[SourceMap.requirements]] says, the SHA-256 of [[interfaceOf]] the unit, the interface hash of each dependency as computed now, [[Time.Instant.rfc3339]] of [[Time.now]] as [[SourceMap.generated]], and every marker in output order with its derived line; nothing in a source map comes from the compiler's text except the names it spelled`,
     })
     .add({
@@ -552,7 +567,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[]): `Whether outputs sat
       behavior = `The regions from [[Marker.outputLine]] through [[Marker.end]] of the markers of an output partition it from its first marker on`,
     })
     .add({
-      behavior = `Whether an output builds or its tests pass is not checked here; the guidance says how, and the caller runs it`,
+      behavior = `Acceptance never runs the target's commands; the compiler runs them and states the results in its report`,
     });
 
   @test(
@@ -765,11 +780,11 @@ fn regionsOf(workspace: Workspace, sourceMaps: SourceMap[], name: string, target
 fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `What differs for each entity of a unit between its file as last accepted and as it is now` => Change[] {
   @acceptanceCriteria
     .add({
-      behavior = `The file as it was is bound as [[Loader.change]] of [[workspace]] with [[File.path]] of [[Unit.file]] and [[previous]], and its entities are compared with [[Unit.entities]] by name: the identifier, or the owner's identifier, a dot, and a member's name; a member is compared as an entity of its own, under its owner`,
+      behavior = `The file as it was is bound as [[Loader.change]] of [[workspace]] with [[File.path]] of [[Unit.file]] and [[previous]], and the entities it declared then are compared with the entities [[Unit.file]] declares now, both those built for [[Unit.target]] whether or not they moved to another unit, by name: the identifier, or the owner's identifier, a dot, and a member's name; a member is compared as an entity of its own, under its owner`,
     })
     .add({
       situation = `[[previous]] is undefined`,
-      behavior = `One [[Change]] of kind [[ChangeKind.added]] per entity of the unit, in file order, and nothing else`,
+      behavior = `One [[Change]] of kind [[ChangeKind.added]] per entity [[Unit.file]] declares that is built for [[Unit.target]], in file order, and nothing else`,
     })
     .add({
       situation = `A name is declared now and was not before`,
@@ -913,7 +928,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a veri
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming [[Batch.identifier]] and the target`,
         `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its local criteria on one line prefixed by its id and place, then each of its local tests as input and expectation on one line prefixed by its id and place`,
-        `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the unit's [[File.path]], so an entity of another file with the same name brings none of its code: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and then the region's text; a region already listed for an earlier entity is listed once, its path and lines repeated without its text`,
+        `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the file that declares the entity, so an entity of another file with the same name brings none of its code: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and then the region's text; a region already listed for an earlier entity is listed once, its path and lines repeated without its text`,
         `The verifier protocol: that the reader examines and never edits, and never proposes code; that it writes one JSON object on one line per criterion and per test with exactly the keys id, status, evidence, and note, as [[Review]] says, where status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead; that a criterion no region can be checked against is unverifiable, not violated; that the tools of the agent server are called before files are searched or read by hand: elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used; and that the report ends with one line reading ELFIE: REVIEWED`,
       ],
     })

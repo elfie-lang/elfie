@@ -24,7 +24,7 @@ use "elfie/values/string" as Strings;
 
 // Lookup Queries
 
-fn rangeOf(workspace: Workspace, node: Node | Token): `Where a node or token sits` => Range {
+fn rangeOf(workspace: Workspace, node: Node | ErrorNode | Token): `Where a node, error node, or token sits` => Range {
   @acceptanceCriteria
     .add({ behavior = `[[Range.file]] is [[Token.file]] of the first token covered` })
     .add({ behavior = `[[Range.start]] is [[Token.line]] and [[Token.column]] of the first token covered` })
@@ -427,7 +427,7 @@ fn hoverOf(workspace: Workspace, entity: Entity): `Everything shown for one enti
     })
     .add({
       situation = `[[entity]] is a type parameter`,
-      behavior = `[[Hover.kind]] is [[SymbolKind.typeParameter]], [[Hover.owner]] is the declaration that lists it, and [[Hover.definition]], [[Hover.traits]], and [[Hover.criteria]] are empty`,
+      behavior = `[[Hover.definition]] is undefined, and [[Hover.traits]] and [[Hover.criteria]] are empty`,
     })
     .add({
       situation = [
