@@ -1,3 +1,4 @@
+use "../grammar/rules/file";
 use "../grammar/traits";
 use "../lexer/data";
 use "../model/data";
@@ -9,17 +10,20 @@ enum Phase: `When a piece of source runs` {
   runtime = `runtime: it is kept, and generated for a target`,
 }
 
+// Decision: the grammar has no type declaration for a union, so Value stays a data whose one
+// criterion names what it can be.
 d Value: `What evaluating an expression at compile time gives` {
-  where (`An expression is evaluated`) -> `The result is undefined, null, a boolean, a number, a string, a list or object of values, an entity, a scope, or a function with the scope it was written in`;
-  where (`A value that is not an entity, a scope, or a function is written into a lowered tree`) -> `It is spelled as the literal of its kind`;
-  where (`A value that is an entity or a scope is written into a lowered tree`) -> `It is spelled as a reference to its declaration`;
-  where (`A value that is a function is written into a lowered tree`) -> `It is spelled as a reference to the declaration it came from`;
+  @acceptanceCriteria
+    .add({
+      behavior = `Is undefined, null, a boolean, a number, a string, a list or object of values, an entity, a scope, or a function with the scope it was written in`,
+    });
 }
 
+// Decision: a call of like evaluates to a Prompted, never to a value the interpreter picks, so
+// binding stays deterministic.
 d Prompted: `A value only the compiler can choose, left for generation to choose` {
   $valueType: `The type the chosen value must have` = Entity;
   $prompt: `The prompt that describes it, with its references and executions rendered` = string;
-  where (`A call of like on an entity's context is evaluated`) -> `The result is a [[Prompted]], never a value the interpreter picks, so binding stays deterministic`;
 }
 
 enum RequirementScope: `Whom a criterion or test is for` {
@@ -39,11 +43,13 @@ d LoweredCriterion extends Criterion: `One acceptance criterion as generation an
   $entity: `The entity it is for; undefined when global` = Entity | undefined;
   $origin: `The where statement or add call that wrote it` = Node;
   $references: `Every entity it names with a bracketed reference, in order, kept as links rather than rendered names` = Entity[];
-  @acceptanceCriteria
-    .add({
-      situation = `Two criteria for the same entity would have the same id`,
-      behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
-    });
+  with LoweredCriterion$id {
+    @acceptanceCriteria
+      .add({
+        situation = `Two criteria for the same entity would have the same id`,
+        behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
+      });
+  }
 }
 
 d LoweredTest extends Test: `One test as generation and verification see it: an entity of its own, apart from the code` {
@@ -53,34 +59,51 @@ d LoweredTest extends Test: `One test as generation and verification see it: an 
   $origin: `The test call argument that wrote it` = Node;
   $inputValue: `Its input, evaluated` = Value | Prompted;
   $expectValue: `Its expect, evaluated` = Value | Prompted;
-  @acceptanceCriteria
-    .add({
-      situation = `Two tests for the same entity would have the same id`,
-      behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
-    });
+  with LoweredTest$id {
+    @acceptanceCriteria
+      .add({
+        situation = `Two tests for the same entity would have the same id`,
+        behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
+      });
+  }
 }
 
+// Decision: every lowered node has an origin, so every place generation reads maps back to the
+// source.
 d LoweredNode: `One node of the program as generation sees it: runtime code only, with compile-time results in place` {
   $rule: `The rule it satisfies` = Rule;
   $children: `Lowered nodes and tokens in source order; a folded node has none` = (LoweredNode | Token)[];
-  $origin: `The node of the parse tree it was lowered from` = Node;
+  $origin: `The node of the parse tree it was lowered from; for a folded node, the expression it replaced` = Node;
   $entity: `The entity it declares; undefined when it declares none` = Entity | undefined;
   $value: `What a folded node holds; undefined for a node kept as written` = Value | Prompted | undefined;
   $criteria: `The local criteria of its entity, in [[Entity.acceptanceCriteria]] order; empty when it declares none` = LoweredCriterion[];
   $tests: `The local tests of its entity, in order; empty when it declares none` = LoweredTest[];
   @acceptanceCriteria
-    .add({ behavior = `Every lowered node has an origin, so every place generation reads maps back to the source` })
-    .add({
-      behavior = `A lowered node is a kept runtime node, a folded value, or a member of its parent's entity; nothing whose [[Phase]] is compile is kept as written`,
-    });
+    .add({ behavior = `A lowered node is a kept runtime node, a folded value, or a member of its parent's entity` })
+    .add({ behavior = `No node whose [[Phase]] is compile is kept as written` });
 }
 
 d LoweredFile: `One file as generation sees it` {
   $file: `The file it was lowered from` = File;
   $root: `The lowered [[SourceFile]]` = LoweredNode;
-  $text: `The lowered tree spelled as Elfie source: kept nodes as written, folded nodes as the literal of their value, member nodes as a member with its type and value; never a criterion or a test` = string;
+  $text: `The lowered tree spelled as Elfie source: kept nodes as written, folded nodes as their value, member nodes as a member with its type and value; never a criterion or a test` = string;
   $criteria: `The local criteria of the file's own entity, in order` = LoweredCriterion[];
   $tests: `The local tests of the file's own entity, in order` = LoweredTest[];
+  with LoweredFile$text {
+    @acceptanceCriteria
+      .add({
+        situation = `A folded node's value is not an entity, a scope, or a function`,
+        behavior = `It is spelled as the literal of its kind`,
+      })
+      .add({
+        situation = `A folded node's value is an entity or a scope`,
+        behavior = `It is spelled as a reference to its declaration`,
+      })
+      .add({
+        situation = `A folded node's value is a function`,
+        behavior = `It is spelled as a reference to the declaration it came from`,
+      });
+  }
 }
 
 d Program: `A workspace with every file lowered: what generation reads` {

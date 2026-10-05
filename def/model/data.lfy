@@ -1,8 +1,11 @@
 use "../grammar/rules/expression";
 use "../grammar/rules/statement";
+use "../grammar/terminals/keyword";
 use "../lexer/data";
 use "../parser/data";
+use "elfie/criteria/command" as Commands;
 use "elfie/criteria/criterion" as Criteria;
+use "elfie/criteria/knowledge" as Knowledges;
 use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
 use "elfie/prelude/trait" as Traits;
@@ -61,8 +64,22 @@ d Scope: `A region in which names resolve` {
       behavior = `[[Scope.symbols]] holds the symbols its use statements import, after the symbols declared directly in it`,
     })
     .add({
-      situation = `A file scope belongs to a file whose [[Source.origin]] is [[Origin.program]]`,
+      situation = `A file scope belongs to the file whose [[Source.origin]] is [[Origin.prelude]]`,
+      behavior = `It is the prelude scope`,
+    })
+    .add({
+      situation = [
+        `A file scope belongs to a file whose [[Source.origin]] is [[Origin.program]]`,
+        `A [[Source]] bound with it has [[Origin.prelude]] as its [[Source.origin]]`,
+      ],
       behavior = `[[Scope.parent]] is the prelude scope`,
+    })
+    .add({
+      situation = [
+        `A file scope belongs to a file whose [[Source.origin]] is [[Origin.program]]`,
+        `No [[Source]] bound with it has [[Origin.prelude]] as its [[Source.origin]]`,
+      ],
+      behavior = `[[Scope.parent]] is undefined`,
     })
     .add({
       situation = `A file scope belongs to a file whose [[Source.origin]] is [[Origin.library]] or [[Origin.prelude]]`,
@@ -79,9 +96,10 @@ d Applied: `One trait on one entity` {
 // Context
 
 // Decision: the prelude declares what every entity is seen as (Entity, Trait, Function,
-// Criterion, Test); the model extends those and keeps only what the binder needs internally,
-// overriding a member where its own record is richer than the prelude's. The model's names
-// shadow the prelude's in every file that uses this one, without a problem.
+// Criterion, Test, Knowledge, Command); the model extends those and keeps only what the binder
+// needs internally, overriding a member where its own record is richer than the prelude's or
+// where the binder says how its value is found. The model's names shadow the prelude's in every
+// file that uses this one, without a problem.
 
 /// The prelude's [[Criteria.Criterion]] with the contributor held as the entity itself, where
 /// the prelude types it as object.
@@ -89,34 +107,121 @@ d Criterion extends Criteria.Criterion: `One acceptance criterion as written, wi
   $contributor: `The entity whose body holds it: the entity itself or one of its traits` = Entity;
 }
 
+/// The prelude's [[Knowledges.Knowledge]] with the contributor held as the entity itself, where
+/// the prelude types it as object.
+d Knowledge extends Knowledges.Knowledge: `Something the compiler is given to read, with the entity it came from` {
+  $contributor: `The entity whose body holds it: the entity itself or one of its traits` = Entity;
+}
+
+/// The prelude's [[Commands.Command]] with the contributor held as the entity itself, where the
+/// prelude types it as object.
+d Command extends Commands.Command: `A shell command for one operation, with the entity it came from` {
+  $contributor: `The entity whose body holds it: the entity itself or one of its traits` = Entity;
+}
+
+// Decision: Test stays a data, not an alias of the prelude's: types of the program reach it, and
+// an alias would make them reach the prelude's Test, which is never built for a target.
+
 /// The prelude's [[Criteria.Test]], declared here too for the files that take it from the model.
 d Test extends Criteria.Test: `One test, as the prelude declares it` {}
 
 /// The prelude's [[Prelude.Entity]] with what the binder keeps: its criterion, applied trait,
-/// and usage records are richer than [[Prelude.Entity.acceptanceCriteria]],
-/// [[Prelude.Entity.traits]], and [[Prelude.Entity.references]], so those three are overridden.
+/// usage, knowledge, and command records are richer than the prelude's, and the binder says how
+/// the values of its naming and typing members are found.
 d Entity extends Prelude.Entity: `A declared thing seen through its context layer` {
+  $identifier: `The declared name; undefined when anonymous` = string | undefined;
+  $definition: `The description provided for it; undefined when there is none` = string | undefined;
+  $type: `The declared or inferred type; the entity itself for a data, trait, type, or enum` = Entity | undefined;
+  $typeParameters: `The type parameters the declaration lists, in order; empty when none` = Entity[];
+  $typeArguments: `The arguments the type was written with when it is generic, in order; empty otherwise` = Entity[];
+  $itemType: `What a list-typed entity holds; undefined otherwise` = Entity | undefined;
   $acceptanceCriteria: `Own criteria first, then each trait's in application order` = Criterion[];
   $traits: `Every trait applied to it, direct or inherited, in application order, each with its [[Applied.source]]` = Applied[];
   $references: `Every use of a [[Reference]] in its definition, documentation, or value` = Usage[];
+  $knowledge: `Own items first, then each trait's in application order` = Knowledge[];
+  $commands: `Own commands first, then each trait's in application order` = Command[];
   $node: `The node that declared it` = Node;
   $symbol: `The symbol that names it; undefined for an anonymous entity` = Symbol | undefined;
   $scope: `The scope it owns, holding its parameters, members, and body; undefined when it owns none` = Scope | undefined;
 
-  @acceptanceCriteria
-    .add({
-      behavior = `Holds the knowledge, commands, and targets added to it, as [[Prelude.Entity]] declares them; each knowledge item and command holds the entity that contributed it, as a [[Criterion]] does, and each target is the entity of the const added`,
-    });
+  with Entity$identifier {
+    @acceptanceCriteria.add({ behavior = `[[Entity.identifier]] is [[Symbol.name]] of [[Entity.symbol]]` });
+  }
+
+  with Entity$definition {
+    @acceptanceCriteria
+      .add({
+        behavior = `[[Entity.definition]] is the string or template in the declaration's [[DefinitionClause]] or [[Definition]]`,
+      });
+  }
+
+  with Entity$type {
+    @acceptanceCriteria
+      .add({
+        situation = `The declaration has a [[TypeExpression]] after the colon`,
+        behavior = `[[Entity.type]] is what that expression resolves to`,
+      })
+      .add({
+        situation = `The declaration is a member or external with an [[Assignment]] right side`,
+        behavior = `[[Entity.type]] is what the right side resolves to`,
+      })
+      .add({
+        situation = `The declaration is a variable or parameter with a value`,
+        behavior = `[[Entity.type]] is the type of the value`,
+      })
+      .add({
+        situation = [`The entity is declared by a [[TypeParameter]]`, `The [[TypeParameter]] has an [[ExtendsKeyword]]`],
+        behavior = `[[Entity.type]] is what the [[TypeExpression]] after its [[ExtendsKeyword]] resolves to`,
+      })
+      .add({
+        situation = [`The entity is declared by a [[TypeParameter]]`, `The [[TypeParameter]] has no [[ExtendsKeyword]]`],
+        behavior = `[[Entity.type]] is undefined`,
+      });
+  }
+
+  with Entity$typeParameters {
+    @acceptanceCriteria
+      .add({
+        behavior = `[[Entity.typeParameters]] holds the entity of each [[TypeParameter]] in the declaration's [[TypeParameters]], in order`,
+      });
+  }
+
+  with Entity$typeArguments {
+    @acceptanceCriteria
+      .add({
+        situation = `The entity is a declaration seen with the [[TypeArguments]] or [[Generic]] that follow a [[Reference]] to it`,
+        behavior = `[[Entity.typeArguments]] holds what each argument resolves to, in order`,
+      });
+  }
+
+  with Entity$itemType {
+    @acceptanceCriteria
+      .add({
+        situation = `[[Entity.type]] is [[Lists.List]]`,
+        behavior = `[[Entity.itemType]] is the first of [[Entity.typeArguments]] of [[Entity.type]]`,
+      })
+      .add({
+        situation = `[[Entity.type]] is not [[Lists.List]]`,
+        behavior = `[[Entity.itemType]] is undefined, even for a bare [[Lists.List]] and a list value`,
+      });
+  }
 }
 
 /// The prelude's [[Functions.Function]] with the parameters held as symbols, whose entities are
 /// [[Functions.Function.parameters]].
 d FnEntity extends Functions.Function: `A declared fn or function seen through its context layer` {
   $parameters: `The symbols of its parameters, in declaration order` = Symbol[];
+
+  with FnEntity$parameters {
+    @acceptanceCriteria
+      .add({
+        behavior = `[[FnEntity.parameters]] holds the symbols of its [[Parameter]] and [[SpreadParameter]] nodes, in order`,
+      });
+  }
 }
 
-/// The prelude's [[Traits.Trait]], with nothing added.
-d TraitEntity extends Traits.Trait: `A declared trait seen through its context layer, as the prelude declares it` {}
+/// The prelude's [[Traits.Trait]], named here too for the files that take it from the model.
+alias TraitEntity: `A declared trait seen through its context layer, as the prelude declares it` = Traits.Trait;
 
 // Tracking
 
@@ -197,14 +302,14 @@ fn typeTextOf(model: Model, entity: Entity | undefined): `How a type is spelled 
         `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
         `The argument is not a function type, a union, or an intersection`,
       ],
-      behavior = `The argument as [[typeTextOf]] spells it, then square brackets, so the sugar wins`,
+      behavior = `The argument as [[typeTextOf]] spells it, then square brackets`,
     })
     .add({
       situation = [
         `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
         `The argument is a function type, a union, or an intersection`,
       ],
-      behavior = `The argument as [[typeTextOf]] spells it, parenthesized, then square brackets, so the sugar wins`,
+      behavior = `The argument as [[typeTextOf]] spells it, parenthesized, then square brackets`,
     })
     .add({
       situation = `[[entity]] is the entity of a [[FunctionType]]`,
@@ -233,7 +338,7 @@ fn typeTextOf(model: Model, entity: Entity | undefined): `How a type is spelled 
     })
     .add({
       situation = `[[entity]] is a member's type read on a left side with [[Entity.typeArguments]]`,
-      behavior = `What is spelled is the type after the base's type arguments replace its type parameters, so item of a Box of string spells string`,
+      behavior = `What is spelled is the type after the base's type arguments replace its type parameters`,
     });
 
   @test(
@@ -253,6 +358,13 @@ fn typeTextOf(model: Model, entity: Entity | undefined): `How a type is spelled 
     {
       input = [Model@like(`Bound from: d Box<T> { $items: \`d\` = T[]; }`), Entity@like(`The type of the member items`)],
       expect = `T[]`,
+    },
+    {
+      input = [
+        Model@like(`Bound from: d Box<T> { $item: \`d\` = T; } const b = Box<string>; const i = b.item;`),
+        Entity@like(`The type of the member item as read on b`),
+      ],
+      expect = `string`,
     },
   );
 }

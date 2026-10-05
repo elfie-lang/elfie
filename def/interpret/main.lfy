@@ -24,10 +24,12 @@ use "elfie/target" as Targets;
 // it reproducing the source. Lowering builds a new tree whose nodes point back to it, as
 // rust-analyzer does for macro expansions.
 
+ace const compileTimeSites: `Where compile-time code is written` = `an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], an [[ExtendsClause]], the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, knowledge, commands, or targets, or of test on an entity's context, or a statement directly in a [[SourceFile]] that is not a declaration`;
+
 fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is kept for runtime` => Phase {
   @acceptanceCriteria
     .add({
-      situation = `[[node]] is, or is inside, one of: an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], an [[ExtendsClause]], the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, knowledge, commands, or targets, or of test on an entity's context, or a statement directly in a [[SourceFile]] that is not a declaration`,
+      situation = `[[node]] is, or is inside, one of: {{compileTimeSites}}`,
       behavior = `Returns [[Phase.compile]]`,
     })
     .add({
@@ -35,12 +37,14 @@ fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is
       behavior = `Returns [[Phase.compile]]`,
     })
     .add({
-      situation = `[[node]] is not, and is not inside, any of: an [[Ace]], a [[TraitDeclaration]], a [[Where]], a [[With]], an [[IsClause]], an [[ExtendsClause]], the [[Block]] of a [[DataDeclaration]] or an [[AgentFunctionDeclaration]], a [[Call]] of apply on a trait, of add on an entity's acceptanceCriteria, knowledge, commands, or targets, or of test on an entity's context, or a statement directly in a [[SourceFile]] that is not a declaration; and [[node]] is not a [[TemplateReference]] or [[TemplateExecution]] in a definition, a criterion, or a test`,
-      behavior = `Returns [[Phase.runtime]]; a declaration whose body is compile time is itself runtime, and a file-level const is runtime though [[lower]] folds its value`,
+      situation = [
+        `[[node]] is not, and is not inside, any of: {{compileTimeSites}}`,
+        `[[node]] is not a [[TemplateReference]] or [[TemplateExecution]] in a definition, a criterion, or a test`,
+      ],
+      behavior = `Returns [[Phase.runtime]]`,
     });
 
   @test(
-    { input = [Model@like(`bound from: trait t {}`), Node@like(`the trait declaration`)], expect = Phase.compile },
     {
       input = [Model@like(`bound from: scoped.apply(SourceFile);`), Node@like(`the expression statement`)],
       expect = Phase.compile,
@@ -54,6 +58,10 @@ fn phaseOf(model: Model, node: Node): `Whether a node runs at compile time or is
       expect = Phase.compile,
     },
     { input = [Model@like(`bound from: const c = 1;`), Node@like(`the declaration`)], expect = Phase.runtime },
+    {
+      input = [Model@like(`bound from: d A { $x: \`d\` = string; }`), Node@like(`the data declaration`)],
+      expect = Phase.runtime,
+    },
   );
 }
 
@@ -64,33 +72,30 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
       behavior = `A [[Phase.compile]] statement sees names as the rest of the program does: throughout their [[Scope]], wherever they are declared, including the names that other compile-time statements add`,
     })
     .add({
-      behavior = `[[TraitEntity.entities]] read in compile-time code holds every entity the trait is applied to anywhere in the program, in file order then application order`,
+      behavior = `[[TraitEntity.entities]] read in compile-time code holds every entity the trait is applied to anywhere in the program`,
     })
     .add({
       situation = `Every statement left to run is waiting to read what a trait was applied to, and none can run`,
       behavior = `A [[Problem]] naming the waiting statements and the traits they wait on is added at each, and none of them runs`,
     });
 
-  // Passes and rounds
+  // Rounds
   @acceptanceCriteria
     .add({
       behavior = [
-        `Runs as the binder's expand pass: after the declare pass and before the resolve pass, over every file in bind order`,
         `It is a fixpoint in rounds: each round runs every [[Phase.compile]] statement not yet run whose names now resolve`,
         `A statement that reads [[TraitEntity.entities]] of a trait runs only in a round where no statement not yet run can apply that trait`,
         `Rounds repeat until one runs nothing`,
       ],
     })
     .add({
-      situation = `The expand pass's rounds have stopped and a [[Phase.compile]] statement not yet run still does not resolve`,
+      situation = `The rounds have stopped and a [[Phase.compile]] statement not yet run still does not resolve`,
       behavior = `A [[Problem]] is added at the name that does not resolve`,
     })
     .add({
-      behavior = [
-        `Running a statement changes only the model: symbols join scopes, members and values join entities, [[Applied]] records join entities, and criteria and tests join entities`,
-        `Running a statement never changes a [[Tree]]`,
-      ],
-    });
+      behavior = `Running a statement changes only the model: symbols join scopes, members and values join entities, [[Applied]] records join entities, and criteria and tests join entities`,
+    })
+    .add({ behavior = `Running a statement never changes a [[Tree]]` });
 
   // Applying traits
   @acceptanceCriteria
@@ -99,131 +104,63 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
         `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
         `The first argument does not resolve to an [[alternationList]]`,
       ],
-      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to the entity the first argument resolves to, with the other arguments as [[Applied.arguments]]`,
+      behavior = `[[Traits.apply]] is performed with that trait as subject, the entity the first argument resolves to as target, and the other arguments as [[Applied.arguments]]`,
     })
     .add({
       situation = [
         `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
         `The first argument resolves to an [[alternationList]]`,
       ],
-      behavior = `The trait is applied as the criteria of [[Traits.Trait.apply]] say: to every item of the [[alternationList]], with the other arguments as [[Applied.arguments]]`,
-    })
-    .add({
-      situation = `A [[Current]] with no [[MemberName]] is run`,
-      behavior = `It resolves to [[Scope.current]] of its scope`,
-    })
-    .add({
-      situation = `A [[Member]] with [[ContextAccessor]] is run whose left is a [[Name]] bound to a const or let`,
-      behavior = `It reads the context layer of the const's or let's entity, never of its value, so an add on a const's acceptanceCriteria, knowledge, or commands reaches the const as it reaches any declared entity`,
-    })
-    .add({
-      situation = [`A [[Current]] with no [[MemberName]] is run`, `Its scope is a file scope`],
-      behavior = `It resolves to the anonymous entity for the file, so a trait applied to it at the top level of a file is applied to the file`,
-    })
-    .add({
-      situation = `An applied trait has an [[ExtendsClause]]`,
-      behavior = `Each extended trait is applied too, up the whole chain, with its arguments evaluated from the extending trait's parameters`,
-    })
-    .add({
-      situation = `An applied trait has an [[ExtendsClause]]`,
-      behavior = `The extended traits' value setters are evaluated before the extending trait's`,
-    })
-    .add({
-      situation = `A trait is reached more than once for one entity, through several extends paths or applications, with equal arguments`,
-      behavior = `It is applied once, at its first application`,
-    })
-    .add({
-      situation = `A trait is applied to an entity`,
-      behavior = [
-        `Each member declared in the trait's body joins the entity's [[Entity.scope]]`,
-        `The trait body's value setters are evaluated with the parameters bound to the arguments as the entity's values`,
-        `Each criterion of the trait body is appended to [[Entity.acceptanceCriteria]] with [[Criterion.contributor]] set to the trait`,
-      ],
+      behavior = `[[Traits.apply]] is performed with that trait as subject, every item of the [[alternationList]] as target, and the other arguments as [[Applied.arguments]]`,
     })
     .add({
       situation = `Two applied traits declare the same member`,
       behavior = `Most recently applied trait definition wins`,
-    })
-    .add({
-      behavior = `[[TraitEntity.extenders]] is every trait that names it in an [[ExtendsClause]], in file order, and an extender is never one of its [[TraitEntity.entities]]`,
-    });
-
-  // Knowledge, commands, and targets
-  @acceptanceCriteria
-    .add({
-      situation = `A [[Call]] of add on an entity's knowledge is run`,
-      behavior = `One [[Knowledge]] is appended to that entity's knowledge with the topic, kind, source, and quote of the object argument, its contributor set as a criterion's would be in the same place`,
-    })
-    .add({
-      situation = `A [[Call]] of add on an entity's commands is run`,
-      behavior = `One [[Command]] is appended to that entity's commands with the operation and line of the object argument, its contributor set as a criterion's would be in the same place`,
-    })
-    .add({
-      situation = `A trait whose body adds knowledge or commands to its current entity is applied to an entity`,
-      behavior = `Each item is appended to that entity's knowledge or commands with the trait as its contributor, as the trait's criteria are`,
-    })
-    .add({
-      situation = [
-        `A [[Call]] of add on an entity's targets is run with an argument naming an ace const of a project file whose value is a [[Targets.Target]], because its declared type is [[Targets.Target]] or its value is a call of a function whose output is [[Targets.Target]]`,
-        `The const is not already in that entity's targets`,
-        `The entity is not a member, a parameter, or an enum member`,
-      ],
-      behavior = `The const's entity is appended to that entity's targets, and the call yields the list, so calls chain`,
-    })
-    .add({
-      situation = `A [[Call]] of add on an entity's targets is run with an argument that names no such const`,
-      behavior = `A [[Problem]] at the argument says it names no target, and nothing is appended`,
-    })
-    .add({
-      situation = `A [[Call]] of add on an entity's targets is run with a const already in that entity's targets`,
-      behavior = `A [[Problem]] at the call says the target was added twice, and nothing is appended`,
-    })
-    .add({
-      situation = `A [[Call]] of add is run on the targets of a member, a parameter, or an enum member`,
-      behavior = `A [[Problem]] at the call says it is built with its owner, and nothing is appended`,
-    });
-
-  // Declaring a target
-  @acceptanceCriteria
-    .add({
-      situation = `An ace const of a project file whose value is a [[Targets.Target]] is run`,
-      behavior = [
-        `Each layer of its value is applied to the const as [[Traits.Trait.apply]] applies a trait, with the layer's arguments, in guidance order: the slots layers, interfaces, frameworks, layout, runtime, platforms, ecosystem, and language, each slot in its own order`,
-        `A layer is a trait, applied with no arguments, or an object holding a trait as subject and its arguments as arguments, as [[Traits.Layer]] is`,
-        `A trait in two slots with equal arguments is applied once, at its first place`,
-      ],
-    })
-    .add({
-      behavior = `The const's provides, requires, and outputExtensions hold every item any of its layers sets, each once, in guidance order`,
-    })
-    .add({
-      situation = `Two layers of the const set any other member to different values`,
-      behavior = `A [[Problem]] at the const names the member and both layers`,
-    })
-    .add({
-      situation = `A slot of the value holds something that is neither a trait nor such an object`,
-      behavior = `A [[Problem]] at the const names the slot, and that item is not applied`,
-    })
-    .add({
-      situation = `A [[Call]] of [[Traits.layer]], or of layer on a trait, is run at compile time`,
-      behavior = [
-        `It is performed natively: it yields an object holding the trait as subject and the other arguments, evaluated in order, as arguments, as [[Traits.Layer]] is`,
-        `Nothing is applied by the call itself`,
-      ],
-    })
-    .add({
-      situation = `A [[Call]] of layer gives a different number of arguments than the trait has parameters, a spread parameter taking any number`,
-      behavior = `A [[Problem]] at the call names the trait`,
     });
 
   // Calls
   @acceptanceCriteria
     .add({
-      behavior = [
-        `Compile-time code may call an ace function, a function, and a fn carrying [[builtin]], which the interpreter performs natively`,
-        `Whether a call is compile-time code is decided by where the call is written, never by where the function it calls is declared, so a call of a function of the package elfie, such as [[Targets.targetOf]], runs when written in an ace statement`,
-        `A call of a fn not carrying [[builtin]] adds a [[Problem]] at the call, because its body is criteria and has nothing to run`,
-      ],
+      behavior = `Compile-time code may call an ace function, a function, and a fn carrying [[builtin]], which the interpreter performs natively`,
+    })
+    .add({
+      behavior = `Whether a call is compile-time code is decided by where the call is written, never by where the function it calls is declared`,
+    })
+    // Decision: a fn's body is criteria and has nothing to run.
+    .add({
+      situation = `Compile-time code calls a fn not carrying [[builtin]]`,
+      behavior = `A [[Problem]] is added at the call`,
+    });
+
+  // Targets
+  @acceptanceCriteria
+    .add({
+      situation = `A [[Call]] of add on an entity's targets is run with an argument that does not resolve to a target const, as [[Targets.Target]] defines one`,
+      behavior = [`A [[Problem]] at the argument says it names no target`, `Nothing is appended`],
+    })
+    .add({
+      situation = `A [[Call]] of add on an entity's targets is run with a const already in that entity's targets`,
+      behavior = [`A [[Problem]] at the call says the target was added twice`, `Nothing is appended`],
+    })
+    .add({
+      situation = `A [[Call]] of add is run on the targets of a member, a parameter, or an enum member`,
+      behavior = [`A [[Problem]] at the call says it is built with its owner`, `Nothing is appended`],
+    })
+    .add({
+      situation = `A target const, as [[Targets.Target]] defines one, is run`,
+      behavior = `Each layer of its value is applied to it with [[Traits.apply]], with the layer's arguments, in the guidance order of [[Targets.Target]]`,
+    })
+    .add({
+      situation = `Two layers of a target const set a member other than provides, requires, or outputExtensions to different values`,
+      behavior = `A [[Problem]] at the const names the member and both layers`,
+    })
+    .add({
+      situation = `A slot of a target const's value holds something that is neither a trait nor a [[Traits.Layer]]`,
+      behavior = [`A [[Problem]] at the const names the slot`, `That item is not applied`],
+    })
+    .add({
+      situation = `A [[Call]] of [[Traits.layer]], or of layer on a trait, gives more arguments than the trait has parameters and none of them is spread, or fewer than it has parameters that are neither optional nor spread`,
+      behavior = `A [[Problem]] at the call names the trait`,
     });
 
   @test(
@@ -237,7 +174,7 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
           `declared from: a.lfy reading trait p {} d X is p {} d All is list(...p@entities), and b.lfy using a.lfy reading d Y is p {}`,
         ),
       ],
-      expect = Model@like(`The value of All holding X and Y, because reading p@entities waited for b.lfy`),
+      expect = Model@like(`The value of All holding X and Y`),
     },
     {
       input = [Model@like(`declared from: fn f() => number; ace const c = f();`)],
@@ -246,36 +183,57 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
     {
       input = [
         Model@like(
-          `declared from a project file reading: trait l extends targetLanguage { .markerComment = "#"; } trait f(root: string) extends targetLayout whose one where statement's behavior reads it is under, then root rendered as a template value, ace const t = targetOf({ output = "o", language = l, layout = f.layer("o") }); d A { @targets.add(t); }`,
+          `declared from a project file reading: trait l extends targetLanguage {} trait f extends targetLayout {} ace const t = targetOf({ output = "o", language = l, layout = f });`,
         ),
       ],
-      expect = Model@like(
-        `t carrying f, then l, among its traits; a criterion of t contributed by f reading it is under o; the value # for markerComment on t; and A's targets holding t; no problems`,
-      ),
+      expect = Model@like(`t carrying f, then l, among its traits; no problems`),
     },
     {
       input = [
         Model@like(
-          `declared from: d A { @knowledge.add({ topic = \`a guide\`, kind = KnowledgeKind.reference, source = "docs/a.md", quote = true }); @targets.add(A); }`,
+          `declared from a project file reading: trait l extends targetLanguage {} trait f(root: string) extends targetLayout whose one where statement's behavior reads it is under, then root rendered as a template value, ace const t = targetOf({ output = "o", language = l, layout = f.layer("o") });`,
         ),
       ],
-      expect = Model@like(
-        `A's knowledge holding one item, a guide, contributed by A; A's targets empty; and one [[Problem]] at the argument of the second add saying it names no target`,
-      ),
+      expect = Model@like(`A criterion of t contributed by f, reading it is under o`),
+    },
+    {
+      input = [
+        Model@like(
+          `declared from a project file reading: trait l extends targetLanguage { .markerComment = "#"; } trait f extends targetLayout {} ace const t = targetOf({ output = "o", language = l, layout = f });`,
+        ),
+      ],
+      expect = Model@like(`The value # for markerComment on t`),
+    },
+    {
+      input = [
+        Model@like(
+          `declared from a project file reading: trait l extends targetLanguage {} trait f extends targetLayout {} ace const t = targetOf({ output = "o", language = l, layout = f }); d A { @targets.add(t); }`,
+        ),
+      ],
+      expect = Model@like(`A's targets holding t; no problems`),
+    },
+    {
+      input = [
+        Model@like(
+          `declared from: d A { @knowledge.add({ topic = \`a guide\`, kind = KnowledgeKind.reference, source = "docs/a.md", quote = true }); }`,
+        ),
+      ],
+      expect = Model@like(`A's knowledge holding one item, a guide, contributed by A`),
+    },
+    {
+      input = [Model@like(`declared from: d A { @targets.add(A); }`)],
+      expect = Model@like(`A's targets empty, and one [[Problem]] at the argument of the add saying it names no target`),
     },
   );
 }
 
 fn evaluate(model: Model, node: Node): `The value of an expression, computed at compile time` => Value | Prompted {
   @acceptanceCriteria
+    .add({ behavior = `Evaluates [[node]] in the scope it is written in, against [[model]]` })
+    .add({ behavior = `The same node evaluated twice gives the same value` })
+    .add({ behavior = `Evaluating a node never changes [[model]]` })
     .add({
-      behavior = [
-        `Evaluates [[node]] in the scope it is written in, against [[model]]`,
-        `The same node evaluated twice gives the same value, and the model is not changed by evaluating it`,
-      ],
-    })
-    .add({
-      behavior = `A compile-time value may be read anywhere in its scope, before or after its declaration; only a cycle leaves it undefined`,
+      behavior = `A compile-time value may be read anywhere in its scope, before or after its declaration`,
     })
     .add({
       situation = `[[node]] is a call of like on an entity's context`,
@@ -286,7 +244,10 @@ fn evaluate(model: Model, node: Node): `The value of an expression, computed at 
       behavior = `Returns the value it reads`,
     })
     .add({
-      situation = `[[node]] is or holds a call of an ace function, or of a function declared outside the program's runtime code, whose arguments do not depend on a parameter or variable that only has a value at runtime`,
+      situation = [
+        `[[node]] is or holds a call of an ace function, or of a function declared outside the program's runtime code`,
+        `The call's arguments do not depend on a parameter or variable that only has a value at runtime`,
+      ],
       behavior = `The function is run and the call's value is what it returns, wherever the call is written`,
     })
     .add({
@@ -338,7 +299,6 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
   @acceptanceCriteria
     .add({
       behavior = [
-        `A kept declaration's lowered node carries its entity`,
         `The value of a file-level const is [[evaluate]] of its expression, lowered as one folded node`,
         `Inside runtime code, an expression that [[evaluate]] gives a value for without a runtime parameter or variable is one folded node holding that value`,
         `A call of like is one folded node holding its [[Prompted]]`,
@@ -348,9 +308,10 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       situation = `A [[VariableDeclaration]] with let is directly in a [[SourceFile]]`,
       behavior = `A [[Problem]] is added at it saying a file-level let is not allowed, and it is kept`,
     })
+    // Decision: such a function will not exist at runtime.
     .add({
       situation = `Runtime code calls an ace function, or a function declared outside the program's runtime code, with an argument [[evaluate]] cannot give a value for`,
-      behavior = `A [[Problem]] is added at the call, because the function will not exist at runtime`,
+      behavior = `A [[Problem]] is added at the call`,
     });
 
   // Members
@@ -379,15 +340,16 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
     })
     .add({
       situation = [`Such a [[Use]] is added`, `The declaring file is a file of a package`],
-      behavior = `Its path is the package's name, a slash, and the file's path relative to the [[Package.root]] without its extension, as a use of a package is written`,
+      behavior = `Its path is the package's name, a slash, and the file's path relative to the [[Package.root]] without its extension`,
     })
+    // Decision: the alias keeps each name in the owner's file meaning one entity.
     .add({
       situation = [
         `The type of a lowered member node names an entity that the member's owner's file does not see, through its own declarations, its uses, or the prelude`,
         `The owner's file already sees another entity with the same identifier`,
       ],
       behavior = [
-        `That [[Use]] takes an alias, and [[LoweredFile.text]] spells the type through that alias, so the name means one entity`,
+        `That [[Use]] takes an alias, and [[LoweredFile.text]] spells the type through that alias`,
         `The alias is an identifier that names nothing else the owner's file sees: the declaring file's path relative to [[Workspace.sourceDirectory]] without its extension, each character that cannot be in an identifier replaced by an underscore, followed by the smallest number that makes it unused when it is not unused already`,
       ],
     });
@@ -396,7 +358,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
   @acceptanceCriteria
     .add({
       behavior = [
-        `Every criterion of every entity is lowered once, into a [[LoweredCriterion]] with its id, and never into the tree's children`,
+        `Every criterion of every entity, other than one held by a target const, is lowered once, into a [[LoweredCriterion]] with its id, and never into the tree's children`,
         `Every test of every entity is lowered once, into a [[LoweredTest]] with its id, and never into the tree's children`,
       ],
     })
@@ -427,30 +389,31 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       situation = `A test was added to global's context, or comes from a trait applied to global`,
       behavior = `It is global: it is in [[Program.tests]] once, with global in its id and no entity, and in no node or file`,
     })
+    // Decision: a target's criteria are guidance, and every request of the target already carries
+    // them.
     .add({
-      situation = `A criterion is held by the declaration of a target, its own or from a layer of the target`,
-      behavior = `It is guidance for that target and neither a local nor a global requirement: it is lowered nowhere, because every request of the target already carries it as guidance`,
+      situation = `A criterion is held by a target const, as [[Targets.Target]] defines one: its own, from a layer, or from a trait a layer extends`,
+      behavior = `It is in no [[LoweredNode.criteria]], no [[LoweredFile.criteria]], and not in [[Program.criteria]]`,
     });
 
   // What is kept
   @acceptanceCriteria
     .add({
-      behavior = [
-        `Every node whose [[phaseOf]] is [[Phase.runtime]], that is not inside a [[Phase.compile]] node or an ace function, that is not replaced by a folded node, and that is not an [[ExpressionStatement]] whose expression is [[Phase.compile]], is kept with the same rule and its kept children in order`,
-        `Every lowered node's origin is the parse node it came from; a folded node's origin is the expression it replaced`,
-        `[[Program.files]] holds one [[LoweredFile]] per file of [[Workspace.files]], in order`,
+      situation = [
+        `A node's [[phaseOf]] is [[Phase.runtime]]`,
+        `It is not inside a [[Phase.compile]] node or an ace function`,
+        `It is not replaced by a folded node`,
+        `It is not an [[ExpressionStatement]] whose expression is [[Phase.compile]]`,
       ],
+      behavior = `It is kept with the same rule and its kept children in order`,
     })
     .add({
       situation = `A file of [[Workspace.files]] holds only compile-time statements`,
       behavior = `It lowers to an empty [[SourceFile]]`,
     })
     .add({
-      situation = `A function that is not ace has statements in its body, and every one of them is [[Phase.compile]], as in function f() { t.apply(X); }`,
-      behavior = [
-        `The statements run at compile time as they would anywhere else, and none of them has a lowered node`,
-        `A [[Problem]] is added at the function saying its body is empty at runtime, so it should be ace or hold runtime code`,
-      ],
+      situation = `A function that is not ace has statements in its body, and every one of them is [[Phase.compile]]`,
+      behavior = `A [[Problem]] is added at the function saying its body is empty at runtime and it should be ace or hold runtime code`,
     });
 
   @test(
@@ -477,7 +440,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
         ),
       ],
       expect = Program@like(
-        `The function names kept, with r@entities folded to a list holding A, and e@identifier kept because e only has a value at runtime`,
+        `The function names kept, with r@entities folded to a list holding A, and e@identifier kept as written`,
       ),
     },
     {

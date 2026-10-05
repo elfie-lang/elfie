@@ -1,12 +1,12 @@
 use "../grammar/rules/expression";
+use "../grammar/rules/file";
 use "../grammar/rules/statement";
+use "../grammar/terminals/keyword";
 use "../grammar/terminals/punctuation";
 use "../grammar/traits";
 use "../parser/data";
 use "./data";
-use "./traits";
 use "../interpret/main" as Interpreter;
-use "elfie/criteria/criterion" as Criteria;
 use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
 use "elfie/prelude/kinds" as Kinds;
@@ -17,16 +17,39 @@ use "elfie/values/object" as Objects;
 use "elfie/values/string" as Strings;
 use "elfie/values/template" as Templates;
 
+ace const memberRead: `The situation every rule for reading a member begins with` = `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`;
+
+ace const kindData: `The prelude data each kind of entity is seen as, besides [[Prelude.Entity]]` = [
+  { kind = `a trait`, data = Traits.Trait },
+  { kind = `a fn or function`, data = Functions.Function },
+  { kind = `a data`, data = Kinds.Data },
+  { kind = `a type`, data = Kinds.Type },
+  { kind = `an enum`, data = Kinds.Enum },
+  { kind = `a member`, data = Kinds.Member },
+  { kind = `a parameter or a type parameter`, data = Kinds.Parameter },
+  { kind = `a variable`, data = Kinds.Variable },
+  { kind = `a module`, data = Kinds.Module },
+];
+
+ace const baseData: `The prelude data each kind of value has as its base` = [
+  { kind = `a string`, data = Strings.String },
+  { kind = `a number`, data = Numbers.Number },
+  { kind = `a boolean`, data = Numbers.Boolean },
+  { kind = `an object`, data = Objects.Object },
+  { kind = `any list`, data = Lists.List },
+  { kind = `a template`, data = Templates.Template },
+  { kind = `a function value`, data = Functions.Function },
+];
+
 fn bind(sources: Source[]): `Build the model of a program from the resolved files of all of it` => Model {
   // Passes
   @acceptanceCriteria
     .add({
-      behavior = [
-        `Binding is three passes, each over every file before the next begins: declare (scopes, symbols, entities), expand (traits, members, criteria, and every other compile-time statement), and resolve (usages, properties, templates)`,
-        `[[sources]] are bound in the order given, which places every file after the files it uses`,
-        `Binding never stops; every failure it meets is a [[Problem]] and an [[ErrorNode]] declares and uses nothing`,
-      ],
+      behavior = `Binding is three passes, each over every file before the next begins: declare (scopes, symbols, entities), expand (traits, members, criteria, and every other compile-time statement), and resolve (usages, properties, templates)`,
     })
+    .add({ behavior = `[[sources]] are bound in the order given, which places every file after the files it uses` })
+    .add({ behavior = `Binding never stops: every failure it meets is a [[Problem]]` })
+    .add({ behavior = `An [[ErrorNode]] declares and uses nothing` })
     .add({ behavior = `A file's symbols, usages, and problems appear once in the model, however many files use it` })
     .add({
       behavior = `Every [[Problem]] added while binding, those [[Interpreter.expand]] and [[Interpreter.evaluate]] add among them, has [[Problem.stage]] [[Stage.binder]]`,
@@ -34,31 +57,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
 
   // Declare
   @acceptanceCriteria
+    .add({ behavior = `Names in a scope are visible throughout that scope` })
     .add({
-      behavior = [
-        `Each [[SourceFile]] is a file scope whose [[Scope.current]] is an anonymous entity for the file`,
-        `Every [[scoped]] node creates a scope and every [[declaring]] node a symbol and an entity, as those traits say; a declaration's [[Block]] is the child of the declaration's own scope`,
-        `Names in a scope are visible throughout that scope`,
-      ],
-    })
-    .add({
-      situation = `A [[Source]] has [[Origin.prelude]] as its [[Source.origin]]`,
-      behavior = [
-        `The prelude scope is the file scope of the [[Source]] whose [[Source.origin]] is [[Origin.prelude]]: its own symbols and the symbols its [[Use]]s import`,
-        `The parent of the file scope of every [[Source]] whose [[Source.origin]] is [[Origin.program]] is the prelude scope`,
-      ],
-    })
-    .add({
-      situation = `A [[Source]] has [[Origin.library]] or [[Origin.prelude]] as its [[Source.origin]]`,
-      behavior = `Its file scope has no parent`,
-    })
-    .add({
-      situation = `No [[Source]] has [[Origin.prelude]] as its [[Source.origin]]`,
-      behavior = `No file scope has a parent, and a name only the prelude would give is found nowhere`,
-    })
-    .add({
-      situation = `A name declared in a file scope is also in the prelude scope`,
-      behavior = `The file's symbol shadows the prelude's throughout that file, and no [[Problem]] is added`,
+      situation = `A scope belongs to a [[SourceFile]]`,
+      behavior = `Its [[Scope.current]] is an anonymous entity for the file`,
     })
     .add({
       situation = `An [[ExpressionStatement]] in a data or trait body begins with [[Current]] using [[ScopeAccessor]]`,
@@ -66,7 +68,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `A [[TypeParameter]] is bound in the [[TypeParameters]] of a declaration`,
-      behavior = `Its symbol, of kind [[SymbolKind.typeParameter]], is in the scope that declaration owns, beside its parameters and members, so the name is visible throughout the declaration: its [[ExtendsClause]], its [[DefinitionClause]], its [[Parameters]], its output, and its body`,
+      behavior = `Its name is visible throughout the declaration: its [[ExtendsClause]], its [[DefinitionClause]], its [[Parameters]], its output, and its body`,
     })
     .add({
       situation = `An [[ObjectKey]] is bound in the [[Object]] of an [[EnumDeclaration]]`,
@@ -78,7 +80,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `A name is declared twice in the same scope`,
-      behavior = `A [[Problem]] is added at the second and the first wins`,
+      behavior = [`A [[Problem]] is added at the second`, `The first wins`],
     })
     .add({
       situation = `A name is declared in a child scope that already exists in the parent scope`,
@@ -97,8 +99,8 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `Its [[Scope.current]] is [[Scope.current]] of its [[Scope.parent]]`,
     })
     .add({
-      situation = `The expression of a [[With]] is a [[Member]] using [[ScopeAccessor]], so it resolves to a member symbol`,
-      behavior = `[[Scope.current]] of the scope the [[With]] owns is that member's entity, so criteria and tests inside the block attach to the member and not to the entity that declares it`,
+      situation = `The expression of a [[With]] is a [[Member]] using [[ScopeAccessor]]`,
+      behavior = `[[Scope.current]] of the scope the [[With]] owns is the entity of the member symbol it resolves to`,
     });
 
   // use
@@ -117,7 +119,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `[[Use]] has [[AsKeyword]]`,
-      behavior = `The module symbol's entity is the used file's entity, so a [[Member]] on it resolves in that file's symbols`,
+      behavior = `The module symbol's entity is the used file's entity`,
     })
     .add({
       situation = [`[[Use]] has [[AsKeyword]]`, `A [[For]] with in iterates over its module symbol`],
@@ -133,10 +135,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     });
 
   // Expand
-  @acceptanceCriteria
-    .add({
-      behavior = `The expand pass is [[Interpreter.expand]]: trait applications, ace statements, declaration bodies, and file-level statements run there, and the resolve pass reads what it left`,
-    });
+  @acceptanceCriteria.add({ behavior = `The expand pass is [[Interpreter.expand]]` });
 
   // Resolve
   @acceptanceCriteria
@@ -144,41 +143,22 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       situation = `A [[Name]] or [[TraitUse]] is bound`,
       behavior = `It resolves to the first match walking from its scope outward`,
     })
+    // Decision: a trait name skips the declaration's own scope so that a member the declaration
+    // gains from an applied trait never shadows a trait, as the member rule of the trait rule would.
     .add({
       situation = `A trait is named in the [[IsClause]] or [[ExtendsClause]] of a declaration`,
-      behavior = `The name is found walking outward from the scope that holds the declaration, never from the declaration's own scope, so a member the declaration gains from an applied trait never shadows a trait, as the member rule of the trait rule would; the clause's arguments still resolve in the declaration's own scope`,
+      behavior = `The name is found walking outward from the scope that holds the declaration, never from the declaration's own scope`,
+    })
+    .add({
+      situation = `A trait is named with arguments in the [[IsClause]] or [[ExtendsClause]] of a declaration`,
+      behavior = `The arguments resolve in the declaration's own scope`,
     })
     .add({
       behavior = `The kind data of an entity is the prelude data for what it is, and always includes [[Prelude.Entity]]`,
     })
-    .add({ situation = `An entity is a trait`, behavior = `Its kind data includes [[Traits.Trait]]` })
-    .add({ situation = `An entity is a fn or function`, behavior = `Its kind data includes [[Functions.Function]]` })
-    .add({ situation = `An entity is a data`, behavior = `Its kind data includes [[Kinds.Data]]` })
-    .add({ situation = `An entity is a type`, behavior = `Its kind data includes [[Kinds.Type]]` })
-    .add({ situation = `An entity is an enum`, behavior = `Its kind data includes [[Kinds.Enum]]` })
-    .add({ situation = `An entity is a member`, behavior = `Its kind data includes [[Kinds.Member]]` })
-    .add({
-      situation = `An entity is a parameter or a type parameter`,
-      behavior = `Its kind data includes [[Kinds.Parameter]]`,
-    })
-    .add({ situation = `An entity is a variable`, behavior = `Its kind data includes [[Kinds.Variable]]` })
-    .add({ situation = `An entity is a module`, behavior = `Its kind data includes [[Kinds.Module]]` })
-    .add({ situation = `A value is a string`, behavior = `Its base data is [[Strings.String]]` })
-    .add({ situation = `A value is a number`, behavior = `Its base data is [[Numbers.Number]]` })
-    .add({ situation = `A value is a boolean`, behavior = `Its base data is [[Numbers.Boolean]]` })
-    .add({ situation = `A value is an object`, behavior = `Its base data is [[Objects.Object]]` })
-    .add({ situation = `A value is any list`, behavior = `Its base data is [[Lists.List]]` })
-    .add({ situation = `A value is a template`, behavior = `Its base data is [[Templates.Template]]` })
-    .add({ situation = `A value is a function value`, behavior = `Its base data is [[Functions.Function]]` })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
-      ],
-      behavior = `A keyword is a valid [[MemberName]] in this position only`,
-    })
-    .add({
-      situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ValueAccessor]] or [[OptionalValueAccessor]]`,
         `The value of the left side is a module`,
       ],
@@ -186,15 +166,15 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ValueAccessor]] or [[OptionalValueAccessor]]`,
         `The value of the left side is an entity that is not a module`,
       ],
-      behavior = `The [[MemberName]] resolves in the entity's own members first, then in those members of its kind data whose value is a function, whether an inline function or a reference to a fn or function declaration, as [[Traits.Trait.apply]] is`,
+      behavior = `The [[MemberName]] resolves in the entity's own members first, then in those members of its kind data whose value is a function, whether an inline function or a reference to a fn or function declaration, such as [[Traits.Trait.apply]]`,
     })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ValueAccessor]] or [[OptionalValueAccessor]]`,
         `The value of the left side is an object`,
       ],
@@ -202,52 +182,52 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ValueAccessor]] or [[OptionalValueAccessor]]`,
         `The value of the left side is not a module, an entity, or an object`,
       ],
       behavior = `The [[MemberName]] resolves in the members of the base data of that value`,
     })
     .add({
-      situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
-        `It uses [[ScopeAccessor]] and spells a [[MemberName]]`,
-      ],
+      situation = [memberRead, `It uses [[ScopeAccessor]] and spells a [[MemberName]]`],
       behavior = `The [[MemberName]] resolves to the member symbol itself`,
     })
     .add({
-      situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
-        `It uses [[ScopeAccessor]] and spells no [[MemberName]]`,
-      ],
+      situation = [memberRead, `It uses [[ScopeAccessor]] and spells no [[MemberName]]`],
       behavior = `It resolves to the entity's [[Entity.scope]]`,
     })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ContextAccessor]]`,
+        `The [[MemberName]] is a member of the entity's kind data`,
       ],
       behavior = `The [[MemberName]] resolves in the members of the entity's kind data and yields that member`,
     })
+    // Decision: a member of another kind's data yields undefined, so a test's input can read
+    // [[Functions.Function.parameters]] of anything.
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ContextAccessor]]`,
         `The [[MemberName]] is a member of a kind data other than the entity's`,
       ],
-      behavior = `It yields undefined for that [[MemberName]], without a [[Problem]], so [[Criteria.Test.input]] can read [[Functions.Function.parameters]] of anything`,
+      behavior = `It yields undefined for that [[MemberName]], without a [[Problem]]`,
     })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
-        `It uses [[ParentScopeAccessor]]`,
-        `The left side's scope is contained in another scope`,
+        `A [[Member]] using [[ContextAccessor]] is bound`,
+        `Its left side is a [[Name]] bound to a const or let`,
       ],
+      behavior = `It reads the context layer of the const's or let's entity, never of its value`,
+    })
+    .add({
+      situation = [memberRead, `It uses [[ParentScopeAccessor]]`, `The left side's scope is contained in another scope`],
       behavior = `It yields the scope that contains the left side's scope`,
     })
     .add({
       situation = [
-        `A [[Member]] is bound, or a [[Current]] is bound with the scope's current entity as the left side`,
+        memberRead,
         `It uses [[ParentScopeAccessor]]`,
         `The left side's scope is contained in no other scope`,
       ],
@@ -255,7 +235,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `A [[Name]] resolves to a symbol of kind [[SymbolKind.typeParameter]]`,
-      behavior = `The [[Usage]] is of layer value like any name, and what it yields as a type is the type parameter's entity`,
+      behavior = `What it yields as a type is the type parameter's entity`,
     })
     .add({
       situation = [
@@ -264,20 +244,17 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       ],
       behavior = `The [[MemberName]] resolves in the members of the parameter's [[Entity.type]]`,
     })
+    // Decision: the binder infers nothing about an unconstrained type parameter.
     .add({
       situation = [
         `A [[Member]] is bound with [[ValueAccessor]] or [[OptionalValueAccessor]] on a left side whose type is a type parameter`,
         `The type parameter has no [[ExtendsKeyword]]`,
       ],
-      behavior = `Nothing resolves and no [[Problem]] is added, because the binder infers nothing about an unconstrained parameter`,
+      behavior = `Nothing resolves and no [[Problem]] is added`,
     })
     .add({
-      situation = `A [[Member]] named add is bound with [[ValueAccessor]] on [[Prelude.Entity.acceptanceCriteria]] reached with [[ContextAccessor]]`,
-      behavior = `It is the add call the criteria of [[Criteria.Criterion]] describe: it has no symbol and adds no [[Problem]]`,
-    })
-    .add({
-      situation = `A [[Member]] named add is bound with [[ValueAccessor]] on [[Prelude.Entity.knowledge]], [[Prelude.Entity.commands]], or [[Prelude.Entity.targets]] reached with [[ContextAccessor]], directly or on the list an earlier add on the same list yields`,
-      behavior = `It is the add call the prelude describes for that list: it has no symbol and adds no [[Problem]], as for [[Prelude.Entity.acceptanceCriteria]]`,
+      situation = `A [[Member]] named add is bound with [[ValueAccessor]] on [[Prelude.Entity.acceptanceCriteria]], [[Prelude.Entity.knowledge]], [[Prelude.Entity.commands]], or [[Prelude.Entity.targets]] reached with [[ContextAccessor]], directly or on the list an earlier add on the same list yields`,
+      behavior = `It has no symbol and adds no [[Problem]]`,
     })
     .add({
       situation = `A [[Dereference]] is bound`,
@@ -299,9 +276,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       ],
       behavior = `It resolves to that [[rule]] entity, in whichever file it is`,
     })
+    // Decision: the grammar knows a rule only by its identifier.
     .add({
       situation = `Two [[rule]] entities in the program have the same identifier`,
-      behavior = `A [[Problem]] is added at the second, naming the file of the first, because the grammar knows a rule only by its identifier`,
+      behavior = `A [[Problem]] is added at the second, naming the file of the first`,
     })
     .add({
       situation = [
@@ -310,91 +288,66 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       ],
       behavior = `It resolves to neither rule, and its [[Problem]] says the name is more than one rule rather than that it is not declared`,
     })
+    // Decision: being lenient with a name found nowhere would hide a misspelled member behind a
+    // silent undefined.
     .add({
       situation = [
         `Nothing is found for a name`,
         `The name is not the [[MemberName]] of a [[Member]] whose left side has no symbol either`,
+        `The name is not the [[MemberName]] of a [[Member]] on a left side whose type is a type parameter with no [[ExtendsKeyword]]`,
+        `The name is not a [[MemberName]] read with [[ContextAccessor]] that is a member of some kind data`,
       ],
-      behavior = `The [[Usage]] has no symbol, and a [[Problem]] is added, whatever the left side is: a trait, a data, a module, a predicate, or a value, and even when no prelude is bound so the entity's kind data is empty; being lenient here would hide a misspelled member behind a silent undefined`,
+      behavior = [
+        `The [[Usage]] has no symbol`,
+        `A [[Problem]] is added, whatever the left side is: a trait, a data, a module, a predicate, or a value, and even when no prelude is bound and the entity's kind data is empty`,
+      ],
     });
+
+  // Kind data
+  for (const row in kindData) {
+    where (`An entity is {{row.kind}}`) -> `Its kind data includes {{row.data}}`;
+  }
+  for (const row in baseData) {
+    where (`A value is {{row.kind}}`) -> `Its base data is {{row.data}}`;
+  }
 
   // Properties
   @acceptanceCriteria
     .add({
+      situation = `A [[TypeParameter]] is bound`,
       behavior = [
-        `[[Entity.identifier]] is [[Symbol.name]] of its [[Entity.symbol]]`,
-        `[[Entity.definition]] is the string or template in the declaration's [[DefinitionClause]] or [[Definition]]`,
-        `[[FnEntity.parameters]] is the symbols of its [[Parameter]] and [[SpreadParameter]] nodes in order`,
-        `[[FnEntity.output]] is what the type after the arrow resolves to`,
+        `[[Kinds.Parameter.defaultValue]] of its entity is what the [[TypeExpression]] after its [[PlainSetter]] resolves to`,
+        `[[Kinds.Parameter.optional]] of its entity is whether it has a [[PlainSetter]]`,
+        `[[Kinds.Parameter.spread]] of its entity is false`,
       ],
     })
     .add({
-      situation = `The entity is a data, trait, type, or enum declaration`,
-      behavior = `[[Entity.type]] is the entity itself`,
-    })
-    .add({
-      situation = `The declaration has a [[TypeExpression]] after the colon`,
-      behavior = `[[Entity.type]] is what that expression resolves to`,
-    })
-    .add({
-      situation = `The declaration is a member or external with an [[Assignment]] right side`,
-      behavior = `[[Entity.type]] is what the right side resolves to`,
-    })
-    .add({
-      situation = `The declaration is a variable or parameter with a value`,
-      behavior = `[[Entity.type]] is the type of the value`,
-    })
-    .add({
-      situation = [`A [[TypeParameter]] is bound`, `It has an [[ExtendsKeyword]]`],
-      behavior = `Its entity's [[Entity.type]] is what the [[TypeExpression]] after its [[ExtendsKeyword]] resolves to`,
-    })
-    .add({
-      situation = [`A [[TypeParameter]] is bound`, `It has no [[ExtendsKeyword]]`],
-      behavior = `Its entity's [[Entity.type]] is undefined`,
-    })
-    .add({
       situation = `A [[TypeParameter]] is bound`,
-      behavior = `Its entity's kind data is [[Kinds.Parameter]], whose [[Kinds.Parameter.defaultValue]] is what the [[TypeExpression]] after its [[PlainSetter]] resolves to and whose [[Kinds.Parameter.optional]] is whether it has one; [[Kinds.Parameter.spread]] is false`,
-    })
-    .add({
-      situation = `A [[TypeParameter]] is bound`,
-      behavior = `Its entity's [[Entity.definition]] is undefined and its [[Entity.traits]] and [[Entity.acceptanceCriteria]] are empty, because a [[TypeParameter]] has no [[DefinitionClause]], no [[IsClause]], and no body`,
-    })
-    .add({
-      situation = `The declaration has [[TypeParameters]]`,
-      behavior = `[[Entity.typeParameters]] is the entity of each [[TypeParameter]] in the declaration's [[TypeParameters]], in order`,
-    })
-    .add({
-      situation = `The declaration has no [[TypeParameters]]`,
-      behavior = `[[Entity.typeParameters]] is empty`,
+      behavior = `Its entity's [[Entity.definition]] is undefined and its [[Entity.traits]] and [[Entity.acceptanceCriteria]] are empty`,
     })
     .add({
       situation = `A [[Reference]] that resolves to a declaration is followed by [[TypeArguments]] in a type position, or by [[Generic]] in an expression position`,
-      behavior = `It yields an entity that is the declaration seen with those arguments: [[Entity.identifier]], [[Entity.definition]], the members, the criteria, and [[Entity.typeParameters]] are the declaration's, [[Entity.type]] is the declaration itself, and [[Entity.typeArguments]] is what each argument resolves to, in order`,
+      behavior = `It yields an entity that is the declaration seen with those arguments: [[Entity.identifier]], [[Entity.definition]], the members, the criteria, and [[Entity.typeParameters]] are the declaration's, and [[Entity.type]] is the declaration itself`,
     })
     .add({
       situation = `A [[Reference]] that resolves to a declaration is followed by neither [[TypeArguments]] nor [[Generic]]`,
-      behavior = `It yields the declaration, whose [[Entity.typeArguments]] is empty`,
+      behavior = `It yields the declaration itself`,
     })
     .add({
       situation = `[[TypeArguments]] or [[Generic]] lists more arguments than the declaration has [[Entity.typeParameters]], or fewer than those without a [[Kinds.Parameter.defaultValue]]`,
-      behavior = `A [[Problem]] is added at the arguments, and the entity is still bound with the arguments as written`,
+      behavior = [`A [[Problem]] is added at the arguments`, `The entity is still bound with the arguments as written`],
     })
     .add({
       situation = `A [[TypeItem]] ends with [[ListOpen]] and [[ListClose]]`,
-      behavior = `It yields [[Lists.List]] seen with one argument, what the item resolves to, so T[] is List of T; nested brackets nest the arguments`,
+      behavior = `It yields [[Lists.List]] seen with one argument: what the item before the brackets resolves to`,
     })
     .add({
       situation = `An [[Index]] with nothing inside is bound in an expression position`,
-      behavior = `It yields [[Lists.List]] seen with one argument, what the left side resolves to, so T[] is List of T; nested brackets nest the arguments`,
+      behavior = `It yields [[Lists.List]] seen with one argument: what the left side resolves to`,
     })
     .add({
-      situation = `An entity's [[Entity.type]] is [[Lists.List]]`,
-      behavior = `[[Entity.itemType]] is the first of [[Entity.typeArguments]] of [[Entity.type]]`,
-    })
-    .add({
-      situation = `An entity's [[Entity.type]] is not [[Lists.List]]`,
-      behavior = `[[Entity.itemType]] is undefined, even for a bare [[Lists.List]] and a list value`,
+      situation = `[[Index]] nodes with nothing inside follow one another`,
+      behavior = `Each nests the [[Lists.List]] of the one before it as its argument`,
     })
     .add({
       situation = `A [[FunctionType]] is bound`,
@@ -402,7 +355,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `A [[Member]] is bound with [[ValueAccessor]] or [[OptionalValueAccessor]] on a left side whose type has [[Entity.typeArguments]]`,
-      behavior = `The member's type, as read there, is its declared type with each of the base's [[Entity.typeParameters]] replaced by the argument at the same position, through nested [[Entity.typeArguments]] and through the parameters and output of a function type; nothing beyond this direct substitution is inferred`,
+      behavior = [
+        `The member's type, as read there, is its declared type with each of the base's [[Entity.typeParameters]] replaced by the argument at the same position, through nested [[Entity.typeArguments]] and through the parameters and output of a function type`,
+        `Nothing beyond this direct substitution is inferred`,
+      ],
     })
     .add({
       situation = [
@@ -412,23 +368,14 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `That parameter stays itself in the member's type as read there`,
     })
     .add({
-      situation = `An add [[Call]] on the entity's context, or a [[Where]], is bound in its body or in a [[With]] whose current it is`,
-      behavior = `One [[Criterion]] is appended to [[Entity.acceptanceCriteria]]`,
-    })
-    .add({
-      situation = `A [[Call]] of [[Prelude.Entity.test]] on the entity's context is bound`,
-      behavior = `Each of its arguments is appended to [[Prelude.Entity.tests]] as one [[Test]]`,
-    })
-    .add({
-      behavior = `[[Prelude.Entity.like]] takes a prompt and yields a value of [[Entity.type]] that the prompt describes`,
+      situation = `A [[Where]] is bound`,
+      behavior = `One [[Criterion]] is appended to [[Entity.acceptanceCriteria]] of [[Scope.current]] of its scope`,
     });
 
   @test(
     {
       input = [[Source@like(`a.lfy, parsed from: trait t { $x: \`d\` = string; } d A is t {} const y = A.x;`)]],
-      expect = Model@like(
-        `Symbols t, A, and y in the file scope; entity A with one [[Applied]] for t and a member x with definition d and type string; [[TraitEntity.entities]] of t holding A; a [[Usage]] for A.x resolving to that member; no problems`,
-      ),
+      expect = Model@like(`The [[Usage]] of x in A.x resolving to the member x that A gains from t; no problems`),
     },
     {
       input = [
@@ -440,16 +387,8 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         ],
       ],
       expect = Model@like(
-        `A module symbol Keyword bound to the second file's entity; a loop variable token in the [[For]] scope; a [[Usage]] of Keyword with layer value resolving to the module symbol; no problems`,
+        `The [[Usage]] of Keyword resolving to a module symbol whose entity is the second file's entity, and the symbol token in the scope the [[For]] owns; no problems`,
       ),
-    },
-    {
-      input = [[Source@like(`a.lfy, parsed from: const y = z;`)]],
-      expect = Model@like(`Symbol y; a [[Usage]] of z with no symbol; one [[Problem]] at z`),
-    },
-    {
-      input = [[Source@like(`a.lfy, parsed from: trait a {} trait b extends a {} d C is b {}`)]],
-      expect = Model@like(`[[TraitEntity.entities]] of a holding C alone and [[TraitEntity.extenders]] of a holding b`),
     },
     {
       input = [
@@ -460,7 +399,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         ],
       ],
       expect = Model@like(
-        `The entity of member m of X carrying one [[Criterion]] whose situation is s and behavior is b, and one [[Test]]; X carrying no criteria and no tests; no problems`,
+        `The entity of member m of X carrying one [[Criterion]] whose situation is s and behavior is b, and one [[Test]]; X carrying no criteria and no tests`,
       ),
     },
     {
@@ -478,7 +417,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     {
       input = [[Source@like(`a.lfy, with [[Origin.program]], parsed from: trait t {} d A {} t.apply(A);`)]],
       expect = Model@like(
-        `apply resolving to [[Traits.Trait.apply]] through t's kind data; A carrying one [[Applied]] for t; no problems`,
+        `apply resolving to [[Traits.Trait.apply]] through t's kind data, and A carrying one [[Applied]] for t`,
       ),
     },
     {
@@ -493,19 +432,17 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         ],
       ],
       expect = Model@like(
-        `Both [[Usage]]s of rule in a.lfy resolving to the trait rule of b.lfy, not to the member rule that A and B gain; A and B each carrying one [[Applied]] for rule; no problems`,
+        `Both [[Usage]]s of rule in a.lfy resolving to the trait rule of b.lfy, not to the member rule that A and B gain; no problems`,
       ),
     },
     {
       input = [[Source@like(`a.lfy, with [[Origin.program]], parsed from: trait t {} d A {} t.apply(@);`)]],
-      expect = Model@like(
-        `The anonymous entity for a.lfy carrying one [[Applied]] for t; A carrying none; no problems`,
-      ),
+      expect = Model@like(`The anonymous entity for a.lfy carrying one [[Applied]] for t, and A carrying none`),
     },
     {
       input = [[Source@like(`a.lfy, parsed from: d Item {} d Box<T extends Item = string> { $item: \`x\` = T; }`)]],
       expect = Model@like(
-        `Symbols Item and Box in the file scope and a symbol T of kind [[SymbolKind.typeParameter]] in the scope Box owns; [[Entity.typeParameters]] of Box holding T's entity alone, whose [[Entity.type]] is Item and whose [[Kinds.Parameter.defaultValue]] is string; the member item with type T's entity; no problems`,
+        `A symbol T of kind [[SymbolKind.typeParameter]] in the scope Box owns, whose entity has [[Entity.type]] Item and [[Kinds.Parameter.defaultValue]] string`,
       ),
     },
     {
@@ -517,27 +454,10 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
         ],
       ],
       expect = Model@like(
-        `The type of b being Box seen with [[Entity.typeArguments]] holding string; the [[Usage]] of item on b resolving to Box's member and i having type string; j having type [[Lists.List]] whose [[Entity.typeArguments]] hold string, so its [[Entity.itemType]] is string; the member items of Box itself keeping type [[Lists.List]] of T; no problems`,
-      ),
-    },
-    {
-      input = [[Source@like(`a.lfy, parsed from: d Box<T> {} const b = Box<string, number>;`)]],
-      expect = Model@like(
-        `Symbol b whose type is Box seen with two [[Entity.typeArguments]]; one [[Problem]] at the [[Generic]] after Box, because Box lists one type parameter`,
+        `i having type string and j having type [[Lists.List]] of string, while the member items of Box keeps type [[Lists.List]] of T`,
       ),
     },
   );
-
-  for (const rule in declaring@entities) {
-    where (`A [[Node]] for [[&rule]] is bound`) -> `A symbol and an entity are created as [[declaring]] says`;
-  }
-  for (const rule in reading@entities) {
-    where (`A [[Node]] for [[&rule]] is bound`) -> `A [[Usage]] with the layer from [[reading]] is created and resolved`;
-    where (`A [[Node]] for [[&rule]] is bound`) and (`The node is a [[Name]] or [[TraitUse]]`) -> `Its [[Usage]] resolves to the first match walking outward from its scope`;
-    where (`A [[Node]] for [[&rule]] is bound`) and (`The node is a [[Member]] or [[Current]]`) -> `Its [[Usage]] resolves in the layer of its left side that its accessor reads`;
-    where (`A [[Node]] for [[&rule]] is bound`) and (`The node is a [[Dereference]]`) -> `Its [[Usage]] resolves to the entity its operand is bound to`;
-    where (`A [[Node]] for [[&rule]] is bound`) and (`The node is a [[Previous]]`) -> `Its [[Usage]] resolves to the entity declared by the nearest earlier statement of the same block`;
-  }
 }
 
 fn resolve(model: Model, node: Node): `The symbol a node uses or declares` => Symbol | undefined {
@@ -555,6 +475,13 @@ fn usagesOf(model: Model, target: Symbol): `Every use of a symbol` => Usage[] {
     .add({
       behavior = `Returns every [[Usage]] whose symbol is [[target]] or an alias chain ending at it, in node order`,
     });
+  @test({
+    input = [
+      Model@like(`Bound from: d A {} alias B = A; alias C = B; const x = C; const y = A; const z = 1;`),
+      Symbol@like(`The symbol A`),
+    ],
+    expect = Usage[]@like(`Four usages, in node order: A in alias B, B in alias C, C in const x, and A in const y`),
+  });
 }
 
 fn criteriaOf(model: Model, entity: Entity): `Every criterion attached to an entity, with templates resolved for it` => Criterion[] {

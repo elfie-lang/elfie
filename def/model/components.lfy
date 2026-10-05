@@ -21,34 +21,34 @@ scoped.apply(For);
 scoped.apply(With);
 
 // Layers
-reading.apply(ValueAccessor, Layer.value);
-reading.apply(OptionalValueAccessor, Layer.value);
-reading.apply(ContextAccessor, Layer.context);
-reading.apply(ScopeAccessor, Layer.scope);
-reading.apply(ParentScopeAccessor, Layer.parent);
-reading.apply(Name, Layer.value);
-reading.apply(TraitUse, Layer.value);
-reading.apply(Dereference, Layer.dereference);
-reading.apply(Previous, Layer.previous);
+accessor.apply(ValueAccessor, Layer.value);
+accessor.apply(OptionalValueAccessor, Layer.value);
+accessor.apply(ContextAccessor, Layer.context);
+accessor.apply(ScopeAccessor, Layer.scope);
+accessor.apply(ParentScopeAccessor, Layer.parent);
+accessor.apply(Name, Layer.value);
+accessor.apply(TraitUse, Layer.value);
+accessor.apply(Dereference, Layer.dereference);
+accessor.apply(Previous, Layer.previous);
 
 // Traits/Extensions
-applyingTraits.apply(IsClause);
-applyingExtensions.apply(ExtendsClause);
+traitClause.apply(IsClause);
+extensionClause.apply(ExtendsClause);
 
 // Declarations
-declaring.apply(DataDeclaration, Identifier, SymbolKind.data);
-declaring.apply(TraitDeclaration, Identifier, SymbolKind._trait);
-declaring.apply(FunctionDeclaration, Signature, SymbolKind._function);
-declaring.apply(AgentFunctionDeclaration, Signature, SymbolKind.agentFunction);
-declaring.apply(TypeDeclaration, Identifier, SymbolKind._type);
-declaring.apply(EnumDeclaration, Declared, SymbolKind._enum);
-declaring.apply(VariableDeclaration, Declared, SymbolKind.variable);
-declaring.apply(AliasDeclaration, Declared, SymbolKind._alias);
-declaring.apply(ExternalDeclaration, Declared, SymbolKind._external);
-declaring.apply(Use, Identifier, SymbolKind._module);
-declaring.apply(For, Declared, SymbolKind.loopVariable);
-declaring.apply(ForFrom, Declared, SymbolKind.loopVariable);
-declaring.apply(Parameter, Name, SymbolKind.parameter);
-declaring.apply(SpreadParameter, Name, SymbolKind.parameter);
-declaring.apply(TypeParameter, Identifier, SymbolKind.typeParameter);
-declaring.apply(TypeKey, Name, SymbolKind.member);
+namedBy.apply(DataDeclaration, Identifier, SymbolKind.data);
+namedBy.apply(TraitDeclaration, Identifier, SymbolKind._trait);
+namedBy.apply(FunctionDeclaration, Signature, SymbolKind._function);
+namedBy.apply(AgentFunctionDeclaration, Signature, SymbolKind.agentFunction);
+namedBy.apply(TypeDeclaration, Identifier, SymbolKind._type);
+namedBy.apply(EnumDeclaration, Declared, SymbolKind._enum);
+namedBy.apply(VariableDeclaration, Declared, SymbolKind.variable);
+namedBy.apply(AliasDeclaration, Declared, SymbolKind._alias);
+namedBy.apply(ExternalDeclaration, Declared, SymbolKind._external);
+namedBy.apply(Use, Identifier, SymbolKind._module);
+namedBy.apply(Parameter, Name, SymbolKind.parameter);
+namedBy.apply(SpreadParameter, Name, SymbolKind.parameter);
+namedBy.apply(TypeParameter, Identifier, SymbolKind.typeParameter);
+namedBy.apply(TypeKey, Name, SymbolKind.member);
+loopVariable.apply(For, Declared);
+loopVariable.apply(ForFrom, Declared);
