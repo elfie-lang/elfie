@@ -1,18 +1,18 @@
 [
   {
     "dependencies": {
-      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-02T03:00:05Z",
-    "hash": "b374620c41df928855c4771915d5dbfa649a137ac3bb6620a9bbbb0c5f9dbb66",
+    "generated": "2026-10-07T05:58:27Z",
+    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
     "markers": [
       {
         "column": null,
         "end": 16,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 13,
         "requirement": null
       },
@@ -21,7 +21,7 @@
         "end": 18,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 17,
         "requirement": "global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e"
       },
@@ -30,7 +30,7 @@
         "end": 21,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 19,
         "requirement": "global:def/grammar/main.lfy:76c422dad3532ba972328cec73a8cdb31276b79369b4289021b09512dd330565"
       },
@@ -39,7 +39,7 @@
         "end": 23,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 22,
         "requirement": "global:def/grammar/main.lfy:9762a97e1ef9727b6af134273474945e16a090c3fec34e9cdb6eb02dcb0862c9"
       },
@@ -48,7 +48,7 @@
         "end": 26,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 24,
         "requirement": "global:def/grammar/main.lfy:5f29986bf08f9902a7ca5e5dca84541a894954f845ae1fabdc32814f74a8c357"
       },
@@ -57,7 +57,7 @@
         "end": 28,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 27,
         "requirement": "global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f"
       },
@@ -66,16 +66,16 @@
         "end": 87,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 29,
-        "requirement": "global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56"
+        "requirement": "global:def/grammar/main.lfy:c7242d6964974dbc0379df87801c492b8576355e0ea5279ded0cc1cf98984c7b"
       },
       {
         "column": null,
         "end": 92,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 88,
         "requirement": null
       },
@@ -84,7 +84,7 @@
         "end": 115,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 93,
         "requirement": "global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e"
       },
@@ -93,7 +93,7 @@
         "end": 125,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 116,
         "requirement": "global:def/grammar/main.lfy:76c422dad3532ba972328cec73a8cdb31276b79369b4289021b09512dd330565"
       },
@@ -102,7 +102,7 @@
         "end": 138,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 126,
         "requirement": "global:def/grammar/main.lfy:9762a97e1ef9727b6af134273474945e16a090c3fec34e9cdb6eb02dcb0862c9"
       },
@@ -111,7 +111,7 @@
         "end": 140,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 139,
         "requirement": "global:def/grammar/main.lfy:5f29986bf08f9902a7ca5e5dca84541a894954f845ae1fabdc32814f74a8c357"
       },
@@ -120,7 +120,7 @@
         "end": 151,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 141,
         "requirement": "global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f"
       },
@@ -129,16 +129,16 @@
         "end": 209,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 152,
-        "requirement": "global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56"
+        "requirement": "global:def/grammar/main.lfy:c7242d6964974dbc0379df87801c492b8576355e0ea5279ded0cc1cf98984c7b"
       },
       {
         "column": null,
         "end": 229,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 210,
         "requirement": "global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e"
       },
@@ -147,7 +147,7 @@
         "end": 245,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 230,
         "requirement": "global:def/grammar/main.lfy:76c422dad3532ba972328cec73a8cdb31276b79369b4289021b09512dd330565"
       },
@@ -156,7 +156,7 @@
         "end": 264,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 246,
         "requirement": "global:def/grammar/main.lfy:9762a97e1ef9727b6af134273474945e16a090c3fec34e9cdb6eb02dcb0862c9"
       },
@@ -165,7 +165,7 @@
         "end": 284,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 265,
         "requirement": "global:def/grammar/main.lfy:5f29986bf08f9902a7ca5e5dca84541a894954f845ae1fabdc32814f74a8c357"
       },
@@ -174,7 +174,7 @@
         "end": 306,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 285,
         "requirement": "global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f"
       },
@@ -183,7 +183,7 @@
         "end": 322,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 307,
         "requirement": null
       },
@@ -192,31 +192,31 @@
         "end": 366,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 323,
-        "requirement": "global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56"
+        "requirement": "global:def/grammar/main.lfy:c7242d6964974dbc0379df87801c492b8576355e0ea5279ded0cc1cf98984c7b"
       }
     ],
     "output": "crates/elfie-core/src/grammar/checks.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
+    "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust"
   },
   {
     "dependencies": {
-      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-02T03:00:05Z",
-    "hash": "b374620c41df928855c4771915d5dbfa649a137ac3bb6620a9bbbb0c5f9dbb66",
+    "generated": "2026-10-07T05:58:27Z",
+    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
     "markers": [
       {
         "column": null,
         "end": 17,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 16,
         "requirement": null
       },
@@ -225,7 +225,7 @@
         "end": 18,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 18,
         "requirement": null
       },
@@ -234,7 +234,7 @@
         "end": 19,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 19,
         "requirement": null
       },
@@ -243,7 +243,7 @@
         "end": 20,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 20,
         "requirement": null
       },
@@ -252,7 +252,7 @@
         "end": 128,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 21,
         "requirement": null
       },
@@ -261,7 +261,7 @@
         "end": 129,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 129,
         "requirement": null
       },
@@ -270,7 +270,7 @@
         "end": 130,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 130,
         "requirement": null
       },
@@ -279,7 +279,7 @@
         "end": 131,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 131,
         "requirement": null
       },
@@ -288,7 +288,7 @@
         "end": 132,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 132,
         "requirement": null
       },
@@ -297,7 +297,7 @@
         "end": 133,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 133,
         "requirement": null
       },
@@ -306,7 +306,7 @@
         "end": 134,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 134,
         "requirement": null
       },
@@ -315,7 +315,7 @@
         "end": 135,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 135,
         "requirement": null
       },
@@ -324,7 +324,7 @@
         "end": 136,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 136,
         "requirement": null
       },
@@ -333,7 +333,7 @@
         "end": 230,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 137,
         "requirement": null
       },
@@ -342,7 +342,7 @@
         "end": 232,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 231,
         "requirement": null
       },
@@ -351,7 +351,7 @@
         "end": 233,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 233,
         "requirement": null
       },
@@ -360,7 +360,7 @@
         "end": 237,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 234,
         "requirement": null
       },
@@ -369,7 +369,7 @@
         "end": 239,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 238,
         "requirement": null
       },
@@ -378,7 +378,7 @@
         "end": 240,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 240,
         "requirement": null
       },
@@ -387,7 +387,7 @@
         "end": 245,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 241,
         "requirement": null
       },
@@ -396,7 +396,7 @@
         "end": 255,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 246,
         "requirement": null
       },
@@ -405,16 +405,16 @@
         "end": 299,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 256,
-        "requirement": "global:def/grammar/main.lfy:8e482e5ac4e7663c971da418a670b72d28fa2e354f31f74b8fc97e55984f29a0"
+        "requirement": "global:def/grammar/main.lfy:afbfe42cdc8454da6102f966fb6e895d078bebe73b3c95796edf1fb22f5f5b5c"
       },
       {
         "column": null,
         "end": 321,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 300,
         "requirement": null
       },
@@ -423,7 +423,7 @@
         "end": 332,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 322,
         "requirement": null
       },
@@ -432,7 +432,7 @@
         "end": 338,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 333,
         "requirement": null
       },
@@ -441,31 +441,31 @@
         "end": 365,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 339,
         "requirement": "global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e"
       }
     ],
     "output": "crates/elfie-core/src/grammar/mod.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
+    "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust"
   },
   {
     "dependencies": {
-      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-02T03:00:05Z",
-    "hash": "b374620c41df928855c4771915d5dbfa649a137ac3bb6620a9bbbb0c5f9dbb66",
+    "generated": "2026-10-07T05:58:27Z",
+    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
     "markers": [
       {
         "column": null,
         "end": 3,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 3,
         "requirement": null
       },
@@ -474,7 +474,7 @@
         "end": 4,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 4,
         "requirement": null
       },
@@ -483,31 +483,31 @@
         "end": 5,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 5,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/grammar/rules/mod.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
+    "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust"
   },
   {
     "dependencies": {
-      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-02T03:00:05Z",
-    "hash": "b374620c41df928855c4771915d5dbfa649a137ac3bb6620a9bbbb0c5f9dbb66",
+    "generated": "2026-10-07T05:58:27Z",
+    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
     "markers": [
       {
         "column": null,
         "end": 3,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 3,
         "requirement": null
       },
@@ -516,7 +516,7 @@
         "end": 4,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 4,
         "requirement": null
       },
@@ -525,7 +525,7 @@
         "end": 5,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 5,
         "requirement": null
       },
@@ -534,7 +534,7 @@
         "end": 6,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 6,
         "requirement": null
       },
@@ -543,7 +543,7 @@
         "end": 7,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 7,
         "requirement": null
       },
@@ -552,31 +552,31 @@
         "end": 8,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
-        "line": 4,
+        "line": 7,
         "outputLine": 8,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/grammar/terminals/mod.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
+    "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust"
   },
   {
     "dependencies": {
-      "def/grammar/terminals/literal.lfy": "83dba4c7c84080b3108ccc3dff7bec187bc407dfa9dcb6d3cadf7c27413a8f82",
+      "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-02T03:00:05Z",
-    "hash": "b374620c41df928855c4771915d5dbfa649a137ac3bb6620a9bbbb0c5f9dbb66",
+    "generated": "2026-10-07T05:58:27Z",
+    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
     "markers": [
       {
         "column": null,
         "end": 6,
         "entity": "format",
         "file": "def/format/main.lfy",
-        "line": 15,
+        "line": 19,
         "outputLine": 6,
         "requirement": null
       },
@@ -585,7 +585,7 @@
         "end": 7,
         "entity": "plan",
         "file": "def/generation/main.lfy",
-        "line": 47,
+        "line": 32,
         "outputLine": 7,
         "requirement": null
       },
@@ -594,7 +594,7 @@
         "end": 8,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 8,
         "requirement": null
       },
@@ -603,7 +603,7 @@
         "end": 9,
         "entity": "lower",
         "file": "def/interpret/main.lfy",
-        "line": 205,
+        "line": 288,
         "outputLine": 9,
         "requirement": null
       },
@@ -612,7 +612,7 @@
         "end": 10,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
-        "line": 19,
+        "line": 13,
         "outputLine": 10,
         "requirement": null
       },
@@ -621,7 +621,7 @@
         "end": 11,
         "entity": "bind",
         "file": "def/model/main.lfy",
-        "line": 20,
+        "line": 44,
         "outputLine": 11,
         "requirement": null
       },
@@ -630,16 +630,16 @@
         "end": 12,
         "entity": "parse",
         "file": "def/parser/main.lfy",
-        "line": 11,
+        "line": 13,
         "outputLine": 12,
         "requirement": null
       },
       {
         "column": null,
         "end": 13,
-        "entity": "rangeOf",
+        "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 27,
+        "line": 28,
         "outputLine": 13,
         "requirement": null
       },
@@ -648,14 +648,14 @@
         "end": 14,
         "entity": "load",
         "file": "def/workspace/main.lfy",
-        "line": 13,
+        "line": 16,
         "outputLine": 14,
         "requirement": null
       }
     ],
     "output": "crates/elfie-core/src/lib.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "3c58b52c176df574b6921859aa7e9119586522354a3d5c8721959364491738dc",
+    "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust"
   }

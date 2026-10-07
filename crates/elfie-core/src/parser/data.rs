@@ -68,10 +68,9 @@ pub struct Node {
     pub start: usize, // @lfy def/parser/data.lfy:Node.start
     /// Index after the last token covered.
     pub end: usize, // @lfy def/parser/data.lfy:Node.end
-    /// `$documentation` of the `documented` trait: the `Documentation` nodes that precede
-    /// this node with only trivia between; empty when there are none, and always empty
-    /// for rules without the trait.
-    pub documentation: Vec<Node>, // @lfy def/parser/traits.lfy:documented.documentation
+    /// The documentation written for it, when its rule attaches documentation; empty
+    /// otherwise.
+    pub documentation: Vec<Node>, // @lfy def/parser/data.lfy:Node.documentation
 }
 
 impl Node {
@@ -195,7 +194,7 @@ impl Node {
     }
 }
 
-/// Tokens the parser could not fit into the open rule.
+/// Tokens the parser could not fit into the open rule; it satisfies no rule.
 // @lfy def/parser/data.lfy:ErrorNode
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErrorNode {
@@ -222,12 +221,6 @@ impl ErrorNode {
             expected,
             keyword: None,
         }
-    }
-
-    /// `$rule`: no rule is being satisfied due to the error.
-    // @lfy def/parser/data.lfy:ErrorNode.rule
-    pub fn rule(&self) -> Option<Rule> {
-        None
     }
 }
 
@@ -332,11 +325,10 @@ mod tests {
 
     // @lfy def/parser/data.lfy:ErrorNode
     #[test]
-    fn an_error_node_covers_its_tokens_and_has_no_rule() {
+    fn an_error_node_covers_its_tokens() {
         let error = ErrorNode::new(2, 5, vec!["Identifier"]);
         assert_eq!(error.children, vec![Child::Token(2), Child::Token(3), Child::Token(4)]);
         assert_eq!((error.start, error.end), (2, 5));
-        assert_eq!(error.rule(), None);
         assert_eq!(error.expected, vec!["Identifier"]);
         let empty = ErrorNode::new(3, 3, vec![]);
         assert!(empty.children.is_empty());
@@ -383,7 +375,7 @@ mod tests {
         assert!(Child::Token(4).as_node().is_none());
     }
 
-    // @lfy def/parser/data.lfy:Node#Node:Node:982a7f3fb557d8b6d79db84457ee1acdd45b0a0baf4f99fbd64d42dac779bf14
+    // @lfy def/parser/data.lfy:Node#Node:Node:931f1ee196a53ed4a186d64fcb37a7365c2449a2eea4b6f938e8113c61986402
     #[test]
     fn every_node_covers_the_source_it_spans_through_one_child_per_token() {
         let tree = parse(lex(SOURCE, None).unwrap(), None);
@@ -402,7 +394,7 @@ mod tests {
         assert_eq!(tree.raw(0, tree.tokens.len()), SOURCE);
     }
 
-    // @lfy def/parser/data.lfy:Node#Node:Node:c9c32197453f4c01b5e6f8acbc6e5317ecddc9b69c6b4c5eed4c959c61a1d754
+    // @lfy def/parser/data.lfy:Node#Node:Node:0fc79651d1d2acfcf5dc57df2756ffffb044058b70eaffa3b271e1547c3ab36e
     #[test]
     fn an_alternation_list_has_no_node_and_its_item_stands_in_its_place() {
         let tree = parse(lex(SOURCE, None).unwrap(), None);
@@ -416,5 +408,35 @@ mod tests {
         assert_eq!(snippet.root_rule, Entity::Expression(Expression::Expression));
         assert_eq!(snippet.root.rule, Entity::Expression(Expression::AdditiveOperation));
         assert!(!snippet.root.rule.is_alternation_list());
+    }
+
+    // @lfy def/parser/data.lfy:Node#Node:spanning:0495daa6adc6e01ec518b49e95e6c97a67e174b10eccf67b7f08e7fcb04db7f6
+    #[test]
+    fn every_node_spans_the_source_it_covers() {
+        let tree = parse(lex(SOURCE, None).unwrap(), None);
+        for node in tree.root.descendants() {
+            let joined: String = tree.tokens[node.start..node.end]
+                .iter()
+                .map(|token| token.raw.as_str())
+                .collect();
+            assert_eq!(joined, tree.raw(node.start, node.end), "{}", node.rule.identifier());
+        }
+        assert_eq!(tree.raw(tree.root.start, tree.root.end), SOURCE);
+    }
+
+    // @lfy def/parser/data.lfy:ErrorNode#ErrorNode:spanning:0495daa6adc6e01ec518b49e95e6c97a67e174b10eccf67b7f08e7fcb04db7f6
+    #[test]
+    fn every_error_node_spans_the_source_it_covers() {
+        let tree = parse(lex(SOURCE, None).unwrap(), None);
+        assert!(!tree.errors.is_empty());
+        for error in &tree.errors {
+            let joined: String = error
+                .children
+                .iter()
+                .filter_map(Child::as_token)
+                .map(|index| tree.token(index).raw.as_str())
+                .collect();
+            assert_eq!(joined, tree.raw(error.start, error.end));
+        }
     }
 }

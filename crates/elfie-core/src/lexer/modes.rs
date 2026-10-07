@@ -1,70 +1,14 @@
 //! Compiled from `def/lexer/modes.lfy`.
 //!
-//! The lexing modes, the condition under which each terminal is a candidate
-//! (`candidateInModes`), and the mode traits of `def/lexer/traits.lfy` applied to each
-//! terminal.
-
-use std::fmt;
+//! The regions in which each terminal may be lexed (`lexedIn`), `inCode`, and the other
+//! traits of `def/lexer/traits.lfy` applied to each terminal.
 
 use crate::grammar::Entity;
 use crate::grammar::terminals::comment::Comment;
 use crate::grammar::terminals::literal::Literal;
 
+pub use super::traits::Mode;
 use super::traits::ModeBehavior;
-
-/// Regions of the source that change which terminals may match.
-// @lfy def/lexer/modes.lfy:Mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Mode {
-    Code,               // @lfy def/lexer/modes.lfy:Mode.code
-    BlockComment,       // @lfy def/lexer/modes.lfy:Mode.blockComment
-    LineComment,        // @lfy def/lexer/modes.lfy:Mode.lineComment
-    BlockDocumentation, // @lfy def/lexer/modes.lfy:Mode.blockDocumentation
-    LineDocumentation,  // @lfy def/lexer/modes.lfy:Mode.lineDocumentation
-    SingleQuote,        // @lfy def/lexer/modes.lfy:Mode.singleQuote
-    DoubleQuote,        // @lfy def/lexer/modes.lfy:Mode.doubleQuote
-    Template,           // @lfy def/lexer/modes.lfy:Mode.template
-    Execution,          // @lfy def/lexer/modes.lfy:Mode.execution
-    Reference,          // @lfy def/lexer/modes.lfy:Mode.reference
-}
-
-impl Mode {
-    /// Every mode, in declaration order.
-    pub const ALL: &'static [Mode] = &[
-        Mode::Code,
-        Mode::BlockComment,
-        Mode::LineComment,
-        Mode::BlockDocumentation,
-        Mode::LineDocumentation,
-        Mode::SingleQuote,
-        Mode::DoubleQuote,
-        Mode::Template,
-        Mode::Execution,
-        Mode::Reference,
-    ];
-
-    /// The value the mode was declared with.
-    pub const fn name(self) -> &'static str {
-        match self {
-            Mode::Code => "code",                  // @lfy def/lexer/modes.lfy:Mode.code
-            Mode::BlockComment => "block comment", // @lfy def/lexer/modes.lfy:Mode.blockComment
-            Mode::LineComment => "line comment",   // @lfy def/lexer/modes.lfy:Mode.lineComment
-            Mode::BlockDocumentation => "block documentation", // @lfy def/lexer/modes.lfy:Mode.blockDocumentation
-            Mode::LineDocumentation => "line documentation", // @lfy def/lexer/modes.lfy:Mode.lineDocumentation
-            Mode::SingleQuote => "single quoted string", // @lfy def/lexer/modes.lfy:Mode.singleQuote
-            Mode::DoubleQuote => "double quoted string", // @lfy def/lexer/modes.lfy:Mode.doubleQuote
-            Mode::Template => "template",          // @lfy def/lexer/modes.lfy:Mode.template
-            Mode::Execution => "template execution", // @lfy def/lexer/modes.lfy:Mode.execution
-            Mode::Reference => "template reference", // @lfy def/lexer/modes.lfy:Mode.reference
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.name())
-    }
-}
 
 // Conditions
 
@@ -73,132 +17,246 @@ impl fmt::Display for Mode {
 // @lfy def/lexer/modes.lfy:inCode
 pub const IN_CODE: &[Mode] = &[Mode::Code, Mode::Execution, Mode::Reference];
 
-/// `$lexCondition`: the modes in which the terminal is a candidate, as `candidateInModes`
-/// declares; [`IN_CODE`] for every terminal without a condition of its own.
-// @lfy def/lexer/traits.lfy:candidateInModes.lexCondition
+/// The regions in which the terminal may be lexed, as `lexedIn` declares; [`IN_CODE`] for
+/// every terminal that is neither `lexedIn` nor an escape.
 pub fn lex_condition(terminal: Entity) -> &'static [Mode] {
     match terminal {
-        // Text regions: the boundary opens the mode, only the body and the close are
-        // candidates inside it
+        // Text regions: the boundary opens and closes the region; inside it only the body
+        // and the boundary are lexed
         Entity::Literal(Literal::SingleQuote) => &[
             Mode::Code,
             Mode::Execution,
             Mode::Reference,
             Mode::SingleQuote,
-        ], // @lfy def/grammar/terminals/literal.lfy:SingleQuote.lexCondition
-        Entity::Literal(Literal::SingleQuoteBody) => &[Mode::SingleQuote], // @lfy def/grammar/terminals/literal.lfy:SingleQuoteBody.lexCondition
+        ],
+        Entity::Literal(Literal::SingleQuoteBody) => &[Mode::SingleQuote],
         Entity::Literal(Literal::DoubleQuote) => &[
             Mode::Code,
             Mode::Execution,
             Mode::Reference,
             Mode::DoubleQuote,
-        ], // @lfy def/grammar/terminals/literal.lfy:DoubleQuote.lexCondition
-        Entity::Literal(Literal::DoubleQuoteBody) => &[Mode::DoubleQuote], // @lfy def/grammar/terminals/literal.lfy:DoubleQuoteBody.lexCondition
+        ],
+        Entity::Literal(Literal::DoubleQuoteBody) => &[Mode::DoubleQuote],
         Entity::Literal(Literal::Backtick) => {
             &[Mode::Code, Mode::Execution, Mode::Reference, Mode::Template]
-        } // @lfy def/grammar/terminals/literal.lfy:Backtick.lexCondition
-        Entity::Literal(Literal::TemplateBody) => &[Mode::Template], // @lfy def/grammar/terminals/literal.lfy:TemplateBody.lexCondition
-        Entity::Literal(Literal::ExecutionOpen) => &[Mode::Template], // @lfy def/grammar/terminals/literal.lfy:ExecutionOpen.lexCondition
-        Entity::Literal(Literal::ExecutionClose) => &[Mode::Execution], // @lfy def/grammar/terminals/literal.lfy:ExecutionClose.lexCondition
+        }
+        Entity::Literal(Literal::TemplateBody) => &[Mode::Template],
+        Entity::Literal(Literal::ExecutionOpen) => &[Mode::Template],
+        Entity::Literal(Literal::ExecutionClose) => &[Mode::Execution],
         Entity::Literal(Literal::ReferenceOpen) => &[
             Mode::Template,
             Mode::BlockDocumentation,
             Mode::LineDocumentation,
-        ], // @lfy def/grammar/terminals/literal.lfy:ReferenceOpen.lexCondition
-        Entity::Literal(Literal::ReferenceClose) => &[Mode::Reference], // @lfy def/grammar/terminals/literal.lfy:ReferenceClose.lexCondition
+        ],
+        Entity::Literal(Literal::ReferenceClose) => &[Mode::Reference],
         // Comments nest; documentation does not
-        Entity::Comment(Comment::BlockCommentOpen) => &[Mode::Code, Mode::BlockComment, Mode::Execution], // @lfy def/grammar/terminals/comment.lfy:BlockCommentOpen.lexCondition
-        Entity::Comment(Comment::LineCommentOpen) => &[Mode::Code], // @lfy def/grammar/terminals/comment.lfy:LineCommentOpen.lexCondition
-        Entity::Comment(Comment::BlockCommentClose) => &[Mode::BlockComment], // @lfy def/grammar/terminals/comment.lfy:BlockCommentClose.lexCondition
-        Entity::Comment(Comment::BlockCommentBody) => &[Mode::BlockComment], // @lfy def/grammar/terminals/comment.lfy:BlockCommentBody.lexCondition
-        Entity::Comment(Comment::LineCommentBody) => &[Mode::LineComment], // @lfy def/grammar/terminals/comment.lfy:LineCommentBody.lexCondition
-        Entity::Comment(Comment::BlockDocumentationOpen) => &[Mode::Code, Mode::Execution], // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationOpen.lexCondition
-        Entity::Comment(Comment::BlockDocumentationClose) => &[Mode::BlockDocumentation], // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationClose.lexCondition
-        Entity::Comment(Comment::BlockDocumentationBody) => &[Mode::BlockDocumentation], // @lfy def/grammar/terminals/comment.lfy:BlockDocumentationBody.lexCondition
-        Entity::Comment(Comment::LineDocumentationOpen) => &[Mode::Code], // @lfy def/grammar/terminals/comment.lfy:LineDocumentationOpen.lexCondition
-        Entity::Comment(Comment::LineDocumentationBody) => &[Mode::LineDocumentation], // @lfy def/grammar/terminals/comment.lfy:LineDocumentationBody.lexCondition
-        // @lfy def/lexer/main.lfy:lex
+        Entity::Comment(Comment::BlockCommentOpen) => {
+            &[Mode::Code, Mode::BlockComment, Mode::Execution]
+        }
+        Entity::Comment(Comment::BlockCommentClose) => &[Mode::BlockComment],
+        Entity::Comment(Comment::BlockCommentBody) => &[Mode::BlockComment],
+        Entity::Comment(Comment::LineCommentOpen) => &[Mode::Code],
+        Entity::Comment(Comment::LineCommentBody) => &[Mode::LineComment],
+        Entity::Comment(Comment::BlockDocumentationOpen) => &[Mode::Code, Mode::Execution],
+        Entity::Comment(Comment::BlockDocumentationClose) => &[Mode::BlockDocumentation],
+        Entity::Comment(Comment::BlockDocumentationBody) => &[Mode::BlockDocumentation],
+        Entity::Comment(Comment::LineDocumentationOpen) => &[Mode::Code],
+        Entity::Comment(Comment::LineDocumentationBody) => &[Mode::LineDocumentation],
+        // @lfy def/lexer/modes.lfy:inCode
         _ => IN_CODE,
     }
 }
 
-/// The mode traits applied to each terminal.
-// @lfy def/lexer/data.lfy:ModeStack
+/// The mode traits (`opener`, `closer`, `delimiter`, `lineBounded`) applied to each
+/// terminal.
 pub fn mode_behaviors(terminal: Entity) -> &'static [ModeBehavior] {
+    use ModeBehavior::{Closer, Delimiter, LineBounded, Opener};
     match terminal {
         Entity::Literal(Literal::SingleQuote) => &[
-            ModeBehavior::Toggle {
+            Delimiter {
                 mode: Mode::SingleQuote,
-                when: Some(IN_CODE),
-            }, // @lfy def/lexer/traits.lfy:modeToggle
-            ModeBehavior::AppliedUntilNewLine {
+            },
+            LineBounded {
                 mode: Mode::SingleQuote,
-            }, // @lfy def/lexer/traits.lfy:appliedUntilNewLine
+            },
         ],
         Entity::Literal(Literal::DoubleQuote) => &[
-            ModeBehavior::Toggle {
+            Delimiter {
                 mode: Mode::DoubleQuote,
-                when: Some(IN_CODE),
-            }, // @lfy def/lexer/traits.lfy:modeToggle
-            ModeBehavior::AppliedUntilNewLine {
+            },
+            LineBounded {
                 mode: Mode::DoubleQuote,
-            }, // @lfy def/lexer/traits.lfy:appliedUntilNewLine
+            },
         ],
-        Entity::Literal(Literal::Backtick) => &[ModeBehavior::Toggle {
+        Entity::Literal(Literal::Backtick) => &[Delimiter {
             mode: Mode::Template,
-            when: Some(IN_CODE),
-        }], // @lfy def/lexer/traits.lfy:modeToggle
-        Entity::Literal(Literal::ExecutionOpen) => &[ModeBehavior::Opener {
+        }],
+        Entity::Literal(Literal::ExecutionOpen) => &[Opener {
             mode: Mode::Execution,
-            when: Some(&[Mode::Template]),
-        }], // @lfy def/lexer/traits.lfy:modeOpener
-        Entity::Literal(Literal::ExecutionClose) => &[ModeBehavior::Closer {
+        }],
+        Entity::Literal(Literal::ExecutionClose) => &[Closer {
             mode: Mode::Execution,
-        }], // @lfy def/lexer/traits.lfy:modeCloser
-        Entity::Literal(Literal::ReferenceOpen) => &[ModeBehavior::Opener {
+        }],
+        Entity::Literal(Literal::ReferenceOpen) => &[Opener {
             mode: Mode::Reference,
-            when: Some(&[
-                Mode::Template,
-                Mode::BlockDocumentation,
-                Mode::LineDocumentation,
-            ]),
-        }], // @lfy def/lexer/traits.lfy:modeOpener
-        Entity::Literal(Literal::ReferenceClose) => &[ModeBehavior::Closer {
+        }],
+        Entity::Literal(Literal::ReferenceClose) => &[Closer {
             mode: Mode::Reference,
-        }], // @lfy def/lexer/traits.lfy:modeCloser
-        Entity::Comment(Comment::BlockCommentOpen) => &[ModeBehavior::Opener {
+        }],
+        Entity::Comment(Comment::BlockCommentOpen) => &[Opener {
             mode: Mode::BlockComment,
-            when: Some(&[Mode::Code, Mode::BlockComment, Mode::Execution]),
-        }], // @lfy def/lexer/traits.lfy:modeOpener
-        Entity::Comment(Comment::BlockCommentClose) => &[ModeBehavior::Closer {
+        }],
+        Entity::Comment(Comment::BlockCommentClose) => &[Closer {
             mode: Mode::BlockComment,
-        }], // @lfy def/lexer/traits.lfy:modeCloser
+        }],
         Entity::Comment(Comment::LineCommentOpen) => &[
-            ModeBehavior::Opener {
+            Opener {
                 mode: Mode::LineComment,
-                when: Some(&[Mode::Code]),
-            }, // @lfy def/lexer/traits.lfy:modeOpener
-            ModeBehavior::AppliedUntilNewLine {
+            },
+            LineBounded {
                 mode: Mode::LineComment,
-            }, // @lfy def/lexer/traits.lfy:appliedUntilNewLine
+            },
         ],
-        Entity::Comment(Comment::BlockDocumentationOpen) => &[ModeBehavior::Opener {
+        Entity::Comment(Comment::BlockDocumentationOpen) => &[Opener {
             mode: Mode::BlockDocumentation,
-            when: Some(&[Mode::Code, Mode::Execution]),
-        }], // @lfy def/lexer/traits.lfy:modeOpener
-        Entity::Comment(Comment::BlockDocumentationClose) => &[ModeBehavior::Closer {
+        }],
+        Entity::Comment(Comment::BlockDocumentationClose) => &[Closer {
             mode: Mode::BlockDocumentation,
-        }], // @lfy def/lexer/traits.lfy:modeCloser
+        }],
         Entity::Comment(Comment::LineDocumentationOpen) => &[
-            ModeBehavior::Opener {
+            Opener {
                 mode: Mode::LineDocumentation,
-                when: Some(&[Mode::Code]),
-            }, // @lfy def/lexer/traits.lfy:modeOpener
-            ModeBehavior::AppliedUntilNewLine {
+            },
+            LineBounded {
                 mode: Mode::LineDocumentation,
-            }, // @lfy def/lexer/traits.lfy:appliedUntilNewLine
+            },
         ],
         _ => &[],
+    }
+}
+
+/// One entry of the [`ModeStack`]: a mode together with the terminal whose token opened
+/// it (`None` for the entry the stack starts out with).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ModeEntry {
+    pub mode: Mode,
+    pub opener: Option<Entity>,
+}
+
+/// Which region of the source the lexer is in, innermost last.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModeStack {
+    entries: Vec<ModeEntry>,
+}
+
+impl Default for ModeStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ModeStack {
+    /// A stack at the outermost region of a file.
+    pub fn new() -> Self {
+        ModeStack {
+            entries: vec![ModeEntry {
+                mode: Mode::Code,
+                opener: None,
+            }],
+        }
+    }
+
+    /// Enters `mode`, recording `opener` as the terminal of the token that opened it.
+    pub fn push(&mut self, mode: Mode, opener: Entity) {
+        self.entries.push(ModeEntry {
+            mode,
+            opener: Some(opener),
+        });
+    }
+
+    /// Leaves `mode` and gives back the entry that held it, or `None` when `mode` is not
+    /// the one at the top. The entry the stack starts out with stays.
+    pub fn pop(&mut self, mode: Mode) -> Option<ModeEntry> {
+        if self.entries.len() > 1 && self.top().mode == mode {
+            self.entries.pop()
+        } else {
+            None
+        }
+    }
+
+    /// The innermost entry.
+    pub fn top(&self) -> &ModeEntry {
+        self.entries.last().expect("the stack is never empty")
+    }
+
+    /// The mode of the innermost entry.
+    pub fn top_mode(&self) -> Mode {
+        self.top().mode
+    }
+
+    /// Whether no mode is open above the one the stack starts out with.
+    pub fn is_only_code(&self) -> bool {
+        self.entries.len() == 1
+    }
+
+    /// The entries above the one the stack starts out with, bottom first.
+    pub fn open(&self) -> &[ModeEntry] {
+        &self.entries[1..]
+    }
+
+    /// All modes on the stack, bottom first.
+    pub fn modes(&self) -> Vec<Mode> {
+        self.entries.iter().map(|entry| entry.mode).collect()
+    }
+}
+
+#[cfg(test)]
+mod stack_tests {
+    use super::*;
+
+    fn backtick() -> Entity {
+        Entity::Literal(Literal::Backtick)
+    }
+
+    #[test]
+    fn the_stack_starts_with_code_and_is_never_empty() {
+        let mut stack = ModeStack::new();
+        assert_eq!(stack.top_mode(), Mode::Code);
+        assert!(stack.is_only_code());
+        assert_eq!(stack.pop(Mode::Code), None);
+        assert_eq!(stack.modes(), vec![Mode::Code]);
+        assert!(stack.open().is_empty());
+    }
+
+    #[test]
+    fn opening_a_mode_pushes_it_with_its_opener() {
+        let mut stack = ModeStack::new();
+        stack.push(Mode::Template, backtick());
+        stack.push(Mode::Execution, Entity::Literal(Literal::ExecutionOpen));
+        assert_eq!(stack.top_mode(), Mode::Execution);
+        assert_eq!(
+            stack.top().opener,
+            Some(Entity::Literal(Literal::ExecutionOpen))
+        );
+        assert_eq!(
+            stack.modes(),
+            vec![Mode::Code, Mode::Template, Mode::Execution]
+        );
+        assert_eq!(stack.open().len(), 2);
+    }
+
+    #[test]
+    fn closing_pops_only_the_mode_at_the_top() {
+        let mut stack = ModeStack::new();
+        stack.push(Mode::Template, backtick());
+        stack.push(Mode::Execution, Entity::Literal(Literal::ExecutionOpen));
+        assert_eq!(stack.pop(Mode::Template), None);
+        assert_eq!(stack.modes().len(), 3);
+        let popped = stack.pop(Mode::Execution).unwrap();
+        assert_eq!(popped.mode, Mode::Execution);
+        assert_eq!(stack.modes(), vec![Mode::Code, Mode::Template]);
+        assert!(stack.pop(Mode::Template).is_some());
+        assert!(stack.is_only_code());
     }
 }
 
@@ -209,26 +267,20 @@ mod tests {
     use crate::grammar::terminals::space::Space;
     use crate::grammar::{GrammarRule, rules};
 
-    // @lfy def/lexer/modes.lfy:Mode
-    #[test]
-    fn mode_names_match_their_declarations() {
-        assert_eq!(Mode::ALL.len(), 10);
-        assert_eq!(Mode::Code.name(), "code");
-        assert_eq!(Mode::BlockComment.name(), "block comment");
-        assert_eq!(Mode::LineDocumentation.name(), "line documentation");
-        assert_eq!(Mode::SingleQuote.name(), "single quoted string");
-        assert_eq!(Mode::Execution.to_string(), "template execution");
-        assert_eq!(Mode::Reference.to_string(), "template reference");
-    }
-
     // @lfy def/lexer/modes.lfy:inCode
     #[test]
-    fn terminals_without_a_condition_are_candidates_in_code() {
+    fn terminals_without_a_condition_are_lexed_in_code() {
         assert_eq!(IN_CODE, &[Mode::Code, Mode::Execution, Mode::Reference]);
         assert_eq!(lex_condition(Entity::Keyword(Keyword::IfKeyword)), IN_CODE);
         assert_eq!(lex_condition(Entity::Space(Space::NewLine)), IN_CODE);
-        assert_eq!(lex_condition(Entity::Comment(Comment::LineCommentOpen)), &[Mode::Code]);
-        assert_eq!(lex_condition(Entity::Comment(Comment::LineDocumentationOpen)), &[Mode::Code]);
+        assert_eq!(
+            lex_condition(Entity::Comment(Comment::LineCommentOpen)),
+            &[Mode::Code]
+        );
+        assert_eq!(
+            lex_condition(Entity::Comment(Comment::LineDocumentationOpen)),
+            &[Mode::Code]
+        );
         assert_eq!(
             lex_condition(Entity::Comment(Comment::BlockDocumentationOpen)),
             &[Mode::Code, Mode::Execution]
@@ -243,9 +295,8 @@ mod tests {
         );
     }
 
-    // @lfy def/lexer/traits.lfy:candidateInModes.lexCondition
     #[test]
-    fn every_body_is_a_candidate_only_inside_its_region() {
+    fn every_body_is_lexed_only_inside_its_region() {
         for rule in rules().filter(|rule| rule.is_body()) {
             let condition = lex_condition(rule);
             assert_eq!(condition.len(), 1, "{rule}");
@@ -253,7 +304,6 @@ mod tests {
         }
     }
 
-    // @lfy def/lexer/data.lfy:ModeStack
     #[test]
     fn only_boundaries_carry_mode_behaviors() {
         for rule in rules() {

@@ -788,6 +788,7 @@ fn use_problems(model: &Model, recorded: &[UseProblem]) -> Vec<Problem> {
         out.push(Problem {
             node,
             message: problem.message.clone(),
+            stage: crate::model::Stage::Loader,
         });
     }
     out
@@ -1124,6 +1125,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                         "the target {identifier} gives the {slot} {name}, which does not extend \
                          {role}"
                     ),
+                    stage: crate::model::Stage::Binder,
                 });
             }
         }
@@ -1141,6 +1143,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                     "the target {identifier} gives no {}",
                     missing.join(" and no ")
                 ),
+                stage: crate::model::Stage::Binder,
             });
             continue;
         }
@@ -1156,6 +1159,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                         "the target {identifier} requires {required} and none of its layers \
                          provides it"
                     ),
+                    stage: crate::model::Stage::Binder,
                 });
             }
         }
@@ -1198,6 +1202,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
             problems.push(Problem {
                 node: at,
                 message: format!("the dependencies of the target {identifier} need an ecosystem"),
+                stage: crate::model::Stage::Binder,
             });
         }
 
@@ -1292,6 +1297,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                 problems.push(Problem {
                     node,
                     message: message.clone(),
+                    stage: crate::model::Stage::Binder,
                 });
             }
         }
@@ -1330,6 +1336,7 @@ fn knowledge_problems(
                          so a compile never depends on the network",
                         item.source
                     ),
+                    stage: crate::model::Stage::Loader,
                 });
                 continue;
             }
@@ -1345,6 +1352,7 @@ fn knowledge_problems(
                 problems.push(Problem {
                     node,
                     message: format!("the knowledge {:?} does not exist", item.source),
+                    stage: crate::model::Stage::Loader,
                 });
             }
         }

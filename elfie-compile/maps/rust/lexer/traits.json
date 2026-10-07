@@ -1,0 +1,277 @@
+[
+  {
+    "dependencies": {
+      "def/grammar/terminals/space.lfy": "96d1339dbe32f0b6c9a93dbf6cbf4797fd757278d766d0a26b2453c5e2fd1b75"
+    },
+    "generated": "2026-10-07T06:25:04Z",
+    "hash": "eb929043e1277bbd54f81d75dfab62edb5c8c718f2ce7ae4ae08e678ce5a34f5",
+    "markers": [
+      {
+        "column": null,
+        "end": 17,
+        "entity": "Mode",
+        "file": "def/lexer/traits.lfy",
+        "line": 3,
+        "outputLine": 15,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 18,
+        "entity": "Mode.code",
+        "file": "def/lexer/traits.lfy",
+        "line": 4,
+        "outputLine": 18,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 19,
+        "entity": "Mode.blockComment",
+        "file": "def/lexer/traits.lfy",
+        "line": 5,
+        "outputLine": 19,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "Mode.lineComment",
+        "file": "def/lexer/traits.lfy",
+        "line": 6,
+        "outputLine": 20,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 21,
+        "entity": "Mode.blockDocumentation",
+        "file": "def/lexer/traits.lfy",
+        "line": 7,
+        "outputLine": 21,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 22,
+        "entity": "Mode.lineDocumentation",
+        "file": "def/lexer/traits.lfy",
+        "line": 8,
+        "outputLine": 22,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "Mode.singleQuote",
+        "file": "def/lexer/traits.lfy",
+        "line": 9,
+        "outputLine": 23,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 24,
+        "entity": "Mode.doubleQuote",
+        "file": "def/lexer/traits.lfy",
+        "line": 10,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 25,
+        "entity": "Mode.template",
+        "file": "def/lexer/traits.lfy",
+        "line": 11,
+        "outputLine": 25,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "Mode.execution",
+        "file": "def/lexer/traits.lfy",
+        "line": 12,
+        "outputLine": 26,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 68,
+        "entity": "Mode.reference",
+        "file": "def/lexer/traits.lfy",
+        "line": 13,
+        "outputLine": 27,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "inMode",
+        "file": "def/lexer/traits.lfy",
+        "line": 16,
+        "outputLine": 69,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 85,
+        "entity": "inMode",
+        "file": "def/lexer/traits.lfy",
+        "line": 16,
+        "outputLine": 76,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": "opener",
+        "file": "def/lexer/traits.lfy",
+        "line": 26,
+        "outputLine": 86,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 89,
+        "entity": "closer",
+        "file": "def/lexer/traits.lfy",
+        "line": 30,
+        "outputLine": 88,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 91,
+        "entity": "delimiter",
+        "file": "def/lexer/traits.lfy",
+        "line": 34,
+        "outputLine": 90,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 99,
+        "entity": "lineBounded",
+        "file": "def/lexer/traits.lfy",
+        "line": 41,
+        "outputLine": 92,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "opener",
+        "file": "def/lexer/traits.lfy",
+        "line": 26,
+        "outputLine": 100,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 108,
+        "entity": "closer",
+        "file": "def/lexer/traits.lfy",
+        "line": 30,
+        "outputLine": 102,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 111,
+        "entity": "delimiter",
+        "file": "def/lexer/traits.lfy",
+        "line": 34,
+        "outputLine": 109,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 122,
+        "entity": "delimiter",
+        "file": "def/lexer/traits.lfy",
+        "line": 34,
+        "outputLine": 112,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 136,
+        "entity": "lineBounded",
+        "file": "def/lexer/traits.lfy",
+        "line": 41,
+        "outputLine": 123,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 157,
+        "entity": "lineBounded",
+        "file": "def/lexer/traits.lfy",
+        "line": 41,
+        "outputLine": 137,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 169,
+        "entity": "Mode",
+        "file": "def/lexer/traits.lfy",
+        "line": 3,
+        "outputLine": 158,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 184,
+        "entity": "inMode",
+        "file": "def/lexer/traits.lfy",
+        "line": 16,
+        "outputLine": 170,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 213,
+        "entity": "opener",
+        "file": "def/lexer/traits.lfy",
+        "line": 26,
+        "outputLine": 185,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 227,
+        "entity": "closer",
+        "file": "def/lexer/traits.lfy",
+        "line": 30,
+        "outputLine": 214,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 252,
+        "entity": "delimiter",
+        "file": "def/lexer/traits.lfy",
+        "line": 34,
+        "outputLine": 228,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 294,
+        "entity": "lineBounded",
+        "file": "def/lexer/traits.lfy",
+        "line": 41,
+        "outputLine": 253,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/lexer/traits.rs",
+    "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signature": "5a98ea33baef722495f9cc438cea11bf51a287d85a55d748fd0aa22c75545526",
+    "source": "def/lexer/traits.lfy",
+    "target": "rust"
+  }
+]

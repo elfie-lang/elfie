@@ -9,6 +9,7 @@ use crate::grammar::terminals::identifier::Identifier;
 use crate::grammar::terminals::keyword::Keyword;
 use crate::grammar::terminals::literal::Literal;
 use crate::grammar::terminals::punctuation::Punctuation;
+use crate::grammar::rules;
 use crate::lexer::lex;
 
 fn tokens(source: &str) -> Vec<Token> {
@@ -288,7 +289,7 @@ fn test_a_template_with_an_execution_and_a_reference() {
     assert!(tree.errors.is_empty());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:a6e88bbebd9637216f3c0cadb5b3a87cd2201a000d7c07f82c254e6d2cca2d8f
+// @lfy def/parser/main.lfy:parse#parse:parse:ff5346465bc782f0b70e1dc0ee3c00e7c3bdb18d6bef456f6c11c6309da683a3
 #[test]
 fn test_a_declaration_missing_its_name_recovers_at_the_semicolon() {
     let source = "const = 1; let y = 2;";
@@ -339,7 +340,7 @@ fn test_a_keyword_where_an_operand_was_expected_is_the_error_s_keyword() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:085f4541fdac12041a7d961636301805bd71c052d2cbd707344331bdad595d2d
+// @lfy def/parser/main.lfy:parse#parse:parse:ff5346465bc782f0b70e1dc0ee3c00e7c3bdb18d6bef456f6c11c6309da683a3
 #[test]
 fn test_an_error_node_has_no_keyword_when_none_of_its_tokens_are_one() {
     let source = "const = 1;";
@@ -351,7 +352,8 @@ fn test_an_error_node_has_no_keyword_when_none_of_its_tokens_are_one() {
 
 // parse
 
-// @lfy def/parser/main.lfy:parse#parse:parse:3f35ff181697621541a9298b81d89397807df5d1961e264f3307eedb34a650e5
+// @lfy def/parser/main.lfy:parse#parse:parse:545a46287bf0abf2a508a3bc2f399480a555592a6c7eb683235c84348a82e3fd
+// @lfy def/parser/main.lfy:parse#parse:parse:dcd0b711212c8a500ae9a400b84c961e39b198ef5720dfe74af30f4ceb820a9f
 #[test]
 fn every_tree_keeps_its_tokens_and_covers_each_exactly_once() {
     for source in [
@@ -378,7 +380,7 @@ fn every_tree_keeps_its_tokens_and_covers_each_exactly_once() {
     }
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:3f35ff181697621541a9298b81d89397807df5d1961e264f3307eedb34a650e5
+// @lfy def/parser/main.lfy:parse#parse:parse:0368a70644f5a2b33623b68b70e1f4a4b4f7b074e3cd0749de799c954fc9b3cf
 #[test]
 fn a_rule_is_attempted_at_most_once_per_token_index_and_minimum() {
     for source in [
@@ -395,7 +397,7 @@ fn a_rule_is_attempted_at_most_once_per_token_index_and_minimum() {
     }
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:54f128054fc19398b5e648f5ec344eaf7f85d6da005de481dd15820329670646
+// @lfy def/parser/main.lfy:parse#parse:parse:dcd0b711212c8a500ae9a400b84c961e39b198ef5720dfe74af30f4ceb820a9f
 #[test]
 fn the_rule_is_what_the_caller_wants_satisfied() {
     let tree = parse(tokens("a;"), None);
@@ -435,7 +437,7 @@ fn tokens_left_over_become_one_error_node_at_the_end_of_the_root() {
     assert_eq!(tree.root.end, tree.tokens.len());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:0ae4cc24d47e2f0f276f866cdb5663645bf4d44ae50e2d8aa0e7593d839b75a9
+// @lfy def/parser/main.lfy:parse#parse:parse:dcd0b711212c8a500ae9a400b84c961e39b198ef5720dfe74af30f4ceb820a9f
 #[test]
 fn an_alternation_list_root_holds_leading_trivia_and_the_item() {
     let tree = expr(" a");
@@ -451,7 +453,7 @@ fn an_alternation_list_root_holds_leading_trivia_and_the_item() {
     assert!(tree.root.is(Statement::ExpressionStatement));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:0a62225249e29a6574042386e16928ffb99e3d1554435a9c5d7d48d2945b7d16
+// @lfy def/parser/main.lfy:parse#parse:parse:ba7b39019b1fa273cf02e733e1051232e9cff31ab1d91f15e794286b4e203eed
 #[test]
 fn an_alternation_list_root_holds_the_item_and_the_leftovers() {
     let tree = expr("a b");
@@ -473,7 +475,7 @@ fn an_alternation_list_root_holds_the_item_and_the_leftovers() {
     assert!(!tree.errors[0].expected.contains(&"Plus"));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:6954bc94999e3e1d5c02044bdd997e19e125f30951437897ddc32b9157b7d01d
+// @lfy def/parser/main.lfy:parse#parse:parse:b25f4ff45c8f1a8f81e5a9ac7e2e632b5fbd46d2027d7b1e83e7c661f5300a17
 #[test]
 fn the_parser_parses_against_the_grammar_document_only() {
     let document = grammar();
@@ -506,7 +508,7 @@ fn a_terminal_is_satisfied_by_one_token_of_that_terminal() {
     assert_eq!((name.start, name.end), (0, 1));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:ede3a0f56a3cb6e16f63484b69a9ab1eb084232340b4c78e3e8a61c58b3a2e68
+// @lfy def/parser/main.lfy:parse#parse:parse:dcd0b711212c8a500ae9a400b84c961e39b198ef5720dfe74af30f4ceb820a9f
 #[test]
 fn trivia_between_elements_becomes_children_of_the_open_node() {
     let source = "a /* c */ // d\n ;";
@@ -572,7 +574,7 @@ fn a_statement_is_selected_among_the_statement_rules_in_tried_before_order() {
     );
     assert!(tree.errors.is_empty());
     // A statement that begins with a block is a Block, never an Object.
-    // @lfy def/grammar/rules/statement.lfy:Block#Block:Block:9ae65fb43c49f0258af48de8fea33a1d255a473c4c1c5d69dcefdabb860dc16d
+    // @lfy def/grammar/rules/statement.lfy:Block#Block:triedBefore:e09e16018b356ab47e66865a41c2e195ce6af017abdeadcb2510ada2abbdd4d7
     let tree = file("{ a = 1 }");
     assert!(first_statement(&tree).is(Statement::Block));
     assert_eq!(tree.errors.len(), 1);
@@ -621,7 +623,7 @@ fn an_alternation_offers_its_alternatives_as_candidates() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:228ac08feb110e0d1be0152283de70a96500488f2211c0f993b12661ff399377
+// @lfy def/parser/main.lfy:parse#parse:parse:8791f1af46546e454f5457e36522f723cf33c1b9cf0347980d925f47b18dd1d4
 #[test]
 fn a_candidate_that_fails_hands_the_token_to_the_next_in_tried_before_order() {
     // A `GroupOpen` selects `InlineFunction` before `Group`; here the inline function
@@ -638,7 +640,7 @@ fn a_candidate_that_fails_hands_the_token_to_the_next_in_tried_before_order() {
     assert!(first_statement(&tree).find(Expression::Object).is_some());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:51f9f1895d366556fabcb96f770e23b3cafac57b3a1e64c0819c12401b8eef82
+// @lfy def/parser/main.lfy:parse#parse:parse:b122a3907a1e84cdecdab3a9de01bcde8c255c36c0fe8a7492a1b4aa6cc3f1ed
 #[test]
 fn no_candidate_after_one_that_does_not_fail_is_tried() {
     // `InlineFunction` does not fail here, so `Group` is never tried at that index.
@@ -690,7 +692,7 @@ fn an_alternation_without_an_operation_parses_with_minimum_zero() {
     assert!(beginning::expression_alternation_minimum(&with_operation) > 0);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:88922a29a0f0d1d631771e55c0276656c3851375d91c7860fa827883a186d116
+// @lfy def/parser/main.lfy:parse#parse:parse:0778dfb04d4b97381baf71158d420649cf2487436b414495b03b60995f7516a9
 #[test]
 fn an_alternation_of_expression_rules_is_one_expression_of_limited_power() {
     let tree = file("`[[a.b]] [[&c.q]] [[e[0] ]]`;");
@@ -721,7 +723,7 @@ fn an_alternation_of_expression_rules_is_one_expression_of_limited_power() {
     assert_eq!(tree.errors.len(), 1);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:80183e8ed69ffdce6ec75354328ffbee70ab49de04dae9c5f1a835f67a8e5dbd
+// @lfy def/parser/main.lfy:parse#parse:parse:706190a656cac524909cc166cc04abd19b61fed89e179b1e22f9078aaa2e4789
 #[test]
 fn an_optional_element_is_tried_when_the_next_token_can_begin_it() {
     // The member name is optional and taken when the next token can begin it.
@@ -734,7 +736,7 @@ fn an_optional_element_is_tried_when_the_next_token_can_begin_it() {
     assert!(tree.errors.is_empty(), "{:?}", tree.errors);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:570bc7b6a84742e084c9b82aa44aa31162a3a7602929b5e56215ce5d32d02299
+// @lfy def/parser/main.lfy:parse#parse:parse:706190a656cac524909cc166cc04abd19b61fed89e179b1e22f9078aaa2e4789
 #[test]
 fn an_optional_element_is_skipped_when_the_next_token_cannot_begin_it() {
     // A `Semicolon` cannot begin a member name, so the optional element is skipped.
@@ -749,7 +751,7 @@ fn an_optional_element_is_skipped_when_the_next_token_cannot_begin_it() {
     assert_eq!(shape(declared, &tree), ["Identifier(x)"]);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:ca1ac5f3c97e1083d46795ca68dd4af55a2636fd878008961fb26a671a63b855
+// @lfy def/parser/main.lfy:parse#parse:parse:706190a656cac524909cc166cc04abd19b61fed89e179b1e22f9078aaa2e4789
 #[test]
 fn an_optional_element_that_is_tried_and_fails_is_skipped() {
     // A leading `&` in a type position can begin the optional union operator, but the
@@ -760,7 +762,7 @@ fn an_optional_element_that_is_tried_and_fails_is_skipped() {
     assert_eq!(shape(type_expression, &tree), ["Ampersand(&)", "TypeItem"]);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:0ab01e045b160fb8b0a5bd592667a637039c617a30417781c73c32471a4e80b1
+// @lfy def/parser/main.lfy:parse#parse:parse:5de309372b69eea9c7b10354e1ad3f703ff93b4b9a89356b37f74aebf4d7dc9d
 #[test]
 fn a_later_failure_never_revisits_an_optional_element() {
     // The optional expression inside an `Index` is taken as `b`, and the `ListClose`
@@ -787,7 +789,7 @@ fn a_later_failure_never_revisits_an_optional_element() {
     }
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:e836c72272aea4f33a32a661edcc0e6cb5ec87adb16205b6c82d97c361f48cdd
+// @lfy def/parser/main.lfy:parse#parse:parse:9d10aea504259185e52d701dbed880a21517363b27fba335086c49485f715f74
 #[test]
 fn a_repetition_tries_another_iteration_while_the_next_token_can_begin_one() {
     let tree = file("(a, b, ...rest) => a; { c; e; }");
@@ -802,7 +804,7 @@ fn a_repetition_tries_another_iteration_while_the_next_token_can_begin_one() {
     assert_eq!(statements[1].nodes_of(Statement::ExpressionStatement).count(), 2);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:9c3767cb9a59599479bc09a083b2a2708a04d1b1732d734c777b12260a27ef1b
+// @lfy def/parser/main.lfy:parse#parse:parse:e177fe61a492b6dc0f861cc4af65d89dceb1dc4175ff8221e2adcab0112578a8
 #[test]
 fn a_repetition_ends_when_the_next_token_cannot_begin_the_repeated_element() {
     let tree = file("(c, ) => c; match x { a -> b, }");
@@ -815,7 +817,7 @@ fn a_repetition_ends_when_the_next_token_cannot_begin_the_repeated_element() {
     assert_eq!(statements[1].nodes_of(Statement::MatchArm).count(), 1);
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:5a7652382aeff6dc355d1da81e1e9106e2b56b7f73304e3a02486cf27d7322ee
+// @lfy def/parser/main.lfy:parse#parse:parse:e177fe61a492b6dc0f861cc4af65d89dceb1dc4175ff8221e2adcab0112578a8
 #[test]
 fn an_iteration_that_fails_leaves_its_tokens_and_ends_the_repetition() {
     // The statements of the block repeat; the iteration that begins at `)` fails and
@@ -833,7 +835,7 @@ fn an_iteration_that_fails_leaves_its_tokens_and_ends_the_repetition() {
 
 // Expressions
 
-// @lfy def/parser/main.lfy:parse#parse:parse:99405f6cf9c6a5e54f3067d541686b159f24b44be7dd3ee4b47b1f12f997642e
+// @lfy def/parser/main.lfy:parse#parse:parse:670dd0bda11bbce2a890e25f36de906c5dd5e745536d1225fa35bc3d4544eda9
 #[test]
 fn operands_and_tails_are_parsed_with_the_operation_power_as_the_minimum() {
     // A prefix operand stops before a weaker operator.
@@ -855,7 +857,7 @@ fn operands_and_tails_are_parsed_with_the_operation_power_as_the_minimum() {
     assert!(tree.errors.is_empty());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:c5434301155f78027c7957a31536a926468ffa3b82f8ac1093f532bee11a3f03
+// @lfy def/parser/main.lfy:parse#parse:parse:a3a41aa47d6f8c5ce84eb52a369276e28005db60620c11d0956e0baa5af1578c
 #[test]
 fn an_operation_applies_when_its_power_beats_the_minimum_or_ties_to_the_right() {
     let tree = expr("a ** b ** c");
@@ -873,7 +875,7 @@ fn an_operation_applies_when_its_power_beats_the_minimum_or_ties_to_the_right() 
     assert!(tree.root.nodes().next().unwrap().is(Expression::MultiplicativeOperation));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:7e74975ee875acea83afea95137e69df310549cb4b20534c96a76628bd43fa46
+// @lfy def/parser/main.lfy:parse#parse:parse:1d33f9999208718a92bdb3b5d55319a75b2b1f045141499ce8fd22d6cab30ae3
 #[test]
 fn expressions_after_an_open_bracket_or_in_other_rules_start_at_minimum_zero() {
     let tree = expr("a[b = c]");
@@ -888,7 +890,7 @@ fn expressions_after_an_open_bracket_or_in_other_rules_start_at_minimum_zero() {
     assert!(tree.errors.is_empty());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:7185c3dbfd8022f2f4a3c0486615c5f13e4b5deb0a6ceaf5cfbab35572ac9968
+// @lfy def/parser/main.lfy:parse#parse:parse:c971b2ec65d561653e23d92a462149ebf3b978d9b299ba3e65ae85661bbec770
 #[test]
 fn the_postfix_rule_of_an_operator_is_tried_before_its_infix_rule() {
     // A LessThan is the operator of Generic, a postfix rule, and of RelationalOperation,
@@ -913,7 +915,7 @@ fn the_postfix_rule_of_an_operator_is_tried_before_its_infix_rule() {
     assert!(tree.errors.is_empty());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:de35158e51addc98a605ac2f36217d513a79f206fe4d9f6973d7af1639de192c
+// @lfy def/parser/main.lfy:parse#parse:parse:c971b2ec65d561653e23d92a462149ebf3b978d9b299ba3e65ae85661bbec770
 #[test]
 fn the_infix_rule_is_tried_where_the_postfix_rule_of_the_operator_is_no_match() {
     // A `Generic` is no match before the identifier `c`, so the `LessThan` continues the
@@ -927,7 +929,7 @@ fn the_infix_rule_is_tried_where_the_postfix_rule_of_the_operator_is_no_match() 
     assert!(tree.errors.is_empty());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:9c11cec24e885f91edd6a4efce9dfb2cfa4862573074eac789bc5ee64110ce1f
+// @lfy def/parser/main.lfy:parse#parse:parse:c971b2ec65d561653e23d92a462149ebf3b978d9b299ba3e65ae85661bbec770
 #[test]
 fn the_infix_rule_is_not_tried_where_the_postfix_rule_of_the_operator_matches() {
     // The `Generic` matches, so no `RelationalOperation` is built from the same
@@ -979,7 +981,7 @@ fn an_attempt_for_one_rule_is_distinct_from_an_attempt_for_another() {
 
 // Errors
 
-// @lfy def/parser/main.lfy:parse#parse:parse:bd89bb1dec6711dc056ba284188acd4c1a500b9ab4036d5e4eab862aa814d74e
+// @lfy def/parser/main.lfy:parse#parse:parse:ce5ef922964b0785ccb24c312070b213c8d95315059ea093913c2390c782ff45
 #[test]
 fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     let source = "if (a b) { c; }";
@@ -995,7 +997,7 @@ fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     // The element that failed is the semicolon, and the optional setter that was skipped
     // there could have continued the declaration too.
     assert_eq!(tree.errors[0].expected, vec!["Semicolon", "PlainSetter"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:d26e01007222d8cbc0f684150ca1e552df077e9030d4de76495208bb8eedb9f5
+    // @lfy def/parser/main.lfy:parse#parse:parse:ce5ef922964b0785ccb24c312070b213c8d95315059ea093913c2390c782ff45
     // A rule without recoverable produces nothing, so the group here is left to the
     // statement, which then recovers.
     let tree = file("(a b);");
@@ -1004,7 +1006,7 @@ fn a_recoverable_rule_closes_with_an_error_node_where_it_cannot_continue() {
     assert!(statement.node(Expression::Group).is_none());
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:f189f369c6fdcb0b4372fc0423e4b92867ee37a2cc9cbe5fff911e10fd9b4977
+// @lfy def/parser/main.lfy:parse#parse:parse:34df80050f53bfb40f469e26559ea0850a873167845d8999342b828116630477
 #[test]
 fn the_error_s_keyword_is_the_first_token_it_covers_that_an_identifier_would_have_fit() {
     // Both `d` and `case` are keyword tokens an `Identifier` of the same text would have
@@ -1017,7 +1019,7 @@ fn the_error_s_keyword_is_the_first_token_it_covers_that_an_identifier_would_hav
     assert_eq!(error.keyword.as_ref().map(|token| token.raw.as_str()), Some("d"));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:3f7d43b3d948dafc8be7139b2aec66606e03f088a3278947c20050c6aba3c7d6
+// @lfy def/parser/main.lfy:parse#parse:parse:ff5346465bc782f0b70e1dc0ee3c00e7c3bdb18d6bef456f6c11c6309da683a3
 #[test]
 fn an_error_covering_no_such_keyword_has_none() {
     // A keyword the open rule could not have taken as a name either way is not one.
@@ -1175,7 +1177,7 @@ fn an_invalid_token_inside_an_alternation_expects_every_alternative_and_what_fol
     assert!(!expected.contains(&"GroupOpen") && !expected.contains(&"Plus"));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:0a5b6c4a94dec29395a4dd12408dcd6c4d7a01c1b57040202de98ae688cfe0b3
+// @lfy def/parser/main.lfy:parse#parse:parse:5ea7d67e9fc72d835d172341cafed90a3d5204dd2f49ec7ded6d3d6f1828d48e
 #[test]
 fn leftover_tokens_without_a_rule_are_one_error_node_at_the_end_of_the_root() {
     let source = "a;\n# #";
@@ -1280,7 +1282,6 @@ fn a_new_line_inside_a_line_documentation_reference_is_not_trivia() {
 
 // documented
 
-// @lfy def/parser/traits.lfy:documented.documentation
 #[test]
 fn documentation_before_a_statement_with_only_trivia_between_is_attached() {
     let source = "/// a\n/// b\n\n// c\nconst x;\ny;\n/** d **/ z;";
@@ -1621,7 +1622,7 @@ fn a_parenthesized_type_is_a_type_group_unless_a_function_type_follows() {
     );
 }
 
-// @lfy def/grammar/rules/statement.lfy:DataDeclaration#DataDeclaration:DataDeclaration:19188569bf634fe25f5552e9fa2093a879e97db3f29137b92336b60bc45a1365
+// @lfy def/grammar/rules/statement.lfy:DataDeclaration#DataDeclaration:rule:c5da10f7899cb7a05130a701932ae7bfdb34403ee3dddb544acd06b36b7ff914
 #[test]
 fn a_declaration_takes_its_type_parameters_after_its_identifier() {
     let source = "d List<T>;";
@@ -1703,13 +1704,12 @@ fn a_signature_carries_its_type_parameters_and_typed_parameters() {
 
 // @lfy def/parser/data.lfy:Node
 #[test]
-fn nodes_expose_their_rule_and_error_nodes_have_none() {
+fn nodes_expose_their_rule_and_error_nodes_cover_tokens() {
     let tree = file("a;");
     let statement = first_statement(&tree);
     assert_eq!(statement.rule().identifier, "ExpressionStatement");
     assert_eq!(statement.rule().text, Statement::ExpressionStatement.text());
     let tree = file("const ;");
-    assert_eq!(tree.errors[0].rule(), None);
     assert_eq!((tree.errors[0].start, tree.errors[0].end), (2, 2));
     assert!(tree.errors[0].children.is_empty());
 }
@@ -1753,112 +1753,70 @@ fn expression_tried(rule: Expression) -> bool {
     is_tried(Entity::Expression(rule), &candidates)
 }
 
+// @lfy def/parser/main.lfy:parse#parse:parse:140e8e6b83005b1d43d49be2e061b16a5e12a8406a5e1119ba629e43bed1cff2
 #[test]
 fn every_statement_rule_is_tried_where_the_next_token_can_begin_it() {
-    // @lfy def/parser/main.lfy:parse#parse:parse:16832a8120acaac7bb35f630bad63321dc2f5df0f9f03f68681eea3cfee26986
-    assert!(statement_tried(Statement::DataDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:e82fed2b50b5f0d59c2fb4d4f9801292275cb751d2f8c0656892c4cd43ed2e5d
-    assert!(statement_tried(Statement::AgentFunctionDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:47c66106f601e22b0c2f44f62c88da18dd7192cfa3068bc72617e43d357b9f4c
-    assert!(statement_tried(Statement::FunctionDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:0be0ade7eb062161a38576647ad58c81789fa071a6b29897d2bb3735a70812a2
-    assert!(statement_tried(Statement::TraitDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:6182884a5dede234e2a9cff1897b14bdb5140a0fbab4bfde99da31aae335e935
-    assert!(statement_tried(Statement::TypeDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:394d7174c384822d3309e0989ea8ee8abf62ddb70a1c395e9f55784c88b19cae
-    assert!(statement_tried(Statement::EnumDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:e703592ac1466a81966af28128e675308d8bdc4d264b139396eaa4921c3ff2eb
-    assert!(statement_tried(Statement::VariableDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:a0c7e1fe7458a080bd4b0b7f527bb2c09a1ae9615d2047c257fbd1ef2c5da09d
-    assert!(statement_tried(Statement::AliasDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:8cb2151a0ad40531ae7cb98724f8ca454dd94fc83a3ae6f8947c37374c7e51bd
-    assert!(statement_tried(Statement::ExternalDeclaration));
-    // @lfy def/parser/main.lfy:parse#parse:parse:3fd4f6ea52af9127cb1cc3d7c0e90ae526e66c81d2d6e946d35dff1fd2b4868f
-    assert!(statement_tried(Statement::Use));
-    // @lfy def/parser/main.lfy:parse#parse:parse:252ce7951899effaee21aa05e3b0086237db19ca2aa4be4289fd39114b9992ca
-    assert!(statement_tried(Statement::Block));
-    // @lfy def/parser/main.lfy:parse#parse:parse:bb16065526b8559cdcf10da9470bb7d458df85f08701fa9c4c4a4b659d310ac8
-    assert!(statement_tried(Statement::If));
-    // @lfy def/parser/main.lfy:parse#parse:parse:e520cfa26a8e88c428ef3c674a5da14a138215b01d679a41209410d70842c590
-    assert!(statement_tried(Statement::For));
-    // @lfy def/parser/main.lfy:parse#parse:parse:54649986d169177c4bd75064009fc88d3e15a91b2ebbdfcb3cfb6cc187a6b4cd
-    assert!(statement_tried(Statement::While));
-    // @lfy def/parser/main.lfy:parse#parse:parse:367cefb46dc9ffe69381e44cbe368c2a2f7d104330cdfc15a2fccf188f5845c2
-    assert!(statement_tried(Statement::Loop));
-    // @lfy def/parser/main.lfy:parse#parse:parse:c41e7dcc9f7204c588a7ed429dbe3582d58220c79ad4a04fe5ff7a280cb70dcf
-    assert!(statement_tried(Statement::Break));
-    // @lfy def/parser/main.lfy:parse#parse:parse:25f258e21ca684423ea6b9a57be85a3d827f5ac76bd57fdea668e2024952f806
-    assert!(statement_tried(Statement::Continue));
-    // @lfy def/parser/main.lfy:parse#parse:parse:76e6a409271b001496347a8b78d826de836a4889aea51e42a90d7cf2fab3cd3e
-    assert!(statement_tried(Statement::Return));
-    // @lfy def/parser/main.lfy:parse#parse:parse:46f24d9515af21811d3da0671a62bc29c88221d9207ee239d9a2f9ec24bd585c
-    assert!(statement_tried(Statement::Match));
-    // @lfy def/parser/main.lfy:parse#parse:parse:86a7e6fd5fa74f43a18e7d8e23300956b88748f61109a5a0bab64bb8c8c271b7
-    assert!(statement_tried(Statement::With));
-    // @lfy def/parser/main.lfy:parse#parse:parse:51e129de2897037593446d2b9713aa8fc29e3eb00e3e7f92d9c42a1b88fedc02
-    assert!(statement_tried(Statement::Async));
-    // @lfy def/parser/main.lfy:parse#parse:parse:eab2a6c461e5d650245192bfac6318370e369272946130f10c67e333c4d2e040
-    assert!(statement_tried(Statement::Ace));
-    // @lfy def/parser/main.lfy:parse#parse:parse:0e13f8942db4da88be0d1d77b63d973e9eb60199ffd8892307fa4da60c825d79
-    assert!(statement_tried(Statement::ExpressionStatement));
-    // @lfy def/parser/main.lfy:parse#parse:parse:fcb653b910e01a3234b5a5823bc41314cdc67a6401766ff6aa211dc084f4f355
-    assert!(statement_tried(Statement::Where));
+    for rule in [
+        Statement::DataDeclaration,
+        Statement::AgentFunctionDeclaration,
+        Statement::FunctionDeclaration,
+        Statement::TraitDeclaration,
+        Statement::TypeDeclaration,
+        Statement::EnumDeclaration,
+        Statement::VariableDeclaration,
+        Statement::AliasDeclaration,
+        Statement::ExternalDeclaration,
+        Statement::Use,
+        Statement::Block,
+        Statement::If,
+        Statement::For,
+        Statement::While,
+        Statement::Loop,
+        Statement::Break,
+        Statement::Continue,
+        Statement::Return,
+        Statement::Match,
+        Statement::With,
+        Statement::Async,
+        Statement::Ace,
+        Statement::ExpressionStatement,
+        Statement::Where,
+    ] {
+        assert!(statement_tried(rule), "{rule:?}");
+    }
 }
 
+// @lfy def/parser/main.lfy:parse#parse:parse:140e8e6b83005b1d43d49be2e061b16a5e12a8406a5e1119ba629e43bed1cff2
 #[test]
-fn every_primary_rule_is_tried_where_the_next_token_can_begin_it() {
-    // @lfy def/parser/main.lfy:parse#parse:parse:7b89900ce3f3d10432d81d655d2469bb2dada7430b1a586f5fcb5e684391ed3e
-    assert!(expression_tried(Expression::StringLiteral));
-    // @lfy def/parser/main.lfy:parse#parse:parse:8d1f185115356d99cab6fb27e10bd528a352d520f67985d4326ecaecd2a23b5a
-    assert!(expression_tried(Expression::Template));
-    // @lfy def/parser/main.lfy:parse#parse:parse:08a69a762e9b7443e6de8700a0b7921ced22b4f37d33e2a47e008faf4bd8d05e
-    assert!(expression_tried(Expression::Number));
-    // @lfy def/parser/main.lfy:parse#parse:parse:b792d24df4584bc8885428b0fa36d9645de1317b29f731a769a0fff0c1cc0abb
-    assert!(expression_tried(Expression::Boolean));
-    // @lfy def/parser/main.lfy:parse#parse:parse:b28c351f97986ea7999ea7faf014f2c6a3208248f1ee89a6b1f0dc682d6636fd
-    assert!(expression_tried(Expression::Nullish));
-    // @lfy def/parser/main.lfy:parse#parse:parse:625c84d4af577d66e9ef8b3f3520197e496c0c628495c312cda99aa2034dbbcf
-    assert!(expression_tried(Expression::PrimitiveType));
-    // @lfy def/parser/main.lfy:parse#parse:parse:31948b8a36a5e6c26fadf4743b705af4aa7015238df853e33a4133ba460a16b5
-    assert!(expression_tried(Expression::Name));
-    // @lfy def/parser/main.lfy:parse#parse:parse:b924096bb725ee35d1e68c84a92fb88d6ab6f2e97c770eb32c30c98189255bde
-    assert!(expression_tried(Expression::Current));
-    // @lfy def/parser/main.lfy:parse#parse:parse:dd17e1a3ebcbf4f43466b3adce830886d1d680f0c4bf3e6bb0de2de15e57e912
-    assert!(expression_tried(Expression::Previous));
-    // @lfy def/parser/main.lfy:parse#parse:parse:715a2d729d2e293055ffe8a4502160ccca5320c58d07de62de3c7ab9828c4afe
-    assert!(expression_tried(Expression::Group));
-    // @lfy def/parser/main.lfy:parse#parse:parse:aa24e4d7e936b3272199b19413d9223be459874e4e26702d4a44b350809d4182
-    assert!(expression_tried(Expression::InlineFunction));
-    // @lfy def/parser/main.lfy:parse#parse:parse:a0846d2db33dae302b6614d769a6701f98a7e097761585f395a4e2ce6494dfb4
-    assert!(expression_tried(Expression::List));
-    // @lfy def/parser/main.lfy:parse#parse:parse:5a574d4a2a318e9e9c797ed00c9eeae89ddc06b1c0676ea1f4c96ae42eb3bbb1
-    assert!(expression_tried(Expression::Object));
-    // @lfy def/parser/main.lfy:parse#parse:parse:c87bed0155db7cea6d6400e9866512e837b25acaa7b9d3eaf3c8d4aded52f1a3
-    assert!(expression_tried(Expression::TypePredicate));
-    // @lfy def/parser/main.lfy:parse#parse:parse:302081c1b0c4efe5058c4ad5f1b0697e902492b9606a4426800e8a92316b4a0d
-    assert!(expression_tried(Expression::Type));
-}
-
-#[test]
-fn every_prefix_rule_is_tried_where_the_next_token_can_begin_it() {
-    // @lfy def/parser/main.lfy:parse#parse:parse:946f504f7f02afa2bf87f56ef97a5d4d076b3f736aa7de478f7cdb68fedc6206
-    assert!(expression_tried(Expression::NotOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:a6641dff9c18b4f93d67b1f2dbc0bf85c4fc70d00993e0cc2394aea037aafbc3
-    assert!(expression_tried(Expression::NegateOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:ef8111adddd9b772aaae12110cdd63d51f1be427b22e0efb3281e1c828216905
-    assert!(expression_tried(Expression::BitwiseNotOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:96e9a21f753ceb0c6cc75b0d5aa15ee6503e7bab7f70a55d24af6d588a6230b1
-    assert!(expression_tried(Expression::Dereference));
-    // @lfy def/parser/main.lfy:parse#parse:parse:97ef01f44693a882ceb50cd884e3e29698dd6aa215cd0313562443c351676ede
-    assert!(expression_tried(Expression::SpreadOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:991cdfbc84876155dab03f7dbafeb64969e1cbe78711e504b2cf8288096c8442
-    assert!(expression_tried(Expression::AwaitOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:df27b4d99fe9bff592e15a153effd01d392e0e4f6f06ebf7821de1e3d0093021
-    assert!(expression_tried(Expression::InOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:3f297f3ef4145b190c409ce442da69593c62384166535813531f6eced3d9a3ce
-    assert!(expression_tried(Expression::OfOperation));
-    // @lfy def/parser/main.lfy:parse#parse:parse:c8fcd7e578df543c9426a29e8766fb360483b32dff00eba13f003a6e822cbeed
-    assert!(expression_tried(Expression::FromOperation));
+fn every_primary_and_prefix_rule_is_tried_where_the_next_token_can_begin_it() {
+    for rule in [
+        Expression::StringLiteral,
+        Expression::Template,
+        Expression::Number,
+        Expression::Boolean,
+        Expression::Nullish,
+        Expression::PrimitiveType,
+        Expression::Name,
+        Expression::Current,
+        Expression::Previous,
+        Expression::Group,
+        Expression::InlineFunction,
+        Expression::List,
+        Expression::Object,
+        Expression::TypePredicate,
+        Expression::Type,
+        Expression::NotOperation,
+        Expression::NegateOperation,
+        Expression::BitwiseNotOperation,
+        Expression::Dereference,
+        Expression::SpreadOperation,
+        Expression::AwaitOperation,
+        Expression::InOperation,
+        Expression::OfOperation,
+        Expression::FromOperation,
+    ] {
+        assert!(expression_tried(rule), "{rule:?}");
+    }
 }
 
 // Every operation an operator continues an expression with
@@ -1874,58 +1832,422 @@ fn operation(source: &str, rule: Expression) -> Vec<String> {
     shape(&tree.root, &tree)
 }
 
+// @lfy def/parser/main.lfy:parse#parse:parse:a3a41aa47d6f8c5ce84eb52a369276e28005db60620c11d0956e0baa5af1578c
 #[test]
 fn every_infix_operation_is_built_from_the_left_operand_the_operator_and_what_follows() {
-    // @lfy def/parser/main.lfy:parse#parse:parse:437e35462673b057e8170394e3b3bac0795480379e488caeb79f061d3e5e5c5a
     assert_eq!(operation("a + b", Expression::AdditiveOperation), ["Name", "Plus(+)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:2b362e7fde6282ae7a198fd87303bbf224f176689866b773f69119c4a72eccc2
     assert_eq!(operation("a * b", Expression::MultiplicativeOperation), ["Name", "Star(*)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:85b67ff6f89e3e467a6313a111a086f1592b3dc4a7b0429ccf85d723c1654193
     assert_eq!(operation("a ** b", Expression::PowerOperation), ["Name", "Power(**)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:27ffba22d2cf2c53ee6b0a720f3755c8f98854a30d200e99c9bf42a762d01416
     assert_eq!(operation("a | b", Expression::BitwiseOrOperation), ["Name", "BitwiseOr(|)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:9dac42a1bc2908ab71cf3757f73919dc7c514e0e7590bd38bf870187c68e7d39
     assert_eq!(operation("a ^ b", Expression::BitwiseXorOperation), ["Name", "BitwiseXor(^)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:3f269d8facec689b9a1c68e1354a1e098af391ffa75cec648f08b21097984881
     assert_eq!(operation("a & b", Expression::BitwiseAndOperation), ["Name", "Ampersand(&)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:c4974c4b9d5066073fa4443bb325d0bc700f926e6d49781d024b2f38a432770f
     assert_eq!(operation("a <= b", Expression::RelationalOperation), ["Name", "LessThanOrEqual(<=)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:b83bed752bcdfdcce0c7474d9d7fde0e71351e5b2266cfb24bde2b5ae553b525
     assert_eq!(operation("a == b", Expression::EqualityOperation), ["Name", "Equal(==)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:e12f8885e872c38351b85ae28eaa89fd0f6632be85b8df01db145a59f8d6b794
     assert_eq!(operation("a && b", Expression::LogicalAndOperation), ["Name", "LogicalAnd(&&)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:39a962420843c951b4d6d12dc1d3c25071d80ad7b18348626c7a462cf491ab4d
     assert_eq!(operation("a ?? b", Expression::CoalescenceOperation), ["Name", "NullishOr(??)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:54578c9aaead10fcecd8b1c9aa6e5b9152fe869f1a25f0471ca1b843b4cfc397
     assert_eq!(operation("a ... b", Expression::RangeOperation), ["Name", "Spread(...)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:1a99ad04ec9008b30ec4199ee98005c61b50135ea3b6f0ca59dd6ddf123308d4
     assert_eq!(operation("a = b", Expression::Assignment), ["Name", "PlainSetter(=)", "Name"]);
 }
 
+// @lfy def/parser/main.lfy:parse#parse:parse:a3a41aa47d6f8c5ce84eb52a369276e28005db60620c11d0956e0baa5af1578c
 #[test]
 fn every_postfix_operation_is_built_from_the_left_operand_the_operator_and_what_follows() {
-    // @lfy def/parser/main.lfy:parse#parse:parse:05d23c8fd62a172c91b9ae854770cc09d36a0b9e6bf99019bcc54d8bcc58b540
     assert_eq!(operation("a.b", Expression::Member), ["Name", "ValueAccessor(.)", "Identifier(b)"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:bd047ceef22480020575d85cd076a2d0d5ec316f5acdf5b63a5c784aca0a9567
     assert_eq!(operation("a[b]", Expression::Index), ["Name", "ListOpen([)", "Name", "ListClose(])"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:68e861bb1f5c87f8afb3e9e990d5968ef0cc8cec0b5533c71a3fb58bf95cacc0
     assert_eq!(operation("a(b)", Expression::Call), ["Name", "GroupOpen(()", "Items", "GroupClose())"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:83ba45aac2571bfc5817e6ffd3fa79d3bc0d02890ef34f286e42745c5d2b6f9e
     assert_eq!(operation("a is t", Expression::Traits), ["Name", "IsKeyword(is)", "TraitUses"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:a6834dd3ad2fa899c42d2c969a4938b0d972894cab7005b3871c740c95857232
     assert_eq!(operation("a : b", Expression::Definition), ["Name", "Colon(:)", "Name"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:143a2d2aaa4165e872f22a2ac95668150c5b75b7304ca78f27340f15f29501f3
     assert_eq!(operation("a as T", Expression::Cast), ["Name", "AsKeyword(as)", "TypeExpression"]);
-    // @lfy def/parser/main.lfy:parse#parse:parse:4399c5e5ca1505056e4f793bac891083bbc498938106049e29927317d6798271
     assert_eq!(
         operation("a<T>", Expression::Generic),
         ["Name", "LessThan(<)", "TypeExpression", "GreaterThan(>)"]
     );
-    // @lfy def/parser/main.lfy:parse#parse:parse:0f0e0fcf00a4d3c77d2ddff600ba9cabd9f10116992768315302e0b6d5e58043
     assert_eq!(
         operation("a ? b : c", Expression::Conditional),
         ["Name", "QuestionMark(?)", "Name", "Colon(:)", "Name"]
     );
+}
+
+// More @test cases
+
+// @lfy def/parser/main.lfy:parse#parse:parse:aa77e57dcc5c24cdb81839a9e4b86279ae1cf62f9884bbeeee6deb99aa06e7d2
+#[test]
+fn test_multiplication_binds_tighter_than_addition_on_the_right() {
+    let tree = expr("a + b * c");
+    check_lossless(&tree, "a + b * c");
+    assert!(tree.root.is(Expression::AdditiveOperation));
+    assert_eq!(shape(&tree.root, &tree), ["Name", "Plus(+)", "MultiplicativeOperation"]);
+    let right = tree.root.node(Expression::MultiplicativeOperation).unwrap();
+    assert_eq!(tree.raw(right.start, right.end), "b * c");
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:8d11449bdfef3e7e228b4a3b400dd5797a74a1d8c034ffb77e279744d313cb70
+#[test]
+fn test_multiplication_binds_tighter_than_addition_on_the_left() {
+    let tree = expr("a * b + c");
+    check_lossless(&tree, "a * b + c");
+    assert!(tree.root.is(Expression::AdditiveOperation));
+    assert_eq!(shape(&tree.root, &tree), ["MultiplicativeOperation", "Plus(+)", "Name"]);
+    let left = tree.root.node(Expression::MultiplicativeOperation).unwrap();
+    assert_eq!(tree.raw(left.start, left.end), "a * b");
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:517001d8220b7f4021353b75845b360a1dbde811954c0acf0f5d4f2b79571337
+#[test]
+fn test_power_is_right_associative() {
+    let tree = expr("a ** b ** c");
+    check_lossless(&tree, "a ** b ** c");
+    assert!(tree.root.is(Expression::PowerOperation));
+    assert_eq!(shape(&tree.root, &tree), ["Name", "Power(**)", "PowerOperation"]);
+    let right = tree.root.node(Expression::PowerOperation).unwrap();
+    assert_eq!(tree.raw(right.start, right.end), "b ** c");
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:ecd12a8e8fe1efb3ae522a2ab4561975cf50dc71a5821f37026f7b9a8c2bc37d
+#[test]
+fn test_a_call_then_an_addition() {
+    let tree = expr("f(x) + 1");
+    check_lossless(&tree, "f(x) + 1");
+    assert!(tree.root.is(Expression::AdditiveOperation));
+    assert_eq!(shape(&tree.root, &tree), ["Call", "Plus(+)", "Number"]);
+    let call = tree.root.node(Expression::Call).unwrap();
+    assert_eq!(shape(call, &tree), ["Name", "GroupOpen(()", "Items", "GroupClose())"]);
+    let items = call.node(Expression::Items).unwrap();
+    assert_eq!(shape(items, &tree), ["Name"]);
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:e25d66e413017e984faafe9fc207e7916005a7e2b5179e8a587eae06feaeab74
+#[test]
+fn test_a_negated_number() {
+    let tree = expr("-1");
+    check_lossless(&tree, "-1");
+    assert!(tree.root.is(Expression::NegateOperation));
+    assert_eq!(shape(&tree.root, &tree), ["Minus(-)", "Number"]);
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:cc7c40b081965cd23cf3b3bd676ac4275f04545c91b5f9ef19ec45a5df2f0394
+#[test]
+fn test_a_space_after_minus_keeps_it_from_being_a_negation() {
+    let source = "x = - 1;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let statement = first_statement(&tree);
+    assert!(statement.is(Statement::ExpressionStatement));
+    assert_eq!(shape(statement, &tree)[0], "Name");
+    assert_eq!(tree.errors.len(), 1);
+    let error = &tree.errors[0];
+    assert_eq!(tree.raw(error.start, error.end), "= - 1");
+    assert_eq!(error.expected, vec!["Semicolon"]);
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:ba7b39019b1fa273cf02e733e1051232e9cff31ab1d91f15e794286b4e203eed
+#[test]
+fn test_a_name_then_a_leftover_name() {
+    let tree = expr("a b");
+    check_lossless(&tree, "a b");
+    assert!(tree.root.is(Expression::Expression));
+    assert!(tree.root.node(Expression::Name).is_some());
+    assert_eq!(tree.errors.len(), 1);
+    let error = &tree.errors[0];
+    assert_eq!(tree.raw(error.start, error.end), "b");
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:62acf28d8606f1942e2c94cf221e3c0ee23ebbecc12ca0104d9b7fcffd8ce30c
+#[test]
+fn test_an_error_runs_past_a_semicolon_inside_parentheses() {
+    let source = "const = f(a; b); let y = 2;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let statements: Vec<&Node> = tree.root.nodes().collect();
+    assert_eq!(statements.len(), 2);
+    assert!(statements[0].is(Statement::VariableDeclaration));
+    assert!(statements[1].is(Statement::VariableDeclaration));
+    assert_eq!(tree.errors.len(), 1);
+    let error = &tree.errors[0];
+    assert_eq!(tree.raw(error.start, error.end), "= f(a; b)");
+    assert!(statements[0].errors().len() == 1);
+    assert!(statements[1].errors().is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:93471ef68721a03aadf57a1f1b6626b4a0c1195d6c288ab35a4c75b330c0f9b4
+#[test]
+fn test_a_token_without_a_rule_between_two_elements() {
+    let source = "let # y = 1;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::VariableDeclaration));
+    assert!(declaration.node(Expression::Declared).is_some());
+    assert_eq!(tree.errors.len(), 1);
+    let error = &tree.errors[0];
+    assert_eq!(tree.raw(error.start, error.end), "#");
+    assert!(declaration.errors().len() == 1);
+    let shape = shape(declaration, &tree);
+    assert_eq!(shape[0], "LetKeyword(let)");
+    assert_eq!(shape[1], "Error(\"#\")");
+    assert_eq!(shape[2], "Declared");
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:f77af6bf83ea4ef5cb709a99f71614f0147d505501735cb8fcf89720a7bc0a3a
+#[test]
+fn test_a_block_is_not_an_object_at_the_start_of_a_statement() {
+    let source = "{ a = 1 };";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let first = first_statement(&tree);
+    assert!(first.is(Statement::Block));
+    assert!(tree.root.find(Expression::Object).is_none());
+    let inner = first.node(Statement::ExpressionStatement).unwrap();
+    assert!(inner.node(Expression::Assignment).is_some());
+    let inner_errors = inner.errors();
+    assert_eq!(inner_errors.len(), 1);
+    assert_eq!(inner_errors[0].expected, vec!["Semicolon"]);
+    assert_eq!(tree.errors.len(), 2);
+    let last = tree.errors.last().unwrap();
+    assert_eq!(tree.raw(last.start, last.end), ";");
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:c581d6e560359bebca8b3ce02ea5e7e246870b3a138374621c63229cccd6c214
+#[test]
+fn test_a_function_type_is_not_a_type_group() {
+    let source = "d A: (a) => b;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::DataDeclaration));
+    let clause = declaration.node(Expression::DefinitionClause).unwrap();
+    let function_type = clause.find(Expression::FunctionType).unwrap();
+    assert_eq!(shape(function_type, &tree), ["Parameters", "DoubleArrowRight(=>)", "TypeExpression"]);
+    assert!(clause.find(Expression::TypeGroup).is_none());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:87871a94d47489aacbc1f9da346fd954e128d629ab68d94339b41805ace35f04
+#[test]
+fn test_a_space_after_an_accessor_leaves_no_member_name() {
+    let source = "x. is T;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let statement = first_statement(&tree);
+    assert!(statement.is(Statement::ExpressionStatement));
+    let traits = statement.node(Expression::Traits).unwrap();
+    let member = traits.node(Expression::Member).unwrap();
+    assert_eq!(shape(member, &tree), ["Name", "ValueAccessor(.)"]);
+    assert!(member.node(Expression::MemberName).is_none());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:1ef8b2f814c5749b880487f531087ff388d1f4e1feef2b32071018af8b78a18e
+#[test]
+fn test_documentation_with_a_comment_between_it_and_the_declaration() {
+    let source = "/// doc\n// note\nd A {}";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = tree.root.node(Statement::DataDeclaration).unwrap();
+    assert_eq!(declaration.documentation.len(), 1);
+    assert!(declaration.documentation[0].is(Entity::Comment(Comment::Documentation)));
+    assert_eq!(tree.raw(declaration.documentation[0].start, declaration.documentation[0].end), "/// doc");
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:5be2aa5cf14d5315eb7b372df53043e54332506ce13431b4af9fda2736f71294
+#[test]
+fn test_type_parameters_of_a_data_declaration() {
+    let source = "d List<T>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::DataDeclaration));
+    let parameters = declaration.node(Expression::TypeParameters).unwrap();
+    assert_eq!(parameters.nodes_of(Expression::TypeParameter).count(), 1);
+    assert_eq!(tree.raw(parameters.start, parameters.end), "<T>");
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:16d4a4f4fb54bdbffb55f3aeb1e264741c102926cd8456012a13040eeb6a1510
+#[test]
+fn test_a_generic_function_signature() {
+    let source = "fn map<T, U>(list: List<T>, transform: (item: T) => U) => List<U>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = first_statement(&tree);
+    assert!(declaration.is(Statement::AgentFunctionDeclaration));
+    let signature = declaration.node(Expression::Signature).unwrap();
+    let type_parameters = signature.node(Expression::TypeParameters).unwrap();
+    assert_eq!(type_parameters.nodes_of(Expression::TypeParameter).count(), 2);
+    let parameters: Vec<&Node> = signature
+        .node(Expression::Parameters)
+        .unwrap()
+        .nodes_of(Expression::Parameter)
+        .collect();
+    assert_eq!(parameters.len(), 2);
+    let list = parameters[0].find(Expression::TypeItem).unwrap();
+    assert_eq!(tree.raw(list.start, list.end), "List<T>");
+    assert!(list.node(Expression::TypeArguments).is_some());
+    let transform = parameters[1].find(Expression::FunctionType).unwrap();
+    assert_eq!(tree.raw(transform.start, transform.end), "(item: T) => U");
+    let returned = declaration
+        .nodes_of(Expression::TypeExpression)
+        .last()
+        .unwrap()
+        .find(Expression::TypeItem)
+        .unwrap();
+    assert_eq!(tree.raw(returned.start, returned.end), "List<U>");
+    assert!(returned.node(Expression::TypeArguments).is_some());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:230f6cf6284b608bd0c889f309a6c1fa57561c0b15dd4dbe44828acd51562578
+#[test]
+fn test_each_greater_than_closes_one_list() {
+    let source = "d A: List<List<T>>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let declaration = first_statement(&tree);
+    let clause = declaration.node(Expression::DefinitionClause).unwrap();
+    let outer = clause.find(Expression::TypeItem).unwrap();
+    let arguments = outer.node(Expression::TypeArguments).unwrap();
+    let inner = arguments.find(Expression::TypeItem).unwrap();
+    assert_eq!(tree.raw(inner.start, inner.end), "List<T>");
+    assert!(inner.node(Expression::TypeArguments).is_some());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:ee9e137e6e115ffa55c7f1666a027f66238f1a7f0a4645ef10eefe8a3cd4b66e
+#[test]
+fn test_a_generic_on_the_right_of_an_assignment() {
+    let source = "$items = List<T>;";
+    let tree = file(source);
+    check_lossless(&tree, source);
+    let statement = first_statement(&tree);
+    assert!(statement.is(Statement::ExpressionStatement));
+    let assignment = statement.node(Expression::Assignment).unwrap();
+    let generic = assignment.node(Expression::Generic).unwrap();
+    assert_eq!(tree.raw(generic.start, generic.end), "List<T>");
+    assert_eq!(shape(generic, &tree), ["Name", "LessThan(<)", "TypeExpression", "GreaterThan(>)"]);
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:36a612317aa41dafd5e2046247764cbc6a28a4d77296528f96ac90c97eca0a3a
+#[test]
+fn test_a_less_than_of_two_names() {
+    let tree = expr("a < b");
+    check_lossless(&tree, "a < b");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    assert_eq!(shape(&tree.root, &tree), ["Name", "LessThan(<)", "Name"]);
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:5ede9393fbf5e0e77d705e357816512172615b201da749cdae965954c336ee08
+#[test]
+fn test_a_greater_than_or_equal_is_no_generic() {
+    let tree = expr("List<T>=x");
+    check_lossless(&tree, "List<T>=x");
+    assert!(tree.root.is(Expression::RelationalOperation));
+    assert_eq!(shape(&tree.root, &tree), ["RelationalOperation", "GreaterThanOrEqual(>=)", "Name"]);
+    let left = tree.root.node(Expression::RelationalOperation).unwrap();
+    assert_eq!(shape(left, &tree), ["Name", "LessThan(<)", "Name"]);
+    assert!(tree.root.find(Expression::Generic).is_none());
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:c11f5a077f08affb17bce3bc506db1eb57dd09e4f7259d592da9e6772ff8836b
+#[test]
+fn test_a_call_of_a_generic_member() {
+    let tree = expr("x.f<T>(y)");
+    check_lossless(&tree, "x.f<T>(y)");
+    assert!(tree.root.is(Expression::Call));
+    assert_eq!(shape(&tree.root, &tree), ["Generic", "GroupOpen(()", "Items", "GroupClose())"]);
+    let generic = tree.root.node(Expression::Generic).unwrap();
+    assert_eq!(shape(generic, &tree), ["Member", "LessThan(<)", "TypeExpression", "GreaterThan(>)"]);
+    let items = tree.root.node(Expression::Items).unwrap();
+    assert_eq!(shape(items, &tree), ["Name"]);
+    assert!(tree.errors.is_empty());
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:a81aac211d66a6e80d926aaa08d8ad2dfcb10a5c7defec7c07d9d0cec7b77710
+#[test]
+fn test_an_addition_of_a_call_of_a_generic() {
+    let tree = expr("a + f<T>(x)");
+    check_lossless(&tree, "a + f<T>(x)");
+    assert!(tree.root.is(Expression::AdditiveOperation));
+    assert_eq!(shape(&tree.root, &tree), ["Name", "Plus(+)", "Call"]);
+    let call = tree.root.node(Expression::Call).unwrap();
+    assert!(call.node(Expression::Generic).is_some());
+    assert!(tree.errors.is_empty());
+}
+
+// Criteria answered by a test of their own
+
+// @lfy def/parser/main.lfy:parse#parse:parse:edb1cd0e9ce01535c47ba76a9202465f6c26e7a839d41247f48b9fa2274cf4b8
+#[test]
+fn a_bare_name_in_a_rule_is_the_rule_with_that_identifier() {
+    // `Group = GroupOpen , Expression , GroupClose`: each bare name is the rule of that
+    // identifier, so the node holds a `GroupOpen` token, an expression, and a `GroupClose`.
+    let tree = file("(a);");
+    let group = first_statement(&tree).node(Expression::Group).unwrap();
+    assert_eq!(shape(group, &tree), ["GroupOpen(()", "Name", "GroupClose())"]);
+    for rule in rules() {
+        assert_eq!(Entity::lookup(rule.identifier()), Some(rule));
+    }
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:90d2f81226a65d9ecc5867302707f041813671f31370734a3b78991f156e57be
+#[test]
+fn parsing_sets_no_category_and_no_binding() {
+    fn snapshot() -> Vec<(Entity, String, String)> {
+        rules()
+            .map(|rule| (rule, format!("{:?}", rule.category()), format!("{:?}", rule.effective_binding())))
+            .collect()
+    }
+    let before = snapshot();
+    for source in ["a + b * c;", "f<T>(x);", "d A {}", "x = - 1;"] {
+        let _ = file(source);
+    }
+    assert_eq!(snapshot(), before);
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:bac03496c2edc9be0d4dbed2c038593d11afc9db34b99b9e544312813793c3c2
+#[test]
+fn a_parse_without_errors_takes_time_linear_in_the_tokens() {
+    let attempts = |count: usize| {
+        let source = "a = b + c * f(x, y);\n".repeat(count);
+        let (tree, attempts) = parse_counting(tokens(&source), None);
+        assert!(tree.errors.is_empty());
+        (tree.tokens.len(), attempts.values().sum::<usize>())
+    };
+    let (small_tokens, small) = attempts(50);
+    let (large_tokens, large) = attempts(400);
+    assert_eq!(large_tokens, small_tokens * 8);
+    // Eight times the tokens takes at most about eight times the attempts.
+    assert!(large <= small * 9, "{small} attempts for {small_tokens} tokens, {large} for {large_tokens}");
+}
+
+// @lfy def/parser/main.lfy:parse#parse:parse:e9933d6a3a248bf673389302ede3dd728194fa7e057da54387005500e7979401
+#[test]
+fn no_trivia_token_and_no_token_without_a_rule_begins_a_rule() {
+    for source in [" /* c */ a;", "# a;", "\n// note\n\nb = 1; # c;", "/// doc\n// note\nd A {}"] {
+        let tree = file(source);
+        check_lossless(&tree, source);
+        for node in tree.root.descendants() {
+            if node.start == node.end || components::is_trivia(node.rule) || node.rule == tree.root_rule {
+                continue;
+            }
+            let token = &tree.tokens[node.start];
+            let rule = token.rule.unwrap_or_else(|| panic!("{source:?}: {} begins at a token without a rule", node.rule.identifier()));
+            assert!(
+                !components::is_trivia(rule),
+                "{source:?}: {} begins at the trivia {}",
+                node.rule.identifier(),
+                rule.identifier()
+            );
+        }
+    }
 }
 
 // The definitions parse under the grammar they define
@@ -1977,7 +2299,7 @@ fn the_elfie_definitions_parse_start_to_finish() {
     assert_eq!(found, 0);
 }
 
-// @lfy def/parser/main.lfy:parse#global:def/parser/main.lfy:1c7fdc9e99e5a132c4b70443a4a57960b652345ba09540a2f414a25b9a1fe1ed
+// @lfy def/parser/main.lfy:parse#global:def/parser/components.lfy:3f95087db10d0a0a9a129ba9817ca635ced6a9eff071d21d7bf7666bde2ab6ea
 #[test]
 fn the_parser_compiles_because_tried_before_orders_every_choice() {
     assert_eq!(validate(), Ok(()));

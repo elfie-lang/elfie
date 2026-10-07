@@ -27,20 +27,20 @@ use crate::workspace::NativeDependency;
 // @lfy def/generation/data.lfy:Reason
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Reason {
-    /// No output has been generated for it.
-    Fresh, // @lfy def/generation/data.lfy:Reason.fresh
     /// Its source differs from what its output was generated from.
     Changed, // @lfy def/generation/data.lfy:Reason.changed
-    /// Its criteria or tests differ from those its output was generated against, while its
-    /// code does not.
-    Requirements, // @lfy def/generation/data.lfy:Reason.requirements
     /// The interface of a unit it depends on differs from the one its output was generated
     /// against.
     Dependency, // @lfy def/generation/data.lfy:Reason.dependency
-    /// A global criterion or test its output answers for was reviewed as violated.
-    Violated, // @lfy def/generation/data.lfy:Reason.violated
+    /// No output has been generated for it.
+    Fresh, // @lfy def/generation/data.lfy:Reason.fresh
     /// The caller asked for it regardless.
     Requested, // @lfy def/generation/data.lfy:Reason.requested
+    /// Its criteria or tests differ from those its output was generated against, while its
+    /// code does not.
+    Requirements, // @lfy def/generation/data.lfy:Reason.requirements
+    /// A global criterion or test its output answers for was reviewed as violated.
+    Violated, // @lfy def/generation/data.lfy:Reason.violated
 }
 
 impl Reason {
@@ -136,7 +136,7 @@ impl Marker {
     /// Whether an output line falls in `output_line..=end`. A marker another marker shares
     /// its output line with has an end before both, so it covers nothing.
     // @lfy def/generation/data.lfy:Marker.end
-    // @lfy def/generation/data.lfy:Marker#Marker:Marker:e9418054b314dd678a5ad4c10c1b8a87c6937555b64a474b204585151415547f
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:28a0e4876e2210cd634262461b8037fae2548f3013fa1cbcc86d69334755b903
     pub fn covers(&self, line: usize) -> bool {
         (self.output_line..=self.end).contains(&line)
     }
@@ -185,14 +185,12 @@ pub struct SourceMap {
     /// The source file's path, relative to the workspace root.
     pub source: String, // @lfy def/generation/data.lfy:SourceMap.source
     /// SHA-256 of [`Unit::text`] of the unit when the output was accepted, as lowercase
-    /// hex, so an edit that leaves the lowered code the same, such as a comment, changes
-    /// nothing.
+    /// hex.
     pub hash: String, // @lfy def/generation/data.lfy:SourceMap.hash
     /// SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line
     /// breaks, when the output was accepted.
     pub requirements: String, // @lfy def/generation/data.lfy:SourceMap.requirements
-    /// SHA-256 of the unit's interface text, as `interfaceOf` spells it, when the output
-    /// was accepted.
+    /// SHA-256 of the unit's interface text when the output was accepted, as lowercase hex.
     pub signature: String, // @lfy def/generation/data.lfy:SourceMap.signature
     /// For each dependency's source path, the [`SourceMap::signature`] the output was
     /// generated against.
@@ -299,12 +297,11 @@ pub struct Unit {
     /// the entities moved out of it, then the lowered code of each entity moved into it;
     /// exactly the text of its lowered file when nothing moved in or out.
     pub text: String, // @lfy def/generation/data.lfy:Unit.text
-    /// The file's path relative to the directory it was found under, without its
+    /// The file's path relative to the workspace's source directory, without the `.lfy`
     /// extension; the target's guidance spells the output file from it.
     pub stem: String, // @lfy def/generation/data.lfy:Unit.stem
-    /// The units of the same target for the files this file uses, transitively through
-    /// files that have no unit, and the units holding the entities its entities reach, as
-    /// indices into [`Plan::units`].
+    /// The units of the same target its unit needs built first, each once, as indices into
+    /// [`Plan::units`].
     pub dependencies: Vec<usize>, // @lfy def/generation/data.lfy:Unit.dependencies
     /// The outputs the last accepted generation produced, from the unit's map file; empty
     /// when none.
@@ -324,7 +321,7 @@ impl Unit {
     /// entity is in the file it was moved from, which is why one is looked for across the
     /// program rather than in the unit's own lowered file alone.
     // @lfy def/generation/data.lfy:Unit.entities
-    // @lfy def/generation/data.lfy:Unit#Unit:Unit:a71462ec6c4c1494654b6067e77067cac5154c77a93576479d51af4fa014244e
+    // @lfy def/generation/data.lfy:Unit#Unit:Unit:e5292928d76df9bc73129964e9a39f6ef14fe33c190526dc4bb3f76ff2380810
     pub fn requirements(&self, program: &Program) -> Vec<Requirement> {
         let mut out: Vec<Requirement> = Vec::new();
         for &entity in &self.entities {
@@ -389,15 +386,14 @@ pub struct Move {
     pub cause: String, // @lfy def/generation/data.lfy:Move.cause
 }
 
-/// Planned units compiled together in one request, so shared context is sent once.
+/// Planned units compiled together in one request.
 // @lfy def/generation/data.lfy:Batch
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Batch {
     /// In plan order; every dependency of a unit is in this batch or an earlier one, as
     /// indices into [`Plan::units`].
     pub units: Vec<usize>, // @lfy def/generation/data.lfy:Batch.units
-    /// The stem of the first unit, then the count when there are more, as the batch is
-    /// named in requests and progress.
+    /// The batch's name in requests and progress.
     pub identifier: String, // @lfy def/generation/data.lfy:Batch.identifier
 }
 
@@ -441,8 +437,8 @@ impl Requirement {
 pub struct Request {
     /// The batch.
     pub batch: Batch, // @lfy def/generation/data.lfy:Request.batch
-    /// The prompt: what to produce, where, the rules for producing it, what of the standard
-    /// library is `builtin` and never generated, and how to report the outcome.
+    /// The prompt: what to produce, where, the rules for producing it, and how to report
+    /// the outcome.
     pub instructions: String, // @lfy def/generation/data.lfy:Request.instructions
     /// [`Unit::text`] of each unit, by the file's path.
     pub sources: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.sources
@@ -457,8 +453,7 @@ pub struct Request {
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
     /// One interface per dependency outside the batch, in dependency order, each once.
     pub interfaces: Vec<Interface>, // @lfy def/generation/data.lfy:Request.interfaces
-    /// The criteria of the target's declaration: its own, then each of the target's layers
-    /// in order, then the traits they extend, nearest first, each trait once, with template
+    /// The criteria of the target's declaration, in the guidance order, with template
     /// values rendered from the layers' arguments.
     pub guidance: Vec<Criterion>, // @lfy def/generation/data.lfy:Request.guidance
     /// What the generated code may require from the target's ecosystem: the target's native
@@ -581,7 +576,7 @@ pub enum ChangeKind {
     Removed, // @lfy def/generation/data.lfy:ChangeKind.removed
     /// Its definition differs.
     Definition, // @lfy def/generation/data.lfy:ChangeKind.definition
-    /// Its type differs, as `interfaceOf` spells it.
+    /// Its type differs, as the interface text of [`SourceMap::signature`] spells it.
     DeclaredType, // @lfy def/generation/data.lfy:ChangeKind.declaredType
     /// Its parameters or its output differ.
     Signature, // @lfy def/generation/data.lfy:ChangeKind.signature
@@ -600,7 +595,9 @@ impl ChangeKind {
             ChangeKind::Added => "the entity is declared now and was not before",
             ChangeKind::Removed => "the entity was declared before and is not now",
             ChangeKind::Definition => "its definition differs",
-            ChangeKind::DeclaredType => "its type differs, as interfaceOf spells it",
+            ChangeKind::DeclaredType => {
+                "its type differs, as the interface text of [[SourceMap.signature]] spells it"
+            }
             ChangeKind::Signature => "its parameters or its output differ",
             ChangeKind::Criteria => "its criteria differ in count or in the text of any",
             ChangeKind::Tests => "its tests differ",
@@ -729,7 +726,7 @@ pub struct Review {
 
 impl Review {
     /// The keys a review is written with, and no others.
-    // @lfy def/generation/data.lfy:Review#Review:Review:c6583b64878c8040bf8c20785e6890e5beb1c759c27805f2ef4728e16054e2a9
+    // @lfy def/generation/data.lfy:Review
     const KEYS: [&'static str; 4] = ["id", "status", "evidence", "note"];
 
     /// The review as the one JSON object a verifier writes on one line. The place is not
@@ -805,7 +802,8 @@ impl Review {
 pub struct ReviewReport {
     /// Each review, in report order, one per id.
     pub reviews: Vec<Review>, // @lfy def/generation/data.lfy:ReviewReport.reviews
-    /// The lines of the verifier's output that were neither a review nor the end line.
+    /// Each review line that was not read as a review, then the line reading the report did
+    /// not end when there was no end line.
     pub problems: Vec<String>, // @lfy def/generation/data.lfy:ReviewReport.problems
 }
 
@@ -820,7 +818,8 @@ pub struct ReviewReport {
 pub struct Plan {
     /// Every unit of every target, each after its dependencies.
     pub units: Vec<Unit>, // @lfy def/generation/data.lfy:Plan.units
-    /// Every move that resolved a cycle among files, in the order the moves were made.
+    /// Every move that resolved a cycle among files, in plan order of the origin unit, then
+    /// in file order of the first of the entities moved.
     pub moves: Vec<Move>, // @lfy def/generation/data.lfy:Plan.moves
     /// Every cycle among files that no move could resolve, and every entity that reaches one
     /// not built for its target, one problem each.
@@ -884,7 +883,7 @@ mod tests {
     /// source map: a marker naming an entity spells the name alone, whatever
     /// [`Marker::line`] and [`Marker::column`] hold, and the line recorded is derived from
     /// the model by [`accept`](super::accept).
-    // @lfy def/generation/data.lfy:Marker#Marker:Marker:6dfd2385181861e88df13c277e13d237ad94dc3f284515619561d5e7c6488ce2
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:76e237fb260caf5b11bc6d84be162349e39c76c149a14baf79eb7d16efa750a6
     #[test]
     fn a_marker_that_names_an_entity_spells_no_line() {
         let named = Marker {
@@ -967,7 +966,7 @@ mod tests {
     }
 
     // @lfy def/generation/data.lfy:Marker.end
-    // @lfy def/generation/data.lfy:Marker#Marker:Marker:e9418054b314dd678a5ad4c10c1b8a87c6937555b64a474b204585151415547f
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:28a0e4876e2210cd634262461b8037fae2548f3013fa1cbcc86d69334755b903
     #[test]
     fn a_marker_covers_its_output_line_through_its_end() {
         let marker = Marker {
@@ -1006,7 +1005,7 @@ mod tests {
         assert!(marker.covers(7));
     }
 
-    // @lfy def/generation/data.lfy:Review#Review:Review:c6583b64878c8040bf8c20785e6890e5beb1c759c27805f2ef4728e16054e2a9
+    // @lfy def/generation/data.lfy:Review
     #[test]
     fn a_review_is_one_json_object_with_exactly_its_keys() {
         assert_eq!(REVIEWED, "ELFIE: REVIEWED");

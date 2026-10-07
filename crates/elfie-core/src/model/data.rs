@@ -215,16 +215,13 @@ pub struct Symbol {
     pub name: String, // @lfy def/model/data.lfy:Symbol.name
     /// What the name is bound to; for an alias, the target's entity.
     pub entity: EntityId, // @lfy def/model/data.lfy:Symbol.entity
-    // @lfy def/model/data.lfy:Symbol#Symbol:Symbol:bfb97fbe7d86474e9b31c1d42b8ba5a0611c60731268534c77937588a987f70a
-    pub kind: SymbolKind,
+    pub kind: SymbolKind, // @lfy def/model/data.lfy:Symbol.kind
     /// The node that declared it.
-    // @lfy def/model/data.lfy:Symbol#Symbol:Symbol:bfb97fbe7d86474e9b31c1d42b8ba5a0611c60731268534c77937588a987f70a
-    pub node: NodeRef,
+    pub node: NodeRef, // @lfy def/model/data.lfy:Symbol.node
     /// The token that spells the name, when one does.
     pub name_token: Option<usize>,
     /// The scope that holds it.
-    // @lfy def/model/data.lfy:Symbol#Symbol:Symbol:bfb97fbe7d86474e9b31c1d42b8ba5a0611c60731268534c77937588a987f70a
-    pub scope: ScopeId,
+    pub scope: ScopeId, // @lfy def/model/data.lfy:Symbol.scope
 }
 
 /// A region in which names resolve.
@@ -232,28 +229,37 @@ pub struct Symbol {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
     /// The enclosing scope, settled for a file scope once every file is declared.
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:42af5b6a186748d342d067144fcbe6e4a9fd24f9df49fa04198090b72c251659
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
+    // @lfy def/model/data.lfy:Scope.parent
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:63702a99fb7a3d155498fd0cfc8839b62e9c0eebe6543cb81ff763006d571f34
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:4402361d3767c258bf2e3e234fe5e7f7afa4b16ff000c9be247ce0ce346d91d9
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:88f6519881eecd7fc8282f1965f00635e2031400a6510eb901072f8d595e0812
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:d0d1d9f729ef5da8873af7dd76fe6f256b415cef6655f59c2d0b44144e696b3f
     pub parent: Option<ScopeId>,
     /// The node that owns it.
     pub owner: NodeRef,
     pub file: FileId,
-    /// The symbols declared directly in it, in order.
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:42af5b6a186748d342d067144fcbe6e4a9fd24f9df49fa04198090b72c251659
-    pub symbols: Vec<SymbolId>,
-    /// The symbols its use statements import, after the symbols declared directly in it;
-    /// only a file scope has any.
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:22fac6d4e670bba6a452d99eaf5fe8c73bd2fe60f299a61bf974a9377bf8b7c9
+    /// The symbols declared directly in it, in order, then the symbols its use statements
+    /// import; only a file scope has any of the latter.
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:66bb6d7d2dfba72304adc42bb0a2890dd744b25f97e6d0ad706557d0dabf01d1
+    pub symbols: Vec<SymbolId>, // @lfy def/model/data.lfy:Scope.symbols
+    /// Which of [`Scope::symbols`] were imported rather than declared.
     pub imports: Vec<SymbolId>,
     /// The current entity.
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:845999c3f233c583f0345dc819e89ad1e41de058891617b1d24252c7e7f3d21c
-    pub current: EntityId,
+    pub current: EntityId, // @lfy def/model/data.lfy:Scope.current
+}
+
+impl Scope {
+    /// The symbols declared directly in it, imports left out.
+    pub fn declared(&self) -> impl Iterator<Item = SymbolId> + '_ {
+        self.symbols
+            .iter()
+            .copied()
+            .filter(|symbol| !self.imports.contains(symbol))
+    }
 }
 
 /// What applied a trait.
-// @lfy def/model/data.lfy:Applied#Applied:Applied:fab3fd03c628f5350e16842d5f330374a3cbfa3429c02399acc674c7c7ca393d
-// @lfy def/model/data.lfy:Applied#Applied:Applied:ee4c1f2f778b72495977533effacf8eeab17af5bf88c802b226f69b9a8186fef
+// @lfy def/model/data.lfy:Applied.source
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppliedSource {
     /// Applied directly by an `IsClause`.
@@ -263,6 +269,7 @@ pub enum AppliedSource {
     /// Applied directly by an apply `Call`.
     Apply(NodeRef),
     /// Inherited through the application at this index of the same entity's traits.
+    // @lfy def/model/data.lfy:Entity#Entity:extensionClause:8d32d55313384cf1012c9e519e04b10038df70be66ada35f0b2b3cd59c9a95d3
     Inherited(usize),
 }
 
@@ -277,7 +284,7 @@ pub struct Applied {
     /// The arguments evaluated where they were written, in order; a spread parameter
     /// takes the rest as one list.
     pub values: Vec<Value>,
-    pub source: AppliedSource, // @lfy def/model/data.lfy:Applied
+    pub source: AppliedSource, // @lfy def/model/data.lfy:Applied.source
 }
 
 /// One acceptance criterion as written, with the entity it came from. Texts are stored
@@ -310,7 +317,7 @@ pub struct Test {
 
 /// What a piece of knowledge is. `KnowledgeKind` of the package `elfie`, translated here
 /// because [`Entity::knowledge`] holds it.
-// @lfy def/model/data.lfy:Entity.knowledge
+// @lfy def/model/data.lfy:Knowledge.kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KnowledgeKind {
     Reference,
@@ -336,25 +343,25 @@ impl KnowledgeKind {
 /// Something the compiler is given to read, because it may not already know it.
 /// `Knowledge` of the package `elfie`, translated here because [`Entity::knowledge`]
 /// holds it.
-// @lfy def/model/data.lfy:Entity.knowledge
+// @lfy def/model/data.lfy:Knowledge
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Knowledge {
     /// What it teaches, in a few words.
-    pub topic: String,
+    pub topic: String, // @lfy def/model/data.lfy:Knowledge.topic
     /// What it is.
-    pub kind: KnowledgeKind,
+    pub kind: KnowledgeKind, // @lfy def/model/data.lfy:Knowledge.kind
     /// A path relative to the root of the package or project that declares it; a use path
     /// for a definition; the tool's name for a tool.
-    pub source: String,
+    pub source: String, // @lfy def/model/data.lfy:Knowledge.source
     /// Whether the request quotes it in full; `None` to let the compiler read it instead.
-    pub quote: Option<bool>,
+    pub quote: Option<bool>, // @lfy def/model/data.lfy:Knowledge.quote
     /// The entity whose body holds it: the entity itself or one of its traits.
-    pub contributor: EntityId,
+    pub contributor: EntityId, // @lfy def/model/data.lfy:Knowledge.contributor
 }
 
 /// What a command is for. `Operation` of the package `elfie`, translated here because
 /// [`Command::operation`] holds it.
-// @lfy def/model/data.lfy:Entity.commands
+// @lfy def/model/data.lfy:Command.operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     Install,
@@ -383,16 +390,16 @@ impl Operation {
 
 /// A shell command for one operation, so the compiler need not know the tool. `Command`
 /// of the package `elfie`, translated here because [`Entity::commands`] holds it.
-// @lfy def/model/data.lfy:Entity.commands
+// @lfy def/model/data.lfy:Command
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Command {
     /// What it is for.
-    pub operation: Operation,
+    pub operation: Operation, // @lfy def/model/data.lfy:Command.operation
     /// What `sh -c` runs in the target's output directory; `None` to say the operation is
     /// not run.
-    pub line: Option<String>,
+    pub line: Option<String>, // @lfy def/model/data.lfy:Command.line
     /// The entity whose body holds it: the entity itself or one of its traits.
-    pub contributor: EntityId,
+    pub contributor: EntityId, // @lfy def/model/data.lfy:Command.contributor
 }
 
 /// A type as the model knows it.
@@ -434,8 +441,10 @@ pub enum Value {
     /// `@acceptanceCriteria` of an entity: what `add` is called on.
     Criteria(EntityId),
     /// `@test` of an entity: what is called to add tests.
+    // @lfy def/model/data.lfy:Entity.test
     Tester(EntityId),
     /// `@like` of a type: a prompt describing an instance.
+    // @lfy def/model/data.lfy:Entity.like
     Like(Box<Value>),
 }
 
@@ -479,17 +488,18 @@ pub enum EntityKind {
         agent: bool, // @lfy def/model/data.lfy:FnEntity.agentic
     },
     /// A declared trait seen through its context layer.
-    // @lfy def/model/data.lfy:TraitEntity
+    // @lfy def/model/data.lfy:Entity
     Trait {
         parameters: Vec<SymbolId>,
         /// ContextProperty entities: everything the trait was applied to, directly or by
         /// inheritance, in file then application order.
-        // @lfy def/model/data.lfy:Entity#Entity:applyingTraits:885abc6aa6f23dc47914f2e331127d72b788b2032d860ea70fb7bf826cf30233
-        // @lfy def/model/data.lfy:Entity#Entity:applyingExtensions:292cf2e904820b531743ac889aa5da8e947e24db6b94538ee712d2afc8563353
-        entities: Vec<EntityId>, // @lfy def/model/data.lfy:TraitEntity.entities
+        // @lfy def/model/data.lfy:Entity#Entity:traitClause:885abc6aa6f23dc47914f2e331127d72b788b2032d860ea70fb7bf826cf30233
+        // @lfy def/model/data.lfy:Entity#Entity:extensionClause:5f20e2408a0369cfd8f5ff1815d6013094ecbc1e3cf0ac4dd2571d1cda5b83c7
+        // @lfy def/model/data.lfy:Entity#Entity:extensionClause:543a94248601666a7d946001c384de0faaa8613d6d0df610e8a946a349e84757
+        entities: Vec<EntityId>,
         /// ContextProperty extenders: every trait that names it in an ExtendsClause.
-        // @lfy def/model/data.lfy:Entity#Entity:applyingExtensions:0cad2a6ae37aab73add8e0b68b1249ca3a73e24830445553a3c69c76ec60884f
-        extenders: Vec<EntityId>, // @lfy def/model/data.lfy:TraitEntity.extenders
+        // @lfy def/model/data.lfy:Entity#Entity:extensionClause:56a3f99ebcf66cb547618658a10dd4e086a38d56c5e0736c52e9f7cc5d82233c
+        extenders: Vec<EntityId>,
     },
     Variable,
     Alias,
@@ -520,8 +530,8 @@ pub struct Entity {
     pub acceptance_criteria: Vec<Criterion>, // @lfy def/model/data.lfy:Entity.acceptanceCriteria
     /// Every trait applied to it, direct or inherited, in application order, each with
     /// what applied it.
-    // @lfy def/model/data.lfy:Entity#Entity:applyingTraits:a8b6d4d3d7cc54933301dcfe026cc4267738079adceed510560830d01aae2ee0
-    // @lfy def/model/data.lfy:Entity#Entity:applyingExtensions:49625aa48b0703f6a1c12a97eb8d56fdb19b02bb6918e843148d26465b703698
+    // @lfy def/model/data.lfy:Entity#Entity:traitList:a8b6d4d3d7cc54933301dcfe026cc4267738079adceed510560830d01aae2ee0
+    // @lfy def/model/data.lfy:Entity#Entity:traitList:49625aa48b0703f6a1c12a97eb8d56fdb19b02bb6918e843148d26465b703698
     pub traits: Vec<Applied>, // @lfy def/model/data.lfy:Entity.traits
     /// What a list-typed entity holds; `None` when the type is not a list.
     pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:Entity.itemType
@@ -531,27 +541,21 @@ pub struct Entity {
     pub tests: Vec<Test>, // @lfy def/model/data.lfy:Entity.tests
     /// What the compiler is given to read for it: its own items first, then each trait's
     /// in application order.
-    // @lfy def/model/data.lfy:Entity#Entity:Entity:ae547eefefd157485c0e6bd8eea3cb45294d1b7db29458a1edaf12993fd028a0
     pub knowledge: Vec<Knowledge>, // @lfy def/model/data.lfy:Entity.knowledge
     /// Shell commands for its operations: its own first, then each trait's in application
     /// order.
-    // @lfy def/model/data.lfy:Entity#Entity:Entity:ae547eefefd157485c0e6bd8eea3cb45294d1b7db29458a1edaf12993fd028a0
     pub commands: Vec<Command>, // @lfy def/model/data.lfy:Entity.commands
     /// The targets added to it, in the order they were added; each the entity of an ace
     /// const of the project holding a `Target` of the package `elfie`.
-    // @lfy def/model/data.lfy:Entity#Entity:Entity:ae547eefefd157485c0e6bd8eea3cb45294d1b7db29458a1edaf12993fd028a0
     pub targets: Vec<EntityId>, // @lfy def/model/data.lfy:Entity.targets
     /// The value setters evaluated for it (`.name = value` in a trait or data body).
     pub values: Vec<(String, Value)>,
     pub kind: EntityKind,
     /// The declaring node; `None` for global.
-    // @lfy def/model/data.lfy:Entity#Entity:Entity:4bcd3ce25e68d0f1922d29c8b47444d8bf160a52009b4311dc9f72cc18b9c38a
-    pub node: Option<NodeRef>,
-    // @lfy def/model/data.lfy:Entity#Entity:Entity:4bcd3ce25e68d0f1922d29c8b47444d8bf160a52009b4311dc9f72cc18b9c38a
-    pub symbol: Option<SymbolId>,
+    pub node: Option<NodeRef>, // @lfy def/model/data.lfy:Entity.node
+    pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:Entity.symbol
     /// The scope it owns, when it owns one.
-    // @lfy def/model/data.lfy:Entity#Entity:Entity:4bcd3ce25e68d0f1922d29c8b47444d8bf160a52009b4311dc9f72cc18b9c38a
-    pub scope: Option<ScopeId>,
+    pub scope: Option<ScopeId>, // @lfy def/model/data.lfy:Entity.scope
     pub file: Option<FileId>,
 }
 
@@ -623,6 +627,36 @@ pub struct Usage {
     pub symbol: Option<SymbolId>, // @lfy def/model/data.lfy:Usage.symbol
 }
 
+/// The stage that reported a diagnostic.
+// @lfy def/model/data.lfy:Stage
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Stage {
+    Binder,     // @lfy def/model/data.lfy:Stage.binder
+    Generation, // @lfy def/model/data.lfy:Stage.generation
+    Lexer,      // @lfy def/model/data.lfy:Stage.lexer
+    Loader,     // @lfy def/model/data.lfy:Stage.loader
+    Parser,     // @lfy def/model/data.lfy:Stage.parser
+}
+
+impl Stage {
+    /// The value of the enum member: how the stage is spelled.
+    pub fn value(self) -> &'static str {
+        match self {
+            Stage::Binder => "binder",
+            Stage::Generation => "generation",
+            Stage::Lexer => "lexer",
+            Stage::Loader => "loader",
+            Stage::Parser => "parser",
+        }
+    }
+}
+
+impl fmt::Display for Stage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.value())
+    }
+}
+
 /// Something that did not resolve; binding continues past it.
 // @lfy def/model/data.lfy:Problem
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -631,6 +665,8 @@ pub struct Problem {
     pub node: NodeRef, // @lfy def/model/data.lfy:Problem.node
     /// What and why.
     pub message: String, // @lfy def/model/data.lfy:Problem.message
+    /// Which stage added it.
+    pub stage: Stage, // @lfy def/model/data.lfy:Problem.stage
 }
 
 /// One file to bind, with its `Use` statements already resolved.
@@ -659,8 +695,7 @@ pub struct Model {
     pub entities: Vec<Entity>,
     pub usages: Vec<Usage>,
     /// Every [`Problem`] the binder recorded.
-    // @lfy def/model/data.lfy:Model#Model:Model:eea4b6850249e2d00680aefce02776022f87b76c3761ec67543bc0f9d618a12f
-    pub problems: Vec<Problem>,
+    pub problems: Vec<Problem>, // @lfy def/model/data.lfy:Model.problems
     /// Per file, one entry per node in preorder.
     pub nodes: Vec<Vec<NodeInfo>>,
     /// The file scope of each file.
@@ -766,7 +801,6 @@ impl Model {
             if let Some(&symbol) = scope
                 .symbols
                 .iter()
-                .chain(scope.imports.iter())
                 .find(|&&symbol| self.symbols[symbol].name == name)
             {
                 return Some(symbol);
@@ -776,13 +810,12 @@ impl Model {
         None
     }
 
-    /// The symbol named `name` declared directly in `scope`, imports included.
+    /// The symbol named `name` held directly by `scope`, imports included.
     pub fn lookup_local(&self, scope: ScopeId, name: &str) -> Option<SymbolId> {
         let scope = &self.scopes[scope];
         scope
             .symbols
             .iter()
-            .chain(scope.imports.iter())
             .copied()
             .find(|&symbol| self.symbols[symbol].name == name)
     }

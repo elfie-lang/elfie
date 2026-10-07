@@ -26,7 +26,7 @@ pub enum Check {
     /// `Backslash`.
     BodiesExcludeBackslash, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:60eb6110247c6a9801857b1d7d81d52a38e6be7c32014729b500af7371df187f
     /// No alternative of an alternation can be satisfied without taking a token.
-    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56
+    AlternativesTakeAToken, // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:c7242d6964974dbc0379df87801c492b8576355e0ea5279ded0cc1cf98984c7b
 }
 
 impl Check {
@@ -149,7 +149,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
                 detail: "lists escapes but does not exclude Backslash".to_owned(),
             });
         }
-        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56
+        // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:c7242d6964974dbc0379df87801c492b8576355e0ea5279ded0cc1cf98984c7b
         if let Some(expr) = &parsed
             && let Ok(grammar) = ebnf::Grammar::compile_cached()
         {
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(Check::ALL.len(), 6);
     }
 
-    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:4465d8a6334e87cdcf8436748118a57155e69aec23709eef317bc228699bce56
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:c7242d6964974dbc0379df87801c492b8576355e0ea5279ded0cc1cf98984c7b
     #[test]
     fn every_alternative_of_every_alternation_takes_a_token() {
         let grammar = ebnf::grammar();

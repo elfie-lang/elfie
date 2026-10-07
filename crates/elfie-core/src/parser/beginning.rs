@@ -30,7 +30,7 @@ pub(crate) struct Tables {
 
 impl Tables {
     /// The terminals `rule` can begin with.
-    // @lfy def/parser/main.lfy:parse#parse:parse:d9ffb274437835518bafd5ef29689fd2aae3533a27eb2a3249539f93cd3e9de7
+    // @lfy def/parser/main.lfy:parse#parse:parse:d408ec5f3c9627edb1390d678a8e402ecc528de68451f676936ffaa46cf8c749
     pub fn first(&self, rule: Entity) -> &HashSet<Entity> {
         static EMPTY: OnceLock<HashSet<Entity>> = OnceLock::new();
         self.first
@@ -198,7 +198,7 @@ fn compute_first() -> HashMap<Entity, HashSet<Entity>> {
     loop {
         let mut changed = false;
         for rule in rules() {
-            // @lfy def/parser/main.lfy:parse#parse:parse:b9e7f3fa0a4c512a18f95d508de54d6fcbc7093590a326a4494bebab5fa5eedf
+            // @lfy def/parser/main.lfy:parse#parse:parse:ca9bd37cc95cd5e3af7bcfa8b8b668f43661520fd5a2a5b36a0c8c5ddfd250c9
             if rule.is_terminal() || is_operation(rule) {
                 continue;
             }
@@ -251,7 +251,7 @@ impl fmt::Display for Violation {
 /// The global acceptance criteria of the parser, checked against the grammar and the
 /// components: every failing terminal or alternation is reported with the candidates it
 /// selects.
-// @lfy def/parser/main.lfy:parse#global:def/parser/main.lfy:1c7fdc9e99e5a132c4b70443a4a57960b652345ba09540a2f414a25b9a1fe1ed
+// @lfy def/parser/main.lfy:parse#global:def/parser/components.lfy:3f95087db10d0a0a9a129ba9817ca635ced6a9eff071d21d7bf7666bde2ab6ea
 pub fn validate() -> Result<(), Vec<Violation>> {
     let first = compute_first();
     let mut violations = Vec::new();
@@ -267,14 +267,14 @@ pub fn validate() -> Result<(), Vec<Violation>> {
         }
     };
     for &terminal in &terminals {
-        // @lfy def/parser/main.lfy:parse
+        // @lfy def/parser/main.lfy:parse#global:def/parser/components.lfy:6f3a2cabfb3fbf520977860c41e9a095a1f26c573e1858e0b9ab9c187b46d915
         let statements: Vec<Entity> = STATEMENTS
             .iter()
             .copied()
             .filter(|rule| first[rule].contains(&terminal))
             .collect();
         check_ordered(terminal, "Statement", statements, &mut violations);
-        // @lfy def/parser/main.lfy:parse
+        // @lfy def/parser/main.lfy:parse#global:def/parser/components.lfy:1600a3f0ce4236b04a43582e1d0802ef66638494614757ed49d027780d56329a
         let expressions: Vec<Entity> = PRIMARIES
             .iter()
             .chain(PREFIXES)
@@ -283,7 +283,7 @@ pub fn validate() -> Result<(), Vec<Violation>> {
             .collect();
         check_ordered(terminal, "Expression", expressions, &mut violations);
     }
-    // @lfy def/parser/main.lfy:parse
+    // @lfy def/parser/main.lfy:parse#global:def/parser/components.lfy:69c8f67e757dd658c267678b55d01ac31adf5077c4ffe4967a43617cf28f1452
     for rule in rules().filter(|rule| !rule.is_terminal()) {
         let Some(expr) = rule.expression() else {
             continue;
@@ -432,7 +432,7 @@ mod tests {
         Entity::Punctuation(rule)
     }
 
-    // @lfy def/parser/main.lfy:parse#parse:parse:b9e7f3fa0a4c512a18f95d508de54d6fcbc7093590a326a4494bebab5fa5eedf
+    // @lfy def/parser/main.lfy:parse#parse:parse:ca9bd37cc95cd5e3af7bcfa8b8b668f43661520fd5a2a5b36a0c8c5ddfd250c9
     #[test]
     fn infix_and_postfix_rules_begin_with_no_terminal() {
         let tables = tables();
@@ -445,7 +445,7 @@ mod tests {
         assert!(!is_expression_rule(statement(Statement::Block)));
     }
 
-    // @lfy def/parser/main.lfy:parse#parse:parse:d9ffb274437835518bafd5ef29689fd2aae3533a27eb2a3249539f93cd3e9de7
+    // @lfy def/parser/main.lfy:parse#parse:parse:d408ec5f3c9627edb1390d678a8e402ecc528de68451f676936ffaa46cf8c749
     #[test]
     fn other_rules_begin_with_the_terminals_their_syntax_reaches_first() {
         let tables = tables();
@@ -496,7 +496,7 @@ mod tests {
         assert_eq!(expression_alternation_minimum(&[statement(Statement::Block)]), 0);
     }
 
-    // @lfy def/parser/main.lfy:parse#parse:parse:7185c3dbfd8022f2f4a3c0486615c5f13e4b5deb0a6ceaf5cfbab35572ac9968
+    // @lfy def/parser/main.lfy:parse#parse:parse:c971b2ec65d561653e23d92a462149ebf3b978d9b299ba3e65ae85661bbec770
     #[test]
     fn each_operator_terminal_continues_an_expression_with_one_rule_of_each_category() {
         let tables = tables();
@@ -510,7 +510,7 @@ mod tests {
         assert!(tables.operations(punctuation(Punctuation::Semicolon)).is_empty());
         assert!(tables.operations(Entity::Keyword(Keyword::InKeyword)).is_empty());
         // A terminal that is the operator of both: the postfix rule comes first.
-        // @lfy def/parser/main.lfy:parse#parse:parse:7185c3dbfd8022f2f4a3c0486615c5f13e4b5deb0a6ceaf5cfbab35572ac9968
+        // @lfy def/parser/main.lfy:parse#parse:parse:c971b2ec65d561653e23d92a462149ebf3b978d9b299ba3e65ae85661bbec770
         assert_eq!(
             tables.operations(punctuation(Punctuation::LessThan)),
             [expression(Expression::Generic), expression(Expression::RelationalOperation)]
@@ -525,7 +525,7 @@ mod tests {
         let tables = tables();
         let expressions: Vec<Entity> = PRIMARIES.iter().chain(PREFIXES).copied().collect();
         assert_eq!(tables.select(&expressions, punctuation(Punctuation::Semicolon)), vec![]);
-        // @lfy def/parser/main.lfy:parse#parse:parse:3e3cb7eda84448ad65a8c4d5aacb1db8333d8b85312546d59033541dc5f44c25
+        // @lfy def/parser/main.lfy:parse#parse:parse:140e8e6b83005b1d43d49be2e061b16a5e12a8406a5e1119ba629e43bed1cff2
         assert_eq!(
             tables.select(STATEMENTS, punctuation(Punctuation::BlockOpen)),
             vec![statement(Statement::Block), statement(Statement::ExpressionStatement)]
@@ -542,14 +542,14 @@ mod tests {
             tables.select(&expressions, punctuation(Punctuation::BlockOpen)),
             vec![expression(Expression::Object), expression(Expression::Type)]
         );
-        // @lfy def/parser/main.lfy:parse#parse:parse:487fb759a56adec3cc388557fc645e3ecc5740d90cab9e9d221dfdc652216179
+        // @lfy def/parser/main.lfy:parse#parse:parse:140e8e6b83005b1d43d49be2e061b16a5e12a8406a5e1119ba629e43bed1cff2
         assert_eq!(
             tables.select(STATEMENTS, Entity::Keyword(Keyword::UseKeyword)),
             vec![statement(Statement::Use)]
         );
     }
 
-    // @lfy def/parser/main.lfy:parse#global:def/parser/main.lfy:1c7fdc9e99e5a132c4b70443a4a57960b652345ba09540a2f414a25b9a1fe1ed
+    // @lfy def/parser/main.lfy:parse#global:def/parser/components.lfy:3f95087db10d0a0a9a129ba9817ca635ced6a9eff071d21d7bf7666bde2ab6ea
     #[test]
     fn tried_before_orders_every_choice_the_grammar_presents() {
         assert_eq!(validate(), Ok(()));

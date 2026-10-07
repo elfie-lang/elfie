@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-/// What the command line can do.
+/// What the command line can do; each value is the word that names it.
 // @lfy def/cli/data.lfy:Command
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
@@ -103,8 +103,7 @@ pub struct Invocation {
     pub root: String, // @lfy def/cli/data.lfy:Invocation.root
     /// The positional arguments after the command, in order.
     pub arguments: Vec<String>, // @lfy def/cli/data.lfy:Invocation.arguments
-    /// Named options by name without their dashes; `None` for a flag, the text for a
-    /// valued option.
+    /// Options by name without dashes: `None` for a flag, the text for a valued option.
     pub options: BTreeMap<String, Option<String>>, // @lfy def/cli/data.lfy:Invocation.options
 }
 
@@ -202,8 +201,8 @@ pub struct Progress {
     /// Seconds since the compile began, as [`std::time::SystemTime::elapsed`] from its
     /// start gives them.
     pub elapsed: f64, // @lfy def/cli/data.lfy:Progress.elapsed
-    /// The detail: the reason a unit is planned, a problem, a question, the count of
-    /// batches, or for `Reviewed` and `GlobalReviewed` the counts of satisfied, violated,
+    /// The detail: the reason a unit is planned, a problem, a question, the counts of
+    /// the plan, or for `Reviewed` and `GlobalReviewed` the counts of satisfied, violated,
     /// and unverifiable reviews, in that order.
     pub message: String, // @lfy def/cli/data.lfy:Progress.message
 }

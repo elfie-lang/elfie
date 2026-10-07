@@ -894,6 +894,7 @@ fn unbuilt_problems(
                     "{place} reaches {}, which is not built for the target {target}",
                     entity_name(model, entity)
                 ),
+                stage: crate::model::Stage::Generation,
             };
             if !out.contains(&problem) {
                 out.push(problem);
@@ -1012,6 +1013,7 @@ fn cycle_problem(
             .or(fallback)
             .unwrap_or(NodeRef { file: 0, index: 0 }),
         message,
+        stage: crate::model::Stage::Generation,
     }
 }
 
@@ -1143,7 +1145,7 @@ fn built_entities(model: &Model, source: usize, declaration: EntityId) -> Vec<En
         .map_or(&[], |&entity| model.entities[entity].targets.as_slice());
     let mut out: Vec<EntityId> = Vec::new();
     if let Some(&scope) = model.file_scopes.get(source) {
-        for &symbol in &model.scopes[scope].symbols {
+        for symbol in model.scopes[scope].declared() {
             let symbol = &model.symbols[symbol];
             if symbol.kind == SymbolKind::Module {
                 continue;
@@ -2736,7 +2738,7 @@ fn resolve_marker(
         &own
     };
     // A marker that names an entity keeps its spelling; its line is derived.
-    // @lfy def/generation/data.lfy:Marker#Marker:Marker:6dfd2385181861e88df13c277e13d237ad94dc3f284515619561d5e7c6488ce2
+    // @lfy def/generation/data.lfy:Marker#Marker:Marker:76e237fb260caf5b11bc6d84be162349e39c76c149a14baf79eb7d16efa750a6
     if let Some(name) = &marker.entity {
         match table.iter().find(|(candidate, _)| candidate == name) {
             Some(&(_, entity)) => {
@@ -2804,7 +2806,7 @@ fn innermost(model: &Model, named: &[(String, EntityId)], line: usize) -> Option
 fn named_entities(model: &Model, source: FileId, extra: &[EntityId]) -> Vec<(String, EntityId)> {
     let mut declarations: Vec<EntityId> = Vec::new();
     if let Some(&scope) = model.file_scopes.get(source) {
-        for &symbol in &model.scopes[scope].symbols {
+        for symbol in model.scopes[scope].declared() {
             let symbol = &model.symbols[symbol];
             let entity = &model.entities[symbol.entity];
             if symbol.kind != SymbolKind::Module
@@ -5857,7 +5859,7 @@ global@targets.add(rust);
     /// A unit's local criteria and tests are those of each of its entities and of its file's
     /// own entity, so moving an entity into another unit moves them with it: the receiving
     /// unit holds them and the unit the entity left holds them no longer.
-    // @lfy def/generation/data.lfy:Unit#Unit:Unit:a71462ec6c4c1494654b6067e77067cac5154c77a93576479d51af4fa014244e
+    // @lfy def/generation/data.lfy:Unit#Unit:Unit:e5292928d76df9bc73129964e9a39f6ef14fe33c190526dc4bb3f76ff2380810
     #[test]
     fn a_units_requirements_are_its_entities_and_move_with_them() {
         let fixture = a_and_b();

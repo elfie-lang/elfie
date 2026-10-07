@@ -8,7 +8,7 @@ grammar_rules! {
     pub enum Space {
         /// Value is always equal to `\n` regardless of raw text; see [`NEW_LINE_VALUE`].
         NewLine is [terminal()]: "A line break" = "\"\n\" | \"\r\n\"", // @lfy def/grammar/terminals/space.lfy:NewLine
-        Space is [terminal()]: "Various space characters" = "\" \" | \"\t\" | \"\u{000B}\" | \"\u{000C}\" | \"\u{0085}\" | \"\u{200E}\" | \"\u{200F}\" | \"\u{2028}\" | \"\u{2029}\"", // @lfy def/grammar/terminals/space.lfy:Space
+        Space is [terminal()]: "Whitespace within a line; U+0085, U+2028, and U+2029 are space here, although Unicode counts them as line separators" = "\" \" | \"\t\" | \"\u{000B}\" | \"\u{000C}\" | \"\u{0085}\" | \"\u{200E}\" | \"\u{200F}\" | \"\u{2028}\" | \"\u{2029}\"", // @lfy def/grammar/terminals/space.lfy:Space
     }
 }
 

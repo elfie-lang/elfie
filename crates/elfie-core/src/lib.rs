@@ -10,5 +10,5 @@ pub mod interpret; // @lfy def/interpret/main.lfy:lower
 pub mod lexer; // @lfy def/lexer/main.lfy:lex
 pub mod model; // @lfy def/model/main.lfy:bind
 pub mod parser; // @lfy def/parser/main.lfy:parse
-pub mod query; // @lfy def/query/main.lfy:rangeOf
+pub mod query; // @lfy def/query/main.lfy:symbolAt
 pub mod workspace; // @lfy def/workspace/main.lfy:load

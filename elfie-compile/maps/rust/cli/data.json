@@ -1,15 +1,15 @@
 [
   {
     "dependencies": {},
-    "generated": "2026-10-01T18:44:46Z",
-    "hash": "a3ce080987341630068843e114f3c203a6fa2deba23f46a7db290ed5f4313c6c",
+    "generated": "2026-10-07T05:23:30Z",
+    "hash": "1e2b8569f0e08e142d464a10117ad3498ea124ae84d7da63ae79f47ea9ab9268",
     "markers": [
       {
         "column": null,
         "end": 8,
         "entity": "Command",
         "file": "def/cli/data.lfy",
-        "line": 4,
+        "line": 5,
         "outputLine": 6,
         "requirement": null
       },
@@ -18,7 +18,7 @@
         "end": 9,
         "entity": "Command.help",
         "file": "def/cli/data.lfy",
-        "line": 5,
+        "line": 6,
         "outputLine": 9,
         "requirement": null
       },
@@ -27,7 +27,7 @@
         "end": 10,
         "entity": "Command.version",
         "file": "def/cli/data.lfy",
-        "line": 6,
+        "line": 7,
         "outputLine": 10,
         "requirement": null
       },
@@ -36,7 +36,7 @@
         "end": 11,
         "entity": "Command.init",
         "file": "def/cli/data.lfy",
-        "line": 7,
+        "line": 8,
         "outputLine": 11,
         "requirement": null
       },
@@ -45,7 +45,7 @@
         "end": 12,
         "entity": "Command.check",
         "file": "def/cli/data.lfy",
-        "line": 8,
+        "line": 9,
         "outputLine": 12,
         "requirement": null
       },
@@ -54,7 +54,7 @@
         "end": 13,
         "entity": "Command.format",
         "file": "def/cli/data.lfy",
-        "line": 9,
+        "line": 10,
         "outputLine": 13,
         "requirement": null
       },
@@ -63,7 +63,7 @@
         "end": 14,
         "entity": "Command.tree",
         "file": "def/cli/data.lfy",
-        "line": 10,
+        "line": 11,
         "outputLine": 14,
         "requirement": null
       },
@@ -72,7 +72,7 @@
         "end": 15,
         "entity": "Command.tokens",
         "file": "def/cli/data.lfy",
-        "line": 11,
+        "line": 12,
         "outputLine": 15,
         "requirement": null
       },
@@ -81,7 +81,7 @@
         "end": 16,
         "entity": "Command.compile",
         "file": "def/cli/data.lfy",
-        "line": 12,
+        "line": 13,
         "outputLine": 16,
         "requirement": null
       },
@@ -90,7 +90,7 @@
         "end": 17,
         "entity": "Command.verify",
         "file": "def/cli/data.lfy",
-        "line": 13,
+        "line": 14,
         "outputLine": 17,
         "requirement": null
       },
@@ -99,7 +99,7 @@
         "end": 18,
         "entity": "Command.lsp",
         "file": "def/cli/data.lfy",
-        "line": 14,
+        "line": 15,
         "outputLine": 18,
         "requirement": null
       },
@@ -108,7 +108,7 @@
         "end": 76,
         "entity": "Command.mcp",
         "file": "def/cli/data.lfy",
-        "line": 15,
+        "line": 16,
         "outputLine": 19,
         "requirement": null
       },
@@ -117,7 +117,7 @@
         "end": 80,
         "entity": "ExitCode",
         "file": "def/cli/data.lfy",
-        "line": 18,
+        "line": 19,
         "outputLine": 77,
         "requirement": null
       },
@@ -126,7 +126,7 @@
         "end": 82,
         "entity": "ExitCode.success",
         "file": "def/cli/data.lfy",
-        "line": 19,
+        "line": 20,
         "outputLine": 81,
         "requirement": null
       },
@@ -135,7 +135,7 @@
         "end": 84,
         "entity": "ExitCode.problems",
         "file": "def/cli/data.lfy",
-        "line": 20,
+        "line": 21,
         "outputLine": 83,
         "requirement": null
       },
@@ -144,7 +144,7 @@
         "end": 86,
         "entity": "ExitCode.usage",
         "file": "def/cli/data.lfy",
-        "line": 21,
+        "line": 22,
         "outputLine": 85,
         "requirement": null
       },
@@ -153,7 +153,7 @@
         "end": 96,
         "entity": "ExitCode.failure",
         "file": "def/cli/data.lfy",
-        "line": 22,
+        "line": 23,
         "outputLine": 87,
         "requirement": null
       },
@@ -162,7 +162,7 @@
         "end": 100,
         "entity": "Invocation",
         "file": "def/cli/data.lfy",
-        "line": 25,
+        "line": 26,
         "outputLine": 97,
         "requirement": null
       },
@@ -171,7 +171,7 @@
         "end": 102,
         "entity": "Invocation.command",
         "file": "def/cli/data.lfy",
-        "line": 26,
+        "line": 27,
         "outputLine": 101,
         "requirement": null
       },
@@ -180,248 +180,248 @@
         "end": 104,
         "entity": "Invocation.root",
         "file": "def/cli/data.lfy",
-        "line": 27,
+        "line": 28,
         "outputLine": 103,
         "requirement": null
       },
       {
         "column": null,
-        "end": 107,
+        "end": 106,
         "entity": "Invocation.arguments",
         "file": "def/cli/data.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 105,
         "requirement": null
       },
       {
         "column": null,
-        "end": 121,
+        "end": 120,
         "entity": "Invocation.options",
         "file": "def/cli/data.lfy",
-        "line": 29,
-        "outputLine": 108,
+        "line": 30,
+        "outputLine": 107,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 123,
+        "entity": "Step",
+        "file": "def/cli/data.lfy",
+        "line": 33,
+        "outputLine": 121,
         "requirement": null
       },
       {
         "column": null,
         "end": 124,
-        "entity": "Step",
+        "entity": "Step.planned",
         "file": "def/cli/data.lfy",
-        "line": 32,
-        "outputLine": 122,
+        "line": 34,
+        "outputLine": 124,
         "requirement": null
       },
       {
         "column": null,
         "end": 125,
-        "entity": "Step.planned",
+        "entity": "Step.requesting",
         "file": "def/cli/data.lfy",
-        "line": 33,
+        "line": 35,
         "outputLine": 125,
         "requirement": null
       },
       {
         "column": null,
         "end": 126,
-        "entity": "Step.requesting",
+        "entity": "Step.compiling",
         "file": "def/cli/data.lfy",
-        "line": 34,
+        "line": 36,
         "outputLine": 126,
         "requirement": null
       },
       {
         "column": null,
         "end": 127,
-        "entity": "Step.compiling",
+        "entity": "Step.checking",
         "file": "def/cli/data.lfy",
-        "line": 35,
+        "line": 37,
         "outputLine": 127,
         "requirement": null
       },
       {
         "column": null,
         "end": 128,
-        "entity": "Step.checking",
+        "entity": "Step.accepted",
         "file": "def/cli/data.lfy",
-        "line": 36,
+        "line": 38,
         "outputLine": 128,
         "requirement": null
       },
       {
         "column": null,
         "end": 129,
-        "entity": "Step.accepted",
+        "entity": "Step.rejected",
         "file": "def/cli/data.lfy",
-        "line": 37,
+        "line": 39,
         "outputLine": 129,
         "requirement": null
       },
       {
         "column": null,
         "end": 130,
-        "entity": "Step.rejected",
+        "entity": "Step.verifying",
         "file": "def/cli/data.lfy",
-        "line": 38,
+        "line": 40,
         "outputLine": 130,
         "requirement": null
       },
       {
         "column": null,
         "end": 131,
-        "entity": "Step.verifying",
+        "entity": "Step.reviewed",
         "file": "def/cli/data.lfy",
-        "line": 39,
+        "line": 41,
         "outputLine": 131,
         "requirement": null
       },
       {
         "column": null,
         "end": 132,
-        "entity": "Step.reviewed",
+        "entity": "Step.globalVerifying",
         "file": "def/cli/data.lfy",
-        "line": 40,
+        "line": 42,
         "outputLine": 132,
         "requirement": null
       },
       {
         "column": null,
         "end": 133,
-        "entity": "Step.globalVerifying",
+        "entity": "Step.globalReviewed",
         "file": "def/cli/data.lfy",
-        "line": 41,
+        "line": 43,
         "outputLine": 133,
         "requirement": null
       },
       {
         "column": null,
         "end": 134,
-        "entity": "Step.globalReviewed",
+        "entity": "Step.retrying",
         "file": "def/cli/data.lfy",
-        "line": 42,
+        "line": 44,
         "outputLine": 134,
         "requirement": null
       },
       {
         "column": null,
         "end": 135,
-        "entity": "Step.retrying",
+        "entity": "Step.blocked",
         "file": "def/cli/data.lfy",
-        "line": 43,
+        "line": 45,
         "outputLine": 135,
         "requirement": null
       },
       {
         "column": null,
         "end": 136,
-        "entity": "Step.blocked",
+        "entity": "Step.clarification",
         "file": "def/cli/data.lfy",
-        "line": 44,
+        "line": 46,
         "outputLine": 136,
         "requirement": null
       },
       {
         "column": null,
         "end": 137,
-        "entity": "Step.clarification",
+        "entity": "Step.failed",
         "file": "def/cli/data.lfy",
-        "line": 45,
+        "line": 47,
         "outputLine": 137,
         "requirement": null
       },
       {
         "column": null,
-        "end": 138,
-        "entity": "Step.failed",
+        "end": 187,
+        "entity": "Step.finished",
         "file": "def/cli/data.lfy",
-        "line": 46,
+        "line": 48,
         "outputLine": 138,
         "requirement": null
       },
       {
         "column": null,
-        "end": 188,
-        "entity": "Step.finished",
-        "file": "def/cli/data.lfy",
-        "line": 47,
-        "outputLine": 139,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 192,
+        "end": 191,
         "entity": "Progress",
         "file": "def/cli/data.lfy",
-        "line": 50,
-        "outputLine": 189,
+        "line": 51,
+        "outputLine": 188,
         "requirement": null
       },
       {
         "column": null,
-        "end": 194,
+        "end": 193,
         "entity": "Progress.step",
         "file": "def/cli/data.lfy",
-        "line": 51,
-        "outputLine": 193,
+        "line": 52,
+        "outputLine": 192,
         "requirement": null
       },
       {
         "column": null,
-        "end": 196,
+        "end": 195,
         "entity": "Progress.batch",
         "file": "def/cli/data.lfy",
-        "line": 52,
-        "outputLine": 195,
+        "line": 53,
+        "outputLine": 194,
         "requirement": null
       },
       {
         "column": null,
-        "end": 198,
+        "end": 197,
         "entity": "Progress.unit",
         "file": "def/cli/data.lfy",
-        "line": 53,
-        "outputLine": 197,
+        "line": 54,
+        "outputLine": 196,
         "requirement": null
       },
       {
         "column": null,
-        "end": 200,
+        "end": 199,
         "entity": "Progress.done",
         "file": "def/cli/data.lfy",
-        "line": 54,
-        "outputLine": 199,
+        "line": 55,
+        "outputLine": 198,
         "requirement": null
       },
       {
         "column": null,
-        "end": 203,
+        "end": 202,
         "entity": "Progress.total",
         "file": "def/cli/data.lfy",
-        "line": 55,
-        "outputLine": 201,
+        "line": 56,
+        "outputLine": 200,
         "requirement": null
       },
       {
         "column": null,
-        "end": 207,
+        "end": 206,
         "entity": "Progress.elapsed",
         "file": "def/cli/data.lfy",
-        "line": 56,
-        "outputLine": 204,
+        "line": 57,
+        "outputLine": 203,
         "requirement": null
       },
       {
         "column": null,
-        "end": 209,
+        "end": 208,
         "entity": "Progress.message",
         "file": "def/cli/data.lfy",
-        "line": 57,
-        "outputLine": 208,
+        "line": 58,
+        "outputLine": 207,
         "requirement": null
       }
     ],
     "output": "crates/elfie-cli/src/data.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "0ce029359a7610563f39eaadf6455a1a55cc6cde4d533741522ac9c1ca2a4286",
+    "signature": "6950ffb11b5f693110f618827af27c829158771a5f0dce98e4f715d708ea9004",
     "source": "def/cli/data.lfy",
     "target": "rust"
   }

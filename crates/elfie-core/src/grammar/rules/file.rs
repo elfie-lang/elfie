@@ -89,7 +89,7 @@ mod tests {
             .collect()
     }
 
-    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:d9550fd07931fbd53b6b55c4069ca8833fed6bff3eaee29733d0c44d489b0126
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:rule:97928766b42cd7df993c02d6e9223e100158252eeea6f9063dbbe8dd33834e4a
     #[test]
     fn a_source_files_statements_run_to_the_end_of_the_input() {
         for source in ["", "a;", "a; b;", WITHOUT_A_TEXT_BODY] {
@@ -100,7 +100,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:c50498a552ee44abf7fe3a09d43a5cc50ee96a665edf21d1c85809d2b415ec5d
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:543cefe1c2cacc2a5b7d292a34c8f3a7f74388b04f257f9bffa82acc6399edf2
     #[test]
     fn a_stray_semicolon_or_brace_between_statements_is_covered_alone() {
         assert_eq!(error_spans("a; ; b;"), [";"]);
@@ -108,7 +108,7 @@ mod tests {
         assert_eq!(error_spans("a; ; } ; b;"), [";", "}", ";"]);
     }
 
-    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:61b9ca57b9c6f0db76783555f549078c6ddf19c5836cc5b200cbb1cab28bc77f
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:2fe368847f10a9c5935ccb8a5326f3baafc20ed69ec141554a599a00b3b0c771
     #[test]
     fn any_other_stray_token_is_covered_up_to_the_next_statement() {
         assert_eq!(error_spans("a; , , b;"), [", , "]);
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(error_spans("a; ,"), [","]);
     }
 
-    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:38bd9f4dd6db310a2703c0f185d6dada112bf329e7b2fef529baa93b64847771
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:28fd59a1b03e3b722ae6a64d898ff90a29783f62c5df81e168aa05d284b236ce
     #[test]
     fn a_close_without_its_open_ends_the_error_before_it() {
         assert_eq!(error_spans("a; , ) b;"), [", ", ") "]);
@@ -126,7 +126,7 @@ mod tests {
         assert_eq!(error_spans("a; , ]"), [", ", "]"]);
     }
 
-    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:b348bf5366168988f57986944a5d40d08474b6ed588ddff0aaefa74a1e7c150f
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:rule:97928766b42cd7df993c02d6e9223e100158252eeea6f9063dbbe8dd33834e4a
     #[test]
     fn an_error_between_statements_expects_what_begins_a_statement() {
         for source in ["a; ; b;", "a; , , b;", "a; , ) b;", "a; ,"] {
@@ -143,7 +143,7 @@ mod tests {
         }
     }
 
-    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:SourceFile:745888c84bd8381f81083e03153142ec9de1e1705ae81e03d5643346a18930dc
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:SourceFile:552139d7ea7f7a3a4d6d0a17a3ca18156c76da43b51de01e22a70dec02ebed81
     #[test]
     fn a_source_file_takes_trivia_between_any_two_of_its_tokens() {
         let plain = significant_shape(WITHOUT_A_TEXT_BODY);
@@ -158,6 +158,22 @@ mod tests {
         ] {
             let spread = spread(WITHOUT_A_TEXT_BODY, trivia);
             assert_eq!(significant_shape(&spread), plain, "{trivia:?}");
+        }
+    }
+
+    // @lfy def/grammar/rules/file.lfy:SourceFile#SourceFile:recoverable:4cc4cab503cdbc8e761f5fe8ce1b595179849cd20d9122d6fddd4bedb21b88cd
+    #[test]
+    fn the_statements_after_a_stray_token_are_still_taken() {
+        for source in ["a; , , b;", "a; ; b;", "a; , ) b;"] {
+            let tree = tree_of(source);
+            assert!(!tree.errors.is_empty(), "{source:?}");
+            let statements = tree
+                .root
+                .significant(&tree.tokens)
+                .into_iter()
+                .filter(|child| matches!(child, Child::Node(_)))
+                .count();
+            assert_eq!(statements, 2, "{source:?}");
         }
     }
 }

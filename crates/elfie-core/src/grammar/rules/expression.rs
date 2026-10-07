@@ -135,7 +135,7 @@ pub fn group_cannot_match_before(next: Entity) -> bool {
 }
 
 /// Whether `next`, the token following a `TypeGroup`'s `GroupClose`, rules the match out.
-// @lfy def/grammar/rules/expression.lfy:TypeGroup#TypeGroup:TypeGroup:47f116015f417a7abb35982c11601b7f277764414b9d561b0620e5e9b3b03651
+// @lfy def/grammar/rules/expression.lfy:TypeGroup#TypeGroup:TypeGroup:32aa17f2b2f3c7d899f5edcfa111c1f304383bc229fb7c31e5ade12de3b2d849
 pub fn type_group_cannot_match_before(next: Entity) -> bool {
     next == Entity::Punctuation(Punctuation::DoubleArrowRight)
 }
@@ -143,7 +143,7 @@ pub fn type_group_cannot_match_before(next: Entity) -> bool {
 /// Whether `next`, the first token after a `Generic`'s `GreaterThan` that is not space, a
 /// line break, a comment or documentation, allows the match. The end of the input follows
 /// nothing and so cannot rule it out.
-// @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:388c23895d8298f1c23807fdccd3ae02249b93771719c30b287d56c2b619a8b0
+// @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:45eca1cc31b9f2bdf09d6feccf026e762375181a2a50b498280e14ea4d9e4ff8
 pub fn generic_can_match_before(next: Entity) -> bool {
     matches!(
         next,
@@ -320,7 +320,7 @@ mod tests {
         );
     }
 
-    // @lfy def/grammar/rules/expression.lfy:TypeGroup#TypeGroup:TypeGroup:47f116015f417a7abb35982c11601b7f277764414b9d561b0620e5e9b3b03651
+    // @lfy def/grammar/rules/expression.lfy:TypeGroup#TypeGroup:TypeGroup:32aa17f2b2f3c7d899f5edcfa111c1f304383bc229fb7c31e5ade12de3b2d849
     #[test]
     fn a_type_group_cannot_match_before_a_double_arrow() {
         assert!(type_group_cannot_match_before(Entity::Punctuation(Punctuation::DoubleArrowRight)));
@@ -329,8 +329,8 @@ mod tests {
         assert!(!type_group_cannot_match_before(Entity::Keyword(Keyword::AsKeyword)));
     }
 
-    // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:f25ec05b8f239c2a8d9a91d5c863ad19449446c83f0cc3629ecf172270cf7254
-    // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:388c23895d8298f1c23807fdccd3ae02249b93771719c30b287d56c2b619a8b0
+    // @lfy def/grammar/rules/expression.lfy:Generic#Generic:binding:65932a772d44e29e42611438838571463a0122390ecc6eadcdb2c04482c83b32
+    // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:45eca1cc31b9f2bdf09d6feccf026e762375181a2a50b498280e14ea4d9e4ff8
     #[test]
     fn a_generic_binds_at_the_access_level_and_only_some_tokens_may_follow_it() {
         assert_eq!(
@@ -376,8 +376,7 @@ mod tests {
         ] {
             assert!(generic_can_match_before(Entity::Punctuation(allowed)), "{allowed:?}");
         }
-        // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:c01c83df5948168b55b5cde8414a40ea851e36e2368072597ff3c1c5528bc543
-        // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:5c0d3208b93fa98970c0101847ebdce9bd6ff26a45926d4fe68a18c9a0539af2
+        // @lfy def/grammar/rules/expression.lfy:Generic#Generic:Generic:2952e0ca67651c972205a99292a6a6f1ff740fd725b034ccf07486f8f7af41fd
         assert!(!generic_can_match_before(Entity::Identifier(Identifier::Identifier)));
         assert!(!generic_can_match_before(Entity::Punctuation(Punctuation::GreaterThan)));
         assert!(!generic_can_match_before(Entity::Punctuation(Punctuation::GreaterThanOrEqual)));

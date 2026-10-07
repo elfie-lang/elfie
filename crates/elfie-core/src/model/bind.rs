@@ -151,6 +151,7 @@ impl Binder {
         self.model.problems.push(Problem {
             node,
             message: message.into(),
+            stage: Stage::Binder,
         });
     }
 
@@ -248,15 +249,24 @@ impl Binder {
 
     /// One usage of the layer that [`accessor_layer`] or `reading_layer` gives the node's
     /// rule or accessor token.
-    // @lfy def/model/data.lfy:Usage#Usage:reading:ac21cace34f24707815accc4133284f676e8136d3c238c0a1a83cc287fbce07f
-    // @lfy def/model/data.lfy:Usage#Usage:reading:f9666e2c42b94cd9fb83e979bd5504fef2c78d0ac26ec89b455289555cd1c939
-    // @lfy def/model/data.lfy:Usage#Usage:reading:609073365fe6e5381452fd7f8b3d2578555d722eae1cb99cc00895d10ea82ad5
-    // @lfy def/model/data.lfy:Usage#Usage:reading:7dc5ef0b5fa91500246e001f8c08cad34455ae1b67d54b8bbe36f2a891d475bc
-    // @lfy def/model/data.lfy:Usage#Usage:reading:ee33146dc6b219be01564883208e84a9994b9304703fea90f2830a695fc6d751
-    // @lfy def/model/data.lfy:Usage#Usage:reading:6e6f5d3a14fd1410aa67d98ed94a74b127e1f3e1bfbf3b6677c6b61cf5c667a4
-    // @lfy def/model/data.lfy:Usage#Usage:reading:821cf3e93321780941fd9240917de8df4e995d1962a2a9508c03aeb6cb4415c5
-    // @lfy def/model/data.lfy:Usage#Usage:reading:d69e7051ef45630f2599b70224f5da10687332ce1d6c5404a61183128f1cb965
-    // @lfy def/model/data.lfy:Usage#Usage:reading:438adfdcbc75848d58d7798bda90d7a5ced341740dc5b5e1c043e025e8be69fc
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:a83a1a9d1f66f716f26eb38316fc83472bf8306d7ed085dbbb651ca800d7fa1d
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:2ce54c1898fc13d3cd8905cc73e0389c8d9fa45563717e429563f4262bcf67cc
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:c402a1e08ae87d1f6c648beb2924eaef933acccda58449b98b30527d4a8927f4
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:720ba39df2e40462f81cd49bc06aac603c4e40c7e5ad8394cff5c8576a3e835a
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:69e04382078756444526894120573aaa0afb9ee9f8977f2be40edeb331977270
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:d3767c249789fc2ccbc9da146aeda08cf7c2c77d178ddb3c396ffa1d4fe28c60
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:676186f904e52a43b4616d6a74db5e18cf8c8db3089fd5f403e6ba683912d591
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:4cb28a1b2479e9a7f95801092e1d411a5b47236dbe7ce3e234c2e753d1155dde
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:7ad232beed0bbccd19e09da4145c76e7041be8d3ebc5938738a7560d13d2f100
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:ac21cace34f24707815accc4133284f676e8136d3c238c0a1a83cc287fbce07f
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:f9666e2c42b94cd9fb83e979bd5504fef2c78d0ac26ec89b455289555cd1c939
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:609073365fe6e5381452fd7f8b3d2578555d722eae1cb99cc00895d10ea82ad5
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:7dc5ef0b5fa91500246e001f8c08cad34455ae1b67d54b8bbe36f2a891d475bc
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:ee33146dc6b219be01564883208e84a9994b9304703fea90f2830a695fc6d751
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:6e6f5d3a14fd1410aa67d98ed94a74b127e1f3e1bfbf3b6677c6b61cf5c667a4
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:821cf3e93321780941fd9240917de8df4e995d1962a2a9508c03aeb6cb4415c5
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:d69e7051ef45630f2599b70224f5da10687332ce1d6c5404a61183128f1cb965
+    // @lfy def/model/data.lfy:Usage#Usage:accessor:438adfdcbc75848d58d7798bda90d7a5ced341740dc5b5e1c043e025e8be69fc
     pub fn add_usage(
         &mut self,
         node: NodeRef,
@@ -267,15 +277,15 @@ impl Binder {
     ) -> UsageId {
         // `name` is None when the node spells none after its accessor, so the usage reads
         // the layer itself.
-        // @lfy def/model/data.lfy:Usage#Usage:reading:2266d300efeeadf31e80ddb973da8c589dd2d2ad6e1b968588dd4288d2275474
-        // @lfy def/model/data.lfy:Usage#Usage:reading:750057c4fc4d9129f838bf6b4b1481e9c8a1d2cc10ccf3f41755323e90d064e7
-        // @lfy def/model/data.lfy:Usage#Usage:reading:e7134335094e30bb2a9442049490488f0b9841e20eb6fe7e13b6d29c851a0292
-        // @lfy def/model/data.lfy:Usage#Usage:reading:a726a9242509e1735f015692853f0236adde1b1be1dfa9ee2e98541e39cdf197
-        // @lfy def/model/data.lfy:Usage#Usage:reading:848b7660ad51aa75374dcbb7c9dffd79adbe402fd0c5b541dc600c503e98771c
-        // @lfy def/model/data.lfy:Usage#Usage:reading:4ba008ad8bf3aeb5874d9136f3d6479ff88c61449da7cf050dc35b3b2e80f863
-        // @lfy def/model/data.lfy:Usage#Usage:reading:1e5711daf6bf443fcb4c71b1db5b22fec175542aabde820f693d986b33cf204a
-        // @lfy def/model/data.lfy:Usage#Usage:reading:7bc586c37d4ac4b4f06f40cbbca40a8f34b533fdbd9396893a7ad54263d927c6
-        // @lfy def/model/data.lfy:Usage#Usage:reading:614d0b5ef86f1132a3da25248612701d37f0804fa7013d4f545505e096ce74ce
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:81661e9119e520f274ca72124f9c32bd034bc44cea0c79075c2b24353e1dcb81
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:ca0ac41aaccdce37b39bf6e178cb927fe3448c5fceeed3d5c0bb6c42d40d9950
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:6e9eedf28265239d3e7be901ea8aaf2f0212f1aa5a38e146b0bb2872ace2a7b3
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:43e1913f1171ad26b1ec2dd0debdf4aec74488e056cecabf1c8e8408302ea016
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:d8ee27ca3a13f81dce5d003a9b9e2d1f1c36a805d87bde90d13e75d5eeabf917
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:527271683eed884372fc741a7365ee1bd48fc1c9481481205e64b7d6be1b0908
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:db87cd548192124de3f252e1e3782251a86c47d584602ec523b119c218ffeabc
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:3a3ad10ddab6819fee95779cab81849541b1731648bb175a046fbe19a1fc6650
+        // @lfy def/model/data.lfy:Usage#Usage:accessor:1fecb2c80fca30a6b0043a803a889d8cdf6e268f8a91b51ef90ff13b1127a1cb
         self.model.usages.push(Usage {
             node,
             name,
@@ -348,18 +358,9 @@ impl Binder {
     /// the file. Its parent is settled by [`Binder::link_prelude`], once every file has
     /// been declared.
     // @lfy def/model/main.lfy:bind
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:ae29588403566d0e2ed4fff41fe4c1f240615e902ee3f1d5d65f6b45ec500344
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:0a23b3b09e99d86128592d35af21dcbb02346e5a6af236c2f49abd12d242b1e6
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:1f2045b0cf91592ab208d3478abd4e79c890f6a56e622e8b17e424ba619ba6ea
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:e4f2a169e96baaff904e6417c4eb9dfa16a888274709019efab532751e503f03
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:f58a6fcb6b06704c728440e67f603d0f6120a0ea5ed2814d78dfdcc85332011c
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:4d556f31114a71be31643a2baa758a7f86116bf5a4403dae538be2a6ee7b4974
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:007ecdd1869f9f645e7b6b88087374b3c9a38376e7c6c92059d5ff06ea0b6b96
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:bffc98456accbc9377265748814cae9fada36da1d9a365d3837dcaba91f024b5
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:e15489119fd5b2052bb5b2beee23bd308e80f673cbec99a192b2445e7f98ca73
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:1d001624cf000c4b23d2d142e27fcbe71e52cc02ca3d8cc0953d2ab51dc3f1eb
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:551fe3f518e3c9b25d0c87f9254e6231a8397c601525fe4a520ee664863cdc46
-    // @lfy def/model/data.lfy:Scope#Scope:scoped:5641ea1aa93cd37a3890b8e88bac29ed2dc6efff3467328e4e286729a3e9162f
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:5b33fadf2e17c9e62dac551bbb66306b97e6eeb51c19a3096204c09869eb55f8
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:faae0c4ca7e0929fba6a41f28c0858693e9a2edaf78c8d5358a9d35f7e8f2578
+    // @lfy def/model/data.lfy:Scope#Scope:scoped:7d4fd7cd3f3cbe120581b5c749bff52067f85aef53181c3045fea9599ac422c2
     pub fn declare_file(&mut self, file: FileId) {
         let trees = self.trees.clone();
         let root = NodeRef { file, index: 0 };
@@ -376,8 +377,10 @@ impl Binder {
     /// Every file has been declared by now, so the prelude's scope exists whatever order
     /// the files were given in. With no source of [`Origin::Prelude`] no file scope has a
     /// parent, and a name only the prelude would give is found nowhere.
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:9ad128a1ec9f38e6297c33f52351f8414bd3b826523a81e89decef3535edfdd0
-    // @lfy def/model/data.lfy:Scope#Scope:Scope:60433c19eb4a13304bf26a989bca2d5fb54e6be071fbb9d7d2ff951c1de1eecf
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:63702a99fb7a3d155498fd0cfc8839b62e9c0eebe6543cb81ff763006d571f34
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:4402361d3767c258bf2e3e234fe5e7f7afa4b16ff000c9be247ce0ce346d91d9
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:88f6519881eecd7fc8282f1965f00635e2031400a6510eb901072f8d595e0812
+    // @lfy def/model/data.lfy:Scope#Scope:Scope:d0d1d9f729ef5da8873af7dd76fe6f256b415cef6655f59c2d0b44144e696b3f
     // @lfy def/model/main.lfy:bind
     // @lfy def/model/main.lfy:bind
     pub fn link_prelude(&mut self) {
@@ -408,22 +411,20 @@ impl Binder {
         let mut scope = enclosing;
         // No holder found in token order leaves `name` None, and the node keeps the
         // entity without a symbol.
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:4d2a91e83ca5aea2cacf273f0012912887ea8159cc7a89cc8e19a3730642c701
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:334a668473e8e671d1f441c7fcb14ec4e2a4c167834c1efd8f5b97048a130a02
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:8568a44d8dd42c1e6899eb3381465ef8c519d8703d91071d4edd7ad5450307ec
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:936a210507679cd0313500684a7fcfa0fcaa511b47ab95757c961122ea81a29d
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d76c67e8aeddf19cffef70df51a5885c88edbd69823a3c2d11ecb402d009c85e
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:20d08793b58613ffc6bbc7cbf10e2d7dbbbe206dd7b80bbbb873e03040d57eb6
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:dc2523bc6c2f437ecf3fc30806682faa13fe29f9c41d5ff56949e6e54e61028d
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:ed40056b2259ac8fc2d6e740842c702f11103ed3ebbe430355fd4d18e558061f
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:4867c93e94eb751aff41621c85836400bc3d23fccf5e322e92b1ad38735cd7f7
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d809da68be873a6a1d72212df4003d83cb42fbf004f5b3cc06c626f091a66bff
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d1ad24c9fefefd30784b688d9bcc1c1dd0f13e53121edbd9feb62ed532345ada
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:a39a51eba371fd140b6931d23679c06c861f38325a89fcc204716e0f8b02a1de
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:c1c3796dea434a094e80c0ca17e180df8be0cfa87a0b1dc3cf1e07d28c62ad50
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:9deec9b382c94422dcf5fea75de4ae0d32a7ed78b9e5728267a6799a194cfd41
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:68915b22aa9480e9c32aa3605c235cb410c50b7dbe7fdb156174377ef4a4c152
-        // @lfy def/model/data.lfy:Symbol#Symbol:declaring:f5fd20b0c5ae5931eee11e5704a1ffc4141961ede9961189e5b9c0103bd1dcf7
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:a9464b35fc899f8287687a1105286e1ef04f75d5b997736659fa6ec7bca03add
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:81d3a20048c5f4886d4a992c83bc0e3711c4074e5f07bdb89722c59a9b192386
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:8d0cf5398ed6d3b3a98cc71a4af12107d93aaa23fc5850b10ea90c054ccf7d50
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:34b33b3c8dab6e5ffb4549e43cafb001f75ee959a06683e75060b9257632065d
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:6b5e4c3087d5aa458cc0f5836829c911a7e2d0645508b8de26e83c208d6f6c1d
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:2197718e55a4ae3f24455c0448356bca9c870eb906da2fd479e312419fe2425a
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:65febce88467f650626d2a0c655fc980d19bc3049ba9770b2d414865af32dacd
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:5370440c016355ad286755235c0af95bdfbfe606949e6af5a6a01626beb04f5e
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:64dda75fb9cb28c56f0e80a3b8abe51b6e6f70fa2368619d2139db89695e4fd5
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:968d54cc304622e2808f357b59ae2ee858c6ae423b288b8e5f2c9c441ca2d4c1
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:c9d005561891014b54dad8a48ba934860047532b6c4ea623558b3dfe42c5ede4
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:34fd3b51ba5410b72c8a1f9bc67745547e454083794bbe3fd7d8d304166c2eb7
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:372fd5d028d950167830ef8999d3b07ef33035c0a4236f902d805afaf1f6e5d5
+        // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:69aefc98b6f14acf7fc0ce74755daff8f2ac1d6e45de41a8dc8e5c7bfc454a71
         let declared = declaring(rule).map(|(holder, kind)| {
             let name_token = trees.declared_name_token(r, holder);
             let name = name_token.map(|i| trees.token(r.file, i).value.clone());
@@ -445,18 +446,39 @@ impl Binder {
                 None,
             )
         });
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:ea091e9f8dc1159e0df07fc31ef2dc634bdc41ee9ea42967e9a43f75c75cd06e
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:eb5476aa1ba22ec87812cf0c7f5ae619d785f5d2f712a715e0e1ccab639e4954
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:2109fd4191622ac15c8e2f3f46d20578fcb5e2f2f85ee59b07070faa9aa4c638
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:2081fb4135f0ca7ddb5ab14b1d2b481f0a5b17f776aec05cc92c8d860643b558
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:e8ccfe2435aba8f883115d85d01cf76c64d3db627d57f8eca923e157117699c0
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:a0a86567cd7647d55c1c963f958cecbdfcc68ccf65f410225c1d13ff829964db
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:223da5d3a6eef6bc611b8b0b1189cdc835e66bc7884d9ed96d4bc3002f94aac9
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:2accd0733291e55d2b641e49410abfb0149ddadd060743f3ba9699680be79ca3
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:638dca9748e33fe9f17ca69b969194cf6d082bb161c281c35bb833c83206e216
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:57fc04939821a888dc0ed7f2d2046428a16647f205e7c7f1f26e7bd4fce6e3aa
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:d5d6a54e1bab9228d34a90fdab805cbd0e84edc52cbe8015ef58a5b452707df7
-        // @lfy def/model/data.lfy:Scope#Scope:scoped:7e4221e115aad2242f43218ea173397a5f102e8dacb4bb2a18ac843a3d50c736
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:ffe3dd6badfac2628979f78954a7e2783ef95830244b18355aa1bbbd30f47fea
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:8ce2f09cf066803ebd3227a999e5c15a21ad31f69a14fafe354a89737c771daf
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:0b217927a7f23182612f89821245fbeddb681e5234610006a0511197b568d8b0
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:2b1324a55d652c373d0949bc41dcfc57f3cffdd623d010cc11c1622d75c6c4dd
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:d16a848273a1afab364e7e0a65631450fb2e2a82330fe401838aed5606bed594
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:95b3eae967fd82eb2345a96e7cbbf4f724c6391c9ba87ded003e2782607da213
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:ff1601aaee04cb142660012c49e78cfcb6991a97449a565e22273b90b31f82ba
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:5f240eac9d92d86b8fe71959d8bf3ffa6dd12ed67e36638b801959262a3106bb
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:1d1c41f799d7cac1b8060ffd595536fca1ea3ad1a96ca719ba39f7c6b6d2761b
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:d372ed9640bfc269d009edad3978585ab8805a06b8877805fa2367fc6516f4ff
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:f9a2a494059fd7d7402cf602c76c5787fe1fcd1cbe5b4def26480fba2dccfe0d
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:2cb39b79ab2c022b7e444c50518995299c304ccebd186e9a8a5baa3d5f883822
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:a178cf5710cf5b8a20a035e2d15470284e1ab5fad764b7d9e881c7f7ec8f6cee
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:2afa6299b7f95a8efdf909dd52e7e852a9c0772f3c057a10e373b281aa144b52
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:6e73eabc8de2ab79f61f97213346be740e6b13a38a3691ee7c49709cd0d8d8d7
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:976c096ae30b38a2e03b990d516f2a39aaaaa09f67e1f9ec2cb3aa6434e0bbe0
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:eb3741706777fce6df9ebdd82d93beacb7e2e8e9094fc6d7c9fa2b410040d2b9
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:5dafe391d3fdf071e448f7c62fa5582ffaded16af1209fd355b78982f0a85847
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:08b9924e3864b23b67adb90edd7346f98bd9663a027a254da03335119edfd96f
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:cdabf2b5ccb27a01f4584e15c0053db351e761ceb1911acfb5a8f82ac7d05dc6
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:e22f517ab983739aac006065af87c8dc7710c4ded1b2202cffb1d08fbe796ac1
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:8a2fffacfbdab4b0f2c14ff86b1f98b59f7ecffe87c81007e3bab98a5dc74cb1
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:aab2abc11ae1ed5e82f59a4abcb37d3536fc1cbaebd1785b76924465af73804e
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:c717a2ec6d7bacf53673eb7be9a9ba25c8541e16556c5749156f645bde6a63f4
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:ee260a5bacdb04d0edcc7d54b7b2906eb89264dfc13c7ac5da7b07805b8562f6
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:a027726b19fd45ead1de834c3add1258885016aa19fdd5290d891394e07491b2
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:f6065fee62aada98517eb841d9692cea6edc82cc242f145364310c30e8eabb23
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:79f83f4d5819d07e411408b0d21db3a90ebd72c07afc53ad687af99e57bf724c
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:9b0f0ef2336b66991660ac21d522cea00b3a6e2c2b08bbc7f7c610a1865ff3d9
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:b71e445833abd065f5ece0797fb9ef964face7c30092e802148954c6450d41ae
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:6da3b9d6fa29747923b9953027c88aaa17f8911dc1bb6a9999fdb2d1918da7f4
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:98fb64983a7ca9affcd5927e9ff8bc124ae4b46f56016c5b2094e4e86a3eb7c2
+        // @lfy def/model/data.lfy:Scope#Scope:scoped:9dc440245b5ab24009f26c5a2fcfecc41b456df6dce7634979b79f348bca24a3
         if is_scoped(rule) {
             // A For declares its loop variable, not itself: its current stays the parent's.
             let current = match (&declared, function_type) {
@@ -475,22 +497,22 @@ impl Binder {
         if let Some((entity, kind, Some(name), name_token)) = declared {
             // A loop variable goes to the scope the For owns, so it is visible in the loop
             // body and nowhere else; the ForFrom inside it shares that same scope.
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:0777e530e733a342a790f4dbd048a3b88c708213eeaf5a57ebb6fa1a14b390ac
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:050b259b4270381a45b6a8f9cde17291301fcfcf2c2dcac97d8da26907330ba4
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:9e1af9679ae8344a05d1999f41417c931ea7e44344117f6aec1d52b7624aa39d
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:81f7098842646b0df37e532b7832c89945bd9f8a48d6bb60240b9ce15342fc61
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:2e2fb81860bffa42ab0b4a0602047b8fb6b01f6c8861e3b483f338d6b6a2f99a
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:4077bf167028eb594fbfd793ccc64693390ee609ccb4bd85242a520a9bcd951b
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d5e7362c158407b4bea80853bb630d37134d64cf3effde9c234f83e27513356f
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:3bcf28883c5a9bb4af4679857191826db66ca9e440ba434c13b9eabbb5fef8bf
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:23f8bb0f2c30db366dcabc96840673d068c8904501370d0534156f757267db38
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:f04cd1b42364f101b545768da5e8b426ecc37228f397e7f87877f0426d713ee7
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:53b45f44db83bd6a67a394ca97f9c970124d3fb1412057a787bb0c332ac21819
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:b6b344def5584cc9013a7ad383077578e5363e6eff06072436ea96472e2e5a5f
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d9f26eaab4ab6fa90e614d2f60ce438efc30a32364d88d18310cf93ec6563ca1
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:b8f4235eda94d381570ae001db511b4eb9d855f395b8362eb0b0152fb1eac411
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:edb5afa3c4cb488ca22885779f85deafc4ee7fa963fed0e9e2ca81da2913b2ea
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:30255184c2e25f9ba14bd2caf6fd2e2c78ad7d3abf6b1f2b56a89e894f022aa7
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:d1cb6dfeb78930d8176cc84610315739a1272e74a1ed02021e938d314efb28da
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:49fb925a55aff2d9207e35f0e321db962e913fa6bd393239d36905ea88280265
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:27c0428e3328fa9f3489e054d42a4c65ae7213e24f78355b57f57668fa6aa355
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:14e6f73840a36a30067d08e606b763de1425d6813b0e78a09b5f25a2c72ee742
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:3098afe39178a40cc88585e9fdf25a34479b999ec9848c235b29d32f105dde3d
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:c25d856290785e8bd3f4f502e63a2308e87afbe7b6433c8ae2e9b177aee5d354
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:f1f19923f1ddbd7ff5a3ee819645e9a99dbe4c7d2182a3eefd5943cf23050ddf
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:2ecf86a6fd171e9f8f361668fb0b36d56845b50188103f05e716ed9172a44273
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:f2a97ecff966e445b6e63be184325dbceb3d24507a5c042a87d8145b8ab27aa7
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:a0d2fbb2bd7f93d2d60c133f9028246334da1145041a63c75adcae5ce4011641
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:86131456bb359e55efb75cba730c906e75106b6177cbf87dcf3b79fd6bfdd64a
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:7759186210c35aea620a5b45ac5037b8b5d3174dd83982c7209cc062fbb5d23f
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:425817c8bd39a13ef2b2fe3609e32f4f476959a397381fc89fe7b04edcbb505b
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:81f8d8c649b56891b2ade873b30c6771bcdc057880906178ac2943e0277b99e5
+            // @lfy def/model/data.lfy:Symbol#Symbol:loopVariable:9edfde86165cf2965669d7e06cea959b9f613f8d7c2e05747a7105010ef532ce
+            // @lfy def/model/data.lfy:Symbol#Symbol:loopVariable:e47e3a505fed69039e44dae3c596b68801e202361b716594bb14376aeadd4ac1
             let target = if kind == SymbolKind::LoopVariable {
                 if trees.is(r, S::ForFrom) {
                     enclosing
@@ -500,22 +522,24 @@ impl Binder {
             } else {
                 enclosing
             };
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:1b3b296581d0aa77d7e956d1a58a03a03c0e2e8c6cf5f12bf7719cb301f56669
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:c77a467c0f14a0bf606316f585e707dcebd92a84c9d616058eb2e2a0b6db2b6c
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:3b8f7de54d565bd51898bc04295d99aee6abd90d923fb25151fc5f97895d2b28
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:7c659e87e0ecf88ac344eed092378556862620496e9b2a1f60868f74b5acfdd8
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:6de2cb2274ce8b31b1370b2d54a0fe883a94392a419dfbf632539f681e0797f0
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:20d9315f0b4fea3cbb3201bf94ab004f5efffde7e7cb900bdf96398fbf5e6696
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:640764c102cf7118742df1697e75ef61443f7e69246f3beb3c123e35cd18863e
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:39e6535c9525f0a0faeaaeec19928deaa599e5a6005306c9b1356a1d30c492cf
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:522d14553484ab0e8e1d9ca179de1d8ad604c9e1a9421825436a374367f19778
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:9482ba4fe39a3815c520d52009189c581a9d56fdaf7d476fea7e11a76a89d34c
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:5af88149b40b1e36cd68b7c3ccb33650b9aaa8dd7f4bdda85953c7fdd45603f3
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:a43fee45ab29236b31020c5e7608bb2462f161f9a3cb5d0d5f6fa6122f1364ad
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:d5668b509dcc604fefe23e68488a73ccd841438ecbcedc2bb0e863edc0da43f2
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:cccec96213525820e1f80ba92739042dee892cafcd242390a9a4fa43d4f817df
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:f667de7758510c92673d2eea8691323d73dca9e92fc9bd5e69e279ae0a4b6c74
-            // @lfy def/model/data.lfy:Symbol#Symbol:declaring:064bd570a7f5d72e9e85d1eed913ee63eb2115be4d71cb60026e284b1a4c538f
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:dc48273c1920479724f94365767843e2e6412fa51d843be5e3dfd1acb0eceba3
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:53c55484519d974927b1961b29d6380c8be14ee06d8cb46254bc9ba444aa68b9
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:d1d7624dba044dde33d52c4f6838ac858093f763c52a5310f54baea1005c89a0
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:f0a0fba60c0678f24154b65fb5d3206a250f93c05c8be45f3620cbb89cdca789
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:ece2ac6b92fed8fc16e5dde4b47a7be28de5f806d1c0327507c598380313acb1
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:322f18b896575f973daff231201e0cebf6392f5f630dd2daf8b0534a150af23e
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:9d1186bd335039be7703606aa8bb1f610a416f90abb5d204f3ddfbd74c279e7e
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:96b1b5e5b9cfad013726db7f79f80b6dd69014bc79e20d132f6512e740218297
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:c0fa9c9eba5e9b2ddfc357fcb7d89e1e20989365dbe3804c961e36cb33d52899
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:f7bec303ca6bb8fb0439e2084bb8b4aedca70495c60bb1b39ac3e42e723236f6
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:b3213cf402da421d9f6512b3f867af2b9bdb7304f1478668c1823f68f085afff
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:0fc7c70bd4557dbcb74156d37d7b9c06e7ac1dd017b27b6e311e22b3f74c6d8e
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:13b2f037ea40a87000d76f67908535cb38fb45c8af5ddfecd1e6bc76e652b5c3
+            // @lfy def/model/data.lfy:Symbol#Symbol:namedBy:618a77f6335d5eb69661b21713f6bcd40d0fc7e3b31921f0221b899ada5ac09d
+            // @lfy def/model/data.lfy:Symbol#Symbol:loopVariable:095aaf1b84dc9453ea9253ffb2d6835e856760a2fa2d3b159d44b083e1857d95
+            // @lfy def/model/data.lfy:Symbol#Symbol:loopVariable:14bcecc5f3fa3263ef1b4def4122e706136f7925c0b3c03591e1c5c6911133bc
+            // @lfy def/model/data.lfy:Symbol#Symbol:loopVariable:802772f277410c4449932d083179d0e379cf952f973d0f5dfd712d05ed8bde90
+            // @lfy def/model/data.lfy:Symbol#Symbol:loopVariable:e66572d2367aeff4ed6a30e9e611bfd4ffeb1bbe7e04bc3aed1ffe9e9e2a211b
             self.add_symbol(target, name, entity, kind, r, name_token);
         }
         // A member declared in a data or trait body.
@@ -596,11 +620,12 @@ impl Binder {
                 // The used file's own symbols, not its imports, are visible.
                 // @lfy def/model/main.lfy:bind
                 let own: Vec<SymbolId> = self.model.scopes[self.model.file_scopes[target]]
-                    .symbols
-                    .clone();
+                    .declared()
+                    .collect();
                 let scope = self.model.file_scopes[file];
                 for symbol in own {
-                    if !self.model.scopes[scope].imports.contains(&symbol) {
+                    if !self.model.scopes[scope].symbols.contains(&symbol) {
+                        self.model.scopes[scope].symbols.push(symbol);
                         self.model.scopes[scope].imports.push(symbol);
                     }
                 }
@@ -1836,8 +1861,11 @@ impl Binder {
         };
         let layer =
             accessor_layer(trees.token(r.file, accessor).rule.expect("accessor")).expect("layer");
-        // The Current that declares a member is the declaration, not a usage.
-        if self.model.symbol_of(r).is_some() {
+        // The Current that declares a member still makes its Usage, resolved to the symbol
+        // it declares; it is not a reference to anything else.
+        if let Some(declared) = self.model.symbol_of(r) {
+            let name_text = name.map(|i| trees.token(r.file, i).value.clone());
+            self.add_usage(r, name_text, Some(name.unwrap_or(accessor)), layer, Some(declared));
             return;
         }
         let current = self.current_of(r);

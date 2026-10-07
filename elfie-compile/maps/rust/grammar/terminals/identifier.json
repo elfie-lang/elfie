@@ -4,7 +4,7 @@
       "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-01T18:59:26Z",
+    "generated": "2026-10-07T05:38:26Z",
     "hash": "b1bb35e604f7e494c9628323c688916a1d461c2cb9b631608c16b9d501c98f54",
     "markers": [
       {
@@ -21,7 +21,7 @@
         "end": 264,
         "entity": "lex",
         "file": "def/lexer/main.lfy",
-        "line": 19,
+        "line": 13,
         "outputLine": 201,
         "requirement": null
       },
@@ -99,7 +99,7 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/ebnf.rs",
-    "requirements": "c62fd2ed39ceaa718d04fa4760c787d864ae48ef332e64ab6216ebfbe3c5a701",
+    "requirements": "92cbf87075c1ac4a41e5b83d4e89c33268d0ef464bb50dffe0a858261e0a0702",
     "signature": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
     "source": "def/grammar/terminals/identifier.lfy",
     "target": "rust"
@@ -109,7 +109,7 @@
       "def/grammar/terminals/keyword.lfy": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-01T18:59:26Z",
+    "generated": "2026-10-07T05:38:26Z",
     "hash": "b1bb35e604f7e494c9628323c688916a1d461c2cb9b631608c16b9d501c98f54",
     "markers": [
       {
@@ -168,7 +168,7 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/terminals/identifier.rs",
-    "requirements": "c62fd2ed39ceaa718d04fa4760c787d864ae48ef332e64ab6216ebfbe3c5a701",
+    "requirements": "92cbf87075c1ac4a41e5b83d4e89c33268d0ef464bb50dffe0a858261e0a0702",
     "signature": "58d69d64068f8ea439c00d767832226d183302bed18e0adf04ecab90c54b3688",
     "source": "def/grammar/terminals/identifier.lfy",
     "target": "rust"

@@ -227,14 +227,14 @@ pub fn rules() -> impl Iterator<Item = Entity> {
     Entity::all()
 }
 
-/// The EBNF of every terminal, one rule per line.
+/// The EBNF of every terminal, one per line.
 // @lfy def/grammar/main.lfy:terminalDocument
 pub fn terminal_document() -> String {
     let lines: Vec<&'static str> = Entity::terminals().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:terminalDocument
     lines.join("\n") // @lfy def/grammar/main.lfy:terminalDocument
 }
 
-/// The EBNF of every rule, one rule per line.
+/// The EBNF of every rule, one per line.
 // @lfy def/grammar/main.lfy:grammarDocument
 pub fn grammar_document() -> String {
     let lines: Vec<&'static str> = rules().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:grammarDocument
@@ -253,7 +253,7 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
-    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:8e482e5ac4e7663c971da418a670b72d28fa2e354f31f74b8fc97e55984f29a0
+    // @lfy def/grammar/main.lfy:grammarDocument#global:def/grammar/main.lfy:afbfe42cdc8454da6102f966fb6e895d078bebe73b3c95796edf1fb22f5f5b5c
     #[test]
     fn rule_identifiers_are_unique_and_looked_up_by_name() {
         let mut seen = HashSet::new();
@@ -358,7 +358,7 @@ mod tests {
         );
         assert_eq!(
             Entity::Space(Space::Space).definition(),
-            "Various space characters"
+            "Whitespace within a line; U+0085, U+2028, and U+2029 are space here, although Unicode counts them as line separators"
         );
         assert_eq!(Entity::Keyword(Keyword::AbstractKeyword).definition(), "");
     }

@@ -32,13 +32,6 @@ use crate::workspace::{Workspace, WorkspaceProblem};
 
 /// The project layout file, where a load problem without a path is placed.
 const MANIFEST: &str = "elfie.json";
-/// The members of `Kinds.Parameter` that say how a parameter may be left out or takes the
-/// rest, as the binder fills them in.
-// @lfy def/query/main.lfy:typeTextOf
-const OPTIONAL: &str = "optional";
-/// See [`OPTIONAL`].
-// @lfy def/query/main.lfy:typeTextOf
-const SPREAD: &str = "spread";
 /// The extension of a source file, dropped from path completions.
 const EXTENSION: &str = ".lfy";
 /// The data the prelude gives an entity for what it is; `Entity` covers every entity and
@@ -677,140 +670,10 @@ fn documentation_text(workspace: &Workspace, node: NodeRef) -> Option<String> {
     Some(text.trim_end().to_string())
 }
 
-/// How a type is spelled wherever a query shows one.
-///
-/// A declaration, or a primitive, is spelled by its identifier; a type parameter by its
-/// name; a type that declares no name by the source text of its type expression. A
-/// declaration seen with type arguments is its identifier, then its arguments spelled the
-/// same way between angle brackets; a list is the item spelled the same way then square
-/// brackets, so the sugar wins in display; the entity of a `FunctionType` is its
-/// parameters between parentheses, then a double arrow, then its output.
-// Decision: the model spells a type as a `TypeRef`, so `Entity.type` is handed over as
-// one; `TypeRef::Entity` is the entity the definition names, and every other case is a
-// type that declares no entity of its own.
-// @lfy def/query/main.lfy:typeTextOf
+/// How a type is spelled wherever a query shows one: [`model::type_text_of`] over the
+/// workspace's model.
 pub fn type_text_of(workspace: &Workspace, ty: Option<&TypeRef>) -> Option<String> {
-    let ty = ty?; // @lfy def/query/main.lfy:typeTextOf
-    Some(type_text(&workspace.model, ty))
-}
-
-/// [`type_text_of`] for a type the model holds.
-// @lfy def/query/main.lfy:typeTextOf
-fn type_text(model: &Model, ty: &TypeRef) -> String {
-    match ty {
-        // @lfy def/query/main.lfy:typeTextOf
-        TypeRef::Entity(entity) => entity_type_text(model, *entity),
-        // The sugar wins in display, and `List<T>` is already read as a list; a function
-        // type, a union, or an intersection is parenthesized before the brackets.
-        // @lfy def/query/main.lfy:typeTextOf
-        TypeRef::List(item) => {
-            let text = type_text(model, item);
-            if is_parenthesized(model, item) {
-                format!("({text})[]")
-            } else {
-                format!("{text}[]")
-            }
-        }
-        TypeRef::Union(items) => items
-            .iter()
-            .map(|item| type_text(model, item))
-            .collect::<Vec<_>>()
-            .join(" | "),
-        // A primitive, a predicate, a literal, and a type the model could not read
-        // further are spelled as the model spells them.
-        // @lfy def/query/main.lfy:typeTextOf
-        ty => model::type_text(model, ty),
-    }
-}
-
-/// Whether a type is wrapped in parentheses before the square brackets of a list: a
-/// function type or a union.
-// @lfy def/query/main.lfy:typeTextOf
-fn is_parenthesized(model: &Model, ty: &TypeRef) -> bool {
-    match ty {
-        TypeRef::Union(_) | TypeRef::Function => true,
-        TypeRef::Entity(entity) => is_function_type(model, *entity),
-        _ => false,
-    }
-}
-
-/// Whether an entity is the entity of a `FunctionType`: a function that declares no name.
-// @lfy def/query/main.lfy:typeTextOf
-fn is_function_type(model: &Model, entity: EntityId) -> bool {
-    let e = &model.entities[entity];
-    e.identifier.is_none() && matches!(e.kind, EntityKind::Fn { .. })
-}
-
-/// How an entity in a type position is spelled.
-// @lfy def/query/main.lfy:typeTextOf
-fn entity_type_text(model: &Model, entity: EntityId) -> String {
-    // @lfy def/query/main.lfy:typeTextOf
-    if is_function_type(model, entity) {
-        return function_type_text(model, entity);
-    }
-    let e = &model.entities[entity];
-    let arguments = model.type_arguments(entity);
-    match &e.identifier {
-        // @lfy def/query/main.lfy:typeTextOf
-        Some(identifier) if !arguments.is_empty() => format!(
-            "{identifier}<{}>",
-            arguments
-                .iter()
-                .map(|argument| type_text(model, argument))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        // A declaration, a primitive the prelude declares, and a type parameter are all
-        // spelled by the name they were declared with.
-        // @lfy def/query/main.lfy:typeTextOf
-        Some(identifier) => identifier.clone(),
-        // @lfy def/query/main.lfy:typeTextOf
-        None => match e.node.filter(|&node| is_real(model, node)) {
-            Some(node) => model.raw(node).trim().to_string(),
-            None => model::type_text(model, &TypeRef::Entity(entity)),
-        },
-    }
-}
-
-/// The entity of a `FunctionType`, spelled as it is written.
-// @lfy def/query/main.lfy:typeTextOf
-fn function_type_text(model: &Model, entity: EntityId) -> String {
-    let e = &model.entities[entity];
-    let parameters = e
-        .parameters()
-        .iter()
-        .map(|&symbol| {
-            let s = &model.symbols[symbol];
-            let p = &model.entities[s.entity];
-            let node = p.node.filter(|&node| is_real(model, node));
-            // Decision: the model fills `optional` and `spread` in for a type parameter
-            // only, so for a value parameter the node the grammar wrote says it: a
-            // `SpreadParameter` takes the rest, and a `QuestionMark` may be left out.
-            // @lfy def/query/main.lfy:typeTextOf
-            let spread = matches!(p.value(SPREAD), Some(Value::Bool(true)))
-                || node.is_some_and(|node| model.info(node).rule == E::SpreadParameter.entity());
-            let optional = matches!(p.value(OPTIONAL), Some(Value::Bool(true)))
-                || node.is_some_and(|node| {
-                    model
-                        .node(node)
-                        .token(P::QuestionMark, model.tokens(node.file))
-                        .is_some()
-                });
-            let dots = if spread { "..." } else { "" };
-            let question = if optional { "?" } else { "" };
-            // Decision: a parameter written without a type is spelled by its name alone,
-            // since there is no type to put after the colon.
-            match &p.ty {
-                Some(ty) => format!("{dots}{}{question}: {}", s.name, type_text(model, ty)),
-                None => format!("{dots}{}{question}", s.name),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    // Decision: a `FunctionType` always writes the type after its arrow, so the output is
-    // there to spell.
-    let output = e.output().map(|ty| type_text(model, ty)).unwrap_or_default();
-    format!("({parameters}) => {output}")
+    model::type_text_of(&workspace.model, ty)
 }
 
 /// The entity that lists a type parameter or declares a member: the current entity of the
@@ -1050,7 +913,7 @@ fn member_symbols(model: &Model, entity: EntityId) -> Vec<SymbolId> {
 
 /// The symbols a file's scope declares itself: what a module offers.
 fn module_symbols(model: &Model, file: FileId) -> Vec<SymbolId> {
-    model.scopes[model.file_scopes[file]].symbols.clone()
+    model.scopes[model.file_scopes[file]].declared().collect()
 }
 
 /// What an entity offers after a value accessor: its own members, then the members of
@@ -1940,7 +1803,7 @@ fn unused_uses(workspace: &Workspace, file: FileId) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     // A file that declares no symbol of its own, as the main file of the package elfie
     // does, only re-exports what it uses. @lfy def/query/main.lfy:diagnosticsOf
-    if model.scopes[model.file_scopes[file]].symbols.is_empty() {
+    if model.scopes[model.file_scopes[file]].declared().next().is_none() {
         return out;
     }
     let uses: Vec<NodeRef> = model.nodes[file]
@@ -2092,9 +1955,7 @@ pub fn outline_of(workspace: &Workspace, file: &str) -> Vec<Outline> {
         return Vec::new(); // @lfy def/query/main.lfy:outlineOf
     };
     model.scopes[model.file_scopes[id]]
-        .symbols
-        .iter()
-        .copied()
+        .declared()
         .filter(|&symbol| is_outlined(model.symbols[symbol].kind))
         .map(|symbol| outline_of_symbol(workspace, symbol))
         .collect()
@@ -2292,7 +2153,7 @@ pub fn find(workspace: &Workspace, name: &str) -> Vec<EntityId> {
     };
     let mut out: Vec<EntityId> = Vec::new();
     for file in files {
-        for &symbol in &model.scopes[model.file_scopes[file]].symbols {
+        for symbol in model.scopes[model.file_scopes[file]].declared() {
             let s = &model.symbols[symbol];
             if s.name != owner {
                 continue;

@@ -35,6 +35,11 @@ fn source_from(path: &str, text: &str, uses: &[Option<&str>], origin: Origin) ->
     }
 }
 
+/// The entities a trait was applied to, in application order.
+fn entities_of(model: &Model, trait_entity: EntityId) -> Vec<EntityId> {
+    model.entities[trait_entity].entities().to_vec()
+}
+
 /// One file, `a.lfy`, bound alone.
 fn bind_one(text: &str) -> Model {
     bind(vec![source("a.lfy", text, &[])])
@@ -228,7 +233,6 @@ fn criteria_texts(model: &Model, entity: EntityId) -> Vec<CriterionText> {
 
 // @lfy def/model/main.lfy:bind#bind:bind:7519b3ca15731dd0e1e4702fddb113f646ca70eb15ff3ae25388ef2a1b87efab
 // @lfy def/model/main.lfy:resolve#resolve:resolve:53a3ecc3bb2df32dde8139e2bf330f085ed18d7051765d5fc332abe19efd20e5
-// @lfy def/model/main.lfy:entitiesOf#entitiesOf:entitiesOf:795f1df544a42eff96bb897aec16ddf08269e86c932ffadaa5f3906f269dc7cb
 #[test]
 fn test_trait_member_and_application() {
     let model = bind_one("trait t { $x: `d` = string; } d A is t {} const y = A.x;");
@@ -799,12 +803,13 @@ fn member_statement_declares_a_member() {
         model.entities[x_entity].ty,
         Some(TypeRef::Primitive("string"))
     );
-    // The statement and the Current that spells the name both declare it; neither is a usage.
+    // The statement and the Current that spells the name both declare it; the Current also
+    // makes its Usage, resolved to the symbol it declares.
     let statement = node(&model, 0, S::ExpressionStatement, "$x: `d` = string;");
     assert_eq!(model.symbol_of(statement), Some(x));
     let current = node(&model, 0, E::Current, "$x");
     assert_eq!(model.symbol_of(current), Some(x));
-    assert_eq!(model.usage_of(current), None);
+    assert_eq!(usage(&model, current).symbol, Some(x));
     let ys = model.symbols[member(&model, d, "ys")].entity;
     assert_eq!(model.entities[ys].definition, None);
     assert_eq!(
@@ -867,7 +872,7 @@ fn use_without_as_imports_own_symbols_only() {
     let (b_file, a_file) = (model.file("b.lfy").unwrap(), model.file("a.lfy").unwrap());
     let b_symbol = file_symbol(&model, b_file, "B");
     assert_eq!(model.scopes[model.file_scopes[a_file]].imports, [b_symbol]);
-    assert_eq!(names(&model, model.file_scopes[a_file]), ["x", "y"]);
+    assert_eq!(names(&model, model.file_scopes[a_file]), ["x", "y", "B"]);
     assert_eq!(
         usage(&model, node(&model, a_file, E::Name, "B")).symbol,
         Some(b_symbol)
@@ -1625,7 +1630,8 @@ fn member_on_data_resolves_to_its_member() {
     assert_eq!(usage(&model, nope).symbol, None);
     assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
     assert_eq!(model.problems[0].node, nope);
-    assert_eq!(usages_of(&model, m).len(), 2);
+    // The two reads and the Current that declares the member.
+    assert_eq!(usages_of(&model, m).len(), 3);
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:73bdd9a69d2bb9a1c085b8024b2966a2862037f28e2e356ca8d1cacc88ecf0d7
@@ -2214,7 +2220,6 @@ fn test_call_appends_tests() {
 }
 
 // @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:10ab31f446369520ef4402e3afa3adf6c05b2834fdd52636b18fba986f4fbb8c
-// @lfy def/model/main.lfy:entitiesOf#entitiesOf:entitiesOf:a331a3175b151a93f22cae9f7bc6d21d03ae20eee79f8634427afc93fbb4065a
 #[test]
 fn criteria_of_strips_references() {
     let model = bind_one(

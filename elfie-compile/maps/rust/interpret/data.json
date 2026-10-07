@@ -1,21 +1,22 @@
 [
   {
     "dependencies": {
+      "def/grammar/rules/file.lfy": "99a18b08f1c0c1c0884b9e3e057d6417dc2c354c43b80f501bcd85ef94fe3459",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
-      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
-      "def/model/data.lfy": "8d7e2b2b1d33ee902bdb80aaf309d2cd918a670bfb0596b21f43831ee7e9e0bf",
-      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
-      "def/workspace/data.lfy": "9c2267b86041eaa745a9b1e5db207ca5e6d9b8ee405bd918eb10dd7c40b780b5"
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "77b43e7194a1212ca4417347860e847271db834eb4d2aeee2b7d457d0f680e4e",
+      "def/parser/data.lfy": "657a7872951e4af30da9ae9db45b0b9e99d5ef94156ed3540e8f127a88f77be0",
+      "def/workspace/data.lfy": "42918d87c6fa4ea79f382d104cbe7fd4205d135272b37a7a38f92b115d075e03"
     },
-    "generated": "2026-10-04T22:44:55Z",
-    "hash": "392297f005b6c667805d5db148a7b4f0468fd1096732ff2d3e200d4eab36f1f6",
+    "generated": "2026-10-07T07:10:44Z",
+    "hash": "bc83d137f3b1f989e1ca4722d39e58bbbe9035aa29183e3c62d2cb44d979302b",
     "markers": [
       {
         "column": null,
         "end": 40,
         "entity": "Phase",
         "file": "def/interpret/data.lfy",
-        "line": 7,
+        "line": 8,
         "outputLine": 37,
         "requirement": null
       },
@@ -24,7 +25,7 @@
         "end": 42,
         "entity": "Phase.compile",
         "file": "def/interpret/data.lfy",
-        "line": 8,
+        "line": 9,
         "outputLine": 41,
         "requirement": null
       },
@@ -33,7 +34,7 @@
         "end": 64,
         "entity": "Phase.runtime",
         "file": "def/interpret/data.lfy",
-        "line": 9,
+        "line": 10,
         "outputLine": 43,
         "requirement": null
       },
@@ -42,7 +43,7 @@
         "end": 65,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 65,
         "requirement": null
       },
@@ -51,52 +52,52 @@
         "end": 93,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 66,
-        "requirement": "Value:Value:388cad83a61afcf6402ddaa99530b256d698210d75f891a510754aaeec2371c5"
+        "requirement": "Value:Value:a904dd93fc132523ce6216cac3e63589e7509c3269dbe38ee30d35a7a9f362dd"
       },
       {
         "column": null,
         "end": 96,
-        "entity": "Value",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 94,
         "requirement": null
       },
       {
         "column": null,
         "end": 114,
-        "entity": "Value",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 97,
-        "requirement": "Value:Value:682fdbc41600a0895663c2749ef5f56e6fd2450ab44daa7341f8fa2967ee963e"
+        "requirement": "text:text:e2912e3f2fc81837d841d33742d949fdbe294efd354fc935eb7dab8fdfe7bd3f"
       },
       {
         "column": null,
         "end": 118,
-        "entity": "Value",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 115,
-        "requirement": "Value:Value:6e8c8cea6ae35431b050d5b0f4e1072d9a965183447cff871dd54119028da705"
+        "requirement": "text:text:f36ad3f32d9c0b89aa7131c1ee302bccfd5915675878ffe2ef6d0f5e0bbcec19"
       },
       {
         "column": null,
         "end": 125,
-        "entity": "Value",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 119,
-        "requirement": "Value:Value:3b8833e172c7b525ed6488a831ffb9415259fb5e162b76327cabb127b31193d6"
+        "requirement": "text:text:61c2941bf25b13fe45f4c73bbdabbab6f9e227762abea01d76e0cf733290ab3b"
       },
       {
         "column": null,
         "end": 136,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 126,
         "requirement": null
       },
@@ -105,7 +106,7 @@
         "end": 156,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 137,
         "requirement": null
       },
@@ -114,7 +115,7 @@
         "end": 166,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 157,
         "requirement": null
       },
@@ -123,395 +124,386 @@
         "end": 187,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 167,
         "requirement": null
       },
       {
         "column": null,
-        "end": 188,
+        "end": 191,
         "entity": "Prompted",
         "file": "def/interpret/data.lfy",
-        "line": 19,
+        "line": 24,
         "outputLine": 188,
         "requirement": null
       },
       {
         "column": null,
-        "end": 192,
-        "entity": "Prompted",
-        "file": "def/interpret/data.lfy",
-        "line": 19,
-        "outputLine": 189,
-        "requirement": "Prompted:Prompted:ee5210d839284009a8252177927c93f3a118552e9928534b32e4fd5e658ee083"
-      },
-      {
-        "column": null,
-        "end": 194,
+        "end": 193,
         "entity": "Prompted.valueType",
         "file": "def/interpret/data.lfy",
-        "line": 20,
-        "outputLine": 193,
+        "line": 25,
+        "outputLine": 192,
         "requirement": null
       },
       {
         "column": null,
-        "end": 199,
+        "end": 198,
         "entity": "Prompted.prompt",
         "file": "def/interpret/data.lfy",
-        "line": 21,
-        "outputLine": 195,
+        "line": 26,
+        "outputLine": 194,
         "requirement": null
       },
       {
         "column": null,
-        "end": 227,
+        "end": 226,
         "entity": "LoweredNode.value",
         "file": "def/interpret/data.lfy",
-        "line": 68,
-        "outputLine": 200,
+        "line": 78,
+        "outputLine": 199,
         "requirement": null
       },
       {
         "column": null,
-        "end": 231,
+        "end": 230,
         "entity": "RequirementScope",
         "file": "def/interpret/data.lfy",
-        "line": 25,
-        "outputLine": 228,
+        "line": 29,
+        "outputLine": 227,
         "requirement": null
       },
       {
         "column": null,
-        "end": 233,
+        "end": 232,
         "entity": "RequirementScope.local",
         "file": "def/interpret/data.lfy",
-        "line": 26,
-        "outputLine": 232,
+        "line": 30,
+        "outputLine": 231,
         "requirement": null
       },
       {
         "column": null,
-        "end": 250,
+        "end": 249,
         "entity": "RequirementScope.global",
         "file": "def/interpret/data.lfy",
-        "line": 27,
-        "outputLine": 234,
+        "line": 31,
+        "outputLine": 233,
         "requirement": null
       },
       {
         "column": null,
-        "end": 274,
+        "end": 273,
         "entity": "LoweredCriterion.id",
-        "file": "def/interpret/data.lfy",
-        "line": 37,
-        "outputLine": 251,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 280,
-        "entity": "LoweredCriterion",
-        "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 275,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 282,
-        "entity": "LoweredCriterion.id",
-        "file": "def/interpret/data.lfy",
-        "line": 37,
-        "outputLine": 281,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 284,
-        "entity": "LoweredCriterion.scope",
-        "file": "def/interpret/data.lfy",
-        "line": 38,
-        "outputLine": 283,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 286,
-        "entity": "LoweredCriterion.entity",
-        "file": "def/interpret/data.lfy",
-        "line": 39,
-        "outputLine": 285,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 289,
-        "entity": "LoweredCriterion.origin",
-        "file": "def/interpret/data.lfy",
-        "line": 40,
-        "outputLine": 287,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 291,
-        "entity": "LoweredCriterion.references",
         "file": "def/interpret/data.lfy",
         "line": 41,
-        "outputLine": 290,
+        "outputLine": 250,
         "requirement": null
       },
       {
         "column": null,
-        "end": 293,
+        "end": 279,
         "entity": "LoweredCriterion",
         "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 292,
+        "line": 40,
+        "outputLine": 274,
         "requirement": null
       },
       {
         "column": null,
-        "end": 295,
-        "entity": "LoweredCriterion",
+        "end": 281,
+        "entity": "LoweredCriterion.id",
         "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 294,
+        "line": 41,
+        "outputLine": 280,
         "requirement": null
       },
       {
         "column": null,
-        "end": 297,
-        "entity": "LoweredCriterion",
+        "end": 283,
+        "entity": "LoweredCriterion.scope",
         "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 296,
+        "line": 42,
+        "outputLine": 282,
         "requirement": null
       },
       {
         "column": null,
-        "end": 303,
+        "end": 285,
+        "entity": "LoweredCriterion.entity",
+        "file": "def/interpret/data.lfy",
+        "line": 43,
+        "outputLine": 284,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 288,
+        "entity": "LoweredCriterion.origin",
+        "file": "def/interpret/data.lfy",
+        "line": 44,
+        "outputLine": 286,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 290,
+        "entity": "LoweredCriterion.references",
+        "file": "def/interpret/data.lfy",
+        "line": 45,
+        "outputLine": 289,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 292,
         "entity": "LoweredCriterion",
         "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 298,
+        "line": 40,
+        "outputLine": 291,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 294,
+        "entity": "LoweredCriterion",
+        "file": "def/interpret/data.lfy",
+        "line": 40,
+        "outputLine": 293,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 296,
+        "entity": "LoweredCriterion",
+        "file": "def/interpret/data.lfy",
+        "line": 40,
+        "outputLine": 295,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 302,
+        "entity": "LoweredCriterion",
+        "file": "def/interpret/data.lfy",
+        "line": 40,
+        "outputLine": 297,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 310,
+        "entity": "LoweredCriterion.id",
+        "file": "def/interpret/data.lfy",
+        "line": 41,
+        "outputLine": 303,
         "requirement": null
       },
       {
         "column": null,
         "end": 311,
+        "entity": "LoweredCriterion",
+        "file": "def/interpret/data.lfy",
+        "line": 40,
+        "outputLine": 311,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 330,
         "entity": "LoweredCriterion.id",
         "file": "def/interpret/data.lfy",
-        "line": 37,
-        "outputLine": 304,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 312,
-        "entity": "LoweredCriterion",
-        "file": "def/interpret/data.lfy",
-        "line": 36,
+        "line": 41,
         "outputLine": 312,
-        "requirement": null
+        "requirement": "id:id:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c"
       },
       {
         "column": null,
-        "end": 331,
-        "entity": "LoweredCriterion",
-        "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 313,
-        "requirement": "LoweredCriterion:LoweredCriterion:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c"
-      },
-      {
-        "column": null,
-        "end": 337,
+        "end": 336,
         "entity": "LoweredTest",
-        "file": "def/interpret/data.lfy",
-        "line": 49,
-        "outputLine": 332,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 339,
-        "entity": "LoweredTest.id",
-        "file": "def/interpret/data.lfy",
-        "line": 50,
-        "outputLine": 338,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 341,
-        "entity": "LoweredTest.scope",
-        "file": "def/interpret/data.lfy",
-        "line": 51,
-        "outputLine": 340,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 343,
-        "entity": "LoweredTest.entity",
-        "file": "def/interpret/data.lfy",
-        "line": 52,
-        "outputLine": 342,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 345,
-        "entity": "LoweredTest.origin",
-        "file": "def/interpret/data.lfy",
-        "line": 53,
-        "outputLine": 344,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 347,
-        "entity": "LoweredTest.inputValue",
-        "file": "def/interpret/data.lfy",
-        "line": 54,
-        "outputLine": 346,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 349,
-        "entity": "LoweredTest.expectValue",
         "file": "def/interpret/data.lfy",
         "line": 55,
-        "outputLine": 348,
+        "outputLine": 331,
         "requirement": null
       },
       {
         "column": null,
-        "end": 351,
-        "entity": "LoweredTest",
+        "end": 338,
+        "entity": "LoweredTest.id",
         "file": "def/interpret/data.lfy",
-        "line": 49,
-        "outputLine": 350,
+        "line": 56,
+        "outputLine": 337,
         "requirement": null
       },
       {
         "column": null,
-        "end": 353,
-        "entity": "LoweredTest",
+        "end": 340,
+        "entity": "LoweredTest.scope",
         "file": "def/interpret/data.lfy",
-        "line": 49,
-        "outputLine": 352,
+        "line": 57,
+        "outputLine": 339,
         "requirement": null
       },
       {
         "column": null,
-        "end": 355,
-        "entity": "LoweredTest",
+        "end": 342,
+        "entity": "LoweredTest.entity",
         "file": "def/interpret/data.lfy",
-        "line": 49,
-        "outputLine": 354,
+        "line": 58,
+        "outputLine": 341,
         "requirement": null
       },
       {
         "column": null,
-        "end": 361,
+        "end": 344,
+        "entity": "LoweredTest.origin",
+        "file": "def/interpret/data.lfy",
+        "line": 59,
+        "outputLine": 343,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 346,
+        "entity": "LoweredTest.inputValue",
+        "file": "def/interpret/data.lfy",
+        "line": 60,
+        "outputLine": 345,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 348,
+        "entity": "LoweredTest.expectValue",
+        "file": "def/interpret/data.lfy",
+        "line": 61,
+        "outputLine": 347,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 350,
         "entity": "LoweredTest",
         "file": "def/interpret/data.lfy",
-        "line": 49,
-        "outputLine": 356,
+        "line": 55,
+        "outputLine": 349,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 352,
+        "entity": "LoweredTest",
+        "file": "def/interpret/data.lfy",
+        "line": 55,
+        "outputLine": 351,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 354,
+        "entity": "LoweredTest",
+        "file": "def/interpret/data.lfy",
+        "line": 55,
+        "outputLine": 353,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 360,
+        "entity": "LoweredTest",
+        "file": "def/interpret/data.lfy",
+        "line": 55,
+        "outputLine": 355,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 369,
+        "entity": "LoweredTest.id",
+        "file": "def/interpret/data.lfy",
+        "line": 56,
+        "outputLine": 361,
         "requirement": null
       },
       {
         "column": null,
         "end": 370,
+        "entity": "LoweredTest",
+        "file": "def/interpret/data.lfy",
+        "line": 55,
+        "outputLine": 370,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 386,
         "entity": "LoweredTest.id",
         "file": "def/interpret/data.lfy",
-        "line": 50,
-        "outputLine": 362,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 371,
-        "entity": "LoweredTest",
-        "file": "def/interpret/data.lfy",
-        "line": 49,
+        "line": 56,
         "outputLine": 371,
-        "requirement": null
+        "requirement": "id:id:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508"
       },
       {
         "column": null,
-        "end": 387,
-        "entity": "LoweredTest",
-        "file": "def/interpret/data.lfy",
-        "line": 49,
-        "outputLine": 372,
-        "requirement": "LoweredTest:LoweredTest:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508"
-      },
-      {
-        "column": null,
-        "end": 399,
+        "end": 398,
         "entity": "LoweredCriterion",
         "file": "def/interpret/data.lfy",
-        "line": 36,
-        "outputLine": 388,
+        "line": 40,
+        "outputLine": 387,
         "requirement": null
       },
       {
         "column": null,
-        "end": 415,
+        "end": 414,
         "entity": "LoweredCriterion.id",
         "file": "def/interpret/data.lfy",
-        "line": 37,
-        "outputLine": 400,
+        "line": 41,
+        "outputLine": 399,
         "requirement": null
       },
       {
         "column": null,
-        "end": 432,
+        "end": 431,
         "entity": "LoweredCriterion.id",
         "file": "def/interpret/data.lfy",
-        "line": 37,
-        "outputLine": 416,
+        "line": 41,
+        "outputLine": 415,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 463,
+        "entity": "LoweredNode.children",
+        "file": "def/interpret/data.lfy",
+        "line": 75,
+        "outputLine": 432,
         "requirement": null
       },
       {
         "column": null,
         "end": 464,
-        "entity": "LoweredNode.children",
+        "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 65,
-        "outputLine": 433,
+        "line": 73,
+        "outputLine": 464,
         "requirement": null
       },
       {
         "column": null,
-        "end": 465,
+        "end": 468,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 465,
-        "requirement": null
+        "requirement": "LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9"
       },
       {
         "column": null,
-        "end": 469,
-        "entity": "LoweredNode",
-        "file": "def/interpret/data.lfy",
-        "line": 63,
-        "outputLine": 466,
-        "requirement": "LoweredNode:LoweredNode:9dc90f33fabbb9829107c12a4c4eab76bcbf6010260d4948898730380a6140d1"
-      },
-      {
-        "column": null,
-        "end": 471,
+        "end": 470,
         "entity": "LoweredNode.rule",
         "file": "def/interpret/data.lfy",
-        "line": 64,
-        "outputLine": 470,
+        "line": 74,
+        "outputLine": 469,
         "requirement": null
       },
       {
@@ -519,8 +511,8 @@
         "end": 473,
         "entity": "LoweredNode.children",
         "file": "def/interpret/data.lfy",
-        "line": 65,
-        "outputLine": 472,
+        "line": 75,
+        "outputLine": 471,
         "requirement": null
       },
       {
@@ -528,7 +520,7 @@
         "end": 475,
         "entity": "LoweredNode.origin",
         "file": "def/interpret/data.lfy",
-        "line": 66,
+        "line": 76,
         "outputLine": 474,
         "requirement": null
       },
@@ -537,7 +529,7 @@
         "end": 477,
         "entity": "LoweredNode.entity",
         "file": "def/interpret/data.lfy",
-        "line": 67,
+        "line": 77,
         "outputLine": 476,
         "requirement": null
       },
@@ -546,7 +538,7 @@
         "end": 480,
         "entity": "LoweredNode.value",
         "file": "def/interpret/data.lfy",
-        "line": 68,
+        "line": 78,
         "outputLine": 478,
         "requirement": null
       },
@@ -555,7 +547,7 @@
         "end": 482,
         "entity": "LoweredNode.criteria",
         "file": "def/interpret/data.lfy",
-        "line": 69,
+        "line": 79,
         "outputLine": 481,
         "requirement": null
       },
@@ -564,7 +556,7 @@
         "end": 487,
         "entity": "LoweredNode.tests",
         "file": "def/interpret/data.lfy",
-        "line": 70,
+        "line": 80,
         "outputLine": 483,
         "requirement": null
       },
@@ -573,7 +565,7 @@
         "end": 493,
         "entity": "LoweredNode.rule",
         "file": "def/interpret/data.lfy",
-        "line": 64,
+        "line": 74,
         "outputLine": 488,
         "requirement": null
       },
@@ -582,7 +574,7 @@
         "end": 494,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 494,
         "requirement": null
       },
@@ -591,16 +583,16 @@
         "end": 506,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 495,
-        "requirement": "LoweredNode:LoweredNode:2d94129c606297e15960c825697be316d3e7071551c8dc1824e11fda3d02f402"
+        "requirement": "LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9"
       },
       {
         "column": null,
         "end": 510,
         "entity": "LoweredFile",
         "file": "def/interpret/data.lfy",
-        "line": 78,
+        "line": 86,
         "outputLine": 507,
         "requirement": null
       },
@@ -609,7 +601,7 @@
         "end": 512,
         "entity": "LoweredFile.file",
         "file": "def/interpret/data.lfy",
-        "line": 79,
+        "line": 87,
         "outputLine": 511,
         "requirement": null
       },
@@ -618,7 +610,7 @@
         "end": 516,
         "entity": "LoweredFile.root",
         "file": "def/interpret/data.lfy",
-        "line": 80,
+        "line": 88,
         "outputLine": 513,
         "requirement": null
       },
@@ -627,7 +619,7 @@
         "end": 518,
         "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 81,
+        "line": 89,
         "outputLine": 517,
         "requirement": null
       },
@@ -636,7 +628,7 @@
         "end": 520,
         "entity": "LoweredFile.criteria",
         "file": "def/interpret/data.lfy",
-        "line": 82,
+        "line": 90,
         "outputLine": 519,
         "requirement": null
       },
@@ -645,7 +637,7 @@
         "end": 524,
         "entity": "LoweredFile.tests",
         "file": "def/interpret/data.lfy",
-        "line": 83,
+        "line": 91,
         "outputLine": 521,
         "requirement": null
       },
@@ -654,7 +646,7 @@
         "end": 528,
         "entity": "Program",
         "file": "def/interpret/data.lfy",
-        "line": 86,
+        "line": 109,
         "outputLine": 525,
         "requirement": null
       },
@@ -663,7 +655,7 @@
         "end": 530,
         "entity": "Program.workspace",
         "file": "def/interpret/data.lfy",
-        "line": 87,
+        "line": 110,
         "outputLine": 529,
         "requirement": null
       },
@@ -672,7 +664,7 @@
         "end": 532,
         "entity": "Program.files",
         "file": "def/interpret/data.lfy",
-        "line": 88,
+        "line": 111,
         "outputLine": 531,
         "requirement": null
       },
@@ -681,160 +673,151 @@
         "end": 534,
         "entity": "Program.criteria",
         "file": "def/interpret/data.lfy",
-        "line": 89,
+        "line": 112,
         "outputLine": 533,
         "requirement": null
       },
       {
         "column": null,
-        "end": 536,
+        "end": 537,
         "entity": "Program.tests",
         "file": "def/interpret/data.lfy",
-        "line": 90,
+        "line": 113,
         "outputLine": 535,
         "requirement": null
       },
       {
         "column": null,
-        "end": 601,
+        "end": 602,
         "entity": "Program.problems",
         "file": "def/interpret/data.lfy",
-        "line": 91,
-        "outputLine": 537,
+        "line": 114,
+        "outputLine": 538,
         "requirement": null
       },
       {
         "column": null,
-        "end": 602,
+        "end": 603,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
-        "outputLine": 602,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 627,
-        "entity": "Value",
-        "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 15,
         "outputLine": 603,
-        "requirement": "Value:Value:388cad83a61afcf6402ddaa99530b256d698210d75f891a510754aaeec2371c5"
+        "requirement": null
       },
       {
         "column": null,
         "end": 628,
         "entity": "Value",
         "file": "def/interpret/data.lfy",
-        "line": 12,
-        "outputLine": 628,
-        "requirement": null
+        "line": 15,
+        "outputLine": 604,
+        "requirement": "Value:Value:a904dd93fc132523ce6216cac3e63589e7509c3269dbe38ee30d35a7a9f362dd"
       },
       {
         "column": null,
-        "end": 660,
-        "entity": "Value",
+        "end": 629,
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 629,
-        "requirement": "Value:Value:682fdbc41600a0895663c2749ef5f56e6fd2450ab44daa7341f8fa2967ee963e"
+        "requirement": null
       },
       {
         "column": null,
         "end": 661,
-        "entity": "Value",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
-        "outputLine": 661,
-        "requirement": null
+        "line": 89,
+        "outputLine": 630,
+        "requirement": "text:text:e2912e3f2fc81837d841d33742d949fdbe294efd354fc935eb7dab8fdfe7bd3f"
       },
       {
         "column": null,
-        "end": 673,
-        "entity": "Value",
+        "end": 662,
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 662,
-        "requirement": "Value:Value:6e8c8cea6ae35431b050d5b0f4e1072d9a965183447cff871dd54119028da705"
+        "requirement": null
       },
       {
         "column": null,
         "end": 674,
-        "entity": "Value",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
-        "outputLine": 674,
-        "requirement": null
+        "line": 89,
+        "outputLine": 663,
+        "requirement": "text:text:f36ad3f32d9c0b89aa7131c1ee302bccfd5915675878ffe2ef6d0f5e0bbcec19"
       },
       {
         "column": null,
-        "end": 693,
-        "entity": "Value",
+        "end": 675,
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 12,
+        "line": 89,
         "outputLine": 675,
-        "requirement": "Value:Value:3b8833e172c7b525ed6488a831ffb9415259fb5e162b76327cabb127b31193d6"
+        "requirement": null
       },
       {
         "column": null,
         "end": 694,
-        "entity": "Prompted",
+        "entity": "LoweredFile.text",
         "file": "def/interpret/data.lfy",
-        "line": 19,
-        "outputLine": 694,
-        "requirement": null
+        "line": 89,
+        "outputLine": 676,
+        "requirement": "text:text:61c2941bf25b13fe45f4c73bbdabbab6f9e227762abea01d76e0cf733290ab3b"
       },
       {
         "column": null,
         "end": 709,
         "entity": "Prompted",
         "file": "def/interpret/data.lfy",
-        "line": 19,
+        "line": 24,
         "outputLine": 695,
-        "requirement": "Prompted:Prompted:ee5210d839284009a8252177927c93f3a118552e9928534b32e4fd5e658ee083"
+        "requirement": null
       },
       {
         "column": null,
         "end": 710,
-        "entity": "LoweredCriterion",
+        "entity": "LoweredCriterion.id",
         "file": "def/interpret/data.lfy",
-        "line": 36,
+        "line": 41,
         "outputLine": 710,
         "requirement": null
       },
       {
         "column": null,
         "end": 747,
-        "entity": "LoweredCriterion",
+        "entity": "LoweredCriterion.id",
         "file": "def/interpret/data.lfy",
-        "line": 36,
+        "line": 41,
         "outputLine": 711,
-        "requirement": "LoweredCriterion:LoweredCriterion:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c"
+        "requirement": "id:id:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c"
       },
       {
         "column": null,
         "end": 748,
-        "entity": "LoweredTest",
+        "entity": "LoweredTest.id",
         "file": "def/interpret/data.lfy",
-        "line": 49,
+        "line": 56,
         "outputLine": 748,
         "requirement": null
       },
       {
         "column": null,
         "end": 789,
-        "entity": "LoweredTest",
+        "entity": "LoweredTest.id",
         "file": "def/interpret/data.lfy",
-        "line": 49,
+        "line": 56,
         "outputLine": 749,
-        "requirement": "LoweredTest:LoweredTest:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508"
+        "requirement": "id:id:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508"
       },
       {
         "column": null,
         "end": 790,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 790,
         "requirement": null
       },
@@ -843,16 +826,16 @@
         "end": 833,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 791,
-        "requirement": "LoweredNode:LoweredNode:9dc90f33fabbb9829107c12a4c4eab76bcbf6010260d4948898730380a6140d1"
+        "requirement": "LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9"
       },
       {
         "column": null,
         "end": 834,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 834,
         "requirement": null
       },
@@ -861,14 +844,14 @@
         "end": 862,
         "entity": "LoweredNode",
         "file": "def/interpret/data.lfy",
-        "line": 63,
+        "line": 73,
         "outputLine": 835,
-        "requirement": "LoweredNode:LoweredNode:2d94129c606297e15960c825697be316d3e7071551c8dc1824e11fda3d02f402"
+        "requirement": "LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9"
       }
     ],
     "output": "crates/elfie-core/src/interpret/data.rs",
-    "requirements": "62e9a6906281a62d99d45aaee6cc78c8319fe58fe8046436ce5bd8628695f255",
-    "signature": "abecc4229f1b1e2ed9b1dc11bc8c27cf32630d98adac13998be5c8b0d35e00a9",
+    "requirements": "0633f059434f17a4beef2e210219d0975911fcb29d87ef355f80c8e602a0f1a6",
+    "signature": "8b2260de8e1065392fdf3771054cb303e9858799c619e810a57260d149740926",
     "source": "def/interpret/data.lfy",
     "target": "rust"
   }

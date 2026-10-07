@@ -4,7 +4,7 @@
       "def/grammar/precedence.lfy": "3f2400cb983ea062868eb5df5f7435a8de854f4a01fd4e66d25bda993cc2d30c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-01T18:59:26Z",
+    "generated": "2026-10-07T05:38:26Z",
     "hash": "23140d4e1981cca81be0a52dc020544a7547dea80aa2239a7f86ad3d2dc538e3",
     "markers": [
       {
@@ -561,7 +561,7 @@
         "end": 171,
         "entity": "keyword",
         "file": "def/grammar/traits.lfy",
-        "line": 44,
+        "line": 50,
         "outputLine": 159,
         "requirement": null
       },
@@ -594,7 +594,7 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/terminals/keyword.rs",
-    "requirements": "62b27c0f44c586226a3411ae618c00a9e4c2323f8eb4c5a99680d598a18eccde",
+    "requirements": "e842fd8ac88240fce3e94729d6ea21e149682543c6cb99be5b5a91a0e29251d9",
     "signature": "f2bfb9a17602689a186f23e3da729b0372647918853e46654004395123d10e73",
     "source": "def/grammar/terminals/keyword.lfy",
     "target": "rust"

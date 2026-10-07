@@ -63,7 +63,7 @@ impl Phase {
 /// a boolean, a number, a string, a list or object of values, an entity, a scope, or a
 /// function with the scope it was written in.
 // @lfy def/interpret/data.lfy:Value
-// @lfy def/interpret/data.lfy:Value#Value:Value:388cad83a61afcf6402ddaa99530b256d698210d75f891a510754aaeec2371c5
+// @lfy def/interpret/data.lfy:Value#Value:Value:a904dd93fc132523ce6216cac3e63589e7509c3269dbe38ee30d35a7a9f362dd
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Undefined,
@@ -91,10 +91,10 @@ impl Value {
     /// or a function is spelled as the literal of its kind; one that is an entity or a
     /// scope as a reference to its declaration; one that is a function as a reference to
     /// the declaration it came from.
-    // @lfy def/interpret/data.lfy:Value
+    // @lfy def/interpret/data.lfy:LoweredFile.text
     pub fn spelled(&self, model: &Model) -> String {
         match self {
-            // @lfy def/interpret/data.lfy:Value#Value:Value:682fdbc41600a0895663c2749ef5f56e6fd2450ab44daa7341f8fa2967ee963e
+            // @lfy def/interpret/data.lfy:LoweredFile.text#text:text:e2912e3f2fc81837d841d33742d949fdbe294efd354fc935eb7dab8fdfe7bd3f
             Value::Undefined => "undefined".to_string(),
             Value::Null => "null".to_string(),
             Value::Boolean(boolean) => boolean.to_string(),
@@ -112,11 +112,11 @@ impl Value {
                     .collect();
                 format!("{{ {} }}", pairs.join(", "))
             }
-            // @lfy def/interpret/data.lfy:Value#Value:Value:6e8c8cea6ae35431b050d5b0f4e1072d9a965183447cff871dd54119028da705
+            // @lfy def/interpret/data.lfy:LoweredFile.text#text:text:f36ad3f32d9c0b89aa7131c1ee302bccfd5915675878ffe2ef6d0f5e0bbcec19
             Value::Entity(entity) => declaration_name(model, *entity),
             // A scope is spelled as the declaration that owns it: its current entity.
             Value::Scope(scope) => declaration_name(model, model.scopes[*scope].current),
-            // @lfy def/interpret/data.lfy:Value#Value:Value:3b8833e172c7b525ed6488a831ffb9415259fb5e162b76327cabb127b31193d6
+            // @lfy def/interpret/data.lfy:LoweredFile.text#text:text:61c2941bf25b13fe45f4c73bbdabbab6f9e227762abea01d76e0cf733290ab3b
             Value::Function(node, _) => declaring_name(model, *node),
         }
     }
@@ -186,7 +186,6 @@ fn declaring_name(model: &Model, node: NodeRef) -> String {
 /// the interpreter picks, so binding stays deterministic; which value it stands for is
 /// decided by `evaluate` in `def/interpret/main.lfy`.
 // @lfy def/interpret/data.lfy:Prompted
-// @lfy def/interpret/data.lfy:Prompted#Prompted:Prompted:ee5210d839284009a8252177927c93f3a118552e9928534b32e4fd5e658ee083
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prompted {
     /// The type the chosen value must have, as an index into `Model::entities`.
@@ -310,7 +309,7 @@ impl LoweredCriterion {
     /// same id, the first keeps it and the second and later ones end with a colon and
     /// their position among those, counting from 2.
     // @lfy def/interpret/data.lfy:LoweredCriterion
-    // @lfy def/interpret/data.lfy:LoweredCriterion#LoweredCriterion:LoweredCriterion:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c
     pub fn number_repeats(criteria: &mut [LoweredCriterion]) {
         let keys: Vec<(Option<EntityId>, String)> = criteria
             .iter()
@@ -369,7 +368,7 @@ impl LoweredTest {
     /// id, the first keeps it and the second and later ones end with a colon and their
     /// position among those, counting from 2.
     // @lfy def/interpret/data.lfy:LoweredTest
-    // @lfy def/interpret/data.lfy:LoweredTest#LoweredTest:LoweredTest:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508
+    // @lfy def/interpret/data.lfy:LoweredTest.id#id:id:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508
     pub fn number_repeats(tests: &mut [LoweredTest]) {
         let keys: Vec<(Option<EntityId>, String)> = tests
             .iter()
@@ -463,14 +462,15 @@ impl LoweredChild {
 /// [`Phase::Compile`] is kept as written, which is what `lower` in
 /// `def/interpret/main.lfy` leaves out.
 // @lfy def/interpret/data.lfy:LoweredNode
-// @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:9dc90f33fabbb9829107c12a4c4eab76bcbf6010260d4948898730380a6140d1
+// @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoweredNode {
     /// The rule it satisfies. [`LoweredNode::rule`] gives its EBNF form.
     pub rule: Entity, // @lfy def/interpret/data.lfy:LoweredNode.rule
     /// Lowered nodes and tokens in source order; a folded node has none.
     pub children: Vec<LoweredChild>, // @lfy def/interpret/data.lfy:LoweredNode.children
-    /// The node of the parse tree it was lowered from.
+    /// The node of the parse tree it was lowered from; for a folded node, the expression it
+    /// replaced.
     pub origin: NodeRef, // @lfy def/interpret/data.lfy:LoweredNode.origin
     /// The entity it declares; `None` when it declares none.
     pub entity: Option<EntityId>, // @lfy def/interpret/data.lfy:LoweredNode.entity
@@ -492,7 +492,7 @@ impl LoweredNode {
 
     /// Whether the node holds a folded value rather than children kept as written.
     // @lfy def/interpret/data.lfy:LoweredNode
-    // @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:2d94129c606297e15960c825697be316d3e7071551c8dc1824e11fda3d02f402
+    // @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9
     pub fn is_folded(&self) -> bool {
         self.value.is_some()
     }
@@ -512,7 +512,7 @@ pub struct LoweredFile {
     /// The lowered `SourceFile`.
     pub root: LoweredNode, // @lfy def/interpret/data.lfy:LoweredFile.root
     /// The lowered tree spelled as Elfie source: kept nodes as written, folded nodes as
-    /// the literal of their value, member nodes as a member with its type and value; never
+    /// their value, member nodes as a member with its type and value; never
     /// a criterion or a test.
     pub text: String, // @lfy def/interpret/data.lfy:LoweredFile.text
     /// The local criteria of the file's own entity, in order.
@@ -533,7 +533,8 @@ pub struct Program {
     pub criteria: Vec<LoweredCriterion>, // @lfy def/interpret/data.lfy:Program.criteria
     /// Every global test, each once, in the order they were added.
     pub tests: Vec<LoweredTest>, // @lfy def/interpret/data.lfy:Program.tests
-    /// Every problem lowering added, in node order.
+    /// Every problem lowering added, in node order, each with `Problem::stage` of
+    /// `Stage::Generation`.
     pub problems: Vec<Problem>, // @lfy def/interpret/data.lfy:Program.problems
 }
 
@@ -600,7 +601,7 @@ mod tests {
     }
 
     // @lfy def/interpret/data.lfy:Value
-    // @lfy def/interpret/data.lfy:Value#Value:Value:388cad83a61afcf6402ddaa99530b256d698210d75f891a510754aaeec2371c5
+    // @lfy def/interpret/data.lfy:Value#Value:Value:a904dd93fc132523ce6216cac3e63589e7509c3269dbe38ee30d35a7a9f362dd
     #[test]
     fn an_evaluated_expression_is_one_of_the_kinds_a_value_has() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -625,8 +626,8 @@ mod tests {
         assert!(every.iter().all(|value| !value.spelled(&model).is_empty()));
     }
 
-    // @lfy def/interpret/data.lfy:Value
-    // @lfy def/interpret/data.lfy:Value#Value:Value:682fdbc41600a0895663c2749ef5f56e6fd2450ab44daa7341f8fa2967ee963e
+    // @lfy def/interpret/data.lfy:LoweredFile.text
+    // @lfy def/interpret/data.lfy:LoweredFile.text#text:text:e2912e3f2fc81837d841d33742d949fdbe294efd354fc935eb7dab8fdfe7bd3f
     #[test]
     fn a_value_that_is_not_an_entity_a_scope_or_a_function_is_spelled_as_its_literal() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -658,8 +659,8 @@ mod tests {
         );
     }
 
-    // @lfy def/interpret/data.lfy:Value
-    // @lfy def/interpret/data.lfy:Value#Value:Value:6e8c8cea6ae35431b050d5b0f4e1072d9a965183447cff871dd54119028da705
+    // @lfy def/interpret/data.lfy:LoweredFile.text
+    // @lfy def/interpret/data.lfy:LoweredFile.text#text:text:f36ad3f32d9c0b89aa7131c1ee302bccfd5915675878ffe2ef6d0f5e0bbcec19
     #[test]
     fn an_entity_or_a_scope_is_spelled_as_a_reference_to_its_declaration() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -671,8 +672,8 @@ mod tests {
         assert_eq!(Value::Entity(model.file_entities[0]).spelled(&model), "anonymous");
     }
 
-    // @lfy def/interpret/data.lfy:Value
-    // @lfy def/interpret/data.lfy:Value#Value:Value:3b8833e172c7b525ed6488a831ffb9415259fb5e162b76327cabb127b31193d6
+    // @lfy def/interpret/data.lfy:LoweredFile.text
+    // @lfy def/interpret/data.lfy:LoweredFile.text#text:text:61c2941bf25b13fe45f4c73bbdabbab6f9e227762abea01d76e0cf733290ab3b
     #[test]
     fn a_function_is_spelled_as_a_reference_to_the_declaration_it_came_from() {
         let model = bound("function f() -> number {\n  return 1;\n}\n");
@@ -692,7 +693,6 @@ mod tests {
     /// [`Evaluated`] beside [`Value`] rather than one of `Value`'s own kinds, so nothing
     /// can hand back a value the interpreter picked in its place.
     // @lfy def/interpret/data.lfy:Prompted
-    // @lfy def/interpret/data.lfy:Prompted#Prompted:Prompted:ee5210d839284009a8252177927c93f3a118552e9928534b32e4fd5e658ee083
     #[test]
     fn a_prompted_keeps_its_type_and_prompt_and_is_no_value() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -707,8 +707,8 @@ mod tests {
         assert_eq!(Evaluated::Value(Value::Null).as_prompted(), None);
     }
 
-    // @lfy def/interpret/data.lfy:LoweredCriterion
-    // @lfy def/interpret/data.lfy:LoweredCriterion#LoweredCriterion:LoweredCriterion:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:ed05634f7443e116d5eee3de2c022c9636ed6a3a82191382f7e4cc95bf274c9c
     #[test]
     fn two_criteria_of_one_entity_with_the_same_id_are_numbered_from_two() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -745,8 +745,8 @@ mod tests {
         assert_eq!(ids, [&id, &format!("{id}:2"), &format!("{id}:3"), &id]);
     }
 
-    // @lfy def/interpret/data.lfy:LoweredTest
-    // @lfy def/interpret/data.lfy:LoweredTest#LoweredTest:LoweredTest:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508
+    // @lfy def/interpret/data.lfy:LoweredTest.id
+    // @lfy def/interpret/data.lfy:LoweredTest.id#id:id:5a10510bfa08aca3aa8cf29f02f3376d2fc83e1cd41991620d7b5f566c667508
     #[test]
     fn two_tests_of_one_entity_with_the_same_id_are_numbered_from_two() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -788,7 +788,7 @@ mod tests {
     }
 
     // @lfy def/interpret/data.lfy:LoweredNode
-    // @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:9dc90f33fabbb9829107c12a4c4eab76bcbf6010260d4948898730380a6140d1
+    // @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9
     #[test]
     fn every_lowered_node_has_an_origin() {
         let model = bound("const c = 1;\n");
@@ -832,7 +832,7 @@ mod tests {
     }
 
     // @lfy def/interpret/data.lfy:LoweredNode
-    // @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:2d94129c606297e15960c825697be316d3e7071551c8dc1824e11fda3d02f402
+    // @lfy def/interpret/data.lfy:LoweredNode#LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9
     #[test]
     fn a_folded_lowered_node_holds_a_value_and_no_children() {
         let model = bound("const c = 1;\n");

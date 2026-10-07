@@ -63,31 +63,29 @@ pub struct File {
 pub struct Target {
     /// The name of the const that declares it.
     pub identifier: String, // @lfy def/workspace/data.lfy:Target.identifier
-    /// The `ace const` that declares it; its traits are the target's layers, applied to
-    /// it, and its criteria, knowledge, and commands are the target's.
+    /// The `ace const` that declares it, with its layers applied as `Target` of the package
+    /// `elfie` says.
     pub declaration: EntityId, // @lfy def/workspace/data.lfy:Target.declaration
-    /// The traits of its layers in guidance order: layers, interfaces, frameworks, layout,
-    /// runtime, platforms, ecosystem, language, each slot in its own order, each trait
-    /// once.
+    /// The trait of each of its layers, in the guidance order `Target` of the package
+    /// `elfie` gives.
     pub layers: Vec<EntityId>, // @lfy def/workspace/data.lfy:Target.layers
     /// Where its generated code is written, relative to [`Workspace::root`].
     pub output_directory: String, // @lfy def/workspace/data.lfy:Target.outputDirectory
-    /// The extensions, without the dot, its outputs may have: its language's file
-    /// extension, then every output extension its layers set.
+    /// The extensions, without the dot, its outputs may have.
     pub extensions: Vec<String>, // @lfy def/workspace/data.lfy:Target.extensions
-    /// How a line comment begins in its language, as its language layer sets it.
+    /// How a line comment begins in its language.
     pub marker_comment: String, // @lfy def/workspace/data.lfy:Target.markerComment
-    /// What runs a script its ecosystem's manifest names, as its ecosystem layer sets it;
-    /// `None` when it has no ecosystem or the ecosystem sets none.
+    /// What runs a script its ecosystem's manifest names; `None` when it has no ecosystem
+    /// or the ecosystem sets none.
     pub script_runner: Option<String>, // @lfy def/workspace/data.lfy:Target.scriptRunner
     /// What its generated code needs, from its dependencies, each in the ecosystem its
     /// ecosystem layer names.
     pub native_dependencies: Vec<NativeDependency>, // @lfy def/workspace/data.lfy:Target.nativeDependencies
     /// The one command of each operation the target has a command for, in the order
-    /// `Operation` lists them.
+    /// `Operation` of the package `elfie` lists them.
     pub commands: Vec<Command>, // @lfy def/workspace/data.lfy:Target.commands
-    /// What the compiler is given to read for the target: the declaration's knowledge, its
-    /// own first and then each layer's.
+    /// What the compiler is given to read for the target: `Entity::knowledge` of
+    /// [`Target::declaration`].
     pub knowledge: Vec<Knowledge>, // @lfy def/workspace/data.lfy:Target.knowledge
 }
 

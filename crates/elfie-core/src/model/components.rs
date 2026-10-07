@@ -31,7 +31,6 @@ pub fn is_scoped(rule: Rule) -> bool {
 }
 
 /// The layer a rule carrying `reading` reads, for the accessor terminals.
-// @lfy def/model/traits.lfy:reading
 pub fn accessor_layer(rule: Rule) -> Option<Layer> {
     Some(match rule {
         // @lfy def/grammar/terminals/punctuation.lfy:ValueAccessor
@@ -49,7 +48,6 @@ pub fn accessor_layer(rule: Rule) -> Option<Layer> {
 }
 
 /// The layer a rule carrying `reading` reads, for the expression rules.
-// @lfy def/model/traits.lfy:reading
 pub fn reading_layer(rule: Rule) -> Option<Layer> {
     Some(match rule {
         // @lfy def/grammar/rules/expression.lfy:Name
@@ -65,7 +63,6 @@ pub fn reading_layer(rule: Rule) -> Option<Layer> {
 }
 
 /// Which rule spells a declared name, and what kind of symbol it makes.
-// @lfy def/model/traits.lfy:declaring
 pub fn declaring(rule: Rule) -> Option<(Rule, SymbolKind)> {
     Some(match rule {
         // @lfy def/grammar/rules/statement.lfy:DataDeclaration
@@ -109,7 +106,6 @@ pub fn declaring(rule: Rule) -> Option<(Rule, SymbolKind)> {
 }
 
 /// The rules a holder search never enters: `Parameters`, `Block`, `Object`, and `Type`.
-// @lfy def/model/traits.lfy:declaring
 pub fn is_holder_barrier(rule: Rule) -> bool {
     rule == E::Parameters.entity() || rule == S::Block.entity() || rule == E::Object.entity() || rule == E::Type.entity()
 }
