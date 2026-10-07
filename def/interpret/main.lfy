@@ -101,6 +101,13 @@ fn expand(model: Model): `Run every piece of compile-time code that can add name
   @acceptanceCriteria
     .add({
       situation = [
+        `A [[Member]] with [[ContextAccessor]] is run`,
+        `Its left side is a [[Name]] bound to a const or let`,
+      ],
+      behavior = `It reads the context layer of the const's or let's entity, never of its value`,
+    })
+    .add({
+      situation = [
         `A [[Call]] is run whose left is a [[Member]] that resolves to [[Traits.Trait.apply]] on an expression that resolves to a trait`,
         `The first argument does not resolve to an [[alternationList]]`,
       ],

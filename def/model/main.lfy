@@ -224,13 +224,6 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `It yields undefined for that [[MemberName]], without a [[Problem]]`,
     })
     .add({
-      situation = [
-        `A [[Member]] using [[ContextAccessor]] is bound`,
-        `Its left side is a [[Name]] bound to a const or let`,
-      ],
-      behavior = `It reads the context layer of the const's or let's entity, never of its value`,
-    })
-    .add({
       situation = [memberRead, `It uses [[ParentScopeAccessor]]`, `The left side's scope is contained in another scope`],
       behavior = `It yields the scope that contains the left side's scope`,
     })
