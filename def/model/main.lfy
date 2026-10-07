@@ -79,8 +79,17 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
       behavior = `It declares nothing`,
     })
     .add({
-      situation = `A name is declared twice in the same scope`,
+      situation = [
+        `A name is declared twice in the same scope`,
+        `The two declarations are not one parameter and one member`,
+      ],
       behavior = [`A [[Problem]] is added at the second`, `The first wins`],
+    })
+    // Decision: a member is reached through the scope layer and a parameter through the value
+    // layer, so a trait may name a member after the parameter it holds, as binding does.
+    .add({
+      situation = `A parameter and a member of the same scope share a name`,
+      behavior = `Both are declared, and no [[Problem]] is added`,
     })
     .add({
       situation = `A name is declared in a child scope that already exists in the parent scope`,
