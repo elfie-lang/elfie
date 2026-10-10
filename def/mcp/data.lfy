@@ -59,6 +59,7 @@ d Host: `An agent server served over HTTP on this machine for the length of one 
   $url: `Where it listens: http://127.0.0.1, a colon, the port, and a slash` = string;
   $token: `What every request to it must carry as its bearer token` = string;
   $open: `Opens one hosted session bound to a [[Binding]] and returns the session's URL` = (binding: Binding) => string;
+  $offered: `The names of the tools the session at a URL is offered, in the order the server lists them` = (url: string) => string[];
   $close: `Ends the session at a URL and returns [[Session.reviews]] of it` = (url: string) => Review[];
   $stop: `Ends every session that is still open and stops listening` = () => undefined;
 }

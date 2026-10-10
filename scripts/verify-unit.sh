@@ -15,6 +15,9 @@ export ENABLE_TOOL_SEARCH=false
 # from the first turn.
 export CLAUDE_CODE_MCP_PREWAIT_SERVERS=elfie
 export CLAUDE_CODE_MCP_PREWAIT_SERVERS_MS=30000
+# A command tool may wait in its directory's queue and then run a build or a test for up to 30
+# minutes before the server stops it, so a tool call is given 40 minutes rather than the default.
+export MCP_TOOL_TIMEOUT=2400000
 # Without elfie_report the whole report must fit in the final response, and a large batch has
 # hundreds of criteria, so the response may be longer than the default limit allows.
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000

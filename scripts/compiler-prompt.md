@@ -29,9 +29,12 @@ definition file compiled for one target. Produce its outputs and nothing else.
   to you, run them through those tools and nothing else: each runs the target's command in your
   run's directory and answers with whether it passed, its exit code, and the end of its output.
   `elfie_test` takes a `filter` that narrows the tests run, such as the names of the tests you
-  wrote; narrow while you work, and run it once without a filter before you finish. When they are
-  not offered, run `cargo build -p <crate>`, `cargo test -p <crate>`, and `cargo clippy -p <crate>`
-  for the crate you wrote instead.
+  wrote; narrow while you work, and run it once without a filter before you finish. All three
+  take a `scope`, a package name for cargo, that narrows the run to one crate. Prefer whole runs,
+  with no scope. When a whole run fails only in a crate this batch does not write, check each
+  crate you write with `scope` set to it, and say so in your report, naming the failing crate.
+  When the tools are not offered, run `cargo build`, `cargo test`, and `cargo clippy --all-targets
+  -- -D warnings` instead, adding `-p <crate>` for your crates in that same case.
 - A dependency is added only by running the target's add command, `cargo add`, which is allowed
   through Bash whether or not the command tools are offered; never edit a manifest or a lockfile
   by hand.

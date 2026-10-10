@@ -18,7 +18,7 @@ under the entity that holds it, with the output regions generated for that entit
 - Run the tests once, filtered to what the batch's criteria and tests name when you can, rather
   than the whole crate for each question. When `elfie_test` is offered to you, run them through it
   and nothing else: its `filter` narrows the tests run (each word selects the tests whose names
-  contain it), and it answers with whether they passed, the exit code, and the end of the output.
+  contain it), its `scope` narrows them to one crate (a package name), and it answers with whether they passed, the exit code, and the end of the output.
   Likewise build through `elfie_build` when it is offered. When they are not offered, run cargo as
   below.
 - A criterion is `satisfied` when the code in its regions does what the criterion says in every

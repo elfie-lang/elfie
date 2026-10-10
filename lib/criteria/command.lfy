@@ -8,7 +8,8 @@ use "../prelude/builtin";
 // through a tool of the agent server, never by acceptance, so acceptance stays structural.
 // Decision: a test command narrows the tests it runs by reading TESTS rather than by taking
 // arguments, so one line serves both a whole run and a narrowed one, and a line that ignores TESTS
-// still runs every test.
+// still runs every test. SCOPE narrows a build, test, or lint command to part of the outputs the
+// same way, so an agent can check its own part while another part is broken.
 // Guidance order is defined on the Target of lib/target/main.lfy, which this file cannot use.
 
 enum Operation: `What a command is for` {
@@ -43,4 +44,9 @@ d Command is builtin: `A shell command for one operation` {
   where (`A test command runs`) and (`Its caller gave no filter`) -> `TESTS is empty`;
   where (`The line of a test command reads TESTS`) and (`TESTS is empty or unset`) -> `The line runs every test`;
   where (`The line of a test command reads TESTS`) and (`TESTS is not empty`) -> `The line runs only the tests its test runner selects with the words of TESTS as filters`;
+  where (`The line of a test command reads TESTS`) -> `The words of TESTS reach the test runner as written, never expanded as file patterns`;
+  where (`A build, test, or lint command runs`) and (`Its caller gave a scope`) -> `SCOPE is set to that scope`;
+  where (`A build, test, or lint command runs`) and (`Its caller gave no scope`) -> `SCOPE is empty`;
+  where (`The line of a build, test, or lint command reads SCOPE`) and (`SCOPE is empty or unset`) -> `The line runs on every output`;
+  where (`The line of a build, test, or lint command reads SCOPE`) and (`SCOPE is not empty`) -> `The line runs only on the part of the outputs SCOPE names, as the target's ecosystem names such a part, such as a package for cargo`;
 }

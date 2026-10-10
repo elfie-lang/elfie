@@ -866,7 +866,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `ELFIE_ROOT in its environment is the directory it runs in`,
         `ELFIE in its environment is the path of the running executable`,
         `ELFIE_MCP_CONFIG in its environment is the absolute path of the MCP config file of the run's hosted session`,
-        `ELFIE_COMMAND_TOOLS in its environment is the names of the command tools the run's hosted session is offered, such as elfie_build elfie_test elfie_lint, in the order [[Operation]] lists their operations and separated by spaces; empty when it is offered none`,
+        `ELFIE_COMMAND_TOOLS in its environment is the names among [[McpData.Host.offered]] of the run's hosted session that are elfie_build, elfie_test, elfie_lint, or elfie_format, in the order [[McpData.Host.offered]] gives them, joined by spaces; empty when there is none`,
       ],
     })
     .add({

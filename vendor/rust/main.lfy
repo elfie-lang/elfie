@@ -82,12 +82,13 @@ trait cargo extends targetEcosystem: `Crates from crates.io, managed with Cargo`
   .provides = ["cargo"];
   .requires = ["rust"];
   // libtest reads each word after -- as a substring of the test names to run, and runs every test
-  // when there is none, so an empty or unset TESTS runs them all.
+  // when there is none, so an empty or unset TESTS runs them all; set -f keeps the shell from
+  // expanding a word as a file pattern. SCOPE names one package, passed as -p only when it is set.
   @commands
     .add({ operation = Operation.add, line = 'cargo add "$NAME${VERSION:+@$VERSION}"' })
-    .add({ operation = Operation.build, line = "cargo build" })
-    .add({ operation = Operation.test, line = "cargo test -- $TESTS" })
-    .add({ operation = Operation.lint, line = "cargo clippy --all-targets -- -D warnings" })
+    .add({ operation = Operation.build, line = 'cargo build ${SCOPE:+-p "$SCOPE"}' })
+    .add({ operation = Operation.test, line = 'set -f; cargo test ${SCOPE:+-p "$SCOPE"} -- $TESTS' })
+    .add({ operation = Operation.lint, line = 'cargo clippy ${SCOPE:+-p "$SCOPE"} --all-targets -- -D warnings' })
     .add({ operation = Operation.format, line = "cargo fmt --check" });
 }
 

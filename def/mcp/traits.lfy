@@ -56,7 +56,7 @@ trait commandTool(operation: Operation): `Runs the target's command for one oper
     `The result is an error naming the known targets`,
     `No command runs`,
   ];
-  where (`A call of elfie_{{@identifier}} gives a target`) and (`[[Binding.batch]] is set`) and (`That target is not the [[Unit.target]] of the units of [[Binding.batch]]`) -> [
+  where (`A call of elfie_{{@identifier}} gives a target`) and (`That target is the [[Target.identifier]] of one of [[Workspace.targets]]`) and (`[[Binding.batch]] is set`) and (`That target is not the [[Unit.target]] of the units of [[Binding.batch]]`) -> [
     `The result is an error saying the session acts only on its own batch, naming the batch's target`,
     `No command runs`,
   ];
@@ -66,12 +66,12 @@ trait commandTool(operation: Operation): `Runs the target's command for one oper
   ];
 
   // Running
-  where (`A call of elfie_{{@identifier}} runs the target's command`) -> `The [[Command.line]] of the command of [[Target.commands]] of the target for the operation ({{operation}}) runs as one [[Process.stream]], with no input`;
+  where (`A call of elfie_{{@identifier}} runs the target's command`) -> `The [[Command.line]] of the command of [[Target.commands]] of the target for the operation ({{operation}}) runs through the platform shell as [[Process.stream]] runs a command, with no input, as the leader of a process group of its own`;
   where (`A call of elfie_{{@identifier}} runs the target's command`) -> `Its working directory is [[Target.outputDirectory]] of the target under [[Binding.directory]]`;
   where (`A call of elfie_{{@identifier}} runs the target's command`) -> `Its environment sets RUN_SCRIPT to [[Target.scriptRunner]] of the target, or to the empty string when that is undefined`;
   where (`A call of elfie_{{@identifier}} runs the target's command`) -> `elfie_{{@identifier}} returns only once the command has ended`;
   where (`The command is still running 30 minutes after it started`) -> [
-    `It is stopped, and it has ended`,
+    `It and every process of its group are stopped, and it has ended once they have`,
     `[[CommandRun.succeeded]] is false`,
     `[[CommandRun.exitCode]] is -1`,
     `[[CommandRun.output]] ends, after the lines kept as for any run, with a line reading [elfie: stopped after 30 minutes]`,
@@ -84,12 +84,15 @@ trait commandTool(operation: Operation): `Runs the target's command for one oper
   where (`The command has ended`) -> `[[ToolResult.isError]] is false, whatever its exit code`;
   where (`The command has ended`) -> `[[CommandRun.exitCode]] is the code of the [[Process.Exit]] the run returned`;
   where (`The command has ended`) -> `The lines it wrote are every line [[Process.stream]] passed to onLine, from both streams, in the order they arrived`;
+  where (`The command has ended`) -> `Every line of [[CommandRun.output]] is ended by a newline`;
   where (`The command wrote at most 200 lines`) -> [
-    `[[CommandRun.output]] is every line it wrote, each ended by a newline`,
+    `[[CommandRun.output]] begins with every line it wrote`,
     `[[CommandRun.omitted]] is 0`,
   ];
-  where (`The command wrote more than 200 lines`) -> `[[CommandRun.output]] is, each line ended by a newline: the kept earlier lines, then a line reading [elfie: N lines omitted] with N the count of the lines left out, then the last 200 lines it wrote`;
-  where (`The command wrote more than 200 lines`) -> `The kept earlier lines are the first 100, in the order written, of the lines before the last 200 that contain error or warning without regard to case, or that follow such a line`;
+  where (`The command wrote more than 200 lines`) -> `[[CommandRun.output]] begins with the kept earlier lines, then a line reading [elfie: N lines omitted] with N the count of the lines left out, then the last 200 lines it wrote`;
+  where (`The command wrote more than 200 lines`) -> `The kept earlier lines are the first 100, in the order written, of the lines before the last 200 that contain error or warning without regard to case, or that come directly after such a line`;
   where (`The command wrote more than 200 lines`) -> `[[CommandRun.omitted]] is the count of the lines it wrote that are neither kept earlier lines nor among the last 200`;
-  where (`A line kept in [[CommandRun.output]] is longer than 500 characters`) -> `Only its first 500 characters are kept, followed by an ellipsis`;
+  where (`The command was not stopped`) -> `[[CommandRun.output]] holds nothing after the lines the rules above give it`;
+  where (`A line the command wrote and [[CommandRun.output]] keeps is longer than 500 Unicode characters`) -> `Only its first 500 Unicode characters are kept, followed by … (U+2026)`;
+  where (`A line is one elfie adds to [[CommandRun.output]]`) -> `It is never shortened`;
 }

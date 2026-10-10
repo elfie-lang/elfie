@@ -134,17 +134,21 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
     })
     .add({
       situation = `[[Binding.role]] of a session is compiler`,
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[report]], and the command tools offered to it`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[report]], and every fn of this file that carries [[commandTool]] whose operation a target of the session has a command with a defined [[Command.line]] for, among its [[Target.commands]]`,
     })
     .add({
       situation = `[[Binding.role]] of a session is verifier`,
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[check]], and the command tools offered to it`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[check]], and every fn of this file that carries [[commandTool]] whose operation a target of the session has a command with a defined [[Command.line]] for, among its [[Target.commands]]`,
     })
     .add({
       behavior = `The targets of a session are the [[Unit.target]] of the units of [[Binding.batch]] when it is set, and every target of [[Workspace.targets]] when it is undefined`,
     })
     .add({
-      behavior = `A fn of this file that carries [[commandTool]] for an operation is a command tool offered to a session, whatever its [[Binding.role]], exactly when [[Target.commands]] of a target of the session holds a command for that operation whose [[Command.line]] is defined`,
+      behavior = `[[Host.offered]] of the URL of an open session returns the [[Tool.name]] of every tool the session is offered, in the order the server lists them`,
+    })
+    .add({
+      situation = `[[Host.offered]] is given a URL that is not an open session's`,
+      behavior = `Returns an empty list`,
     })
     .add({ behavior = `No resource and no prompt is listed` })
     .add({ behavior = `The calls of one session are handled one at a time, in the order received` })
@@ -573,14 +577,24 @@ fn report(session: Session, id?: string, file?: string, line?: number, status: s
 // Decision: an agent builds, tests, and lints through the tools below rather than a shell, so it
 // runs only what the target's commands say, in its own run's directory, and the tools a session is
 // offered say which of them the target has.
+// Decision: build, test, and lint take a scope, so an agent whose own crate builds while another
+// unit's crate is broken can still check its own; the scope means something only to a line that
+// reads SCOPE.
+/// scope: the part of the outputs to run on, as the target's ecosystem names it, such as a package for cargo; given to the command as SCOPE; all of them when left out
 /// target: the identifier of the target; the target of the session's batch, or the only target, when left out
-fn build(session: Session, target?: string) is tool, commandTool(Operation.build): `Run the target's build command in this run's directory and say whether it passed, with its exit code and the end of its output` => ToolResult {
+fn build(session: Session, scope?: string, target?: string) is tool, commandTool(Operation.build): `Run the target's build command in this run's directory, narrowed to a scope when one is given, and say whether it passed, with its exit code and the end of its output` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The command's environment sets SCOPE to [[scope]], or to the empty string when it is left out`,
+    });
+
   @test(
     {
       input = [
         Session@like(
           `Bound to a compiler run of batch a, whose only target t writes under out and has the build command: echo built; exit 3`,
         ),
+        undefined,
         undefined,
       ],
       expect = ToolResult@like(
@@ -591,11 +605,15 @@ fn build(session: Session, target?: string) is tool, commandTool(Operation.build
 }
 
 /// filter: the words that narrow which tests run, given to the test command as TESTS; every test runs when left out
+/// scope: the part of the outputs to run on, as the target's ecosystem names it, such as a package for cargo; given to the command as SCOPE; all of them when left out
 /// target: the identifier of the target; the target of the session's batch, or the only target, when left out
-fn test(session: Session, filter?: string, target?: string) is tool, commandTool(Operation.test): `Run the target's test command in this run's directory, narrowed by a filter when one is given, and say whether it passed, with its exit code and the end of its output` => ToolResult {
+fn test(session: Session, filter?: string, scope?: string, target?: string) is tool, commandTool(Operation.test): `Run the target's test command in this run's directory, narrowed by a filter and a scope when they are given, and say whether it passed, with its exit code and the end of its output` => ToolResult {
   @acceptanceCriteria
     .add({ situation = `[[filter]] is given`, behavior = `The command's environment sets TESTS to [[filter]]` })
-    .add({ situation = `[[filter]] is left out`, behavior = `The command's environment sets TESTS to the empty string` });
+    .add({ situation = `[[filter]] is left out`, behavior = `The command's environment sets TESTS to the empty string` })
+    .add({
+      behavior = `The command's environment sets SCOPE to [[scope]], or to the empty string when it is left out`,
+    });
 
   @test(
     {
@@ -603,20 +621,27 @@ fn test(session: Session, filter?: string, target?: string) is tool, commandTool
         Session@like(`Bound to a compiler run whose only target has the test command: echo "[$TESTS]"`),
         `parse lex`,
         undefined,
+        undefined,
       ],
       expect = ToolResult@like(
         `Not an error: the JSON of a CommandRun whose succeeded is true and whose output is [parse lex] and a newline`,
       ),
     },
     {
-      input = [Session@like(`The same session`), undefined, undefined],
+      input = [Session@like(`The same session`), undefined, undefined, undefined],
       expect = ToolResult@like(`Not an error: the JSON of a CommandRun whose output is [] and a newline`),
     },
   );
 }
 
+/// scope: the part of the outputs to run on, as the target's ecosystem names it, such as a package for cargo; given to the command as SCOPE; all of them when left out
 /// target: the identifier of the target; the target of the session's batch, or the only target, when left out
-fn lint(session: Session, target?: string) is tool, commandTool(Operation.lint): `Run the target's lint command in this run's directory and say whether it passed, with its exit code and the end of its output` => ToolResult {}
+fn lint(session: Session, scope?: string, target?: string) is tool, commandTool(Operation.lint): `Run the target's lint command in this run's directory, narrowed to a scope when one is given, and say whether it passed, with its exit code and the end of its output` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The command's environment sets SCOPE to [[scope]], or to the empty string when it is left out`,
+    });
+}
 
 /// target: the identifier of the target; the target of the session's batch, or the only target, when left out
 fn format(session: Session, target?: string) is tool, commandTool(Operation.format): `Run the target's format check in this run's directory and say whether it passed, with its exit code and the end of its output` => ToolResult {}

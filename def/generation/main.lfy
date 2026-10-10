@@ -449,7 +449,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
       ],
     })
     .add({
-      behavior = `The commands part says that elfie_test takes a filter that narrows the tests run, given to the test command as TESTS, and that an empty or unset TESTS runs every test`,
+      behavior = `The commands part says that elfie_test's filter is given to the test command as TESTS, and the scope of elfie_build, elfie_test, and elfie_lint to the command as SCOPE, which narrow the run only when the command's line reads them`,
     })
     .add({
       behavior = `A unit's section holds, for each of its entities, the entity's lowered code and then, apart from the code, its local criteria and tests, each on its own line with its id`,

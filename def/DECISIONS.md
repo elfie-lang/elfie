@@ -89,11 +89,27 @@ to scopes. **Not included:** code actions, signature help, inlay hints.
 second copy. Argument descriptions come from `///` documentation lines on the fn because a
 `Parameter` has no place for a description (see Issues).
 
-**The server never writes.** During compilation the agent writes outputs itself and calls
+**The server writes no file itself.** During compilation the agent writes outputs itself and calls
 `elfie_check`; the CLI records source maps. One writer keeps one path for "what is on disk".
+`elfie_report` keeps verdicts in memory until the CLI closes the session. A command tool runs the
+target's own command, which may write what that command always writes, such as build artifacts,
+and never an output.
+
+**Two entry points.** `serve` is the stdio server for editors and interactive agents. `host` is
+served over HTTP on 127.0.0.1 for the length of one compile or verify, with one hosted session per
+compiler or verifier run. Each hosted session is bound to its run's directory, plan, program, and
+review.
 
 **Tools:** `problems`, `find`, `entity`, `references`, `outline`, `grammar`, `units`, `request`,
-`check`. No resources, no prompts: one surface is enough to keep exact.
+`check`, `output`, `source`, `changes`, `review`, `globalReview`, and `report`, plus the command
+tools `build`, `test`, `lint`, and `format`.
+- `serve` offers every tool except `report` and the command tools.
+- A compiler session offers every tool except `report`, and a verifier session every tool except
+  `check`, with the command tools limited as below.
+- A hosted session offers a command tool only when a target of the session has a command with a
+  line for its operation.
+
+No resources, no prompts: one surface is enough to keep exact.
 
 **Freshness:** before each call, files whose mtime or size changed are re-read through
 `Workspace.change`. Alternative: a file watcher (rejected for now: more moving parts than a stat).
