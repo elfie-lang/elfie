@@ -81,10 +81,12 @@ trait cargo extends targetEcosystem: `Crates from crates.io, managed with Cargo`
   .lockfile = "Cargo.lock";
   .provides = ["cargo"];
   .requires = ["rust"];
+  // libtest reads each word after -- as a substring of the test names to run, and runs every test
+  // when there is none, so an empty or unset TESTS runs them all.
   @commands
     .add({ operation = Operation.add, line = 'cargo add "$NAME${VERSION:+@$VERSION}"' })
     .add({ operation = Operation.build, line = "cargo build" })
-    .add({ operation = Operation.test, line = "cargo test" })
+    .add({ operation = Operation.test, line = "cargo test -- $TESTS" })
     .add({ operation = Operation.lint, line = "cargo clippy --all-targets -- -D warnings" })
     .add({ operation = Operation.format, line = "cargo fmt --check" });
 }

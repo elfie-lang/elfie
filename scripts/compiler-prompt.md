@@ -17,14 +17,24 @@ definition file compiled for one target. Produce its outputs and nothing else.
   for the code that answers for a criterion or test, and `elfie_output <file>` for every marked
   region of an output file; `elfie_source <file> <line>` for the definition behind a generated
   line; `elfie_changes <stem>` for what changed in a unit since its output was accepted;
-  `elfie_grammar` for the language; and `elfie_check <stem>` to see whether acceptance would pass
-  before you finish. Definitions are read through these tools only; reading `def/` and `lib/`
+  `elfie_grammar` for the language; `elfie_check <stem>` to see whether acceptance would pass
+  before you finish; and `elfie_build`, `elfie_test`, and `elfie_lint`, when offered, to build,
+  test, and lint. Definitions are read through these tools only; reading `def/` and `lib/`
   directly is denied. Search the outputs yourself only for what no tool answers, such as a
   helper function's body.
 - A rejection may carry `failure at <file>:<line>: <why>` lines from an independent reviewer that
   read your output against that criterion; fix the code, not the review.
-- When you are done, `cargo build -p <crate>`, `cargo test -p <crate>`, and
-  `cargo clippy -p <crate>` must pass for the crate you wrote; run them.
+- When you are done, the target's build, test, and lint commands, as the request's commands part
+  lists them, must pass; run them. When `elfie_build`, `elfie_test`, and `elfie_lint` are offered
+  to you, run them through those tools and nothing else: each runs the target's command in your
+  run's directory and answers with whether it passed, its exit code, and the end of its output.
+  `elfie_test` takes a `filter` that narrows the tests run, such as the names of the tests you
+  wrote; narrow while you work, and run it once without a filter before you finish. When they are
+  not offered, run `cargo build -p <crate>`, `cargo test -p <crate>`, and `cargo clippy -p <crate>`
+  for the crate you wrote instead.
+- A dependency is added only by running the target's add command. When no shell is allowed you
+  cannot run it, so a dependency that no `Cargo.toml` lists yet is a reason to stop with
+  `ELFIE: BLOCKED` naming it.
 - The package `elfie` under `lib/` is the standard library: the context layer every entity has,
   the base data every value has (`List`, `String`, `Path`, ...), and the target vocabulary. It is
   a specification, never a unit: a `builtin` data or fn is bound to the native type or function
@@ -34,5 +44,5 @@ definition file compiled for one target. Produce its outputs and nothing else.
   output: stop and report the problem, quoting the criterion, instead of guessing.
 - Do not commit. Print a short report of the files written and any decision you had to make.
 - End your report with exactly one line: `ELFIE: DONE` when every output is written and the
-  crate builds and tests; `ELFIE: BLOCKED: <reason>` when you cannot proceed (write no output for
+  target's build, test, and lint commands pass; `ELFIE: BLOCKED: <reason>` when you cannot proceed (write no output for
   that unit); or `ELFIE: CLARIFY: <question>` when only a person can decide (write nothing).

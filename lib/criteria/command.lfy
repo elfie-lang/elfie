@@ -4,8 +4,11 @@ use "../prelude/builtin";
 // entity.lfy uses it; the contributor is typed as object for the same reason.
 // Decision: a target names a shell command for each operation, so the compiler need not know
 // the tool.
-// Decision: a command is handed to the compiler in its request and never run by Elfie itself, so
-// acceptance stays structural.
+// Decision: a command is handed to the compiler in its request and run by the agent, by hand or
+// through a tool of the agent server, never by acceptance, so acceptance stays structural.
+// Decision: a test command narrows the tests it runs by reading TESTS rather than by taking
+// arguments, so one line serves both a whole run and a narrowed one, and a line that ignores TESTS
+// still runs every test.
 // Guidance order is defined on the Target of lib/target/main.lfy, which this file cannot use.
 
 enum Operation: `What a command is for` {
@@ -36,4 +39,8 @@ d Command is builtin: `A shell command for one operation` {
   where (`An add command runs`) -> `NAME is set to the dependency's name`;
   where (`An add command runs`) and (`The dependency pins a version`) -> `VERSION is set to that version`;
   where (`An add command runs`) and (`The dependency pins no version`) -> `VERSION is empty`;
+  where (`A test command runs`) and (`Its caller gave a filter`) -> `TESTS is set to that filter`;
+  where (`A test command runs`) and (`Its caller gave no filter`) -> `TESTS is empty`;
+  where (`The line of a test command reads TESTS`) and (`TESTS is empty or unset`) -> `The line runs every test`;
+  where (`The line of a test command reads TESTS`) and (`TESTS is not empty`) -> `The line runs only the tests its test runner selects with the words of TESTS as filters`;
 }

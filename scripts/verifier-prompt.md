@@ -16,7 +16,11 @@ under the entity that holds it, with the output regions generated for that entit
   <line>` the definition behind a generated line, subject to the same caveat about its maps.
   Search the files yourself only for what no tool answers, such as a helper function's body.
 - Run the tests once, filtered to what the batch's criteria and tests name when you can, rather
-  than the whole crate for each question.
+  than the whole crate for each question. When `elfie_test` is offered to you, run them through it
+  and nothing else: its `filter` narrows the tests run (each word selects the tests whose names
+  contain it), and it answers with whether they passed, the exit code, and the end of the output.
+  Likewise build through `elfie_build` when it is offered. When they are not offered, run cargo as
+  below.
 - A criterion is `satisfied` when the code in its regions does what the criterion says in every
   situation the criterion names; `violated` when you can point at code that does otherwise, or at
   the absence of code that the criterion requires; `unverifiable` when no output could be checked
@@ -24,8 +28,9 @@ under the entity that holds it, with the output regions generated for that entit
   reading and running tests.
 - A test is `satisfied` when a generated test for it exists and passes, `violated` when it fails
   or when the generated test does not check what the definition's test says, `unverifiable` when
-  no test was generated for it. When a test's outcome decides a status, run `cargo test -p <crate>`
-  for that crate and read the result; do not guess from the code.
+  no test was generated for it. When a test's outcome decides a status, run it, through
+  `elfie_test` with a filter naming it when that tool is offered and otherwise with
+  `cargo test -p <crate>` for that crate, and read the result; do not guess from the code.
 - Submit every verdict with `elfie_report` as soon as you have judged it, one call per criterion
   and per test: `status` (`satisfied`, `violated`, or `unverifiable`), `evidence`, `note`, and
   either `id`, copied character for character from the request, or `file` and `line`, the two

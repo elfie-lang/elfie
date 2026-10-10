@@ -21,6 +21,16 @@ d ToolResult: `What a call returns` {
   $isError: `Whether the call failed` = boolean;
 }
 
+d CommandRun: `What one run of a target's command came to, as a command tool returns it` {
+  $target: `The identifier of the target whose command ran` = string;
+  $operation: `The name of the operation whose command ran, as [[Operation]] spells its member` = string;
+  $line: `The line that ran` = string;
+  $succeeded: `Whether it exited with 0` = boolean;
+  $exitCode: `Its exit code; -1 when it ended by a signal or could not be started` = number;
+  $output: `What it wrote to standard output and standard error, kept short` = string;
+  $omitted: `How many lines of what it wrote [[CommandRun.output]] leaves out` = number;
+}
+
 d Session: `One agent's connection` {
   $workspace: `The program as of the last call` = Workspace;
   $seen: `The modification time and size of every file of the program when it was last read, by path; empty in a hosted session, which never re-reads one` = object;

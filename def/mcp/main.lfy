@@ -14,6 +14,10 @@ use "elfie/system/process" as Process;
 
 // Decision: the agent server never writes a file. During compilation the agent writes the outputs
 // itself and asks the server to check them, so one path exists for writing and the CLI owns it.
+// A command tool runs the target's own command, which writes what that command always writes, such
+// as build artifacts, and never an output.
+// Decision: serve never offers a command tool, because a session over standard input and output has
+// no [[Binding]], so no run's directory to run a command in and no batch whose target it is.
 // Decision: tools only, with no resources and no prompts, because one surface is enough to keep
 // exact.
 external Protocol: `The Model Context Protocol, revision 2025-06-18, as the target ecosystem's library provides it` = undefined;
@@ -33,7 +37,7 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
       behavior = `[[Session.workspace]] is [[Loader.load]] of the current directory`,
     })
     .add({
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]]`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]] and every fn that carries [[commandTool]]`,
     })
     .add({ behavior = `[[Session.binding]] is undefined` })
     .add({ behavior = `No resource and no prompt is listed` })
@@ -81,8 +85,9 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
 
 // Decision: a compile hosts the agent server itself, so every agent it runs reads the plan the
 // compile made, not one a server of its own re-made from files that may have changed since, and its
-// verdicts reach the CLI through the server rather than through text it prints. The server still
-// never writes a file: what elfie_report records stays in memory until the CLI closes the session.
+// verdicts reach the CLI through the server rather than through text it prints. The server itself
+// still never writes a file: what elfie_report records stays in memory until the CLI closes the
+// session.
 // Decision: the server listens only on 127.0.0.1 and refuses any request without the host's token,
 // so no other program on the machine can call a tool, even one that finds the port.
 // Decision: the ecosystem's protocol library already serves the protocol over streamable HTTP
@@ -129,15 +134,24 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
     })
     .add({
       situation = `[[Binding.role]] of a session is compiler`,
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]]`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[report]], and the command tools offered to it`,
     })
     .add({
       situation = `[[Binding.role]] of a session is verifier`,
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[check]]`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[check]], and the command tools offered to it`,
+    })
+    .add({
+      behavior = `The targets of a session are the [[Unit.target]] of the units of [[Binding.batch]] when it is set, and every target of [[Workspace.targets]] when it is undefined`,
+    })
+    .add({
+      behavior = `A fn of this file that carries [[commandTool]] for an operation is a command tool offered to a session, whatever its [[Binding.role]], exactly when [[Target.commands]] of a target of the session holds a command for that operation whose [[Command.line]] is defined`,
     })
     .add({ behavior = `No resource and no prompt is listed` })
     .add({ behavior = `The calls of one session are handled one at a time, in the order received` })
-    .add({ behavior = `A call of one session never waits for a call of another session to end` })
+    .add({
+      situation = `Two calls of different sessions are not both calls of command tools for the same [[Binding.directory]]`,
+      behavior = `Neither waits for the other to end`,
+    })
     .add({ behavior = `[[Session.reviews]] of a new session is empty` })
     .add({
       behavior = [
@@ -152,7 +166,9 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
     .add({
       behavior = [`[[Host.stop]] closes every open session`, `The port is no longer listened on once it returns`],
     })
-    .add({ behavior = `The host never writes a file` })
+    .add({
+      behavior = `The host never writes a file, other than what a target's command that a command tool runs writes`,
+    })
     .add({ behavior = `The host writes nothing to standard output` })
     .add({ situation = `No port can be listened on`, behavior = `[[host]] fails, saying why` });
 }
@@ -553,3 +569,54 @@ fn report(session: Session, id?: string, file?: string, line?: number, status: s
     },
   );
 }
+
+// Decision: an agent builds, tests, and lints through the tools below rather than a shell, so it
+// runs only what the target's commands say, in its own run's directory, and the tools a session is
+// offered say which of them the target has.
+/// target: the identifier of the target; the target of the session's batch, or the only target, when left out
+fn build(session: Session, target?: string) is tool, commandTool(Operation.build): `Run the target's build command in this run's directory and say whether it passed, with its exit code and the end of its output` => ToolResult {
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run of batch a, whose only target t writes under out and has the build command: echo built; exit 3`,
+        ),
+        undefined,
+      ],
+      expect = ToolResult@like(
+        `Not an error: the JSON of a CommandRun with target t, operation build, line echo built; exit 3, succeeded false, exitCode 3, output built and a newline, and omitted 0`,
+      ),
+    },
+  );
+}
+
+/// filter: the words that narrow which tests run, given to the test command as TESTS; every test runs when left out
+/// target: the identifier of the target; the target of the session's batch, or the only target, when left out
+fn test(session: Session, filter?: string, target?: string) is tool, commandTool(Operation.test): `Run the target's test command in this run's directory, narrowed by a filter when one is given, and say whether it passed, with its exit code and the end of its output` => ToolResult {
+  @acceptanceCriteria
+    .add({ situation = `[[filter]] is given`, behavior = `The command's environment sets TESTS to [[filter]]` })
+    .add({ situation = `[[filter]] is left out`, behavior = `The command's environment sets TESTS to the empty string` });
+
+  @test(
+    {
+      input = [
+        Session@like(`Bound to a compiler run whose only target has the test command: echo "[$TESTS]"`),
+        `parse lex`,
+        undefined,
+      ],
+      expect = ToolResult@like(
+        `Not an error: the JSON of a CommandRun whose succeeded is true and whose output is [parse lex] and a newline`,
+      ),
+    },
+    {
+      input = [Session@like(`The same session`), undefined, undefined],
+      expect = ToolResult@like(`Not an error: the JSON of a CommandRun whose output is [] and a newline`),
+    },
+  );
+}
+
+/// target: the identifier of the target; the target of the session's batch, or the only target, when left out
+fn lint(session: Session, target?: string) is tool, commandTool(Operation.lint): `Run the target's lint command in this run's directory and say whether it passed, with its exit code and the end of its output` => ToolResult {}
+
+/// target: the identifier of the target; the target of the session's batch, or the only target, when left out
+fn format(session: Session, target?: string) is tool, commandTool(Operation.format): `Run the target's format check in this run's directory and say whether it passed, with its exit code and the end of its output` => ToolResult {}

@@ -20,10 +20,21 @@ export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 # Definitions are read only through the agent server, which answers for an entity, a name, or a
 # file at once; reading or searching def/ and lib/ by hand is denied. Generated code stays open to
 # Read and Grep, for the helpers no marker names.
+# In a session the compile hosts, the target's build and test commands are tools of the agent
+# server (elfie_build, elfie_test), run in this run's directory one at a time, so no shell is
+# allowed at all. Without one, as with an older binary or a run by hand, cargo is run through Bash
+# as before.
+if [ -n "${ELFIE_MCP_CONFIG:-}" ]; then
+  allowed="Read Glob Grep mcp__elfie__*"
+  denied="Bash"
+else
+  allowed="Read Glob Grep Bash(cargo test:*) Bash(cargo build:*) mcp__elfie__*"
+  denied=""
+fi
 echo "verifying batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
 exec claude -p \
   --permission-mode default \
-  --allowedTools "Read Glob Grep Bash(cargo test:*) Bash(cargo build:*) mcp__elfie__*" \
-  --disallowedTools "Read(./def/**)" "Read(./lib/**)" \
+  --allowedTools "$allowed" \
+  --disallowedTools "Read(./def/**)" "Read(./lib/**)" ${denied:+"$denied"} \
   --strict-mcp-config --mcp-config "${ELFIE_MCP_CONFIG:-.mcp.json}" \
   --append-system-prompt "$(cat scripts/verifier-prompt.md)"

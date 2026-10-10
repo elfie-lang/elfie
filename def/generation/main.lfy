@@ -440,6 +440,17 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       behavior = `The commands part gives [[Request.commands]], one line per operation, and says that the build, test, and lint commands are run before the report and their results stated in it`,
     })
+    // Decision: the request cannot know whether its reader is in a hosted session, so it states both
+    // ways and the tools the reader is offered decide; a reader with the tools never needs a shell.
+    .add({
+      behavior = [
+        `The commands part says that when the agent server offers elfie_build, elfie_test, elfie_lint, or elfie_format, the command of that operation is run through that tool`,
+        `The commands part says that a line is run by hand only for an operation whose tool is not offered`,
+      ],
+    })
+    .add({
+      behavior = `The commands part says that elfie_test takes a filter that narrows the tests run, given to the test command as TESTS, and that an empty or unset TESTS runs every test`,
+    })
     .add({
       behavior = `A unit's section holds, for each of its entities, the entity's lowered code and then, apart from the code, its local criteria and tests, each on its own line with its id`,
     })
