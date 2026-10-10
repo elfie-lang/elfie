@@ -370,8 +370,24 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       situation = `[[previous]] has an entry for the file of a unit of [[batch]]`,
-      behavior = `[[Request.removed]] maps the unit's [[File.path]] to one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now, in the order the file as it was gives them`,
+      behavior = `[[Request.removed]] maps the unit's [[File.path]] to one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now and is the [[Rewording.replaces]] of none of [[Request.reworded]] for that path, in the order the file as it was gives them`,
     })
+    .add({
+      situation = `[[previous]] has an entry for the file of a unit of [[batch]]`,
+      behavior = `[[Request.reworded]] maps the unit's [[File.path]] to [[reworded]] of [[Program.workspace]] of [[Plan.program]], the unit, and that entry`,
+    })
+    .add({
+      situation = [
+        `A unit of [[batch]] has the reason requirements`,
+        `[[previous]] has an entry for its file`,
+        `[[Request.removed]] maps its [[File.path]] to an empty list`,
+        `[[Request.reworded]] maps its [[File.path]] to a list that is not empty`,
+        `The id of every local criterion and test of the unit is in [[Request.answered]] for its [[File.path]], or is the [[Rewording.id]] of one of [[Request.reworded]] for it`,
+        `For each of [[Unit.dependencies]], every [[SourceMap.dependencies]] of the unit's [[Unit.outputs]] records the SHA-256 of [[interfaceOf]] that dependency`,
+      ],
+      behavior = `[[Request.rewordedOnly]] holds the unit's [[File.path]]`,
+    })
+    .add({ behavior = `[[Request.rewordedOnly]] holds no other path` })
     .add({
       behavior = `A [[RemovedRequirement]] has the id of its criterion or test, its place in the file as it was, and its text, all taken from the lowering of the file as it was`,
     })
@@ -424,7 +440,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       situation = `[[Request.existing]] is not empty`,
       behavior = [
-        `The outputs part says that only what the difference between [[Request.previous]] and [[Request.sources]], and the criteria and tests marked new or removed, require changes`,
+        `The outputs part says that only what the difference between [[Request.previous]] and [[Request.sources]], and the criteria and tests marked new, reworded, or removed, require changes`,
         `The outputs part says that names and structure are kept`,
         `The outputs part says that markers of unchanged items are kept`,
       ],
@@ -481,7 +497,21 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       situation = `[[Request.answered]] has an entry for a unit of [[batch]]`,
-      behavior = `In that unit's section, the line of each criterion and test whose id is not in that entry is marked new`,
+      behavior = `In that unit's section, the line of each criterion and test whose id is not in that entry, and is the [[Rewording.id]] of none of [[Request.reworded]] for the unit, is marked new`,
+    })
+    .add({
+      situation = `[[Request.reworded]] has an entry for a unit of [[batch]]`,
+      behavior = `In that unit's section, the line of each criterion and test whose id is the [[Rewording.id]] of one of that entry is marked reworded, and is followed by a line reading replaces, a space, its [[Rewording.replaces]], a space, an em dash, a space, and its [[Rewording.text]]`,
+    })
+    // Decision: compile moves a reworded criterion's markers to its new id before the request is
+    // made, so the compiler is not asked to; the code is still read against the new text, because a
+    // rewording may change what is asked.
+    .add({
+      situation = `A criterion or test of a unit of [[batch]] is marked reworded`,
+      behavior = [
+        `That unit's section says that a marker naming the id a reworded one replaces is rewritten to name its new id, and that compile has done so before the compiler runs`,
+        `That unit's section says that the code of a reworded one is read against what it says now, and changed wherever it asks for what the code does not do`,
+      ],
     })
     .add({
       situation = `[[Request.removed]] has a non-empty entry for a unit of [[batch]]`,
@@ -587,14 +617,27 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     {
       input = [
         Plan@like(
-          `One batch of one unit a, reason requirements, whose fn f has criteria c1 and c3 now, and whose one output's source map answered the ids of c1 and c2`,
+          `One batch of one unit a, reason requirements, whose fn f has criteria c3 then c1 now, and whose one output's source map answered the ids of c1 and c2`,
         ),
         Batch@like(`a`),
         [Output@like(`The existing output of a`)],
-        Object@like(`def/a.lfy mapped to a.lfy as it was: f with criteria c1 and c2`),
+        Object@like(`def/a.lfy mapped to a.lfy as it was: f with criteria c1 then c2`),
       ],
       expect = Request@like(
-        `A section for a that says its criteria differ and the code must do what each now says; c1's line unmarked, c3's line marked new, and c2 listed with its text as removed`,
+        `A section for a that says its criteria differ and the code must do what each now says; c1's line unmarked, c3's line marked new, and c2 listed with its text as removed; nothing reworded, and rewordedOnly empty`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One batch of one unit a, reason requirements, whose fn f has criteria c1 then c4 now, and whose one output's source map answered the ids of c1 and c2`,
+        ),
+        Batch@like(`a`),
+        [Output@like(`The existing output of a`)],
+        Object@like(`def/a.lfy mapped to a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4`),
+      ],
+      expect = Request@like(
+        `A section for a with c1's line unmarked, and c4's line marked reworded and followed by a line reading replaces, the id of c2, and the text of c2; nothing removed; reworded for def/a.lfy holds c4 replacing c2; rewordedOnly holds def/a.lfy`,
       ),
     },
     {
@@ -863,8 +906,9 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
 // what was generated from what. elfie-compile/maps holds the source maps, one file per unit, so
 // accepting a unit writes one small file instead of rewriting every map of the target, and a commit
 // shows exactly which units a compile touched. elfie-compile/cache is git-ignored and holds only what
-// can be rebuilt from the definitions, the maps, and the outputs: deleting it changes no plan,
-// request, verdict, or output, only how long they take.
+// can be rebuilt or lost at the cost of time: deleting it changes no plan or verdict. What it can
+// change is where a batch's next attempt starts, since the work a rejected batch kept there is
+// lost with it.
 
 /// target: the identifier of one target; every target when left out
 fn sourceMapsOf(workspace: Workspace, target?: string): `Every source map recorded for a workspace whose output still exists` => SourceMap[] {
@@ -1181,9 +1225,9 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       situation = [
         `A name is declared on both sides`,
         `The ids of its local criteria differ`,
-        `A removed and an added criterion id are at the same position`,
+        `Counting from the first, the criterion at some position among its local criteria then has an id that is none of its criteria's now, and the criterion at the same position now has an id that was none of its criteria's then`,
       ],
-      behavior = `The detail of the [[ChangeKind.criteria]] change calls that pair reworded`,
+      behavior = `The detail of the [[ChangeKind.criteria]] change calls those two reworded, as a pair`,
     })
     .add({
       situation = [
@@ -1196,9 +1240,9 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       situation = [
         `A name is declared on both sides`,
         `The ids of its local tests differ`,
-        `A removed and an added test id are at the same position`,
+        `Counting from the first, the test at some position among its local tests then has an id that is none of its tests' now, and the test at the same position now has an id that was none of its tests' then`,
       ],
-      behavior = `The detail of the [[ChangeKind.tests]] change calls that pair reworded`,
+      behavior = `The detail of the [[ChangeKind.tests]] change calls those two reworded, as a pair`,
     })
     .add({
       situation = [
@@ -1269,6 +1313,91 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       ],
       expect = [],
     },
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a fn f with criteria c1 then c4`),
+        Unit@like(`The unit of a.lfy`),
+        string@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4`),
+      ],
+      expect = [Change@like(`f, criteria, detail naming c2 removed and c4 added and calling them reworded`)],
+    },
+  );
+}
+
+/// previous: the text of the unit's file when its outputs were last accepted, as written and never lowered
+fn reworded(workspace: Workspace, unit: Unit, previous: string): `The local criteria and tests of a unit whose id changed since its outputs were accepted only because their text did, each paired with the id it replaces` => Rewording[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns one [[Rewording]] for each pair of a removed and an added id that a change of [[changes]] of [[workspace]], [[unit]], and [[previous]] calls reworded, in the order of those changes`,
+    })
+    .add({ behavior = `[[Rewording.id]] is the added id, and [[Rewording.replaces]] the removed one` })
+    .add({
+      behavior = `[[Rewording.text]] is what the removed one said, taken from the lowering of the file as it was, as a [[RemovedRequirement]] takes its text`,
+    })
+    .add({
+      situation = `The added id of a pair is not the id of a local criterion or test of [[unit]]`,
+      behavior = `The pair gives no [[Rewording]]`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a fn f with criteria c1 then c4, and a data B with tests t1 then t2`),
+        Unit@like(`The unit of a.lfy`),
+        string@like(`a.lfy as it was: f with criteria c1 then c2, and B with tests t3 then t2`),
+      ],
+      expect = [
+        Rewording@like(`c4, replacing c2, with the text of c2`),
+        Rewording@like(`t1, replacing t3, with the input and expectation of t3`),
+      ],
+    },
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a fn f with criteria c3 then c1`),
+        Unit@like(`The unit of a.lfy`),
+        string@like(`a.lfy as it was: f with criteria c1 then c2`),
+      ],
+      expect = [],
+    },
+  );
+}
+
+// Decision: one rule rewrites a marker's id, whether a compile moves the markers of reworded
+// criteria before the compiler runs or a compiler asks elfie_mark to, so the two never differ.
+// Only the markers that name the unit's own file are rewritten, because a marker naming another
+// file is another unit's.
+/// outputs: output files as they are now; any of them may hold markers of the unit
+/// ids: for each id a marker names now, the id it is to name afterwards
+fn rename(unit: Unit, outputs: Output[], ids: Object<string>): `The output files in which a marker of one unit names an id being replaced, with each such marker rewritten to name the new id` => Output[] {
+  @acceptanceCriteria
+    .add({ behavior = `A marker in an output is read as [[accept]] reads a [[Marker]]` })
+    .add({
+      behavior = `The markers rewritten are those whose [[Marker.requirement]] is a key of [[ids]] and whose [[Marker.file]] is the [[File.path]] of the file of [[unit]], or of a file declaring an entity moved into [[unit]]`,
+    })
+    .add({
+      behavior = `A rewritten marker's line has its [[Marker.requirement]] replaced by the id [[ids]] gives for it, and every other character of the line, and every other line of its output, is kept`,
+    })
+    .add({
+      behavior = `Returns, in the order of [[outputs]], each of [[outputs]] that holds a rewritten marker, with [[Output.text]] as it reads once its markers are rewritten`,
+    })
+    .add({ behavior = `An output that holds no rewritten marker is not returned` })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Unit@like(`The unit of def/a.lfy, whose fn f has the criterion with id f:f:9c0d`),
+        [
+          Output@like(`src/a.rs, holding on lines 3 and 8 the markers // @lfy def/a.lfy:f#f:f:1f2e`),
+          Output@like(`src/b.rs, holding the marker // @lfy def/b.lfy:g#f:f:1f2e`),
+        ],
+        Object@like(`f:f:1f2e mapped to f:f:9c0d`),
+      ],
+      expect = [
+        Output@like(`src/a.rs, with lines 3 and 8 reading // @lfy def/a.lfy:f#f:f:9c0d and every other line as it was`),
+      ],
+    },
   );
 }
 
@@ -1283,6 +1412,10 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
 // Decision: a criterion or test is reviewed again only when nothing says its verdict still holds:
 // it has no record, its last verdict was not satisfied, or the code of its entity changed since. A
 // change to code outside the entity's regions, such as a helper no marker names, does not count.
+// Decision: a marker line is no part of a region's hash, so moving a reworded criterion's markers to
+// its new id, or adding a marker, does not send the other criteria of the entity to review again.
+// A reworded criterion is reviewed all the same: its new text may ask for something else, so no
+// verdict on the id it replaces stands for it.
 /// directory: the directory the batch's outputs were written in, which its regions are read from; [[Workspace.root]] when left out
 /// records: the review records of the batch's units; every criterion and test is reviewed when it is empty
 fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string, records: ReviewRecord[] = []): `Everything a verifier is handed to check the outputs of one batch against every criterion and test whose verdict is not carried` => ReviewRequest {
@@ -1296,7 +1429,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string,
       behavior = `The regions of an entity are each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the file that declares the entity, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
     })
     .add({
-      behavior = `[[ReviewRequest.hashes]] gives each local criterion and test of the units of [[batch]] the SHA-256, as lowercase hex, of the text of the regions of the entity it belongs to: each region's lines of its output, one region after another, each line followed by a line break`,
+      behavior = `[[ReviewRequest.hashes]] gives each local criterion and test of the units of [[batch]] the SHA-256, as lowercase hex, of the text of the regions of the entity it belongs to: each region's lines of its output other than those read as a [[Marker]], one region after another, each line followed by a line break`,
     })
     .add({
       situation = `The output of a region cannot be read`,
@@ -1316,6 +1449,9 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string,
     })
     .add({
       behavior = `A local criterion or test whose entity has no region, or that belongs to the file's own entity, is never carried`,
+    })
+    .add({
+      behavior = `A record in [[records]] is carried only for the criterion or test whose id it holds, and never for one that rewords it, even when the regions of its entity are unchanged`,
     })
     .add({
       situation = `At least one criterion or test is listed`,

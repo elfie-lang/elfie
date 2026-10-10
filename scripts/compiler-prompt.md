@@ -9,7 +9,7 @@ offer.
 
 1. **Start with `elfie_task`.** It lists your obligations: for each unit, its outputs and why it
    is planned, and for each entity, every criterion and test with its id, place, and text. Each
-   one is marked `new`, `kept`, or `unknown`, and the criteria and tests removed since the outputs
+   one is marked `new`, `reworded`, `kept`, or `unknown`, and the criteria and tests removed since the outputs
    were accepted are listed with their text. Call it again, or `elfie_task <stem>` for one unit,
    whenever you need your obligations back instead of scrolling. Without it, read them from the
    unit sections of the request.
@@ -47,9 +47,14 @@ offer.
    - `elfie_mark` changes the file on disk. Read the file again before you edit it after a mark.
      When you insert several markers into one file, work from the bottom of the file up, so the
      line numbers you have not used yet stay right.
-   - When a criterion is reworded, its id changes. `elfie_task` shows the old one as removed and
-     the new one as new. Once the code does what the new one says, move the old markers with
-     `elfie_mark` using `replaces` set to the old id and `id` set to the new one.
+   - When a criterion is reworded, its id changes. When it kept its position, `elfie_task` marks
+     it `reworded` and gives the old id and text on a `replaces` line. Compile has already moved
+     its markers to the new id. Read the code against what it says now, and change the code where
+     the new text asks for something else.
+   - When a new criterion restates a removed one from another position, `elfie_task` shows the
+     old one as removed and the new one as new. Once the code does what the new one says, move
+     the old markers with `elfie_mark` using `replaces` set to the old id and `id` set to the new
+     one.
    - Where `elfie_mark` is not offered, write the marker yourself and copy the id exactly from
      `elfie_task` or the request.
 6. **Tests.** Every `@test` case becomes a `#[test]`. Every acceptance criterion a test can check

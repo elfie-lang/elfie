@@ -150,7 +150,7 @@ fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Ton
       behavior = `Returns [[Tone.warning]]`,
     })
     .add({
-      situation = `[[step]] is [[Step.requesting]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], or [[Step.globalVerifying]]`,
+      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.rewording]], [[Step.building]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], or [[Step.globalVerifying]]`,
       behavior = `Returns [[Tone.active]]`,
     })
     .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns [[Tone.subject]]` });
@@ -168,9 +168,12 @@ fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Ton
 fn glyphOf(step: Step): `One character that marks a progress line's step` => string {
   @acceptanceCriteria
     .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns ◆` })
-    .add({ situation = `[[step]] is [[Step.requesting]] or [[Step.checking]]`, behavior = `Returns ·` })
     .add({
-      situation = `[[step]] is [[Step.compiling]], [[Step.verifying]], or [[Step.globalVerifying]]`,
+      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.rewording]], or [[Step.checking]]`,
+      behavior = `Returns ·`,
+    })
+    .add({
+      situation = `[[step]] is [[Step.building]], [[Step.compiling]], [[Step.verifying]], or [[Step.globalVerifying]]`,
       behavior = `Returns ▸`,
     })
     .add({

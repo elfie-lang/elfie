@@ -94,7 +94,8 @@ writes code itself and calls `elfie_check`; the CLI records source maps and revi
 thing the server writes is a marker line: `elfie_mark`, offered only to a compiler session, inserts
 one or rewrites the ids of existing ones. It writes only in that session's own batch's regions of
 its target's output files, under its run's directory. A rename touches only markers naming the
-file of the new id's unit. An insertion is refused when the line falls in a region whose marker
+file of the new id's unit; it writes what `Generation.rename` gives, which `compile` also uses
+to move the markers of reworded criteria. An insertion is refused when the line falls in a region whose marker
 names a file outside the batch. It does so because a 64-hex id is copied wrong often enough to matter, and the
 server can copy one it has checked. Marker lines still pass through acceptance like any other line,
 so the CLI stays the only path to "what was accepted". This replaces the earlier rule that the
@@ -523,8 +524,10 @@ LSP/MCP protocols are deliberately not part of this round.
   target's folder only. Deleting a definition file removes its map file on the next compile.
 - **`elfie-compile/` is the home of compile-time data and is checked in.** `elfie-compile/cache/`
   is the exception: `elfie init` adds `/elfie-compile/cache/` to `.gitignore`, and nothing may
-  rely on it. Deleting it changes no plan, request, verdict, or output, only time. Anything
-  that is the only record of something belongs outside `cache/`. This repository ignores it too.
+  rely on it. Deleting it changes no plan or verdict, only time; the one request it can change
+  is that of a batch that would have started from the work its last rejected run kept there (see
+  "Mechanical steps and scheduling" below). Anything that is the only record of something
+  belongs outside `cache/`. This repository ignores it too.
 - **Reading and recording are `Generation.sourceMapsOf` and `Generation.record`**, shared by the
   CLI (`check`, `compile`, `verify`) and every agent server tool that reads maps, replacing the
   reading rule each of them spelled out on its own.
@@ -572,3 +575,126 @@ was chosen.
   right after the new binary is built.
 - **Issue:** the formatter wraps a long `fn` signature inside a generic output type
   (`=> Layer<` / `A,` / `> {`); `layer`'s description was shortened to stay on one line.
+
+# Mechanical steps and scheduling (2026-10-10, ROADMAP phases 4 and 5)
+
+## Reworded criteria (phase 4, item 12)
+
+- **One pairing, stated once.** `changes` calls a removed and an added criterion (or test) of one
+  entity *reworded* when, counting from the first, the one at some position then has an id that is
+  none of the entity's now, and the one at the same position now has an id that was none of its
+  then. `Generation.reworded` turns those pairs into `Rewording`s (`id`, `replaces`, and the old
+  `text`), keeping only those whose new id is a local criterion or test of the unit. A criterion
+  that moved as well as changed is not paired; the compiler still sees it as removed and new, and
+  `elfie_mark`'s rename is for that case.
+- **One rewrite, shared.** `Generation.rename` rewrites a unit's markers from old ids to new ones.
+  It touches only markers naming the unit's file (or a file whose entities moved into it), and
+  keeps every other character. `elfie_mark`'s rename now writes what it returns, so the two never
+  differ.
+- **Before every request.** Whenever the source a unit was last accepted from is recoverable
+  through git, `compile` rewrites the unit's markers in the batch's directory before each call of
+  `Generation.request`. The rewrite is idempotent, so retries and new copies just repeat it.
+  `compile --accept` does the same in the root before it checks a unit.
+- **The request.** `Request.reworded` holds the pairs per file. `Request.removed` leaves out the
+  ids a rewording replaces. In a unit's section a reworded criterion is marked `reworded`, followed
+  by a `replaces <old id> — <old text>` line. The section says that compile has already moved its
+  markers, and that the code is read against the new text. `elfie_task` gives the same mark and
+  line, and counts `reworded` beside new, kept, unknown, and removed.
+- **Reworded-only batches skip the compiler.** `Request.rewordedOnly` lists the units of the
+  batch for which all of these hold: the reason is `requirements`, the previous source is known,
+  nothing is removed, every id is answered or reworded, and every dependency's interface hash is
+  the recorded one. When every unit of a batch is listed, and a compiler and a verifier will run,
+  the batch's first run has no compiler. Its rewritten outputs go straight to `accept` and then to
+  review.
+  - A rejection by `accept` sends the batch to the compiler as its first run, and the rejection
+    counts toward no retry.
+  - A violated review makes the batch's run once more the compiler's first run, with the problems.
+  - Without a verifier the compiler runs as before, because nothing else would read the new text
+    against the code.
+- **A reworded criterion is always reviewed.** Its old id's record is dropped by `reviewsOf`
+  (the id is no longer the unit's), and `review` carries a record only for the id it holds. This
+  holds even when the entity's regions are unchanged, because a rewording may change what is
+  asked.
+- **Marker lines leave the region hash.** `ReviewRequest.hashes` now hashes a region's lines
+  other than those read as a marker. Otherwise moving a reworded criterion's marker, or adding
+  one, would send every other criterion of the entity to review again. **Cost:** every recorded
+  verdict was hashed with its marker lines, so the first compile or verify after this lands
+  re-judges every criterion once.
+
+## Dependency-only batches (phase 4, item 13)
+
+- When every unit of a batch has the reason `dependency`, and the target has a command with a
+  line for both build and test, `compile` runs the build and then the test before any compiler.
+  - They run as `elfie_build` and `elfie_test` run them with no filter and no scope, in the
+    batch's directory, with the same 30-minute stop.
+  - When both succeed, each unit's outputs go to `accept` as they are. The source maps are
+    recorded with the dependency signatures `accept` computes now. No verifier runs, and no
+    review record changes: no code changed, so the region hashes and the verdicts still hold.
+    The batch counts as "accepted on its build and test", which the verifier criteria exclude.
+  - When either command fails, or `accept` rejects a unit, the compiler runs as the batch's first
+    run, and the failure counts toward no retry. A target with no build or test line goes
+    straight to the compiler.
+- **Mixed batches go to the compiler.** Both mechanical paths apply only when every unit of the
+  batch qualifies. A dependency-only unit in a batch with its changed dependency cannot be
+  checked by building before that dependency is regenerated.
+- **Issue:** `plan` puts a dependency-only unit into the open batch that holds its planned
+  dependencies, so the commonest dependency-only unit (one in the same directory as what changed)
+  never forms a batch of its own, and so never takes this path. Planning dependency-only units
+  into batches of their own would let it apply. Now that dependents start on structural
+  acceptance (below), the cost is one more request when the build fails. This was left for a
+  decision.
+
+## Review off the critical path (phase 5, item 14)
+
+- **In copies only.** With `--jobs` above 1 in a git repository, a batch may start once each
+  batch holding one of its dependencies is either done, or has every unit accepted and is not
+  about to run the compiler again (it is being reviewed). In place there is one tree, so batches
+  still run one at a time and wait for their dependencies to be done.
+- **What a dependent sees.** Its copy is made from the root. Then the *accepted changes* of each
+  dependency batch that is not done are merged in, the same way a batch is merged into the root.
+  A batch's accepted changes are the files of its copy that differ from its base, were added, or
+  were removed. The batch's base is taken after that merge, so its own changes never include its
+  dependencies'. When the merge conflicts, the batch waits for that dependency to be done.
+- **Merge order.** A batch is merged into the root only once every batch whose accepted changes
+  it took is done. So the root still holds only reviewed work, and global review still runs in the
+  root after every merge.
+- **The interface cannot change on a retry.** A retry runs from the same plan, so
+  `interfaceOf`, and the `SourceMap.signature` that hashes it, is the same as on the first
+  accepted run; comparing signatures would never re-plan anything. What a retry can change is
+  the code a dependent was built against. So the check is mechanical, at merge time:
+  - When the dependency is done with the changes the dependent took, the dependent's results
+    stand.
+  - Otherwise the dependency's final files are merged into the dependent's copy (and its base),
+    and the target's build and test run there. When both pass, the dependent is merged.
+  - When either fails, the merge conflicts, or the target cannot build or test, the dependent
+    runs again from a new copy. That copy takes its own earlier changes as kept work, and its
+    compiler and verifier runs are counted afresh.
+- **A dependency that stops** stops every dependent that took its changes, as `--continue`
+  already stops dependents, and none of them is merged.
+- `--jobs` now counts batches running the compiler, the verifier, or a target command, not
+  batches in flight, so a batch that waits to merge holds no slot.
+
+## Keeping rejected work (phase 5, item 15)
+
+- When a batch run in a copy stops rejected (a second rejected outcome, or a second review with
+  a violation), `compile` writes its kept work to `elfie-compile/cache/kept/<batch>.json`. The
+  file holds the target, the unit stems in batch order, and, per changed file, its path, its base
+  text, and its text (null for added or removed). The copy is still left in place for a person.
+- The next compile of a batch with the same target and the same unit stems takes that work into
+  its new copy, after its base is kept, by the three-way merge used for the root. A file that
+  conflicts is left as the root has it. A `resuming` progress line counts the files taken and the
+  files left. The request then sees the earlier outputs as the batch's existing outputs. The kept
+  file is removed once the batch is merged.
+- The file lives under `cache/` (not `batches/`, where a copy for a batch named `x` would
+  hold the file of a batch named `x/y`), because losing it costs only time. That is why the cache
+  criterion now allows exactly this one difference in a request.
+- In place (`--jobs 1`, or no git), nothing is kept or taken: a rejected batch's outputs already
+  stay on disk in the root, and the next compile starts from them.
+- Blocked, failed, and questioned batches keep nothing; neither does a batch stopped because its
+  dependency stopped.
+
+## Progress
+
+- Three steps were added: `resuming` (a copy takes kept work), `rewording` (a unit's markers were
+  rewritten, with counts), and `building` (build and test in place of the compiler, or before a
+  merge). The first two are drawn like `requesting` and `building` like `compiling`.

@@ -335,7 +335,7 @@ fn request(session: Session, batch: string, target?: string) is tool: `The full 
 // without scrolling back, and never from definitions that may have changed since the compile
 // planned.
 /// unit: the stem of one unit of the batch, as elfie_units lists it; every unit of the batch when left out
-fn task(session: Session, unit?: string) is tool, compilerTool: `What this compiler run must do: for each unit of its batch, the outputs and the reason, every criterion and test to answer for with its id, place, and text, each marked new, kept, or unknown, and those removed since the outputs were accepted` => ToolResult {
+fn task(session: Session, unit?: string) is tool, compilerTool: `What this compiler run must do: for each unit of its batch, the outputs and the reason, every criterion and test to answer for with its id, place, and text, each marked new, reworded, kept, or unknown, and those removed since the outputs were accepted` => ToolResult {
   @acceptanceCriteria
     .add({
       behavior = `Answers from [[Binding.request]] and [[Binding.program]], and reads no definition file and no output`,
@@ -379,8 +379,18 @@ fn task(session: Session, unit?: string) is tool, compilerTool: `What this compi
       behavior = `The mark is kept`,
     })
     .add({
-      situation = `[[Request.answered]] has an entry for the unit's [[File.path]] that does not hold the id, or the unit's [[Unit.outputs]] is empty`,
+      situation = [
+        `[[Request.answered]] has an entry for the unit's [[File.path]] that does not hold the id, or the unit's [[Unit.outputs]] is empty`,
+        `The id is the [[Rewording.id]] of none of [[Request.reworded]] for the unit's [[File.path]]`,
+      ],
       behavior = `The mark is new`,
+    })
+    .add({
+      situation = `The id is the [[Rewording.id]] of one of [[Request.reworded]] for the unit's [[File.path]]`,
+      behavior = [
+        `The mark is reworded`,
+        `The line is followed by one reading replaces, a space, its [[Rewording.replaces]], a space, an em dash, a space, and its [[Rewording.text]]`,
+      ],
     })
     .add({
       situation = [
@@ -409,7 +419,7 @@ fn task(session: Session, unit?: string) is tool, compilerTool: `What this compi
       behavior = `The unit ends with a line saying which criteria and tests were removed is not known`,
     })
     .add({
-      behavior = `The text ends with a line counting the criteria and tests given as new, kept, unknown, and removed`,
+      behavior = `The text ends with a line counting the criteria and tests given as new, reworded, kept, unknown, and removed`,
     })
     .add({
       situation = `[[unit]] is given and is the stem of no unit of [[Request.batch]]`,
@@ -420,12 +430,12 @@ fn task(session: Session, unit?: string) is tool, compilerTool: `What this compi
     {
       input = [
         Session@like(
-          `Bound to a compiler run of batch a, whose one unit a for def/a.lfy has the reason requirements and the output src/a.rs; its fn f has the criterion c1 on line 4 and the criterion c3 on line 9; the output answered c1 and c2; c2 was on line 6 and is removed`,
+          `Bound to a compiler run of batch a, whose one unit a for def/a.lfy has the reason requirements and the output src/a.rs; its fn f has the criterion c1 on line 4, the criterion c3 on line 9, and the criterion c4 on line 12; the output answered c1, c2, and c5; the request has c2, which was on line 6, as removed, and c4 as rewording c5`,
         ),
         undefined,
       ],
       expect = ToolResult@like(
-        `Not an error: a line reading a, def/a.lfy, and requirements; a line listing src/a.rs; a line naming f; a line reading kept, the id of c1, def/a.lfy:4, and the text of c1; a line reading new, the id of c3, def/a.lfy:9, and the text of c3; a line saying no entity lacks a criterion or test; a line saying these were removed, then a line reading removed, the id of c2, def/a.lfy:6, and the text of c2; a last line counting 1 new, 1 kept, 0 unknown, and 1 removed`,
+        `Not an error: a line reading a, def/a.lfy, and requirements; a line listing src/a.rs; a line naming f; a line reading kept, the id of c1, def/a.lfy:4, and the text of c1; a line reading new, the id of c3, def/a.lfy:9, and the text of c3; a line reading reworded, the id of c4, def/a.lfy:12, and the text of c4, then a line reading replaces, the id of c5, and the text of c5; a line saying no entity lacks a criterion or test; a line saying these were removed, then a line reading removed, the id of c2, def/a.lfy:6, and the text of c2; a last line counting 1 new, 1 reworded, 1 kept, 0 unknown, and 1 removed`,
       ),
     },
     {
@@ -516,10 +526,12 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
 
 // Decision: an id is 64 hex digits and more, which an agent copies wrong often enough to matter, so
 // the server writes a marker's id from one it has checked, and moves every marker of a reworded
-// criterion to its new id in one call. Marker lines are written only in the batch's own regions: a
-// rename rewrites only the markers that name the file of the unit the new id belongs to, and an
-// insertion is refused inside a region of a file outside the batch, so it never touches another
-// unit's markers.
+// criterion to its new id in one call. Compile already moves the markers of a criterion reworded in
+// place before the compiler runs; a rename is for the pairs it could not see, such as a criterion
+// that moved as well as changed. Marker lines are written only in the batch's own regions: a
+// rename rewrites what [[Generation.rename]] rewrites, only the markers that name the file of the
+// unit the new id belongs to, and an insertion is refused inside a region of a file outside the
+// batch, so it never touches another unit's markers.
 // Decision: the arguments a call gives say what it wants: replaces asks for a rename, and file,
 // line, and entity ask for an insertion; a call that gives both, or neither whole, is refused.
 /// id: the id a marker names afterwards: for a rename, the new id; for an insertion, the id of the criterion or test the new marker answers for, left out for a marker naming only its entity
@@ -556,12 +568,11 @@ fn mark(session: Session, id?: string, replaces?: string, file?: string, line?: 
     })
     .add({
       situation = [`[[replaces]] is given`, `[[id]] is the id of a local criterion or test of a unit of the batch`],
-      behavior = `The markers rewritten are those of the output files of the batch's target whose [[Marker.requirement]] is [[replaces]] and whose [[Marker.file]] is the [[File.path]] of that unit, or of a file declaring an entity moved into that unit`,
+      behavior = `Each output of [[Generation.rename]] of that unit, the output files of the batch's target as they are when the call arrives, and [[replaces]] mapped to [[id]], is [[Files.write]] at its path under [[Binding.directory]], and no other output is written`,
     })
     .add({
-      behavior = `A rewritten marker's line has [[replaces]] replaced by [[id]], and every other character of the line, and every other line of its file, is kept`,
+      behavior = `The markers rewritten are those [[Generation.rename]] rewrites`,
     })
-    .add({ behavior = `An output with no rewritten marker is not written` })
     .add({
       situation = `Some marker is rewritten`,
       behavior = `The text counts the markers rewritten, then gives one line for each: the output path, a colon, its line, a space, and the marker as it reads afterwards after @lfy and a space`,

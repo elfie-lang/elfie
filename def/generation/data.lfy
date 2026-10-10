@@ -199,6 +199,15 @@ d RemovedRequirement: `A local criterion or test a unit's existing outputs were 
   $text: `What it said: [[LoweredCriterion.text]] for a criterion, its input and its expectation as written for a test` = string;
 }
 
+// Decision: a criterion reworded in place keeps its place but not its id, because an id hashes the
+// text. Pairing it with the id it replaces lets markers move to the new id mechanically, while what
+// the new text asks is still read against the code.
+d Rewording: `A local criterion or test whose id changed since a unit's outputs were accepted because its text changed while it kept its position among its entity's criteria or tests` {
+  $id: `The id it has now` = string;
+  $replaces: `The id it had when the unit's outputs were accepted` = string;
+  $text: `What it said then, as [[RemovedRequirement.text]] spells what a removed one said` = string;
+}
+
 d Request: `Everything the compiler is handed to produce the outputs of one batch` {
   $batch: `The batch` = Batch;
   $instructions: `The prompt: what to produce, where, the rules for producing it, and how to report the outcome` = string;
@@ -213,9 +222,13 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
   $answered: `The ids of the local criteria and tests each unit's existing outputs were generated against, by [[File.path]]; absent where unknown` = Object<
     string[],
   >;
-  $removed: `The local criteria and tests each unit's existing outputs were generated against that the unit no longer has, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
+  $removed: `The local criteria and tests each unit's existing outputs were generated against that the unit no longer has and that no criterion or test now rewords, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
     RemovedRequirement[],
   >;
+  $reworded: `The local criteria and tests of each unit that reword one its existing outputs were generated against, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
+    Rewording[],
+  >;
+  $rewordedOnly: `The [[File.path]] of each unit of the batch whose existing outputs differ from what it asks for now only in the ids of reworded criteria and tests, in batch order` = string[];
   $existing: `The current text of each existing output of the batch, by path` = Object<string>;
   $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
   $guidance: `The criteria of [[Target.declaration]], in the guidance order [[Targets.Target]] gives, with template values rendered from the layers' arguments` = Criterion[];

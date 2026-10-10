@@ -33,6 +33,9 @@ d Invocation: `One parsed command line` {
 enum Step: `What a compile is doing, as progress reports it` {
   planned = `the plan is made`,
   requesting = `a batch's request is being assembled`,
+  resuming = `a batch's copy is taking the work its last rejected run kept`,
+  rewording = `the markers of a unit's reworded criteria and tests were rewritten to their new ids`,
+  building = `the target's build and test commands are running on a batch in place of the compiler, or before it is merged`,
   compiling = `the compiler is running on a batch`,
   checking = `the outputs of a unit are being checked`,
   accepted = `a unit was accepted and recorded`,
