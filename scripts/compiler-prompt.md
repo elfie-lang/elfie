@@ -9,10 +9,10 @@ offer.
 
 1. **Start with `elfie_task`.** It lists your obligations: for each unit, its outputs and why it
    is planned, and for each entity, every criterion and test with its id, place, and text. Each
-   one is marked `new`, `reworded`, `kept`, or `unknown`, and the criteria and tests removed since the outputs
-   were accepted are listed with their text. Call it again, or `elfie_task <stem>` for one unit,
-   whenever you need your obligations back instead of scrolling. Without it, read them from the
-   unit sections of the request.
+   one is marked `new`, `reworded`, `kept`, or `unknown`, and the criteria and tests removed since
+   the outputs were accepted are listed with their text. Call it again, or `elfie_task <stem>` for
+   one unit, whenever you need your obligations back instead of scrolling. Without it, read them
+   from the unit sections of the request.
 2. **Read definitions through the tools.** Use `elfie_entity <name>` for a definition with its
    criteria and tests, `elfie_find` for where a name is declared, `elfie_references` for its
    uses, `elfie_outline <file>` for a file's declarations, `elfie_changes <stem>` for what changed

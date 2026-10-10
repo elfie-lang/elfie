@@ -65,6 +65,9 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   // criteria are new even when the source the output was generated from cannot be recovered.
   $answered: `The ids of the unit's local criteria and tests when the output was accepted, sorted; empty in a map file written before they were recorded` = string[];
   $signature: `SHA-256 of the unit's interface text when the output was accepted, as lowercase hex` = string;
+  // Decision: the output's own text is hashed too, so a step that would keep an output as it is can
+  // tell whether it is still the text that was accepted and reviewed.
+  $text: `SHA-256 of the output's text as it was accepted, as lowercase hex; empty in a map file written before it was recorded, which no hash equals` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = Object<
     string,
   >;

@@ -739,16 +739,23 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // Decision: in copies, review is off the critical path. A dependent starts once its dependencies'
   // units are accepted structurally, in a copy that takes their accepted changes, while their
   // verifier runs. It is merged only after they are, so the root still holds only reviewed work.
+  // Being done is not being merged: a done batch may still wait for its own dependencies, so what
+  // a dependent waits for, and takes, is decided by whether a batch's files are merged into the
+  // root, through every batch its dependencies took changes from as well.
   // Decision: a retry is made from the plan its first run was, so the interface text
   // [[SourceMap.signature]] hashes cannot differ between them; what can differ is the code a
-  // dependent was built against. So when a dependency is done with changes other than those a
+  // dependent was built against. So when a dependency is merged with changes other than those a
   // dependent took, the dependent's build and tests decide whether its results stand, and it runs
   // again when they fail or the target cannot run them.
   // Decision: in place there is one tree, so batches run one at a time and a dependent starts only
   // once its dependencies are done.
   // Decision: a batch run in a copy that ends rejected keeps its changes, and the next compile of
-  // the same batch starts from them, so its work is not lost. They are kept in elfie-compile/cache,
-  // because losing them costs only time. In place the root already keeps them.
+  // the same batch starts from them while its units' code and criteria are as they were, so its
+  // work is not lost. They are kept in elfie-compile/cache, because losing them costs only time. In
+  // place the root already keeps them. Kept work was rejected and never accepted, so a request that
+  // starts from it says so and carries the problems that rejected it.
+  // Decision: when the compile stops, the runs still going are stopped too, because nothing they
+  // could produce would be merged.
   // Decision: no git variable is added to the environment of the compiler, the verifier, or a
   // test, so a repository one of them creates elsewhere stays its own.
   @acceptanceCriteria
@@ -759,7 +766,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `--jobs is more than 1`, `The root is a git repository`],
-      behavior = `A batch starts only once every batch holding a dependency of one of its units is done, or has every unit accepted by [[Generation.accept]] and is neither running the compiler nor about to run it again`,
+      behavior = `A batch starts only once every batch that holds a dependency of one of its units, directly or through the units of other batches, has its files merged into the root, or has every unit accepted by [[Generation.accept]] and is neither running the compiler nor about to run it again`,
     })
     .add({
       situation = `compile`,
@@ -790,46 +797,64 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [`compile`, `The batch's directory is a copy`],
       behavior = `Each file is copied to the same path in the copy, byte for byte, keeping whether it is executable`,
     })
-    // A batch's accepted changes are every file of its copy that differs from its base, was added,
-    // or was removed, as its copy holds them when it last had every unit accepted.
     .add({
-      situation = [
-        `compile`,
-        `The batch's directory is a copy`,
-        `A batch holding a dependency of one of its units is not done when the batch starts`,
-      ],
-      behavior = `The accepted changes of that batch are merged into the copy, as a batch's files are merged into the root, once the root's files are copied`,
+      situation = [`compile`, `The batch's directory is a copy`],
+      behavior = `A batch's accepted changes are each file of its copy that differs from its base, was added, or was removed, with what the copy held for it the last time every unit of the batch was accepted`,
     })
     .add({
       situation = [
         `compile`,
         `The batch's directory is a copy`,
-        `The accepted changes of a batch holding a dependency of one of its units cannot be merged into the copy without a conflict`,
+        `A batch that holds a dependency of one of its units, directly or through the units of other batches, does not have its files merged into the root when the batch starts`,
       ],
-      behavior = [`The copy is removed`, `The batch starts only once that batch is done`],
+      behavior = `Once the root's files are copied, the accepted changes of each such batch are merged into the copy, in plan order, as a batch's files are merged into the root`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The batch's directory is a copy`,
+        `The accepted changes of such a batch cannot be merged into the copy without a conflict`,
+      ],
+      behavior = [`The copy is removed`, `The batch starts only once that batch has its files merged into the root`],
     })
     .add({
       situation = [`compile`, `The batch's directory is a copy`],
-      behavior = `What each file of the copy holds once the accepted changes of its dependencies are merged in, and before any kept work is taken, is kept as the batch's base`,
+      behavior = `What each file of the copy holds once the accepted changes it takes are merged in, and before any kept work is taken, is kept as the batch's base`,
     })
     .add({
       situation = [
         `compile`,
         `The batch's directory is a copy`,
         `elfie-compile/cache/kept/<batch>.json under the root names the batch's target and the stems of its units in batch order`,
+        `For each unit, the hash and the requirements the file gives it are the SHA-256 of [[Unit.text]] and the SHA-256 of its local criterion and test ids, taken as [[SourceMap.requirements]] takes them`,
       ],
       behavior = [
-        `After the base is kept, each file the kept work holds is merged into the copy, as a batch's file is merged into the root, with the kept base of the file as the base and its kept text as the batch's`,
-        `A kept file that cannot be merged without a conflict is left as the copy holds it`,
+        `The batch takes its kept work`,
+        `After the base is kept, each file the kept work holds is merged into the copy as the three-way merge, given by [[Process.run]] of git merge-file, of what the copy holds for it and its kept text, against its kept base`,
+        `A kept file whose merge has a conflict is left as the copy holds it, and that is neither a rejection nor a reason to run the batch again`,
         `One resuming progress line counts the files taken and the files left`,
       ],
     })
     .add({
       situation = [
         `compile`,
-        `elfie-compile/cache/kept/<batch>.json under the root does not name the batch's target and the stems of its units in batch order`,
+        `elfie-compile/cache/kept/<batch>.json under the root does not name the batch's target and the stems of its units in batch order, or gives a unit a hash or requirements that are no longer its own`,
       ],
       behavior = `The batch takes nothing from it`,
+    })
+    .add({
+      situation = [`compile`, `A batch took its kept work`],
+      behavior = [
+        `[[Request.instructions]] of each request for the batch in the compile ends with a line saying that its existing outputs hold work a run rejected and that was never accepted`,
+        `That line is followed by the problems the kept work holds, one per line`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A file under elfie-compile/cache/kept for a planned target names a stem that is no unit of the plan`,
+      ],
+      behavior = `The file is removed by [[Files.remove]] before any batch runs`,
     })
     .add({
       situation = [`compile`, `The batch's directory is a copy`],
@@ -840,7 +865,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `No git variable is added to the environment of the compiler or the verifier`,
     })
     .add({
-      situation = [`compile`, `The batch's directory is a copy`, `The batch is not done`],
+      situation = [`compile`, `The batch's directory is a copy`, `The batch's files are not merged into the root`],
       behavior = `The root holds none of the batch's changes`,
     })
     .add({
@@ -848,7 +873,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `compile`,
         `The batch's directory is a copy`,
         `The batch is done`,
-        `Every batch whose accepted changes its copy took is done, and its changes as merged into the root are those the copy took`,
+        `Every batch whose accepted changes its copy took has its files merged into the root, and the files its merge wrote into the root hold, for each of the accepted changes the copy took, what that change held`,
       ],
       behavior = `Every file of the copy outside elfie-compile, elfie-requests, and its .git file that differs from the base, was added, or was removed, is merged into the root`,
     })
@@ -856,7 +881,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [
         `compile`,
         `The batch's directory is a copy`,
-        `A batch whose accepted changes its copy took is not done`,
+        `A batch whose accepted changes its copy took does not have its files merged into the root`,
       ],
       behavior = `Nothing of the batch is merged into the root`,
     })
@@ -865,18 +890,18 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `compile`,
         `The batch's directory is a copy`,
         `The batch is done`,
-        `A batch whose accepted changes its copy took is done, and its changes as merged into the root differ from those the copy took`,
+        `A batch whose accepted changes its copy took has its files merged into the root, and the files its merge wrote into the root do not hold, for some accepted change the copy took, what that change held`,
       ],
       behavior = [
-        `Each file of that batch's changes as merged into the root is merged into the copy, as a batch's file is merged into the root, with what the copy took for that file as the base`,
-        `The base of the batch takes that batch's files as merged into the root in place of those it took`,
+        `Each file that batch's merge wrote into the root is merged into the copy, as a batch's file is merged into the root, with what the copy took for that file as the base`,
+        `The base of the batch takes the files that batch's merge wrote into the root in place of those it took`,
         `The target's build and test commands then run in the copy, as they run for a batch whose units all have the reason dependency`,
       ],
     })
     .add({
       situation = [
         `compile`,
-        `The build and test commands run in a batch's copy because a batch it took accepted changes from is done with other changes`,
+        `The build and test commands run in a batch's copy because a batch it took accepted changes from was merged with other files`,
         `Both succeed`,
       ],
       behavior = `The batch is merged into the root as a done batch is`,
@@ -884,23 +909,34 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile`,
-        `A batch is done, and a batch whose accepted changes its copy took is done with other changes`,
-        `Those changes cannot be merged into the batch's copy without a conflict, the build or the test command fails in it, or the target has no line for build or for test`,
+        `A batch is done, and a batch whose accepted changes its copy took was merged with other files`,
+        `Those files cannot be merged into the batch's copy without a conflict, the build or the test command fails in it, or the target has no line for build or for test`,
       ],
       behavior = [
         `Nothing of the batch is merged into the root`,
-        `A retrying progress line names the batch whose changes differ`,
+        `A retrying progress line names the batch whose files differ`,
         `The batch runs again from a new copy, which takes its changes as kept work is taken, and its runs of the compiler and the verifier are counted afresh`,
+      ],
+    })
+    // Decision: a batch that runs again after it was done is like any batch that runs again, so the
+    // batches that took its accepted changes wait for its merge and are checked against it, and the
+    // global review waits for both.
+    .add({
+      situation = [`compile`, `A batch that was done runs again`],
+      behavior = [
+        `It is no longer done`,
+        `A batch that took its accepted changes is merged only as the rules for a batch whose accepted changes it took say, against what its merge after it runs again writes`,
       ],
     })
     .add({
       situation = [
         `compile`,
         `The batch's directory is a copy`,
-        `A batch whose accepted changes its copy took stops without being done`,
+        `A batch whose accepted changes its copy took stops without its files merged into the root`,
       ],
       behavior = [
         `Nothing of the batch is merged into the root`,
+        `A run of the compiler, the verifier, or a command of the target that is running for the batch is stopped, with every process of its group, and what it gives is ignored`,
         `The batch stops as a batch that depends on a stopped batch does`,
       ],
     })
@@ -918,10 +954,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `The batch's directory is a copy`, `The batch's source maps are recorded in the root`],
-      behavior = [
-        `The copy is removed`,
-        `elfie-compile/cache/kept/<batch>.json under the root is removed when it exists`,
-      ],
+      behavior = `The copy is removed`,
+    })
+    .add({
+      situation = [`compile`, `A batch's source maps are recorded by [[Generation.record]]`],
+      behavior = `elfie-compile/cache/kept/<batch>.json under the root is removed when it exists, whatever the batch's directory`,
     })
     .add({
       situation = [`A file is merged into the root`, `The root's file still holds what the base holds`],
@@ -973,16 +1010,25 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `A batch's kept work is written`,
-      behavior = `It is [[Json.stringify]] of one object holding the key target, reading the batch's [[Target.identifier]], the key units, listing the stems of its units in batch order, and the key files, listing in path order one object for each file of the copy that would be merged into the root were the batch done, with the keys path, base reading what the base holds for it or null when the batch added it, and text reading what the copy holds for it or null when the batch removed it`,
+      behavior = [
+        `It is [[Json.stringify]] of one object with the keys target, units, problems, and files`,
+        `target reads the batch's [[Target.identifier]]`,
+        `units lists, for each unit in batch order, one object with the keys stem, reading its [[Unit.stem]], hash, reading the SHA-256 of its [[Unit.text]] as lowercase hex, and requirements, reading the SHA-256 of its local criterion and test ids, taken as [[SourceMap.requirements]] takes them`,
+        `problems lists the problems of the rejection that stopped the batch, in the order they were printed`,
+        `files lists in path order one object for each file of the copy that would be merged into the root were the batch done, with the keys path, base reading what the base holds for it or null when the batch added it, and text reading what the copy holds for it or null when the batch removed it`,
+      ],
     })
     .add({
       situation = [`compile`, `The batch's directory is the root`],
-      behavior = `No kept work is written, taken, or removed for the batch, because a rejected batch's outputs are left on disk in the root`,
+      behavior = `No kept work is written or taken for the batch, because a rejected batch's outputs are left on disk in the root`,
     })
     .add({ situation = [`compile`, `The compile stops`], behavior = `No batch starts after that` })
     .add({
       situation = [`compile`, `The compile stops`],
-      behavior = `The batches already running finish as they would`,
+      behavior = [
+        `Every run of the compiler, the verifier, or a command of the target still running for a batch is stopped, with every process of its group, and what it gives is ignored`,
+        `Nothing of a batch whose run was stopped is merged into the root or recorded`,
+      ],
     })
     .add({
       situation = [`compile`, `Lines of two batches running at once arrive together`],
@@ -990,7 +1036,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `Every batch is done`],
-      behavior = `The global review runs in the root, after every batch has been merged`,
+      behavior = `The global review runs in the root, after every batch has been merged and no batch is to run again`,
     });
 
   // The environment of the compiler and the verifier
@@ -1135,7 +1181,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names no verifier, or --no-verify is given`,
       ],
       behavior = [
-        `Each unit's [[Verdict.sourceMaps]] are recorded by [[Generation.record]]`,
+        `Each unit's [[Verdict.sourceMaps]] are recorded by [[Generation.record]]: at once when the batch's directory is the root, and only once its files are merged into the root when it is a copy`,
         `The batch counts as done`,
       ],
     })
@@ -1267,10 +1313,27 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // outputs are accepted as they are and recorded against the new interfaces, and no verifier runs,
   // since no code changed and its review records still hold. Both paths apply only when every unit
   // of the batch qualifies, because a batch with any other unit needs the compiler anyway.
+  // Decision: both paths keep outputs as they are, so both apply only to outputs whose text is still
+  // the text accepted, as [[SourceMap.text]] records it, and never to a batch that took kept work,
+  // which was rejected and never reviewed.
+  // Decision: markers are rewritten only when a run of the compiler or the reworded-only path follows,
+  // never for requests written for a compiler run by hand. In place the rewritten ids sit in the root
+  // until the batch is accepted; that is intended, since they name criteria the unit has.
+  // Decision: the counts that decide a retry (the first or second rejected outcome, the first or
+  // second failed run, the first or second verifier's report) count runs of the compiler and of the
+  // verifier only; a first run that skipped the compiler is not a run of it.
   @acceptanceCriteria
     .add({
       situation = [
+        `compile`,
+        `A batch's first run skipped the compiler, as a reworded-only or a dependency-only batch's may`,
+      ],
+      behavior = `The skipped run counts as no run of the compiler in any count that decides whether the batch is run once more or stops`,
+    })
+    .add({
+      situation = [
         `compile without --dry-run and without --accept`,
+        `elfie.json names a compiler`,
         `The source of a unit at its last accepted generation is recoverable through git`,
       ],
       behavior = `Before each call of [[Generation.request]] for its batch, each output that [[Generation.rename]] gives is [[Files.write]] at its path in the batch's directory, given the unit, the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, and the [[Rewording.replaces]] of each of [[Generation.reworded]] of the workspace, the unit, and that source, mapped to its [[Rewording.id]]`,
@@ -1293,6 +1356,8 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names a compiler and a verifier`,
         `--no-verify is not given`,
         `Every unit of a batch is in [[Request.rewordedOnly]] of the request made for its first run`,
+        `Every output of the batch's units, read in the batch's directory before any of its markers is rewritten, has a SHA-256 equal to [[SourceMap.text]] of its map`,
+        `The batch took no kept work`,
       ],
       behavior = [
         `The compiler does not run for the batch's first run`,
@@ -1328,6 +1393,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = `The batch's run once more is the compiler's first run on it, with the problems appended to [[Request.instructions]]`,
     })
+    .add({
+      situation = [
+        `compile`,
+        `Every unit of a batch is in [[Request.rewordedOnly]] of its first request`,
+        `elfie.json names no verifier, or --no-verify is given`,
+      ],
+      behavior = `The compiler runs on the batch as on any batch`,
+    })
     // Dependency only
     .add({
       situation = [
@@ -1335,6 +1408,8 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names a compiler`,
         `Every unit of a batch has the reason dependency`,
         `[[Target.commands]] of the batch's target holds a command with a line for the build operation and one with a line for the test operation`,
+        `Every output of the batch's units, read in the batch's directory, has a SHA-256 equal to [[SourceMap.text]] of its map`,
+        `The batch took no kept work`,
       ],
       behavior = [
         `Before the compiler would first run on the batch, a building progress line is printed and the build command runs in the batch's directory`,
@@ -1372,7 +1447,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `The batch is accepted on its build and test`,
         `Each unit's [[Verdict.outputs]] are [[Files.write]] back in the batch's directory`,
         `No verifier runs on the batch`,
-        `Each unit's [[Verdict.sourceMaps]] are recorded by [[Generation.record]]`,
+        `Each unit's [[Verdict.sourceMaps]] are recorded by [[Generation.record]]: at once when the batch's directory is the root, and only once its files are merged into the root when it is a copy`,
         `No review record file of the batch's units changes`,
         `The batch is done`,
       ],
@@ -1402,6 +1477,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `Not every unit of a batch is in [[Request.rewordedOnly]] of its request, and not every unit of it has the reason dependency`,
       ],
       behavior = `The compiler runs on the batch as on any batch`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `Every unit of a batch is in [[Request.rewordedOnly]] of its first request, or every unit of it has the reason dependency`,
+        `An output of the batch's units, read in the batch's directory before any of its markers is rewritten, has a SHA-256 other than [[SourceMap.text]] of its map, or the batch took kept work`,
+      ],
+      behavior = `The compiler runs on the batch as on any batch, and no build or test command runs first`,
     });
 
   // Verifying
@@ -1464,7 +1547,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = [
         `No verifier runs on the batch`,
         `One reviewed progress line is printed, counting no reviews and the verdicts of [[ReviewRequest.carried]] as carried`,
-        `The source maps [[Generation.accept]] derived for the batch are recorded by [[Generation.record]] for each unit`,
+        `The source maps [[Generation.accept]] derived for the batch are recorded by [[Generation.record]] for each unit: at once when the batch's directory is the root, and only once its files are merged into the root when it is a copy`,
         `The batch is done`,
       ],
     })
@@ -1516,7 +1599,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `[[ReviewReport.unplaced]] of it is empty`,
       ],
       behavior = [
-        `The source maps [[Generation.accept]] derived for the batch are recorded by [[Generation.record]] for each unit`,
+        `The source maps [[Generation.accept]] derived for the batch are recorded by [[Generation.record]] for each unit: at once when the batch's directory is the root, and only once its files are merged into the root when it is a copy`,
         `The batch is done`,
       ],
     })
@@ -1970,6 +2053,38 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       expect = number@like(
         `0, after a building line for a and an accepted line, with neither the compiler nor the verifier run, elfie-compile/maps/rust/a.json recording b's interface hash as it is now, and no review record file changed`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--jobs`,
+          `2`,
+          `--root`,
+          string@like(
+            `A git root with one target rust whose build and test command lines both exit 0, def holding b.lfy and a.lfy using ./b in different directories so they are two batches, both edited since recorded, a compiler that writes each unit's output once and the same way every run, and a verifier that is still reviewing b when a's compiler starts and finds nothing violated`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after a's batch starts in a copy holding b's accepted output before b's review ends, b is merged into the root first, a is merged after it without any build or test run, and both maps are recorded`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--jobs`,
+          `2`,
+          `--root`,
+          string@like(
+            `The same root, with a verifier whose first review of b finds one criterion violated, and a compiler whose run once more on b rewrites the body of one function in b's output`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after a's batch starts against b's first accepted output, b runs once more and is merged, a building line for a, a's copy taking b's output as merged, then a merged after the build and test pass, with a's compiler run once`,
       ),
     },
   );

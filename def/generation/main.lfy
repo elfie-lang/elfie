@@ -858,6 +858,9 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
       behavior = `[[SourceMap.signature]] of each of [[Verdict.sourceMaps]] is the SHA-256 of [[interfaceOf]] [[unit]]`,
     })
     .add({
+      behavior = `[[SourceMap.text]] of each of [[Verdict.sourceMaps]] is the SHA-256, as lowercase hex, of [[Output.text]] of the output it is for as [[Verdict.outputs]] holds it`,
+    })
+    .add({
       behavior = `[[SourceMap.dependencies]] of each of [[Verdict.sourceMaps]] maps the source path of each of [[Unit.dependencies]] to the SHA-256 of [[interfaceOf]] it, as computed during this call`,
     })
     .add({
@@ -939,6 +942,10 @@ fn sourceMapsOf(workspace: Workspace, target?: string): `Every source map record
     .add({
       situation = `A recorded map has no answered key`,
       behavior = `It is read with [[SourceMap.answered]] empty`,
+    })
+    .add({
+      situation = `A recorded map has no text key`,
+      behavior = `It is read with [[SourceMap.text]] empty`,
     })
     .add({
       situation = [
@@ -1321,6 +1328,14 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       ],
       expect = [Change@like(`f, criteria, detail naming c2 removed and c4 added and calling them reworded`)],
     },
+    {
+      input = [
+        Workspace@like(`def holds a.lfy declaring a fn f with criteria c0, then c1, then c5`),
+        Unit@like(`The unit of a.lfy`),
+        string@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c5`),
+      ],
+      expect = [Change@like(`f, criteria, detail naming c2 removed and c0 and c5 added, and calling no pair reworded`)],
+    },
   );
 }
 
@@ -1412,7 +1427,7 @@ fn rename(unit: Unit, outputs: Output[], ids: Object<string>): `The output files
 // Decision: a criterion or test is reviewed again only when nothing says its verdict still holds:
 // it has no record, its last verdict was not satisfied, or the code of its entity changed since. A
 // change to code outside the entity's regions, such as a helper no marker names, does not count.
-// Decision: a marker line is no part of a region's hash, so moving a reworded criterion's markers to
+// Decision: a marker comment is no part of a region's hash, while the code on its line is, so moving a reworded criterion's markers to
 // its new id, or adding a marker, does not send the other criteria of the entity to review again.
 // A reworded criterion is reviewed all the same: its new text may ask for something else, so no
 // verdict on the id it replaces stands for it.
@@ -1429,7 +1444,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string,
       behavior = `The regions of an entity are each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the file that declares the entity, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
     })
     .add({
-      behavior = `[[ReviewRequest.hashes]] gives each local criterion and test of the units of [[batch]] the SHA-256, as lowercase hex, of the text of the regions of the entity it belongs to: each region's lines of its output other than those read as a [[Marker]], one region after another, each line followed by a line break`,
+      behavior = `[[ReviewRequest.hashes]] gives each local criterion and test of the units of [[batch]] the SHA-256, as lowercase hex, of the text of the regions of the entity it belongs to: each region's lines of its output, each with the marker comment it carries, from [[Target.markerComment]] before @lfy to the end of the line, and any white space before it, removed, and every line that is then empty left out, one region after another, each line followed by a line break`,
     })
     .add({
       situation = `The output of a region cannot be read`,
