@@ -1,6 +1,7 @@
 use "../generation/data";
 use "../generation/main" as Generation;
 use "../grammar/main" as Grammar;
+use "../interpret/data";
 use "../model/data";
 use "../model/main" as Binder;
 use "../query/main" as Query;
@@ -31,7 +32,10 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
       situation = [`initialize arrives`, `[[root]] is not given`],
       behavior = `[[Session.workspace]] is [[Loader.load]] of the current directory`,
     })
-    .add({ behavior = `The tools listed are exactly the fns of this file that carry [[tool]]` })
+    .add({
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]]`,
+    })
+    .add({ behavior = `[[Session.binding]] is undefined` })
     .add({ behavior = `No resource and no prompt is listed` })
     .add({ behavior = `Calls are handled one at a time, in the order received` })
     .add({
@@ -73,6 +77,84 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
       ),
     },
   );
+}
+
+// Decision: a compile hosts the agent server itself, so every agent it runs reads the plan the
+// compile made, not one a server of its own re-made from files that may have changed since, and its
+// verdicts reach the CLI through the server rather than through text it prints. The server still
+// never writes a file: what elfie_report records stays in memory until the CLI closes the session.
+// Decision: the server listens only on 127.0.0.1 and refuses any request without the host's token,
+// so no other program on the machine can call a tool, even one that finds the port.
+// Decision: the ecosystem's protocol library already serves the protocol over streamable HTTP
+// (rmcp's transport-streamable-http-server feature, mounted in an axum router), so the host adds
+// only the token check, the session routes, and the bindings in front of it.
+fn host(): `Serve agents over HTTP on this machine for the length of one compile or verify, one hosted session per run of the compiler or the verifier` => Host {
+  @acceptanceCriteria
+    .add({ behavior = `Speaks the [[Protocol]] over its streamable HTTP transport` })
+    .add({ behavior = `Listens on 127.0.0.1 only, at a port the operating system picks` })
+    .add({ behavior = `[[Host.url]] names the address and port it listens on` })
+    .add({
+      behavior = `[[Host.token]] is 64 lowercase hex digits from the operating system's secure random source, new for each call of [[host]]`,
+    })
+    .add({
+      situation = `A request does not carry the header Authorization reading Bearer, a space, and [[Host.token]]`,
+      behavior = [`It is answered with status 401`, `No tool runs for it`],
+    })
+    .add({
+      situation = [`A request carries the token`, `Its path is not the path of an open session`],
+      behavior = [`It is answered with status 404`, `No tool runs for it`],
+    })
+    .add({
+      behavior = `[[Host.open]] returns [[Host.url]] followed by sessions, a slash, and a number no earlier session of the host had`,
+    })
+    .add({
+      behavior = `Every request at a session's URL, under any MCP session id or none, acts on that hosted session, sharing its [[Session.binding]] and [[Session.reviews]]`,
+    })
+    .add({ behavior = `[[Session.binding]] of a session is the [[Binding]] [[Host.open]] was given for it` })
+    .add({
+      behavior = `[[Session.workspace]] of a session is [[Program.workspace]] of [[Binding.program]], with [[Workspace.root]] read as [[Binding.directory]]`,
+    })
+    .add({
+      behavior = `No call of a session re-reads a definition file or elfie.json, so an edit to them during a compile takes effect at the next compile`,
+    })
+    .add({
+      behavior = `Every call of a session reads outputs and source maps from disk under [[Binding.directory]] as they are when the call arrives`,
+    })
+    .add({
+      situation = [
+        `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
+        `[[Binding.sourceMaps]] is not empty`,
+      ],
+      behavior = `Every map read whose [[SourceMap.target]] and [[SourceMap.source]] are those of a map of [[Binding.sourceMaps]] is left out, and every map of [[Binding.sourceMaps]] is read in their place`,
+    })
+    .add({
+      situation = `[[Binding.role]] of a session is compiler`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]]`,
+    })
+    .add({
+      situation = `[[Binding.role]] of a session is verifier`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[check]]`,
+    })
+    .add({ behavior = `No resource and no prompt is listed` })
+    .add({ behavior = `The calls of one session are handled one at a time, in the order received` })
+    .add({ behavior = `A call of one session never waits for a call of another session to end` })
+    .add({ behavior = `[[Session.reviews]] of a new session is empty` })
+    .add({
+      behavior = [
+        `[[Host.close]] of the URL of an open session returns [[Session.reviews]] of it`,
+        `The session is no longer open afterwards`,
+      ],
+    })
+    .add({
+      situation = `[[Host.close]] is given a URL that is not an open session's`,
+      behavior = `Returns an empty list`,
+    })
+    .add({
+      behavior = [`[[Host.stop]] closes every open session`, `The port is no longer listened on once it returns`],
+    })
+    .add({ behavior = `The host never writes a file` })
+    .add({ behavior = `The host writes nothing to standard output` })
+    .add({ situation = `No port can be listened on`, behavior = `[[host]] fails, saying why` });
 }
 
 // Decision: the line below is the agent server's own contract for a diagnostic. The CLI states its
@@ -190,6 +272,10 @@ fn request(session: Session, batch: string, target?: string) is tool: `The full 
       behavior = `An error saying which`,
     })
     .add({
+      situation = [`[[Session.binding]] is set`, `The batch [[batch]] names is not [[Binding.batch]]`],
+      behavior = `An error saying the session acts only on its own batch, naming it or the global review, and no request`,
+    })
+    .add({
       situation = `[[Plan.problems]] of the plan elfie_units shows is not empty`,
       behavior = `An error listing each of [[Plan.problems]], and no request`,
     });
@@ -209,12 +295,18 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
     .add({
       situation = `[[Generation.accept]] of the unit rejects it`,
       behavior = `An error listing [[Verdict.problems]]`,
+    })
+    .add({
+      situation = [`[[Session.binding]] is set`, `The unit [[unit]] names is not a unit of [[Binding.batch]]`],
+      behavior = `An error saying the session acts only on its own batch, naming it, and nothing is checked`,
     });
 }
 
 // Decision: the source maps every tool below reads are [[Generation.sourceMapsOf]] the workspace,
 // as elfie_units reads them, so what a tool answers is what the last acceptance recorded in
-// elfie-compile/maps, never a guess from the text on disk.
+// elfie-compile/maps, never a guess from the text on disk. In a session [[host]] serves for a
+// verifier, the source maps its review was made with stand in for the recorded maps of those units,
+// so the verifier reads the outputs it is judging.
 /// name: as elfie_find takes it, a requirement id, or the path of an output file relative to the root
 /// target: the identifier of one target; every target when left out
 fn output(session: Session, name: string, target?: string) is tool: `Where generated code is, with its text: every region that came from one entity, that answers for one criterion or test, or that one output file holds` => ToolResult {
@@ -305,6 +397,10 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
     })
     .add({ situation = `No unit has that stem`, behavior = `An error saying so` })
     .add({
+      situation = [`[[Session.binding]] is set`, `The unit [[unit]] names is not a unit of [[Binding.batch]]`],
+      behavior = `An error saying the session acts only on its own batch, naming it or the global review`,
+    })
+    .add({
       situation = `[[target]] is set and is not a known target`,
       behavior = `An error naming the known targets`,
     });
@@ -312,10 +408,18 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
 
 /// batch: the identifier of a batch, as elfie_units lists it, or the stem of one of its units
 /// target: the identifier of the batch's target; the only target when left out
-fn review(session: Session, batch: string, target?: string) is tool: `The full review request for one batch: every criterion and test with the regions generated for its entities, and how to report` => ToolResult {
+fn review(session: Session, batch: string, target?: string) is tool: `The full review request for one batch: every criterion and test with where the regions generated for its entities are, and how to report` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with [[Generation.sourceMapsOf]] the workspace`,
+      situation = `[[Session.binding]] is undefined, or its [[Binding.role]] is compiler`,
+      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the batch, with [[Generation.sourceMapsOf]] the workspace and no review records`,
+    })
+    .add({
+      situation = [
+        `[[Session.binding]] is set and its [[Binding.role]] is verifier`,
+        `The batch [[batch]] names is [[Binding.batch]]`,
+      ],
+      behavior = `[[ReviewRequest.instructions]] of [[Binding.review]], the review request the session's verifier was given`,
     })
     .add({
       situation = `[[batch]] is the identifier of one batch and the stem of a unit of another batch`,
@@ -326,15 +430,126 @@ fn review(session: Session, batch: string, target?: string) is tool: `The full r
       behavior = `An error saying which`,
     })
     .add({
+      situation = [`[[Session.binding]] is set`, `The batch [[batch]] names is not [[Binding.batch]]`],
+      behavior = `An error saying the session acts only on its own batch, naming it or the global review`,
+    })
+    .add({
       situation = `[[Plan.problems]] of the plan elfie_units shows is not empty`,
       behavior = `The review request is returned as for any plan, and [[Plan.problems]] is not mentioned`,
     });
 }
 
-fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with the regions that answer for each` => ToolResult {
+fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with where the regions that answer for each are` => ToolResult {
   @acceptanceCriteria
     .add({
       behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of [[Generation.plan]] of the workspace and [[Generation.sourceMapsOf]] the workspace`,
     })
     .add({ situation = `No global criterion or test exists`, behavior = `The text says so` });
+}
+
+// Decision: a verdict is submitted as soon as it is judged and checked as it arrives, so a verdict
+// with a wrong id is answered at once, while the verifier still knows what it meant, and none is
+// lost to a final message that ends too soon or runs too long.
+/// id: the id of the criterion or test, as the review request gives it; may be left out when file and line name it
+/// file: the first half of the place the review request gives the criterion or test, such as def/a.lfy
+/// line: the second half of that place
+/// status: satisfied, violated, or unverifiable
+/// evidence: the output path and line range judged, such as crates/elfie-core/src/x.rs:120-134; empty when none
+/// note: why, in one line; for a violated one, what the code does instead
+fn report(session: Session, id?: string, file?: string, line?: number, status: string, evidence: string, note: string) is tool: `Submit the verdict on one criterion or test of the review this session is for` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The criterion or test reported on is the one [[Generation.reviewOf]] reads a review line as being for when the line holds [[id]], [[file]], [[line]], and [[status]], with [[Binding.program]] as its program`,
+    })
+    .add({
+      situation = `[[status]], compared without regard to case, is none of [[ReviewStatus]]`,
+      behavior = [`An error naming the three statuses`, `Nothing is recorded`],
+    })
+    .add({
+      situation = [`[[status]] is one of [[ReviewStatus]]`, `No criterion or test is reported on`],
+      behavior = [
+        `An error naming the id, file, or line given, saying no criterion or test matches it`,
+        `Nothing is recorded`,
+      ],
+    })
+    .add({
+      situation = [
+        `[[status]] is one of [[ReviewStatus]]`,
+        `The id of the criterion or test reported on is not among [[ReviewRequest.asked]] of [[Binding.review]]`,
+      ],
+      behavior = [`An error saying that id was not asked in this review`, `Nothing is recorded`],
+    })
+    .add({
+      situation = [
+        `[[status]] is one of [[ReviewStatus]]`,
+        `The id of the criterion or test reported on is among [[ReviewRequest.asked]] of [[Binding.review]]`,
+      ],
+      behavior = `One [[Review]] for that id, with [[status]], [[evidence]], and [[note]], is appended to [[Session.reviews]]`,
+    })
+    .add({
+      situation = [
+        `A [[Review]] is appended to [[Session.reviews]]`,
+        `[[Session.reviews]] already held one for the same id`,
+      ],
+      behavior = `The earlier one is removed`,
+    })
+    .add({
+      situation = `A [[Review]] is appended to [[Session.reviews]]`,
+      behavior = `The text says it was recorded, with its id and place`,
+    })
+    .add({
+      situation = `A [[Review]] is appended to [[Session.reviews]]`,
+      behavior = `The text then counts the ids of [[ReviewRequest.asked]] that no review of [[Session.reviews]] names, and lists the first five of them in the order asked`,
+    })
+    .add({
+      situation = [
+        `A [[Review]] is appended to [[Session.reviews]]`,
+        `Every id of [[ReviewRequest.asked]] has a review`,
+      ],
+      behavior = `The text says every criterion and test asked has a verdict, and that the final message ends with ELFIE: REVIEWED`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a verifier run whose review asked A:A:1f2e on def/a.lfy line 4 and A:A:9c0d on def/a.lfy line 7, with no review recorded`,
+        ),
+        undefined,
+        `def/a.lfy`,
+        7,
+        `violated`,
+        `src/a.rs:12-18`,
+        `returns undefined instead of an empty list`,
+      ],
+      expect = ToolResult@like(`Not an error: recorded A:A:9c0d at def/a.lfy:7; 1 still missing: A:A:1f2e`),
+    },
+    {
+      input = [
+        Session@like(`The same session`),
+        `A:A:77aa`,
+        undefined,
+        undefined,
+        `satisfied`,
+        ``,
+        `ok`,
+      ],
+      expect = ToolResult@like(
+        `An error naming A:A:77aa and saying no criterion or test matches it, and nothing recorded`,
+      ),
+    },
+    {
+      input = [
+        Session@like(`The same session`),
+        `A:A:1f2e`,
+        undefined,
+        undefined,
+        `maybe`,
+        ``,
+        `unsure`,
+      ],
+      expect = ToolResult@like(`An error naming satisfied, violated, and unverifiable, and nothing recorded`),
+    },
+  );
 }

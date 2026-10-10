@@ -3,9 +3,13 @@ use "./data";
 // Decision: each tool is an ordinary fn carrying this trait, so the tool list is the context
 // layer of this module and never a second copy of it. Argument descriptions come from the fn's
 // documentation because a [[Parameter]] has no place for a description of its own.
+// Decision: which tools a session is offered is stated by the entry point that serves it, so a
+// tool fn says only what it does, and one tool set is never stated twice.
 
 trait tool: `Exposed to agents as one tool of the server` {
-  where (`The server lists its tools`) -> `{{@identifier}} is listed as one [[Tool]]`;
+  where (`The server lists its tools`) and (`{{@identifier}} is offered to the session`) -> `{{@identifier}} is listed as one [[Tool]]`;
+  where (`The server lists its tools`) and (`{{@identifier}} is not offered to the session`) -> `{{@identifier}} is not listed`;
+  where (`The server lists its tools`) -> `The result carries ttlMs 0 and cacheScope private`;
   where (`The server lists its tools`) -> `The [[Tool.name]] of {{@identifier}} is elfie_{{@identifier}}`;
   where (`The server lists its tools`) -> `The [[Tool.description]] of {{@identifier}} is {{@definition}}`;
   where (`The server lists its tools`) -> `The [[Tool.arguments]] of {{@identifier}} hold one [[ToolArgument]] per parameter that is not the [[Session]]`;
@@ -13,9 +17,11 @@ trait tool: `Exposed to agents as one tool of the server` {
   where (`The server lists its tools`) -> `The [[ToolArgument.description]] of an argument of {{@identifier}} is the description of its parameter`;
   where (`The server lists its tools`) and (`A parameter of {{@identifier}} that is not the [[Session]] is neither optional nor has a default`) -> `The [[ToolArgument.required]] of its argument is true`;
   where (`The server lists its tools`) and (`A parameter of {{@identifier}} that is not the [[Session]] is optional or has a default`) -> `The [[ToolArgument.required]] of its argument is false`;
-  where (`A call names elfie_{{@identifier}}`) and (`Every argument it gives is a parameter of {{@identifier}}, of the parameter's type, and every required argument is given`) -> `{{@identifier}} is called with the session and the arguments`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} is offered to the session`) and (`Every argument it gives is a parameter of {{@identifier}}, of the parameter's type, and every required argument is given`) -> `{{@identifier}} is called with the session and the arguments`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} is not offered to the session`) -> `The result is an error saying elfie_{{@identifier}} is not offered to this session`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} is not offered to the session`) -> `{{@identifier}} is not called`;
   where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} returns`) -> `The [[ToolResult]] it returns is the call's result`;
-  where (`A call names elfie_{{@identifier}}`) and (`An argument is missing, unknown, or of the wrong type`) -> `The result is an error naming the argument`;
+  where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} is offered to the session`) and (`An argument is missing, unknown, or of the wrong type`) -> `The result is an error naming the argument`;
   where (`A call names elfie_{{@identifier}}`) and (`An argument is missing, unknown, or of the wrong type`) -> `{{@identifier}} is not called`;
   where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} fails`) -> `The result is an error carrying the failure`;
   where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} fails`) -> `The server goes on`;

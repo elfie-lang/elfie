@@ -636,7 +636,27 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile without --json`, `The step is reviewed or globalReviewed`],
-      behavior = `The message is [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
+      behavior = `The message begins with [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The step is reviewed`,
+        `[[ReviewRequest.carried]] of the batch's last review request is not empty`,
+      ],
+      behavior = `The message ends with a comma, a space, the count of [[ReviewRequest.carried]], a space, and the word carried`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The step is reviewed`,
+        `[[ReviewRequest.carried]] of the batch's last review request is empty`,
+      ],
+      behavior = `The message ends with the count of unverifiable reviews and its word`,
+    })
+    .add({
+      situation = [`compile without --json`, `The message of a reviewed line counts carried verdicts`],
+      behavior = `That count and its word are [[Style.tally]] of them in muted`,
     })
     .add({
       situation = [`compile without --json`, `The step is finished`],
@@ -837,14 +857,15 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     });
 
   // The environment of the compiler and the verifier
-  // Decision: ELFIE names this executable, so the agent server the compiler or the verifier
-  // starts is this same program.
+  // Decision: ELFIE names this executable, so an agent server the compiler or the verifier starts
+  // itself, when it does not use the hosted one, is this same program.
   @acceptanceCriteria
     .add({
       situation = `The compiler or the verifier is run, by compile or by verify`,
       behavior = [
         `ELFIE_ROOT in its environment is the directory it runs in`,
         `ELFIE in its environment is the path of the running executable`,
+        `ELFIE_MCP_CONFIG in its environment is the absolute path of the MCP config file of the run's hosted session`,
       ],
     })
     .add({
@@ -868,6 +889,56 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `verify runs the verifier for the global review`,
       behavior = `A unit's source maps, for ELFIE_UNITS, are its [[Unit.outputs]]`,
+    });
+
+  // The hosted agent server
+  // Decision: one host serves every run of a compile or verify, each run through a session of its
+  // own, so batches running at once never see each other's work and the CLI learns each run's
+  // verdicts from the session that recorded them.
+  @acceptanceCriteria
+    .add({
+      situation = `compile or verify runs the compiler or the verifier`,
+      behavior = `[[Mcp.host]] is called once, before the first run`,
+    })
+    .add({
+      situation = `compile or verify runs neither the compiler nor the verifier`,
+      behavior = `[[Mcp.host]] is not called`,
+    })
+    .add({
+      situation = `compile or verify called [[Mcp.host]]`,
+      behavior = `[[McpData.Host.stop]] of it is called once, after the last run has returned and before the command returns, whatever the outcome`,
+    })
+    .add({
+      situation = `[[Mcp.host]] fails`,
+      behavior = [`Its failure is printed`, `No compiler or verifier runs`, `Returns [[ExitCode.failure]]`],
+    })
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = `[[McpData.Host.open]] is called for the run just before it starts, with a [[McpData.Binding]] whose [[McpData.Binding.directory]] is the directory the run is in, whose [[McpData.Binding.plan]] is the plan the command made, and whose [[McpData.Binding.program]] is the program it lowered and planned`,
+    })
+    .add({
+      situation = `The compiler is run on a batch`,
+      behavior = `The run's [[McpData.Binding]] has the role compiler, the batch, no review, and no source maps`,
+    })
+    .add({
+      situation = `The verifier is run on a batch`,
+      behavior = `The run's [[McpData.Binding]] has the role verifier, the batch, the review request given as its input, and the source maps that review request was made with`,
+    })
+    .add({
+      situation = `The verifier is run for the global review`,
+      behavior = `The run's [[McpData.Binding]] has the role verifier, no batch, the global review request given as its input, and the source maps that review request was made with`,
+    })
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = `The MCP config file of the run's session is [[Files.write]] to elfie-requests/<batch>.<role>.mcp.json under the root before it starts, where <batch> is the batch identifier or global and <role> is compiler or verifier`,
+    })
+    .add({
+      situation = `The MCP config file of a session is written`,
+      behavior = `It holds [[Json.stringify]] of one object with the key mcpServers, holding one object with the key elfie, holding the keys type reading http, url reading the session's URL, and headers holding the key Authorization reading Bearer, a space, and [[McpData.Host.token]]`,
+    })
+    .add({
+      situation = `A run of the compiler or the verifier returns its [[Process.Exit]]`,
+      behavior = `[[McpData.Host.close]] of the run's session URL is called before the run's outcome is read`,
     });
 
   // Running the compiler
@@ -1047,6 +1118,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // every criterion can be pointed at the region of output that claims to satisfy it and a batch
   // the review rejects stays planned; a compiler judging its own work is not a check, and a review that names no
   // line of output is not evidence.
+  // Decision: a batch's review asks only about the criteria and tests whose verdict is not carried
+  // by its review records, and an empty review runs no verifier: the verdicts carried are those of
+  // code that has not changed since it was judged satisfied.
+  // Decision: the counts after a review are of what this review judged, so a person sees how much
+  // was reviewed; what was carried is counted apart.
   @acceptanceCriteria
     .add({
       situation = [
@@ -1054,6 +1130,16 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `A batch's units are accepted by [[Generation.accept]]`,
         `elfie.json names a verifier`,
         `--no-verify is not given`,
+      ],
+      behavior = `The batch's review request is [[Generation.review]] of the plan, the batch, the source maps [[Generation.accept]] derived, the batch's directory, and the records [[Generation.reviewsOf]] gives in the root for each unit of the batch, in batch order`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A batch's units are accepted by [[Generation.accept]]`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `[[ReviewRequest.asked]] of the batch's review request is not empty`,
       ],
       behavior = `A verifying progress line is printed before the verifier runs on the batch`,
     })
@@ -1063,16 +1149,50 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `A batch's units are accepted by [[Generation.accept]]`,
         `elfie.json names a verifier`,
         `--no-verify is not given`,
+        `[[ReviewRequest.asked]] of the batch's review request is not empty`,
       ],
       behavior = [
         `The verifier runs once for the batch, as [[Process.stream]] of the command elfie.json names under verifier`,
-        `Its input is [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, the source maps [[Generation.accept]] derived, and the batch's directory`,
+        `Its input is [[ReviewRequest.instructions]] of the batch's review request`,
         `Its directory is the batch's directory`,
       ],
     })
     .add({
+      situation = [
+        `compile`,
+        `A batch's units are accepted by [[Generation.accept]]`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `[[ReviewRequest.asked]] of the batch's review request is empty`,
+      ],
+      behavior = [
+        `No verifier runs on the batch`,
+        `One reviewed progress line is printed, counting no reviews and the verdicts of [[ReviewRequest.carried]] as carried`,
+        `The source maps [[Generation.accept]] derived for the batch are recorded by [[Generation.record]] for each unit`,
+        `The batch is done`,
+      ],
+    })
+    .add({
       situation = `compile or verify runs the verifier on a batch or for the global review`,
-      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Generation.reviewOf]], with the ids of the criteria and tests its review request gives as asked`,
+      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Generation.reviewOf]], with [[ReviewRequest.asked]] of its review request as asked and the reviews [[McpData.Host.close]] returned for its session as recorded`,
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `A batch's source maps are recorded by [[Generation.record]]`,
+      ],
+      behavior = `Each unit's review records are recorded in the root by [[Generation.recordReviews]]: for each local criterion and test of the unit, sorted by id, the record made from the review of its id in the batch's last verifier run, else its record in [[ReviewRequest.carried]] of the batch's last review request, else none`,
+    })
+    .add({
+      situation = [`compile`, `--no-verify is given, or elfie.json names no verifier`],
+      behavior = `No review record file changes`,
+    })
+    .add({ situation = `compile with --accept`, behavior = `No review record file changes` })
+    .add({
+      situation = [`compile`, `The step is reviewed`],
+      behavior = `The counts of satisfied, violated, and unverifiable are of the reviews of the batch's last verifier run, and a verdict of [[ReviewRequest.carried]] is counted only as carried`,
     })
     .add({
       situation = [`compile or verify`, `[[Generation.reviewOf]] reads the verifier's report on a batch`],
@@ -1089,7 +1209,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names a verifier`,
         `--no-verify is not given`,
       ],
-      behavior = `A unit's map file changes only after its batch's review holds no violated review and no unplaced violation`,
+      behavior = `A unit's map file changes only after its batch's review holds no violated review and no unplaced violation, or after a review request that asked nothing`,
     })
     .add({
       situation = [
@@ -1130,7 +1250,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `compile`,
         `A batch run once more because the verifier's report on it held a violated review or an unplaced violation is accepted by [[Generation.accept]]`,
       ],
-      behavior = `The verifier is run on it once more, with [[Generation.review]] of the plan, the batch, the source maps [[Generation.accept]] derived for its new outputs, and the batch's directory`,
+      behavior = `The verifier is run on it once more, with [[Generation.review]] of the plan, the batch, the source maps [[Generation.accept]] derived for its new outputs, the batch's directory, and records: none when the first run's report held an unplaced violation, and otherwise the records the first review request was made with, each review of the first run replacing the record of its id with the record made from it`,
     })
     .add({
       situation = [
@@ -1153,14 +1273,21 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile or verify`,
-        `The first run of the verifier on a batch ends with no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED, with no review in [[ReviewReport.reviews]], or with [[Process.Exit.code]] -1`,
+        `The first run of the verifier on a batch ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
       ],
       behavior = `The verifier is run once more on the batch`,
     })
     .add({
       situation = [
+        `compile or verify`,
+        `The verifier is run once more on a batch because its first run ended without every verdict`,
+      ],
+      behavior = `The review request of the second run is made as the first was, but with the records the first was made with, each review of the first run whose status is satisfied replacing the record of its id with the record made from it`,
+    })
+    .add({
+      situation = [
         `compile`,
-        `A run of the verifier on a batch ends with a line reading ELFIE: REVIEWED and at least one review`,
+        `A run of the verifier on a batch ends with at least one review in [[ReviewReport.reviews]], and with [[ReviewReport.missing]] empty or with a line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED and [[Process.Exit.code]] other than -1`,
         `[[ReviewReport.problems]] of the run is not empty`,
       ],
       behavior = `The problems are printed under its reviewed line`,
@@ -1168,7 +1295,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile`,
-        `A run of the verifier on a batch ends with a line reading ELFIE: REVIEWED and at least one review`,
+        `A run of the verifier on a batch ends with at least one review in [[ReviewReport.reviews]], and with [[ReviewReport.missing]] empty or with a line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED and [[Process.Exit.code]] other than -1`,
         `[[ReviewReport.problems]] of the run is not empty`,
       ],
       behavior = `The run stands, and the verifier is not run again for its problems`,
@@ -1176,20 +1303,29 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile`,
-        `The second run of the verifier on a batch ends with no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED, with no review in [[ReviewReport.reviews]], or with [[Process.Exit.code]] -1`,
+        `The second run of the verifier on a batch ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
       ],
       behavior = `Its problems are printed as a failed progress line`,
     })
     .add({
       situation = [
         `compile`,
-        `The second run of the verifier on a batch ends with no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED, with no review in [[ReviewReport.reviews]], or with [[Process.Exit.code]] -1`,
+        `The second run of the verifier on a batch ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
       ],
       behavior = `The batch is verified with the reviews parsed from that run, as if its report had been complete`,
     })
     .add({
       situation = [`compile`, `--no-verify is given, or elfie.json names no verifier`],
       behavior = [`No verifier runs`, `No reviews file is written`],
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `A review record file under elfie-compile/reviews/<target> for a planned target belongs to no unit of the plan`,
+      ],
+      behavior = `The review record file is removed by [[Files.remove]] before any batch runs`,
     });
 
   // Global review
@@ -1304,9 +1440,28 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [`verify`, `A stem given names a unit whose [[Unit.outputs]] is empty`],
       behavior = `The unit is not reviewed, and the exit code does not change for it`,
     })
+    // Decision: verify never changes a review record, so what it asks about is what the last compile
+    // left unreviewed, and --full asks about everything.
+    .add({
+      situation = [`verify without --full`, `A stem is given, or --global is not given`],
+      behavior = `The review request of a batch is [[Generation.review]] of the plan, the batch, the source maps, the root, and the records [[Generation.reviewsOf]] gives for each unit of the batch, in batch order`,
+    })
+    .add({
+      situation = [`verify with --full`, `A stem is given, or --global is not given`],
+      behavior = `The review request of a batch is [[Generation.review]] of the plan, the batch, the source maps, the root, and no records`,
+    })
     .add({
       situation = [`verify`, `elfie.json names a verifier`, `A stem is given, or --global is not given`],
-      behavior = `The verifier runs on each batch of [[Plan.batches]] holding a requested unit`,
+      behavior = `The verifier runs on each batch of [[Plan.batches]] that holds a requested unit and whose review request has a [[ReviewRequest.asked]] that is not empty`,
+    })
+    .add({
+      situation = [
+        `verify`,
+        `elfie.json names a verifier`,
+        `A batch holds a requested unit`,
+        `[[ReviewRequest.asked]] of its review request is empty`,
+      ],
+      behavior = `No verifier runs on the batch, and its counts line counts no reviews`,
     })
     .add({
       situation = [`verify`, `elfie.json names a verifier`, `A stem is given, or --global is not given`],
@@ -1320,7 +1475,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = [
         `The run is one [[Process.stream]] of the command elfie.json names under verifier`,
-        `Its input is [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, and the source maps`,
+        `Its input is [[ReviewRequest.instructions]] of the batch's review request`,
         `Its directory is the root`,
       ],
     })
@@ -1347,6 +1502,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `After each batch one line gives the counts of satisfied, violated, and unverifiable`,
     })
     .add({
+      situation = [`verify without --json`, `[[ReviewRequest.carried]] of a batch's review request is not empty`],
+      behavior = `Its counts line ends with a comma, a space, and [[Style.tally]] of the count of [[ReviewRequest.carried]] and the word carried in muted`,
+    })
+    .add({
+      situation = `verify`,
+      behavior = `A carried verdict is never printed as a review, and is counted only as carried`,
+    })
+    .add({
       situation = `verify without --json`,
       behavior = [
         `A review's status is painted in [[Style.statusTone]] of it and padded with [[Style.padded]] to the longest status of [[ReviewStatus]]`,
@@ -1356,7 +1519,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `verify without --json`,
-      behavior = `The counts line after each batch is [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
+      behavior = `The counts line after each batch begins with [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
     })
     .add({
       situation = [`verify`, `elfie.json names a verifier`, `A review is violated`],
@@ -1367,7 +1530,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `Returns [[ExitCode.failure]]`,
     })
     .add({
-      situation = [`verify`, `elfie.json names a verifier`, `The verifier was started and no review is violated`],
+      situation = [
+        `verify`,
+        `elfie.json names a verifier`,
+        `No review is violated, and the verifier was started or no review request asked anything`,
+      ],
       behavior = `Returns [[ExitCode.success]]`,
     })
     // Without a verifier, the review requests are for a verifier run by hand.

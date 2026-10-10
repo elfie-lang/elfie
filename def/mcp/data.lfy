@@ -23,7 +23,34 @@ d ToolResult: `What a call returns` {
 
 d Session: `One agent's connection` {
   $workspace: `The program as of the last call` = Workspace;
-  $seen: `The modification time and size of every file of the program when it was last read, by path` = object;
+  $seen: `The modification time and size of every file of the program when it was last read, by path; empty in a hosted session, which never re-reads one` = object;
+  $binding: `What a hosted session is bound to; undefined for a session over standard input and output` = Binding | undefined;
+  $reviews: `Every review elfie_report recorded in the session, one per id, in the order recorded` = Review[];
+}
+
+enum Role: `What the agent of a hosted session is run as` {
+  compiler = `the compiler of one batch`,
+  verifier = `the verifier of one batch, or of the global review`,
+}
+
+// Decision: a hosted session answers for one run of one agent and nothing else, so what it is bound
+// to is fixed when the CLI opens it and no call can change it.
+d Binding: `What one hosted session is bound to, fixed when the CLI opens it` {
+  $role: `What its agent is run as` = Role;
+  $batch: `The batch the run is for; undefined for the global review` = Batch | undefined;
+  $directory: `The absolute path of the directory the run is in: the batch's copy when it runs in one, the root otherwise` = string;
+  $plan: `The plan the compile or verify made` = Plan;
+  $program: `The program the compile lowered and planned; its workspace is the one the session reads definitions from` = Program;
+  $review: `The review request given to a verifier run as its input; undefined for a compiler run` = ReviewRequest | undefined;
+  $sourceMaps: `The source maps that review request was made with; empty for a compiler run` = SourceMap[];
+}
+
+d Host: `An agent server served over HTTP on this machine for the length of one compile or verify` {
+  $url: `Where it listens: http://127.0.0.1, a colon, the port, and a slash` = string;
+  $token: `What every request to it must carry as its bearer token` = string;
+  $open: `Opens one hosted session bound to a [[Binding]] and returns the session's URL` = (binding: Binding) => string;
+  $close: `Ends the session at a URL and returns [[Session.reviews]] of it` = (url: string) => Review[];
+  $stop: `Ends every session that is still open and stops listening` = () => undefined;
 }
 
 // Decision: the CLI and the agent server both plan with the units the last global review found

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # The verifier command `elfie compile` and `elfie verify` run once per batch: Claude Code, given
 # the review request on standard input, with the Elfie agent server and permission to read and to
-# run cargo, never to edit or write. ELFIE_ROOT, ELFIE_BATCH, and ELFIE_UNITS are set by the
-# caller; the root is the working directory. Its standard output is the report the caller parses.
+# run cargo, never to edit or write. ELFIE_ROOT, ELFIE_BATCH, ELFIE_UNITS, and ELFIE_MCP_CONFIG are
+# set by the caller; the root is the working directory. ELFIE_MCP_CONFIG names the config of the
+# session the compile hosts for this run, whose elfie_report takes each verdict as it is judged;
+# without it, as when run by hand, the agent server is the one .mcp.json starts, which has no
+# elfie_report, and the verdicts are read from standard output instead.
 set -e
 # The agent server's tools are loaded up front rather than deferred behind a tool search, and no
 # other MCP server is started, so the elfie tools are the first thing the agent sees to reach for.
@@ -11,8 +14,8 @@ export ENABLE_TOOL_SEARCH=false
 # from the first turn.
 export CLAUDE_CODE_MCP_PREWAIT_SERVERS=elfie
 export CLAUDE_CODE_MCP_PREWAIT_SERVERS_MS=30000
-# The whole report must fit in the final response, and a large batch has hundreds of criteria, so
-# the response may be longer than the default limit allows.
+# Without elfie_report the whole report must fit in the final response, and a large batch has
+# hundreds of criteria, so the response may be longer than the default limit allows.
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 # Definitions are read only through the agent server, which answers for an entity, a name, or a
 # file at once; reading or searching def/ and lib/ by hand is denied. Generated code stays open to
@@ -22,5 +25,5 @@ exec claude -p \
   --permission-mode default \
   --allowedTools "Read Glob Grep Bash(cargo test:*) Bash(cargo build:*) mcp__elfie__*" \
   --disallowedTools "Read(./def/**)" "Read(./lib/**)" \
-  --strict-mcp-config --mcp-config .mcp.json \
+  --strict-mcp-config --mcp-config "${ELFIE_MCP_CONFIG:-.mcp.json}" \
   --append-system-prompt "$(cat scripts/verifier-prompt.md)"

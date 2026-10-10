@@ -876,6 +876,74 @@ fn record(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `Whether t
   );
 }
 
+// Decision: review records live beside the maps in elfie-compile and are checked in, because a
+// verdict cannot be rebuilt from the definitions, the maps, and the outputs without a verifier.
+fn reviewsOf(workspace: Workspace, unit: Unit): `The review records of one unit, as its review record file holds them` => ReviewRecord[] {
+  @acceptanceCriteria
+    .add({ behavior = `Returns the records of the unit's review record file, in the order it lists them` })
+    .add({
+      situation = `The unit's review record file is missing, cannot be read, or is not a JSON list of review records`,
+      behavior = `Returns an empty list`,
+    })
+    .add({
+      situation = `A record of the file has an id that is not of a local criterion or test of the unit`,
+      behavior = `The record is left out`,
+    })
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `Nothing it returns depends on elfie-compile/cache` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`One target rust; elfie-compile/reviews/rust/a.json holds two records for criteria of A`),
+        Unit@like(`The unit of def/a.lfy, whose A still has both criteria`),
+      ],
+      expect = [ReviewRecord@like(`The first record`), ReviewRecord@like(`The second record`)],
+    },
+    {
+      input = [
+        Workspace@like(`One target rust with no elfie-compile/reviews folder`),
+        Unit@like(`The unit of def/a.lfy`),
+      ],
+      expect = [],
+    },
+  );
+}
+
+fn recordReviews(workspace: Workspace, unit: Unit, records: ReviewRecord[]): `Whether the review records of one unit are recorded in its review record file` => boolean {
+  @acceptanceCriteria
+    .add({
+      situation = `[[records]] is not empty`,
+      behavior = `The unit's review record file holds [[records]] afterwards, replacing whatever it held`,
+      sideEffects = [`The unit's review record file is written`],
+    })
+    .add({ behavior = `No other file is written` })
+    .add({
+      situation = `[[records]] is not empty`,
+      behavior = `The file is [[Json.stringify]] of [[records]] with [[Json.Layout.readable]]`,
+    })
+    .add({ behavior = `The file lists [[records]] in the order given` })
+    .add({ behavior = `The keys of every object in the file are in alphabetical order` })
+    .add({ behavior = `The same records always give the same bytes` })
+    .add({
+      situation = `No folder above the unit's review record file exists yet`,
+      behavior = `Every missing folder is created`,
+    })
+    .add({ situation = `[[records]] is empty`, behavior = `The review record file is removed by [[Files.remove]]` })
+    .add({ situation = `The file cannot be written`, behavior = `Returns false` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`One target rust with no elfie-compile folder`),
+        Unit@like(`The unit of def/cli/main.lfy`),
+        [ReviewRecord@like(`One satisfied record`)],
+      ],
+      expect = boolean@like(`true, and elfie-compile/reviews/rust/cli/main.json is created with every folder above it`),
+    },
+  );
+}
+
 // Mapped output access
 
 /// name: an identifier, or an owner's identifier, a dot, and a member's name
@@ -1081,12 +1149,18 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
 
 // Independent verification
 
-// Decision: the verifier is handed the regions already excerpted, so it reads exactly what a criterion
-// is about, and its protocol allows no edits: a review says where and why, never how to fix.
-/// directory: the directory the batch's outputs were written in, which its regions are read from; [[Workspace.root]] when left out
+// Decision: the verifier is told where the regions are and pulls their code through the agent
+// server, so a request stays small however large the batch's outputs are, and its protocol allows
+// no edits: a review says where and why, never how to fix.
 // Decision: a batch compiled in a copy of the root is reviewed in that copy, so the regions a
-// verifier is shown are the outputs it is judging and never the root's older ones.
-fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string): `Everything a verifier is handed to check the outputs of one batch against every criterion and test` => ReviewRequest {
+// verifier is pointed at, and the hashes its verdicts are recorded with, are those of the outputs
+// it is judging and never the root's older ones.
+// Decision: a criterion or test is reviewed again only when nothing says its verdict still holds:
+// it has no record, its last verdict was not satisfied, or the code of its entity changed since. A
+// change to code outside the entity's regions, such as a helper no marker names, does not count.
+/// directory: the directory the batch's outputs were written in, which its regions are read from; [[Workspace.root]] when left out
+/// records: the review records of the batch's units; every criterion and test is reviewed when it is empty
+fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string, records: ReviewRecord[] = []): `Everything a verifier is handed to check the outputs of one batch against every criterion and test whose verdict is not carried` => ReviewRequest {
   @acceptanceCriteria
     .add({ behavior = `[[ReviewRequest.batch]] is [[batch]]` })
     .add({
@@ -1094,35 +1168,52 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string)
     })
     .add({ behavior = `[[ReviewRequest.instructions]] lists only local criteria and tests` })
     .add({
+      behavior = `The regions of an entity are each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the file that declares the entity, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
+    })
+    .add({
+      behavior = `[[ReviewRequest.hashes]] gives each local criterion and test of the units of [[batch]] the SHA-256, as lowercase hex, of the text of the regions of the entity it belongs to: each region's lines of its output, one region after another, each line followed by a line break`,
+    })
+    .add({
+      situation = `The output of a region cannot be read`,
+      behavior = `The region adds no text to a hash`,
+    })
+    .add({
+      situation = `A local criterion or test belongs to an entity with no region, or to the file's own entity`,
+      behavior = `Its hash is the SHA-256 of the empty text`,
+    })
+    .add({
+      situation = `A local criterion or test of a unit of [[batch]] has no record in [[records]], or its record's [[ReviewRecord.status]] is violated or unverifiable, or its record's [[ReviewRecord.hash]] differs from its hash in [[ReviewRequest.hashes]], or the entity it belongs to has no region`,
+      behavior = `It is listed in [[ReviewRequest.instructions]]`,
+    })
+    .add({
+      situation = `A local criterion or test of a unit of [[batch]] belongs to an entity with a region, and has a record in [[records]] whose [[ReviewRecord.status]] is satisfied and whose [[ReviewRecord.hash]] is its hash in [[ReviewRequest.hashes]]`,
+      behavior = [`It is not listed`, `Its record is in [[ReviewRequest.carried]]`],
+    })
+    .add({
+      behavior = `A local criterion or test whose entity has no region, or that belongs to the file's own entity, is never carried`,
+    })
+    .add({
+      situation = `At least one criterion or test is listed`,
       behavior = [
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming [[Batch.identifier]] and the target`,
-        `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its local criteria as [[LoweredCriterion.text]] on one line prefixed by its id and place, then each of its local tests as input and expectation on one line prefixed by its id and place`,
-        `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the file that declares the entity: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and then the region's text`,
+        `For each unit of the batch in order, for each of [[Unit.entities]] with a listed criterion or test: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its regions on one line as the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then each of its listed criteria as [[LoweredCriterion.text]] on one line prefixed by its id and place, then each of its listed tests as input and expectation on one line prefixed by its id and place`,
+        `Then, for that unit, when a criterion or test of its file's own entity is listed: the file's path, then each of those listed criteria and tests the same way`,
         `The verifier protocol`,
       ],
+    })
+    .add({ behavior = `[[ReviewRequest.instructions]] holds no line of any output` })
+    .add({
+      situation = `An entity of a unit of [[batch]] has no listed criterion or test`,
+      behavior = `[[ReviewRequest.instructions]] names neither it nor its regions`,
     })
     .add({
       situation = `Another file of the program declares an entity with the same name as an entity of a unit of [[batch]]`,
       behavior = `[[ReviewRequest.instructions]] gives none of that other entity's regions`,
     })
     .add({
-      situation = `A region is already listed for an earlier entity`,
-      behavior = `It is listed again with its path and lines, without its text`,
-    })
-    .add({
-      situation = [
-        `A [[Marker]] of [[regionsOf]] for the name of an entity of a unit of [[batch]] in [[sourceMaps]], limited to the batch's target`,
-        `Its output can be read`,
-      ],
-      behavior = `The region's text for that marker in [[ReviewRequest.instructions]] is the [[Files.read]] text of its lines of the output in a fenced block`,
-    })
-    .add({
-      situation = [
-        `A [[Marker]] of [[regionsOf]] for the name of an entity of a unit of [[batch]] in [[sourceMaps]], limited to the batch's target`,
-        `Its output cannot be read`,
-      ],
-      behavior = `The region's text for that marker in [[ReviewRequest.instructions]] is a line saying the output cannot be read`,
+      situation = `No criterion or test is listed`,
+      behavior = `[[ReviewRequest.instructions]] is the heading and one line saying nothing in the batch needs review`,
     });
 
   @test(
@@ -1135,13 +1226,58 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string)
         [SourceMap@like(`For rust and src/a.rs from a.lfy, with one marker a.lfy:A on line 1 ending on line 30`)],
       ],
       expect = ReviewRequest@like(
-        `Instructions headed a and rust; A with its definition, two criterion lines prefixed def/a.lfy:4 and def/a.lfy:7, one test line prefixed def/a.lfy:10; one region src/a.rs:1-30 with the file's thirty lines in a fenced block; then the protocol naming the six keys and the three statuses and ending with ELFIE: REVIEWED`,
+        `Instructions headed a and rust; A with its definition and the region src/a.rs:1-30 with none of its lines; two criterion lines prefixed by their ids and def/a.lfy:4 and def/a.lfy:7, one test line prefixed by its id and def/a.lfy:10; then the protocol naming elfie_output, elfie_report, the six keys of the fallback line, and the three statuses, and ending with ELFIE: REVIEWED; asked holds the three ids; nothing carried`,
       ),
     },
     {
       input = [Plan@like(`The same plan`), Batch@like(`a`), []],
+      expect = ReviewRequest@like(`The same instructions with no region for A`),
+    },
+    {
+      input = [
+        Plan@like(`The same plan`),
+        Batch@like(`a`),
+        [SourceMap@like(`The same source map`)],
+        undefined,
+        [
+          ReviewRecord@like(`The criterion on line 4, satisfied, with the hash of src/a.rs lines 1 to 30 as they are`),
+          ReviewRecord@like(`The criterion on line 7, unverifiable, with the same hash`),
+        ],
+      ],
       expect = ReviewRequest@like(
-        `The same instructions with no region for A`,
+        `A with the criterion on line 7 and the test on line 10 only; asked holds their two ids; carried holds the record of the criterion on line 4`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(`The same plan`),
+        Batch@like(`a`),
+        [SourceMap@like(`The same source map`)],
+        undefined,
+        [
+          ReviewRecord@like(
+            `The criterion on line 4, satisfied, with a hash of src/a.rs as it was before line 12 changed`,
+          ),
+        ],
+      ],
+      expect = ReviewRequest@like(
+        `A with both criteria and the test listed; asked holds the three ids; nothing carried`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(`The same plan`),
+        Batch@like(`a`),
+        [SourceMap@like(`The same source map`)],
+        undefined,
+        [
+          ReviewRecord@like(`The criterion on line 4, satisfied, with the hash of src/a.rs lines 1 to 30 as they are`),
+          ReviewRecord@like(`The criterion on line 7, satisfied, with the same hash`),
+          ReviewRecord@like(`The test on line 10, satisfied, with the same hash`),
+        ],
+      ],
+      expect = ReviewRequest@like(
+        `Instructions of the heading and a line saying nothing needs review; asked empty; carried holds the three records`,
       ),
     },
   );
@@ -1151,13 +1287,18 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
   @acceptanceCriteria
     .add({ behavior = `[[ReviewRequest.batch]] is undefined` })
     .add({
+      behavior = `[[ReviewRequest.asked]] holds the ids of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]], in that order`,
+    })
+    .add({ behavior = `[[ReviewRequest.hashes]] and [[ReviewRequest.carried]] are empty` })
+    .add({
       behavior = [
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming the global review and the targets`,
-        `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, [[LoweredCriterion.text]] for a criterion, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, as the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines in a fenced block`,
+        `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, [[LoweredCriterion.text]] for a criterion, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, on one line as the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]]`,
         `The verifier protocol`,
       ],
     })
+    .add({ behavior = `[[ReviewRequest.instructions]] holds no line of any output` })
     .add({
       situation = `No marker in any output names a global criterion's or test's id`,
       behavior = `It is listed in [[ReviewRequest.instructions]] with a line saying no unit answered for it`,
@@ -1171,7 +1312,9 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
         ),
         [SourceMap@like(`For src/a.rs and src/b.rs, each with one marker naming global and the id of g`)],
       ],
-      expect = ReviewRequest@like(`No batch; g once with its id, then two regions, one per output, then the protocol`),
+      expect = ReviewRequest@like(
+        `No batch; g once with its id, then the locations of two regions, one per output, with none of their lines, then the protocol; asked holds the id of g`,
+      ),
     },
     {
       input = [Plan@like(`A program with one global criterion g that no marker names`), []],
@@ -1183,10 +1326,14 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
 /// report: everything the verifier wrote to standard output
 /// program: the lowered program, whose criteria and tests the ids name
 /// asked: the ids of the criteria and tests the review request gave the verifier; empty when not known
+/// recorded: the reviews the verifier submitted through the agent server during the run, in the order recorded; empty when none
 // Decision: a review line names its criterion by place as well as by id, because a 64-digit id is
 // easy to copy wrong and a place is not; a line that names nothing yet says violated is kept apart,
 // so a found failure is never lost for want of a name.
-fn reviewOf(report: string, program: Program, asked: string[] = []): `What a verifier found, read mechanically from its report` => ReviewReport {
+// Decision: a verdict submitted through the agent server was checked when it arrived, so it wins
+// over a line of the report for the same criterion; the report is read only for what was not
+// submitted.
+fn reviewOf(report: string, program: Program, asked: string[] = [], recorded: Review[] = []): `What a verifier found, read mechanically from the verdicts it submitted and from its report` => ReviewReport {
   // Decision: the report is read leniently and only what tries to be a review can be wrong, because
   // a verifier that adds a sentence or a fence around its lines has still reviewed everything, and
   // running a second verifier for that costs as much as the first.
@@ -1212,7 +1359,7 @@ fn reviewOf(report: string, program: Program, asked: string[] = []): `What a ver
         `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
         `Its id is the id of a criterion or test of [[program]]`,
       ],
-      behavior = `It is one [[Review]] in [[ReviewReport.reviews]] for that criterion or test`,
+      behavior = `It is read as one [[Review]] for that criterion or test`,
     })
     .add({
       situation = [
@@ -1222,7 +1369,7 @@ fn reviewOf(report: string, program: Program, asked: string[] = []): `What a ver
         `Its id is the id of no criterion or test of [[program]]`,
         `Exactly one id of a criterion or test of [[program]] begins with its id, or is the beginning of it, and the two share at least the receiver, the contributor, and 16 hex digits`,
       ],
-      behavior = `It is one [[Review]] in [[ReviewReport.reviews]] for that criterion or test`,
+      behavior = `It is read as one [[Review]] for that criterion or test`,
     })
     .add({
       situation = [
@@ -1232,7 +1379,7 @@ fn reviewOf(report: string, program: Program, asked: string[] = []): `What a ver
         `It has no id, or its id is the id of no criterion or test of [[program]] and no single id of one begins with it or is the beginning of it, sharing at least the receiver, the contributor, and 16 hex digits`,
         `Its file and line are the file and line where exactly one criterion or test of [[program]] begins`,
       ],
-      behavior = `It is one [[Review]] in [[ReviewReport.reviews]] for that criterion or test`,
+      behavior = `It is read as one [[Review]] for that criterion or test`,
     })
     .add({
       situation = [
@@ -1268,10 +1415,17 @@ fn reviewOf(report: string, program: Program, asked: string[] = []): `What a ver
       behavior = `It is in [[ReviewReport.unplaced]] as written, in report order`,
     })
     .add({
+      behavior = `[[ReviewReport.reviews]] holds every review of [[recorded]], in the order of [[recorded]], then every [[Review]] read from [[report]] whose id no review of [[recorded]] has`,
+    })
+    .add({
+      situation = `A line of [[report]] is read as a [[Review]] whose id a review of [[recorded]] has`,
+      behavior = `The line is neither in [[ReviewReport.reviews]] nor in [[ReviewReport.problems]]`,
+    })
+    .add({
       behavior = `[[ReviewReport.missing]] holds each of [[asked]] that is the id of no review in [[ReviewReport.reviews]], in the order of [[asked]]`,
     })
     .add({
-      behavior = `[[ReviewReport.reviews]] and the lines of [[ReviewReport.problems]] read from [[report]] are each in report order`,
+      behavior = `The reviews read from [[report]] that are kept, and the lines of [[ReviewReport.problems]], are each in report order among themselves`,
     })
     .add({ behavior = `A [[Review]] takes its evidence and note as the line gives them, or empty when missing` })
     .add({ behavior = `Keys of a review line other than id, file, line, status, evidence, and note are ignored` })
@@ -1335,6 +1489,35 @@ fn reviewOf(report: string, program: Program, asked: string[] = []): `What a ver
       ],
       expect = ReviewReport@like(
         `One review, violated at def/a.lfy:7 for the criterion A:A:9c0d; the A:A:77aa line in both problems and unplaced; A:A:1f2e missing`,
+      ),
+    },
+    {
+      input = [
+        `{"id":"A:A:1f2e","status":"satisfied","evidence":"","note":"from the report"}\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+        [`A:A:1f2e`, `A:A:9c0d`],
+        [Review@like(`A:A:1f2e, violated, at def/a.lfy:4 for A, with note submitted`)],
+      ],
+      expect = ReviewReport@like(
+        `One review, the submitted violated one for A:A:1f2e; no problems; A:A:9c0d missing`,
+      ),
+    },
+    {
+      input = [
+        `ELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+        [`A:A:1f2e`, `A:A:9c0d`],
+        [
+          Review@like(`A:A:9c0d, satisfied, at def/a.lfy:7 for A`),
+          Review@like(`A:A:1f2e, unverifiable, at def/a.lfy:4 for A`),
+        ],
+      ],
+      expect = ReviewReport@like(
+        `The two submitted reviews in that order, A:A:9c0d then A:A:1f2e; no problems; nothing missing`,
       ),
     },
   );

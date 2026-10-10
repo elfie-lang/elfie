@@ -1,0 +1,102 @@
+# Roadmap: faster, server-first compiles
+
+**Principle: push the obligations, pull the context, act through tools.**
+
+- A request pushes only the obligations. These are the criterion ids and places, which of them are
+  new, changed, or removed, the outputs, the rules, and the workflow.
+- Everything else is pulled through the agent server: definitions, interfaces, code, and types.
+- Agents act through tools whose input is checked when the call is made: reporting, marking,
+  building, and testing.
+- Command tools come from the target. A tool for an operation exists only when the target resolves
+  a `Command` with a `line` for that `Operation`.
+
+**Baseline** (2026-10-07/08 cycle):
+- 24.8 agent-hours in total. Review took 14.1 h of it, at about 290k tokens of context per turn.
+- The `generation/main` review request was 966k characters, and that batch took 10 reviews.
+- Agents made about 800 raw Read/Grep/sed calls to find code.
+- About 90% of the output tokens were hidden reasoning.
+
+## Phase 1: the verifier on the agent server
+
+0. **A compile-hosted agent server.** `elfie compile` serves MCP over HTTP on localhost.
+   - It listens on a random port, takes a per-compile token, and lives as long as the compile.
+   - It holds one session per agent run (each compiler or verifier run of a batch, and the global review), bound to that run's directory (its copy under `--jobs`),
+     plan, request, and target. A tool acts only on its own batch.
+   - The definitions stay as the compile planned them. The outputs are read fresh from the batch's
+     directory.
+   - The compiler and the verifier are each given a tool set.
+   - The CLI writes an `--mcp-config` for each session.
+   - The stdio `elfie mcp` stays for editors and interactive agents, with the same tool definitions.
+1. **`elfie_report`.** The verifier submits each verdict by id or by place, and each one is
+   checked as it arrives. The tool says what is still missing. The CLI reads the submitted
+   verdicts and stops parsing the final message.
+2. **A short review request.** It lists each criterion's id, place, and region locations, but not
+   the code text. The verifier pulls code with `elfie_output <id>`.
+3. **Incremental review.** Each verdict is stored with a hash of its region in `SourceMap`.
+   - A review covers only criteria that are new, changed, last violated, or never reviewed.
+   - `elfie verify --full` re-judges everything.
+
+To measure, compare on `generation/main`: context per turn, review hours, lost verdicts, and rounds
+until accepted.
+
+## Phase 2: target commands as tools
+
+4. The server offers `elfie_build`, `elfie_test`, `elfie_lint`, and `elfie_format` only for the
+   operations whose resolved `Command` has a line. With several targets, a tool takes a `target`.
+   - Each tool returns structured pass/fail and trimmed output.
+   - Calls queue per directory in the compile-hosted server.
+5. A test command may declare narrowing. In the rust vendor, `cargo test -- $TESTS` reads
+   `$TESTS`. `elfie_test <id | entity>` then maps ids to the marked test functions through the
+   source maps. Without that, it runs the whole command.
+6. `Bash` is dropped from agents once these tools exist.
+
+## Phase 3: the compiler on the agent server
+
+7. `elfie_task` gives the obligations. These are the ids, each marked new, changed, or removed,
+   with the text of the removed ones, plus the outputs and the reason.
+8. `elfie_interface` gives one dependency entity on demand, in place of the pushed interfaces
+   section.
+9. `elfie_code` gives generated code by entity, criterion id, or Rust symbol, and an outline of an
+   output file.
+10. `elfie_mark` sets or rewrites marker ids mechanically. `elfie_submit` gives a structured
+    outcome in place of the `ELFIE:` lines.
+11. Raw Read/Grep on outputs is denied once the code tools cover the need. Track the share of tool
+    calls that go to the server.
+
+## Phase 4: mechanical CLI steps
+
+12. Marker ids of reworded criteria are rewritten by the CLI. `changes` already pairs them.
+13. A unit planned only for `dependency` is re-recorded without a model when the target's build
+    and test pass.
+
+## Phase 5: scheduling
+
+14. Dependents start on structural acceptance, and review runs alongside. Dependents are re-planned
+    only if a retry changes the interface.
+15. A rejected copy's outputs are kept as the next attempt's starting point.
+
+## Phase 6: output layout and experiments
+
+16. The 8–10k-line modules are split into one file per entity in the rust layout guidance.
+17. Model tiering, and `claude -p --resume` for retries.
+
+## Cross-cutting
+
+- **Knowledge, not rediscovery.** Repository facts go in as knowledge items in `def/targets.lfy`,
+  for example that the CLI crate is named `elfie`.
+- **Keep the tool set small and general.** Every tool adds criteria to `mcp/main`.
+- **Self-hosting safety.** The server that judges and acts runs the binary driving the compile,
+  never output under review. A change to judging is landed through a patched bootstrap binary.
+
+## Progress
+
+- [ ] Phase 1.0 compile-hosted server
+- [ ] Phase 1.1 elfie_report
+- [ ] Phase 1.2 short review request
+- [ ] Phase 1.3 incremental review
+- [ ] Phase 2
+- [ ] Phase 3
+- [ ] Phase 4
+- [ ] Phase 5
+- [ ] Phase 6
+- [ ] Knowledge items

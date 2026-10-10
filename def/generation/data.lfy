@@ -228,24 +228,46 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
     });
 }
 
-d ReviewRequest: `Everything a verifier is handed to check outputs against what was asked: the local criteria and tests of one batch, or every global one once` {
+d ReviewRequest: `Everything a verifier is handed to check outputs against what was asked: the local criteria and tests of one batch that need review, or every global one once` {
   $batch: `The batch; undefined for the review of global criteria and tests` = Batch | undefined;
-  $instructions: `The prompt: every criterion and test with its id and place, every region answering for each, and how to report` = string;
+  $instructions: `The prompt: every criterion and test under review with its id and place, where the regions answering for each are, and how to report` = string;
+  $asked: `The id of every criterion and test [[ReviewRequest.instructions]] lists, in the order listed` = string[];
+  $hashes: `For every local criterion and test of the batch's units, by id, the hash of the regions of the entity it belongs to, as the review computed it; empty for the review of global criteria and tests` = Object<
+    string,
+  >;
+  $carried: `The record of every local criterion and test of the batch's units that is not listed, kept from its last review; empty for the review of global criteria and tests` = ReviewRecord[];
   @acceptanceCriteria
     .add({
       behavior = `A criterion's or test's place is the file of its origin relative to [[Workspace.root]], a colon, and the line its origin begins on`,
     })
+    // Decision: verdicts are submitted through the agent server as they are judged, and the
+    // JSON line is kept as the way a verifier with no agent server, or one run by hand, reports.
     .add({
       behavior = [
         `[[ReviewRequest.instructions]] holds the verifier protocol, which says:`,
         `That the reader examines and never edits, and never proposes code`,
-        `That it writes one [[Review]] per criterion and per test as one JSON object on one line, with exactly the keys id, file, line, status, evidence, and note`,
-        `That id is copied from the instructions, and file and line are the two halves of the place the instructions give the criterion or test`,
+        `That the code of a region is read through elfie_output, by the id of a criterion or test or by the name of an entity, or by reading the lines of the output file the region names`,
+        `That each verdict is submitted through elfie_report as soon as it is judged, one per criterion and per test`,
+        `That the id given to elfie_report is copied from the instructions, or left out when file and line, the two halves of the place the instructions give, are given instead`,
         `That status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead`,
         `That a criterion no region can be checked against is unverifiable, not violated`,
-        `That the tools of the agent server are called before files are searched or read by hand: elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used`,
-        `That the report ends with one line reading ELFIE: REVIEWED`,
+        `That the tools of the agent server are called before files are searched or read by hand: elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used`,
+        `That where elfie_report is not offered, each verdict is written in the final message instead, as one JSON object on one line with exactly the keys id, file, line, status, evidence, and note, holding what elfie_report would be given`,
+        `That the final message ends with one line reading ELFIE: REVIEWED`,
       ],
+    });
+}
+
+d ReviewRecord: `The last verdict on one local criterion or test of a unit, with the hash of the code it was judged against` {
+  $id: `The id of the criterion or test` = string;
+  $status: `What its last review found` = ReviewStatus;
+  $hash: `The criterion's or test's hash in [[ReviewRequest.hashes]] of the review request it was reviewed under` = string;
+  @acceptanceCriteria
+    .add({
+      behavior = `A unit's review record file is elfie-compile/reviews under [[Workspace.root]], then [[Target.identifier]], then [[Unit.stem]] with the extension .json, such as elfie-compile/reviews/rust/cli/main.json for def/cli/main.lfy`,
+    })
+    .add({
+      behavior = `A record made from a [[Review]] of a run has the review's [[Review.id]] and [[Review.status]], and the hash [[ReviewRequest.hashes]] of the run's review request gives that id`,
     });
 }
 
@@ -320,7 +342,7 @@ d Review: `A verifier's finding for one criterion or test` {
 }
 
 d ReviewReport: `Everything a verifier found for one batch, read mechanically from its report` {
-  $reviews: `Each review, in report order, one per id` = Review[];
+  $reviews: `Each review submitted through the agent server, in the order recorded, then each read from the report, in report order; one per id` = Review[];
   $problems: `Each review line that was not read as a [[Review]], then the line reading the report did not end when there was no end line` = string[];
   $unplaced: `Each review line that was not read as a [[Review]] though its status is violated, as written; each is in [[ReviewReport.problems]] too` = string[];
   $missing: `Each id the review was asked about that no review in [[ReviewReport.reviews]] names, in the order it was asked` = string[];

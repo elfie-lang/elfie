@@ -387,6 +387,14 @@ LSP/MCP protocols are deliberately not part of this round.
   review rejects the batch with `failure at <file>:<line>: <note> (<evidence>)` and the existing
   retry-once rule applies; unverifiable never rejects; `--no-verify` and a missing `verifier` skip
   it. `elfie verify <stem>` runs it standalone.
+- **Verdicts go through the agent server (2026-10-10).** A verifier hand-copying hundreds of
+  64-hex ids into one final message lost verdicts three ways: the message was truncated, ids came
+  out garbled, and only the last message reaches stdout. `compile` and `verify` now host the agent
+  server over HTTP with one session per run. The verifier submits each verdict with
+  `elfie_report`, which checks the verdict and records it as it arrives. JSON lines in the final
+  message remain only as the fallback where `elfie_report` is not offered. The review request
+  lists region locations, not code. Reviews are incremental: a verdict is carried while the hash
+  of its entity's regions is unchanged, and `elfie verify --full` re-judges everything.
 - **MCP gains `output`, `source`, `changes`, `review`**, all read-only: generated regions by
   entity, the definition line behind a generated line, the entity-level diff since acceptance, and
   the verifier's own request. Resources stay out; four tools keep the surface exact.
