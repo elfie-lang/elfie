@@ -33,6 +33,54 @@ rust
   @acceptanceCriteria
   .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` });
 
+// Module size
+// Decision: a unit's module of 8,000 to 10,000 lines costs every compiler and verifier that reads
+// it, so a file that would exceed 2,000 lines is split into submodule files. The guidance applies
+// when a unit is next compiled; changing it re-plans no unit, because guidance is no part of a
+// unit's text, criteria, or interfaces, so modules are split one unit at a time.
+rust
+  @acceptanceCriteria
+  .add({
+    situation = `An output file of a unit would hold more than 2,000 lines, counting the unit's code and tests together, wherever they are`,
+    behavior = `The unit's code is split into submodules of that file's module, each in a file of its own where Rust looks for it: beside a mod.rs, lib.rs, or main.rs, and otherwise in a directory named after the module`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `Each submodule is declared with a mod line in the module file, with no #[path] attribute`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `Each output file of the unit, the module file and every submodule's file, holds at most 2,000 lines`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `Each submodule holds the code of one or more entities of the unit, or one concern of an entity too large for one file, with the data, types, and helpers only that code uses`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `Of the unit's own code, the module file holds only the mod declarations of its submodules, the pub use lines other units need, helpers more than one submodule uses, and the crate's entry point when the module file is main.rs; every line other units or the layout put in it stays`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `Every path by which another unit reached an item of the module before the split still reaches it, through a pub use in the module file, so no other unit's output changes`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `The unit's tests are split the same way: each file of tests holds the tests of one or more entities, or of one concern of an entity too large for one file, is declared under #[cfg(test)], and holds at most 2,000 lines`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `A submodule's file is named in snake_case after the entity it holds or the concern its code shares, and is neither another unit's output nor the path a stem of the target's source directory would spell`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `Each marker moves with the code it marks, and keeps its source path, entity, and requirement id`,
+  })
+  .add({
+    situation = `A unit's code is split into submodules`,
+    behavior = `A submodule's file begins with a marker before any item`,
+  });
+
 // Repository facts a compiler would otherwise rediscover
 rust@knowledge.add({
   topic = `This repository: Cargo package names and scopes, no cargo fmt, shared outputs, tests that load def/`,

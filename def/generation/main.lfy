@@ -435,13 +435,13 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       situation = `A unit of [[batch]] has outputs in [[Unit.outputs]]`,
-      behavior = `The outputs part says that the outputs of that unit go at the paths in its [[Unit.outputs]]`,
+      behavior = `The outputs part says that the outputs of that unit go at the paths in its [[Unit.outputs]], except that a module the target's guidance says to split gains submodule files and has its code moved into them`,
     })
     .add({
       situation = `[[Request.existing]] is not empty`,
       behavior = [
-        `The outputs part says that only what the difference between [[Request.previous]] and [[Request.sources]], and the criteria and tests marked new, reworded, or removed, require changes`,
-        `The outputs part says that names and structure are kept`,
+        `The outputs part says that only what the difference between [[Request.previous]] and [[Request.sources]], the criteria and tests marked new, reworded, or removed, and a split the target's guidance requires, require changes`,
+        `The outputs part says that names and structure are kept, except that a module the target's guidance says to split gains submodule files and has its code moved into them; that split is the one change of structure allowed, and it keeps every name other units use`,
         `The outputs part says that markers of unchanged items are kept`,
       ],
     })

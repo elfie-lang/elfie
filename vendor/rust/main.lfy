@@ -106,7 +106,7 @@ trait cargoCrate(name: string, root: string, source: string, binary: boolean) ex
   where (`A unit's stem ends in main and is not {{source}}/main`) -> `It is mod.rs in its directory under {{root}}/src, with any leading {{source}}/ dropped`;
   where (`A unit's stem ends in main and is not {{source}}/main`) -> `Its mod.rs declares each other output of that directory as a module`;
   where (`A unit's stem does not end in main`) -> `It is {{root}}/src/ then the stem with any leading {{source}}/ dropped, then .rs`;
-  where (`A directory under {{root}}/src holds outputs and no unit writes its mod.rs`) -> `The compiler stops on the first unit there and names the directory`;
+  where (`A directory under {{root}}/src holds outputs and no unit writes its mod.rs, nor the file beside it named after the directory`) -> `The compiler stops on the first unit there and names the directory`;
   where (`Any unit is written`) -> [
     `{{root}}/Cargo.toml names package {{name}}`,
     `{{root}}/Cargo.toml sets edition 2024`,

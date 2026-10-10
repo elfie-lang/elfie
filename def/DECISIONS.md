@@ -778,3 +778,22 @@ was chosen.
   on standard input.
 - **Model tiering** is an operator setting, not a definition: `ELFIE_COMPILER_MODEL` and
   `ELFIE_VERIFIER_MODEL` are read by the scripts and passed as `--model` when set.
+
+## Smaller outputs (phase 6, item 16)
+
+- The rust target's guidance says that when an output file of a unit would exceed 2,000 lines
+  (code and tests together), the unit's code is split into submodule files of at most 2,000
+  lines. Each holds one or more entities, or one concern of an entity too large for one file
+  (cli/main's `main`). They are declared with plain `mod` lines, never `#[path]`, and each file
+  begins with a marker. Tests are split the same way.
+- The module file keeps, of the unit's own code, only `mod` lines, the `pub use` lines other units
+  need, shared helpers, and the entry point of `main.rs`. Lines other units or the layout put
+  there stay, because `lib.rs`, `main.rs`, and `mod.rs` files are shared. Names other units use
+  are re-exported, so no dependent changes.
+- A submodule's file is no other unit's output, and no path a future unit's stem would spell.
+- The request's outputs part used to say that names and structure are kept. It now allows this
+  split as the one change of structure. `cargoCrate`'s stop rule accepts a directory whose module
+  file sits beside it (`data.rs` for `data/`).
+- Guidance re-plans nothing (`compile --dry-run` plans the same units before and after). Each
+  large module is split the next time its unit is compiled, one unit at a time, or by
+  `compile <stem>`.
