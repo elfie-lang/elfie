@@ -6,5 +6,6 @@ edition.workspace = true
 [dependencies]
 elfie-core.workspace = true
 tokio.workspace = true
-rmcp.workspace = true
+rmcp = { workspace = true, features = ["transport-streamable-http-server"] }
 serde_json.workspace = true
+axum = "0.8"

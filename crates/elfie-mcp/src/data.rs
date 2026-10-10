@@ -3,14 +3,18 @@
 //! A [`Tool`] is one fn of `def/mcp/main.lfy` as the server lists it, with one
 //! [`ToolArgument`] per parameter; a [`ToolResult`] is what a call returns; a [`Session`]
 //! is one agent's connection, holding the program as of the last call and the stamp of
-//! every file it was read from; a [`GlobalReview`] is the last global review of a project,
-//! which says which units a review found violated.
+//! every file it was read from; a [`Binding`] is what one hosted session is bound to and a
+//! [`Host`] the server that serves such sessions for the length of one compile or verify; a
+//! [`GlobalReview`] is the last global review of a project, which says which units a review
+//! found violated.
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::fmt;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::SystemTime;
 
-use elfie_core::generation::{self, Plan, Review, ReviewStatus};
+use elfie_core::generation::{self, Batch, Plan, Review, ReviewRequest, ReviewStatus, SourceMap};
 use elfie_core::interpret::Program;
 use elfie_core::workspace::Workspace;
 use serde_json::Value;
@@ -103,8 +107,107 @@ pub struct Session {
     /// The program as of the last call.
     pub workspace: Workspace, // @lfy def/mcp/data.lfy:Session.workspace
     /// The modification time and size of every file of the program when it was last
-    /// read, by path relative to the workspace root.
+    /// read, by path relative to the workspace root. Empty in a hosted session, which
+    /// never re-reads one.
     pub seen: BTreeMap<String, Stamp>, // @lfy def/mcp/data.lfy:Session.seen
+    /// What a hosted session is bound to; `None` for a session over standard input and
+    /// output.
+    pub binding: Option<Binding>, // @lfy def/mcp/data.lfy:Session.binding
+    /// Every review `elfie_report` recorded in the session, one per id, in the order
+    /// recorded.
+    // Decision: the `tool` trait reaches a fn with the session, not with a session it may
+    // change, so the list a call appends to is kept behind a lock of its own; the calls of
+    // one session are handled one at a time, so it is never contended.
+    pub reviews: Mutex<Vec<Review>>, // @lfy def/mcp/data.lfy:Session.reviews
+}
+
+/// What the agent of a hosted session is run as.
+// @lfy def/mcp/data.lfy:Role
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Role {
+    /// The compiler of one batch.
+    Compiler, // @lfy def/mcp/data.lfy:Role.compiler
+    /// The verifier of one batch, or of the global review.
+    Verifier, // @lfy def/mcp/data.lfy:Role.verifier
+}
+
+impl Role {
+    /// The value of the enum member.
+    // @lfy def/mcp/data.lfy:Role
+    pub fn value(self) -> &'static str {
+        match self {
+            Role::Compiler => "the compiler of one batch",
+            Role::Verifier => "the verifier of one batch, or of the global review",
+        }
+    }
+}
+
+/// What one hosted session is bound to, fixed when the CLI opens it.
+// Decision: a hosted session answers for one run of one agent and nothing else, so what it
+// is bound to is fixed when the CLI opens it and no call can change it.
+// @lfy def/mcp/data.lfy:Binding
+#[derive(Debug, Clone)]
+pub struct Binding {
+    /// What its agent is run as.
+    pub role: Role, // @lfy def/mcp/data.lfy:Binding.role
+    /// The batch the run is for; `None` for the global review.
+    pub batch: Option<Batch>, // @lfy def/mcp/data.lfy:Binding.batch
+    /// The absolute path of the directory the run is in: the batch's copy when it runs in
+    /// one, the root otherwise.
+    // Decision: the definition types `directory` as a string; it is kept as the `PathBuf`
+    // the session's workspace root is read as, so every path of the workspace joins to it
+    // directly, as `Workspace::root` is kept.
+    pub directory: PathBuf, // @lfy def/mcp/data.lfy:Binding.directory
+    /// The plan the compile or verify made.
+    pub plan: Plan, // @lfy def/mcp/data.lfy:Binding.plan
+    /// The program the compile lowered and planned; its workspace is the one the session
+    /// reads definitions from.
+    pub program: Program, // @lfy def/mcp/data.lfy:Binding.program
+    /// The review request given to a verifier run as its input; `None` for a compiler run.
+    pub review: Option<ReviewRequest>, // @lfy def/mcp/data.lfy:Binding.review
+    /// The source maps that review request was made with; empty for a compiler run.
+    pub source_maps: Vec<SourceMap>, // @lfy def/mcp/data.lfy:Binding.sourceMaps
+}
+
+/// What [`Host::open`] holds: it opens one hosted session bound to a [`Binding`] and
+/// returns the session's URL.
+// @lfy def/mcp/data.lfy:Host.open
+pub type Open = Box<dyn Fn(Binding) -> String + Send + Sync>;
+
+/// What [`Host::close`] holds: it ends the session at a URL and returns
+/// [`Session::reviews`] of it.
+// @lfy def/mcp/data.lfy:Host.close
+pub type Close = Box<dyn Fn(&str) -> Vec<Review> + Send + Sync>;
+
+/// What [`Host::stop`] holds: it ends every session that is still open and stops listening.
+// @lfy def/mcp/data.lfy:Host.stop
+pub type Stop = Box<dyn Fn() + Send + Sync>;
+
+/// An agent server served over HTTP on this machine for the length of one compile or
+/// verify.
+// @lfy def/mcp/data.lfy:Host
+pub struct Host {
+    /// Where it listens: `http://127.0.0.1`, a colon, the port, and a slash.
+    pub url: String, // @lfy def/mcp/data.lfy:Host.url
+    /// What every request to it must carry as its bearer token.
+    pub token: String, // @lfy def/mcp/data.lfy:Host.token
+    /// Opens one hosted session bound to a [`Binding`] and returns the session's URL.
+    pub open: Open, // @lfy def/mcp/data.lfy:Host.open
+    /// Ends the session at a URL and returns [`Session::reviews`] of it.
+    pub close: Close, // @lfy def/mcp/data.lfy:Host.close
+    /// Ends every session that is still open and stops listening.
+    pub stop: Stop, // @lfy def/mcp/data.lfy:Host.stop
+}
+
+impl fmt::Debug for Host {
+    /// The address and the token's length; a closure has nothing to show.
+    // @lfy def/mcp/data.lfy:Host
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Host")
+            .field("url", &self.url)
+            .field("token", &self.token.len())
+            .finish_non_exhaustive()
+    }
 }
 
 /// Where the command line keeps its own files, under the root.

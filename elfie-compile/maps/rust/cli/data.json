@@ -2,8 +2,8 @@
   {
     "answered": [],
     "dependencies": {},
-    "generated": "2026-10-08T14:26:36Z",
-    "hash": "e3190b6db2fd3f8e44129f55482c32ff99342bae8c9312fa2f7b80a7919943e9",
+    "generated": "2026-10-10T17:05:35Z",
+    "hash": "b408e29e44e2ac9ab75b3b11544aee980b9780ffe9a3ddc3a40273c00ec58234",
     "markers": [
       {
         "column": null,
@@ -403,7 +403,7 @@
       },
       {
         "column": null,
-        "end": 206,
+        "end": 207,
         "entity": "Progress.elapsed",
         "file": "def/cli/data.lfy",
         "line": 57,
@@ -412,17 +412,17 @@
       },
       {
         "column": null,
-        "end": 208,
+        "end": 209,
         "entity": "Progress.message",
         "file": "def/cli/data.lfy",
         "line": 58,
-        "outputLine": 207,
+        "outputLine": 208,
         "requirement": null
       }
     ],
     "output": "crates/elfie-cli/src/data.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "73ba6f9bae1df36432e3f6a5d862b352652f8333dedf707f26ddab102d1a683b",
+    "signature": "e6d7aa1996a759def2d5053e53a67f949bd0e82c3894c82d5d0176d66a31f98e",
     "source": "def/cli/data.lfy",
     "target": "rust"
   }

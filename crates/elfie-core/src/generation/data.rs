@@ -7,8 +7,10 @@
 //! [`Verdict`] is whether one unit's [`Output`]s are accepted, and the [`SourceMap`]s they
 //! earn; an [`Outcome`] is what one run of the compiler came to; a [`Change`] is one
 //! difference for one entity since a unit's output was accepted; a [`ReviewRequest`] is
-//! everything a verifier is handed, and a [`ReviewReport`] of [`Review`]s is what it
-//! found. The `Target`, `File`,
+//! everything a verifier is handed, a [`ReviewReport`] of [`Review`]s is what it found, and
+//! a [`ReviewRecord`] is what one of those verdicts is kept as, so that the next review of
+//! the same criterion can be skipped while the code it was judged against stands. The
+//! `Target`, `File`,
 //! `Unit`, `LoweredFile`, and `Entity` fields of the definition are kept as indices into
 //! `Workspace::targets`, `Workspace::files`, `Plan::units`, `Program::files`, and
 //! `Model::entities`, so that a plan is one plain value that does not own the workspace or
@@ -494,15 +496,80 @@ pub struct Request {
 }
 
 /// Everything a verifier is handed to check outputs against what was asked: the local
-/// criteria and tests of one batch, or every global one once.
+/// criteria and tests of one batch that need review, or every global one once.
 // @lfy def/generation/data.lfy:ReviewRequest
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ReviewRequest {
     /// The batch; `None` for the review of global criteria and tests.
     pub batch: Option<Batch>, // @lfy def/generation/data.lfy:ReviewRequest.batch
-    /// The prompt: every criterion and test with its id and place, every region answering
-    /// for each, and how to report.
+    /// The prompt: every criterion and test under review with its id and place, where the
+    /// regions answering for each are, and how to report.
     pub instructions: String, // @lfy def/generation/data.lfy:ReviewRequest.instructions
+    /// The id of every criterion and test [`ReviewRequest::instructions`] lists, in the
+    /// order listed.
+    pub asked: Vec<String>, // @lfy def/generation/data.lfy:ReviewRequest.asked
+    /// For every local criterion and test of the batch's units, by id, the hash of the
+    /// regions of the entity it belongs to, as the review computed it; empty for the review
+    /// of global criteria and tests.
+    pub hashes: BTreeMap<String, String>, // @lfy def/generation/data.lfy:ReviewRequest.hashes
+    /// The record of every local criterion and test of the batch's units that is not
+    /// listed, kept from its last review; empty for the review of global criteria and
+    /// tests.
+    pub carried: Vec<ReviewRecord>, // @lfy def/generation/data.lfy:ReviewRequest.carried
+}
+
+/// The last verdict on one local criterion or test of a unit, with the hash of the code it
+/// was judged against.
+///
+/// [`ReviewRecord::of`] makes one from a [`Review`] of a run and the hashes of that run's
+/// review request; a later review skips the criterion while its record is
+/// [`ReviewStatus::Satisfied`] and its hash is still what the code hashes to.
+// @lfy def/generation/data.lfy:ReviewRecord
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewRecord {
+    /// The id of the criterion or test.
+    pub id: String, // @lfy def/generation/data.lfy:ReviewRecord.id
+    /// What its last review found.
+    pub status: ReviewStatus, // @lfy def/generation/data.lfy:ReviewRecord.status
+    /// The criterion's or test's hash in [`ReviewRequest::hashes`] of the review request it
+    /// was reviewed under.
+    pub hash: String, // @lfy def/generation/data.lfy:ReviewRecord.hash
+}
+
+impl ReviewRecord {
+    /// The record one review of a run earns: the review's id and status, with the hash the
+    /// run's review request gave that id.
+    ///
+    /// A request that gave the id no hash leaves the record's hash empty, which no text
+    /// hashes to, so the criterion is reviewed again rather than carried on a hash nothing
+    /// was computed for.
+    // @lfy def/generation/data.lfy:ReviewRecord#ReviewRecord:ReviewRecord:0ce7f4194c3e524869964be823e6403c4b1830e71fd55b600d154bcf9e69d6e3
+    pub fn of(review: &Review, hashes: &BTreeMap<String, String>) -> ReviewRecord {
+        ReviewRecord {
+            id: review.id.clone(),
+            status: review.status,
+            hash: hashes.get(&review.id).cloned().unwrap_or_default(),
+        }
+    }
+
+    pub fn to_json(&self) -> Value {
+        json!({
+            "id": self.id,
+            "status": self.status.as_str(),
+            "hash": self.hash,
+        })
+    }
+
+    /// A record from its JSON object; `None` when a field is missing or mistyped, or when
+    /// the status names no member of [`ReviewStatus`].
+    pub fn from_json(value: &Value) -> Option<ReviewRecord> {
+        let object = value.as_object()?;
+        Some(ReviewRecord {
+            id: string_field(object, "id")?,
+            status: ReviewStatus::from_name(&string_field(object, "status")?)?,
+            hash: string_field(object, "hash")?,
+        })
+    }
 }
 
 /// One file the compiler produced.
@@ -826,7 +893,8 @@ impl Review {
 // @lfy def/generation/data.lfy:ReviewReport
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ReviewReport {
-    /// Each review, in report order, one per id.
+    /// Each review submitted through the agent server, in the order recorded, then each
+    /// read from the report, in report order; one per id.
     pub reviews: Vec<Review>, // @lfy def/generation/data.lfy:ReviewReport.reviews
     /// Each review line that was not read as a review, then the line reading the report did
     /// not end when there was no end line.
@@ -1135,6 +1203,47 @@ mod tests {
         assert_eq!(review.file, "def/target/target.lfy");
         assert_eq!(review.line, 18);
         assert_eq!(review.entity, GLOBAL);
+    }
+
+    /// A record made from a review of a run takes that review's id and status, and the hash
+    /// the run's review request gave the id; one made from a review the request gave no hash
+    /// for takes none, so the criterion is reviewed again.
+    // @lfy def/generation/data.lfy:ReviewRecord#ReviewRecord:ReviewRecord:0ce7f4194c3e524869964be823e6403c4b1830e71fd55b600d154bcf9e69d6e3
+    #[test]
+    fn a_record_is_a_reviews_id_and_status_with_the_hash_it_was_judged_against() {
+        let review = Review {
+            id: "A:A:abc".to_string(),
+            file: "def/a.lfy".to_string(),
+            line: 4,
+            entity: "A".to_string(),
+            status: ReviewStatus::Satisfied,
+            evidence: "src/a.rs:1-30".to_string(),
+            note: "the field is there".to_string(),
+        };
+        let hashes = BTreeMap::from([("A:A:abc".to_string(), "deadbeef".to_string())]);
+        let record = ReviewRecord::of(&review, &hashes);
+        assert_eq!(record.id, "A:A:abc");
+        assert_eq!(record.status, ReviewStatus::Satisfied);
+        assert_eq!(record.hash, "deadbeef");
+        // The record is written with its keys in alphabetical order and reads back whole.
+        let value = record.to_json();
+        let keys: Vec<&str> = value
+            .as_object()
+            .expect("an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(keys, ["hash", "id", "status"]);
+        assert_eq!(ReviewRecord::from_json(&value), Some(record));
+
+        // A review the request gave no hash for is recorded with none.
+        let unhashed = ReviewRecord::of(&review, &BTreeMap::new());
+        assert_eq!(unhashed.hash, "");
+        // A status that names no member of `ReviewStatus` is no record.
+        assert_eq!(
+            ReviewRecord::from_json(&json!({"id": "A:A:abc", "status": "maybe", "hash": ""})),
+            None
+        );
     }
 
     /// A source map written before a requirements hash and signatures were recorded reads

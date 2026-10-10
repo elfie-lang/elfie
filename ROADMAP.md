@@ -45,18 +45,23 @@ until accepted.
    operations whose resolved `Command` has a line. With several targets, a tool takes a `target`.
    - Each tool returns structured pass/fail and trimmed output.
    - Calls queue per directory in the compile-hosted server.
-5. A test command may declare narrowing. In the rust vendor, `cargo test -- $TESTS` reads
-   `$TESTS`. `elfie_test <id | entity>` then maps ids to the marked test functions through the
-   source maps. Without that, it runs the whole command.
-6. `Bash` is dropped from agents once these tools exist.
+5. Commands may declare narrowing through the environment.
+   - `TESTS` holds the filter words, and `SCOPE` holds the part of the outputs to run on (a
+     package for cargo).
+   - The rust vendor runs `set -f; cargo test ${SCOPE:+-p "$SCOPE"} -- $TESTS`, and build and
+     lint take `SCOPE` the same way.
+   - `elfie_build`, `elfie_test`, and `elfie_lint` take `scope`. `elfie_test` also takes `filter`.
+   - *Deferred:* mapping a requirement id or entity name to the test functions marked for it.
+6. Agents lose cargo `Bash` only when `ELFIE_COMMAND_TOOLS` names the tools their session is
+   offered. The compiler keeps `cargo add`, which the ecosystem rule requires.
 
 ## Phase 3: the compiler on the agent server
 
 7. `elfie_task` gives the obligations. These are the ids, each marked new, changed, or removed,
    with the text of the removed ones, plus the outputs and the reason.
-8. `elfie_interface` gives one dependency entity on demand, in place of the pushed interfaces
+8. `elfie_dependency` (`interface` is a reserved word) gives one dependency entity on demand, in place of the pushed interfaces
    section.
-9. `elfie_code` gives generated code by entity, criterion id, or Rust symbol, and an outline of an
+9. `elfie_output` gives generated code by entity or criterion id, with `text: false` for an outline of an
    output file.
 10. `elfie_mark` sets or rewrites marker ids mechanically. `elfie_submit` gives a structured
     outcome in place of the `ELFIE:` lines.

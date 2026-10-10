@@ -18,7 +18,9 @@
 //! independent verifier is handed for one batch, [`global_review`] what it is handed for
 //! every global criterion and test, and [`review_of`] what it found. [`source_maps_of`]
 //! reads the source maps a workspace recorded and [`record`] writes those of one accepted
-//! unit.
+//! unit; [`reviews_of`] reads the verdicts one unit's criteria and tests were last given
+//! and [`record_reviews`] writes them, so that a criterion whose code has not changed since
+//! it was found satisfied is carried rather than reviewed again.
 //! Nothing here shells out.
 
 use std::collections::{BTreeMap, HashSet};
@@ -68,6 +70,13 @@ const MAPS: &str = "elfie-compile/maps";
 /// What earlier versions recorded every map of a target in, under its output directory.
 // @lfy def/generation/main.lfy:sourceMapsOf
 const LEGACY_MAPS: &str = "source-map.json";
+/// Where the review records of a project live, under the workspace root, one file per unit
+/// beside its map file.
+// Decision: review records live beside the maps in `elfie-compile` and are checked in,
+// because a verdict cannot be rebuilt from the definitions, the maps, and the outputs
+// without a verifier.
+// @lfy def/generation/main.lfy:reviewsOf
+const REVIEWS: &str = "elfie-compile/reviews";
 
 // ---------------------------------------------------------------------------------------
 // the lowered program
@@ -3475,6 +3484,108 @@ pub fn record(workspace: &Workspace, unit: &Unit, source_maps: &[SourceMap]) -> 
 }
 
 // ---------------------------------------------------------------------------------------
+// reviewsOf, recordReviews
+// ---------------------------------------------------------------------------------------
+
+/// The review record file of one unit: `elfie-compile/reviews`, the target's identifier, and
+/// the unit's stem with the extension `.json`, under the workspace root, such as
+/// `elfie-compile/reviews/rust/cli/main.json` for `def/cli/main.lfy`.
+// @lfy def/generation/data.lfy:ReviewRecord#ReviewRecord:ReviewRecord:d1283130451aac07da56acfa5179b7af277f4cbbb6d93ed00c6b0aad6499db7a
+pub fn review_file(workspace: &Workspace, unit: &Unit) -> PathBuf {
+    workspace
+        .root
+        .join(REVIEWS)
+        .join(&workspace.targets[unit.target].identifier)
+        .join(format!("{}.json", unit.stem))
+}
+
+/// The review records of one unit, as its review record file holds them.
+///
+/// The file holds them as one JSON list, and they come back in the order it lists them. A
+/// file that is missing, that cannot be read, or that is no JSON list of review records
+/// gives none, so every criterion and test of the unit is reviewed again. A record whose id
+/// is the id of no local criterion or test of the unit is left out, so a criterion that was
+/// reworded is never carried on the verdict its old id earned. Nothing is written, and
+/// nothing under `elfie-compile/cache` is read.
+// Decision: the definition passes the workspace; the ids of a unit's local criteria and
+// tests are the lowered program's, which a plan here does not own, so the program stands in
+// for the workspace as it does for [`changes`].
+// @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+// @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:1dc22603643b17fad4874110ef09a3391b67d71c28a9f5b35a7dfa18438f3409
+pub fn reviews_of(program: &Program, unit: &Unit) -> Vec<ReviewRecord> {
+    let path = review_file(&program.workspace, unit);
+    // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0aa4f9eaff20fee7bf263db985597b4d886a2ac762b47b1af1734107a9ac1503
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return Vec::new();
+    };
+    let Some(items) = value.as_array() else {
+        return Vec::new();
+    };
+    let Some(records) = items
+        .iter()
+        .map(ReviewRecord::from_json)
+        .collect::<Option<Vec<ReviewRecord>>>()
+    else {
+        return Vec::new();
+    };
+    let local: HashSet<String> = unit
+        .requirements(program)
+        .iter()
+        .map(|requirement| requirement.id().to_string())
+        .collect();
+    // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:d95399b23b29d50a8fba5af56c20731f8f7b0b2bafe16e9914d5090e374ce251
+    records
+        .into_iter()
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0b41caebdc61220c67f088bc69f465267b2c9e2b36d07c52b02680bf6cb4724c
+        .filter(|record| local.contains(&record.id))
+        .collect()
+}
+
+/// Whether the review records of one unit are recorded in its review record file.
+///
+/// The file holds them afterwards, replacing whatever it held, and no other file is written.
+/// It is the pretty JSON of the records in the order they were given, with the keys of every
+/// object in alphabetical order, so the same records always give the same bytes and a diff
+/// shows only what changed. Every missing folder above the file is created, so a project
+/// cloned without `elfie-compile` records its verdicts; no record at all removes the file,
+/// so every criterion of the unit is reviewed again. `false` when the file cannot be
+/// written.
+// @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:5708abb1bf089eb06657f5688610a6c234b81463164fd199b77b315608316837
+// @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:8d039cf20453fa3420e6acdb3ce42b2031909a9bc211b646a683be5017efa7fd
+pub fn record_reviews(workspace: &Workspace, unit: &Unit, records: &[ReviewRecord]) -> bool {
+    let path = review_file(workspace, unit);
+    if records.is_empty() {
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:0149e6a1c5272af0b7ca76e627e0fb18e511db4e2076f128db7607e14f49ae85
+        return match std::fs::remove_file(&path) {
+            Ok(()) => true,
+            Err(error) => error.kind() == std::io::ErrorKind::NotFound,
+        };
+    }
+    // The readable layout of the records, in the order they were given, with the keys of
+    // every object in alphabetical order, so the same records always give the same bytes.
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:52d12769dcd44be836a5afeb17b9c7341a2a82265bafc029ee658a417f8e0569
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:c0e143aef64c3c7bed3e5892dd6d03a0c46df17166ce5ffa598b2db167027369
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:60d0cd914ebe3c1cbbd582cd3229d8adc3a00b879720f1caeec671fb4c707551
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:db1f607aac959c64937cb811664557dedde402eb3fdcaaaf6a2db6b1284ecfd1
+    let value = serde_json::Value::Array(records.iter().map(ReviewRecord::to_json).collect());
+    let Ok(mut text) = serde_json::to_string_pretty(&value) else {
+        return false;
+    };
+    text.push('\n');
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:72846edcc746900edf9c781c66023ad863b10442a8c62d330bee15766a2090c3
+    if let Some(parent) = path.parent()
+        && std::fs::create_dir_all(parent).is_err()
+    {
+        return false;
+    }
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:1f4671d2ae5027d4e5bcfaf56dc68c765e27e31a92fc783b7f64a2165f391dd4
+    std::fs::write(&path, text).is_ok()
+}
+
+// ---------------------------------------------------------------------------------------
 // regionsOf
 // ---------------------------------------------------------------------------------------
 
@@ -4148,31 +4259,47 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 // ---------------------------------------------------------------------------------------
 
 /// Everything a verifier is handed to check the outputs of one batch against every
-/// criterion and test.
+/// criterion and test whose verdict is not carried.
 ///
-/// The instructions name the batch and the target, then quote every local criterion and
-/// test of every entity of every unit with its id and its place — the file of its origin
-/// relative to the workspace root, a colon, and the line its origin begins on — then
-/// excerpt every region [`regions_of`] finds for those entities in the target's source
-/// maps, then give the verifier protocol. Only local criteria and tests are reviewed here;
-/// a global one is reviewed once, by [`global_review`].
+/// The instructions name the batch and the target, then, unit by unit, every entity with a
+/// criterion or test under review: its name, its definition, where each of its regions is,
+/// and each of those criteria and tests on one line with its id and its place — the file of
+/// its origin relative to the workspace root, a colon, and the line its origin begins on —
+/// then, for that unit, the criteria and tests of its own file, and last the verifier
+/// protocol. No line of any output is quoted: a region is named, and the verifier pulls its
+/// code through the agent server. Only local criteria and tests are reviewed here; a global
+/// one is reviewed once, by [`global_review`].
 ///
-/// `directory` is the directory the batch's outputs were written in, which its regions are
-/// read from, and `None` means the workspace root.
-// Decision: the verifier is handed the regions already excerpted, so it reads exactly what a
-// criterion is about, and its protocol allows no edits: a review says where and why, never
-// how to fix.
+/// `records` is what the batch's units were last reviewed as, as [`reviews_of`] gives them.
+/// A criterion or test is listed when nothing says its verdict still holds: it has no
+/// record, its last verdict was not satisfied, or the regions of its entity hash to
+/// something other than what it was judged against. One whose entity generated no region,
+/// and one of a unit's own file, is always listed and never carried, since there is no code
+/// of its own whose sameness could stand for the verdict. With nothing left to list, the
+/// instructions say so and hold no protocol.
+///
+/// `directory` is the directory the batch's outputs were written in, which the regions a
+/// hash is taken over are read from, and `None` means the workspace root.
+// Decision: the verifier is told where the regions are and pulls their code through the
+// agent server, so a request stays small however large the batch's outputs are, and its
+// protocol allows no edits: a review says where and why, never how to fix.
 // Decision: a batch compiled in a copy of the root is reviewed in that copy, so the regions
-// a verifier is shown are the outputs it is judging and never the root's older ones.
+// a verifier is pointed at, and the hashes its verdicts are recorded with, are those of the
+// outputs it is judging and never the root's older ones.
+// Decision: a criterion or test is reviewed again only when nothing says its verdict still
+// holds; a change to code outside the entity's regions, such as a helper no marker names,
+// changes no hash and so carries every verdict of that entity.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
-// @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+// @lfy def/generation/main.lfy:review#review:review:b4d9c6e00da87a0e74023db7212d00d3105247c847c18b29e94bf3fbe6925699
+// @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
 pub fn review(
     program: &Program,
     plan: &Plan,
     batch: &Batch,
     source_maps: &[SourceMap],
     directory: Option<&Path>,
+    records: &[ReviewRecord],
 ) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -4183,79 +4310,262 @@ pub fn review(
         .first()
         .map(|&index| workspace.targets[plan.units[index].target].identifier.as_str())
         .unwrap_or_default();
-    let mut out = String::new();
 
-    // A heading naming the batch and the target.
-    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+    // Unit by unit, entity by entity: the regions of the entity, the hash they come to, and
+    // which of its criteria and tests that hash leaves to review.
+    let mut asked: Vec<String> = Vec::new();
+    let mut hashes: BTreeMap<String, String> = BTreeMap::new();
+    let mut carried: Vec<ReviewRecord> = Vec::new();
+    let mut sections = String::new();
+    for &index in &batch.units {
+        let unit = &plan.units[index];
+        let mut body = String::new();
+        for &entity in &unit.entities {
+            let regions = entity_regions(workspace, source_maps, entity, target);
+            // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+            let hash = source_hash(&regions_text(directory, &regions));
+            let requirements = reviewed_requirements(program, unit.lowered, entity);
+            let listed = listed_requirements(
+                &requirements,
+                &hash,
+                records,
+                !regions.is_empty(),
+                &mut hashes,
+                &mut carried,
+            );
+            // @lfy def/generation/main.lfy:review#review:review:bb873e216e23bb2a7659d3b1888588387a1f7980df4fac536938ec32d6d42b8d
+            if listed.is_empty() {
+                continue;
+            }
+            let (criteria, tests) = split_requirements(&listed);
+            write_review_entity(&mut body, model, entity, &regions, &criteria, &tests);
+            asked.extend(ids_of(&criteria));
+            asked.extend(ids_of(&tests));
+        }
+        // A criterion or test of the unit's own file answers for no entity's code, so it has
+        // no region of its own, hashes to the empty text, and is always listed.
+        // @lfy def/generation/main.lfy:review#review:review:efbaab9e13ed7569408b035ce9b34392a9e0b4fa0a274b747ea27c0ef681cd65
+        // @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
+        let file = &program.files[unit.lowered];
+        let own: Vec<Requirement> = file
+            .criteria
+            .iter()
+            .cloned()
+            .map(Requirement::Criterion)
+            .chain(file.tests.iter().cloned().map(Requirement::Test))
+            .collect();
+        let listed = listed_requirements(
+            &own,
+            &source_hash(""),
+            records,
+            false,
+            &mut hashes,
+            &mut carried,
+        );
+        if !listed.is_empty() {
+            let (criteria, tests) = split_requirements(&listed);
+            let _ = writeln!(body, "#### `{}`\n", workspace.files[unit.file].path);
+            write_reviewed(&mut body, model, "Criteria", &criteria);
+            write_reviewed(&mut body, model, "Tests", &tests);
+            asked.extend(ids_of(&criteria));
+            asked.extend(ids_of(&tests));
+        }
+        if !body.is_empty() {
+            let _ = writeln!(
+                sections,
+                "### `{}` (stem `{}`)\n",
+                workspace.files[unit.file].path, unit.stem
+            );
+            sections.push_str(&body);
+        }
+    }
+
+    // A heading naming the batch and the target, then what is under review, then the
+    // protocol; with nothing under review, the heading and one line saying so.
+    let mut out = String::new();
     let _ = writeln!(
         out,
         "# Reviewing the batch `{}` for the target `{}`\n",
         batch.identifier, target
     );
-    // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
-    out.push_str(
-        "Every criterion and test below is local to one entity of this batch. A global one is \
-         reviewed once, on its own, across every output of the program.\n\n",
-    );
-
-    // Every local criterion and test of every entity, with its id and its place.
-    // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
-    out.push_str("## What was asked\n\n");
-    for &index in &batch.units {
-        let unit = &plan.units[index];
-        let file = &workspace.files[unit.file];
-        let _ = writeln!(out, "### `{}` (stem `{}`)\n", file.path, unit.stem);
-        if unit.entities.is_empty() {
-            out.push_str("The unit has no entities.\n\n");
-        }
-        for &entity in &unit.entities {
-            write_review_entity(&mut out, program, unit.lowered, entity);
-        }
+    if asked.is_empty() {
+        // @lfy def/generation/main.lfy:review#review:review:5133eddf9b981ba9bac41113779c58b491cedfbc67e2e3742ac236b381a254dc
+        out.push_str(
+            "Nothing in the batch needs review: every criterion and test of its units was \
+             found satisfied against the code it still stands on.\n",
+        );
+    } else {
+        // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
+        out.push_str(
+            "Every criterion and test below is local to one entity of this batch. A global \
+             one is reviewed once, on its own, across every output of the program.\n\n",
+        );
+        out.push_str("## What was asked\n\n");
+        out.push_str(&sections);
+        // The verifier protocol.
+        out.push_str(PROTOCOL);
     }
-
-    // Then the regions generated for each of those entities, each listed once.
-    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
-    out.push_str("## What was generated\n\n");
-    let mut seen: HashSet<(String, usize)> = HashSet::new();
-    for &index in &batch.units {
-        let unit = &plan.units[index];
-        for &entity in &unit.entities {
-            let name = qualified_name(model, entity);
-            let _ = writeln!(out, "### `{name}`\n");
-            // Only what the file declaring the entity generated, so an entity of another
-            // file with the same name brings none of its code, while an entity moved into
-            // the unit brings its own, which its declaring file marks.
-            // @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
-            let declaring = declaring_path(model, entity);
-            let regions: Vec<(&SourceMap, &Marker)> =
-                matching_regions(workspace, source_maps, &name, Some(target))
-                    .into_iter()
-                    .filter(|(_, marker)| declaring == Some(marker.file.as_str()))
-                    .collect();
-            write_regions(&mut out, directory, regions, &mut seen);
-        }
-    }
-
-    // The verifier protocol.
-    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
-    out.push_str(PROTOCOL);
 
     // @lfy def/generation/main.lfy:review#review:review:197b2d0e6f7458d538f3cc8d8568be98a60636ca07026cd2eeb1d5933910f156
     ReviewRequest {
         batch: Some(batch.clone()),
         instructions: out,
+        asked,
+        hashes,
+        carried,
     }
 }
 
-/// One entity of a unit for a verifier: its name, its definition, then each local criterion
-/// and each local test on one line prefixed by its id and its place.
+/// Every region one entity of a unit generated: each marker [`regions_of`] finds for its
+/// name among the source maps of the batch's target whose file is the file that declares the
+/// entity, in output order and then in output line order.
 ///
-/// `lowered` is the index of the unit's own lowered file; an entity moved into the unit is
-/// declared in another file, so its criteria and tests are taken from there.
-// @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+/// Only what the file declaring the entity generated, so an entity of another file with the
+/// same name brings none of its code, while an entity moved into the unit brings its own,
+/// which its declaring file marks.
+// @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
+// @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
+fn entity_regions<'m>(
+    workspace: &Workspace,
+    source_maps: &'m [SourceMap],
+    entity: EntityId,
+    target: &str,
+) -> Vec<(&'m SourceMap, &'m Marker)> {
+    let model = &workspace.model;
+    let declaring = declaring_path(model, entity);
+    let name = qualified_name(model, entity);
+    let mut out: Vec<(&SourceMap, &Marker)> =
+        matching_regions(workspace, source_maps, &name, Some(target))
+            .into_iter()
+            .filter(|(_, marker)| declaring == Some(marker.file.as_str()))
+            .collect();
+    out.sort_by(|(left_map, left), (right_map, right)| {
+        left_map
+            .output
+            .cmp(&right_map.output)
+            .then(left.output_line.cmp(&right.output_line))
+    });
+    out
+}
+
+/// The text the hash of one entity's criteria and tests is taken over: the lines of each
+/// region in its own output, one region after another, each line followed by a line break.
+/// A region whose output cannot be read adds nothing.
+///
+/// `directory` is the directory the outputs were written in, which each region is read from.
+// @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+// @lfy def/generation/main.lfy:review#review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903
+fn regions_text(directory: &Path, regions: &[(&SourceMap, &Marker)]) -> String {
+    let mut out = String::new();
+    for (map, marker) in regions {
+        let Ok(text) = std::fs::read_to_string(directory.join(&map.output)) else {
+            continue;
+        };
+        let lines: Vec<&str> = text.lines().collect();
+        let last = marker.end.min(lines.len());
+        let first = marker.output_line.saturating_sub(1).min(last);
+        for line in &lines[first..last] {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// Which of one entity's criteria and tests a review lists, with every one of them recorded
+/// in `hashes` under the hash of that entity's regions and every one it leaves out recorded
+/// in `carried`.
+///
+/// `has_region` is whether the entity generated any region at all: with none, there is no
+/// code whose sameness could stand for a verdict, so nothing is carried.
+// @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
+// @lfy def/generation/main.lfy:review#review:review:32e025cd22c3a749bbc3afba52f86cb9b26ac41d0f4a822a6e5e00639e557312
+// @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
+fn listed_requirements<'r>(
+    requirements: &'r [Requirement],
+    hash: &str,
+    records: &[ReviewRecord],
+    has_region: bool,
+    hashes: &mut BTreeMap<String, String>,
+    carried: &mut Vec<ReviewRecord>,
+) -> Vec<&'r Requirement> {
+    let mut out: Vec<&Requirement> = Vec::new();
+    for requirement in requirements {
+        hashes.insert(requirement.id().to_string(), hash.to_string());
+        let held = records
+            .iter()
+            .find(|record| record.id == requirement.id())
+            .filter(|record| {
+                has_region && record.status == ReviewStatus::Satisfied && record.hash == hash
+            });
+        match held {
+            Some(record) => carried.push(record.clone()),
+            None => out.push(requirement),
+        }
+    }
+    out
+}
+
+/// Criteria and tests apart, each in the order they were given.
+// @lfy def/generation/main.lfy:review
+fn split_requirements<'r>(
+    requirements: &[&'r Requirement],
+) -> (Vec<&'r Requirement>, Vec<&'r Requirement>) {
+    requirements
+        .iter()
+        .copied()
+        .partition(|requirement| matches!(requirement, Requirement::Criterion(_)))
+}
+
+/// The ids of criteria or tests, in the order they were given.
+// @lfy def/generation/main.lfy:review
+fn ids_of(requirements: &[&Requirement]) -> Vec<String> {
+    requirements
+        .iter()
+        .map(|requirement| requirement.id().to_string())
+        .collect()
+}
+
+/// Every local criterion and test the declaration of one entity of a unit holds: its own and
+/// those of its members, criteria before tests at each level, taken from the unit's own
+/// lowered file or, for an entity moved into the unit, from the file it came from.
+// Decision: a member's criteria are reviewed under the declaration that holds it, as
+// `regionsOf` gives a member's regions to its owner, so every local criterion and test of a
+// unit is listed under one of its entities or under its own file and none goes unasked.
 // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
-fn write_review_entity(out: &mut String, program: &Program, lowered: usize, entity: EntityId) {
-    let model = &program.workspace.model;
+fn reviewed_requirements(program: &Program, lowered: usize, entity: EntityId) -> Vec<Requirement> {
+    let node = lowered_node_of(&program.files[lowered], entity)
+        .or_else(|| lowered_declaration(program, entity));
+    let mut out: Vec<Requirement> = Vec::new();
+    if let Some(node) = node {
+        requirements_within(node, &mut out);
+    }
+    out
+}
+
+/// The criteria and tests of one declaration, appended: those of the node, criteria before
+/// tests, then those of the nodes within it, which are its members.
+// @lfy def/generation/main.lfy:review
+fn requirements_within(node: &LoweredNode, out: &mut Vec<Requirement>) {
+    out.extend(node.criteria.iter().cloned().map(Requirement::Criterion));
+    out.extend(node.tests.iter().cloned().map(Requirement::Test));
+    for child in node.nodes() {
+        requirements_within(child, out);
+    }
+}
+
+/// One entity of a unit for a verifier: its name, its definition, where each of its regions
+/// is, and then each criterion and each test under review on one line prefixed by its id and
+/// its place.
+// @lfy def/generation/main.lfy:review#review:review:b4d9c6e00da87a0e74023db7212d00d3105247c847c18b29e94bf3fbe6925699
+fn write_review_entity(
+    out: &mut String,
+    model: &Model,
+    entity: EntityId,
+    regions: &[(&SourceMap, &Marker)],
+    criteria: &[&Requirement],
+    tests: &[&Requirement],
+) {
     let record = &model.entities[entity];
     let _ = writeln!(
         out,
@@ -4266,43 +4576,28 @@ fn write_review_entity(out: &mut String, program: &Program, lowered: usize, enti
     if let Some(definition) = &record.definition {
         let _ = writeln!(out, "Definition: {definition}\n");
     }
-    let requirements = declared_requirements(program, lowered, entity);
-    out.push_str("Criteria:\n");
-    let mut written = 0;
-    for requirement in &requirements {
-        if let Requirement::Criterion(criterion) = requirement {
-            // @lfy def/generation/main.lfy:review
-            let _ = writeln!(
-                out,
-                "`{}` {} — {}",
-                criterion.id,
-                origin_place(model, criterion.origin),
-                criterion.text()
-            );
-            written += 1;
-        }
+    write_regions(out, regions);
+    write_reviewed(out, model, "Criteria", criteria);
+    write_reviewed(out, model, "Tests", tests);
+}
+
+/// Each criterion or test under review on one line: its id, its place, an em dash, and its
+/// text.
+// @lfy def/generation/main.lfy:review#review:review:b4d9c6e00da87a0e74023db7212d00d3105247c847c18b29e94bf3fbe6925699
+fn write_reviewed(out: &mut String, model: &Model, heading: &str, requirements: &[&Requirement]) {
+    let _ = writeln!(out, "{heading}:");
+    if requirements.is_empty() {
+        out.push_str("(none)\n\n");
+        return;
     }
-    if written == 0 {
-        out.push_str("(none)\n");
-    }
-    out.push('\n');
-    out.push_str("Tests:\n");
-    written = 0;
-    for requirement in &requirements {
-        if let Requirement::Test(test) = requirement {
-            // @lfy def/generation/main.lfy:review
-            let _ = writeln!(
-                out,
-                "`{}` {} — {}",
-                test.id,
-                origin_place(model, test.origin),
-                test_text(test)
-            );
-            written += 1;
-        }
-    }
-    if written == 0 {
-        out.push_str("(none)\n");
+    for requirement in requirements {
+        let (id, origin, text) = match requirement {
+            Requirement::Criterion(criterion) => {
+                (&criterion.id, criterion.origin, criterion.text())
+            }
+            Requirement::Test(test) => (&test.id, test.origin, test_text(test)),
+        };
+        let _ = writeln!(out, "`{id}` {} — {text}", origin_place(model, origin));
     }
     out.push('\n');
 }
@@ -4325,49 +4620,21 @@ fn line_of(model: &Model, node: NodeRef) -> usize {
     model.first_token(node).map_or(1, |token| token.line)
 }
 
-/// Every region given: the output path, the line range, and the text of those lines in a
-/// fenced block; a line saying so instead when the output cannot be read. A region `seen`
-/// already holds is repeated as its path and lines alone, without its text.
-///
-/// `directory` is the directory the outputs were written in, which each region is read from.
-// @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
-fn write_regions(
-    out: &mut String,
-    directory: &Path,
-    regions: Vec<(&SourceMap, &Marker)>,
-    seen: &mut HashSet<(String, usize)>,
-) {
+/// Where every region given is: the output path, a colon, the first output line, a dash, and
+/// the last, one region per line. None of their code is written, so the instructions hold no
+/// line of any output; the verifier reads a region through the agent server.
+// @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
+// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
+fn write_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
     if regions.is_empty() {
         out.push_str("No region of any output was generated for it.\n\n");
         return;
     }
+    out.push_str("Regions:\n");
     for (map, marker) in regions {
-        let _ = writeln!(out, "`{}:{}-{}`\n", map.output, marker.output_line, marker.end);
-        // A region listed for an earlier entity is listed once.
-        // @lfy def/generation/main.lfy:review#review:review:72529d6e11ade1756ea5a1a2ea7659b1dec2663d636e04e134ec72309e546cd5
-        if !seen.insert((map.output.clone(), marker.output_line)) {
-            out.push_str("Listed above.\n\n");
-            continue;
-        }
-        // @lfy def/generation/main.lfy:review#review:review:ab46be2107934463218771ce935af8b1af8c59e0f5656d26a5d6dd846df1087d
-        match std::fs::read_to_string(directory.join(&map.output)) {
-            Ok(text) => {
-                let lines: Vec<&str> = text.lines().collect();
-                let last = marker.end.min(lines.len());
-                let first = marker.output_line.saturating_sub(1).min(last);
-                out.push_str("```\n");
-                for line in &lines[first..last] {
-                    out.push_str(line);
-                    out.push('\n');
-                }
-                out.push_str("```\n\n");
-            }
-            // @lfy def/generation/main.lfy:review#review:review:2f84308152b64a4bdf82224c54c0caf9e0a72ebcf65d5072ef5d52cc1b92cec5
-            Err(error) => {
-                let _ = writeln!(out, "The output could not be read: {error}.\n");
-            }
-        }
+        let _ = writeln!(out, "`{}:{}-{}`", map.output, marker.output_line, marker.end);
     }
+    out.push('\n');
 }
 
 // ---------------------------------------------------------------------------------------
@@ -4378,15 +4645,17 @@ fn write_regions(
 /// every output of the program.
 ///
 /// The instructions name the global review and the targets, then give each global criterion
-/// and then each global test with its id and its place, its text, and every region whose
-/// marker answers for its id; one that no marker of any output names is listed with a line
-/// saying no unit answered for it, so the verifier finds it unverifiable, never violated.
-/// The caller runs it once after every batch of a compile, and whenever the program's global
-/// criteria or tests changed; a review it finds violated gives the stems of the units whose
-/// markers answered for it, for the `violated` argument of [`plan`].
+/// and then each global test with its id and its place, its text, and where every region
+/// whose marker answers for its id is; one that no marker of any output names is listed with
+/// a line saying no unit answered for it, so the verifier finds it unverifiable, never
+/// violated. No line of any output is quoted, and nothing is carried: a global criterion is
+/// asked about every time the review runs. The caller runs it once after every batch of a
+/// compile, and whenever the program's global criteria or tests changed; a review it finds
+/// violated gives the stems of the units whose markers answered for it, for the `violated`
+/// argument of [`plan`].
 // Decision: the definition passes the plan; a plan here does not own the program lowered
 // from its workspace, and nothing else of the plan is read, so the program stands in for it.
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
+// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
 pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -4423,18 +4692,21 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
     if globals.is_empty() {
         out.push_str("## What was asked\n\nThe program has no global criterion and no global test.\n\n");
     }
+    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:3163f899ae0e06b99cc3cfbdf7857a8f62a41a8e5685323600713e1e6347797b
+    let mut asked: Vec<String> = Vec::new();
     for requirement in &globals {
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
         let (id, origin, text) = match requirement {
             Requirement::Criterion(criterion) => {
                 (&criterion.id, criterion.origin, criterion.text())
             }
             Requirement::Test(test) => (&test.id, test.origin, test_text(test)),
         };
+        asked.push(id.clone());
         let _ = writeln!(out, "## `{id}` {}\n", origin_place(model, origin));
         let _ = writeln!(out, "{text}\n");
         // Every region whose marker answers for this id, whatever target it was built for.
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
         let regions: Vec<(&SourceMap, &Marker)> = source_maps
             .iter()
             .flat_map(|map| {
@@ -4449,41 +4721,50 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
             out.push_str("No unit answered for it, so it cannot be checked against any region.\n\n");
             continue;
         }
-        // Each global criterion stands on its own, so every region it names is given whole.
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
-        write_regions(&mut out, &workspace.root, regions, &mut HashSet::new());
+        write_regions(&mut out, &regions);
     }
 
     // The verifier protocol.
-    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
+    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
     out.push_str(PROTOCOL);
 
     ReviewRequest {
         // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:de84b01e368319ebde8eb693c9242574f7b87c6cdedc5229f53fbdf2a3cdd11d
         batch: None,
         instructions: out,
+        asked,
+        // A global criterion stands on the whole program rather than on the regions of one
+        // entity, so there is no hash of its own code to carry a verdict on.
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e9cc8a4c5b45b3440c827bd67a1fd514c12870041202d0cd54fad21179548843
+        hashes: BTreeMap::new(),
+        carried: Vec::new(),
     }
 }
 
-/// What a verifier is told about its own work: that it examines and never edits, what it
-/// writes for each criterion and each test, and how its report ends.
+/// What a verifier is told about its own work: that it examines and never edits, how it
+/// reads the code of a region, what it submits for each criterion and each test, and how its
+/// final message ends.
 // Decision: the protocol asks for the place as well as the id, though [`read_review`]
-// derives the place from the id and never from the report; a verifier that copies the
-// place it was given writes a line a person can read on its own, and one that garbles the
-// id is still placed by the file and line it copied.
+// derives the place from the id and never from what was submitted; a verifier that copies
+// the place it was given names its criterion in a way a person can read, and one that
+// garbles the id is still placed by the file and line it copied.
 // @lfy def/generation/main.lfy:review
-// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:aa241f996c80ef1d728f4ebc6980c6083bdbbf0e2cc1235252d8c42def08b92d
+// @lfy def/generation/main.lfy:globalReview
+// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5f3541f331f08c11374202659e49f252d011829d997b2663a9a7aa1eb494c55d
 const PROTOCOL: &str = "\
 ## How to review
 
 You examine and never edit: you change no file, and you propose no code.
 
-Write one review per criterion and per test, as one JSON object on one line, with exactly \
-the keys `id`, `file`, `line`, `status`, `evidence`, and `note`:
+The code of a region is read through `elfie_output`: by the id of a criterion or test, by \
+the name of an entity, or by reading the lines of the output file the region names.
 
-- `id` is copied from the id the criterion or test is given above.
-- `file` and `line` are the two halves of the place given with it above: the path before \
-  the colon, and the number after it.
+Submit each verdict through `elfie_report` as soon as you have judged it, one per criterion \
+and per test:
+
+- `id` is copied from the id the criterion or test is given above, or left out when you \
+  give `file` and `line` instead: the two halves of the place given with it above, the path \
+  before the colon and the number after it.
 - `status` is `satisfied` when the code does what the criterion says, `violated` when it \
   does something else, or `unverifiable` when no region can be checked against it. A \
   criterion no region can be checked against is unverifiable, never violated.
@@ -4492,18 +4773,27 @@ the keys `id`, `file`, `line`, `status`, `evidence`, and `note`:
 - `note` is one line saying why and, for a violated one, what the code does instead.
 
 The tools of the agent server are called before files are searched or read by hand: \
-`elfie_output` for the generated code of an entity, of a requirement id, or of an output \
-file, `elfie_source` for where a line of generated code came from, `elfie_entity` for a \
+`elfie_source` for where a line of generated code came from, `elfie_entity` for a \
 definition with its criteria and tests, and `elfie_references` for where a name is used.
 
-End your report with exactly one line reading `ELFIE: REVIEWED`.
+Where `elfie_report` is not offered, write each verdict in your final message instead, as \
+one JSON object on one line with exactly the keys `id`, `file`, `line`, `status`, \
+`evidence`, and `note`, holding what `elfie_report` would be given.
+
+End your final message with exactly one line reading `ELFIE: REVIEWED`.
 ";
 
 // ---------------------------------------------------------------------------------------
 // reviewOf
 // ---------------------------------------------------------------------------------------
 
-/// What a verifier found, read mechanically from its report.
+/// What a verifier found, read mechanically from the verdicts it submitted and from its
+/// report.
+///
+/// `recorded` is the reviews the verifier submitted through the agent server during the run,
+/// in the order they were recorded, and empty when it submitted none. They come first, and a
+/// line of the report naming a criterion one of them already names is dropped: it is neither
+/// a review nor a problem.
 ///
 /// The end line is the last line reading `ELFIE: REVIEWED`, with any whitespace around it;
 /// lines after it are ignored. The lines read are those before it, or every line when there
@@ -4523,11 +4813,19 @@ End your report with exactly one line reading `ELFIE: REVIEWED`.
 // Decision: the report is read leniently and only what tries to be a review can be wrong,
 // because a verifier that adds a sentence or a fence around its lines has still reviewed
 // everything, and running a second verifier for that costs as much as the first.
+// Decision: a verdict submitted through the agent server was checked when it arrived, so it
+// wins over a line of the report for the same criterion; the report is read only for what
+// was not submitted.
 ///
 /// `asked` is the ids the review request gave the verifier, and empty when they are not
 /// known; each of them no review names is missing.
 // @lfy def/generation/main.lfy:reviewOf
-pub fn review_of(report: &str, program: &Program, asked: &[String]) -> ReviewReport {
+pub fn review_of(
+    report: &str,
+    program: &Program,
+    asked: &[String],
+    recorded: &[Review],
+) -> ReviewReport {
     /// What the problems end with when the report has no end line.
     const UNENDED: &str = "the report did not end";
 
@@ -4541,11 +4839,19 @@ pub fn review_of(report: &str, program: &Program, asked: &[String]) -> ReviewRep
         Some(index) => &lines[..index],
         None => &lines[..],
     };
+    // What the verifier submitted during the run comes first, in the order it was recorded.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d
     let mut reviews: Vec<Review> = Vec::new();
+    for review in recorded {
+        reviews.retain(|kept| kept.id != review.id);
+        reviews.push(review.clone());
+    }
+    let submitted = reviews.len();
     let mut problems: Vec<String> = Vec::new();
     let mut unplaced: Vec<String> = Vec::new();
-    // The reviews and the problems come in report order, as the body is read line by line.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b1c6ff8f600f771f320ab8d7d410ceeaff5dd1da6bf5236de9ca661b7efed152
+    // The reviews read from the report and the problems come in report order, as the body is
+    // read line by line.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc
     for line in body {
         // Whitespace around a line is ignored wherever the line is compared or parsed.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921
@@ -4555,8 +4861,19 @@ pub fn review_of(report: &str, program: &Program, asked: &[String]) -> ReviewRep
             continue;
         }
         match read_review(text, &placed, &begun) {
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:76339f7bd0723f745a3bf58a17f3cba2ad29f66aee0236c50c46e6db5dacb357
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
             Some(review) => {
+                // A criterion the verifier already submitted a verdict for was checked when
+                // it arrived, so the line adds nothing and is no problem either.
+                // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e
+                if reviews[..submitted]
+                    .iter()
+                    .any(|held| held.id == review.id)
+                {
+                    continue;
+                }
                 // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
                 reviews.retain(|kept| kept.id != review.id);
                 reviews.push(review);
@@ -4661,13 +4978,13 @@ fn named_requirement(
         .get("id")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:76339f7bd0723f745a3bf58a17f3cba2ad29f66aee0236c50c46e6db5dacb357
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
     if placed.contains_key(given) {
         return Some(given.to_string());
     }
     // An id a character short or long names what it nearly is, as long as it nearly is one
     // thing only; an empty id is near every id, so it names nothing by this reading.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0550aa5cfc0eed88f66bcf268b82c722bf8105abb701e0dae62ffb013f0dcf2d
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
     if !given.is_empty() {
         let mut near = placed.keys().filter(|id| is_near(id, given));
         if let Some(found) = near.next()
@@ -4678,7 +4995,7 @@ fn named_requirement(
     }
     // With no id, or with one that names nothing and is near nothing or near more than one
     // thing, the place the line gives names it when exactly one begins there.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:444b311948403c8fe1a8d3ed69270d86e784a7e0fbbe4de87764ab3fbc950d78
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
     let file = object.get("file")?.as_str()?.trim().to_string();
     let line = usize::try_from(object.get("line")?.as_u64()?).ok()?;
     begun.get(&(file, line)).cloned()
@@ -4686,7 +5003,7 @@ fn named_requirement(
 
 /// Whether two ids are the same one up to a character: one begins the other, and they share
 /// their receiver, their contributor, and at least sixteen hex digits of their hash.
-// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0550aa5cfc0eed88f66bcf268b82c722bf8105abb701e0dae62ffb013f0dcf2d
+// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
 fn is_near(id: &str, given: &str) -> bool {
     /// How many hex digits of the hash two ids share to be the same one.
     const SHARED: usize = 16;
@@ -7792,12 +8109,21 @@ global@targets.add(rust);
             markers: vec![entity_marker(1, "A", 1, 1)],
             ..map_for("src/a.rs", "def/a.lfy")
         }];
-        let root = review(&program, &plan, &batch, &maps, None).instructions;
-        assert!(root.contains("```\nthe root\n```"), "{root}");
-        let copy = fixture.root.join("copy");
-        let copied = review(&program, &plan, &batch, &maps, Some(&copy)).instructions;
-        assert!(copied.contains("```\nthe copy\n```"), "{copied}");
-        assert!(!copied.contains("the root"), "{copied}");
+        // The region's code is never quoted, so what the directory decides is the hash the
+        // verdict is recorded against: the lines of the output it was judged in.
+        let root = review(&program, &plan, &batch, &maps, None, &[]);
+        let copied = review(
+            &program,
+            &plan,
+            &batch,
+            &maps,
+            Some(&fixture.root.join("copy")),
+            &[],
+        );
+        let id = root.asked.first().expect("one criterion").clone();
+        assert_eq!(root.hashes[&id], source_hash("the root\n"));
+        assert_eq!(copied.hashes[&id], source_hash("the copy\n"));
+        assert_eq!(root.instructions, copied.instructions);
     }
 
     /// Sharing an output with another unit of the same target is no problem while the
@@ -8644,6 +8970,242 @@ global@targets.add(rust);
     }
 
     // -----------------------------------------------------------------------------------
+    // reviewsOf, recordReviews
+    // -----------------------------------------------------------------------------------
+
+    /// A project whose `def` holds `a.lfy`, declaring `A` with two criteria, and `b.lfy`,
+    /// declaring `B` with one; the plan of its two units comes with the ids of `A`'s.
+    fn a_with_records() -> (Fixture, Program, Plan, Vec<String>) {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write(
+                "def/a.lfy",
+                "d A: `An a` {\n  @acceptanceCriteria\n    .add({ behavior = `the first` })\n    .add({ behavior = `the second` });\n}\n",
+            )
+            .write(
+                "def/b.lfy",
+                "d B: `A b` {\n  $x = string;\n  where (`x is set`) -> `B holds x`;\n}\n",
+            );
+        let program = fixture.program();
+        assert_bound(&program.workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (lowered, entity) = {
+            let (_, unit) = unit_of(&program.workspace, &plan, "def/a.lfy");
+            (unit.lowered, unit.entities[0])
+        };
+        let (ids, _) = requirement_ids(&program.files[lowered], entity);
+        assert_eq!(ids.len(), 2, "{ids:?}");
+        (fixture, program, plan, ids)
+    }
+
+    /// A unit's review record file is `elfie-compile/reviews`, the target's identifier, and
+    /// the unit's stem with the extension `.json`, under the workspace root — beside its map
+    /// file and never under it.
+    // @lfy def/generation/data.lfy:ReviewRecord#ReviewRecord:ReviewRecord:d1283130451aac07da56acfa5179b7af277f4cbbb6d93ed00c6b0aad6499db7a
+    #[test]
+    fn a_units_review_record_file_is_under_elfie_compile_reviews_by_target_and_stem() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write("def/cli/main.lfy", "d Cli { $x = string; }\n");
+        let program = fixture.program();
+        assert_bound(&program.workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (_, unit) = unit_of(&program.workspace, &plan, "def/cli/main.lfy");
+        assert_eq!(unit.stem, "cli/main");
+        assert_eq!(
+            review_file(&program.workspace, unit),
+            fixture
+                .root
+                .join("elfie-compile/reviews/rust/cli/main.json")
+        );
+        assert_ne!(
+            review_file(&program.workspace, unit),
+            map_file(&program.workspace, unit)
+        );
+    }
+
+    /// The records of a unit come back in the order its file lists them; one whose id is of
+    /// no local criterion or test of the unit is left out, and a file that is no JSON list of
+    /// records gives none.
+    // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:5f98be1ee1d2bca400fb4e2fe3c6433111b63e55a9fd27fe360103362dc8fc62
+    #[test]
+    fn the_records_of_a_unit_are_read_in_the_order_the_file_lists_them() {
+        let (fixture, program, plan, ids) = a_with_records();
+        let (_, unit) = unit_of(&program.workspace, &plan, "def/a.lfy");
+        let records = vec![
+            ReviewRecord {
+                id: ids[1].clone(),
+                status: ReviewStatus::Violated,
+                hash: source_hash("second"),
+            },
+            ReviewRecord {
+                id: ids[0].clone(),
+                status: ReviewStatus::Satisfied,
+                hash: source_hash("first"),
+            },
+        ];
+        assert!(record_reviews(&program.workspace, unit, &records));
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:d95399b23b29d50a8fba5af56c20731f8f7b0b2bafe16e9914d5090e374ce251
+        assert_eq!(reviews_of(&program, unit), records);
+
+        // A record whose id is of no local criterion or test of the unit is left out, so a
+        // criterion that was reworded is never carried on its old id's verdict.
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0b41caebdc61220c67f088bc69f465267b2c9e2b36d07c52b02680bf6cb4724c
+        let mut foreign = records.clone();
+        foreign.push(ReviewRecord {
+            id: "A:A:gone".to_string(),
+            status: ReviewStatus::Satisfied,
+            hash: source_hash("gone"),
+        });
+        assert!(record_reviews(&program.workspace, unit, &foreign));
+        assert_eq!(reviews_of(&program, unit), records);
+
+        // A file that cannot be read as a JSON list of review records gives none.
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0aa4f9eaff20fee7bf263db985597b4d886a2ac762b47b1af1734107a9ac1503
+        let path = fixture.root.join("elfie-compile/reviews/rust/a.json");
+        fixture.write("elfie-compile/reviews/rust/a.json", "{\"id\":");
+        assert!(reviews_of(&program, unit).is_empty());
+        fixture.write("elfie-compile/reviews/rust/a.json", "[{\"id\":\"x\"}]");
+        assert!(reviews_of(&program, unit).is_empty());
+
+        // Nothing is written, and nothing under elfie-compile/cache is read.
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:1dc22603643b17fad4874110ef09a3391b67d71c28a9f5b35a7dfa18438f3409
+        let before = fs::read_to_string(&path).unwrap();
+        let _ = reviews_of(&program, unit);
+        assert_eq!(fs::read_to_string(&path).unwrap(), before);
+        assert!(!fixture.root.join("elfie-compile/cache").exists());
+    }
+
+    /// A unit whose review record file was never written has no records, so every criterion
+    /// and test of it is reviewed again.
+    // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:dfd4f71e53b2fb7fce71408d09532e78b71c30b303ef3d8268979cce8c5a7fc3
+    #[test]
+    fn a_unit_with_no_review_record_file_has_no_records() {
+        let (fixture, program, plan, _ids) = a_with_records();
+        let (_, unit) = unit_of(&program.workspace, &plan, "def/a.lfy");
+        assert!(!fixture.root.join("elfie-compile/reviews").exists());
+        // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0aa4f9eaff20fee7bf263db985597b4d886a2ac762b47b1af1734107a9ac1503
+        assert!(reviews_of(&program, unit).is_empty());
+    }
+
+    /// A project cloned without `elfie-compile` records its verdicts: every missing folder
+    /// above the review record file is created.
+    // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:b4e3424b0ba9d0aee9525f1766d277eebbc0ccc029472634a502abe4447f3c45
+    #[test]
+    fn recording_reviews_creates_every_folder_above_the_file() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/cli/main.lfy",
+            "d Cli: `A cli` {\n  $x = string;\n  where (`x is set`) -> `Cli holds x`;\n}\n",
+        );
+        let program = fixture.program();
+        assert_bound(&program.workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (lowered, entity) = {
+            let (_, unit) = unit_of(&program.workspace, &plan, "def/cli/main.lfy");
+            (unit.lowered, unit.entities[0])
+        };
+        let (ids, _) = requirement_ids(&program.files[lowered], entity);
+        let (_, unit) = unit_of(&program.workspace, &plan, "def/cli/main.lfy");
+        assert!(!fixture.root.join("elfie-compile").exists());
+        let records = vec![ReviewRecord {
+            id: ids[0].clone(),
+            status: ReviewStatus::Satisfied,
+            hash: source_hash("region"),
+        }];
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:72846edcc746900edf9c781c66023ad863b10442a8c62d330bee15766a2090c3
+        assert!(record_reviews(&program.workspace, unit, &records));
+        let path = fixture
+            .root
+            .join("elfie-compile/reviews/rust/cli/main.json");
+        assert!(path.is_file());
+        // The records read back, so the next review carries them.
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:5708abb1bf089eb06657f5688610a6c234b81463164fd199b77b315608316837
+        assert_eq!(reviews_of(&program, unit), records);
+    }
+
+    /// Recording one unit's verdicts replaces its review record file and leaves every other
+    /// byte for byte as it was, in the order given with every object's keys alphabetical; no
+    /// record at all removes the file, and a file that cannot be written gives `false`.
+    // @lfy def/generation/main.lfy:recordReviews
+    #[test]
+    fn recording_reviews_replaces_the_file_and_leaves_every_other_alone() {
+        let (fixture, program, plan, ids) = a_with_records();
+        let (_, other) = unit_of(&program.workspace, &plan, "def/b.lfy");
+        let (lowered, entity) = (other.lowered, other.entities[0]);
+        let (theirs, _) = requirement_ids(&program.files[lowered], entity);
+        assert!(record_reviews(
+            &program.workspace,
+            other,
+            &[ReviewRecord {
+                id: theirs[0].clone(),
+                status: ReviewStatus::Satisfied,
+                hash: source_hash("b"),
+            }]
+        ));
+        let beside = fixture.root.join("elfie-compile/reviews/rust/b.json");
+        let before = fs::read_to_string(&beside).unwrap();
+
+        let (_, unit) = unit_of(&program.workspace, &plan, "def/a.lfy");
+        let records = vec![
+            ReviewRecord {
+                id: ids[1].clone(),
+                status: ReviewStatus::Violated,
+                hash: source_hash("second"),
+            },
+            ReviewRecord {
+                id: ids[0].clone(),
+                status: ReviewStatus::Satisfied,
+                hash: source_hash("first"),
+            },
+        ];
+        assert!(record_reviews(&program.workspace, unit, &records));
+        let path = fixture.root.join("elfie-compile/reviews/rust/a.json");
+        // The records are listed in the order given, not sorted, and the keys of every
+        // object are in alphabetical order.
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:c0e143aef64c3c7bed3e5892dd6d03a0c46df17166ce5ffa598b2db167027369
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:52d12769dcd44be836a5afeb17b9c7341a2a82265bafc029ee658a417f8e0569
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:60d0cd914ebe3c1cbbd582cd3229d8adc3a00b879720f1caeec671fb4c707551
+        let text = fs::read_to_string(&path).unwrap();
+        let keys: Vec<&str> = text
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix('"'))
+            .filter_map(|line| line.split_once('"').map(|(key, _)| key))
+            .collect();
+        assert_eq!(keys, ["hash", "id", "status", "hash", "id", "status"], "{text}");
+        assert!(
+            text.find(&ids[1]) < text.find(&ids[0]),
+            "the order given: {text}"
+        );
+        // The same records always give the same bytes, and a second recording replaces what
+        // the file held.
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:db1f607aac959c64937cb811664557dedde402eb3fdcaaaf6a2db6b1284ecfd1
+        assert!(record_reviews(&program.workspace, unit, &records));
+        assert_eq!(fs::read_to_string(&path).unwrap(), text);
+        assert!(record_reviews(
+            &program.workspace,
+            unit,
+            std::slice::from_ref(&records[0])
+        ));
+        assert_eq!(reviews_of(&program, unit), [records[0].clone()]);
+        // No other unit's file is written.
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:8d039cf20453fa3420e6acdb3ce42b2031909a9bc211b646a683be5017efa7fd
+        assert_eq!(fs::read_to_string(&beside).unwrap(), before);
+
+        // No record at all removes the file, and removing what is already gone is recorded
+        // all the same.
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:0149e6a1c5272af0b7ca76e627e0fb18e511db4e2076f128db7607e14f49ae85
+        assert!(record_reviews(&program.workspace, unit, &[]));
+        assert!(!path.exists());
+        assert!(record_reviews(&program.workspace, unit, &[]));
+
+        // A directory where the file belongs cannot be written as a file.
+        // @lfy def/generation/main.lfy:recordReviews#recordReviews:recordReviews:1f4671d2ae5027d4e5bcfaf56dc68c765e27e31a92fc783b7f64a2165f391dd4
+        fs::create_dir(&path).unwrap();
+        assert!(!record_reviews(&program.workspace, unit, &records));
+    }
+
+    // -----------------------------------------------------------------------------------
     // regionsOf
     // -----------------------------------------------------------------------------------
 
@@ -9048,26 +9610,34 @@ global@targets.add(rust);
     // review
     // -----------------------------------------------------------------------------------
 
-    // @lfy def/generation/main.lfy:review#review:review:90e9bf36c1adde74df80ded58ee9c0c22589f0ebc430d828fe6b1e98abf5f2de
-    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
-    #[test]
-    fn a_review_request_quotes_every_criterion_with_its_place_and_excerpts_every_region() {
+    /// `def/a.lfy` declaring `A` with two criteria and one test, with `src/a.rs` generated
+    /// for it, and the plan and the batch of its one unit.
+    fn a_to_review() -> (Fixture, Program, Plan, Batch) {
         let fixture = Fixture::with_rust_target();
         fixture.write(
             "def/a.lfy",
             "d A: `An a` {\n  @acceptanceCriteria\n    .add({ behavior = `the first` })\n    .add({ behavior = `the second` });\n  @test({ input = 1, expect = 2 });\n}\n",
         );
-        fixture.write("src/a.rs", "one\ntwo\nthree\nfour\n");
+        fixture.write("src/a.rs", "alpha\nbeta\ngamma\ndelta\n");
         let program = fixture.program();
-        let workspace = program.workspace.clone();
-        assert_bound(&workspace);
+        assert_bound(&program.workspace);
         let plan = plan_of(&program, &[], &[], &[]);
-        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (index, _) = unit_of(&program.workspace, &plan, "def/a.lfy");
         let batch = Batch {
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let maps = vec![SourceMap {
+        (fixture, program, plan, batch)
+    }
+
+    /// The text of the whole of that project's one output, which the hash of every criterion
+    /// and test of its unit is taken over.
+    const A_REGION: &str = "alpha\nbeta\ngamma\ndelta\n";
+
+    /// The one source map of that project: `src/a.rs` from `def/a.lfy`, with one marker
+    /// naming `A` and the whole output as its region.
+    fn a_source_map() -> Vec<SourceMap> {
+        vec![SourceMap {
             target: "rust".to_string(),
             output: "src/a.rs".to_string(),
             source: "def/a.lfy".to_string(),
@@ -9078,8 +9648,21 @@ global@targets.add(rust);
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers: vec![entity_marker(1, "A", 1, 4)],
-        }];
-        let request = review(&program, &plan, &batch, &maps, None);
+        }]
+    }
+
+    /// The ids of the criteria and of the tests of the one entity of that project's unit.
+    fn a_requirement_ids(program: &Program, plan: &Plan) -> (Vec<String>, Vec<String>) {
+        let (_, unit) = unit_of(&program.workspace, plan, "def/a.lfy");
+        requirement_ids(&program.files[unit.lowered], unit.entities[0])
+    }
+
+    // @lfy def/generation/main.lfy:review#review:review:d24fcd3eb666702ff962f94907d5ca24dc866b3b9eccb1d1480ef5b90c8a1243
+    #[test]
+    fn a_review_request_lists_every_criterion_with_its_place_and_names_every_region() {
+        let (_fixture, program, plan, batch) = a_to_review();
+        let maps = a_source_map();
+        let request = review(&program, &plan, &batch, &maps, None, &[]);
         // @lfy def/generation/main.lfy:review#review:review:197b2d0e6f7458d538f3cc8d8568be98a60636ca07026cd2eeb1d5933910f156
         assert_eq!(request.batch, Some(batch.clone()));
         let text = &request.instructions;
@@ -9091,73 +9674,177 @@ global@targets.add(rust);
         );
         assert!(text.contains("#### `A` (data: DataDeclaration)"), "{text}");
         assert!(text.contains("Definition: An a"), "{text}");
+        // The region is named and none of its lines is written.
+        // @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
+        // @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
+        assert!(text.contains("`src/a.rs:1-4`"), "{text}");
+        for line in A_REGION.lines() {
+            assert!(!text.contains(line), "{line} is quoted:\n{text}");
+        }
         // Each criterion of a chain has a place of its own, on the line its `add` begins
-        // on, and is prefixed by its id.
+        // on, and is prefixed by its id; a test's place is the line its origin begins on.
         // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
-        let (criteria, tests) = {
-            let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
-            requirement_ids(&program.files[unit.lowered], unit.entities[0])
-        };
+        let (criteria, tests) = a_requirement_ids(&program, &plan);
+        for (id, place, said) in [
+            (&criteria[0], 3, "the first"),
+            (&criteria[1], 4, "the second"),
+        ] {
+            assert!(
+                text.contains(&format!("`{id}` def/a.lfy:{place} — {said}")),
+                "{text}"
+            );
+        }
         assert!(
-            text.contains(&format!("`{}` def/a.lfy:3 — the first", criteria[0])),
-            "{text}"
-        );
-        assert!(
-            text.contains(&format!("`{}` def/a.lfy:4 — the second", criteria[1])),
-            "{text}"
-        );
-        // A test's place is the line its origin begins on.
-        // @lfy def/generation/main.lfy:review
-        assert!(
-            text.contains(&format!(
-                "`{}` def/a.lfy:5 — Input `1` gives `2`",
-                tests[0]
-            )),
+            text.contains(&format!("`{}` def/a.lfy:5 — Input `1` gives `2`", tests[0])),
             "{text}"
         );
         // Only local criteria and tests are reviewed here.
         // @lfy def/generation/main.lfy:review
         assert!(text.contains("A global one is reviewed once"), "{text}");
-        // The region, with the lines of the output in a fenced block.
-        // @lfy def/generation/main.lfy:review#review:review:ab46be2107934463218771ce935af8b1af8c59e0f5656d26a5d6dd846df1087d
-        assert!(text.contains("`src/a.rs:1-4`"), "{text}");
-        assert!(text.contains("```\none\ntwo\nthree\nfour\n```"), "{text}");
-        // The protocol: the six keys, where the id and the place come from, the three
-        // statuses, the tools that are called before files are read by hand, and the end
-        // line.
-        // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
-        // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:aa241f996c80ef1d728f4ebc6980c6083bdbbf0e2cc1235252d8c42def08b92d
+        // Every criterion and every test is asked about, in the order they are listed, and
+        // nothing is carried without a record to carry.
+        // @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
+        assert_eq!(
+            request.asked,
+            [criteria[0].clone(), criteria[1].clone(), tests[0].clone()]
+        );
+        assert!(request.carried.is_empty(), "{:?}", request.carried);
+        // Each of them is hashed over the lines of the region of the entity it belongs to.
+        // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+        let region = source_hash(A_REGION);
+        for id in &request.asked {
+            assert_eq!(request.hashes[id], region, "{id}");
+        }
+        // The protocol: how a region is read, where a verdict goes, the keys of the line it
+        // falls back to, the three statuses, the tools, and the end line.
+        // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5f3541f331f08c11374202659e49f252d011829d997b2663a9a7aa1eb494c55d
         for part in [
             "examine and never edit",
             "you propose no code",
-            "one review per criterion and per test",
-            "one JSON object on one line",
-            "`id`, `file`, `line`, `status`, `evidence`, and `note`",
-            "`id` is copied from the id the criterion or test is given above",
-            "`file` and `line` are the two halves of the place given with it above",
+            "The code of a region is read through `elfie_output`",
+            "Submit each verdict through `elfie_report` as soon as you have judged it",
+            "one per criterion and per test",
+            "`id` is copied from the id the criterion or test is given above, or left out",
+            "the two halves of the place given with it above",
             "`satisfied`",
             "`violated`",
             "`unverifiable`",
             "unverifiable, never violated",
             "before files are searched or read by hand",
-            "`elfie_output`",
             "`elfie_source`",
             "`elfie_entity`",
             "`elfie_references`",
+            "Where `elfie_report` is not offered",
+            "one JSON object on one line with exactly the keys `id`, `file`, `line`, \
+             `status`, `evidence`, and `note`",
             "`ELFIE: REVIEWED`",
         ] {
             assert!(text.contains(part), "{part} is missing:\n{text}");
         }
     }
 
+    /// A criterion whose record says it was satisfied against the code the entity's regions
+    /// still hash to is carried rather than listed; one whose record says anything else is
+    /// listed again.
+    // @lfy def/generation/main.lfy:review#review:review:b7aa1df4bc363d68c066212b46c69d99c6ef6a81f69611ea4272b154315f24c0
+    #[test]
+    fn a_criterion_satisfied_against_the_code_as_it_stands_is_carried() {
+        let (_fixture, program, plan, batch) = a_to_review();
+        let maps = a_source_map();
+        let (criteria, tests) = a_requirement_ids(&program, &plan);
+        let hash = source_hash(A_REGION);
+        let records = vec![
+            ReviewRecord {
+                id: criteria[0].clone(),
+                status: ReviewStatus::Satisfied,
+                hash: hash.clone(),
+            },
+            ReviewRecord {
+                id: criteria[1].clone(),
+                status: ReviewStatus::Unverifiable,
+                hash: hash.clone(),
+            },
+        ];
+        let request = review(&program, &plan, &batch, &maps, None, &records);
+        // The satisfied one is carried with its record, and only the other two are asked.
+        // @lfy def/generation/main.lfy:review#review:review:32e025cd22c3a749bbc3afba52f86cb9b26ac41d0f4a822a6e5e00639e557312
+        assert_eq!(request.asked, [criteria[1].clone(), tests[0].clone()]);
+        assert_eq!(request.carried, [records[0].clone()]);
+        let text = &request.instructions;
+        assert!(!text.contains(&criteria[0]), "{text}");
+        assert!(text.contains(&criteria[1]), "{text}");
+        // Every criterion and test of the unit is hashed, carried or not.
+        // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+        assert_eq!(request.hashes.len(), 3, "{:?}", request.hashes);
+        assert_eq!(request.hashes[&criteria[0]], hash);
+    }
+
+    /// A record made against code the entity's regions no longer hash to carries nothing:
+    /// the criterion is listed again.
+    // @lfy def/generation/main.lfy:review#review:review:cb4d48355ae14509cede19b75e670e8b67e1a03aff85516a3ad84b640cfc14ba
+    #[test]
+    fn a_record_of_code_that_changed_carries_nothing() {
+        let (_fixture, program, plan, batch) = a_to_review();
+        let maps = a_source_map();
+        let (criteria, tests) = a_requirement_ids(&program, &plan);
+        let records = vec![ReviewRecord {
+            id: criteria[0].clone(),
+            status: ReviewStatus::Satisfied,
+            hash: source_hash("alpha\nbeta\ngamma\nepsilon\n"),
+        }];
+        let request = review(&program, &plan, &batch, &maps, None, &records);
+        // @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
+        assert_eq!(
+            request.asked,
+            [criteria[0].clone(), criteria[1].clone(), tests[0].clone()]
+        );
+        assert!(request.carried.is_empty(), "{:?}", request.carried);
+    }
+
+    /// With every criterion and test of the batch carried, the instructions are the heading
+    /// and one line saying nothing needs review, and no protocol.
+    // @lfy def/generation/main.lfy:review#review:review:e0ecb428c24270ba6896549746ba51b216cbdf61967b6e9436de9b2b716b455c
+    #[test]
+    fn a_batch_whose_every_verdict_is_carried_needs_no_review() {
+        let (_fixture, program, plan, batch) = a_to_review();
+        let maps = a_source_map();
+        let (criteria, tests) = a_requirement_ids(&program, &plan);
+        let hash = source_hash(A_REGION);
+        let records: Vec<ReviewRecord> = criteria
+            .iter()
+            .chain(&tests)
+            .map(|id| ReviewRecord {
+                id: id.clone(),
+                status: ReviewStatus::Satisfied,
+                hash: hash.clone(),
+            })
+            .collect();
+        let request = review(&program, &plan, &batch, &maps, None, &records);
+        // @lfy def/generation/main.lfy:review#review:review:5133eddf9b981ba9bac41113779c58b491cedfbc67e2e3742ac236b381a254dc
+        assert!(request.asked.is_empty(), "{:?}", request.asked);
+        assert_eq!(request.carried.len(), 3, "{:?}", request.carried);
+        let text = &request.instructions;
+        assert!(
+            text.contains("# Reviewing the batch `a` for the target `rust`"),
+            "{text}"
+        );
+        assert!(text.contains("Nothing in the batch needs review"), "{text}");
+        // @lfy def/generation/main.lfy:review#review:review:bb873e216e23bb2a7659d3b1888588387a1f7980df4fac536938ec32d6d42b8d
+        assert!(!text.contains("#### `A`"), "{text}");
+        assert!(!text.contains("src/a.rs"), "{text}");
+        assert!(!text.contains("ELFIE: REVIEWED"), "{text}");
+    }
+
     /// A review excerpts only what the unit's own file generated, and a region a marker of
     /// a second source map names again is repeated as its path and lines alone.
     // @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
-    // @lfy def/generation/main.lfy:review#review:review:72529d6e11ade1756ea5a1a2ea7659b1dec2663d636e04e134ec72309e546cd5
     #[test]
-    fn a_review_holds_the_regions_of_its_own_file_each_once() {
+    fn a_review_holds_the_regions_of_its_own_file_alone() {
         let fixture = Fixture::with_rust_target();
-        fixture.write("def/a.lfy", "d A: `An a` {\n  $x = string;\n}\n");
+        fixture.write(
+            "def/a.lfy",
+            "d A: `An a` {\n  $x = string;\n  where (`x is set`) -> `A holds x`;\n}\n",
+        );
         fixture.write("def/b.lfy", "d A: `Another a` {\n  $y = string;\n}\n");
         fixture.write("src/a.rs", "one\ntwo\nthree\nfour\n");
         fixture.write("src/b.rs", "five\nsix\n");
@@ -9202,26 +9889,39 @@ global@targets.add(rust);
             ),
             map("src/b.rs", "def/b.lfy", vec![marker("def/b.lfy", 2)]),
         ];
-        let text = review(&program, &plan, &batch, &maps, None).instructions;
-        // `def/b.lfy` declares an `A` of its own, and none of its code comes.
+        let request = review(&program, &plan, &batch, &maps, None, &[]);
+        let text = &request.instructions;
+        // `def/b.lfy` declares an `A` of its own, and none of its regions comes.
         assert!(!text.contains("src/b.rs"), "{text}");
-        assert!(!text.contains("five"), "{text}");
-        // The region of the unit's own file comes once, and its repeat without its text.
+        // The region of the unit's own file is named, once per map that records it, and the
+        // hash is taken over its lines each time it is named.
+        // @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
         assert_eq!(text.matches("`src/a.rs:1-4`").count(), 2, "{text}");
-        assert_eq!(
-            text.matches("```\none\ntwo\nthree\nfour\n```").count(),
-            1,
-            "{text}"
-        );
-        assert!(text.contains("Listed above."), "{text}");
+        let whole = "one\ntwo\nthree\nfour\n";
+        let id = request.asked.first().expect("one criterion");
+        assert_eq!(request.hashes[id], source_hash(&format!("{whole}{whole}")));
     }
 
     /// An entity moved into a unit is marked with the file that declares it, not with the
     /// unit's own file, so its regions are the ones that file's markers name.
-    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+    // @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
     #[test]
     fn a_review_holds_the_regions_of_an_entity_moved_into_the_unit() {
-        let fixture = a_cycle();
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write(
+                "def/b.lfy",
+                "d B: `A b` {\n  $x = string;\n  where (`x is set`) -> `B holds x`;\n}\n",
+            )
+            .write(
+                "def/a.lfy",
+                "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n  \
+                 where (`x is set`) -> `C holds x`;\n}\n",
+            )
+            .write(
+                "def/c.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait holder {\n  $c = C;\n}\nholder.apply(B);\n",
+            );
         fixture.write("src/b.rs", "one\ntwo\nthree\nfour\n");
         let program = fixture.program();
         let workspace = program.workspace.clone();
@@ -9258,22 +9958,31 @@ global@targets.add(rust);
                 marker("def/a.lfy", "C", 3, 4),
             ],
         }];
-        let text = review(&program, &plan, &batch, &maps, None).instructions;
-        // Each entity is given the region its own declaring file marks.
+        let request = review(&program, &plan, &batch, &maps, None, &[]);
+        let text = &request.instructions;
+        // Each entity is given the region its own declaring file marks, and nothing else.
         assert!(text.contains("`src/b.rs:1-2`"), "{text}");
-        assert!(text.contains("```\none\ntwo\n```"), "{text}");
         assert!(text.contains("`src/b.rs:3-4`"), "{text}");
-        assert!(text.contains("```\nthree\nfour\n```"), "{text}");
         assert!(
             !text.contains("No region of any output was generated for it."),
             "{text}"
         );
+        // Each entity's criteria are hashed over its own region alone.
+        // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+        assert_eq!(request.asked.len(), 2, "{:?}", request.asked);
+        let hashes: Vec<&String> = request
+            .asked
+            .iter()
+            .map(|id| &request.hashes[id])
+            .collect();
+        assert_eq!(hashes[0], &source_hash("one\ntwo\n"));
+        assert_eq!(hashes[1], &source_hash("three\nfour\n"));
     }
 
     /// An entity moved into a unit is declared in another file, so its criteria and tests
     /// are taken from the file that declares it and not from the unit's own lowered file,
     /// which holds no node for it.
-    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+    // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
     #[test]
     fn a_review_holds_the_criteria_of_an_entity_moved_into_the_unit() {
         let fixture = Fixture::with_rust_target();
@@ -9299,7 +10008,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "b".to_string(),
         };
-        let text = review(&program, &plan, &batch, &[], None).instructions;
+        let text = review(&program, &plan, &batch, &[], None, &[]).instructions;
         let at = text
             .find("#### `C`")
             .unwrap_or_else(|| panic!("C's section: {text}"));
@@ -9312,9 +10021,10 @@ global@targets.add(rust);
         assert!(section.contains("C holds x"), "{section}");
     }
 
-    /// With no source map for the batch the verifier is given the same instructions with
-    /// no region, so it can only find the criteria unverifiable.
-    // @lfy def/generation/main.lfy:review#review:review:91048e9381aa6d0069a2596dfb4b5b3dd64056238fb72d470c49669de6aee510
+    /// With no source map for the batch the verifier is given the same instructions with no
+    /// region, so it can only find the criteria unverifiable, and nothing is carried for an
+    /// entity that generated none.
+    // @lfy def/generation/main.lfy:review#review:review:27423e2750e221d170626aa6fcc294a7f735f5f6f23b78873b0ff4d956969feb
     #[test]
     fn a_review_request_without_a_source_map_holds_no_region() {
         let fixture = a_with_a_member_and_a_fn();
@@ -9327,9 +10037,26 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let request = review(&program, &plan, &batch, &[], None);
+        // A record that would carry the criterion if its entity had a region carries
+        // nothing, since there is no code whose sameness could stand for the verdict.
+        // @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
+        let asked = review(&program, &plan, &batch, &[], None, &[]).asked;
+        let records: Vec<ReviewRecord> = asked
+            .iter()
+            .map(|id| ReviewRecord {
+                id: id.clone(),
+                status: ReviewStatus::Satisfied,
+                hash: source_hash(""),
+            })
+            .collect();
+        let request = review(&program, &plan, &batch, &[], None, &records);
+        assert_eq!(request.asked, asked);
+        assert!(request.carried.is_empty(), "{:?}", request.carried);
         let text = &request.instructions;
         assert!(text.contains("def/a.lfy:6 — it does"), "{text}");
+        // An entity with no region of its own hashes to the empty text.
+        // @lfy def/generation/main.lfy:review#review:review:efbaab9e13ed7569408b035ce9b34392a9e0b4fa0a274b747ea27c0ef681cd65
+        assert_eq!(request.hashes[&asked[0]], source_hash(""));
         // @lfy def/generation/main.lfy:review
         assert!(
             text.contains("No region of any output was generated for it."),
@@ -9338,11 +10065,11 @@ global@targets.add(rust);
         assert!(text.contains("`ELFIE: REVIEWED`"), "{text}");
     }
 
-    /// An output a source map names but that cannot be read gives a line saying so
-    /// instead of a fenced block.
-    // @lfy def/generation/main.lfy:review#review:review:2f84308152b64a4bdf82224c54c0caf9e0a72ebcf65d5072ef5d52cc1b92cec5
+    /// An output a source map names but that cannot be read adds nothing to the hash of the
+    /// entity's criteria, though the region is named all the same.
+    // @lfy def/generation/main.lfy:review#review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903
     #[test]
-    fn a_region_whose_output_cannot_be_read_says_so() {
+    fn a_region_whose_output_cannot_be_read_adds_no_text_to_a_hash() {
         let fixture = a_with_a_member_and_a_fn();
         let program = fixture.program();
         let workspace = program.workspace.clone();
@@ -9353,15 +10080,14 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
+        // Neither `src/a.rs` nor `src/tests.rs` was written, so neither can be read.
         let maps = two_source_maps();
-        let request = review(&program, &plan, &batch, &maps, None);
-        assert!(
-            request
-                .instructions
-                .contains("The output could not be read:"),
-            "{}",
-            request.instructions
-        );
+        let request = review(&program, &plan, &batch, &maps, None, &[]);
+        let text = &request.instructions;
+        assert!(text.contains("`src/a.rs:20-40`"), "{text}");
+        assert!(text.contains("`src/tests.rs:1-11`"), "{text}");
+        let id = request.asked.first().expect("one criterion");
+        assert_eq!(request.hashes[id], source_hash(""));
     }
 
     // -----------------------------------------------------------------------------------
@@ -9369,8 +10095,8 @@ global@targets.add(rust);
     // -----------------------------------------------------------------------------------
 
     /// One global criterion, whose id two outputs name in a marker: it is given once with
-    /// its id and its place, then one region per output, then the protocol.
-    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:07d990c406ebc44cf6bb563fad2246e918bd3c85fa0ba0bc4228d58bdc0673a3
+    /// its id and its place, then where each of its two regions is, then the protocol.
+    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:5e1c902e7ffa61797f046c11f8967257a21d3e532b41ab323a10168ce9b2902f
     #[test]
     fn the_global_review_gives_each_global_criterion_once_with_every_region() {
         let fixture = Fixture::with_rust_target();
@@ -9379,8 +10105,8 @@ global@targets.add(rust);
                 "def/a.lfy",
                 "d A { $x = string; }\nglobal@acceptanceCriteria.add({ behavior = `Nothing is written twice` });\n",
             )
-            .write("src/a.rs", "one\ntwo\n")
-            .write("src/b.rs", "three\nfour\n");
+            .write("src/a.rs", "alpha\nbeta\n")
+            .write("src/b.rs", "gamma\ndelta\n");
         let program = fixture.program();
         assert_bound(&program.workspace);
         assert_eq!(program.criteria.len(), 1, "{:?}", program.criteria);
@@ -9420,14 +10146,22 @@ global@targets.add(rust);
         );
         assert_eq!(text.matches(id.as_str()).count(), 1, "{text}");
         assert!(text.contains("Nothing is written twice"), "{text}");
-        // One region per output, each with the lines of the output in a fenced block.
-        // @lfy def/generation/main.lfy:globalReview
+        // Where each region is, one per output, with none of their lines.
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
         assert!(text.contains("`src/a.rs:1-2`"), "{text}");
-        assert!(text.contains("```\none\ntwo\n```"), "{text}");
         assert!(text.contains("`src/b.rs:1-2`"), "{text}");
-        assert!(text.contains("```\nthree\nfour\n```"), "{text}");
+        for line in ["alpha", "beta", "gamma", "delta"] {
+            assert!(!text.contains(line), "{line} is quoted:\n{text}");
+        }
+        // The id is asked about, and nothing of a global criterion is ever carried.
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:3163f899ae0e06b99cc3cfbdf7857a8f62a41a8e5685323600713e1e6347797b
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e9cc8a4c5b45b3440c827bd67a1fd514c12870041202d0cd54fad21179548843
+        assert_eq!(request.asked, std::slice::from_ref(&id));
+        assert!(request.hashes.is_empty(), "{:?}", request.hashes);
+        assert!(request.carried.is_empty(), "{:?}", request.carried);
         // Then the protocol, with the tools that are called before files are read by hand.
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
         assert!(text.contains("`ELFIE: REVIEWED`"), "{text}");
         assert!(text.contains("unverifiable, never violated"), "{text}");
         assert!(
@@ -9436,6 +10170,7 @@ global@targets.add(rust);
         );
         for tool in [
             "`elfie_output`",
+            "`elfie_report`",
             "`elfie_source`",
             "`elfie_entity`",
             "`elfie_references`",
@@ -9533,13 +10268,13 @@ global@targets.add(rust);
             review_line(&ids[0], "satisfied", "src/a.rs:1-30", "the field is there"),
             review_line(&ids[1], "violated", "src/a.rs:12-18", "it returns undefined"),
         );
-        let found = review_of(&report, &program, &[]);
+        let found = review_of(&report, &program, &[], &[]);
         // Each line read beginning with `{` is a review line, and the reviews come in report
         // order.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b1c6ff8f600f771f320ab8d7d410ceeaff5dd1da6bf5236de9ca661b7efed152
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc
         assert_eq!(found.reviews.len(), 2, "{found:?}");
         // A review line whose id is the id of a criterion of the program names it.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:76339f7bd0723f745a3bf58a17f3cba2ad29f66aee0236c50c46e6db5dacb357
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
         assert_eq!(found.reviews[0].status, ReviewStatus::Satisfied);
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].evidence, "src/a.rs:1-30");
@@ -9557,7 +10292,7 @@ global@targets.add(rust);
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // Lines after the end line are ignored.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
-        let found = review_of(&format!("{report}\nand that is all"), &program, &[]);
+        let found = review_of(&format!("{report}\nand that is all"), &program, &[], &[]);
         assert_eq!(found.reviews.len(), 2);
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // Each line read has the whitespace around it removed, so an indented review line
@@ -9570,6 +10305,7 @@ global@targets.add(rust);
             ),
             &program,
             &[],
+            &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert!(found.problems.is_empty(), "{:?}", found.problems);
@@ -9577,7 +10313,7 @@ global@targets.add(rust);
 
     /// An id copied a character short or long still names its criterion, as long as exactly
     /// one id of the program is near it.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0550aa5cfc0eed88f66bcf268b82c722bf8105abb701e0dae62ffb013f0dcf2d
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
     #[test]
     fn an_id_a_character_short_or_long_names_its_criterion() {
         let (_fixture, program, ids) = a_with_two_criteria();
@@ -9588,7 +10324,7 @@ global@targets.add(rust);
             review_line(short, "satisfied", "", "short"),
             review_line(&long, "violated", "", "long"),
         );
-        let found = review_of(&report, &program, &[]);
+        let found = review_of(&report, &program, &[], &[]);
         assert_eq!(found.reviews.len(), 2, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].line, 3);
@@ -9605,7 +10341,7 @@ global@targets.add(rust);
             "",
             "far",
         );
-        let found = review_of(&format!("{far}\n{REVIEWED}"), &program, &[]);
+        let found = review_of(&format!("{far}\n{REVIEWED}"), &program, &[], &[]);
         assert!(found.reviews.is_empty(), "{found:?}");
         assert_eq!(found.problems, [far]);
     }
@@ -9623,13 +10359,13 @@ global@targets.add(rust);
              \"evidence\":\"src/a.rs:1-9\",\"note\":\"ok\"}}\n\
              ```\n{REVIEWED}"
         );
-        let found = review_of(&report, &program, &[]);
+        let found = review_of(&report, &program, &[], &[]);
         // A line read that does not begin with `{` is ignored, prose and fence alike.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // The place is where exactly one criterion of the program begins, and the status
         // reads whatever its case; the entity key the verifier wrote is ignored.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:444b311948403c8fe1a8d3ed69270d86e784a7e0fbbe4de87764ab3fbc950d78
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].file, "def/a.lfy");
@@ -9648,6 +10384,7 @@ global@targets.add(rust);
                 ids[1]
             ),
             &program,
+            &[],
             &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
@@ -9668,7 +10405,7 @@ global@targets.add(rust);
             review_line(&ids[0], "maybe", "", "unsure"),
             review_line(&ids[1], "unverifiable", "", "no region"),
         );
-        let found = review_of(&report, &program, &[]);
+        let found = review_of(&report, &program, &[], &[]);
         // A status that names no member of ReviewStatus is no review.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490
         assert_eq!(found.reviews.len(), 1, "{found:?}");
@@ -9687,7 +10424,7 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6
         let unknown = review_line("A:A:nowhere", "satisfied", "", "made up");
         let broken = "{\"id\":".to_string();
-        let found = review_of(&format!("{unknown}\n{broken}\n{REVIEWED}"), &program, &[]);
+        let found = review_of(&format!("{unknown}\n{broken}\n{REVIEWED}"), &program, &[], &[]);
         assert!(found.reviews.is_empty(), "{found:?}");
         assert_eq!(found.problems, [unknown, broken]);
     }
@@ -9705,7 +10442,7 @@ global@targets.add(rust);
         );
         // With no end line, reviews are read from every line of the report.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
-        let found = review_of(&report, &program, &[]);
+        let found = review_of(&report, &program, &[], &[]);
         // Of two reviews naming the same criterion only the last is kept, at its own place.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
         assert_eq!(found.reviews.len(), 1, "{found:?}");
@@ -9715,7 +10452,7 @@ global@targets.add(rust);
         assert_eq!(found.problems, ["the report did not end"]);
         // An empty report ends with nothing either.
         assert_eq!(
-            review_of("", &program, &[]),
+            review_of("", &program, &[], &[]),
             ReviewReport {
                 reviews: Vec::new(),
                 problems: vec!["the report did not end".to_string()],
@@ -9725,7 +10462,7 @@ global@targets.add(rust);
         );
         // The end line stands with whitespace around it.
         // @lfy def/generation/main.lfy:reviewOf
-        let found = review_of(&format!("  {REVIEWED}  "), &program, &[]);
+        let found = review_of(&format!("  {REVIEWED}  "), &program, &[], &[]);
         assert!(found.reviews.is_empty());
         assert!(found.problems.is_empty(), "{:?}", found.problems);
 
@@ -9738,6 +10475,7 @@ global@targets.add(rust);
                 review_line(&ids[0], "satisfied", "", "ok")
             ),
             &program,
+            &[],
             &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
@@ -9766,10 +10504,10 @@ global@targets.add(rust);
         );
         let garbled = review_line("A:A:77aa", "VIOLATED", "src/a.rs:3-3", "no such id");
         let report = format!("{mistyped}\n{garbled}\n{REVIEWED}");
-        let found = review_of(&report, &program, &[]);
+        let found = review_of(&report, &program, &[], &[]);
         // A line whose id is the id of nothing and near nothing is placed by its file and
         // its line, at the criterion that begins alone there.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:444b311948403c8fe1a8d3ed69270d86e784a7e0fbbe4de87764ab3fbc950d78
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[1]);
         assert_eq!(found.reviews[0].file, "def/a.lfy");
@@ -9788,10 +10526,77 @@ global@targets.add(rust);
         // was asked.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535
         let asked = vec![ids[0].clone(), ids[1].clone()];
-        let found = review_of(&report, &program, &asked);
+        let found = review_of(&report, &program, &asked, &[]);
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.missing, [ids[0].clone()]);
         assert_eq!(found.unplaced, [garbled]);
+    }
+
+    /// One review as the agent server records it when a verifier submits a verdict during
+    /// the run.
+    fn submitted(id: &str, line: usize, status: ReviewStatus, note: &str) -> Review {
+        Review {
+            id: id.to_string(),
+            file: "def/a.lfy".to_string(),
+            line,
+            entity: "A".to_string(),
+            status,
+            evidence: String::new(),
+            note: note.to_string(),
+        }
+    }
+
+    /// A verdict the verifier submitted through the agent server wins over a line of the
+    /// report for the same criterion, and that line is neither a review nor a problem.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:e6ffb38e943b879b8a71a248dd7fd22884f5aa51001084248c3eb7c90b3eda91
+    #[test]
+    fn a_submitted_verdict_wins_over_a_line_of_the_report() {
+        let (_fixture, program, ids) = a_with_two_criteria();
+        let report = format!(
+            "{}\n{REVIEWED}",
+            review_line(&ids[0], "satisfied", "", "from the report")
+        );
+        let recorded = vec![submitted(&ids[0], 3, ReviewStatus::Violated, "submitted")];
+        let asked = vec![ids[0].clone(), ids[1].clone()];
+        let found = review_of(&report, &program, &asked, &recorded);
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.reviews[0].status, ReviewStatus::Violated);
+        assert_eq!(found.reviews[0].note, "submitted");
+        // The line of the report for the same criterion is dropped, not kept apart.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+        assert!(found.unplaced.is_empty(), "{:?}", found.unplaced);
+        // The criterion neither the run nor the report answered for is missing.
+        assert_eq!(found.missing, [ids[1].clone()]);
+    }
+
+    /// With every verdict submitted during the run, a report of nothing but its end line
+    /// gives those verdicts in the order they were recorded.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ac6ab38189abc2b73e52041d213cdb86de455386497b27bce939a60307b57adc
+    #[test]
+    fn the_submitted_verdicts_come_in_the_order_they_were_recorded() {
+        let (_fixture, program, ids) = a_with_two_criteria();
+        let recorded = vec![
+            submitted(&ids[1], 4, ReviewStatus::Satisfied, "second criterion"),
+            submitted(&ids[0], 3, ReviewStatus::Unverifiable, "first criterion"),
+        ];
+        let asked = vec![ids[0].clone(), ids[1].clone()];
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d
+        let found = review_of(REVIEWED, &program, &asked, &recorded);
+        assert_eq!(
+            found
+                .reviews
+                .iter()
+                .map(|review| (review.id.as_str(), review.status))
+                .collect::<Vec<_>>(),
+            [
+                (ids[1].as_str(), ReviewStatus::Satisfied),
+                (ids[0].as_str(), ReviewStatus::Unverifiable),
+            ]
+        );
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+        assert!(found.missing.is_empty(), "{:?}", found.missing);
     }
 
     /// A review of a global criterion is placed at that criterion's origin and belongs to
@@ -9814,6 +10619,7 @@ global@targets.add(rust);
                 review_line(&id, "satisfied", "src/a.rs:1-3", "it is under src")
             ),
             &program,
+            &[],
             &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");

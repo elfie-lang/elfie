@@ -170,7 +170,7 @@ impl Step {
             Step::Accepted => "a unit was accepted and recorded",
             Step::Rejected => "a unit was rejected",
             Step::Verifying => "the verifier is running on a batch whose units were accepted",
-            Step::Reviewed => "the verifier reviewed a batch",
+            Step::Reviewed => "the verifier reviewed a batch, or every verdict on it was carried",
             Step::GlobalVerifying => {
                 "the verifier is running once on every global criterion and test"
             }
@@ -203,6 +203,7 @@ pub struct Progress {
     pub elapsed: f64, // @lfy def/cli/data.lfy:Progress.elapsed
     /// The detail: the reason a unit is planned, a problem, a question, the counts of
     /// the plan, or for `Reviewed` and `GlobalReviewed` the counts of satisfied, violated,
-    /// and unverifiable reviews, in that order.
+    /// and unverifiable reviews, in that order, then for `Reviewed` the count of verdicts
+    /// carried when there are any.
     pub message: String, // @lfy def/cli/data.lfy:Progress.message
 }
