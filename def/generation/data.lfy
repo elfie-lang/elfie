@@ -8,7 +8,7 @@ use "elfie/target" as Targets;
 enum Reason: `Why a unit needs generating` {
   fresh = `no output has been generated for it`,
   changed = `its source differs from what its output was generated from`,
-  requirements = `its criteria or tests differ from those its output was generated against, while its code does not`,
+  requirements = `its criteria or tests differ from those its output was generated against, while its lowered code does not, so what its code must do may differ`,
   dependency = `the interface of a unit it depends on differs from the one its output was generated against`,
   violated = `a global criterion or test its output answers for was reviewed as violated`,
   requested = `the caller asked for it regardless`,
@@ -61,6 +61,9 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   // comment, changes nothing.
   $hash: `SHA-256 of [[Unit.text]] of the unit when the output was accepted, as lowercase hex` = string;
   $requirements: `SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line breaks, when the output was accepted` = string;
+  // Decision: the ids themselves are kept beside their hash, so a later request can tell which
+  // criteria are new even when the source the output was generated from cannot be recovered.
+  $answered: `The ids of the unit's local criteria and tests when the output was accepted, sorted; empty in a map file written before they were recorded` = string[];
   $signature: `SHA-256 of the unit's interface text when the output was accepted, as lowercase hex` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = Object<
     string,
@@ -199,6 +202,12 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
   $previous: `The lowered text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = Object<
     string,
   >;
+  $answered: `The ids of the local criteria and tests each unit's existing outputs were generated against, by [[File.path]]; absent where unknown` = Object<
+    string[],
+  >;
+  $removed: `The local criteria and tests each unit's existing outputs were generated against that the unit no longer has, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
+    (LoweredCriterion | LoweredTest)[],
+  >;
   $existing: `The current text of each existing output of the batch, by path` = Object<string>;
   $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
   $guidance: `The criteria of [[Target.declaration]], in the guidance order [[Targets.Target]] gives, with template values rendered from the layers' arguments` = Criterion[];
@@ -230,7 +239,8 @@ d ReviewRequest: `Everything a verifier is handed to check outputs against what 
       behavior = [
         `[[ReviewRequest.instructions]] holds the verifier protocol, which says:`,
         `That the reader examines and never edits, and never proposes code`,
-        `That it writes one [[Review]] per criterion and per test as one JSON object on one line, with exactly the keys id, status, evidence, and note`,
+        `That it writes one [[Review]] per criterion and per test as one JSON object on one line, with exactly the keys id, file, line, status, evidence, and note`,
+        `That id is copied from the instructions, and file and line are the two halves of the place the instructions give the criterion or test`,
         `That status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead`,
         `That a criterion no region can be checked against is unverifiable, not violated`,
         `That the tools of the agent server are called before files are searched or read by hand: elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used`,
@@ -312,6 +322,8 @@ d Review: `A verifier's finding for one criterion or test` {
 d ReviewReport: `Everything a verifier found for one batch, read mechanically from its report` {
   $reviews: `Each review, in report order, one per id` = Review[];
   $problems: `Each review line that was not read as a [[Review]], then the line reading the report did not end when there was no end line` = string[];
+  $unplaced: `Each review line that was not read as a [[Review]] though its status is violated, as written; each is in [[ReviewReport.problems]] too` = string[];
+  $missing: `Each id the review was asked about that no review in [[ReviewReport.reviews]] names, in the order it was asked` = string[];
 }
 
 d Plan: `Every unit of a workspace, which need generating, and how they are batched` {

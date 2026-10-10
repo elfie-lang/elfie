@@ -31,11 +31,18 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `The first argument that does not begin with a dash and is not the value that --root, --tree, --target, --jobs, or --color takes names the [[Command]]`,
     })
     .add({
-      situation = [`No argument that does not begin with a dash is given`, `No argument is --version`],
+      situation = [
+        `No argument that does not begin with a dash is given`,
+        `No argument is --version`,
+        `--root, --tree, --target, or --jobs is not the last argument`,
+      ],
       behavior = `The command is help`,
     })
     .add({ situation = `--help or -h is among the arguments`, behavior = `The command is help` })
-    .add({ situation = `--version is among the arguments`, behavior = `The command is version` })
+    .add({
+      situation = [`--version is among the arguments`, `No argument is --help or -h`],
+      behavior = `The command is version`,
+    })
     .add({
       situation = `--root followed by a directory, or --root= and the directory, is among the arguments`,
       behavior = `[[Invocation.root]] is that directory made absolute against [[Process.currentDirectory]]`,
@@ -110,7 +117,10 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `Returns a usage message naming the argument`,
     })
     .add({
-      situation = `--root, --tree, --target, or --jobs is the last argument, with no value after it`,
+      situation = [
+        `--root, --tree, --target, or --jobs is the last argument, with no value after it`,
+        `No argument is --help, -h, or --version`,
+      ],
       behavior = `Returns a usage message naming the option`,
     });
 
@@ -878,7 +888,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `The root is a git repository`,
         `The source of a unit at its last accepted generation is recoverable from it through [[Process.run]] of git`,
       ],
-      behavior = `[[Request.previous]] holds, for that unit, [[LoweredFile.text]] of that source, lowered as [[Generation.changes]] binds a previous text`,
+      behavior = `The previous text [[Generation.request]] is given for that unit is that source as git holds it, never lowered`,
+    })
+    .add({
+      situation = [`compile`, `The root is a git repository`],
+      behavior = `The source of a unit at its last accepted generation is the most recent revision of its file whose text, lowered as [[Generation.changes]] binds a previous text, hashes to [[SourceMap.hash]] of the unit's outputs`,
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
@@ -1052,13 +1066,13 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = [
         `The verifier runs once for the batch, as [[Process.stream]] of the command elfie.json names under verifier`,
-        `Its input is [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, and the source maps [[Generation.accept]] derived`,
+        `Its input is [[ReviewRequest.instructions]] of [[Generation.review]] of the plan, the batch, the source maps [[Generation.accept]] derived, and the batch's directory`,
         `Its directory is the batch's directory`,
       ],
     })
     .add({
       situation = `compile or verify runs the verifier on a batch or for the global review`,
-      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Generation.reviewOf]]`,
+      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Generation.reviewOf]], with the ids of the criteria and tests its review request gives as asked`,
     })
     .add({
       situation = [`compile or verify`, `[[Generation.reviewOf]] reads the verifier's report on a batch`],
@@ -1075,10 +1089,14 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names a verifier`,
         `--no-verify is not given`,
       ],
-      behavior = `A unit's map file changes only after its batch's review holds no violated review`,
+      behavior = `A unit's map file changes only after its batch's review holds no violated review and no unplaced violation`,
     })
     .add({
-      situation = [`compile`, `The verifier's report on a batch holds no violated review`],
+      situation = [
+        `compile`,
+        `The verifier's report on a batch holds no violated review`,
+        `[[ReviewReport.unplaced]] of it is empty`,
+      ],
       behavior = [
         `The source maps [[Generation.accept]] derived for the batch are recorded by [[Generation.record]] for each unit`,
         `The batch is done`,
@@ -1093,27 +1111,44 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `The batch is rejected with one problem per violated review reading failure at, a space, [[Review.file]], a colon, [[Review.line]], a colon, a space, [[Review.note]], a space, and [[Review.evidence]] in parentheses`,
     })
     .add({
-      situation = [`compile`, `The verifier's report on a batch holds a violated review`],
+      situation = [`compile`, `[[ReviewReport.unplaced]] of the verifier's report on a batch is not empty`],
+      behavior = `The batch is rejected with one problem per unplaced line reading failure at a criterion the verifier did not name, a colon, a space, the note of the line, a space, and its evidence in parentheses`,
+    })
+    .add({
+      situation = [`compile`, `The verifier's report on a batch holds a violated review or an unplaced violation`],
       behavior = `The problems are printed`,
     })
     .add({
-      situation = [`compile`, `The first verifier's report on a batch in the compile holds a violated review`],
+      situation = [
+        `compile`,
+        `The first verifier's report on a batch in the compile holds a violated review or an unplaced violation`,
+      ],
       behavior = `The batch is run once more with the problems appended to [[Request.instructions]], even when it was already run once more for a rejected outcome`,
     })
     .add({
       situation = [
         `compile`,
-        `A batch run once more because the verifier's report on it held a violated review is accepted by [[Generation.accept]]`,
+        `A batch run once more because the verifier's report on it held a violated review or an unplaced violation is accepted by [[Generation.accept]]`,
       ],
-      behavior = `The verifier is run on it once more, with [[Generation.review]] of the plan, the batch, and the source maps [[Generation.accept]] derived for its new outputs`,
+      behavior = `The verifier is run on it once more, with [[Generation.review]] of the plan, the batch, the source maps [[Generation.accept]] derived for its new outputs, and the batch's directory`,
     })
     .add({
-      situation = [`compile`, `The second verifier's report on a batch in the compile holds a violated review`],
+      situation = [
+        `compile`,
+        `The second verifier's report on a batch in the compile holds a violated review or an unplaced violation`,
+      ],
       behavior = `The batch stops as rejected`,
     })
     .add({
-      situation = [`compile`, `The second verifier's report on a batch in the compile holds a violated review`],
+      situation = [
+        `compile`,
+        `The second verifier's report on a batch in the compile holds a violated review or an unplaced violation`,
+      ],
       behavior = `The batch's source maps are not recorded, and its outputs are left on disk`,
+    })
+    .add({
+      situation = [`compile or verify`, `[[ReviewReport.missing]] of the verifier's report on a batch is not empty`],
+      behavior = `One line under its reviewed line names each missing id as not reviewed, and each counts as unverifiable in the counts`,
     })
     .add({
       situation = [

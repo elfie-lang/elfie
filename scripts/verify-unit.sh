@@ -11,6 +11,9 @@ export ENABLE_TOOL_SEARCH=false
 # from the first turn.
 export CLAUDE_CODE_MCP_PREWAIT_SERVERS=elfie
 export CLAUDE_CODE_MCP_PREWAIT_SERVERS_MS=30000
+# The whole report must fit in the final response, and a large batch has hundreds of criteria, so
+# the response may be longer than the default limit allows.
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 # Definitions are read only through the agent server, which answers for an entity, a name, or a
 # file at once; reading or searching def/ and lib/ by hand is denied. Generated code stays open to
 # Read and Grep, for the helpers no marker names.

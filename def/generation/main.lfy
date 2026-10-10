@@ -191,10 +191,17 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       situation = `The sources of the open batch and the planned unit together are {{batchCharacters}} characters or more`,
       behavior = `The planned unit opens a new batch`,
     })
+    // Decision: a batch is for one target, because its request makes the compiler the compiler for
+    // one target.
+    .add({
+      situation = `The planned unit's [[Unit.target]] is not that of the units of the open batch`,
+      behavior = `The planned unit opens a new batch`,
+    })
     .add({
       situation = [
         `The open batch holds fewer than {{batchUnits}} units`,
         `The sources of the open batch and the planned unit together are under {{batchCharacters}} characters`,
+        `The planned unit's [[Unit.target]] is that of the units of the open batch`,
         `The planned unit and the open batch share the first segment of [[Unit.stem]]`,
       ],
       behavior = `The planned unit joins the open batch`,
@@ -203,6 +210,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
       situation = [
         `The open batch holds fewer than {{batchUnits}} units`,
         `The sources of the open batch and the planned unit together are under {{batchCharacters}} characters`,
+        `The planned unit's [[Unit.target]] is that of the units of the open batch`,
         `The planned unit's reason is dependency`,
         `The unit has at least one planned dependency, and every one of them is in the open batch`,
       ],
@@ -331,10 +339,33 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
   );
 }
 
+/// previous: the text of each unit's definition file when its outputs were last accepted, as written and never lowered, by [[File.path]]
+// Decision: the request is handed the source as written and lowers it itself, as [[changes]] does,
+// because lowered text holds no criteria, and the criteria are what a compiler most needs compared.
 fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string> = {}): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
     .add({ behavior = `[[Request.batch]] is [[batch]]` })
-    .add({ behavior = `[[Request.previous]] is [[previous]]` })
+    .add({
+      behavior = `The file as it was, for each path of [[previous]], is that path in [[Interpreter.lower]] of [[Loader.change]] of [[Program.workspace]] of [[Plan.program]] with that path and its text in [[previous]]`,
+    })
+    .add({
+      behavior = `[[Request.previous]] maps each path of [[previous]] that is the file of a unit of [[batch]] to [[LoweredFile.text]] of the file as it was`,
+    })
+    .add({
+      situation = `Some [[SourceMap.answered]] of the [[Unit.outputs]] of a unit of [[batch]] is not empty`,
+      behavior = `[[Request.answered]] maps the unit's [[File.path]] to the ids of that [[SourceMap.answered]]`,
+    })
+    .add({
+      situation = [
+        `Every [[SourceMap.answered]] of the [[Unit.outputs]] of a unit of [[batch]] is empty`,
+        `[[previous]] has an entry for the unit's file`,
+      ],
+      behavior = `[[Request.answered]] maps the unit's [[File.path]] to the ids of the local criteria and tests of the file as it was`,
+    })
+    .add({
+      situation = `[[previous]] has an entry for the file of a unit of [[batch]]`,
+      behavior = `[[Request.removed]] maps the unit's [[File.path]] to each local criterion and test of the file as it was whose id is none of the unit's now, in the order the file as it was gives them`,
+    })
     .add({
       behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of a unit of the batch to its text`,
     });
@@ -384,7 +415,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       situation = `[[Request.existing]] is not empty`,
       behavior = [
-        `The outputs part says that only what the difference between [[Request.previous]] and [[Request.sources]] requires changes`,
+        `The outputs part says that only what the difference between [[Request.previous]] and [[Request.sources]], and the criteria and tests marked new or removed, require changes`,
         `The outputs part says that names and structure are kept`,
         `The outputs part says that markers of unchanged items are kept`,
       ],
@@ -392,6 +423,10 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       situation = [`[[Request.existing]] is not empty`, `[[Request.previous]] has no entry for a unit of [[batch]]`],
       behavior = `The outputs part says that the existing outputs of that unit are reconciled with its source`,
+    })
+    .add({
+      situation = [`[[Request.existing]] is not empty`, `[[Request.answered]] has no entry for a unit of [[batch]]`],
+      behavior = `The outputs part says that which criteria and tests of that unit are new is not known, so the existing code is read against each of them before its marker is written`,
     })
     .add({
       behavior = `The guidance, native dependencies, and knowledge parts give [[Request.guidance]], [[Request.nativeDependencies]], and [[Request.knowledge]]`,
@@ -407,6 +442,21 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       behavior = `A unit's section holds, for each of its entities, the entity's lowered code and then, apart from the code, its local criteria and tests, each on its own line with its id`,
+    })
+    .add({
+      behavior = `A criterion's line in a unit's section reads its id, a space, an em dash, a space, and [[LoweredCriterion.text]]`,
+    })
+    .add({
+      situation = `[[Request.answered]] has an entry for a unit of [[batch]]`,
+      behavior = `In that unit's section, the line of each criterion and test whose id is not in that entry is marked new`,
+    })
+    .add({
+      situation = `[[Request.removed]] has a non-empty entry for a unit of [[batch]]`,
+      behavior = `That unit's section ends with each criterion and test of that entry on its own line, with its id and its text as a criterion's line or a test's line reads, under a heading saying they were removed since its outputs were accepted`,
+    })
+    .add({
+      situation = `A criterion or test of a unit of [[batch]] is marked new`,
+      behavior = `That unit's section says that a new one may restate a removed one in other words, and that its code is read against what the new one says, not against the removed one`,
     })
     .add({
       situation = `Entities moved into a unit of [[batch]]`,
@@ -432,13 +482,16 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
       situation = `Entities moved out of a unit of [[batch]]`,
       behavior = `That unit's section says that the unit's outputs make each of them available under the name and path it would have had`,
     })
+    // Decision: a requirements unit is never told its code is unchanged. Its lowered code is the
+    // same, but a fn's criteria are what its code must do, so a changed criterion can ask for
+    // behavior no code has yet.
     .add({
       situation = `A unit of [[batch]] has the reason requirements`,
-      behavior = `That unit's section says that its code is unchanged and only the tests and code answering for the criteria and tests whose ids were added or removed need to change`,
+      behavior = `That unit's section says that its lowered code is unchanged but its criteria or tests differ, and that the code must do what each criterion and test now says, which may mean writing new behavior`,
     })
     .add({
       behavior = [
-        `The global section gives each of [[Request.globals]] once, with its id, marked global`,
+        `The global section gives each of [[Request.globals]] once, with its id, marked global, a criterion as [[LoweredCriterion.text]]`,
         `The global section says that they hold across the whole program`,
         `The global section says that a unit answers for one only where it is relevant to that unit's code and ignores it otherwise`,
         `The global section says that the global review checks each once`,
@@ -452,6 +505,9 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       behavior = `The rules say that each [[LoweredTest]] becomes one test, and each [[LoweredCriterion]] that can be checked mechanically becomes one test, each carrying a [[Marker]] with its id, placed where the guidance says`,
+    })
+    .add({
+      behavior = `The rules say that a [[Marker]] carrying a criterion's id is written only on code that does what the criterion says in every situation it names, and that a marker never stands in for code`,
     })
     .add({
       behavior = `The tools part says that the tools of the agent server are called before files are searched or read by hand: elfie_entity for a definition with its criteria and tests, elfie_find for where a name is declared, elfie_references for where it is used, elfie_outline for the declarations of a file, elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_changes for what changed in a unit since its outputs were accepted, and elfie_check for whether acceptance would pass`,
@@ -482,6 +538,19 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
       ],
       expect = Request@like(
         `Guidance holding the declaration's own criterion, then flat's criterion once, then rust's two with the template value evaluated`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One batch of one unit a, reason requirements, whose fn f has criteria c1 and c3 now, and whose one output's source map answered the ids of c1 and c2`,
+        ),
+        Batch@like(`a`),
+        [Output@like(`The existing output of a`)],
+        Object@like(`def/a.lfy mapped to a.lfy as it was: f with criteria c1 and c2`),
+      ],
+      expect = Request@like(
+        `A section for a that says its criteria differ and the code must do what each now says; c1's line unmarked, c3's line marked new, and c2 listed with its text as removed`,
       ),
     },
   );
@@ -539,9 +608,22 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
   // Markers
   @acceptanceCriteria
     .add({ situation = `[[outputs]] is empty`, behavior = `[[Verdict.problems]] holds one saying so` })
+    // Decision: a file shared by several units is an output of each, as Rust's lib.rs must be; what a
+    // unit may not do is take away what another unit recorded in it.
     .add({
-      situation = `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
-      behavior = `[[Verdict.problems]] holds one naming the path and the other unit's source`,
+      situation = [
+        `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
+        `That source is the file of no unit of [[Request.batch]] of [[request]]`,
+        `A marker of that source map, compared by [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]], is not in the output`,
+      ],
+      behavior = `[[Verdict.problems]] holds one naming the path, the other unit's source, and the marker`,
+    })
+    .add({
+      situation = [
+        `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
+        `That source is the file of a unit of [[Request.batch]] of [[request]], or every marker of that source map, compared by [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]], is in the output`,
+      ],
+      behavior = `Sharing the output with that other unit adds no problem`,
     })
     .add({
       situation = `An output's path does not [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target`,
@@ -600,6 +682,9 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
     })
     .add({
       behavior = `[[SourceMap.requirements]] of each of [[Verdict.sourceMaps]] is taken over the local criterion and test ids of [[unit]]`,
+    })
+    .add({
+      behavior = `[[SourceMap.answered]] of each of [[Verdict.sourceMaps]] is the local criterion and test ids of [[unit]], sorted`,
     })
     .add({
       behavior = `[[SourceMap.signature]] of each of [[Verdict.sourceMaps]] is the SHA-256 of [[interfaceOf]] [[unit]]`,
@@ -681,6 +766,10 @@ fn sourceMapsOf(workspace: Workspace, target?: string): `Every source map record
     .add({
       situation = `A map file cannot be read or is not a JSON list of source maps`,
       behavior = `It contributes nothing`,
+    })
+    .add({
+      situation = `A recorded map has no answered key`,
+      behavior = `It is read with [[SourceMap.answered]] empty`,
     })
     .add({
       situation = [
@@ -838,7 +927,7 @@ fn regionsOf(workspace: Workspace, sourceMaps: SourceMap[], name: string, target
 
 // Decision: a change is found by binding the previous text through the loader and comparing entities,
 // never by diffing lines, so a reformatted or reordered file whose entities read the same gives none.
-/// previous: the text of the unit's file when its outputs were last accepted; undefined when they never were
+/// previous: the text of the unit's file when its outputs were last accepted, as written and never lowered; undefined when they never were
 fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `What differs for each entity of a unit between its file as last accepted and as it is now` => Change[] {
   @acceptanceCriteria
     .add({
@@ -994,15 +1083,21 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
 
 // Decision: the verifier is handed the regions already excerpted, so it reads exactly what a criterion
 // is about, and its protocol allows no edits: a review says where and why, never how to fix.
-fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a verifier is handed to check the outputs of one batch against every criterion and test` => ReviewRequest {
+/// directory: the directory the batch's outputs were written in, which its regions are read from; [[Workspace.root]] when left out
+// Decision: a batch compiled in a copy of the root is reviewed in that copy, so the regions a
+// verifier is shown are the outputs it is judging and never the root's older ones.
+fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string): `Everything a verifier is handed to check the outputs of one batch against every criterion and test` => ReviewRequest {
   @acceptanceCriteria
     .add({ behavior = `[[ReviewRequest.batch]] is [[batch]]` })
+    .add({
+      behavior = `Every output a region is read from is [[Files.read]] at [[SourceMap.output]] under [[directory]], or under [[Workspace.root]] when [[directory]] is left out`,
+    })
     .add({ behavior = `[[ReviewRequest.instructions]] lists only local criteria and tests` })
     .add({
       behavior = [
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming [[Batch.identifier]] and the target`,
-        `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its local criteria on one line prefixed by its id and place, then each of its local tests as input and expectation on one line prefixed by its id and place`,
+        `For each unit of the batch in order, for each of [[Unit.entities]]: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its local criteria as [[LoweredCriterion.text]] on one line prefixed by its id and place, then each of its local tests as input and expectation on one line prefixed by its id and place`,
         `Then, for each of those entities, each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the batch's target whose [[Marker.file]] is the file that declares the entity: the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and then the region's text`,
         `The verifier protocol`,
       ],
@@ -1040,7 +1135,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[]): `Everything a veri
         [SourceMap@like(`For rust and src/a.rs from a.lfy, with one marker a.lfy:A on line 1 ending on line 30`)],
       ],
       expect = ReviewRequest@like(
-        `Instructions headed a and rust; A with its definition, two criterion lines prefixed def/a.lfy:4 and def/a.lfy:7, one test line prefixed def/a.lfy:10; one region src/a.rs:1-30 with the file's thirty lines in a fenced block; then the protocol naming the four keys and the three statuses and ending with ELFIE: REVIEWED`,
+        `Instructions headed a and rust; A with its definition, two criterion lines prefixed def/a.lfy:4 and def/a.lfy:7, one test line prefixed def/a.lfy:10; one region src/a.rs:1-30 with the file's thirty lines in a fenced block; then the protocol naming the six keys and the three statuses and ending with ELFIE: REVIEWED`,
       ),
     },
     {
@@ -1059,7 +1154,7 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
       behavior = [
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming the global review and the targets`,
-        `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, as the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines in a fenced block`,
+        `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, [[LoweredCriterion.text]] for a criterion, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, as the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], and the [[Files.read]] text of those lines in a fenced block`,
         `The verifier protocol`,
       ],
     })
@@ -1087,7 +1182,11 @@ fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is 
 
 /// report: everything the verifier wrote to standard output
 /// program: the lowered program, whose criteria and tests the ids name
-fn reviewOf(report: string, program: Program): `What a verifier found, read mechanically from its report` => ReviewReport {
+/// asked: the ids of the criteria and tests the review request gave the verifier; empty when not known
+// Decision: a review line names its criterion by place as well as by id, because a 64-digit id is
+// easy to copy wrong and a place is not; a line that names nothing yet says violated is kept apart,
+// so a found failure is never lost for want of a name.
+fn reviewOf(report: string, program: Program, asked: string[] = []): `What a verifier found, read mechanically from its report` => ReviewReport {
   // Decision: the report is read leniently and only what tries to be a review can be wrong, because
   // a verifier that adds a sentence or a fence around its lines has still reviewed everything, and
   // running a second verifier for that costs as much as the first.
@@ -1130,7 +1229,7 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
         `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
         `It begins with {`,
         `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
-        `It has no id`,
+        `It has no id, or its id is the id of no criterion or test of [[program]] and no single id of one begins with it or is the beginning of it, sharing at least the receiver, the contributor, and 16 hex digits`,
         `Its file and line are the file and line where exactly one criterion or test of [[program]] begins`,
       ],
       behavior = `It is one [[Review]] in [[ReviewReport.reviews]] for that criterion or test`,
@@ -1156,20 +1255,20 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
         `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
         `It begins with {`,
         `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
-        `Its id is the id of no criterion or test of [[program]]`,
-        `No single id of a criterion or test of [[program]] begins with its id, or is the beginning of it, sharing at least the receiver, the contributor, and 16 hex digits`,
+        `It has no id, or its id is the id of no criterion or test of [[program]] and no single id of one begins with it or is the beginning of it, sharing at least the receiver, the contributor, and 16 hex digits`,
+        `It has no file and line, or they are not where exactly one criterion or test of [[program]] begins`,
       ],
       behavior = `It is in [[ReviewReport.problems]] as written`,
     })
     .add({
       situation = [
-        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
-        `It begins with {`,
-        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
-        `It has no id`,
-        `Its file and line are not where exactly one criterion or test of [[program]] begins`,
+        `A line of [[report]] is in [[ReviewReport.problems]] as written`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is violated`,
       ],
-      behavior = `It is in [[ReviewReport.problems]] as written`,
+      behavior = `It is in [[ReviewReport.unplaced]] as written, in report order`,
+    })
+    .add({
+      behavior = `[[ReviewReport.missing]] holds each of [[asked]] that is the id of no review in [[ReviewReport.reviews]], in the order of [[asked]]`,
     })
     .add({
       behavior = `[[ReviewReport.reviews]] and the lines of [[ReviewReport.problems]] read from [[report]] are each in report order`,
@@ -1224,6 +1323,18 @@ fn reviewOf(report: string, program: Program): `What a verifier found, read mech
       ],
       expect = ReviewReport@like(
         `One review, violated with note second, and one problem reading: the report did not end`,
+      ),
+    },
+    {
+      input = [
+        `{"id":"A:A:9c0e","file":"def/a.lfy","line":7,"status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined"}\n{"id":"A:A:77aa","status":"violated","evidence":"src/a.rs:3-3","note":"no such id"}\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+        [`A:A:1f2e`, `A:A:9c0d`],
+      ],
+      expect = ReviewReport@like(
+        `One review, violated at def/a.lfy:7 for the criterion A:A:9c0d; the A:A:77aa line in both problems and unplaced; A:A:1f2e missing`,
       ),
     },
   );

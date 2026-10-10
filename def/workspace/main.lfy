@@ -386,12 +386,14 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
       behavior = `The result is what [[load]] of the same root gives when every file replaced this way holds what it was replaced with`,
     })
     .add({ behavior = `A replacement stands until the same [[path]] is given again` })
-    // Decision: change re-binds only the files a change can reach, so an editor stays responsive on a
-    // large program. Uses alone do not bound that set: @entities and additions to another file's
+    // Decision: the re-bind set is every file a change can reach, and only those files can come out
+    // different. Uses alone do not bound that set: @entities and additions to another file's
     // entities, or to global, reach files that never use the changed one.
+    // Decision: binding only the re-bind set, so an editor stays responsive on a large program, waits
+    // for a form of [[Binder.bind]] that binds part of a program against a model already bound; bind
+    // has none, and change may not build a binder of its own.
     .add({
       behavior = [
-        `Only the files of the re-bind set are bound again`,
         `Every file outside the re-bind set keeps the symbols, usages, and problems it has in [[workspace]]`,
         `The re-bind set is the file at [[path]] and every file that uses it, directly or through other files`,
       ],

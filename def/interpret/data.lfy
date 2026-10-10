@@ -37,8 +37,12 @@ enum RequirementScope: `Whom a criterion or test is for` {
 // Decision: an id is built from what a criterion is for, who wrote it, and what it says, so it
 // survives lines moving; a reworded criterion is a new id, and the old one is removed.
 
+// Decision: the id hashes the parts as they were first joined, apart from the text a reader is
+// shown, so that making a criterion read better never changes its id or the markers that spell it.
+
 d LoweredCriterion extends Criterion: `One acceptance criterion as generation and verification see it: an entity of its own, apart from the code` {
-  $id: `The receiving entity's name, or global for a global criterion, then a colon, the contributor's name, a colon, and the SHA-256 of its situation, behavior, and side effects as rendered, in lowercase hex` = string;
+  $id: `The receiving entity's name, or global for a global criterion, then a colon, the contributor's name, a colon, and the SHA-256 of its hashed text, in lowercase hex` = string;
+  $text: `The criterion as one line, as a request or a review shows it to a reader` = string;
   $scope: `Whether it is for one entity or for the whole program` = RequirementScope;
   $entity: `The entity it is for; undefined when global` = Entity | undefined;
   $origin: `The where statement or add call that wrote it` = Node;
@@ -48,7 +52,28 @@ d LoweredCriterion extends Criterion: `One acceptance criterion as generation an
       .add({
         situation = `Two criteria for the same entity would have the same id`,
         behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
+      })
+      .add({
+        behavior = `The hashed text is the parts the criterion has, joined by a colon and a space: When, a space, and its situations joined by a space; its behaviors joined by a space; Side effects:, a space, and its side effects joined by a space`,
       });
+  }
+  with LoweredCriterion$text {
+    @acceptanceCriteria
+      .add({ situation = `The criterion has no situation`, behavior = `The text begins with its behavior` })
+      .add({
+        situation = `The criterion has a situation`,
+        behavior = `The text begins with When, a space, its situation, a colon, and a space, and then its behavior`,
+      })
+      .add({
+        situation = `The situation is a list`,
+        behavior = `Its items are joined by a comma, a space, the word and, and a space`,
+      })
+      .add({ situation = `The behavior is a list`, behavior = `Its items are joined by a semicolon and a space` })
+      .add({
+        situation = `The criterion has side effects`,
+        behavior = `The text ends with a period, a space, Side effects:, a space, and its side effects joined by a semicolon and a space`,
+      })
+      .add({ behavior = `Every item keeps its own words and case` });
   }
 }
 

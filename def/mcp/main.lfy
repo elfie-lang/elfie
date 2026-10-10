@@ -292,7 +292,7 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
         `The root is a git repository`,
         `The source of the unit at its last accepted generation is recoverable from it`,
       ],
-      behavior = `The previous text passed to [[Generation.changes]] is that source, recovered through [[Process.run]] of git`,
+      behavior = `The previous text passed to [[Generation.changes]] is that source as git holds it, recovered through [[Process.run]] of git and never lowered`,
     })
     .add({ situation = `[[Unit.outputs]] of the unit is empty`, behavior = `The text says no previous output` })
     .add({
