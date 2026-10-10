@@ -95,12 +95,15 @@ until accepted.
 
 ## Progress
 
-- [ ] Phase 1.0 compile-hosted server
-- [ ] Phase 1.1 elfie_report
-- [ ] Phase 1.2 short review request
-- [ ] Phase 1.3 incremental review
-- [ ] Phase 2
-- [ ] Phase 3
+- [x] Phase 1 (1.0–1.3), compiled in 8ce2f7b and validated on 2026-10-10:
+  - mcp/data+1: 389 of 389 verdicts through elfie_report. Before, 4 of 389 survived the
+    one-message report.
+  - generation/main --full: the request was 166k characters (was 966k), took 14.9 min (was 20–35),
+    and lost 0 verdicts.
+  - A repeat verify after a clean compile carries every verdict and finishes in 9 s.
+  - Open: context per turn rose to 389k tokens, because verifiers Read whole files. The prompt fix
+    is in 9ad518e, and Phase 3's denial of raw reads is still pending.
+- [ ] Phases 2+3: definitions merged (bba795d..869845c, 9ad518e); compiling
 - [ ] Phase 4
 - [ ] Phase 5
 - [ ] Phase 6

@@ -23,6 +23,7 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
     { name = "tower-lsp", version = "0.20" },
     { name = "rmcp", version = "3" },
     { name = "axum", version = "0.8" },
+    { name = "regex", version = "1" },
     { name = "clap", version = "4" },
   ],
 });
