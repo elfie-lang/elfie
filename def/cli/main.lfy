@@ -1075,6 +1075,41 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `A unit's source maps, for ELFIE_UNITS, are its [[Unit.outputs]]`,
     });
 
+  // Agent sessions of the compiler and the verifier
+  // Decision: each run is given an agent session id, the id of the compiler's or the verifier's own
+  // conversation (not the hosted session of the agent server), and a retry that answers problems
+  // resumes the agent session of the run before it, so it keeps what the first attempt already read
+  // instead of reading it again. The retry's request, problems appended, is still given on standard
+  // input, and the run is counted as before. Whether and how the id is used is the compiler or
+  // verifier command's business; the CLI only names it, and a command may start afresh instead.
+  // Decision: an agent session is kept under the directory it ran in, so only a run in the same
+  // directory resumes; a batch that runs again from a new copy starts afresh.
+  // Decision: only a retry that answers problems resumes: one after a rejected outcome, or after a
+  // review that found a violation. A run that failed, was stopped, or ended without every verdict
+  // may have left a session that is broken or too long to continue, so its retry starts afresh.
+  // Decision: a resumed agent session keeps the id it was resumed by, so a third run resumes the
+  // session the second one continued, not the second one's own unused id.
+  @acceptanceCriteria
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = `ELFIE_SESSION in its environment is an agent session id new for the run: a version 4 UUID made from the operating system's secure random source, spelled as 36 lowercase characters in the 8-4-4-4-12 form`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The compiler or the verifier is run on a batch as a resuming run, which is exactly one of three: the compiler's run once more after its run's outcome was rejected; the compiler's run once more after the verifier's report on the batch held a violated review or an unplaced violation, the compiler having run on the batch before; and the verifier's run once more after that run of the compiler is accepted`,
+        `The run of the same one of them on the batch before it was in the same directory: the copy of the batch made when the batch last started, or the root`,
+      ],
+      behavior = `ELFIE_RESUME in its environment is the agent session id of that run before it: its ELFIE_RESUME when it had one, and its ELFIE_SESSION otherwise`,
+    })
+    .add({
+      situation = [
+        `The compiler or the verifier is run, by compile or by verify`,
+        `It is no resuming run, or the run of the same one of them on the batch before it was in another directory; no resuming run is a first run, the compiler's first run after a first run that skipped it as a reworded-only or dependency-only batch's may, a run of a batch that runs again from a new copy, a run for the global review, a run of a batch the global review planned, a run once more after a failed run or an exit code of -1, or the verifier's run once more after a run that ended without every verdict`,
+      ],
+      behavior = `ELFIE_RESUME is not in its environment, even when the environment compile or verify was started in holds it`,
+    });
+
   // The hosted agent server
   // Decision: one host serves every run of a compile or verify, each run through a session of its
   // own, so batches running at once never see each other's work and the CLI learns each run's

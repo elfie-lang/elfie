@@ -740,3 +740,41 @@ was chosen.
 - Three steps were added: `resuming` (a copy takes kept work), `rewording` (a unit's markers were
   rewritten, with counts), and `building` (build and test in place of the compiler, or before a
   merge). The first two are drawn like `requesting` and `building` like `compiling`.
+
+# Knowledge, experiments, and output layout (2026-10-10, ROADMAP phase 6 and knowledge)
+
+## Repository knowledge
+
+- Facts compiler agents kept rediscovering (the CLI's package is `elfie`, not `elfie-cli`; no
+  `cargo fmt`; shared outputs; tests that load `def/` must not pin counts) are written once in
+  `def/knowledge/repository.md` and added to the rust target in `def/targets.lfy` as knowledge of
+  kind reference, quoted. The source is relative to the repository root, because the file
+  declaring it is the project's own.
+- It is quoted, not named, because the compiler may not read `def/` directly. The verifier is
+  given no knowledge, so its prompt names the package names for `scope` itself.
+- Knowledge re-plans no unit: it is no part of a unit's text, criteria, or interfaces. It reaches
+  the next request of every unit.
+
+## Experiments (phase 6, item 17)
+
+- **Retries that answer problems resume.** Every run of the compiler or the verifier gets
+  `ELFIE_SESSION`, a fresh UUID. Three runs also get `ELFIE_RESUME`, the agent session the run
+  before them used: the compiler's run once more after a rejected outcome, the compiler's run once
+  more after a review with a violation (when the compiler ran before), and the verifier's run once
+  more after that. The run before must have been in the same directory, since an agent session
+  lives under the directory it ran in: the copy the batch was given when it last started, or the
+  root.
+- No other run resumes: not a first run, not the compiler's first run after a skipped one
+  (reworded-only, dependency-only), not a batch that runs again from a new copy, not the global
+  review or a batch it planned, and not a retry after a failed run, an exit code of -1, or a
+  review that ended without every verdict. Those runs may have left a session that is broken or
+  too long to continue.
+- A resumed session keeps its id, so every later retry resumes the same one.
+- **The scripts may start afresh.** They pass `--resume` only when the session's file is in
+  Claude Code's project store (`$CLAUDE_CONFIG_DIR` or `~/.claude`, then `projects/`) and is under
+  20 MB; otherwise they pass `--session-id "$ELFIE_SESSION"`. They log the flag they pass to
+  standard error. The CLI's criteria are only about the variables.
+- Nothing about how many times a batch runs changes, and the retry's request is still given whole
+  on standard input.
+- **Model tiering** is an operator setting, not a definition: `ELFIE_COMPILER_MODEL` and
+  `ELFIE_VERIFIER_MODEL` are read by the scripts and passed as `--model` when set.

@@ -36,8 +36,31 @@ else
   allowed="Read Glob Grep Bash(cargo test:*) Bash(cargo build:*) mcp__elfie__*"
   denied=""
 fi
+# ELFIE_SESSION is the agent session id the compile or verify gives this run, and ELFIE_RESUME, set
+# only on the review after a retry that answered a violation, the session of the verifier's run
+# before it. Resuming keeps what the first review already read, so the second does not read it all
+# again; its review request is still given on standard input. A resumed session keeps its id. The
+# session is resumed only when its file is in Claude Code's project store and is under 20 MB; a
+# missing file (the run before died first) or a larger one (too long to continue) falls back to a
+# fresh session under ELFIE_SESSION. With neither set, as when run by hand, Claude Code starts a
+# session of its own.
+store="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+session=()
+if [ -n "${ELFIE_RESUME:-}" ] && f=$(find "$store" -maxdepth 2 -name "$ELFIE_RESUME.jsonl" -size -20M -print -quit 2>/dev/null) && [ -n "$f" ]; then
+  session=(--resume "$ELFIE_RESUME")
+elif [ -n "${ELFIE_SESSION:-}" ]; then
+  session=(--session-id "$ELFIE_SESSION")
+fi
+echo "session: ${session[*]:-none}" >&2
+# ELFIE_VERIFIER_MODEL, an operator's setting, picks the model, as --model takes it (an alias such
+# as opus or sonnet, or a full model name); unset or empty, Claude Code's default is used.
+model=()
+if [ -n "${ELFIE_VERIFIER_MODEL:-}" ]; then
+  model=(--model "$ELFIE_VERIFIER_MODEL")
+fi
 echo "verifying batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
 exec claude -p \
+  "${session[@]}" "${model[@]}" \
   --permission-mode default \
   --allowedTools "$allowed" \
   --disallowedTools "Read(./def/**)" "Read(./lib/**)" ${denied:+"$denied"} \

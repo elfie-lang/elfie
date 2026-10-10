@@ -91,6 +91,10 @@ Other rules:
   output. Stop and report it as blocked, quoting the criterion, instead of guessing.
 - A rejection may carry `failure at <file>:<line>: <why>` lines from an independent reviewer that
   read your output against that criterion. Fix the code, not the review.
+- A run once more may continue the conversation of the attempt before it. Then the new request on
+  your input replaces the earlier one: work from it and the problems it appends. What you read of
+  the definitions still holds, but the outputs on disk may have changed, so read code again
+  through the tools before you edit it, and call `elfie_task` again.
 - Do not commit. Print a short report of the files written and any decision you had to make.
 - End your report with exactly one line, even after `elfie_submit`, as the fallback where it is
   not offered:

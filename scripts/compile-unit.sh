@@ -33,8 +33,32 @@ if [ -n "${ELFIE_COMMAND_TOOLS:-}" ]; then
 else
   allowed="Read Edit Write Glob Grep Bash(cargo build:*) Bash(cargo test:*) Bash(cargo clippy:*) Bash(cargo add:*) mcp__elfie__*"
 fi
+# ELFIE_SESSION is the agent session id the compile gives this run, and ELFIE_RESUME, set only on a
+# retry after a rejected outcome or a review that found a violation, the session of the compiler's
+# run before it. Resuming keeps what the first attempt already read, so the retry does not read it
+# all again; the retry's request, with the problems appended, is still given on standard input. A
+# resumed session keeps its id, which is why the compile passes the same ELFIE_RESUME to every
+# later retry. The session is resumed only when its file is in Claude Code's project store and is
+# under 20 MB; a missing file (the run before died first) or a larger one (too long to continue)
+# falls back to a fresh session under ELFIE_SESSION. With neither set, as when run by hand, Claude
+# Code starts a session of its own.
+store="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+session=()
+if [ -n "${ELFIE_RESUME:-}" ] && f=$(find "$store" -maxdepth 2 -name "$ELFIE_RESUME.jsonl" -size -20M -print -quit 2>/dev/null) && [ -n "$f" ]; then
+  session=(--resume "$ELFIE_RESUME")
+elif [ -n "${ELFIE_SESSION:-}" ]; then
+  session=(--session-id "$ELFIE_SESSION")
+fi
+echo "session: ${session[*]:-none}" >&2
+# ELFIE_COMPILER_MODEL, an operator's setting, picks the model, as --model takes it (an alias such
+# as opus or sonnet, or a full model name); unset or empty, Claude Code's default is used.
+model=()
+if [ -n "${ELFIE_COMPILER_MODEL:-}" ]; then
+  model=(--model "$ELFIE_COMPILER_MODEL")
+fi
 echo "compiling batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
 exec claude -p \
+  "${session[@]}" "${model[@]}" \
   --permission-mode acceptEdits \
   --allowedTools "$allowed" \
   --disallowedTools "Read(./def/**)" "Read(./lib/**)" \

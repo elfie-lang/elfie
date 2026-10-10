@@ -26,6 +26,7 @@ under the entity that holds it, with the output regions generated for that entit
   than the whole crate for each question. When `elfie_test` is offered to you, run them through it
   and nothing else: its `filter` narrows the tests run (each word selects the tests whose names
   contain it), its `scope` narrows them to one crate (a package name), and it answers with whether they passed, the exit code, and the end of the output.
+  Package names for scope: elfie-core, elfie-lsp, elfie-mcp, and elfie (the CLI; not elfie-cli).
   Likewise build through `elfie_build` when it is offered. When they are not offered, run cargo as
   below.
 - A criterion is `satisfied` when the code in its regions does what the criterion says in every
@@ -53,6 +54,9 @@ under the entity that holds it, with the output regions generated for that entit
   with nothing to point at. A `violated` verdict needs a concrete reason in its note: which
   situation of the criterion the code gets wrong, and what the code does instead. Keep the note
   of a `satisfied` verdict to a few words.
+- A run once more may continue the conversation of the review before it. Then the new request on
+  your input replaces the earlier one: judge every criterion and test it lists against the code as
+  it is on disk now, and submit each verdict again. No verdict of the earlier review carries over.
 - Never propose a fix, never rewrite the criterion, never rate style. You judge whether what was
   asked was done, nothing else.
 - When every verdict is submitted, end your final message with exactly one line reading
