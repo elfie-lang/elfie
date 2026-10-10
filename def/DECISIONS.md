@@ -92,8 +92,10 @@ second copy. Argument descriptions come from `///` documentation lines on the fn
 **The server writes marker lines and nothing else (2026-10-10).** During compilation the agent
 writes code itself and calls `elfie_check`; the CLI records source maps and review records. The one
 thing the server writes is a marker line: `elfie_mark`, offered only to a compiler session, inserts
-one or rewrites the ids of existing ones, in the outputs of that session's own batch under its
-run's directory. It does so because a 64-hex id is copied wrong often enough to matter, and the
+one or rewrites the ids of existing ones. It writes only in that session's own batch's regions of
+its target's output files, under its run's directory. A rename touches only markers naming the
+file of the new id's unit. An insertion is refused when the line falls in a region whose marker
+names a file outside the batch. It does so because a 64-hex id is copied wrong often enough to matter, and the
 server can copy one it has checked. Marker lines still pass through acceptance like any other line,
 so the CLI stays the only path to "what was accepted". This replaces the earlier rule that the
 server never writes a file. `elfie_report` and `elfie_submit` keep what they record in memory
@@ -426,6 +428,11 @@ LSP/MCP protocols are deliberately not part of this round.
     outputs, and per entity each criterion and test with its id, place, and text. Each one is
     marked `new`, `kept`, or `unknown`, and the removed ones come with their text. The word is
     `kept` rather than "carried", which already names a review verdict that is not asked again.
+  - `Request.removed` holds `RemovedRequirement`s: id, place, and text. `request` takes them while
+    the previous lowering exists, because a removed criterion's origin belongs to that lowering
+    and nothing later can read it.
+  - In a compiler session, `elfie_request` for the session's batch returns the instructions of
+    `Binding.request` itself.
   - `elfie_dependency` gives one entity of a dependency, as `Request.interfaces` holds it, with its
     lines of `interfaceOf`. The tool cannot be named `elfie_interface`, because `interface` is a
     reserved word.
@@ -436,14 +443,17 @@ LSP/MCP protocols are deliberately not part of this round.
   - `elfie_output` takes `text`: with `text` false it gives an outline of the regions without their
     code. An output file named by its path is now read with the markers it holds when the call
     arrives, rather than the recorded map, so a compiler that has just edited it sees its regions
-    where they are.
+    where they are. For the same reason, in a compiler session the maps of the batch's own units
+    are read from the markers their output files hold at call time. Every tool that reads maps
+    (`elfie_output` by entity or id, `elfie_source`) sees them there.
   - `elfie_search` greps the outputs of the session's targets with a Rust `regex` pattern. It gives
     each line with its region's marker and stops at 200 lines, saying how many it left out.
   - `elfie_mark` writes marker lines; see MCP above.
   - `elfie_submit` records done, blocked, or clarify in the session, and the last call wins.
     `Host.close` now returns a `SessionRecord` of the reviews and the submission.
     `Generation.outcomeOf` takes the submission and prefers it to the report's `ELFIE:` line, which
-    is kept as the fallback.
+    is kept as the fallback. A `done` with no verdict is failed. A `done` message is not part of
+    `Outcome.message`.
   - Raw Read and Grep stay allowed (ROADMAP 11) until the share of tool calls that go to the server
     is measured.
 - **MCP gains `output`, `source`, `changes`, `review`**, all read-only: generated regions by

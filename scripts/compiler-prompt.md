@@ -31,7 +31,8 @@ offer.
      Use it for helpers no marker names.
    - `elfie_source <file> <line>` gives the definition behind a generated line.
 
-   Read or grep an output by hand only for what no tool answers.
+   Read or grep an output by hand only for what no tool answers. Where `elfie_search` or the
+   `text` argument of `elfie_output` is not offered, Grep and Read the outputs instead.
 4. **Write code with Edit and Write**, only under the output directory the request names, at the
    paths it lists when it lists any. Never edit a dependency's outputs; use their names as their
    outputs spell them. Keep names, structure, and the markers of unchanged code when reconciling
@@ -41,7 +42,11 @@ offer.
      comes from, with `#<id>` after the entity when the item answers for one criterion or test.
    - Every entity of a unit is covered by at least one marker inside its declaration.
    - To add a marker, call `elfie_mark` with `file`, `line` (the marker goes before that line, at
-     its indentation), `entity`, and `id` when there is one.
+     its indentation), `entity`, and `id` when there is one. It writes only in your batch's own
+     regions.
+   - `elfie_mark` changes the file on disk. Read the file again before you edit it after a mark.
+     When you insert several markers into one file, work from the bottom of the file up, so the
+     line numbers you have not used yet stay right.
    - When a criterion is reworded, its id changes. `elfie_task` shows the old one as removed and
      the new one as new. Once the code does what the new one says, move the old markers with
      `elfie_mark` using `replaces` set to the old id and `id` set to the new one.

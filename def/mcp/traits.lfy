@@ -35,7 +35,7 @@ trait tool: `Exposed to agents as one tool of the server` {
 // hosted session's [[Binding]] holds, so what they share is stated once here, and which entry points
 // offer them is stated by those entry points as for any tool.
 trait compilerTool: `Acts on the batch and the request of the compiler run a hosted session is bound to` {
-  where (`A call of elfie_{{@identifier}} arrives`) and (`[[Session.binding]] is undefined, or its [[Binding.request]] is undefined`) -> [
+  where (`A call of elfie_{{@identifier}} arrives`) and (`{{@identifier}} is offered to the session`) and (`[[Session.binding]] is undefined, or its [[Binding.request]] is undefined`) -> [
     `The result is an error saying elfie_{{@identifier}} acts only in a session bound to a compiler run`,
     `Nothing is read or written`,
   ];

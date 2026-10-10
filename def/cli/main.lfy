@@ -919,7 +919,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The compiler is run on a batch`,
-      behavior = `The run's [[McpData.Binding]] has the role compiler, the batch, the request whose [[Request.instructions]] are the run's input, no review, and no source maps`,
+      behavior = `The run's [[McpData.Binding]] has the role compiler, the batch, the request the run's input was made from, no review, and no source maps`,
     })
     .add({
       situation = `The verifier is run on a batch`,

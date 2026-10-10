@@ -345,7 +345,9 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
 // because lowered text holds no criteria, and the criteria are what a compiler most needs compared.
 // Decision: the caller says whether the request is for a hosted compiler session, because only the
 // caller knows; a hosted compiler pulls an interface when it needs one, so its request names the
-// interfaces instead of quoting them, while a request read anywhere else quotes them whole.
+// interfaces instead of quoting them, while a request read anywhere else quotes them whole. A
+// compiler command that never uses the session it is hosted in still gets the interfaces by name
+// only, and reads each definition another way.
 fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string> = {}, hosted: boolean = false): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
     .add({ behavior = `[[Request.batch]] is [[batch]]` })
@@ -368,7 +370,10 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       situation = `[[previous]] has an entry for the file of a unit of [[batch]]`,
-      behavior = `[[Request.removed]] maps the unit's [[File.path]] to each local criterion and test of the file as it was whose id is none of the unit's now, in the order the file as it was gives them`,
+      behavior = `[[Request.removed]] maps the unit's [[File.path]] to one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now, in the order the file as it was gives them`,
+    })
+    .add({
+      behavior = `A [[RemovedRequirement]] has the id of its criterion or test, its place in the file as it was, and its text, all taken from the lowering of the file as it was`,
     })
     .add({
       behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of a unit of the batch to its text`,
@@ -480,7 +485,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     })
     .add({
       situation = `[[Request.removed]] has a non-empty entry for a unit of [[batch]]`,
-      behavior = `That unit's section ends with each criterion and test of that entry on its own line, with its id and its text as a criterion's line or a test's line reads, under a heading saying they were removed since its outputs were accepted`,
+      behavior = `That unit's section ends with each [[RemovedRequirement]] of that entry on its own line, reading its [[RemovedRequirement.id]], a space, an em dash, a space, and its [[RemovedRequirement.text]], under a heading saying they were removed since its outputs were accepted`,
     })
     .add({
       situation = `A criterion or test of a unit of [[batch]] is marked new`,
@@ -543,7 +548,7 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       situation = `[[hosted]] is true`,
       behavior = [
-        `The tools part says that elfie_task gives the batch's obligations again: each unit's outputs and reason, and every criterion and test with its id, place, and text, marked new or kept, with the removed ones`,
+        `The tools part says that elfie_task gives the batch's obligations again: each unit's outputs and reason, and every criterion and test with its id, place, and text, marked new, kept, or unknown, with the removed ones`,
         `The tools part says that elfie_mark writes a marker line, and rewrites the id every marker of the batch's outputs names, so that an id is never typed by hand`,
       ],
     })
@@ -647,17 +652,40 @@ fn outcomeOf(report: string, verdicts: Verdict[], submitted?: Submission): `How 
     })
     .add({
       situation = [
+        `[[submitted]] is undefined`,
         `Some verdict of [[verdicts]] is rejected`,
-        `[[Submission.outcome]] of [[submitted]] is done, or [[submitted]] is undefined and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+        `The last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
       ],
       behavior = `The kind is rejected and the message is the first problem of the first rejected verdict`,
     })
     .add({
       situation = [
+        `[[submitted]] is undefined`,
         `No verdict of [[verdicts]] is rejected`,
-        `[[Submission.outcome]] of [[submitted]] is done, or [[submitted]] is undefined, [[verdicts]] is not empty or some line of [[report]] begins with ELFIE:, and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+        `[[verdicts]] is not empty or some line of [[report]] begins with ELFIE:`,
+        `The last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
       ],
       behavior = `The kind is accepted and the message is empty`,
+    })
+    .add({
+      situation = [`[[Submission.outcome]] of [[submitted]] is done`, `Some verdict of [[verdicts]] is rejected`],
+      behavior = `The kind is rejected and the message is the first problem of the first rejected verdict`,
+    })
+    .add({
+      situation = [
+        `[[Submission.outcome]] of [[submitted]] is done`,
+        `[[verdicts]] is not empty`,
+        `No verdict of [[verdicts]] is rejected`,
+      ],
+      behavior = `The kind is accepted and the message is empty`,
+    })
+    .add({
+      situation = [`[[Submission.outcome]] of [[submitted]] is done`, `[[verdicts]] is empty`],
+      behavior = `The kind is failed and the message says the compiler submitted done but no unit was judged`,
+    })
+    .add({
+      situation = `[[Submission.outcome]] of [[submitted]] is done`,
+      behavior = `[[Submission.message]] of [[submitted]] is no part of [[Outcome.message]]`,
     })
     .add({ behavior = `[[Outcome.verdicts]] is [[verdicts]]` });
 
@@ -686,6 +714,10 @@ fn outcomeOf(report: string, verdicts: Verdict[], submitted?: Submission): `How 
     {
       input = [``, [Verdict@like(`rejected, with the problem: no marker for B`)], Submission@like(`done`)],
       expect = Outcome@like(`rejected with the message no marker for B`),
+    },
+    {
+      input = [`ELFIE: DONE`, [], Submission@like(`done`)],
+      expect = Outcome@like(`failed, with a message saying no unit was judged`),
     },
   );
 }

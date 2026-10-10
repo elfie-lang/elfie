@@ -191,6 +191,14 @@ d Interface: `What a dependent unit may rely on from another unit's output` {
   $entities: `Its entities: each one's identifier, kind, definition, type, parameters and output as applicable; a type may name an entity of the elfie package by its identifier` = Entity[];
 }
 
+// Decision: a removed criterion or test is kept as its id, place, and text, taken while the file as
+// it was is lowered, because its origin belongs to that lowering and nothing later can read it.
+d RemovedRequirement: `A local criterion or test a unit's existing outputs were generated against that the unit no longer has` {
+  $id: `The id it had` = string;
+  $place: `Where it was in the unit's file as it was when its outputs were accepted: the file relative to [[Workspace.root]], a colon, and the line its origin began on` = string;
+  $text: `What it said: [[LoweredCriterion.text]] for a criterion, its input and its expectation as written for a test` = string;
+}
+
 d Request: `Everything the compiler is handed to produce the outputs of one batch` {
   $batch: `The batch` = Batch;
   $instructions: `The prompt: what to produce, where, the rules for producing it, and how to report the outcome` = string;
@@ -206,7 +214,7 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
     string[],
   >;
   $removed: `The local criteria and tests each unit's existing outputs were generated against that the unit no longer has, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
-    (LoweredCriterion | LoweredTest)[],
+    RemovedRequirement[],
   >;
   $existing: `The current text of each existing output of the batch, by path` = Object<string>;
   $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
@@ -295,7 +303,7 @@ enum SubmittedOutcome: `How the compiler says its run ended when it submits the 
 // is kept for a compiler with no agent server, or one run by hand.
 d Submission: `The outcome a compiler submitted through the agent server` {
   $outcome: `How it says the run ended` = SubmittedOutcome;
-  $message: `The reason for blocked, the question for clarify, or what it wants a person to know for done; may be empty for done` = string;
+  $message: `The reason for blocked or the question for clarify; for done, a note that is no part of the outcome, and may be empty` = string;
 }
 
 d Outcome: `What one run of the compiler came to, read mechanically from its submission or its report, and the verdicts` {
