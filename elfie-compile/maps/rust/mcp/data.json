@@ -1,154 +1,396 @@
 [
   {
+    "answered": [
+      "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8",
+      "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab",
+      "GlobalReview:GlobalReview:d8da2a793916a0f1b55b56ff2e5c895b333113799087cb6f6a586324037f9ebe",
+      "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
+    ],
     "dependencies": {
+      "def/generation/data.lfy": "bd81fdf91d7097e2c7cf9ad092fac33a260f581685b3009d4817a6c01802f21b",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
-      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
-      "def/model/data.lfy": "8d7e2b2b1d33ee902bdb80aaf309d2cd918a670bfb0596b21f43831ee7e9e0bf",
-      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
-      "def/workspace/data.lfy": "9c2267b86041eaa745a9b1e5db207ca5e6d9b8ee405bd918eb10dd7c40b780b5"
+      "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
+      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
     },
-    "generated": "2026-10-05T02:34:18Z",
-    "hash": "d14d085adc98580129cd3a2f71b3a8bb13e204df41fcffd16886be8cba01e972",
+    "generated": "2026-10-08T23:48:14Z",
+    "hash": "94009dbf2cd1d40cf55269eb59e0f5846f40737af7edff42e03689ff2d6e8d8a",
     "markers": [
       {
         "column": null,
-        "end": 17,
+        "end": 22,
         "entity": "ToolArgument",
         "file": "def/mcp/data.lfy",
-        "line": 3,
-        "outputLine": 14,
+        "line": 6,
+        "outputLine": 19,
         "requirement": null
       },
       {
         "column": null,
-        "end": 19,
+        "end": 24,
         "entity": "ToolArgument.name",
         "file": "def/mcp/data.lfy",
-        "line": 4,
-        "outputLine": 18,
+        "line": 7,
+        "outputLine": 23,
         "requirement": null
       },
       {
         "column": null,
-        "end": 21,
+        "end": 26,
         "entity": "ToolArgument.description",
         "file": "def/mcp/data.lfy",
-        "line": 5,
-        "outputLine": 20,
+        "line": 8,
+        "outputLine": 25,
         "requirement": null
       },
       {
         "column": null,
-        "end": 23,
+        "end": 28,
         "entity": "ToolArgument.type",
         "file": "def/mcp/data.lfy",
-        "line": 6,
-        "outputLine": 22,
+        "line": 9,
+        "outputLine": 27,
         "requirement": null
       },
       {
         "column": null,
-        "end": 39,
+        "end": 44,
         "entity": "ToolArgument.required",
         "file": "def/mcp/data.lfy",
-        "line": 7,
-        "outputLine": 24,
+        "line": 10,
+        "outputLine": 29,
         "requirement": null
       },
       {
         "column": null,
-        "end": 43,
+        "end": 48,
         "entity": "Tool",
         "file": "def/mcp/data.lfy",
-        "line": 10,
-        "outputLine": 40,
+        "line": 13,
+        "outputLine": 45,
         "requirement": null
       },
       {
         "column": null,
-        "end": 45,
+        "end": 50,
         "entity": "Tool.name",
         "file": "def/mcp/data.lfy",
-        "line": 11,
-        "outputLine": 44,
+        "line": 14,
+        "outputLine": 49,
         "requirement": null
       },
       {
         "column": null,
-        "end": 47,
+        "end": 52,
         "entity": "Tool.description",
         "file": "def/mcp/data.lfy",
-        "line": 12,
-        "outputLine": 46,
+        "line": 15,
+        "outputLine": 51,
         "requirement": null
       },
       {
         "column": null,
-        "end": 51,
+        "end": 56,
         "entity": "Tool.arguments",
         "file": "def/mcp/data.lfy",
-        "line": 13,
-        "outputLine": 48,
+        "line": 16,
+        "outputLine": 53,
         "requirement": null
       },
       {
         "column": null,
-        "end": 55,
+        "end": 60,
         "entity": "ToolResult",
         "file": "def/mcp/data.lfy",
-        "line": 16,
-        "outputLine": 52,
+        "line": 19,
+        "outputLine": 57,
         "requirement": null
       },
       {
         "column": null,
-        "end": 57,
+        "end": 62,
         "entity": "ToolResult.text",
         "file": "def/mcp/data.lfy",
-        "line": 17,
-        "outputLine": 56,
+        "line": 20,
+        "outputLine": 61,
         "requirement": null
       },
       {
         "column": null,
-        "end": 94,
+        "end": 99,
         "entity": "ToolResult.isError",
         "file": "def/mcp/data.lfy",
-        "line": 18,
-        "outputLine": 58,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 98,
-        "entity": "Session",
-        "file": "def/mcp/data.lfy",
         "line": 21,
-        "outputLine": 95,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 101,
-        "entity": "Session.workspace",
-        "file": "def/mcp/data.lfy",
-        "line": 22,
-        "outputLine": 99,
+        "outputLine": 63,
         "requirement": null
       },
       {
         "column": null,
         "end": 103,
+        "entity": "Session",
+        "file": "def/mcp/data.lfy",
+        "line": 24,
+        "outputLine": 100,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 106,
+        "entity": "Session.workspace",
+        "file": "def/mcp/data.lfy",
+        "line": 25,
+        "outputLine": 104,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 110,
         "entity": "Session.seen",
         "file": "def/mcp/data.lfy",
-        "line": 23,
-        "outputLine": 102,
+        "line": 26,
+        "outputLine": 107,
         "requirement": null
+      },
+      {
+        "column": null,
+        "end": 114,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 111,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 123,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 115,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 128,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 124,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 130,
+        "entity": "GlobalReview.requirements",
+        "file": "def/mcp/data.lfy",
+        "line": 34,
+        "outputLine": 129,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 133,
+        "entity": "GlobalReview.reviews",
+        "file": "def/mcp/data.lfy",
+        "line": 323,
+        "outputLine": 131,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 136,
+        "entity": "GlobalReview.problems",
+        "file": "def/mcp/data.lfy",
+        "line": 324,
+        "outputLine": 134,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 139,
+        "entity": "GlobalReview.unplaced",
+        "file": "def/mcp/data.lfy",
+        "line": 325,
+        "outputLine": 137,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 152,
+        "entity": "GlobalReview.missing",
+        "file": "def/mcp/data.lfy",
+        "line": 326,
+        "outputLine": 140,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 162,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 153,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 176,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 163,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 194,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 177,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 202,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 195,
+        "requirement": "GlobalReview:GlobalReview:d8da2a793916a0f1b55b56ff2e5c895b333113799087cb6f6a586324037f9ebe"
+      },
+      {
+        "column": null,
+        "end": 214,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 203,
+        "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
+      },
+      {
+        "column": null,
+        "end": 220,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 215,
+        "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
+      },
+      {
+        "column": null,
+        "end": 231,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 221,
+        "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
+      },
+      {
+        "column": null,
+        "end": 236,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 232,
+        "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
+      },
+      {
+        "column": null,
+        "end": 310,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 237,
+        "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
+      },
+      {
+        "column": null,
+        "end": 330,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 311,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 350,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 331,
+        "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
+      },
+      {
+        "column": null,
+        "end": 357,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 351,
+        "requirement": "GlobalReview:GlobalReview:d8da2a793916a0f1b55b56ff2e5c895b333113799087cb6f6a586324037f9ebe"
+      },
+      {
+        "column": null,
+        "end": 365,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 358,
+        "requirement": "GlobalReview:GlobalReview:d8da2a793916a0f1b55b56ff2e5c895b333113799087cb6f6a586324037f9ebe"
+      },
+      {
+        "column": null,
+        "end": 386,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 366,
+        "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
+      },
+      {
+        "column": null,
+        "end": 390,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 387,
+        "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
+      },
+      {
+        "column": null,
+        "end": 394,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 391,
+        "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
+      },
+      {
+        "column": null,
+        "end": 401,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 395,
+        "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
+      },
+      {
+        "column": null,
+        "end": 413,
+        "entity": "GlobalReview",
+        "file": "def/mcp/data.lfy",
+        "line": 33,
+        "outputLine": 402,
+        "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
       }
     ],
     "output": "crates/elfie-mcp/src/data.rs",
-    "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "8d028d12654fa0fcffbd7ae7f82b77cb07a7bf5b53abfbe0f0818c2349073a29",
+    "requirements": "ba6daaa0010780c506a26deb15673ecbbdefe50f4e9e79c7a90c8300e17d8add",
+    "signature": "f769c1f8b1e32984f99733b0af0b1fab177202b2123b72ae93af8b66ac7bd181",
     "source": "def/mcp/data.lfy",
     "target": "rust"
   }

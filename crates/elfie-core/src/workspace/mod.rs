@@ -113,7 +113,7 @@ const REQUIRES: &str = "requires"; // @lfy def/workspace/main.lfy:load
 /// What a knowledge source never begins with, because knowledge is vendored.
 const NETWORK: [&str; 2] = ["http://", "https://"]; // @lfy def/workspace/main.lfy:load
 
-/// Load a project from disk and bind it.
+/// A project loaded from disk and bound.
 ///
 /// Reads the project layout, discovers every file, orders the files by what they use,
 /// then binds them once. `Workspace::root` is `root`. Loading never stops for a failure:
@@ -134,7 +134,8 @@ pub fn load(root: &Path) -> Workspace {
 /// the same `path` is given again. The result is what [`load`] of the same root gives when
 /// every file replaced this way holds what it was replaced with. A `path` that is neither
 /// under the source directory, nor under a package root, nor resolved to by a `Use` in the
-/// program gives back a workspace matching `workspace`.
+/// program, nor the source path a knowledge item of the program has gives back a workspace
+/// matching `workspace`.
 // @lfy def/workspace/main.lfy:change
 pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspace {
     // @lfy def/workspace/main.lfy:change
@@ -156,15 +157,31 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
         .iter()
         .find(|package| package.identifier == LIBRARY_PACKAGE)
         .map(|package| package.root.clone());
+    // Decision: the whole program is bound again, which is every re-bind set the criteria
+    // name and more — the file at `path`, every file that uses it directly or through
+    // other files, every file holding an entity it applies a trait to or adds to, every
+    // file whose compile-time code reads the entities of a trait it applies, and every
+    // file at all when it reaches `global`. Binding is a function of the sources, so a
+    // file outside the set it was bound again with keeps the symbols, usages, and
+    // problems it had; no criterion asks which files were revisited, only what the result
+    // holds, and a set that is never short is what keeps the result equal to a fresh
+    // `load`.
+    // @lfy def/workspace/main.lfy:change#change:change:92de1ca10f5fad840986c51b0e2d7a25ad8ae205c4e65ea89d88f0cc2af1945b
+    // @lfy def/workspace/main.lfy:change#change:change:e311d9fc70a554b7e62c546f0b90a42eb09de3f1d36cda13a9570db511b0055a
+    // @lfy def/workspace/main.lfy:change#change:change:950d3e129d266985048bd6b66cbd684cfe2e70c76f6aab48bf3a235e0c6e32e1
+    // @lfy def/workspace/main.lfy:change#change:change:ac2779cfba6e5e3ab2117cc750fb9b75b08469978ef6c0e2f51a177e9b90102b
+    // Targets and the problems they give are read from that model, so they are found
+    // again with it.
+    // @lfy def/workspace/main.lfy:change#change:change:38a2f13f3b49103a5a09f6fbd670f9d20830efb4c41dfdc038f1393bd72ccc10
     load_in(&workspace.root, overlays, library) // @lfy def/workspace/main.lfy:change
 }
 
 /// Whether a change at `path` could reach the program: the path is a source file under
-/// the source directory or under the root of a package in the program, or a `Use` in the
-/// program resolves to it.
-// @lfy def/workspace/main.lfy:change
+/// the source directory or under the root of a package in the program, a `Use` in the
+/// program resolves to it, or it is the source path a knowledge item of the program has.
+// @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
 fn in_reach(workspace: &Workspace, path: &str) -> bool {
-    // These are the three places the criterion names, and nothing besides them puts a
+    // These are the four places the criterion names, and nothing besides them puts a
     // path in reach: a path that is in none of them leaves the result matching the
     // workspace it was given, replacements and all.
     let is_source = is_source(path);
@@ -179,6 +196,33 @@ fn in_reach(workspace: &Workspace, path: &str) -> bool {
             .sources
             .iter()
             .any(|source| source.uses.iter().flatten().any(|used| used == path))
+        || knowledge_sources(workspace).any(|source| source == path)
+}
+
+/// Every source path `load` gives a knowledge item of the program, each joined to the root
+/// of the package of the file its contributor is declared in as `load` joins it. Only a
+/// reference and an example name a file; a definition names a use path and a tool its own
+/// name, so neither gives a path on disk.
+// @lfy def/workspace/main.lfy:change
+fn knowledge_sources(workspace: &Workspace) -> impl Iterator<Item = String> + '_ {
+    let package_of: HashMap<FileId, usize> = workspace
+        .files
+        .iter()
+        .filter_map(|file| file.package.map(|package| (file.source, package)))
+        .collect();
+    workspace
+        .model
+        .entities
+        .iter()
+        .flat_map(|entity| entity.knowledge.iter())
+        .filter(|item| matches!(item.kind, KnowledgeKind::Reference | KnowledgeKind::Example))
+        .map(move |item| {
+            let root = workspace.model.entities[item.contributor]
+                .file
+                .and_then(|file| package_of.get(&file))
+                .map_or(".", |&package| workspace.packages[package].root.as_str());
+            normalize(&join(root, &item.source))
+        })
 }
 
 /// [`load`] with the files in `overlays` read as the text given there instead of what is
@@ -201,19 +245,24 @@ fn load_in(
     let manifest = loader.manifest(MANIFEST);
     // Only "name", "source", "lib", and "dependencies" are ever looked at; a target, where
     // its outputs go, and what its generated code needs are declared in the program.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:f3a8e524e11cd59e038a6157e4a0fe362764b553e2b29342b421c3e379ad7cb9
+    // @lfy def/workspace/main.lfy:load#load:load:14ff48a32bf3381366534b9ca3dbdb2f1d46fc634249e46bf5134fb6609d3a39
+    // @lfy def/workspace/main.lfy:load#load:load:fd884247a5f63218e2f23f0ba9abdb91e6a342d07f56f61a79d4f23bfe3eeee7
     let name = loader
         .string(manifest.as_ref(), "name")
-        .unwrap_or_else(|| directory_name(root)); // @lfy def/workspace/main.lfy:load
+        .unwrap_or_else(|| directory_name(root));
+    // @lfy def/workspace/main.lfy:load#load:load:553254e418671149fdc2a87c765c1ff91ddcf349bad7d7055bf05a5234721178
+    // @lfy def/workspace/main.lfy:load#load:load:38338fb46f57a64fa2e744d34eae3279caf9b613709e743808ac4f6fba4a0289
     let source_directory = loader
         .string(manifest.as_ref(), "source")
         .map(|source| trim_directory(&source))
-        .unwrap_or_else(|| DEFAULT_SOURCE_DIRECTORY.to_string()); // @lfy def/workspace/main.lfy:load
+        .unwrap_or_else(|| DEFAULT_SOURCE_DIRECTORY.to_string());
 
     // Dependencies. @lfy def/workspace/main.lfy:load
     let mut packages = loader.packages(manifest.as_ref());
     // The package elfie is in the program whether or not elfie.json names it.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:932b815f66767e3f29654d009afd1f258dc9f22040a21b8770d2e7aa470350e2
+    // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
     let library = match packages
         .iter()
         .position(|package| package.identifier == LIBRARY_PACKAGE)
@@ -230,10 +279,10 @@ fn load_in(
     let mut sources = Vec::new();
     let mut files = Vec::new();
     if !loader.directory(".") {
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
         loader.problem(None, format!("the root {} does not exist", root.display()));
     } else if !loader.directory(&source_directory) {
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
         loader.problem(
             None,
             format!(
@@ -250,40 +299,47 @@ fn load_in(
         for (file, index) in cycles {
             let path = entries[file].path.clone();
             let spelled = entries[file].uses[index].spelled.clone();
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:b1fbb044be3c701778d0f3eed4d4ad278cdf34c2b917c9b0a33327367959d921
             loader.use_problem(&path, index, spelled.as_deref(), "is part of a cycle");
         }
         for index in order {
             let entry = &entries[index];
             let Some(tree) = &entry.tree else { continue };
             files.push(File {
-                path: entry.path.clone(), // @lfy def/workspace/main.lfy:load
-                // @lfy def/workspace/main.lfy:load
-                // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load#load:load:23324d830b23ca1be67dea3c9234abb1945519a3e56b47c394222debdf328fe8
+                path: entry.path.clone(),
+                // @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
+                // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
                 package: entry.package,
-                source: sources.len(),    // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load#load:load:c4acf67876f96707cb66e2a889f79373ce852c3192472acb1b3dbff88d3d190a
+                source: sources.len(),
             });
             sources.push(Source {
                 path: entry.path.clone(),
+                // @lfy def/workspace/main.lfy:load#load:load:692ecc7501d808fc5c758f804195b305d9436a6d7de2ce76f48185ac315cfdb7
                 tree: tree.clone(),
+                // @lfy def/workspace/main.lfy:load#load:load:0fac45ffcbab6307a0cadab9357862b79b40b58f5064ecf56d4f03ef03659a37
                 uses: entry
                     .uses
                     .iter()
                     .map(|site| site.resolved.clone())
-                    .collect(), // @lfy def/workspace/main.lfy:load
-                // @lfy def/workspace/main.lfy:load
+                    .collect(),
+                // @lfy def/workspace/main.lfy:load#load:load:42ddd4111d6e51a0395e9b1eee8c79a065bd9e53b143029640c9ed2dd233c078
                 origin: origin_of(&entry.path, entry.package, library, &packages[library].root),
             });
         }
     }
 
-    // Binding, once. @lfy def/workspace/main.lfy:load
+    // Binding, once.
+    // @lfy def/workspace/main.lfy:load#load:load:f9beb9689c54303ed4e3a7e5f60e42c6dfd70ba8603fe85a05eba3cd28fdf395
     let mut model = model::bind(sources);
 
     // Only the bound model can point at these: a use that resolves to nothing or is part
     // of a cycle, the targets the program declares, and the knowledge its entities name.
+    // Each of them is a problem loading adds rather than one binding found, so each one
+    // carries `Stage::Loader`.
     // @lfy def/workspace/main.lfy:load
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:83c8947a99852c5cfe9afc540029580ba37bedf5bfe20bba7ed77e79ebb98642
     let mut added = use_problems(&model, &loader.use_problems);
     // Targets. @lfy def/workspace/main.lfy:load
     let (targets, mut at_targets) = targets_of(&mut model, &files, library);
@@ -305,7 +361,8 @@ fn load_in(
         .collect();
 
     Workspace {
-        root: root.to_path_buf(), // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:d89e1a3dc76a0474ada8c0015af825a5f5e8c5e26f0b09d9280c88429bbcfba0
+        root: root.to_path_buf(),
         name,
         source_directory,
         files,
@@ -428,7 +485,9 @@ impl Loader<'_> {
     /// A manifest is optional: where none exists no problem is added and every default
     /// stands. One that exists but cannot be read, or whose text is not a JSON object, is
     /// a problem, and every default stands all the same.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:19a7d4fd318b9f7efc5cbe88610e53a0e61be4be62d5831f8646cc1bad17a9ad
+    // @lfy def/workspace/main.lfy:load#load:load:8b89b53b4efb9ae82c650c075c04f5a708529dbc6cec061bdfde65ae7811ca3c
+    // @lfy def/workspace/main.lfy:load#load:load:e1ed96f364bdc98469b9736cdb2e0ce1a008d6ac0623f78e2cb68c8ccaf817a5
     fn manifest(&mut self, path: &str) -> Option<serde_json::Map<String, serde_json::Value>> {
         let disk = self.root.join(path);
         if !disk.exists() {
@@ -456,7 +515,7 @@ impl Loader<'_> {
 
     /// The string a key of the manifest gives; `None` when there is no such key, and
     /// `None` with the key named for the manifest when its value is not a string.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:d60b7d2fc94b097354076890d595ac2106b1b65e366b4cc45271b9e7211aa3cb
     fn string(
         &mut self,
         manifest: Option<&serde_json::Map<String, serde_json::Value>>,
@@ -465,7 +524,7 @@ impl Loader<'_> {
         match manifest.and_then(|manifest| manifest.get(key)) {
             Some(serde_json::Value::String(value)) => Some(value.clone()),
             None => None,
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:b5997648b346dea065f6d06cc85024aa35df3796ec9edbc10d87099971bd1b6b
             Some(_) => {
                 self.problem(Some(MANIFEST), format!("{key:?} is not a string"));
                 None
@@ -474,7 +533,8 @@ impl Loader<'_> {
     }
 
     /// Each dependency `elfie.json` names gives one package.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
+    // @lfy def/workspace/main.lfy:load#load:load:b5997648b346dea065f6d06cc85024aa35df3796ec9edbc10d87099971bd1b6b
     fn packages(
         &mut self,
         manifest: Option<&serde_json::Map<String, serde_json::Value>>,
@@ -510,7 +570,7 @@ impl Loader<'_> {
     // @lfy def/workspace/main.lfy:load
     fn package(&mut self, identifier: &str, root: &str) -> Package {
         let root = trim_directory(root);
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
         // Checked here rather than in `discover`, which does not run when the root or
         // the source directory is missing; a missing package root is reported either
         // way.
@@ -532,7 +592,10 @@ impl Loader<'_> {
     /// of the library the compiler was built with. Each stands whether or not the
     /// directory it names exists, so a missing one is a problem rather than a reason to
     /// try the next.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:d907c299c80f931a0deb7cbd87d12cf1f50320cdcfc62ec0ea02ea3217ce3800
+    // @lfy def/workspace/main.lfy:load#load:load:894c6485f9e8ac83db6e6d6dd3340e9ff0e21ccc789a23347307d15fb610664f
+    // @lfy def/workspace/main.lfy:load#load:load:18303ab51dd7497f5981f5a7ebbbefa64f43fca6e87ab6ac5a8aa9acaa26e95f
+    // @lfy def/workspace/main.lfy:load#load:load:a08b7bac9a52807fdcd4c5544ebeb10d60db2a277aef3e01ba0ac257e71291a7
     fn library_root(
         &mut self,
         manifest: Option<&serde_json::Map<String, serde_json::Value>>,
@@ -544,7 +607,8 @@ impl Loader<'_> {
     }
 
     /// Every `.lfy` file under a directory, sorted by path, replaced files included.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
+    // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
     fn source_files(&mut self, directory: &str) -> Vec<String> {
         // Decision: discovery order within a directory is the sorted order of the paths.
         let mut out = BTreeSet::new();
@@ -592,7 +656,7 @@ impl Loader<'_> {
 
     /// Every file of the program: the source files, every package's files, and every
     /// file a `Use` refers to, each parsed with its uses resolved, in discovery order.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
     fn discover(&mut self, source_directory: &str, packages: &[Package]) -> Vec<Entry> {
         let mut entries: Vec<Entry> = Vec::new();
         let mut seen: HashSet<String> = HashSet::new();
@@ -617,7 +681,7 @@ impl Loader<'_> {
             let (path, package) = pending[next].clone();
             next += 1;
             let entry = self.load_file(&path, package, packages, |used| {
-                // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
                 enqueue(
                     &mut seen,
                     &mut pending,
@@ -677,6 +741,7 @@ impl Loader<'_> {
             tree: None,
             uses,
         };
+        // @lfy def/workspace/main.lfy:load#load:load:36d73adceb24794b868cfec5c1c2f1bb0befd1aee1a502407f8158d70d49ee14
         let text = match self.read(path) {
             Ok(text) => text,
             Err(error) => {
@@ -710,7 +775,7 @@ impl Loader<'_> {
                         Some(used)
                     }
                     Err(why) => {
-                        // @lfy def/workspace/main.lfy:load
+                        // @lfy def/workspace/main.lfy:load#load:load:5d9353c2d7ef127d55101933cf2d1581e1bf8dfae943a0d3d59cf83a5cb17679
                         self.use_problem(
                             path,
                             index,
@@ -721,7 +786,7 @@ impl Loader<'_> {
                     }
                 },
                 // A `use` with no path at all: the parse recovered, but it names nothing.
-                // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load#load:load:5d9353c2d7ef127d55101933cf2d1581e1bf8dfae943a0d3d59cf83a5cb17679
                 None => {
                     self.use_problem(path, index, None, "");
                     None
@@ -741,10 +806,10 @@ impl Loader<'_> {
     // @lfy def/workspace/main.lfy:load
     fn resolve(&self, from: &str, spelled: &str, packages: &[Package]) -> Result<String, String> {
         let base = if spelled.starts_with('.') {
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:7cd3d4046cd7170c71b67d6747111258f280a6b304e31b968c1adf210b007213
             join(directory_of(from), spelled)
         } else {
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:1686133b540c858b4c1ab7edb631811da85b909c80a52d63d4084d22d6c3251f
             let (first, rest) = spelled.split_once('/').unwrap_or((spelled, ""));
             let package = packages
                 .iter()
@@ -753,11 +818,12 @@ impl Loader<'_> {
             join(&package.root, rest)
         };
         let base = normalize(&base);
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:0ddc30be18742fce83c1bc733c6db516b1f02d4e58205740f7b26d57638aef3a
         let file = format!("{base}.{EXTENSION}");
         if self.exists(&file) {
-            return Ok(file); // @lfy def/workspace/main.lfy:load
+            return Ok(file);
         }
+        // @lfy def/workspace/main.lfy:load#load:load:97bed938a5d75f39ac08d69a7e0ac6d7a4a2fd040d8d2d4ffa31571a4bc63d87
         let main = join(&base, MAIN_FILE);
         if self.exists(&main) {
             return Ok(main);
@@ -918,7 +984,7 @@ fn within_ace(model: &Model, node: NodeRef) -> bool {
 ///
 /// They come in the order their consts are declared: file by file in `Workspace::files`
 /// order, then source order, which is the order a node reference carries.
-// @lfy def/workspace/main.lfy:load
+// @lfy def/workspace/main.lfy:load#load:load:d4dc4c84aaf9ba37a87a65a201d1ab6827f3e54dd6bdc33f863354f6c3953644
 fn target_consts(model: &Model, files: &[File], data: EntityId) -> Vec<EntityId> {
     let project: HashSet<FileId> = files
         .iter()
@@ -964,7 +1030,7 @@ fn target_consts(model: &Model, files: &[File], data: EntityId) -> Vec<EntityId>
 
 /// The slots of a target, read from `evaluate` of the const's value: the object it gives,
 /// or none when it gives no object.
-// @lfy def/workspace/main.lfy:load
+// @lfy def/workspace/main.lfy:load#load:load:9c4b7f6784e978ab38426f62744c733c2fbdfebea9fe78c455d429cc1f876075
 fn slots_of(model: &mut Model, declaration: EntityId) -> BTreeMap<String, Computed> {
     let Some(node) = model.entities[declaration].node else {
         return BTreeMap::new();
@@ -975,28 +1041,11 @@ fn slots_of(model: &mut Model, declaration: EntityId) -> BTreeMap<String, Comput
     let Some(value) = value else {
         return BTreeMap::new();
     };
-    // @lfy def/workspace/main.lfy:load
-    if let Some(Evaluated::Value(Computed::Object(pairs))) = crate::interpret::evaluate(model, value)
-    {
-        return pairs;
-    }
-    // Decision: `Interpreter.evaluate` as the interface provides it gives nothing for a
-    // call of a written `function`, because it asks whether the function's declaration
-    // stands in an `ace` statement rather than whether the call does; so a const written
-    // as a call of `targetOf`, which the criteria name beside a const with a declared
-    // type, hands back no object. The record the call was given is that object, and
-    // evaluating it reads the same slots, so it is read from there until `evaluate` runs
-    // the call.
-    // @lfy def/workspace/main.lfy:load
-    if !model.node(value).is(Expression::Call) {
-        return BTreeMap::new();
-    }
-    let argument = child_nodes(model, value)
-        .into_iter()
-        .find(|&child| model.node(child).is(Expression::Items))
-        .map(|items| child_nodes(model, items))
-        .and_then(|arguments| arguments.into_iter().next());
-    match argument.and_then(|argument| crate::interpret::evaluate(model, argument)) {
+    // A const with a declared type and one written as a call of `targetOf` both come
+    // through here: `Interpreter.evaluate` runs the call, because a call is compile-time
+    // by where it is written, and the object either way is the slots.
+    // @lfy def/workspace/main.lfy:load#load:load:9c4b7f6784e978ab38426f62744c733c2fbdfebea9fe78c455d429cc1f876075
+    match crate::interpret::evaluate(model, value) {
         Some(Evaluated::Value(Computed::Object(pairs))) => pairs,
         _ => BTreeMap::new(),
     }
@@ -1014,7 +1063,7 @@ fn given(slots: &BTreeMap<String, Computed>, slot: &str) -> bool {
 /// The trait each layer of a slot names and the arguments it was chosen with: a trait on
 /// its own, chosen with none, or the object a `Layer` is. A slot holding anything else is
 /// already named where the layers were applied, so nothing is said of it here.
-// @lfy def/workspace/main.lfy:load
+// @lfy def/workspace/main.lfy:load#load:load:9c4b7f6784e978ab38426f62744c733c2fbdfebea9fe78c455d429cc1f876075
 fn layers_of(
     model: &Model,
     slots: &BTreeMap<String, Computed>,
@@ -1109,7 +1158,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
         let slots = slots_of(model, declaration);
 
         // A layer whose trait does not extend the role of its slot.
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:722849a54dc2494a11532b2c54b4db177b978cbbe4a6dd812669557ef1006be2
         for &(slot, role, entity) in &roles {
             let (Some(role), Some(entity)) = (role, entity) else {
                 continue;
@@ -1125,13 +1174,13 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                         "the target {identifier} gives the {slot} {name}, which does not extend \
                          {role}"
                     ),
-                    stage: crate::model::Stage::Binder,
+                    stage: crate::model::Stage::Loader,
                 });
             }
         }
 
         // A target cannot be built without an output, a language, and a layout.
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:02062f73a6a6da19fbd8cce8b082ddb666c5cf47a3baee8fedb5ae408646b65c
         let missing: Vec<&str> = NEEDED_SLOTS
             .into_iter()
             .filter(|&slot| !given(&slots, slot))
@@ -1143,13 +1192,13 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                     "the target {identifier} gives no {}",
                     missing.join(" and no ")
                 ),
-                stage: crate::model::Stage::Binder,
+                stage: crate::model::Stage::Loader,
             });
             continue;
         }
 
         // A capability a layer needs that no layer gives.
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:e6137be72f47217dc6c217c142c019f7a2fe996e0f2e91068c2f30d7175fe0cb
         let provided = items_set(model, declaration, PROVIDES);
         for required in items_set(model, declaration, REQUIRES) {
             if !provided.contains(&required) {
@@ -1159,17 +1208,17 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                         "the target {identifier} requires {required} and none of its layers \
                          provides it"
                     ),
-                    stage: crate::model::Stage::Binder,
+                    stage: crate::model::Stage::Loader,
                 });
             }
         }
 
         // The layers, in guidance order, each trait once at its first place.
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:183ff338b3a3e2529d4c47790b5d0204470dcfc1bbb33c5621fb1d464e87e974
         let mut chosen: Vec<(EntityId, Vec<Computed>)> = Vec::new();
         for slot in GUIDANCE_ORDER {
             for layer in layers_of(model, &slots, slot) {
-                // @lfy def/workspace/main.lfy:load
+                // @lfy def/workspace/main.lfy:load#load:load:d1e245ccebeb2f7623e8da0f5e962388af2f23047e3d15da17c8352c50027b74
                 if !chosen.contains(&layer) {
                     chosen.push(layer);
                 }
@@ -1178,7 +1227,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
         let layers: Vec<EntityId> = chosen.into_iter().map(|(subject, _)| subject).collect();
 
         // What its generated code needs, each in the ecosystem its ecosystem layer names.
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:835f6845f6033e939a044506a018d0a36680e14a6eb9beaa92012131e186f666
         let ecosystem = string_set(model, declaration, ECOSYSTEM).unwrap_or_default();
         let mut native_dependencies = Vec::new();
         if let Some(Computed::List(items)) = slots.get("dependencies") {
@@ -1187,27 +1236,29 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                 let Some(Computed::String(name)) = pairs.get("name") else {
                     continue;
                 };
+                // @lfy def/workspace/main.lfy:load#load:load:835f6845f6033e939a044506a018d0a36680e14a6eb9beaa92012131e186f666
                 native_dependencies.push(NativeDependency {
-                    identifier: name.clone(), // @lfy def/workspace/main.lfy:load
-                    ecosystem: ecosystem.clone(), // @lfy def/workspace/main.lfy:load
+                    identifier: name.clone(),
+                    ecosystem: ecosystem.clone(),
                     version: match pairs.get("version") {
-                        Some(Computed::String(version)) => Some(version.clone()), // @lfy def/workspace/main.lfy:load
+                        Some(Computed::String(version)) => Some(version.clone()),
                         _ => None,
                     },
                 });
             }
         }
-        // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:8c54a1933f95101299c7d1fc73f6483a0cb687bec0ecf95ae14ac16aa7131263
         if !native_dependencies.is_empty() && !given(&slots, ECOSYSTEM) {
             problems.push(Problem {
                 node: at,
                 message: format!("the dependencies of the target {identifier} need an ecosystem"),
-                stage: crate::model::Stage::Binder,
+                stage: crate::model::Stage::Loader,
             });
         }
 
         // The extensions its outputs may have: its language's, then every one its layers
-        // add, each once. @lfy def/workspace/main.lfy:load
+        // add, each once.
+        // @lfy def/workspace/main.lfy:load#load:load:a937c3da8b47a6fdea99c31a14b24e1c2aa31829c11b46405b9701b9fcf00a07
         let mut extensions: Vec<String> = string_set(model, declaration, FILE_EXTENSION)
             .into_iter()
             .collect();
@@ -1221,7 +1272,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
         // them. What something other than a layer gave the declaration comes first, so the
         // project has the last word over its layers; an operation whose first command has
         // no line has none at all.
-        // @lfy def/workspace/main.lfy:load#load:load:3f14c93383986089ff035033d9d411beb32a7ba58ae22f7b4b0b105bee9bb8ce
+        // @lfy def/workspace/main.lfy:load#load:load:18e900520d7cf988834a9b9730aeffd2562b0c3e7416b8940b4b784993194c57
         let offered = in_guidance_order(
             model,
             &layers,
@@ -1241,7 +1292,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
 
         // What the compiler is given to read for it, the declaration's own before its
         // layers'.
-        // @lfy def/workspace/main.lfy:load#load:load:744ae66bb854af2ca9b87b6bdde697e61172669260c42dcdea808e88ddd17c71
+        // @lfy def/workspace/main.lfy:load
         let knowledge = in_guidance_order(
             model,
             &layers,
@@ -1250,10 +1301,13 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
         );
 
         targets.push(Target {
-            identifier,  // @lfy def/workspace/main.lfy:load
-            declaration, // @lfy def/workspace/main.lfy:load
-            layers,      // @lfy def/workspace/main.lfy:load
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:d4dc4c84aaf9ba37a87a65a201d1ab6827f3e54dd6bdc33f863354f6c3953644
+            identifier,
+            // @lfy def/workspace/main.lfy:load#load:load:d4dc4c84aaf9ba37a87a65a201d1ab6827f3e54dd6bdc33f863354f6c3953644
+            declaration,
+            // @lfy def/workspace/main.lfy:load#load:load:183ff338b3a3e2529d4c47790b5d0204470dcfc1bbb33c5621fb1d464e87e974
+            layers,
+            // @lfy def/workspace/main.lfy:load#load:load:f93277efea1e9ae1024146b1325d3d1bc82ec07b0fc2d632c73a5bbbbfb49f17
             output_directory: slots
                 .get("output")
                 .and_then(|output| match output {
@@ -1262,9 +1316,9 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                 })
                 .unwrap_or_default(),
             extensions,
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:a9fa8cd5e73cab1b5d4064fb290df44132c9dfca9e5d68d87f850ebb418b7a12
             marker_comment: string_set(model, declaration, MARKER_COMMENT).unwrap_or_default(),
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:a6d3cd85551722d81b7111f6681bf963da4ba6fb1d8ecb483d40fdad958c87c1
             script_runner: string_set(model, declaration, SCRIPT_RUNNER),
             native_dependencies,
             commands,
@@ -1273,7 +1327,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
     }
 
     // Two targets that write into one directory, or one into the other's.
-    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:0bb2c8b9bdc22bcaf7b8375709c269d2ce9e4a87d15bad0b911bfef5a5e9dfb3
     for (first, one) in targets.iter().enumerate() {
         for other in &targets[first + 1..] {
             let (outer, inner) = if one.output_directory.len() <= other.output_directory.len() {
@@ -1297,7 +1351,7 @@ fn targets_of(model: &mut Model, files: &[File], library: usize) -> (Vec<Target>
                 problems.push(Problem {
                     node,
                     message: message.clone(),
-                    stage: crate::model::Stage::Binder,
+                    stage: crate::model::Stage::Loader,
                 });
             }
         }
@@ -1327,7 +1381,7 @@ fn knowledge_problems(
     for entity in &model.entities {
         let Some(node) = entity.node else { continue };
         for item in &entity.knowledge {
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:05f2e92c57fc3eec4e710b8bd1bf35d7f4f2ecf0a40b1d8fc331d549eef5bc33
             if NETWORK.iter().any(|head| item.source.starts_with(head)) {
                 problems.push(Problem {
                     node,
@@ -1343,11 +1397,12 @@ fn knowledge_problems(
             if !matches!(item.kind, KnowledgeKind::Reference | KnowledgeKind::Example) {
                 continue;
             }
-            // @lfy def/workspace/main.lfy:load
+            // @lfy def/workspace/main.lfy:load#load:load:bac7aeb8877e25e34bb8600328dcdfd9765c1662f19b2c785ef6dc1eb24ddbf2
             let root = model.entities[item.contributor]
                 .file
                 .and_then(|file| package_of.get(&file))
                 .map_or(".", |&package| packages[package].root.as_str());
+            // @lfy def/workspace/main.lfy:load#load:load:14ac3e3c23396d2f0892c408a3681bf564363703aeb00ea0caa90879bf9f0b26
             if !loader.anything_at(&normalize(&join(root, &item.source))) {
                 problems.push(Problem {
                     node,
@@ -1361,7 +1416,7 @@ fn knowledge_problems(
 }
 
 /// Add a file to the program once, however many files use it.
-// @lfy def/workspace/main.lfy:load
+// @lfy def/workspace/main.lfy:load#load:load:912de90eec4ab7a10c1d9fb7853c226b0130e0f61558b54793fccef20e344b08
 fn enqueue(
     seen: &mut HashSet<String>,
     pending: &mut Vec<(String, Option<usize>)>,
@@ -1396,7 +1451,8 @@ fn package_of(path: &str, packages: &[Package]) -> Option<usize> {
 /// The files in an order that places every file after the files it uses, and every use
 /// that is part of a cycle as `(file, use index)`. Files in a cycle keep the order they
 /// were discovered in.
-// @lfy def/workspace/main.lfy:load
+// @lfy def/workspace/main.lfy:load#load:load:95adb658d370404e9a9733a98206f9323b5efdaf143f4e927a012d32b58d95c3
+// @lfy def/workspace/main.lfy:load#load:load:b1fbb044be3c701778d0f3eed4d4ad278cdf34c2b917c9b0a33327367959d921
 fn order_by_uses(entries: &[Entry]) -> (Vec<usize>, Vec<(usize, usize)>) {
     let index: HashMap<&str, usize> = entries
         .iter()
@@ -1428,7 +1484,8 @@ fn order_by_uses(entries: &[Entry]) -> (Vec<usize>, Vec<(usize, usize)>) {
     // this order places every file after the files it uses.
     let mut order = Vec::with_capacity(entries.len());
     for mut component in components {
-        component.sort_unstable(); // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:5e03556496a99f7d2d13c4effb8ae2e0d1208153ea90ec6e70a7592ef184a1d5
+        component.sort_unstable();
         order.extend(component);
     }
     let mut cycles = Vec::new();
@@ -1898,9 +1955,10 @@ trait flat extends targetLayout { }
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:364469ca73386a0fadcdccb16065c7b1fbd8cf7954391bff47aa5ac292a37ca7
-    // @lfy def/workspace/main.lfy:load#load:load:62b4faedac048472b0892584131d2aca0e6fd7987b34a537d17991af62f3d07d
-    // @lfy def/workspace/main.lfy:load#load:load:9f0992576ed1410f00587a7cf8d3c50161589f2a0ff4ee398fb06562182d994b
-    // @lfy def/workspace/main.lfy:load#load:load:61e5351e7c9765ef86ef906d60e8806eac1fe5c87337507d464bf5b10d0c47d1
+    // @lfy def/workspace/main.lfy:load#load:load:d89e1a3dc76a0474ada8c0015af825a5f5e8c5e26f0b09d9280c88429bbcfba0
+    // @lfy def/workspace/main.lfy:load#load:load:932b815f66767e3f29654d009afd1f258dc9f22040a21b8770d2e7aa470350e2
+    // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
+    // @lfy def/workspace/main.lfy:load#load:load:a08b7bac9a52807fdcd4c5544ebeb10d60db2a277aef3e01ba0ac257e71291a7
     #[test]
     fn an_empty_def_and_no_manifest_give_the_defaults() {
         let fixture = Fixture::empty();
@@ -1933,7 +1991,8 @@ trait flat extends targetLayout { }
     // @lfy def/workspace/main.lfy:load#load:load:d907c299c80f931a0deb7cbd87d12cf1f50320cdcfc62ec0ea02ea3217ce3800
     // @lfy def/workspace/main.lfy:load#load:load:894c6485f9e8ac83db6e6d6dd3340e9ff0e21ccc789a23347307d15fb610664f
     // @lfy def/workspace/main.lfy:load#load:load:18303ab51dd7497f5981f5a7ebbbefa64f43fca6e87ab6ac5a8aa9acaa26e95f
-    // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
+    // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
+    // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
     #[test]
     fn the_library_is_the_first_source_that_names_one() {
         // The dependency entry elfie.
@@ -1976,9 +2035,9 @@ trait flat extends targetLayout { }
     /// The main file of the package elfie is the prelude, its other files are the
     /// library, and every file outside it is the program.
     // @lfy def/workspace/main.lfy:load#load:load:c866f7d3a969f48fe5b6606e3e27ea34f62037935306ccc97e6bb293cab19e6b
-    // @lfy def/workspace/main.lfy:load#load:load:9f0992576ed1410f00587a7cf8d3c50161589f2a0ff4ee398fb06562182d994b
-    // @lfy def/workspace/main.lfy:load#load:load:bd0b1a23fb66f1906e8450409d05cadd0110ab5356c796a743fb941d9ee761be
-    // @lfy def/workspace/main.lfy:load#load:load:1a70bf9ff7ad610ada4250ea97c2b74dff227791a63bfff413e8eb49f991aefc
+    // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
+    // @lfy def/workspace/main.lfy:load#load:load:42ddd4111d6e51a0395e9b1eee8c79a065bd9e53b143029640c9ed2dd233c078
+    // @lfy def/workspace/main.lfy:load#load:load:656f24a577ae1949e6a118618dbcf080a5f0418f80c6cbeda85d2792cb3f027e
     #[test]
     fn the_library_gives_the_prelude_and_every_other_file_the_program() {
         let fixture = Fixture::empty();
@@ -2004,10 +2063,10 @@ trait flat extends targetLayout { }
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:34af94d435a344094a311c95695780e09cd2be7f386baa616feb1b6df6ca36d0
-    // @lfy def/workspace/main.lfy:load#load:load:789f453b852db580976af75333afef9fc202eab05a47f26e8682b28ecfc82ba9
+    // @lfy def/workspace/main.lfy:load#load:load:0fac45ffcbab6307a0cadab9357862b79b40b58f5064ecf56d4f03ef03659a37
     // @lfy def/workspace/main.lfy:load#load:load:97bed938a5d75f39ac08d69a7e0ac6d7a4a2fd040d8d2d4ffa31571a4bc63d87
     // @lfy def/workspace/main.lfy:load#load:load:95adb658d370404e9a9733a98206f9323b5efdaf143f4e927a012d32b58d95c3
-    // @lfy def/workspace/main.lfy:load#load:load:b081ce9e0d486c569c1c1c0e6c03c97743a2475743273a7eb2d20dd13b85a5dd
+    // @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
     #[test]
     fn a_used_file_comes_before_the_file_that_uses_it() {
         let fixture = Fixture::empty();
@@ -2026,7 +2085,8 @@ trait flat extends targetLayout { }
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:b2116810fef16c47850eccd77150fd52cf7c716a41be87bfbac49d5ca7531a91
-    // @lfy def/workspace/main.lfy:load#load:load:58b433ac3e636c5a378c9d49965ffc04bf659137970af95eceb1e3e742a81b5d
+    // @lfy def/workspace/main.lfy:load#load:load:b1fbb044be3c701778d0f3eed4d4ad278cdf34c2b917c9b0a33327367959d921
+    // @lfy def/workspace/main.lfy:load#load:load:5e03556496a99f7d2d13c4effb8ae2e0d1208153ea90ec6e70a7592ef184a1d5
     #[test]
     fn a_cycle_keeps_discovery_order_and_flags_each_use() {
         let fixture = Fixture::empty();
@@ -2036,9 +2096,17 @@ trait flat extends targetLayout { }
         let workspace = fixture.load();
         assert_eq!(paths(&workspace), ["def/a.lfy", "def/b.lfy"]);
         assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
-        // One `Problem` at each `Use` of the cycle. @lfy def/workspace/main.lfy:load
+        // One `Problem` at each `Use` of the cycle, of the stage that added it.
+        // @lfy def/workspace/main.lfy:load#load:load:b1fbb044be3c701778d0f3eed4d4ad278cdf34c2b917c9b0a33327367959d921
+        // @lfy def/workspace/main.lfy:load#load:load:83c8947a99852c5cfe9afc540029580ba37bedf5bfe20bba7ed77e79ebb98642
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 2, "{problems:?}");
+        assert!(
+            problems
+                .iter()
+                .all(|problem| problem.stage == crate::model::Stage::Loader),
+            "{problems:?}"
+        );
         assert_eq!(at_use(&workspace, problems[0]), ("def/a.lfy", true));
         assert_eq!(problems[0].message, "use \"./b\" is part of a cycle");
         assert_eq!(at_use(&workspace, problems[1]), ("def/b.lfy", true));
@@ -2055,7 +2123,7 @@ trait flat extends targetLayout { }
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:901344cabb4e3f5163bfc6613edfc6a6cc386eed876768587fad9c1f451b61b0
-    // @lfy def/workspace/main.lfy:load#load:load:195232c069d5739fe5849c18ff9275884b3c6e14fe131eb1b9558e60ac66fbb1
+    // @lfy def/workspace/main.lfy:load#load:load:5d9353c2d7ef127d55101933cf2d1581e1bf8dfae943a0d3d59cf83a5cb17679
     #[test]
     fn a_use_of_nothing_gives_a_problem_and_an_undefined_entry() {
         let fixture = Fixture::empty();
@@ -2063,9 +2131,12 @@ trait flat extends targetLayout { }
         let workspace = fixture.load();
         assert_eq!(paths(&workspace), ["def/main.lfy"]);
         assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
-        // One `Problem` at the `Use`. @lfy def/workspace/main.lfy:load
+        // One `Problem` at the `Use`, of the stage that added it.
+        // @lfy def/workspace/main.lfy:load#load:load:5d9353c2d7ef127d55101933cf2d1581e1bf8dfae943a0d3d59cf83a5cb17679
+        // @lfy def/workspace/main.lfy:load#load:load:83c8947a99852c5cfe9afc540029580ba37bedf5bfe20bba7ed77e79ebb98642
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(problems[0].stage, crate::model::Stage::Loader);
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
         assert!(
             problems[0]
@@ -2119,7 +2190,8 @@ trait flat extends targetLayout { }
     /// A manifest is optional: where no `elfie.json` exists under the root, the name is
     /// the name of the root directory, the source directory is `def`, and no problem is
     /// added.
-    // @lfy def/workspace/main.lfy:load#load:load:2aab5e323a05c38556b9c01ff598624261dd793bba90223c51b83ddaad02c11b
+    // @lfy def/workspace/main.lfy:load#load:load:8b89b53b4efb9ae82c650c075c04f5a708529dbc6cec061bdfde65ae7811ca3c
+    // @lfy def/workspace/main.lfy:load#load:load:e1ed96f364bdc98469b9736cdb2e0ce1a008d6ac0623f78e2cb68c8ccaf817a5
     #[test]
     fn no_manifest_is_no_problem_and_the_defaults_stand() {
         let fixture = Fixture::empty();
@@ -2135,7 +2207,8 @@ trait flat extends targetLayout { }
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:6358d204bfb21de03d38e1c36ba9b00314a60d5dbab459ca070e67220c2c3d2d
+    // @lfy def/workspace/main.lfy:load#load:load:befcf263b48c79ad8201135ce1c5dbca04ee8a875a161cf8942456e4cb97b8e7
+    // @lfy def/workspace/main.lfy:load#load:load:19a7d4fd318b9f7efc5cbe88610e53a0e61be4be62d5831f8646cc1bad17a9ad
     #[test]
     fn a_bad_manifest_adds_a_problem_and_the_defaults_stand() {
         for text in ["{ not json", "[1, 2]", "\"a string\""] {
@@ -2157,8 +2230,8 @@ trait flat extends targetLayout { }
     /// Targets, their outputs, and their dependencies are declared in the program, so a
     /// manifest in the shape earlier versions read loads with no problem at all: the keys
     /// the loader does not read, inside an entry as well as at the top, are ignored.
-    // @lfy def/workspace/main.lfy:load#load:load:3930201be17af05974f6f1764085a3edc64b3ba3dedbeb1e2f3b5c0cc7f18287
-    // @lfy def/workspace/main.lfy:load#load:load:8e0e8580bd6d20a57045d50d01bfd611f89b99b8dfdd8c42f39034207e1d5df5
+    // @lfy def/workspace/main.lfy:load#load:load:9bf0f0938acd565776218f4c5d6a4434294c537b7873cc8a1e3490f8a5103f94
+    // @lfy def/workspace/main.lfy:load#load:load:f3a8e524e11cd59e038a6157e4a0fe362764b553e2b29342b421c3e379ad7cb9
     #[test]
     fn a_key_the_loader_does_not_read_is_ignored_and_adds_no_problem() {
         let fixture = Fixture::empty();
@@ -2191,7 +2264,9 @@ trait flat extends targetLayout { }
 
     /// Loading never stops for a failure: a key the loader reads whose value is of the
     /// wrong kind is named, and every other key of the manifest is read all the same.
-    // @lfy def/workspace/main.lfy:load#load:load:5088119ce3359a85ec36ef5adecc9df2f9525193df649a0f54a42d28b3c495ad
+    // @lfy def/workspace/main.lfy:load#load:load:fe6fb32b63154e5b9396448cbce2410f62993bbac3c4be6a7db55d8a2f7d0d28
+    // @lfy def/workspace/main.lfy:load#load:load:b5997648b346dea065f6d06cc85024aa35df3796ec9edbc10d87099971bd1b6b
+    // @lfy def/workspace/main.lfy:load#load:load:d60b7d2fc94b097354076890d595ac2106b1b65e366b4cc45271b9e7211aa3cb
     #[test]
     fn a_key_whose_value_is_of_the_wrong_kind_is_named_and_the_rest_is_read() {
         let fixture = Fixture::empty();
@@ -2248,7 +2323,8 @@ trait flat extends targetLayout { }
         assert_eq!(library(&workspace).root, LIBRARY_ROOT);
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:e6a3d9e7c6343bde8007bc07f7cc1bf459122fbfb7bafc0ff5375ddcf301f38f
+    // @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
+    // @lfy def/workspace/main.lfy:load#load:load:d89e1a3dc76a0474ada8c0015af825a5f5e8c5e26f0b09d9280c88429bbcfba0
     #[test]
     fn a_missing_root_or_source_directory_adds_a_problem_with_no_path() {
         let fixture = Fixture::new();
@@ -2276,8 +2352,11 @@ trait flat extends targetLayout { }
         assert_eq!(workspace.packages.len(), 2);
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:789f453b852db580976af75333afef9fc202eab05a47f26e8682b28ecfc82ba9
-    // @lfy def/workspace/main.lfy:load#load:load:b081ce9e0d486c569c1c1c0e6c03c97743a2475743273a7eb2d20dd13b85a5dd
+    // @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
+    // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
+    // @lfy def/workspace/main.lfy:load#load:load:912de90eec4ab7a10c1d9fb7853c226b0130e0f61558b54793fccef20e344b08
+    // @lfy def/workspace/main.lfy:load#load:load:23324d830b23ca1be67dea3c9234abb1945519a3e56b47c394222debdf328fe8
+    // @lfy def/workspace/main.lfy:load#load:load:c4acf67876f96707cb66e2a889f79373ce852c3192472acb1b3dbff88d3d190a
     #[test]
     fn every_lfy_file_under_the_source_directory_is_in_the_program_once() {
         let fixture = Fixture::empty();
@@ -2294,7 +2373,8 @@ trait flat extends targetLayout { }
             sorted,
             ["def/deep/inner.lfy", "def/deep/other.lfy", "def/main.lfy"]
         );
-        assert_eq!(workspace.files.len(), workspace.model.sources.len()); // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:c4acf67876f96707cb66e2a889f79373ce852c3192472acb1b3dbff88d3d190a
+        assert_eq!(workspace.files.len(), workspace.model.sources.len());
         for (index, file) in workspace.files.iter().enumerate() {
             assert_eq!(file.source, index);
             assert_eq!(workspace.model.sources[index].path, file.path);
@@ -2303,7 +2383,7 @@ trait flat extends targetLayout { }
         assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:e7a894d9316ecd54b4cc1d1f1709c7e7173c47e17338f9dae68bc46451ddf867
+    // @lfy def/workspace/main.lfy:load#load:load:692ecc7501d808fc5c758f804195b305d9436a6d7de2ce76f48185ac315cfdb7
     #[test]
     fn a_file_holds_the_parse_of_its_text_with_its_path_as_the_file() {
         let fixture = Fixture::empty();
@@ -2323,7 +2403,7 @@ trait flat extends targetLayout { }
         );
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:e98819dddceb631ccf822f6585d7dfedfde26bd030ba4a7cbbcd5a2d312ebe01
+    // @lfy def/workspace/main.lfy:load#load:load:36d73adceb24794b868cfec5c1c2f1bb0befd1aee1a502407f8158d70d49ee14
     #[test]
     fn a_file_that_cannot_be_read_is_left_out_with_a_problem() {
         let fixture = Fixture::empty();
@@ -2347,7 +2427,7 @@ trait flat extends targetLayout { }
         assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:32c4ce3999a76a9da6916b0795489e2740882845c1a6391b9eaf673eaebe1973
+    // @lfy def/workspace/main.lfy:load#load:load:7cd3d4046cd7170c71b67d6747111258f280a6b304e31b968c1adf210b007213
     #[test]
     fn a_dotted_use_resolves_against_the_directory_of_its_file() {
         let fixture = Fixture::empty();
@@ -2369,7 +2449,8 @@ trait flat extends targetLayout { }
     }
 
     // @lfy def/workspace/main.lfy:load#load:load:1686133b540c858b4c1ab7edb631811da85b909c80a52d63d4084d22d6c3251f
-    // @lfy def/workspace/main.lfy:load#load:load:195232c069d5739fe5849c18ff9275884b3c6e14fe131eb1b9558e60ac66fbb1
+    // @lfy def/workspace/main.lfy:load#load:load:5d9353c2d7ef127d55101933cf2d1581e1bf8dfae943a0d3d59cf83a5cb17679
+    // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
     #[test]
     fn an_undotted_use_names_a_package_and_resolves_against_its_root() {
         let fixture = Fixture::empty();
@@ -2414,9 +2495,9 @@ trait flat extends targetLayout { }
         );
     }
 
+    // @lfy def/workspace/main.lfy:load#load:load:360d6474f5e8db42a54f9151cc373d40d39e3e4eb4109f0445a4e06a7160d825
     // @lfy def/workspace/main.lfy:load#load:load:0ddc30be18742fce83c1bc733c6db516b1f02d4e58205740f7b26d57638aef3a
     // @lfy def/workspace/main.lfy:load#load:load:97bed938a5d75f39ac08d69a7e0ac6d7a4a2fd040d8d2d4ffa31571a4bc63d87
-    // @lfy def/workspace/main.lfy:load#load:load:c0835208419dfb83a0b84ffda822c8fbd72e4221cd95542e1785d76cd7e2a3f2
     #[test]
     fn a_path_resolves_to_the_file_or_else_to_main_in_the_directory() {
         let fixture = Fixture::empty();
@@ -2462,7 +2543,7 @@ trait flat extends targetLayout { }
         }
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:58b433ac3e636c5a378c9d49965ffc04bf659137970af95eceb1e3e742a81b5d
+    // @lfy def/workspace/main.lfy:load#load:load:b1fbb044be3c701778d0f3eed4d4ad278cdf34c2b917c9b0a33327367959d921
     #[test]
     fn a_file_using_itself_is_a_cycle_of_one() {
         let fixture = Fixture::empty();
@@ -2479,7 +2560,7 @@ trait flat extends targetLayout { }
 
     // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
     // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
-    // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
+    // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
     #[test]
     fn each_dependency_gives_a_package_whose_files_are_in_the_program() {
         let fixture = Fixture::empty();
@@ -2532,7 +2613,7 @@ trait flat extends targetLayout { }
 
     /// Loading never stops for a failure: a dependency entry that is not an object with a
     /// root is named, and every other dependency still gives a package.
-    // @lfy def/workspace/main.lfy:load#load:load:62b4faedac048472b0892584131d2aca0e6fd7987b34a537d17991af62f3d07d
+    // @lfy def/workspace/main.lfy:load#load:load:fe6fb32b63154e5b9396448cbce2410f62993bbac3c4be6a7db55d8a2f7d0d28
     // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
     #[test]
     fn a_dependency_that_names_no_root_is_named_and_the_rest_still_load() {
@@ -2560,8 +2641,8 @@ trait flat extends targetLayout { }
     }
 
     /// A missing package root is reported even when nothing can be discovered.
-    // @lfy def/workspace/main.lfy:load#load:load:51bbb0f1c540e6e7509d7863a8ffc357fde4a36b5fe3f7fe530e391ebf443b0c
-    // @lfy def/workspace/main.lfy:load#load:load:e6a3d9e7c6343bde8007bc07f7cc1bf459122fbfb7bafc0ff5375ddcf301f38f
+    // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
+    // @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
     #[test]
     fn a_missing_package_root_is_a_problem_even_with_no_source_directory() {
         let fixture = Fixture::new();
@@ -2591,11 +2672,11 @@ trait flat extends targetLayout { }
     /// gives one target, with the layers of its slots in guidance order and the values its
     /// layers set.
     // @lfy def/workspace/main.lfy:load#load:load:3d36fd4d532720be47a05eb8515aab69f3fb83add111d5254ae21147d618a1f3
-    // @lfy def/workspace/main.lfy:load#load:load:a917a90f036a011701ebcd1c4eba1e462e6225289deab81a4ee023ed381cb249
+    // @lfy def/workspace/main.lfy:load#load:load:d4dc4c84aaf9ba37a87a65a201d1ab6827f3e54dd6bdc33f863354f6c3953644
     // @lfy def/workspace/main.lfy:load#load:load:9c4b7f6784e978ab38426f62744c733c2fbdfebea9fe78c455d429cc1f876075
-    // @lfy def/workspace/main.lfy:load#load:load:666f1d127b736248ed7d4d08c806f2162dc72e498eb408f0bd435db09b17e550
+    // @lfy def/workspace/main.lfy:load#load:load:183ff338b3a3e2529d4c47790b5d0204470dcfc1bbb33c5621fb1d464e87e974
     // @lfy def/workspace/main.lfy:load#load:load:f93277efea1e9ae1024146b1325d3d1bc82ec07b0fc2d632c73a5bbbbfb49f17
-    // @lfy def/workspace/main.lfy:load#load:load:f564aa87edbe96d9c1792965324682dbb6970be8d40d4eb3f241cea06b3e1d23
+    // @lfy def/workspace/main.lfy:load#load:load:a9fa8cd5e73cab1b5d4064fb290df44132c9dfca9e5d68d87f850ebb418b7a12
     #[test]
     fn an_ace_const_of_the_project_holding_a_target_gives_one() {
         let fixture = Fixture::empty();
@@ -2635,7 +2716,7 @@ trait flat extends targetLayout { }
     /// Only an `ace const` of the project's own source holds a target: a `let`, a const
     /// outside `ace`, and a const of a file of a package hold none. A const whose declared
     /// type is the data holds one as much as one calling a function that gives one.
-    // @lfy def/workspace/main.lfy:load#load:load:a917a90f036a011701ebcd1c4eba1e462e6225289deab81a4ee023ed381cb249
+    // @lfy def/workspace/main.lfy:load#load:load:d4dc4c84aaf9ba37a87a65a201d1ab6827f3e54dd6bdc33f863354f6c3953644
     #[test]
     fn a_let_a_plain_const_and_a_const_of_a_package_hold_no_target() {
         let fixture = Fixture::empty();
@@ -2675,7 +2756,8 @@ trait flat extends targetLayout { }
 
     /// Every slot that holds layers gives them, in guidance order, and a trait in two slots
     /// with equal arguments is one layer at its first place.
-    // @lfy def/workspace/main.lfy:load#load:load:666f1d127b736248ed7d4d08c806f2162dc72e498eb408f0bd435db09b17e550
+    // @lfy def/workspace/main.lfy:load#load:load:183ff338b3a3e2529d4c47790b5d0204470dcfc1bbb33c5621fb1d464e87e974
+    // @lfy def/workspace/main.lfy:load#load:load:d1e245ccebeb2f7623e8da0f5e962388af2f23047e3d15da17c8352c50027b74
     #[test]
     fn the_layers_are_the_slots_in_guidance_order_each_trait_once() {
         let fixture = Fixture::empty();
@@ -2714,7 +2796,9 @@ trait flat extends targetLayout { }
 
     /// What a target's setters give it: the extensions its outputs may have, how a line
     /// comment begins, what runs a script, and the ecosystem of its dependencies.
-    // @lfy def/workspace/main.lfy:load#load:load:f564aa87edbe96d9c1792965324682dbb6970be8d40d4eb3f241cea06b3e1d23
+    // @lfy def/workspace/main.lfy:load#load:load:a937c3da8b47a6fdea99c31a14b24e1c2aa31829c11b46405b9701b9fcf00a07
+    // @lfy def/workspace/main.lfy:load#load:load:a9fa8cd5e73cab1b5d4064fb290df44132c9dfca9e5d68d87f850ebb418b7a12
+    // @lfy def/workspace/main.lfy:load#load:load:a6d3cd85551722d81b7111f6681bf963da4ba6fb1d8ecb483d40fdad958c87c1
     // @lfy def/workspace/main.lfy:load#load:load:835f6845f6033e939a044506a018d0a36680e14a6eb9beaa92012131e186f666
     #[test]
     fn a_target_reads_the_values_its_layers_set() {
@@ -2763,8 +2847,7 @@ trait flat extends targetLayout { }
 
     /// One command per operation the target has one for, in the order `Operation` lists
     /// them, and the knowledge of the declaration in order.
-    // @lfy def/workspace/main.lfy:load#load:load:3f14c93383986089ff035033d9d411beb32a7ba58ae22f7b4b0b105bee9bb8ce
-    // @lfy def/workspace/main.lfy:load#load:load:744ae66bb854af2ca9b87b6bdde697e61172669260c42dcdea808e88ddd17c71
+    // @lfy def/workspace/main.lfy:load#load:load:18e900520d7cf988834a9b9730aeffd2562b0c3e7416b8940b4b784993194c57
     #[test]
     fn a_target_holds_one_command_per_operation_and_its_declarations_knowledge() {
         let fixture = Fixture::empty();
@@ -2822,7 +2905,8 @@ trait flat extends targetLayout { }
     /// A command the project gives the const itself comes before every command its layers
     /// gave it, so an operation whose command has no line is not run however a layer
     /// spells it.
-    // @lfy def/workspace/main.lfy:load#load:load:46b544e43774a3df072b517651d8bcbacfa236b57aab48f219ece1ed7684bfe2
+    // @lfy def/workspace/main.lfy:load#load:load:8b43a836a39ca920b3b058858eb36936434cbec98d4b040e4ce0d3de392af7c0
+    // @lfy def/workspace/main.lfy:load#load:load:18e900520d7cf988834a9b9730aeffd2562b0c3e7416b8940b4b784993194c57
     #[test]
     fn a_command_the_file_gives_the_const_comes_before_its_layers() {
         let fixture = Fixture::empty();
@@ -2860,7 +2944,7 @@ trait flat extends targetLayout { }
 
     /// The targets come in the order their consts are declared: file by file in bind
     /// order, then source order.
-    // @lfy def/workspace/main.lfy:load#load:load:5ed9e5077c0cbb9ff30167add3a5f60066247bb6e0a9e0b6ea303db647af75a5
+    // @lfy def/workspace/main.lfy:load#load:load:d4dc4c84aaf9ba37a87a65a201d1ab6827f3e54dd6bdc33f863354f6c3953644
     #[test]
     fn the_targets_are_in_the_order_their_consts_are_declared() {
         let fixture = Fixture::empty();
@@ -2894,8 +2978,8 @@ trait flat extends targetLayout { }
 
     /// A slot holding a layer whose trait does not extend that slot's role is named, and
     /// the target still stands.
-    // @lfy def/workspace/main.lfy:load#load:load:b251619aed48e08dc83a4b322d9a09864e78bc42fca67da4fe0d6239e2fefd42
     // @lfy def/workspace/main.lfy:load#load:load:850852d92a73a5a2483681f4ad973850de80c939bcf5118d7a8ef998b4d12671
+    // @lfy def/workspace/main.lfy:load#load:load:722849a54dc2494a11532b2c54b4db177b978cbbe4a6dd812669557ef1006be2
     #[test]
     fn a_layer_that_does_not_extend_its_slots_role_names_the_slot_and_the_trait() {
         let fixture = Fixture::empty();
@@ -2910,11 +2994,14 @@ trait flat extends targetLayout { }
         assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
         let problems = bind_problems(&workspace);
         assert_eq!(problems.len(), 2, "{problems:?}");
-        // @lfy def/workspace/main.lfy:load
+        // A problem loading adds at a target is of the stage that added it.
+        // @lfy def/workspace/main.lfy:load#load:load:83c8947a99852c5cfe9afc540029580ba37bedf5bfe20bba7ed77e79ebb98642
+        // @lfy def/workspace/main.lfy:load#load:load:722849a54dc2494a11532b2c54b4db177b978cbbe4a6dd812669557ef1006be2
         for (problem, (slot, name, role)) in problems.iter().zip([
             ("language", "flat", "targetLanguage"),
             ("layout", "lang", "targetLayout"),
         ]) {
+            assert_eq!(problem.stage, crate::model::Stage::Loader);
             assert_eq!(at_declaration(&workspace, problem), "t");
             assert!(problem.message.contains(" t "), "{problem}");
             assert!(problem.message.contains(slot), "{problem}");
@@ -2926,7 +3013,7 @@ trait flat extends targetLayout { }
     }
 
     /// A target without an output, a language, or a layout is named and left out.
-    // @lfy def/workspace/main.lfy:load#load:load:11e63bade5d611b5f953483b32e186473ddc2004974ec56616e5746b77bcc070
+    // @lfy def/workspace/main.lfy:load#load:load:02062f73a6a6da19fbd8cce8b082ddb666c5cf47a3baee8fedb5ae408646b65c
     #[test]
     fn a_target_missing_an_output_a_language_or_a_layout_is_left_out() {
         let fixture = Fixture::empty();
@@ -3054,8 +3141,9 @@ trait flat extends targetLayout { }
 
     /// Knowledge is vendored and read from disk: a source that is not there is named, and
     /// so is one that would be fetched over the network.
-    // @lfy def/workspace/main.lfy:load#load:load:5170cd069bfccbfeb0da6afd8e0b423d9521e2dccd0c7bf2623176d1f3d1eadb
-    // @lfy def/workspace/main.lfy:load#load:load:bc0738a446361cfaa81096bbde52491c556bc0acb26fb38242fd50e928208c6e
+    // @lfy def/workspace/main.lfy:load#load:load:bac7aeb8877e25e34bb8600328dcdfd9765c1662f19b2c785ef6dc1eb24ddbf2
+    // @lfy def/workspace/main.lfy:load#load:load:14ac3e3c23396d2f0892c408a3681bf564363703aeb00ea0caa90879bf9f0b26
+    // @lfy def/workspace/main.lfy:load#load:load:05f2e92c57fc3eec4e710b8bd1bf35d7f4f2ecf0a40b1d8fc331d549eef5bc33
     #[test]
     fn knowledge_that_is_not_there_or_comes_over_the_network_is_named() {
         let fixture = Fixture::empty();
@@ -3116,8 +3204,8 @@ trait flat extends targetLayout { }
         );
     }
 
-    // @lfy def/workspace/main.lfy:load#load:load:1a70bf9ff7ad610ada4250ea97c2b74dff227791a63bfff413e8eb49f991aefc
-    // @lfy def/workspace/main.lfy:load#load:load:b081ce9e0d486c569c1c1c0e6c03c97743a2475743273a7eb2d20dd13b85a5dd
+    // @lfy def/workspace/main.lfy:load#load:load:f9beb9689c54303ed4e3a7e5f60e42c6dfd70ba8603fe85a05eba3cd28fdf395
+    // @lfy def/workspace/main.lfy:load#load:load:c4acf67876f96707cb66e2a889f79373ce852c3192472acb1b3dbff88d3d190a
     #[test]
     fn the_model_is_bound_from_the_files_once() {
         let fixture = Fixture::empty();
@@ -3160,8 +3248,8 @@ trait flat extends targetLayout { }
 
     /// The same `path` names a different file in each workspace, because it is relative
     /// to that workspace's own root and to nothing else.
-    // @lfy def/workspace/main.lfy:change#change:change:e20858b36c04a1222bbb5e30cc7a08e1f9fc907a1fa76343fcd01dc323b36dc0
-    // @lfy def/workspace/main.lfy:change#change:change:c2184e9afc7c73ab41f34979bb5caf4d0b47bc512bd9a05774ac2a16f35ffefe
+    // @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
+    // @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
     #[test]
     fn a_change_path_is_relative_to_the_root_of_its_workspace() {
         let one = Fixture::empty();
@@ -3222,7 +3310,7 @@ trait flat extends targetLayout { }
     }
 
     // @lfy def/workspace/main.lfy:change#change:change:3b3d10266814a5ce8c55a7d3a7026b812efcc22038abd92aa59984eab0be26b4
-    // @lfy def/workspace/main.lfy:change#change:change:07a83f96d5491695c4c70bcd43ae88989b4641476fbba210b20f253a537ff0b5
+    // @lfy def/workspace/main.lfy:change#change:change:483204a8915547a6e7a5c568902e1e48d573437c458b11e04b25176537ae9732
     // @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
     #[test]
     fn a_change_to_nothing_reads_the_file_from_disk_again() {
@@ -3296,7 +3384,8 @@ trait flat extends targetLayout { }
         assert_eq!(third.problems, expected.problems);
     }
 
-    // @lfy def/workspace/main.lfy:change#change:change:c2184e9afc7c73ab41f34979bb5caf4d0b47bc512bd9a05774ac2a16f35ffefe
+    // @lfy def/workspace/main.lfy:change#change:change:88c72737ee35d3e8b4fc8faad9b0d27687ae69e994738b39b9c59967b95cd2ff
+    // @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
     #[test]
     fn a_change_out_of_reach_gives_an_equal_workspace() {
         let fixture = Fixture::empty();
@@ -3322,18 +3411,40 @@ trait flat extends targetLayout { }
         assert_eq!(changed.overlays.len(), 1);
 
         // The use that brought it into reach goes away, and with it the file: a further
-        // change there names none of the three places, so the result matches the
+        // change there names none of the four places, so the result matches the
         // workspace it was given, down to the replacement that stood before.
         let gone = change(&changed, "def/main.lfy", Some("\n"));
         assert_eq!(paths(&gone), ["def/main.lfy"]);
         for text in [Some("trait other { }\n"), None] {
             assert_eq!(change(&gone, "elsewhere/thing.lfy", text), gone);
         }
+
+        // The source path a knowledge item of the program has is the fourth place: the
+        // item is read there, so a replacement is what the load finds. A path beside it
+        // is still out of reach.
+        let fixture = Fixture::empty();
+        fixture.write(
+            "def/main.lfy",
+            "d Reads {\n  \
+             @knowledge.add({ topic = `the guide`, kind = KnowledgeKind.reference, \
+             source = \"docs/guide.md\" });\n}\n",
+        );
+        let loaded = fixture.load();
+        assert_eq!(
+            bind_problems(&loaded)
+                .iter()
+                .map(|problem| problem.message.as_str())
+                .collect::<Vec<_>>(),
+            ["the knowledge \"docs/guide.md\" does not exist"]
+        );
+        let written = change(&loaded, "docs/guide.md", Some("how it is written\n"));
+        assert_eq!(bind_problems(&written), Vec::<&Problem>::new());
+        assert_eq!(change(&loaded, "docs/other.md", Some("elsewhere\n")), loaded);
     }
 
     /// A file under the root of a package in the program is in reach of a change, as much
     /// as one under the source directory.
-    // @lfy def/workspace/main.lfy:change#change:change:c2184e9afc7c73ab41f34979bb5caf4d0b47bc512bd9a05774ac2a16f35ffefe
+    // @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
     #[test]
     fn a_change_under_a_package_root_reaches_the_program() {
         let fixture = Fixture::empty();
@@ -3359,6 +3470,114 @@ trait flat extends targetLayout { }
         assert_ne!(changed, loaded);
         let added = changed.file("lib/extra.lfy").expect("the added file");
         assert_eq!(changed.origin(added), Origin::Library);
+    }
+
+    /// Nothing a change reaches is missed, and nothing it does not reach moves: the file
+    /// holding an entity the changed file adds to is read again although it uses nothing
+    /// of it, a file the change reaches in none of those ways keeps the symbols, usages,
+    /// and problems it had, and the targets and the problems about them are found again
+    /// from the model the change gives.
+    // @lfy def/workspace/main.lfy:change#change:change:92de1ca10f5fad840986c51b0e2d7a25ad8ae205c4e65ea89d88f0cc2af1945b
+    // @lfy def/workspace/main.lfy:change#change:change:e311d9fc70a554b7e62c546f0b90a42eb09de3f1d36cda13a9570db511b0055a
+    // @lfy def/workspace/main.lfy:change#change:change:38a2f13f3b49103a5a09f6fbd670f9d20830efb4c41dfdc038f1393bd72ccc10
+    #[test]
+    fn a_change_reaches_every_file_it_must_and_leaves_the_rest_as_it_was() {
+        /// What a file holds in the model: the symbols declared in it, the usages
+        /// recorded in it, and the problems pointing into it, each named so that the
+        /// comparison does not depend on where the file sits among the sources.
+        fn marks(workspace: &Workspace, path: &str) -> (Vec<String>, Vec<String>, Vec<String>) {
+            let file = workspace.file(path).expect("a file of the program").source;
+            let symbols = workspace
+                .model
+                .symbols
+                .iter()
+                .filter(|symbol| symbol.node.file == file)
+                .map(|symbol| format!("{} {:?}", symbol.name, symbol.kind))
+                .collect();
+            let usages = workspace
+                .model
+                .usages
+                .iter()
+                .filter(|usage| usage.node.file == file)
+                .map(|usage| format!("{:?} {:?}", usage.name, usage.layer))
+                .collect();
+            let problems = workspace
+                .model
+                .problems
+                .iter()
+                .filter(|problem| problem.node.file == file)
+                .map(|problem| problem.message.clone())
+                .collect();
+            (symbols, usages, problems)
+        }
+
+        /// The topics of the knowledge of the entity with an identifier.
+        fn topics(workspace: &Workspace, identifier: &str) -> Vec<String> {
+            workspace
+                .model
+                .entities
+                .iter()
+                .find(|entity| entity.identifier.as_deref() == Some(identifier))
+                .map(|entity| {
+                    entity
+                        .knowledge
+                        .iter()
+                        .map(|item| item.topic.clone())
+                        .collect()
+                })
+                .unwrap_or_else(|| panic!("{identifier} is declared"))
+        }
+
+        let fixture = Fixture::empty();
+        fixture
+            .write("def/thing.lfy", "d Thing { }\n")
+            .write(
+                "def/applies.lfy",
+                "use \"./thing\";\nwith Thing {\n  \
+                 @knowledge.add({ topic = `added`, kind = KnowledgeKind.tool, \
+                 source = \"elfie_check\" });\n}\n",
+            )
+            .write("def/other.lfy", "trait untouched { $name = string; }\n")
+            .write(
+                "def/targets.lfy",
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = lang, layout = flat });\n",
+            )
+            .write("def/roles.lfy", ROLES);
+        let loaded = fixture.load();
+        assert!(loaded.problems.is_empty(), "{:?}", loaded.problems);
+        assert_eq!(topics(&loaded, "Thing"), ["added"]);
+        let untouched = marks(&loaded, "def/other.lfy");
+
+        // `def/thing.lfy` uses nothing of `def/applies.lfy`, so only the file that adds
+        // to its entity puts it in the re-bind set; the whole program is bound again, so
+        // it is read again and `Thing` loses what was added to it.
+        let emptied = change(&loaded, "def/applies.lfy", Some(""));
+        assert!(emptied.problems.is_empty(), "{:?}", emptied.problems);
+        assert_eq!(topics(&emptied, "Thing"), Vec::<String>::new());
+        // The file the change reaches in none of those ways is as it was.
+        assert_eq!(marks(&emptied, "def/other.lfy"), untouched);
+
+        // The targets, and the problems loading adds about them, come from the model the
+        // change gives: swapping the slots of the one target names both of them.
+        let swapped = change(
+            &loaded,
+            "def/targets.lfy",
+            Some(
+                "use \"elfie/target\";\nuse \"./roles\";\n\
+                 ace const t = targetOf({ output = \"out\", language = flat, layout = lang });\n",
+            ),
+        );
+        assert_eq!(one_target(&swapped).identifier, "t");
+        let problems = bind_problems(&swapped);
+        assert_eq!(problems.len(), 2, "{problems:?}");
+        assert!(
+            problems
+                .iter()
+                .all(|problem| at_declaration(&swapped, problem) == "t"),
+            "{problems:?}"
+        );
+        assert_eq!(marks(&swapped, "def/other.lfy"), untouched);
     }
 
     /// A replaced file stands in for one on disk down to the directories above it: the

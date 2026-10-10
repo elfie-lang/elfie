@@ -35,6 +35,22 @@ fn source_from(path: &str, text: &str, uses: &[Option<&str>], origin: Origin) ->
     }
 }
 
+/// `Source@like(`<path>, parsed`)` for text the parser could not fit into its rules: the
+/// tree it hands over holds an `ErrorNode`.
+// @lfy def/model/main.lfy:bind
+fn source_with_errors(path: &str, text: &str) -> Source {
+    let tokens =
+        crate::lexer::lex(text, Some(path)).unwrap_or_else(|error| panic!("{path}: {error}"));
+    let tree = crate::parser::parse(tokens, None);
+    assert!(!tree.errors.is_empty(), "{path} parses without an error");
+    Source {
+        path: path.to_string(),
+        tree,
+        uses: Vec::new(),
+        origin: Origin::Program,
+    }
+}
+
 /// The entities a trait was applied to, in application order.
 fn entities_of(model: &Model, trait_entity: EntityId) -> Vec<EntityId> {
     model.entities[trait_entity].entities().to_vec()
@@ -231,7 +247,7 @@ fn criteria_texts(model: &Model, entity: EntityId) -> Vec<CriterionText> {
 
 // ---- The @test cases of bind --------------------------------------------------------
 
-// @lfy def/model/main.lfy:bind#bind:bind:7519b3ca15731dd0e1e4702fddb113f646ca70eb15ff3ae25388ef2a1b87efab
+// @lfy def/model/main.lfy:bind#bind:bind:ba97510fe33631742318285e9d014009568e9145e198b7cab795d387f224b9ed
 // @lfy def/model/main.lfy:resolve#resolve:resolve:53a3ecc3bb2df32dde8139e2bf330f085ed18d7051765d5fc332abe19efd20e5
 #[test]
 fn test_trait_member_and_application() {
@@ -256,7 +272,7 @@ fn test_trait_member_and_application() {
         model.entities[x_entity].ty,
         Some(TypeRef::Primitive("string"))
     );
-    // TraitEntity.entities of t holding A.
+    // Trait.entities of t holding A.
     assert_eq!(entities_of(&model, t), vec![a]);
     // A Usage for A.x resolving to that member.
     let member_node = node(&model, 0, E::Member, "A.x");
@@ -267,8 +283,8 @@ fn test_trait_member_and_application() {
     assert_eq!(resolve(&model, member_node), Some(x));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:18bec98e5f89f07dd5dc5ff9e0e92c68951628fc984a0dfed7286265f4ec75c7
-// @lfy def/model/main.lfy:bind#bind:bind:2c7feb0a18315034969e6c79d8cd9f5c6b1be581451c56561ced37561934ea78
+// @lfy def/model/main.lfy:bind#bind:bind:8be862e432d183265802e189a8108a3201256cc35ce11fa53d6adc08d36807dd
+// @lfy def/model/main.lfy:bind#bind:bind:85e0b777d37918aa64dd528397bd3f5891099278b7d9d4b0c17cd037bcc845ff
 // @lfy def/model/main.lfy:resolve#resolve:resolve:38d6961088ad199ed76c8f764b44b1c881e653dd079ba248e2e38c3d317d2632
 // @lfy def/model/main.lfy:usagesOf#usagesOf:usagesOf:f5c6a0b87ff4045a8a8155ddade52ffe53608bfbb7a906aa5191ef0684804f7c
 #[test]
@@ -302,7 +318,8 @@ fn test_module_symbol_and_loop_variable() {
     assert_eq!(usages_of(&model, module).len(), 1);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:97ba58ba8ffa7b326c0345dcf2b61e3ee0bde0cb8db5094e929cf912e369cb63
+// @lfy def/model/main.lfy:bind#bind:bind:0e0ebc3f4e95b4a0d73136e1a0a343ae561cd0d20a56025c7457b59f3702bf7d
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
 // @lfy def/model/main.lfy:resolve#resolve:resolve:0752010452c7ee73c4f54e7a2440a5284244bf5798e148f4798a6a6da5832785
 #[test]
 fn test_unresolved_name() {
@@ -317,7 +334,7 @@ fn test_unresolved_name() {
     assert_eq!(model.problems[0].node, z);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:b87b86007ded233196a5820ced05751f1521544f9b2ed04aeae3e79d39fbd74a
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_extends_entities_and_extenders() {
     let model = bind_one("trait a {} trait b extends a {} d C is b {}");
@@ -344,8 +361,9 @@ fn test_extends_entities_and_extenders() {
     ));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:42263d0241c3356ad90fb1d99c92f81fe4f41233fc96b26b44139d7fcebd95de
-// @lfy def/model/main.lfy:bind#bind:bind:0bc1644ac8b669b08f062cff9afa6cfd6711e819aef19a8a3615e0b7ef9101a7
+// @lfy def/model/main.lfy:bind#bind:bind:7b05f6d5579971e158b35b5c1a33048105acd947f999f60a52c06f4489505b74
+// @lfy def/model/main.lfy:bind#bind:bind:e1768186983ff55248116d434452fbc5887f69cc23437b9787440736b57fb111
+// @lfy def/model/main.lfy:bind#bind:bind:972725faf5a2897534a0e4be77c67b10e2cce3499191a51d3ab27e1bbe14d1ae
 #[test]
 fn test_with_on_a_member_attaches_to_the_member() {
     let model = bind_one(
@@ -373,8 +391,9 @@ fn test_with_on_a_member_attaches_to_the_member() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:aca4776b504719a25e83650081cfb2797bbc9776038499ce3118a8868655f65d
-// @lfy def/model/main.lfy:bind#bind:bind:ec98cc52ebb62a0594a752006377cac03dcc3616dab157ef152c1f5d556373ec
-// @lfy def/model/main.lfy:bind#bind:bind:a27dae69e541e9a9998d3cf51d5ce00f2d8b6ded5bb5e80401986199c7543f6c
+// @lfy def/model/main.lfy:bind#bind:bind:7b5a1fec626e619b600c3faefaa81db781f8ebdd297cba7893369d95d1f212c7
+// @lfy def/model/main.lfy:bind#bind:bind:88eb2d2cca1fc9e39dfbb1fd77266bdb656d9b5b76c1c8d103d7ea2000ccaa4d
+// @lfy def/model/main.lfy:bind#bind:bind:96fe0cf1480dabf1b8ddea3f3c4ae29add39001d68d41f069dc4e8035dce6095
 #[test]
 fn test_a_program_file_resolves_names_in_the_prelude() {
     let entity_file = source_from(
@@ -422,8 +441,8 @@ fn test_a_program_file_resolves_names_in_the_prelude() {
     assert_eq!(read.symbol, Some(identifier));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:6ed2472f490ceb52a44a63e5a5c0f205cf25f19f7937237e043acd81337eed63
-// @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
+// @lfy def/model/main.lfy:bind#bind:bind:cb5992ae8591ce356ff1a44cf61809f3ae9baf591461b92a8a07297a87520468
+// @lfy def/model/main.lfy:bind#bind:bind:6d483b3015a5d053cdd10c8fb53309930fd856c54535af7ef7e3b4efc15ae894
 #[test]
 fn test_apply_resolves_through_the_kind_data() {
     let text = "trait t {} d A {} t.apply(A);";
@@ -442,7 +461,7 @@ fn test_apply_resolves_through_the_kind_data() {
     assert_eq!(model.entities[a].traits[0].entity, t);
     assert_eq!(entities_of(&model, t), vec![a]);
     // Without one the call still applies the trait, and apply resolves to nothing.
-    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+    // @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
     let model = bind_one(text);
     assert_eq!(problems(&model), vec!["t.apply: t has no member apply"]);
     let (t, a) = (entity(&model, "t"), entity(&model, "A"));
@@ -454,8 +473,9 @@ fn test_apply_resolves_through_the_kind_data() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1f0ca46c5c91444dedac69e5e7113dd5617e3d65d3ecea38d89a8cbfa20ef031
-// @lfy def/model/main.lfy:bind#bind:bind:a6dfa497363019db0d8aedee13303bc5166951372a1d9c2ddb1fa56a1186abd7
+// @lfy def/model/main.lfy:bind#bind:bind:4cb96974d918e7df0ed61b9db5926546a7fc19ffa628ee3afe7f53046371017b
+// @lfy def/model/main.lfy:bind#bind:bind:d6f02618aac6e3cd44227a66ddaf2ec1f0c729ec00b56a27ed1104b872133624
+// @lfy def/model/main.lfy:bind#bind:bind:84b135bc194c962eab1f272cc9a44b88891577b78f5263c55b7da1a415de77b2
 #[test]
 fn test_rule_named_in_is_clause_resolves_to_the_trait() {
     let b = source(
@@ -491,8 +511,8 @@ fn test_rule_named_in_is_clause_resolves_to_the_trait() {
     assert_eq!(model.entities[b_entity].traits[0].entity, rule_entity);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:f34b1d3b9594f6fc1acd60dc401e4349b620b7f8b356e8e9fdba6d4c7dfafc41
-// @lfy def/model/main.lfy:bind#bind:bind:e9582eff7417a58e3a6153e75157993ae2678ab56265096b16ece3649132c47b
+// @lfy def/model/main.lfy:bind#bind:bind:7a0b3c3b948e3a548a7a00553d1a2034a3f8e40b40d58671af64e6894b3904a9
+// @lfy def/model/main.lfy:bind#bind:bind:3337bcd2f277d75bdff5cf73924f263e8aaba8499b6f5777ab89546662fd288b
 #[test]
 fn test_current_with_no_member_name_applies_to_the_file() {
     let model = bind_with_prelude("trait t {} d A {} t.apply(@);");
@@ -506,10 +526,8 @@ fn test_current_with_no_member_name_applies_to_the_file() {
     assert!(model.entities[a].traits.is_empty());
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:51623ecc06b57fcf7e1f5bdff53e012b04d2466f53851acc9bee7bfc2b1ad29d
-// @lfy def/model/main.lfy:bind#bind:bind:26f472167d8ca46e9de1cf65f9971b002a542acbfbe55976427680c79664f6dd
-// @lfy def/model/main.lfy:bind#bind:bind:6596753573820dabd954fc7a17e0f207391e854cb1900ebb47cb9506fc2c935d
-// @lfy def/model/main.lfy:bind#bind:bind:0ee53b5e0c008ce71de85c320c18eb1f9b1f0d8252a143d9c28a107beb5e508d
+// @lfy def/model/main.lfy:bind#bind:bind:355e034e3cf906671eb9c8b2a9aa0ce561cb231515c8d84b0bcbd34e6e176a8c
+// @lfy def/model/main.lfy:bind#bind:bind:ae1713bf3f23dc73e68d44c37f8cc54e9074e2bc5281035c1bac774fea5c6001
 #[test]
 fn test_type_parameter_of_a_declaration() {
     let model = bind_one("d Item {} d Box<T extends Item = string> { $item: `x` = T; }");
@@ -539,9 +557,9 @@ fn test_type_parameter_of_a_declaration() {
     assert_eq!(model.entities[member_item].ty, Some(TypeRef::Entity(t)));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1d137991bd989915a702655e88f4779e5a01a4e87b7933920cd755553d58aa42
-// @lfy def/model/main.lfy:bind#bind:bind:46b4022825c073c20ea36dfef0380abdaa37504df76653a573913f07721dde4a
-// @lfy def/model/main.lfy:bind#bind:bind:8e746b442e4c9a6b3bc9e00da33f21f79095ae60cd1889a4e2cac569bddcdf6d
+// @lfy def/model/main.lfy:bind#bind:bind:3189c3f37ea68cb3dc89e1c79842252c20b3b013dd01e698a55e37d78fd03c1b
+// @lfy def/model/main.lfy:bind#bind:bind:b14a00f45f5f1aed95a60c9685ea61353a2569a91f82696c6db3053bda11450e
+// @lfy def/model/main.lfy:bind#bind:bind:c3a2c16f705e37fc0e8e626331285a435d93f0cde33bcb941c715741f6b53131
 #[test]
 fn test_a_declaration_seen_with_type_arguments() {
     let model = bind_one(
@@ -583,8 +601,7 @@ fn test_a_declaration_seen_with_type_arguments() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:4cdfb137ca0ebb1a6a3ecfdfac6f306e78bcf4e0d77aace1771a0e0f29d96990
-// @lfy def/model/main.lfy:bind#bind:bind:d07e7150d53c64dd6694614b0a458127dcc037d09d6358431cd7f19a8a2ce6f4
+// @lfy def/model/main.lfy:bind#bind:bind:3ac95c4e5cc4405dcbbe7fdeffdc22176a54f84d56caf246b594f4d1797bc365
 #[test]
 fn test_too_many_type_arguments_is_a_problem() {
     let model = bind_one("d Box<T> {} const b = Box<string, number>;");
@@ -602,9 +619,46 @@ fn test_too_many_type_arguments_is_a_problem() {
     );
 }
 
+// ---- Binding as a whole -------------------------------------------------------------
+
+// @lfy def/model/main.lfy:bind#bind:bind:e6d6ea2f30dca657ba2c80d4aad957763540ba6c1f58a5ac35f5fdb31087c24d
+#[test]
+fn an_error_node_declares_and_uses_nothing() {
+    let model = bind(vec![source_with_errors(
+        "a.lfy",
+        "d A {} const class = 1; const y = A;",
+    )]);
+    // The statements that parsed declare their names; the run of tokens the parser could
+    // not fit declares none, makes no usage, and is no problem of the binder's.
+    assert_eq!(names(&model, model.file_scopes[0]), ["A", "y"]);
+    assert_clean(&model);
+    let errors = &model.sources[0].tree.errors;
+    assert_eq!(errors.len(), 1, "{:?}", errors);
+    let covered = errors[0].start..errors[0].end;
+    for usage in &model.usages {
+        let info = model.info(usage.node);
+        assert!(
+            !covered.contains(&info.start),
+            "a usage inside the error node: {:?}",
+            model.raw(usage.node)
+        );
+    }
+}
+
+// @lfy def/model/main.lfy:bind#bind:bind:1bf3cdabd2eb716539d1d5e6cf9e31e98e17285a8d9b8c0a0edde46ff38e5aa5
+#[test]
+fn every_problem_binding_adds_has_the_binder_stage() {
+    // One from the resolve pass, and one the interpreter adds while expanding.
+    let model = bind_one("trait t {} d A {} t.apply(A); const y = z;");
+    assert!(model.problems.len() >= 2, "{:?}", problems(&model));
+    for problem in &model.problems {
+        assert_eq!(problem.stage, Stage::Binder, "{}", problem.message);
+    }
+}
+
 // ---- Declare ------------------------------------------------------------------------
 
-// @lfy def/model/main.lfy:bind#bind:bind:e9582eff7417a58e3a6153e75157993ae2678ab56265096b16ece3649132c47b
+// @lfy def/model/main.lfy:bind#bind:bind:3337bcd2f277d75bdff5cf73924f263e8aaba8499b6f5777ab89546662fd288b
 #[test]
 fn file_scope_current_is_the_anonymous_file_entity() {
     let model = bind_one("const x = 1;");
@@ -619,8 +673,9 @@ fn file_scope_current_is_the_anonymous_file_entity() {
     assert_eq!(file.scope, Some(model.file_scopes[0]));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:e9582eff7417a58e3a6153e75157993ae2678ab56265096b16ece3649132c47b
-// @lfy def/model/main.lfy:bind#bind:bind:fa131e5b0cb7099b74042a26579d4df9e7c4ad32262563937e8fc7a84b49d736
+// @lfy def/model/main.lfy:bind#bind:bind:583d8bd2aacbcdee71c5cda8c83518a8d2ab447460f739666f8df8093b6fc7a5
+// @lfy def/model/main.lfy:bind#bind:bind:5dafa3a6e52ad501215f54b081dab8720e0d83c56fb7277975f861591af27874
+// @lfy def/model/main.lfy:bind#bind:bind:bda572541abe6b3dd683ffb7f7c5782bdf7382a98d9a342a3b8d72558c0dc03f
 #[test]
 fn block_scope_is_child_of_declaration_scope() {
     let model = bind_one("d A { const inner = 1; } function f(p: string) { const q = p; }");
@@ -651,7 +706,7 @@ fn block_scope_is_child_of_declaration_scope() {
     assert_eq!(usage(&model, p[1]).symbol, model.lookup_local(f_scope, "p"));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:9aadc6796d2f3e4f16b4eaca3972b652a28305d0814f17ab1f48c52c5f6ca2bb
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
 #[test]
 fn without_a_prelude_no_file_scope_has_a_parent() {
     let library = source("lib/prelude/entity.lfy", "d Entity {}", &[]);
@@ -666,7 +721,7 @@ fn without_a_prelude_no_file_scope_has_a_parent() {
     assert_eq!(model.problems[0].node, read);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:f184d7cebf099945bfe3b683594350b31349e7301825b68d76a79b73c9d509dd
+// @lfy def/model/main.lfy:bind#bind:bind:c1bf94ef6ed00fca9ed870486ad290e18a6640d029d6830b1b8b55b921ffc125
 #[test]
 fn a_file_name_shadows_the_prelude_without_a_problem() {
     let mut sources = prelude();
@@ -682,7 +737,7 @@ fn a_file_name_shadows_the_prelude_without_a_problem() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:c6b7a0960a121d339a97ea775da176a2b78800870296bae72fa0330aa22d7b57
+// @lfy def/model/main.lfy:bind#bind:bind:f9e18cc96433cea6408e03a88c1980be0eb6e901bd010d2324727105ed2cd26d
 #[test]
 fn duplicate_declaration_is_a_problem_and_the_first_wins() {
     let model = bind_one("const x = 1; d x {} const y = x;");
@@ -698,10 +753,27 @@ fn duplicate_declaration_is_a_problem_and_the_first_wins() {
     assert_eq!(usage(&model, node(&model, 0, E::Name, "x")).symbol, Some(x));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:07d1e11737b5a6468ae103e84419db542a0fa0a97d07ed50219ea704a7ab4fa3
-// @lfy def/model/main.lfy:bind#bind:bind:ba58015b3d9ff9df472e88f536cec3e65fef46cef18e3d3a87d286eb284d48e6
-// @lfy def/model/main.lfy:bind#bind:bind:9157b3477350b5ae76e32599cfe5855ea4e0344c35d5c69f89cfb405956675ca
-// @lfy def/model/main.lfy:bind#bind:bind:7e90f7c284b5be141502975a2b098d2779ec3d98cb518d1b1a8853c3b53a46e9
+// @lfy def/model/main.lfy:bind#bind:bind:225b9242d9b9e61c650a37dd5d5bc19b72bc8619ce4cf622e81ad1a1fe2fe441
+#[test]
+fn a_parameter_and_a_member_of_one_scope_may_share_a_name() {
+    let model = bind_one("trait t(rule: string) { $rule: `the rule` = string; } d A is t(`x`) {}");
+    assert_clean(&model);
+    let t = entity(&model, "t");
+    let scope = model.entities[t].scope.expect("a trait owns a scope");
+    assert_eq!(names(&model, scope), ["rule", "rule"]);
+    let kinds: Vec<SymbolKind> = model.scopes[scope]
+        .symbols
+        .iter()
+        .map(|&s| model.symbols[s].kind)
+        .collect();
+    assert_eq!(kinds, [SymbolKind::Parameter, SymbolKind::Member]);
+    // The receiver gains the member, not the parameter.
+    let a = entity(&model, "A");
+    assert_eq!(model.symbols[member(&model, a, "rule")].kind, SymbolKind::Member);
+}
+
+// @lfy def/model/main.lfy:bind#bind:bind:93c5268d20befb000ee5648dec6bb01d0e3f7414ba2340321ba1115432ad0e90
+// @lfy def/model/main.lfy:bind#bind:bind:643d4a3ad6bf896608420d4cea390c9ad3caf7b86c19c85c2582278080f7cb41
 #[test]
 fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
     let model = bind_one(
@@ -739,7 +811,7 @@ fn a_type_parameter_is_declared_in_the_scope_of_its_declaration() {
     }
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:44cdaa0dd8ff1d388a4ba9da662d03e720dba1d7fa314159c62c0e2ef2fbaf61
+// @lfy def/model/main.lfy:bind#bind:bind:fddf44919f484fdf1157ac285fae11ba183fdc5f899939106c66008b5648600b
 #[test]
 fn a_type_parameter_has_no_definition_traits_or_criteria() {
     let model = bind_one(
@@ -759,7 +831,6 @@ fn a_type_parameter_has_no_definition_traits_or_criteria() {
 
 // @lfy def/model/main.lfy:bind#bind:bind:de2ee272797ce7725fdbaf5ab6d10caca2ea348db8e96a5e734f5a52d980695f
 // @lfy def/model/main.lfy:bind#bind:bind:2dfb72545f7c3d290642c5da47ce2e5e122656af1ab30a73baeefd59d6e4d820
-// @lfy def/model/main.lfy:bind#bind:bind:45a6b381d3024437825c2ee7e471dd217767d5853d91da72139cdaeda76dca94
 #[test]
 fn object_key_declares_only_in_an_enum() {
     let model = bind_one("enum Color { red = 'r', blue = 'b' } const o = { key = 1 };");
@@ -785,8 +856,6 @@ fn object_key_declares_only_in_an_enum() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:0e756633c85cba82bf7a5348e64ed3d981aaff25b46e0d41245a2e8e0a9e26c7
-// @lfy def/model/main.lfy:bind#bind:bind:bbb55605b75a4aff35d2f4a133cb91dd155e8e1ad8bdaa30a88aa2f9cbf2a1ab
-// @lfy def/model/main.lfy:bind#bind:bind:8e746b442e4c9a6b3bc9e00da33f21f79095ae60cd1889a4e2cac569bddcdf6d
 #[test]
 fn member_statement_declares_a_member() {
     let model = bind_one("d D { $x: `d` = string; $ys = number[]; }");
@@ -818,9 +887,9 @@ fn member_statement_declares_a_member() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:fa131e5b0cb7099b74042a26579d4df9e7c4ad32262563937e8fc7a84b49d736
-// @lfy def/model/main.lfy:bind#bind:bind:a441b88a340d1509080a83bef495d0d6a4b98ddf54ab45f89c9abdf9077f246a
-// @lfy def/model/main.lfy:bind#bind:bind:886eef30c0c22d297465c975c50d97c4dbef4215f13da866a53459087f5bff71
+// @lfy def/model/main.lfy:bind#bind:bind:583d8bd2aacbcdee71c5cda8c83518a8d2ab447460f739666f8df8093b6fc7a5
+// @lfy def/model/main.lfy:bind#bind:bind:5e66df798807d759740c0bde7780004559259dcb44c7a9fbe44fe762a615c470
+// @lfy def/model/main.lfy:bind#bind:bind:5dafa3a6e52ad501215f54b081dab8720e0d83c56fb7277975f861591af27874
 #[test]
 fn scope_current_entity() {
     let model = bind_one("d A {} with A { const x = 1; } for (const i in [1]) { const j = i; }");
@@ -889,9 +958,8 @@ fn use_without_as_imports_own_symbols_only() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:f01fb64d3e7e452e03983fa025e2e70ec00f3fab38e57530b009e9e8adf7bec9
+// @lfy def/model/main.lfy:bind#bind:bind:85e0b777d37918aa64dd528397bd3f5891099278b7d9d4b0c17cd037bcc845ff
 // @lfy def/model/main.lfy:bind#bind:bind:ff80c9e9250025190f5b25a2ac7ee8d46d800e996782e73367a03a40cab77dfb
-// @lfy def/model/main.lfy:bind#bind:bind:d3ae38480bbebeead4536adbbba75ad7ebb4e4ed4f93bade3e8fc4564fc3f4f2
 #[test]
 fn use_with_as_resolves_members_in_the_module() {
     let b = source("b.lfy", "d B {} trait tb {}", &[]);
@@ -980,7 +1048,6 @@ fn an_in_loop_over_a_module_visits_entities_and_an_of_loop_names() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:10a6088c6ab81cb4ca33f996b33bb4781657309f2463c5fb93876dec10a950d4
-// @lfy def/model/main.lfy:bind#bind:bind:9955bbe15ed40b6f82e2b6d30522e127d2cadb0bb21faa90c208a166fc0ab091
 #[test]
 fn a_from_loop_over_a_module_visits_names_and_entities() {
     let b = source("b.lfy", "d B1: `one` {} d B2: `two` {}", &[]);
@@ -1034,7 +1101,7 @@ fn use_of_nothing_imports_nothing() {
 
 // ---- Expand -------------------------------------------------------------------------
 
-// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
+// @lfy def/model/main.lfy:bind
 #[test]
 fn apply_call_applies_the_trait() {
     let model = bind_one(
@@ -1045,7 +1112,7 @@ fn apply_call_applies_the_trait() {
     );
     // No prelude declares Trait here, so apply itself is found nowhere and says so; the
     // call applies the trait all the same.
-    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+    // @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
     assert_eq!(
         problems(&model),
         vec![
@@ -1078,8 +1145,7 @@ fn apply_call_applies_the_trait() {
     assert!(!model.entities[alt].has_trait(marker));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
-// @lfy def/model/main.lfy:bind#bind:bind:571b8356205c135bb2d9b90b56d8df46f15f9cd3fc521eb6dc1aa19a6ee63cf8
+// @lfy def/model/main.lfy:bind
 #[test]
 fn extends_chain_applies_every_base() {
     let model = bind_one(
@@ -1115,8 +1181,7 @@ fn extends_chain_applies_every_base() {
     assert_eq!(model.entities[a].extenders(), &[b]);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:221ed4d3e6531a5f77ec17c2a8f11672a8fe2c59c92c346a1bf19434f5ddac4d
-// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
+// @lfy def/model/main.lfy:bind#bind:bind:972725faf5a2897534a0e4be77c67b10e2cce3499191a51d3ab27e1bbe14d1ae
 #[test]
 fn applied_trait_body_lands_on_the_receiver() {
     let model = bind_one(
@@ -1145,7 +1210,7 @@ fn applied_trait_body_lands_on_the_receiver() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
+// @lfy def/model/main.lfy:bind
 #[test]
 fn the_most_recently_applied_trait_declares_the_member() {
     let model = bind_one(
@@ -1182,7 +1247,7 @@ fn the_most_recently_applied_trait_declares_the_member() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:c1bf94ef6ed00fca9ed870486ad290e18a6640d029d6830b1b8b55b921ffc125
-// @lfy def/model/main.lfy:bind#bind:bind:b0b2e144f0abdb7ee4d31f527036b32110c13cb48b7ec84844691567270a06ee
+// @lfy def/model/main.lfy:bind#bind:bind:bda572541abe6b3dd683ffb7f7c5782bdf7382a98d9a342a3b8d72558c0dc03f
 #[test]
 fn a_child_scope_shadows_the_parent_without_a_problem() {
     let model = bind_one("const n = 1; d A { const n = 2; const m = n; }");
@@ -1205,7 +1270,7 @@ fn a_child_scope_shadows_the_parent_without_a_problem() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
+// @lfy def/model/main.lfy:bind#bind:bind:e30b7230cf90b227b4300b5748895116c69879d10c31441e5e03a08f27cca6cc
 #[test]
 fn an_ace_statement_runs_in_the_expand_pass() {
     let model = bind_with_prelude("trait t {} d A {} ace t.apply(A);");
@@ -1217,8 +1282,7 @@ fn an_ace_statement_runs_in_the_expand_pass() {
     assert_eq!(entities_of(&model, t), vec![a]);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1da0f01539051d9145ef56f65d5551949f3ed65e4c92a812503683b5887a0646
-// @lfy def/model/main.lfy:bind#bind:bind:067910b6745ea51ce3ab1cbfb3fcad312a3d934bfba10a864d9f5846d4242dcb
+// @lfy def/model/main.lfy:bind#bind:bind:e80995ebd6bedeb0e22990364e986ca70be730d1538f8b8ac004e3c863e88d56
 #[test]
 fn trait_entities_in_file_then_application_order() {
     let b = source("b.lfy", "trait t {} d B2 is t {} d B1 is t {}", &[]);
@@ -1229,7 +1293,7 @@ fn trait_entities_in_file_then_application_order() {
     );
     let model = bind(vec![b, a]);
     // Nothing but the apply these files bind without a prelude, which is found nowhere.
-    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+    // @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
     assert_eq!(problems(&model), vec!["t.apply: t has no member apply"]);
     let t = model.symbols[file_symbol(&model, 0, "t")].entity;
     let ids = |name: &str| model.symbols[model.lookup(model.file_scopes[1], name).unwrap()].entity;
@@ -1241,16 +1305,6 @@ fn trait_entities_in_file_then_application_order() {
 // ---- Resolve ------------------------------------------------------------------------
 
 // @lfy def/model/main.lfy:bind#bind:bind:99a57bc2ff67ce0d744b40d5abbde3870acf40c8165f6cf1b133c60dfd86a027
-// @lfy def/model/main.lfy:bind#bind:bind:32c60bdf82cb7705cb51c3b35fbb3f4e649b4872dd414b35c67e7b2606e884d3
-// @lfy def/model/main.lfy:bind#bind:bind:e69210d10f8c7931a45bb4d85dae37eaceb483a564cfa286aabd5e66f8f1e1c9
-// @lfy def/model/main.lfy:bind#bind:bind:2a06bae5dbe1fe5680fff3039729fc197cbde09ea7fa1c1e29b09c0fc25072c4
-// @lfy def/model/main.lfy:bind#bind:bind:6b4f36e3c8f4d991faff45ca0651da363c58e852f83fd817fc0e1ebc7d784648
-// @lfy def/model/main.lfy:bind#bind:bind:e557e6405c5c8bfa60cd9cca2935168c2afe91623eca8cc583f6828f6820e169
-// @lfy def/model/main.lfy:bind#bind:bind:c9f0a1e6aba1b083fa60e7422e08c47f528ea06205fa2d5752da93ee47838b79
-// @lfy def/model/main.lfy:bind#bind:bind:d6ab185717d628767979eb1314046da1e1f79bce6219585aab651139c1938a50
-// @lfy def/model/main.lfy:bind#bind:bind:c099c6ff72c69baef6f4edc3f0cfc00298d27a9da1bc3c2374f110c0ed0c5e2f
-// @lfy def/model/main.lfy:bind#bind:bind:668e02470f2b471415dfbf8c632ce70ed12a4d5f6fd3b2959fb65789c234c2df
-// @lfy def/model/main.lfy:bind#bind:bind:9f2780d84ca8391dd35dac99c09e7230cc991dd3797a32e55ac06ff87d344fdf
 #[test]
 fn dereference_yields_the_symbol() {
     let model = bind_one("d X {} const y = &X;");
@@ -1265,16 +1319,7 @@ fn dereference_yields_the_symbol() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:07e3b6151afda7d5560da7b993bf6696deec981b1bc4bbf729faed935d554b89
-// @lfy def/model/main.lfy:bind#bind:bind:e2e8ec5c35e1228584610ea4cd2dee48b4ed6c2d6973fb0e7dc65a72eb78385e
-// @lfy def/model/main.lfy:bind#bind:bind:d3901f88a9569ce19c2bc9d00f9959b72045123b48617e8bc68f367096685313
-// @lfy def/model/main.lfy:bind#bind:bind:2a18e642919baaef8f0797cc3b493390c0e881884fe466f8a36f2ad6877604a6
-// @lfy def/model/main.lfy:bind#bind:bind:ab9898b247e4259c95082881b1968bb4c7d681835c909835fdb9c04247940739
-// @lfy def/model/main.lfy:bind#bind:bind:dd8dd16b1c42aa148bef08bb923a00359f0c127ce9f55d6411fbfbdbb01b2cfc
-// @lfy def/model/main.lfy:bind#bind:bind:8b7a7f93e92d8e4fba0e788e1000fa4086d968d6ce50b51e9f8d6a8437472f3e
-// @lfy def/model/main.lfy:bind#bind:bind:4d3ce6a4fc6ae73b7559bb618dbf0f8998cd065b7307b54a45fb70465112bf21
-// @lfy def/model/main.lfy:bind#bind:bind:cd36908b44a20c3978ea77d3ccd7863c3e77f076abf357067d5b9ec8e9c0c9f9
-// @lfy def/model/main.lfy:bind#bind:bind:af8c53badcf46f0ee4e788533fe37e62151b0ee14f8eeeccc9f54a2b47adc14b
-// @lfy def/model/main.lfy:bind#bind:bind:2a1d893481ec8d0792e997a3b3a9c50559931f760269ce149a167b87d1b359d1
+// @lfy def/model/main.lfy:bind#bind:bind:0e0ebc3f4e95b4a0d73136e1a0a343ae561cd0d20a56025c7457b59f3702bf7d
 #[test]
 fn previous_yields_the_earlier_declaration() {
     let model = bind_one("d X {} const y = 1; const z = ^^; d W { const w = ^^; }");
@@ -1346,7 +1391,7 @@ fn template_reference_resolves_in_scope_or_to_the_rule() {
     assert_eq!(usages_of(&model, foo).len(), 1);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:da4fb5f27c3ed1507aa87360e55a3a8894f028a878bd829cce9236d304a1f900
+// @lfy def/model/main.lfy:bind#bind:bind:0296df6a1500806f0d09ded31855a827561c1a703c7de3a10d6ce695067b48bc
 // @lfy def/model/main.lfy:bind#bind:bind:d20244dc3bdb37be74e170d6902fb9e329aa1be9313397e41f2f3b4021507236
 #[test]
 fn two_rule_entities_with_the_same_identifier_is_a_problem() {
@@ -1377,9 +1422,8 @@ fn two_rule_entities_with_the_same_identifier_is_a_problem() {
     assert_eq!(usage(&model, reference).symbol, None);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1656dbcd56f681c7b65bd1d291ef5a382398076633d62daca71534bfc4422f0b
-// @lfy def/model/main.lfy:bind#bind:bind:54fc1c46c53026754a5889c33567b8051a8417e687fc955e0812780e98d08641
-// @lfy def/model/main.lfy:bind#bind:bind:3fc430c9d31bb72af4f7f3f71734f2ce9640845b349c5cdf45b3551ab218e478
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
+// @lfy def/model/main.lfy:bind#bind:bind:96fe0cf1480dabf1b8ddea3f3c4ae29add39001d68d41f069dc4e8035dce6095
 #[test]
 fn unknown_context_property_is_a_problem() {
     let model = bind_one("d X { const a = @identifier; const b = @nonsense; const c = X@type; }");
@@ -1404,9 +1448,10 @@ fn unknown_context_property_is_a_problem() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1656dbcd56f681c7b65bd1d291ef5a382398076633d62daca71534bfc4422f0b
-// @lfy def/model/main.lfy:bind#bind:bind:f45100ea86a4bf3122e0abff672621b70a23c3d7b26dc3d3999269c6bebd8654
-// @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
+// @lfy def/model/main.lfy:bind#bind:bind:88eb2d2cca1fc9e39dfbb1fd77266bdb656d9b5b76c1c8d103d7ea2000ccaa4d
+// @lfy def/model/main.lfy:bind#bind:bind:96fe0cf1480dabf1b8ddea3f3c4ae29add39001d68d41f069dc4e8035dce6095
+// @lfy def/model/main.lfy:bind#bind:bind:38106a1cd270b7104392d7af5d8562882a29a648334a1b33c02a79d4044e59b6
+// @lfy def/model/main.lfy:bind#bind:bind:6d483b3015a5d053cdd10c8fb53309930fd856c54535af7ef7e3b4efc15ae894
 #[test]
 fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     let model = bind_with_prelude(
@@ -1441,7 +1486,7 @@ fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     // Then those members of the kind data whose value is a function, whether a reference
     // to a fn declaration, as `Trait.apply` is, or an inline function, as `Entity.like`
     // is.
-    // @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
+    // @lfy def/model/main.lfy:bind#bind:bind:6d483b3015a5d053cdd10c8fb53309930fd856c54535af7ef7e3b4efc15ae894
     reads_member(
         &model,
         node(&model, file, E::Member, "t.apply"),
@@ -1456,24 +1501,23 @@ fn the_kind_data_of_an_entity_gives_its_context_and_function_members() {
     );
     // A member of the kind data whose value is not a function is not one of them, and,
     // the left side being a trait no more lenient than any other, that is a problem.
-    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+    // @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
     let entities = node(&model, file, E::Member, "t.entities");
     assert_eq!(usage(&model, entities).symbol, None);
     assert_eq!(problems(&model), vec!["t.entities: t has no member entities"]);
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:88eb2d2cca1fc9e39dfbb1fd77266bdb656d9b5b76c1c8d103d7ea2000ccaa4d
-// @lfy def/model/main.lfy:bind#bind:bind:a356c2ee0fd08dd5f3953eb8e84bc8af861d7173c6287adb67512ab6d4e029f2
-// @lfy def/model/main.lfy:bind#bind:bind:8b869706f9b3accf44d102a300f31ec9ef4cf241f8ba7f345547a713a9490bd1
-// @lfy def/model/main.lfy:bind#bind:bind:5b74506b3363b1aae065b1fdec5c96d90b2c4e69a5dfc57c8180c308ef498f52
-// @lfy def/model/main.lfy:bind#bind:bind:aaa4ae99059decb2958f1fa1fb24232b78a498e93bdd897a58541892f93ff5ef
-// @lfy def/model/main.lfy:bind#bind:bind:b8f9a63a7bac13dd3728bf50f905856ac618f7587ed7dd57fb9205a2abcee8a4
-// @lfy def/model/main.lfy:bind#bind:bind:80ceff5b377b80eb2b9fa07646b4f629fba299dc5f9d390dd9d0f9893d90b09f
-// @lfy def/model/main.lfy:bind#bind:bind:7e90f7c284b5be141502975a2b098d2779ec3d98cb518d1b1a8853c3b53a46e9
-// @lfy def/model/main.lfy:bind#bind:bind:3ab29a29c8bb813c36da2be4ef0f92692a689f0cf5b0bb0ca24a096573575bf4
-// @lfy def/model/main.lfy:bind#bind:bind:ebbdddbf148f9ae5cf3046d76e5d8a942c87d1d978328ed3821c87b57e45dad6
-// @lfy def/model/main.lfy:bind#bind:bind:76a4d430c727407d21e2a4e3d554a6ef83d1bb4d641267265339c8d06cf90517
-// @lfy def/model/main.lfy:bind#bind:bind:221dcd6b1a848777f435f6732b8d88111936a85d08b720e0a88111ebada5e974
+// @lfy def/model/main.lfy:bind#bind:bind:7469dc0e51b05a45c42ac07d3559b9d5c94720317dde6eaf087ee72618320558
+// @lfy def/model/main.lfy:bind#bind:bind:4ab962f1f8c2a853dbcf4a5ed964a4812b80251caabdfe1adf58317d38eb7f86
+// @lfy def/model/main.lfy:bind#bind:bind:6bba9856ded82c70f13da7b2aa0fbbc2e366d1b54bc63d982c2c791cffc02b9d
+// @lfy def/model/main.lfy:bind#bind:bind:e68fadbfb501e47c9319d0bfb58705fa141e710e9cb1c09e921faabea5f58c85
+// @lfy def/model/main.lfy:bind#bind:bind:deb9d97c7e68090dbe776aad57845b8cd480921494d2fa9c5591f79157d44d87
+// @lfy def/model/main.lfy:bind#bind:bind:d94eac3ad1d5010a0fecbe38ebe7c578f73ae2916e2873e1893b1d4e85159377
+// @lfy def/model/main.lfy:bind#bind:bind:643d4a3ad6bf896608420d4cea390c9ad3caf7b86c19c85c2582278080f7cb41
+// @lfy def/model/main.lfy:bind#bind:bind:ef1de1afcf97b2998a6d8056b1c312dbed57285fc5c709fa30732826d39b2479
+// @lfy def/model/main.lfy:bind#bind:bind:2a6a30770d94c3859fa6999ffee448372b61158346958fcdfb4448bdb53f5f3a
+// @lfy def/model/main.lfy:bind#bind:bind:96fe0cf1480dabf1b8ddea3f3c4ae29add39001d68d41f069dc4e8035dce6095
 #[test]
 fn the_kind_data_of_an_entity_is_the_prelude_data_for_what_it_is() {
     let b = source("b.lfy", "d B {}", &[]);
@@ -1515,15 +1559,16 @@ fn the_kind_data_of_an_entity_is_the_prelude_data_for_what_it_is() {
     }
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:f775fc4695880b8ef1a7560413544e82c0822c160f5752543d23185eae7d3279
-// @lfy def/model/main.lfy:bind#bind:bind:3a7604505d0fae950d2b332953bd4b51a5eb74400f4be99b8f286dff6b272317
-// @lfy def/model/main.lfy:bind#bind:bind:36d3a4f430e1d50dd1a350cd76f198fdd8471baa2fcda7239bee1b6b97bbb3fb
-// @lfy def/model/main.lfy:bind#bind:bind:015539ca26f9f472c0d3afbac23542275020fe8a601de69e1fd2a09140f22ad9
-// @lfy def/model/main.lfy:bind#bind:bind:6dc6ae69739114a0ec8bacb51ae7f36bdf449ed6a1965b5947de642dc19028d5
-// @lfy def/model/main.lfy:bind#bind:bind:daf2463fcb0a875928be7b6f9e61dffa052528a9106f0ee3cd87f1494821a585
-// @lfy def/model/main.lfy:bind#bind:bind:0a973592bab84a386122de72f70f1539acabbc945392d06cf8b501f9c0c877a5
 // @lfy def/model/main.lfy:bind#bind:bind:a5c1bc569ddb92f8dd361e4827d274e8148ec9c79e5f47f9178da3acd27018eb
 // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+// @lfy def/model/main.lfy:bind#bind:bind:8615b161cda09a3689fd6b2a04cf2bf8b34b863a2664fe21060d5e9cdad694ea
+// @lfy def/model/main.lfy:bind#bind:bind:ee99077d54a77f22a5f264d53d5d58e5e0c6b863c79f255573056c5e7d995703
+// @lfy def/model/main.lfy:bind#bind:bind:60a286d3f7df83f47847fa8f557446c01e8bb39dd770556bedea6afd56d5fc3b
+// @lfy def/model/main.lfy:bind#bind:bind:5f2d132c545382457130c6e190c71974d985527b87f603c95e936bb60ad7edf0
+// @lfy def/model/main.lfy:bind#bind:bind:5b5df5fcbe0bfad1f4242837461d9e5756207c0a361e81048345a263528d5740
+// @lfy def/model/main.lfy:bind#bind:bind:f3c216ffbdb497c52484ec15de756394007cc9b0e655697d7a2d5d8e241857de
+// @lfy def/model/main.lfy:bind#bind:bind:970d0f64685c6d21821fc7b739fbd15e65769f02adef97284ae744e20be0e6a1
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
 #[test]
 fn a_value_resolves_the_members_of_its_base_data() {
     let model = bind_with_prelude(
@@ -1558,7 +1603,7 @@ fn a_value_resolves_the_members_of_its_base_data() {
 }
 
 // However long the chain.
-// @lfy def/model/main.lfy:bind#bind:bind:bf65b85fc78ccacf601d449ba65c2fe1d663a4e31a9ceebaeaa066b1c6b6947a
+// @lfy def/model/main.lfy:bind#bind:bind:154744cba7a0648bfbee408864406e16fb0a9567bd411590ebb2634557f61d87
 #[test]
 fn add_on_the_criteria_of_a_context_is_the_binders_own_call() {
     let model = bind_with_prelude(
@@ -1574,7 +1619,7 @@ fn add_on_the_criteria_of_a_context_is_the_binders_own_call() {
 }
 
 // Directly, and on the list an earlier add yields.
-// @lfy def/model/main.lfy:bind#bind:bind:d3f952194240725b31fde86ab04d26ba824b9c911a3712e22195a9e06b402ee6
+// @lfy def/model/main.lfy:bind#bind:bind:154744cba7a0648bfbee408864406e16fb0a9567bd411590ebb2634557f61d87
 #[test]
 fn add_on_the_other_lists_of_a_context_is_the_binders_own_call() {
     let model = bind_with_prelude(
@@ -1597,19 +1642,9 @@ fn add_on_the_other_lists_of_a_context_is_the_binders_own_call() {
     }
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
+// @lfy def/model/main.lfy:bind#bind:bind:6d483b3015a5d053cdd10c8fb53309930fd856c54535af7ef7e3b4efc15ae894
 // @lfy def/model/main.lfy:bind#bind:bind:092cce29356879ba213cc57e7d617f3b488aa91d35f1da0d98ac951bceae5ce4
-// @lfy def/model/main.lfy:bind#bind:bind:f40c2ff49a3803c91a5f9a9283f5a313f9b9224704a3fdbc0e9bf8b09005956f
-// @lfy def/model/main.lfy:bind#bind:bind:2abf4d9fa69146d5d0dfbb26a41bc0da449e5be37ebda475b4de6b9d6c02c1c5
-// @lfy def/model/main.lfy:bind#bind:bind:04fb3c64b7c7b2484f7c1be12c116c49f1d4e6c6326372e92648cc4d87717575
-// @lfy def/model/main.lfy:bind#bind:bind:2425325a075c7207cb98486a7daf93b5f45141c0493136a45e290d23daeefb5b
-// @lfy def/model/main.lfy:bind#bind:bind:aaa129c2253c0d82ec07be996a68a87b1f6607bb79121db1e47ff35975a2b414
-// @lfy def/model/main.lfy:bind#bind:bind:1509067f48ceee99e89f3d70b90317c549fabf2680bbe496731dc97d0d406020
-// @lfy def/model/main.lfy:bind#bind:bind:03f39217927386adaab023f3712a5bc35ba52ce9f64e88d5d2d9450d5397540a
-// @lfy def/model/main.lfy:bind#bind:bind:6ce486ccc4bd3c8f65ee2b76f0cf81cb537d59df360ea1f63fa5f8635512c746
-// @lfy def/model/main.lfy:bind#bind:bind:e167f72c0dbe53333d7546b4ac1ea80ef505822d8a0d05fb9fc60e857e63ccbf
-// @lfy def/model/main.lfy:bind#bind:bind:4d38c9908f866030ea46aaf04e5b470c13afb61c286069fb4ee5f242c0709288
-// @lfy def/model/main.lfy:bind#bind:bind:4af966b23fd9910fb322962e4738cd847733ab278e94edeebcce7db6a7bc826f
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
 #[test]
 fn member_on_data_resolves_to_its_member() {
     let model =
@@ -1634,7 +1669,7 @@ fn member_on_data_resolves_to_its_member() {
     assert_eq!(usages_of(&model, m).len(), 3);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:73bdd9a69d2bb9a1c085b8024b2966a2862037f28e2e356ca8d1cacc88ecf0d7
+// @lfy def/model/main.lfy:bind#bind:bind:6d483b3015a5d053cdd10c8fb53309930fd856c54535af7ef7e3b4efc15ae894
 #[test]
 fn the_optional_value_accessor_reads_the_value_layer() {
     let model = bind_one("d D { $m: `x` = string; } const v = D?.m;");
@@ -1645,7 +1680,7 @@ fn the_optional_value_accessor_reads_the_value_layer() {
     assert_eq!(read.symbol, Some(member(&model, entity(&model, "D"), "m")));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:b8d0de2015d64309085d195ec5dfe0da392e5951c4b4f6f9aa152e60707596c6
+// @lfy def/model/main.lfy:bind#bind:bind:1f1de1c02f09b3bb5636fac9080f9daf36806ec9284ab40dd72c9325b3a67b39
 #[test]
 fn the_scope_accessor_with_no_name_yields_the_entitys_scope() {
     let model = bind_one(
@@ -1664,7 +1699,6 @@ fn the_scope_accessor_with_no_name_yields_the_entitys_scope() {
 
 // @lfy def/model/main.lfy:bind#bind:bind:2a5068f916f94485b682af3154cd51a8d3c0343e4c82670f3036ec3d2c890c5c
 // @lfy def/model/main.lfy:bind#bind:bind:997e81cefd2e242372fae5b5fb01542d9a18bd3ccc915f34d1c6f2d310ef7c15
-// @lfy def/model/main.lfy:bind#bind:bind:edf4385d06011fef0e53dd9f7e5cf657eb9102dc6b160cbe266745dbd4591f35
 #[test]
 fn parent_scope_accessor_yields_the_containing_scope() {
     let model = bind_one(
@@ -1685,7 +1719,7 @@ fn parent_scope_accessor_yields_the_containing_scope() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
 #[test]
 fn a_member_of_an_unresolved_name_is_not_a_second_problem() {
     let model = bind_one("const y = z.deeper;");
@@ -1699,7 +1733,7 @@ fn a_member_of_an_unresolved_name_is_not_a_second_problem() {
 
 // What a predicate reads includes the members of the traits the entities carrying it
 // carry, so a name one of them has is found.
-// @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
 // @lfy def/model/main.lfy:bind#bind:bind:ff80c9e9250025190f5b25a2ac7ee8d46d800e996782e73367a03a40cab77dfb
 #[test]
 fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
@@ -1716,7 +1750,7 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
     let file = model.file("a.lfy").unwrap();
     // A name a carrier of the trait has is found: `x` is one of the entities carrying t,
     // and A, the one of them, carries u as well, so the member u declares is read.
-    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+    // @lfy def/model/main.lfy:bind
     let u = model.symbols[file_symbol(&model, file, "u")].entity;
     assert_eq!(
         usage(&model, node(&model, file, E::Member, "x.only")).symbol,
@@ -1742,7 +1776,7 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
     );
     // With no prelude bound the kind data of every entity is empty, so a name only the
     // prelude would give is found nowhere.
-    // @lfy def/model/main.lfy:bind#bind:bind:05d176c9b7aafffe83e81371443bc45c673a2646c763b00b94e3722de4894b51
+    // @lfy def/model/main.lfy:bind
     let model = bind_one("trait t {} d A is t {} const p = t.nope; const q = A.nope;");
     assert_eq!(
         problems(&model),
@@ -1755,17 +1789,7 @@ fn nothing_found_for_a_name_is_a_problem_whatever_the_left_side_is() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:7b5a1fec626e619b600c3faefaa81db781f8ebdd297cba7893369d95d1f212c7
-// @lfy def/model/main.lfy:bind#bind:bind:e45dadaf0f17476dd7dedb3f1b7ce88d5547c50d3539da952553478627450b84
-// @lfy def/model/main.lfy:bind#bind:bind:09acc3b55d81eeaa041cf60ddceb7ff8447246b49a92521bbab0418f51832ea4
-// @lfy def/model/main.lfy:bind#bind:bind:dd0b1a2f42f816453a5f2d669a3b69cd6763325728a777c1865141db90c4b308
-// @lfy def/model/main.lfy:bind#bind:bind:6104ac7c53e3efde29dcfbff0aa1805baf2099dbc97a1b9ee20c7aad28581c90
-// @lfy def/model/main.lfy:bind#bind:bind:ed3736b2c025d5b7f8d94c6927682cb2384984340ac59ac6487bf35dace2acea
-// @lfy def/model/main.lfy:bind#bind:bind:5c3e9436af536d9d95e0482ea52ab4548919afafea1f6d030b56933da1eb30ce
-// @lfy def/model/main.lfy:bind#bind:bind:432de49bbe514b26757b33c05d8efad7778e9fd1bc88d8721d78728911029f31
-// @lfy def/model/main.lfy:bind#bind:bind:1c8b254cfb18732e9f7a146cce0b21d40caeaf64d8bec6a214ef94453d8adfc3
-// @lfy def/model/main.lfy:bind#bind:bind:eededc489d82a4b6eb550e1ca0399f0271508bc8220e997a6eecaa9dd9143ee0
-// @lfy def/model/main.lfy:bind#bind:bind:feb178c4564461808bb2f92ac59057118df83b3479129a8953a8f784357ae0a0
-// @lfy def/model/main.lfy:bind#bind:bind:7c5c2d1a1acecca81102ed941e78706b45007e5adaf413a0a7d337a5fe044f0f
+// @lfy def/model/main.lfy:bind#bind:bind:bda572541abe6b3dd683ffb7f7c5782bdf7382a98d9a342a3b8d72558c0dc03f
 #[test]
 fn name_resolves_to_the_nearest_scope() {
     let model =
@@ -1786,7 +1810,7 @@ fn name_resolves_to_the_nearest_scope() {
     assert_eq!(usages_of(&model, global).len(), 1);
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:a755a701a34d1fd778186200ef15ab0ce0f9406e66661bd0fa59fb1fcc6ba830
+// @lfy def/model/main.lfy:bind#bind:bind:1ae5ed7b2697e5dba785ff51e02191eb4c4471dbae9009ae9f110e5bddf2cd82
 #[test]
 fn a_name_of_a_type_parameter_yields_the_parameter() {
     let model = bind_one("d Item {} d Box<T extends Item> { $item: `x` = T; }");
@@ -1806,7 +1830,7 @@ fn a_name_of_a_type_parameter_yields_the_parameter() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:d0ff9820f3d48b6bc45af20afec3e2cea3d2a230642bc7e57e4e2bc1adf1828f
-// @lfy def/model/main.lfy:bind#bind:bind:0259c8e9fbd86c6458b4c5593f1bb4c67eeddd54fd8102f5960102fa28338dbb
+// @lfy def/model/main.lfy:bind#bind:bind:8e2d85d92800db4ab851664cdba002e06f2897b88f979a103ccb18275251dc53
 #[test]
 fn a_member_on_a_type_parameter_reads_what_it_extends() {
     let model = bind_one(
@@ -1824,10 +1848,7 @@ fn a_member_on_a_type_parameter_reads_what_it_extends() {
 
 // ---- Properties ---------------------------------------------------------------------
 
-// @lfy def/model/main.lfy:bind#bind:bind:8d617a98f5a5558d05ad10e6e287da406ab93ec4a4bdacbe24c49a600ef02c2f
-// @lfy def/model/main.lfy:bind#bind:bind:80d447091f53e77fb579e88f41ac1837931ebc308c69fe45415e2f5bfdb498cc
-// @lfy def/model/main.lfy:bind#bind:bind:221dcd6b1a848777f435f6732b8d88111936a85d08b720e0a88111ebada5e974
-// @lfy def/model/main.lfy:bind#bind:bind:d4419aeda4af43795c32ea6f7411da0066cb5743eda3b3264adedc81cc7af5be
+// @lfy def/model/main.lfy:bind
 #[test]
 fn identifier_definition_parameters_and_output() {
     let model = bind_one(
@@ -1871,8 +1892,7 @@ fn identifier_definition_parameters_and_output() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:1a430e9dac42980049ee24f618925613a76fe1a8db9d80420dc2626ef11fa6aa
-// @lfy def/model/main.lfy:bind#bind:bind:d49c7fe57891fba23c93b269b5c27201144aa453a7833711736a4f7a154cb000
+// @lfy def/model/main.lfy:bind
 #[test]
 fn an_alias_and_an_external_declare_a_symbol_and_an_entity() {
     let model = bind_one("d A {} alias B = A; external C = A;");
@@ -1893,7 +1913,9 @@ fn an_alias_and_an_external_declare_a_symbol_and_an_entity() {
     assert_eq!(model.entities[c].ty, Some(TypeRef::Entity(a)));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:508681db7c030dc2c00808ebecd34aba218e850f3db4b37c512dab3cf3477854
+// @lfy def/model/main.lfy:bind#bind:bind:121c6cc109446373ec3499d3bf3ced3751d90b778e159a288124ae94e9d5201c
+// @lfy def/model/main.lfy:bind#bind:bind:e3a0d7578b24b0586d11c50514b0da77e12ccd6f18672cfca1ef83805e2beec3
+// @lfy def/model/main.lfy:bind#bind:bind:f355d3a4fbe3ba176fa6760801c02f0e6a826a0bd65f0a917451f111c3c9a0dc
 #[test]
 fn an_index_with_nothing_inside_is_a_list_of_the_left_side() {
     let model = bind_one("d A {} const xs: A[] = []; d D { $one = A[]; $two = A[][]; }");
@@ -1917,10 +1939,7 @@ fn an_index_with_nothing_inside_is_a_list_of_the_left_side() {
     assert_eq!(xs.item_type, Some(TypeRef::Entity(a)));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:d9ede97c9e2f6de0aa7e3e8e88e0176270afebba2e167037de479ce59a6f8a92
-// @lfy def/model/main.lfy:bind#bind:bind:0e87162d10144dc4383897118c83c8cc7e3bca9709161f3d01d5397116f56574
-// @lfy def/model/main.lfy:bind#bind:bind:36511244a9400c48a07768df58b5ee4c7b2ebe65a4b0eb0d11a1e395a5eb601c
-// @lfy def/model/main.lfy:bind#bind:bind:9e352bb1b1c868b7701ec0be818e4e42123eedf31e70b48e4f152ac4c5629df0
+// @lfy def/model/main.lfy:bind
 #[test]
 fn type_of_a_declaration_is_itself() {
     let model = bind_one("d A {} trait T {} type Ty { k = string, } enum En { a = 'a' }");
@@ -1932,9 +1951,7 @@ fn type_of_a_declaration_is_itself() {
     }
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:e43803f7656aa0ecb508e8e152a7c8112bc400b428e014bfb1debbfb2fa72b74
-// @lfy def/model/main.lfy:bind#bind:bind:bbb55605b75a4aff35d2f4a133cb91dd155e8e1ad8bdaa30a88aa2f9cbf2a1ab
-// @lfy def/model/main.lfy:bind#bind:bind:c396905bbe3b0b2e5c0d1af15e9ef59df60124c2d21f692dcd4787efdac378c0
+// @lfy def/model/main.lfy:bind
 #[test]
 fn type_and_item_type() {
     let model = bind_one(
@@ -1965,8 +1982,7 @@ fn type_and_item_type() {
     assert_eq!(one.item_type, None);
     // A bare List, with no argument, has no item type; List of one argument is spelled
     // as a list, so it is the same type as the brackets give.
-    // @lfy def/model/main.lfy:bind#bind:bind:8578766ecf0458c14a5e431b3e5fc185c3eb43f56d3ec361b2d4421f3e556b8d
-    // @lfy def/model/main.lfy:bind#bind:bind:0e87162d10144dc4383897118c83c8cc7e3bca9709161f3d01d5397116f56574
+    // @lfy def/model/main.lfy:bind#bind:bind:121c6cc109446373ec3499d3bf3ced3751d90b778e159a288124ae94e9d5201c
     let mut sources = prelude();
     sources.push(source(
         "a.lfy",
@@ -1990,7 +2006,7 @@ fn type_and_item_type() {
     );
     // This prelude's List lists no type parameter, so the one argument is an arity
     // problem; the type is bound with the argument as written all the same.
-    // @lfy def/model/main.lfy:bind#bind:bind:d07e7150d53c64dd6694614b0a458127dcc037d09d6358431cd7f19a8a2ce6f4
+    // @lfy def/model/main.lfy:bind#bind:bind:3ac95c4e5cc4405dcbbe7fdeffdc22176a54f84d56caf246b594f4d1797bc365
     assert_eq!(model.problems.len(), 1, "{:?}", problems(&model));
     assert_eq!(
         model.problems[0].node,
@@ -1998,8 +2014,8 @@ fn type_and_item_type() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:6dc6ae69739114a0ec8bacb51ae7f36bdf449ed6a1965b5947de642dc19028d5
-// @lfy def/model/main.lfy:bind#bind:bind:8578766ecf0458c14a5e431b3e5fc185c3eb43f56d3ec361b2d4421f3e556b8d
+// @lfy def/model/main.lfy:bind#bind:bind:5b5df5fcbe0bfad1f4242837461d9e5756207c0a361e81048345a263528d5740
+// @lfy def/model/main.lfy:bind#bind:bind:a5c1bc569ddb92f8dd361e4827d274e8148ec9c79e5f47f9178da3acd27018eb
 #[test]
 fn a_list_value_has_the_type_of_a_list() {
     let model = bind_with_prelude(
@@ -2020,7 +2036,7 @@ fn a_list_value_has_the_type_of_a_list() {
     };
     // A list of numbers is a list of number: the items are values of that kind, not the
     // one value each was written as.
-    // @lfy def/model/main.lfy:bind#bind:bind:c396905bbe3b0b2e5c0d1af15e9ef59df60124c2d21f692dcd4787efdac378c0
+    // @lfy def/model/main.lfy:bind
     assert_eq!(
         ty("xs"),
         Some(TypeRef::List(Box::new(TypeRef::Primitive("number"))))
@@ -2030,7 +2046,7 @@ fn a_list_value_has_the_type_of_a_list() {
     reads_member(&model, node(&model, file, E::Member, "xs.length"), "List", "length");
     // Items of more than one type are a union of them, each written once; a spread holds
     // what the list it spreads holds.
-    // @lfy def/model/main.lfy:bind#bind:bind:8578766ecf0458c14a5e431b3e5fc185c3eb43f56d3ec361b2d4421f3e556b8d
+    // @lfy def/model/main.lfy:bind
     let a = model.symbols[file_symbol(&model, file, "A")].entity;
     assert_eq!(
         item("many"),
@@ -2044,8 +2060,7 @@ fn a_list_value_has_the_type_of_a_list() {
     assert!(matches!(ty("empty"), Some(TypeRef::List(_))));
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:256cb22304f6c50a7a2c4cb6f724023786d63ac65133bc2132981b78fc82e9a7
-// @lfy def/model/main.lfy:bind#bind:bind:ea6c2a8558d3b9fe34eaf9be8a2eac291626bc1138e5383a4772660515c63560
+// @lfy def/model/main.lfy:bind#bind:bind:7ef157b80d31dce9baf260f3d953c0bc5b6cfb07b6c4773de70e7be59015ad54
 #[test]
 fn a_declaration_without_type_parameters_has_none() {
     let model = bind_one("d Plain { $x: `d` = string; } const p: Plain = 1; fn f(): `d` => Plain {}");
@@ -2062,7 +2077,7 @@ fn a_declaration_without_type_parameters_has_none() {
 }
 
 // @lfy def/model/main.lfy:bind#bind:bind:ae23ffc23c95add84b11276b2987d77d26def0d947d817a507989143282af46c
-// @lfy def/model/main.lfy:bind#bind:bind:46b4022825c073c20ea36dfef0380abdaa37504df76653a573913f07721dde4a
+// @lfy def/model/main.lfy:bind#bind:bind:c3a2c16f705e37fc0e8e626331285a435d93f0cde33bcb941c715741f6b53131
 #[test]
 fn a_function_type_is_an_anonymous_function_entity() {
     let model = bind_one("type Pair<T> { f = (item: T) => T, } const p: Pair<string> = 1; const q = p.f;");
@@ -2098,8 +2113,8 @@ fn a_function_type_is_an_anonymous_function_entity() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:ae1a929436e02ee004442ea4f9731ef53b796c391db2557cb93b8802e7d7c54d
-// @lfy def/model/main.lfy:bind#bind:bind:0ee53b5e0c008ce71de85c320c18eb1f9b1f0d8252a143d9c28a107beb5e508d
+// @lfy def/model/main.lfy:bind#bind:bind:b14a00f45f5f1aed95a60c9685ea61353a2569a91f82696c6db3053bda11450e
+// @lfy def/model/main.lfy:bind#bind:bind:7ef157b80d31dce9baf260f3d953c0bc5b6cfb07b6c4773de70e7be59015ad54
 #[test]
 fn a_declaration_seen_with_arguments_carries_the_declarations_own() {
     let model = bind_one(
@@ -2122,7 +2137,7 @@ fn a_declaration_seen_with_arguments_carries_the_declarations_own() {
     assert!(model.type_arguments(boxed).is_empty());
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:46b4022825c073c20ea36dfef0380abdaa37504df76653a573913f07721dde4a
+// @lfy def/model/main.lfy:bind#bind:bind:c3a2c16f705e37fc0e8e626331285a435d93f0cde33bcb941c715741f6b53131
 // @lfy def/model/main.lfy:bind#bind:bind:1314d95fa57fff9074b53571e4db2f0029007b9a8661136a4047fe448c4ec7bf
 #[test]
 fn a_member_read_substitutes_through_nested_arguments() {
@@ -2151,7 +2166,7 @@ fn a_member_read_substitutes_through_nested_arguments() {
     );
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:221ed4d3e6531a5f77ec17c2a8f11672a8fe2c59c92c346a1bf19434f5ddac4d
+// @lfy def/model/main.lfy:bind#bind:bind:972725faf5a2897534a0e4be77c67b10e2cce3499191a51d3ab27e1bbe14d1ae
 #[test]
 fn add_and_where_append_criteria() {
     let model = bind_one(
@@ -2198,8 +2213,7 @@ fn add_and_where_append_criteria() {
 }
 
 // The second case reads `A@like(...)` for its expectation.
-// @lfy def/model/main.lfy:bind#bind:bind:feeb121fcaf7cdf84c4e99d215d6f98a9b8adfc8a1b65fe773a848ca2500d192
-// @lfy def/model/main.lfy:bind#bind:bind:353b590c9f9e60df330a455c8c7f77103ef42cf73250507362b2f015efc61f02
+// @lfy def/model/main.lfy:bind
 #[test]
 fn test_call_appends_tests() {
     let model = bind_one(
@@ -2217,6 +2231,18 @@ fn test_call_appends_tests() {
         Some(E::Number.entity())
     );
     assert!(tests[1].expect.is_some());
+}
+
+// @lfy def/model/main.lfy:usagesOf#usagesOf:usagesOf:17c43c93cfa66aa764b8655e04d3108f32264d4b7bbae42d1bd6d078241baa1f
+#[test]
+fn usages_of_follows_an_alias_chain() {
+    let model = bind_one("d A {} alias B = A; alias C = B; const x = C; const y = A; const z = 1;");
+    assert_clean(&model);
+    let found: Vec<String> = usages_of(&model, file_symbol(&model, 0, "A"))
+        .into_iter()
+        .map(|id| model.raw(model.usages[id].node).trim().to_string())
+        .collect();
+    assert_eq!(found, ["A", "B", "C", "A"]);
 }
 
 // @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:10ab31f446369520ef4402e3afa3adf6c05b2834fdd52636b18fba986f4fbb8c
@@ -2243,20 +2269,35 @@ fn criteria_of_strips_references() {
 }
 
 // @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:68ab34550dbf7d97382cac2af535190686399cde2432c30383b3f4d394640826
-// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:fdb3e9b6533ccab1514b99dd1c83edd51906529495199dd86fcd5ff79c1634a1
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
 #[test]
 fn criteria_of_writes_a_type_as_elfie_source() {
     let model = bind_one(
-        "d A {} d B {} d X { $xs: `the items` = (A | B)[]; \
-         @acceptanceCriteria.add({ behavior = `Holds {{$xs@type}}` }); }",
+        "d A {} d B {} type S { f = (one: string) => A } \
+         d X { $xs: `the items` = (A | B)[]; $call: `the call` = S.f; \
+         @acceptanceCriteria \
+           .add({ behavior = `Holds {{$xs@type}}` }) \
+           .add({ behavior = [`Calls {{$call@type}}`, `and [[A]]`] }); }",
     );
     assert_clean(&model);
     let x = entity(&model, "X");
     let resolved = criteria_of(&model, x);
-    assert_eq!(resolved.len(), 1);
+    assert_eq!(resolved.len(), 2);
     assert_eq!(
         resolved[0].behavior,
         Some(vec!["Holds (A | B)[]".to_string()])
+    );
+    // The expand pass ran before the function type was read, and wrote `anonymous` for it.
+    assert_eq!(
+        model.entities[x].acceptance_criteria[1].behavior,
+        Some(vec!["Calls anonymous".to_string(), "and [[A]]".to_string()])
+    );
+    assert_eq!(
+        resolved[1].behavior,
+        Some(vec![
+            "Calls (one: string) => A".to_string(),
+            "and A".to_string()
+        ])
     );
 }
 
@@ -2287,10 +2328,10 @@ fn object_field<'a>(value: &'a Value, key: &str) -> &'a Value {
 }
 
 /// The whole repository binds with zero problems, and its model reads as expected.
-// @lfy def/model/main.lfy:bind#bind:bind:1bdb59f3a6564ded33f175fcefb221c0e11026b038bb5cd291f62cc31671471f
-// @lfy def/model/main.lfy:bind#bind:bind:067910b6745ea51ce3ab1cbfb3fcad312a3d934bfba10a864d9f5846d4242dcb
+// @lfy def/model/main.lfy:bind#bind:bind:6a35ddeeb22226f71b5d6275d3b6e40813ee087972140fe66f3475a200fc219c
+// @lfy def/model/main.lfy:bind#bind:bind:83ed1e2d5690dd20563ce4e4aa95a0e2f0367de80d043c91f14cea70e57aecc0
+// @lfy def/model/main.lfy:bind#bind:bind:e80995ebd6bedeb0e22990364e986ca70be730d1538f8b8ac004e3c863e88d56
 // @lfy def/model/main.lfy:bind#bind:bind:81cd673c66e8b5ef0d81262e4dd6bcf40b110f884bf038212940017c42f01483
-// @lfy def/model/main.lfy:bind#bind:bind:a98f35d7e03d8ae522c60f531f70be526345d64d0177bde5695c27df2036b103
 // @lfy def/model/main.lfy:bind#bind:bind:0b03717c4f0414186634383cb7963ba8e06452ae1dcd7f981374596221a09046
 #[test]
 fn repository_binds_without_problems() {
@@ -2311,8 +2352,8 @@ fn repository_binds_without_problems() {
     assert!(model.problems.is_empty(), "{:?}", problems(model));
 
     // The package elfie is in the program, so its main file is the prelude.
-    // @lfy def/model/main.lfy:bind#bind:bind:ec98cc52ebb62a0594a752006377cac03dcc3616dab157ef152c1f5d556373ec
-    // @lfy def/model/main.lfy:bind#bind:bind:34f02e12a6947f0864207243e1c86768824e619c1f612fd34ad04b84c3d12ea3
+    // @lfy def/model/main.lfy:bind#bind:bind:88eb2d2cca1fc9e39dfbb1fd77266bdb656d9b5b76c1c8d103d7ea2000ccaa4d
+    // @lfy def/model/main.lfy:bind#bind:bind:6d483b3015a5d053cdd10c8fb53309930fd856c54535af7ef7e3b4efc15ae894
     let components = model
         .sources
         .iter()
@@ -2352,18 +2393,29 @@ fn repository_binds_without_problems() {
         "{text:?}"
     );
     assert_eq!(model.rule_entity("Space"), Some(space));
-    // lex: more than 200 criteria.
+    // lex: more than ten criteria, the last of them the terminal document a template
+    // execution writes in.
     let lex = find_entity(model, "lex", |e| matches!(e.kind, EntityKind::Fn { .. }));
     assert!(
-        model.entities[lex].acceptance_criteria.len() > 200,
+        model.entities[lex].acceptance_criteria.len() > 10,
         "{}",
         model.entities[lex].acceptance_criteria.len()
+    );
+    let terminals = criteria_of(model, lex)
+        .pop()
+        .and_then(|criterion| criterion.behavior)
+        .expect("the last criterion of lex has a behavior");
+    assert!(
+        terminals[0].contains("Identifier = ( IdentifierStart"),
+        "{:?}",
+        terminals[0]
     );
     assert_eq!(
         criteria_of(model, lex).len(),
         model.entities[lex].acceptance_criteria.len()
     );
-    // NegateOperation: two binding applications.
+    // NegateOperation: one binding application, which gives it precedence and
+    // associativity.
     let binding = model
         .trait_named("binding")
         .expect("the grammar declares binding");
@@ -2373,17 +2425,20 @@ fn repository_binds_without_problems() {
         .iter()
         .filter(|a| a.entity == binding)
         .count();
-    assert_eq!(bindings, 2);
+    assert_eq!(bindings, 1);
+    assert!(model.entities[negate].value("precedence").is_some());
     // Primary: an alternation of the primaries.
     let primary = find_entity(model, "Primary", |e| e.kind == EntityKind::Data);
     let syntax = object_field(model.entities[primary].value("rule").unwrap(), "syntax")
         .as_str()
         .unwrap();
-    assert!(
-        syntax.starts_with("[[StringLiteral]] | [[Template]] | [[Number]] | "),
-        "{syntax:?}"
-    );
-    assert!(syntax.ends_with(" | [[Type]]"), "{syntax:?}");
+    // The alternatives in the order they are written, however the alternation spells the
+    // separator between them.
+    assert!(syntax.starts_with("[[StringLiteral]]"), "{syntax:?}");
+    for alternative in ["[[Template]]", "[[Number]]", "[[Boolean]]", "[[Object]]"] {
+        assert!(syntax.contains(alternative), "{alternative}: {syntax:?}");
+    }
+    assert!(syntax.ends_with("[[Type]]"), "{syntax:?}");
     let alternation = model.trait_named("alternationList").unwrap();
     assert!(model.entities[primary].has_trait(alternation));
     assert!(model.entities[primary].has_trait(rule));

@@ -10,7 +10,15 @@ mod trees;
 
 use std::rc::Rc;
 
+use crate::grammar::rules::expression::Expression as E;
+use crate::grammar::rules::statement::Statement as S;
+use crate::grammar::terminals::identifier::Identifier as I;
+use crate::grammar::terminals::literal::Literal as L;
 use crate::grammar::GrammarRule;
+use crate::parser::components::is_trivia;
+use crate::parser::data::Child;
+
+use trees::Part;
 
 pub use bind::SYNTHETIC;
 pub use components::{accessor_layer, declaring, is_scoped, reading_layer};
@@ -152,29 +160,293 @@ pub fn usages_of(model: &Model, target: SymbolId) -> Vec<UsageId> {
 /// Every criterion attached to an entity, with templates resolved for it: each
 /// reference is replaced by the referenced entity's identifier and each execution by
 /// its value.
+///
+/// The expand pass renders a criterion's templates as it runs them, when a type is often
+/// still the text it was written as; a template whose executions all read a type the
+/// bound model holds is rendered again here, so that the type is spelled as
+/// [`type_text_of`] spells one. A criterion a trait contributed was rendered once per
+/// application, for the entity it was applied to, and is kept as rendered.
 // @lfy def/model/main.lfy:criteriaOf
 // @lfy def/model/main.lfy:criteriaOf
 pub fn criteria_of(model: &Model, entity: EntityId) -> Vec<Criterion> {
     model.entities[entity]
         .acceptance_criteria
         .iter()
-        .map(|criterion| Criterion {
-            situation: criterion
-                .situation
-                .as_ref()
-                .map(|s| s.iter().map(|t| strip_references(t)).collect()),
-            behavior: criterion
-                .behavior
-                .as_ref()
-                .map(|s| s.iter().map(|t| strip_references(t)).collect()),
-            side_effects: criterion
-                .side_effects
-                .as_ref()
-                .map(|s| s.iter().map(|t| strip_references(t)).collect()),
-            contributor: criterion.contributor,
-            node: criterion.node,
+        .map(|criterion| {
+            let own = criterion.contributor == entity;
+            Criterion {
+                situation: resolved_texts(model, criterion, "situation", &criterion.situation, own),
+                behavior: resolved_texts(model, criterion, "behavior", &criterion.behavior, own),
+                side_effects: resolved_texts(
+                    model,
+                    criterion,
+                    "sideEffects",
+                    &criterion.side_effects,
+                    own,
+                ),
+                contributor: criterion.contributor,
+                node: criterion.node,
+            }
         })
         .collect()
+}
+
+/// The texts of one key of a criterion, resolved: what the template renders again when
+/// the model can render it, and what the expand pass wrote otherwise.
+// @lfy def/model/main.lfy:criteriaOf
+fn resolved_texts(
+    model: &Model,
+    criterion: &Criterion,
+    key: &str,
+    texts: &Option<Vec<String>>,
+    own: bool,
+) -> Option<Vec<String>> {
+    let texts = texts.as_ref()?;
+    let templates = if own {
+        criterion_templates(model, criterion, key)
+    } else {
+        Vec::new()
+    };
+    let paired = templates.len() == texts.len();
+    Some(
+        texts
+            .iter()
+            .enumerate()
+            .map(|(at, text)| {
+                let again = paired
+                    .then(|| templates[at])
+                    .and_then(|template| respelled(model, template));
+                strip_references(again.as_deref().unwrap_or(text))
+            })
+            .collect(),
+    )
+}
+
+/// The template nodes the texts of one key of a criterion were rendered from, in order:
+/// the value that key was given in the object passed to `add`, or the expression of a
+/// `Where` for its behavior.
+// @lfy def/model/main.lfy:criteriaOf
+fn criterion_templates(model: &Model, criterion: &Criterion, key: &str) -> Vec<NodeRef> {
+    let Some(node) = criterion.node else {
+        return Vec::new();
+    };
+    if has_rule(model, node, E::Object) {
+        let Some(value) = child_nodes(model, node)
+            .into_iter()
+            .filter(|&child| has_rule(model, child, E::ObjectKey))
+            .find(|&child| declared_key(model, child).as_deref() == Some(key))
+            .and_then(|child| {
+                child_nodes(model, child)
+                    .into_iter()
+                    .find(|&part| !has_rule(model, part, E::Declared))
+            })
+        else {
+            return Vec::new();
+        };
+        if has_rule(model, value, E::List) {
+            return child_nodes(model, value)
+                .into_iter()
+                .find(|&items| has_rule(model, items, E::Items))
+                .map(|items| child_nodes(model, items))
+                .unwrap_or_default();
+        }
+        return vec![value];
+    }
+    if has_rule(model, node, S::Where) && key == "behavior" {
+        return child_nodes(model, node)
+            .into_iter()
+            .find(|&child| has_rule(model, child, S::ExpressionStatement))
+            .map(|statement| child_nodes(model, statement))
+            .unwrap_or_default();
+    }
+    Vec::new()
+}
+
+/// A template rendered again from the bound model: bodies as written, references as the
+/// names they spell, and every execution as the type it reads. Nothing when the template
+/// holds no execution reading a type, or holds anything only the interpreter can render.
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+fn respelled(model: &Model, template: NodeRef) -> Option<String> {
+    if !has_rule(model, template, E::Template) {
+        return None;
+    }
+    let tokens = model.tokens(template.file);
+    let mut out = String::new();
+    let mut spelled = 0usize;
+    for child in &model.node(template).children {
+        match child {
+            Child::Token(index) => {
+                if tokens[*index].is(L::TemplateBody) {
+                    out.push_str(&tokens[*index].value);
+                }
+            }
+            Child::Node(node) => {
+                let child = model.node_ref(template.file, node)?;
+                if has_rule(model, child, E::TemplateReference) {
+                    let inner = child_nodes(model, child).into_iter().next()?;
+                    out.push_str("[[");
+                    out.push_str(&reference_name(model, inner)?);
+                    out.push_str("]]");
+                } else if has_rule(model, child, E::TemplateExecution) {
+                    let inner = child_nodes(model, child).into_iter().next()?;
+                    out.push_str(&execution_type_text(model, inner)?);
+                    spelled += 1;
+                }
+            }
+            Child::Error(_) => return None,
+        }
+    }
+    (spelled > 0).then_some(out)
+}
+
+/// The type an execution reads, spelled as Elfie spells one: the type, the output, or the
+/// item type of what the expression before the context accessor is bound to. Nothing when
+/// the execution reads anything else, whose value only the interpreter knows.
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+fn execution_type_text(model: &Model, expression: NodeRef) -> Option<String> {
+    if !has_rule(model, expression, E::Member) {
+        return None;
+    }
+    let (left, accessor, name) = member_parts(model, expression)?;
+    let tokens = model.tokens(expression.file);
+    if accessor_layer(tokens[accessor].rule?)? != Layer::Context {
+        return None;
+    }
+    let subject = model.symbols[resolve(model, left)?].entity;
+    let ty = match tokens[name?].value.as_str() {
+        "type" => model.entities[subject].ty.clone(),
+        "output" => model.entities[subject].output().cloned(),
+        "itemType" => model.entities[subject].item_type.clone(),
+        _ => None,
+    }?;
+    type_text_of(model, Some(&ty))
+}
+
+/// The name a reference inside a template spells, as the expand pass writes it: a
+/// declared name as written, and a member chain joined by its accessors. Nothing for a
+/// reference reading the current entity or a name a body bound, which only the
+/// interpreter knows.
+// @lfy def/model/main.lfy:criteriaOf
+fn reference_name(model: &Model, reference: NodeRef) -> Option<String> {
+    if has_rule(model, reference, E::Reference) || has_rule(model, reference, E::Dereference) {
+        return reference_name(model, child_nodes(model, reference).into_iter().next()?);
+    }
+    if has_rule(model, reference, E::Name) {
+        let symbol = resolve(model, reference)?;
+        if matches!(
+            model.symbols[symbol].kind,
+            SymbolKind::Variable
+                | SymbolKind::LoopVariable
+                | SymbolKind::Parameter
+                | SymbolKind::TypeParameter
+        ) {
+            return None;
+        }
+        return identifier_of(model, reference);
+    }
+    if has_rule(model, reference, E::Member) {
+        let (left, accessor, name) = member_parts(model, reference)?;
+        let head = reference_name(model, left)?;
+        let tokens = model.tokens(reference.file);
+        let raw = &tokens[accessor].raw;
+        return Some(match name {
+            Some(name) => format!("{head}{raw}{}", tokens[name].value),
+            None => format!("{head}{raw}"),
+        });
+    }
+    None
+}
+
+/// The left operand, the accessor token, and the name token of a `Member`.
+// @lfy def/model/main.lfy:criteriaOf
+fn member_parts(model: &Model, r: NodeRef) -> Option<(NodeRef, usize, Option<usize>)> {
+    let mut parts = parts_of(model, r).into_iter();
+    let Part::Node(left) = parts.next()? else {
+        return None;
+    };
+    let Part::Token(accessor) = parts.next()? else {
+        return None;
+    };
+    accessor_layer(model.tokens(r.file)[accessor].rule?)?;
+    let name = match parts.next() {
+        Some(Part::Token(index)) if is_member_name(model, r.file, index) => Some(index),
+        _ => None,
+    };
+    Some((left, accessor, name))
+}
+
+/// The significant children of a node, nodes and tokens alike, in order.
+// @lfy def/model/main.lfy:criteriaOf
+fn parts_of(model: &Model, r: NodeRef) -> Vec<Part> {
+    let tokens = model.tokens(r.file);
+    model
+        .node(r)
+        .children
+        .iter()
+        .filter_map(|child| match child {
+            Child::Node(node) if !is_trivia(node.rule) => {
+                model.node_ref(r.file, node).map(Part::Node)
+            }
+            Child::Node(_) | Child::Error(_) => None,
+            Child::Token(index) => {
+                let rule = tokens[*index].rule?;
+                (!is_trivia(rule)).then_some(Part::Token(*index))
+            }
+        })
+        .collect()
+}
+
+/// Every child node of a node that is not trivia, in order.
+// @lfy def/model/main.lfy:criteriaOf
+fn child_nodes(model: &Model, r: NodeRef) -> Vec<NodeRef> {
+    model
+        .node(r)
+        .children
+        .iter()
+        .filter_map(|child| match child {
+            Child::Node(node) if !is_trivia(node.rule) => model.node_ref(r.file, node),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Whether a node satisfies a rule.
+// @lfy def/model/main.lfy:criteriaOf
+fn has_rule<R: GrammarRule>(model: &Model, r: NodeRef, rule: R) -> bool {
+    model.info(r).rule == rule.entity()
+}
+
+/// Whether a token can be a member name: an identifier or a keyword.
+// @lfy def/model/main.lfy:criteriaOf
+fn is_member_name(model: &Model, file: FileId, index: usize) -> bool {
+    model.tokens(file)[index]
+        .rule
+        .is_some_and(|rule| rule == I::Identifier.entity() || rule.is_keyword())
+}
+
+/// The first identifier token directly inside a node.
+// @lfy def/model/main.lfy:criteriaOf
+fn identifier_of(model: &Model, r: NodeRef) -> Option<String> {
+    let tokens = model.tokens(r.file);
+    model
+        .node(r)
+        .children
+        .iter()
+        .find_map(|child| match child {
+            Child::Token(index) if tokens[*index].is(I::Identifier) => {
+                Some(tokens[*index].value.clone())
+            }
+            _ => None,
+        })
+}
+
+/// The name an `ObjectKey` declares.
+// @lfy def/model/main.lfy:criteriaOf
+fn declared_key(model: &Model, object_key: NodeRef) -> Option<String> {
+    let declared = child_nodes(model, object_key)
+        .into_iter()
+        .find(|&child| has_rule(model, child, E::Declared))?;
+    identifier_of(model, declared)
 }
 
 /// `[[X]]` becomes `X`.

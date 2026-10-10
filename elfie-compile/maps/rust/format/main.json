@@ -1,5 +1,44 @@
 [
   {
+    "answered": [
+      "format:format:02d1013f4893e0079c0b7813734c2235243e0cabdfb1c952b338fbe57b9c4f1d",
+      "format:format:1163c6ff2e1d470ba541abac318eb9c729fa52594ab584ed5798e1821ee4ae8c",
+      "format:format:15e8e38a09d262a36682ba3ce85503be21284653216819627a425807a4018309",
+      "format:format:216e628deebc75fbb280f74ad4e8518817a6f92f2757e93a2de1edc445687374",
+      "format:format:259b47c3f96e18edc2880529f479860a89cfc7dc50d3087e91d22693756a6fe9",
+      "format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b",
+      "format:format:351d7260f1b6815f64c002058c4b20bc099925752c6441abbde45c3d4c0c640c",
+      "format:format:3be155da440417ee3b121e91c548c246aeb67593dcbb9345350adb961174d949",
+      "format:format:46a15752ddc4127309bc2e4bb552fa43abd80aea66ab4e7e66463db164a0ca16",
+      "format:format:4893b90e7ec34a33843a710654cdf64ea823094ffb904bf759ff240df4bb1ec0",
+      "format:format:510aaf4d2cde0bc8764fce0e6c2bc6e71780aea6d2c863d8def766db1cef87f0",
+      "format:format:577e110db864f7e2f6c8c3e88510513909615d1f6818a2031b196e9118255627",
+      "format:format:5b98e87ae0c7222dae3845fc3718eca7ce992718fafbbb7498d7ace234d74c96",
+      "format:format:5cb4f60820e99f5db1df2935ed73258b4147e3357667c5c6125c5f65a1980bee",
+      "format:format:6055220d51a19bf7f0a4f2d448d6184de8ebc37accd471dfcfa6bfd52d76f0c0",
+      "format:format:649101a5c5dd39b11a6e582b59f00e37606f8f41d6a8a93b06505fc8c327ff53",
+      "format:format:66e294f12d78e833db8795114aa638d6a3dd04a4cda3d11fd1792f4ef17acede",
+      "format:format:7ad24f93b82010d70b4a21df0443502b13d909ed94c125598a404906f7185030",
+      "format:format:8496d35fb176137542ef71be842f2165e1532218b92ff7d52574b5b3fe9e9d5e",
+      "format:format:8556b41c3a9af705c0c550a3a60415bfe5b5198ec133c9cc53e52cd9ff6da405",
+      "format:format:9628ffadb84721d7b3502320242fcf9b7f8d3726cd826666d6bc24a2c3a6ec5e",
+      "format:format:9cbf290b9f04455db3c9f05d3ccc4c20c94ca48e8fd51f4c115a571bf01440df",
+      "format:format:a427a6ebd2ce51f3d704eb3cbd51ed1b1c1a68a3b8cfee1562741b1fbe48d8d8",
+      "format:format:a515b1e0dd2ad5ce0e94440171acbaac3eea122b7e493a28d040d1c37fab8a65",
+      "format:format:a7387e9502a3708ad77a105b966eb7a4bca917979066fa92c2210544f4a51cce",
+      "format:format:b8ffdb269f9f513254af711f88ce36be9fe811a78172ffb4046363236774c3fc",
+      "format:format:b94d70be04b0c91159b9c66ef0de9050647ee30b2ceff3fbef524d7058f75166",
+      "format:format:cd9ff41d2b97ae9f99df529a1c11cd5d34739fc114fb29b9653544747df4c18b",
+      "format:format:d37cae8772d67dbcbdb5efe6d6fd0b1508a171c32bb9b254917ba17e596ec5cc",
+      "format:format:d7e4583e7b2e2dbe08cba57c4ef8925f936778f3f3b46bc51b8426482d191f5b",
+      "format:format:dc2b930fdc116673b139af7ac66cbe0bcb76c325723eb405445e9eaf4da15278",
+      "format:format:df3a2fd3347a1a3f4a81be09c33ab133f8d68c09097ce80504a45da82dff6d0b",
+      "format:format:e1be30bb9aad0d08baa0bb890065bf4ad35bfe237e7e084975f27d525456cc71",
+      "format:format:e6252b44e86c62d6e5eeb56cf1e261b63a24c4897b1356c708833282d0752c1a",
+      "format:format:e633b0389645c532829d8508c244a986728e327dfe3d31919222efa7f3c20bb7",
+      "format:format:eb8f7e93d7328ba6f0de2bb7044128ba0dbad46601aaa18de9a859c9223173ec",
+      "format:format:fff9e8a57eedb49ae3f5b9b5a4bd0f57126127c7aa33b9c426c50fa636110ebb"
+    ],
     "dependencies": {
       "def/grammar/rules/expression.lfy": "82aac926f45452d5dba89de60c869d89ef56c4771c42437bdc61961964395d0c",
       "def/grammar/rules/statement.lfy": "8464963855df2325ef479755e17b3dd7bc948097e5c5dd3acea0fc204815a997",
@@ -10,9 +49,9 @@
       "def/grammar/terminals/space.lfy": "96d1339dbe32f0b6c9a93dbf6cbf4797fd757278d766d0a26b2453c5e2fd1b75",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/parser/data.lfy": "657a7872951e4af30da9ae9db45b0b9e99d5ef94156ed3540e8f127a88f77be0"
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb"
     },
-    "generated": "2026-10-07T06:32:54Z",
+    "generated": "2026-10-08T17:45:17Z",
     "hash": "f40daaee8f2ff316d377091a1ea1a0af388688e4e84087ddb380a4d1dbc9bfc8",
     "markers": [
       {
@@ -932,6 +971,45 @@
     "target": "rust"
   },
   {
+    "answered": [
+      "format:format:02d1013f4893e0079c0b7813734c2235243e0cabdfb1c952b338fbe57b9c4f1d",
+      "format:format:1163c6ff2e1d470ba541abac318eb9c729fa52594ab584ed5798e1821ee4ae8c",
+      "format:format:15e8e38a09d262a36682ba3ce85503be21284653216819627a425807a4018309",
+      "format:format:216e628deebc75fbb280f74ad4e8518817a6f92f2757e93a2de1edc445687374",
+      "format:format:259b47c3f96e18edc2880529f479860a89cfc7dc50d3087e91d22693756a6fe9",
+      "format:format:308b387175f38c07715e469879106b42bf47361d33379ff3b760145a0d5f4e6b",
+      "format:format:351d7260f1b6815f64c002058c4b20bc099925752c6441abbde45c3d4c0c640c",
+      "format:format:3be155da440417ee3b121e91c548c246aeb67593dcbb9345350adb961174d949",
+      "format:format:46a15752ddc4127309bc2e4bb552fa43abd80aea66ab4e7e66463db164a0ca16",
+      "format:format:4893b90e7ec34a33843a710654cdf64ea823094ffb904bf759ff240df4bb1ec0",
+      "format:format:510aaf4d2cde0bc8764fce0e6c2bc6e71780aea6d2c863d8def766db1cef87f0",
+      "format:format:577e110db864f7e2f6c8c3e88510513909615d1f6818a2031b196e9118255627",
+      "format:format:5b98e87ae0c7222dae3845fc3718eca7ce992718fafbbb7498d7ace234d74c96",
+      "format:format:5cb4f60820e99f5db1df2935ed73258b4147e3357667c5c6125c5f65a1980bee",
+      "format:format:6055220d51a19bf7f0a4f2d448d6184de8ebc37accd471dfcfa6bfd52d76f0c0",
+      "format:format:649101a5c5dd39b11a6e582b59f00e37606f8f41d6a8a93b06505fc8c327ff53",
+      "format:format:66e294f12d78e833db8795114aa638d6a3dd04a4cda3d11fd1792f4ef17acede",
+      "format:format:7ad24f93b82010d70b4a21df0443502b13d909ed94c125598a404906f7185030",
+      "format:format:8496d35fb176137542ef71be842f2165e1532218b92ff7d52574b5b3fe9e9d5e",
+      "format:format:8556b41c3a9af705c0c550a3a60415bfe5b5198ec133c9cc53e52cd9ff6da405",
+      "format:format:9628ffadb84721d7b3502320242fcf9b7f8d3726cd826666d6bc24a2c3a6ec5e",
+      "format:format:9cbf290b9f04455db3c9f05d3ccc4c20c94ca48e8fd51f4c115a571bf01440df",
+      "format:format:a427a6ebd2ce51f3d704eb3cbd51ed1b1c1a68a3b8cfee1562741b1fbe48d8d8",
+      "format:format:a515b1e0dd2ad5ce0e94440171acbaac3eea122b7e493a28d040d1c37fab8a65",
+      "format:format:a7387e9502a3708ad77a105b966eb7a4bca917979066fa92c2210544f4a51cce",
+      "format:format:b8ffdb269f9f513254af711f88ce36be9fe811a78172ffb4046363236774c3fc",
+      "format:format:b94d70be04b0c91159b9c66ef0de9050647ee30b2ceff3fbef524d7058f75166",
+      "format:format:cd9ff41d2b97ae9f99df529a1c11cd5d34739fc114fb29b9653544747df4c18b",
+      "format:format:d37cae8772d67dbcbdb5efe6d6fd0b1508a171c32bb9b254917ba17e596ec5cc",
+      "format:format:d7e4583e7b2e2dbe08cba57c4ef8925f936778f3f3b46bc51b8426482d191f5b",
+      "format:format:dc2b930fdc116673b139af7ac66cbe0bcb76c325723eb405445e9eaf4da15278",
+      "format:format:df3a2fd3347a1a3f4a81be09c33ab133f8d68c09097ce80504a45da82dff6d0b",
+      "format:format:e1be30bb9aad0d08baa0bb890065bf4ad35bfe237e7e084975f27d525456cc71",
+      "format:format:e6252b44e86c62d6e5eeb56cf1e261b63a24c4897b1356c708833282d0752c1a",
+      "format:format:e633b0389645c532829d8508c244a986728e327dfe3d31919222efa7f3c20bb7",
+      "format:format:eb8f7e93d7328ba6f0de2bb7044128ba0dbad46601aaa18de9a859c9223173ec",
+      "format:format:fff9e8a57eedb49ae3f5b9b5a4bd0f57126127c7aa33b9c426c50fa636110ebb"
+    ],
     "dependencies": {
       "def/grammar/rules/expression.lfy": "82aac926f45452d5dba89de60c869d89ef56c4771c42437bdc61961964395d0c",
       "def/grammar/rules/statement.lfy": "8464963855df2325ef479755e17b3dd7bc948097e5c5dd3acea0fc204815a997",
@@ -942,9 +1020,9 @@
       "def/grammar/terminals/space.lfy": "96d1339dbe32f0b6c9a93dbf6cbf4797fd757278d766d0a26b2453c5e2fd1b75",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/parser/data.lfy": "657a7872951e4af30da9ae9db45b0b9e99d5ef94156ed3540e8f127a88f77be0"
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb"
     },
-    "generated": "2026-10-07T06:32:54Z",
+    "generated": "2026-10-08T17:45:17Z",
     "hash": "f40daaee8f2ff316d377091a1ea1a0af388688e4e84087ddb380a4d1dbc9bfc8",
     "markers": [
       {
@@ -979,7 +1057,7 @@
         "end": 9,
         "entity": "lower",
         "file": "def/interpret/main.lfy",
-        "line": 288,
+        "line": 295,
         "outputLine": 9,
         "requirement": null
       },

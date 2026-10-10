@@ -37,7 +37,7 @@ pub enum Reason {
     /// The caller asked for it regardless.
     Requested, // @lfy def/generation/data.lfy:Reason.requested
     /// Its criteria or tests differ from those its output was generated against, while its
-    /// code does not.
+    /// lowered code does not, so what its code must do may differ.
     Requirements, // @lfy def/generation/data.lfy:Reason.requirements
     /// A global criterion or test its output answers for was reviewed as violated.
     Violated, // @lfy def/generation/data.lfy:Reason.violated
@@ -50,7 +50,7 @@ impl Reason {
             Reason::Fresh => "no output has been generated for it",
             Reason::Changed => "its source differs from what its output was generated from",
             Reason::Requirements => {
-                "its criteria or tests differ from those its output was generated against, while its code does not"
+                "its criteria or tests differ from those its output was generated against, while its lowered code does not, so what its code must do may differ"
             }
             Reason::Dependency => {
                 "the interface of a unit it depends on differs from the one its output was generated against"
@@ -190,6 +190,10 @@ pub struct SourceMap {
     /// SHA-256 of the ids of the unit's local criteria and tests, sorted and joined by line
     /// breaks, when the output was accepted.
     pub requirements: String, // @lfy def/generation/data.lfy:SourceMap.requirements
+    /// The ids of the unit's local criteria and tests when the output was accepted, sorted;
+    /// empty in a map file written before they were recorded. These are what
+    /// [`SourceMap::requirements`] hashes.
+    pub answered: Vec<String>, // @lfy def/generation/data.lfy:SourceMap.answered
     /// SHA-256 of the unit's interface text when the output was accepted, as lowercase hex.
     pub signature: String, // @lfy def/generation/data.lfy:SourceMap.signature
     /// For each dependency's source path, the [`SourceMap::signature`] the output was
@@ -216,6 +220,7 @@ impl SourceMap {
             "source": self.source,
             "hash": self.hash,
             "requirements": self.requirements,
+            "answered": self.answered,
             "signature": self.signature,
             "dependencies": dependencies,
             "generated": self.generated,
@@ -225,13 +230,22 @@ impl SourceMap {
 
     /// A source map from its JSON object; `None` when a field is missing or mistyped.
     ///
-    // Decision: the definition records a requirements hash, a signature, and the signatures
-    // of the dependencies at acceptance, so each is always written; a source map read back
-    // without them was written before they were recorded. Reading takes them as empty
-    // rather than failing, which leaves the unit looking out of date against every current
-    // hash and signature, so it is regenerated instead of silently kept.
+    // Decision: the definition records a requirements hash, the ids it hashes, a signature,
+    // and the signatures of the dependencies at acceptance, so each is always written; a
+    // source map read back without them was written before they were recorded. Reading takes
+    // them as empty rather than failing, which leaves the unit looking out of date against
+    // every current hash and signature, so it is regenerated instead of silently kept.
     pub fn from_json(value: &Value) -> Option<SourceMap> {
         let object = value.as_object()?;
+        // @lfy def/generation/data.lfy:SourceMap.answered
+        let answered = match object.get("answered") {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::Array(items)) => items
+                .iter()
+                .map(|item| item.as_str().map(str::to_string))
+                .collect::<Option<Vec<_>>>()?,
+            Some(_) => return None,
+        };
         let markers = match object.get("markers") {
             None | Some(Value::Null) => Vec::new(),
             Some(Value::Array(items)) => items
@@ -258,6 +272,7 @@ impl SourceMap {
             source: string_field(object, "source")?,
             hash: string_field(object, "hash")?,
             requirements: string_field(object, "requirements").unwrap_or_default(),
+            answered,
             signature: string_field(object, "signature").unwrap_or_default(),
             dependencies,
             generated: string_field(object, "generated")?,
@@ -297,8 +312,8 @@ pub struct Unit {
     /// the entities moved out of it, then the lowered code of each entity moved into it;
     /// exactly the text of its lowered file when nothing moved in or out.
     pub text: String, // @lfy def/generation/data.lfy:Unit.text
-    /// The file's path relative to the workspace's source directory, without the `.lfy`
-    /// extension; the target's guidance spells the output file from it.
+    /// The file's path as it names itself from the workspace's source directory, without the
+    /// `.lfy` extension; the target's guidance spells the output file from it.
     pub stem: String, // @lfy def/generation/data.lfy:Unit.stem
     /// The units of the same target its unit needs built first, each once, as indices into
     /// [`Plan::units`].
@@ -449,6 +464,17 @@ pub struct Request {
     /// The lowered text each unit's existing outputs were generated from, by the file's
     /// path; absent where unknown.
     pub previous: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.previous
+    /// The ids of the local criteria and tests each unit's existing outputs were generated
+    /// against, by the file's path; absent where unknown.
+    pub answered: BTreeMap<String, Vec<String>>, // @lfy def/generation/data.lfy:Request.answered
+    /// The local criteria and tests each unit's existing outputs were generated against that
+    /// the unit no longer has, by the file's path; absent where the source they were
+    /// generated from is unknown.
+    // Decision: a criterion or test the unit no longer has leaves no text behind — a source
+    // map records the ids alone, and a lowered text never holds a criterion — so each is
+    // carried as the id it was answered under, which is also what a marker of the existing
+    // output spells.
+    pub removed: BTreeMap<String, Vec<String>>, // @lfy def/generation/data.lfy:Request.removed
     /// The current text of each existing output of the batch, by path.
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
     /// One interface per dependency outside the batch, in dependency order, each once.
@@ -805,6 +831,12 @@ pub struct ReviewReport {
     /// Each review line that was not read as a review, then the line reading the report did
     /// not end when there was no end line.
     pub problems: Vec<String>, // @lfy def/generation/data.lfy:ReviewReport.problems
+    /// Each review line that was not read as a review though its status is violated, as
+    /// written; each is in [`ReviewReport::problems`] too.
+    pub unplaced: Vec<String>, // @lfy def/generation/data.lfy:ReviewReport.unplaced
+    /// Each id the review was asked about that no review in [`ReviewReport::reviews`] names,
+    /// in the order it was asked.
+    pub missing: Vec<String>, // @lfy def/generation/data.lfy:ReviewReport.missing
 }
 
 /// Every unit of a workspace, which need generating, and how they are batched.
@@ -949,6 +981,8 @@ mod tests {
             source: "def/generation/data.lfy".to_string(),
             hash: "abc".to_string(),
             requirements: "jkl".to_string(),
+            // @lfy def/generation/data.lfy:SourceMap.answered
+            answered: vec!["Marker:Marker:abc".to_string()],
             signature: "def".to_string(),
             dependencies: BTreeMap::from([("def/model/data.lfy".to_string(), "ghi".to_string())]),
             generated: "2026-09-19T00:00:00Z".to_string(),
@@ -1119,6 +1153,7 @@ mod tests {
         let map = SourceMap::from_json(&value).expect("a source map without a signature reads");
         assert_eq!(map.signature, "");
         assert_eq!(map.requirements, ""); // @lfy def/generation/data.lfy:SourceMap.requirements
+        assert!(map.answered.is_empty()); // @lfy def/generation/data.lfy:SourceMap.answered
         assert!(map.dependencies.is_empty());
     }
 }

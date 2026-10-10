@@ -1,14 +1,15 @@
 [
   {
+    "answered": [],
     "dependencies": {
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
-      "def/lexer/data.lfy": "bcef479cae0909fff23a17d1a54cfd11eb2f705df385fc7d9d69d8be8fdde4d9",
-      "def/model/data.lfy": "8d7e2b2b1d33ee902bdb80aaf309d2cd918a670bfb0596b21f43831ee7e9e0bf",
-      "def/parser/data.lfy": "c0851b9a17e7ffcb8a82cd8d9a6bb4c6d26cde10784ff99a5225e1147b065f1c",
-      "def/workspace/data.lfy": "9c2267b86041eaa745a9b1e5db207ca5e6d9b8ee405bd918eb10dd7c40b780b5"
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
+      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
     },
-    "generated": "2026-10-05T02:24:18Z",
-    "hash": "4601aad8e03c88caa67ba8f8cf3d5638d2e7942f7ae907896dc45591a8723db3",
+    "generated": "2026-10-08T20:54:26Z",
+    "hash": "5c377060fb81df3374b253738e1f7f787e18b3d65ac4b8f4629dc2083b7247f0",
     "markers": [
       {
         "column": null,
@@ -66,7 +67,7 @@
       },
       {
         "column": null,
-        "end": 26,
+        "end": 55,
         "entity": "Encoding.utf16",
         "file": "def/lsp/data.lfy",
         "line": 11,
@@ -76,16 +77,16 @@
       {
         "column": null,
         "end": 59,
-        "entity": "Encoding.utf32",
+        "entity": "Session",
         "file": "def/lsp/data.lfy",
-        "line": 12,
-        "outputLine": 27,
+        "line": 14,
+        "outputLine": 56,
         "requirement": null
       },
       {
         "column": null,
-        "end": 63,
-        "entity": "Session",
+        "end": 61,
+        "entity": "Session.workspace",
         "file": "def/lsp/data.lfy",
         "line": 15,
         "outputLine": 60,
@@ -93,35 +94,26 @@
       },
       {
         "column": null,
-        "end": 65,
-        "entity": "Session.workspace",
-        "file": "def/lsp/data.lfy",
-        "line": 16,
-        "outputLine": 64,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 67,
+        "end": 63,
         "entity": "Session.documents",
         "file": "def/lsp/data.lfy",
-        "line": 17,
-        "outputLine": 66,
+        "line": 16,
+        "outputLine": 62,
         "requirement": null
       },
       {
         "column": null,
-        "end": 76,
+        "end": 72,
         "entity": "Session.encoding",
         "file": "def/lsp/data.lfy",
-        "line": 18,
-        "outputLine": 68,
+        "line": 17,
+        "outputLine": 64,
         "requirement": null
       }
     ],
     "output": "crates/elfie-lsp/src/data.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "2ef92a24a8d5fa613341bfc5feb24af9a54dbff7f5cc11fec99ba30c3b2c7de2",
+    "signature": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
     "source": "def/lsp/data.lfy",
     "target": "rust"
   }

@@ -5,7 +5,15 @@
 
 use std::fmt;
 
+use crate::grammar::GrammarRule;
+use crate::grammar::terminals::identifier::Identifier as I;
+use crate::lexer::Token;
 use crate::model::{Criterion, SymbolKind};
+
+// The stage that reported a diagnostic is the one the model's problems carry, so a
+// diagnostic names it by the enum `def/model/data.lfy` declares and this module re-exports
+// rather than by one of its own.
+pub use crate::model::Stage;
 
 /// A place in a file's text.
 // @lfy def/query/data.lfy:Position
@@ -21,6 +29,94 @@ impl Position {
     pub const fn new(line: usize, column: usize) -> Position {
         Position { line, column }
     }
+
+    /// Where a token starts: its line and its column, as the lexer counted them.
+    // @lfy def/query/data.lfy:Position
+    pub fn of_token(token: &Token) -> Position {
+        Position::new(token.line, token.column)
+    }
+
+    /// The position just after the last character of a token's raw text, with every line
+    /// break inside it ending a line.
+    // @lfy def/query/data.lfy:Position
+    pub fn after_token(token: &Token) -> Position {
+        let mut line = token.line;
+        let mut column = token.column;
+        for c in token.raw.chars() {
+            if c == '\n' {
+                line += 1;
+                column = 0;
+            } else {
+                column += 1;
+            }
+        }
+        Position::new(line, column)
+    }
+
+    /// The index of the token of a file this position belongs to, over the file's tokens
+    /// as the lexer delivered them.
+    ///
+    /// A position exactly between two tokens belongs to the earlier token when that is an
+    /// identifier or a keyword (a `MemberName` is one of those) and to the later token
+    /// otherwise. A position past the end of the file belongs to no token.
+    // @lfy def/query/data.lfy:Position#Position:Position:861b7a44daa1e4d65aebc43df36fbac3099694952a6750dc2c10a13f271a8327
+    pub fn token_in(self, tokens: &[Token]) -> Option<usize> {
+        let mut previous: Option<usize> = None;
+        for (index, token) in tokens.iter().enumerate() {
+            // Decision: a token without raw text (a mode left open at the end of the
+            // file) covers nothing and is never the token a position belongs to.
+            if token.raw.is_empty() {
+                continue;
+            }
+            let start = Position::of_token(token);
+            if self < start {
+                break;
+            }
+            // @lfy def/query/data.lfy:Position#Position:Position:861b7a44daa1e4d65aebc43df36fbac3099694952a6750dc2c10a13f271a8327
+            if self < Position::after_token(token) {
+                // @lfy def/query/data.lfy:Position#Position:Position:0764e4fc500185958a79dff6c472387292a0b929b29c1698726fd91fb1365902
+                if self == start
+                    && previous.is_some_and(|p| {
+                        is_name_token(&tokens[p]) && Position::after_token(&tokens[p]) == self
+                    })
+                {
+                    return previous;
+                }
+                // @lfy def/query/data.lfy:Position#Position:Position:a10f6c71c4533b3b95c737d090f9e84f0f2bef8b90d443fce945bf6141f3a94d
+                return Some(index);
+            }
+            previous = Some(index);
+        }
+        // Decision: the end of the file counts as the boundary after the last token, so a
+        // position exactly after a final identifier or keyword still belongs to it.
+        // @lfy def/query/data.lfy:Position#Position:Position:0764e4fc500185958a79dff6c472387292a0b929b29c1698726fd91fb1365902
+        match previous {
+            Some(p) if is_name_token(&tokens[p]) && Position::after_token(&tokens[p]) == self => {
+                Some(p)
+            }
+            // @lfy def/query/data.lfy:Position#Position:Position:f09439a462b605013eb205d44209e33b7a249f771901382b53f30d9e1b0cfbba
+            _ => None,
+        }
+    }
+}
+
+/// Whether a token is an identifier or a keyword: what a name is spelled with, a
+/// `MemberName` that a keyword stands in for included.
+// @lfy def/query/data.lfy:Position
+pub fn is_name_token(token: &Token) -> bool {
+    token
+        .rule
+        .is_some_and(|rule| rule == I::Identifier.entity() || rule.is_keyword())
+}
+
+/// Whether a node contains a position: whether the run of tokens it covers, `[start, end)`
+/// over the file's tokens as `Node` and `ErrorNode` spell it, holds the token the position
+/// belongs to.
+// @lfy def/query/data.lfy:Position#Position:Position:8b94c4fc19a43ba061b4ab961f36c9bc6c916d1c1c1378c505f590aa07df9a7f
+pub fn node_covers(tokens: &[Token], start: usize, end: usize, position: Position) -> bool {
+    position
+        .token_in(tokens)
+        .is_some_and(|index| start <= index && index < end)
 }
 
 impl fmt::Display for Position {
@@ -49,6 +145,41 @@ impl Range {
             start: at,
             end: at,
         }
+    }
+
+    /// The range of one token: in the token's own file, from its line and column to just
+    /// after the last character of its raw text, each line break inside it ending a line.
+    // @lfy def/query/data.lfy:Range#Range:Range:3d464f81ae846c20e751afbb0e5c64b500912337bbf142ea3852c8e1b828cbdd
+    // @lfy def/query/data.lfy:Range#Range:Range:42410cc3359cf9c81600301f587a3214f74cc7299ca3f4c83665b1a25d3ca7e6
+    // @lfy def/query/data.lfy:Range#Range:Range:9f2a0366cc29ad79e6acbcac521fb346187ba09ea8e99dae986b2007b27be7f9
+    pub fn of_token(token: &Token) -> Range {
+        Range {
+            file: token.file.to_string(),
+            start: Position::of_token(token),
+            end: Position::after_token(token),
+        }
+    }
+
+    /// The range of the tokens `[start, end)` of the file at `path`: what a `Node` or an
+    /// `ErrorNode` covering them sits at.
+    // @lfy def/query/data.lfy:Range#Range:Range:fa2ba58abfd46b09ab8dd55507469634a70abc7e199c06a6631caf7983225c82
+    pub fn of_tokens(path: &str, tokens: &[Token], start: usize, end: usize) -> Range {
+        if start < end && end <= tokens.len() {
+            let first = &tokens[start];
+            return Range {
+                file: first.file.to_string(),
+                start: Position::of_token(first),
+                end: Position::after_token(&tokens[end - 1]),
+            };
+        }
+        // @lfy def/query/data.lfy:Range#Range:Range:0409eda181c0b22cae535fe79d05cf2ff5168ef5a35f69ac4fa34582db8a2ef5
+        let at = match tokens.get(start) {
+            Some(token) => Position::of_token(token),
+            None => tokens
+                .last()
+                .map_or(Position::new(1, 0), Position::after_token),
+        };
+        Range::empty(path, at)
     }
 
     /// Whether the range covers nothing.
@@ -100,33 +231,6 @@ impl fmt::Display for Severity {
     }
 }
 
-/// The stage that reported a diagnostic.
-// @lfy def/query/data.lfy:Stage
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Stage {
-    Loader, // @lfy def/query/data.lfy:Stage.loader
-    Lexer,  // @lfy def/query/data.lfy:Stage.lexer
-    Parser, // @lfy def/query/data.lfy:Stage.parser
-    Binder, // @lfy def/query/data.lfy:Stage.binder
-}
-
-impl Stage {
-    pub fn value(self) -> &'static str {
-        match self {
-            Stage::Loader => "loader",
-            Stage::Lexer => "lexer",
-            Stage::Parser => "parser",
-            Stage::Binder => "binder",
-        }
-    }
-}
-
-impl fmt::Display for Stage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.value())
-    }
-}
-
 /// One problem, placed.
 // @lfy def/query/data.lfy:Diagnostic
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,29 +259,23 @@ impl fmt::Display for Diagnostic {
 // @lfy def/query/data.lfy:Hover
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hover {
-    /// The identifier of the entity's declaration, as `declaring` finds it.
+    /// Where the entity is declared.
     pub range: Range, // @lfy def/query/data.lfy:Hover.range
-    /// The kind of the entity's symbol.
+    /// What kind of entity it is.
     pub kind: SymbolKind, // @lfy def/query/data.lfy:Hover.kind
-    /// The entity's name.
+    /// What the entity is called.
     pub identifier: String, // @lfy def/query/data.lfy:Hover.identifier
-    /// `Entity.definition` with every template reference and execution resolved for the
-    /// entity.
+    /// Its definition, ready to show.
     pub definition: Option<String>, // @lfy def/query/data.lfy:Hover.definition
-    /// `Entity.type` spelled as it is written: an identifier, a generic with its
-    /// arguments, `T[]` for a list, a function type with its parameters and output, a type
-    /// parameter by its name; `None` when there is none.
+    /// Its type, spelled as Elfie source.
     pub ty: Option<String>, // @lfy def/query/data.lfy:Hover.type
-    /// The identifier of the declaration that lists a type parameter or declares a member;
-    /// `None` for anything else.
+    /// The declaration it belongs to.
     pub owner: Option<String>, // @lfy def/query/data.lfy:Hover.owner
-    /// The identifier of each of `Entity.traits` in application order; `builtin` among
-    /// them for a native thing.
+    /// The traits it carries.
     pub traits: Vec<String>, // @lfy def/query/data.lfy:Hover.traits
-    /// The text of the `Documentation` attached to the declaration, without the
-    /// boundaries and with references kept as written.
+    /// The documentation written above its declaration.
     pub documentation: Option<String>, // @lfy def/query/data.lfy:Hover.documentation
-    /// `criteriaOf` the entity.
+    /// Its acceptance criteria, ready to show.
     pub criteria: Vec<Criterion>, // @lfy def/query/data.lfy:Hover.criteria
 }
 
@@ -271,7 +369,7 @@ pub struct Outline {
     pub range: Range, // @lfy def/query/data.lfy:Outline.range
     /// The identifier alone.
     pub selection_range: Range, // @lfy def/query/data.lfy:Outline.selectionRange
-    /// Members and the declarations nested in its body, in order.
+    /// What is declared inside it.
     pub children: Vec<Outline>, // @lfy def/query/data.lfy:Outline.children
 }
 
@@ -421,6 +519,90 @@ pub struct SemanticToken {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The tokens of a source, lexed as `def/a.lfy`.
+    fn lexed(text: &str) -> Vec<Token> {
+        crate::lexer::lex(text, Some("def/a.lfy")).expect("the source lexes")
+    }
+
+    // @lfy def/query/data.lfy:Position#Position:Position:861b7a44daa1e4d65aebc43df36fbac3099694952a6750dc2c10a13f271a8327
+    // @lfy def/query/data.lfy:Position#Position:Position:0764e4fc500185958a79dff6c472387292a0b929b29c1698726fd91fb1365902
+    // @lfy def/query/data.lfy:Position#Position:Position:a10f6c71c4533b3b95c737d090f9e84f0f2bef8b90d443fce945bf6141f3a94d
+    // @lfy def/query/data.lfy:Position#Position:Position:f09439a462b605013eb205d44209e33b7a249f771901382b53f30d9e1b0cfbba
+    #[test]
+    fn a_position_belongs_to_the_token_whose_range_covers_it() {
+        let tokens = lexed("const x = 1;");
+        let raw = |line, column| {
+            Position::new(line, column)
+                .token_in(&tokens)
+                .map(|index| tokens[index].raw.as_str())
+        };
+        // Inside a token.
+        assert_eq!(raw(1, 2), Some("const"));
+        // Between a keyword or an identifier and what follows, the earlier one wins.
+        assert_eq!(raw(1, 5), Some("const"));
+        assert_eq!(raw(1, 7), Some("x"));
+        // Between two tokens of which the earlier spells no name, the later one wins.
+        assert_eq!(raw(1, 8), Some("="));
+        assert_eq!(raw(1, 11), Some(";"));
+        // Past the end of the file, on the last line and beyond it.
+        assert_eq!(raw(1, 12), None);
+        assert_eq!(raw(2, 0), None);
+        // The end of the file is still the boundary after a final name.
+        let tokens = lexed("const x = y");
+        assert_eq!(
+            Position::new(1, 11)
+                .token_in(&tokens)
+                .map(|index| tokens[index].raw.as_str()),
+            Some("y")
+        );
+    }
+
+    // @lfy def/query/data.lfy:Range#Range:Range:3d464f81ae846c20e751afbb0e5c64b500912337bbf142ea3852c8e1b828cbdd
+    // @lfy def/query/data.lfy:Range#Range:Range:42410cc3359cf9c81600301f587a3214f74cc7299ca3f4c83665b1a25d3ca7e6
+    // @lfy def/query/data.lfy:Range#Range:Range:9f2a0366cc29ad79e6acbcac521fb346187ba09ea8e99dae986b2007b27be7f9
+    // @lfy def/query/data.lfy:Range#Range:Range:fa2ba58abfd46b09ab8dd55507469634a70abc7e199c06a6631caf7983225c82
+    // @lfy def/query/data.lfy:Range#Range:Range:0409eda181c0b22cae535fe79d05cf2ff5168ef5a35f69ac4fa34582db8a2ef5
+    // @lfy def/query/data.lfy:Position#Position:Position:8b94c4fc19a43ba061b4ab961f36c9bc6c916d1c1c1378c505f590aa07df9a7f
+    #[test]
+    fn a_range_runs_from_the_first_token_covered_to_just_after_the_last() {
+        let tokens = lexed("/** Block\n doc **/\nd A {}\n");
+        // A token's range is in its own file, starts where it starts, and ends just after
+        // its last character, a line break inside it ending a line.
+        assert_eq!(
+            Range::of_token(&tokens[1]),
+            Range {
+                file: "def/a.lfy".to_string(),
+                start: Position::new(1, 3),
+                end: Position::new(2, 5),
+            }
+        );
+        assert_eq!(
+            Range::of_token(&tokens[0]),
+            Range {
+                file: "def/a.lfy".to_string(),
+                start: Position::new(1, 0),
+                end: Position::new(1, 3),
+            }
+        );
+        // A run of tokens runs from the first token's start to the last token's end.
+        let whole = Range::of_tokens("def/a.lfy", &tokens, 0, tokens.len());
+        assert_eq!(whole.start, Position::new(1, 0));
+        assert_eq!(whole.end, Position::new(4, 0));
+        // A run that covers no token is empty where it would have started.
+        assert_eq!(
+            Range::of_tokens("def/a.lfy", &tokens, 2, 2),
+            Range::empty("def/a.lfy", Position::new(2, 5))
+        );
+        assert_eq!(
+            Range::of_tokens("def/b.lfy", &[], 0, 0),
+            Range::empty("def/b.lfy", Position::new(1, 0))
+        );
+        // A node contains a position when it covers the token the position belongs to.
+        assert!(node_covers(&tokens, 0, 2, Position::new(1, 4)));
+        assert!(!node_covers(&tokens, 0, 2, Position::new(3, 1)));
+        assert!(!node_covers(&tokens, 0, 2, Position::new(9, 0)));
+    }
 
     // @lfy def/query/data.lfy:Range.end
     #[test]

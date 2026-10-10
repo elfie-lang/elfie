@@ -1,8 +1,9 @@
 [
   {
+    "answered": [],
     "dependencies": {},
-    "generated": "2026-10-07T05:23:30Z",
-    "hash": "1e2b8569f0e08e142d464a10117ad3498ea124ae84d7da63ae79f47ea9ab9268",
+    "generated": "2026-10-08T14:26:36Z",
+    "hash": "e3190b6db2fd3f8e44129f55482c32ff99342bae8c9312fa2f7b80a7919943e9",
     "markers": [
       {
         "column": null,
@@ -421,7 +422,7 @@
     ],
     "output": "crates/elfie-cli/src/data.rs",
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "6950ffb11b5f693110f618827af27c829158771a5f0dce98e4f715d708ea9004",
+    "signature": "73ba6f9bae1df36432e3f6a5d862b352652f8333dedf707f26ddab102d1a683b",
     "source": "def/cli/data.lfy",
     "target": "rust"
   }

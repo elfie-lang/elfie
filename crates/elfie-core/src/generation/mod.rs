@@ -194,6 +194,7 @@ fn entity_requirements(file: &LoweredFile, entity: EntityId) -> Vec<Requirement>
 /// declaration in the unit's own lowered file, or, for an entity moved into the unit, those
 /// of its declaration in the file it came from.
 // @lfy def/generation/main.lfy:request
+// @lfy def/generation/main.lfy:review
 fn declared_requirements(program: &Program, lowered: usize, entity: EntityId) -> Vec<Requirement> {
     let own = entity_requirements(&program.files[lowered], entity);
     if !own.is_empty() || lowered_node_of(&program.files[lowered], entity).is_some() {
@@ -226,17 +227,47 @@ fn local_requirements(file: &LoweredFile) -> Vec<Requirement> {
     out
 }
 
-/// `SourceMap.requirements`: the SHA-256 of the ids of a unit's local criteria and tests,
-/// sorted and joined by line breaks.
-// @lfy def/generation/main.lfy:plan
-fn requirements_hash(program: &Program, unit: &Unit) -> String {
+/// One file as it was when the outputs generated from it were accepted: its lowered text,
+/// and its local criteria and tests in the order it gives them.
+///
+/// The text as written is bound through [`change`](crate::workspace::change) and lowered, so
+/// the text that comes back is the lowered text a request carries for the file now and the
+/// two can be read side by side, and the ids come out spelled as the unit's own are.
+/// `None` when the workspace holds no file at that path.
+// @lfy def/generation/main.lfy:request#request:request:e6a9a7f8f68b31456fa6f45f2971df1eddc6eed03b9bcb155872fff58c0ca957
+fn file_as_it_was(program: &Program, path: &str, text: &str) -> Option<(String, Vec<Requirement>)> {
+    let before = crate::interpret::lower(crate::workspace::change(
+        &program.workspace,
+        path,
+        Some(text),
+    ));
+    let index = before
+        .workspace
+        .files
+        .iter()
+        .position(|file| file.path == path)?;
+    let file = &before.files[index];
+    Some((file.text.clone(), local_requirements(file)))
+}
+
+/// `SourceMap.answered`: the ids of a unit's local criteria and tests, sorted — what a
+/// source map records and what [`requirements_hash`] hashes.
+// @lfy def/generation/data.lfy:SourceMap.answered
+fn answered_ids(program: &Program, unit: &Unit) -> Vec<String> {
     let mut ids: Vec<String> = unit
         .requirements(program)
         .iter()
         .map(|requirement| requirement.id().to_string())
         .collect();
     ids.sort();
-    source_hash(&ids.join("\n"))
+    ids
+}
+
+/// `SourceMap.requirements`: the SHA-256 of the ids of a unit's local criteria and tests,
+/// sorted and joined by line breaks.
+// @lfy def/generation/main.lfy:plan
+fn requirements_hash(program: &Program, unit: &Unit) -> String {
+    source_hash(&answered_ids(program, unit).join("\n"))
 }
 
 /// The lowered code of one node as Elfie source: kept nodes as written, folded nodes as the
@@ -346,7 +377,7 @@ fn lowered_value(model: &Model, value: &Evaluated) -> String {
 /// such as `List` or `Path`, never by a path or a module name. Nothing else is written: a
 /// change that leaves every line the same, such as a new criterion or a moved line, leaves
 /// the text the same, so dependents are not regenerated for it.
-// @lfy def/generation/main.lfy:interfaceOf
+// @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:df415af10d739698174e3358d1293c5c82973190a3202adf8f50300ab0f4f3d5
 pub fn interface_of(workspace: &Workspace, unit: &Unit) -> String {
     let model = &workspace.model;
     let mut out = String::new();
@@ -361,8 +392,9 @@ pub fn interface_of(workspace: &Workspace, unit: &Unit) -> String {
     out
 }
 
-/// SHA-256 of a unit's interface text.
-// @lfy def/generation/main.lfy:interfaceOf
+/// SHA-256 of a unit's interface text: what a source map's signature records, so that the
+/// text a dependent may rely on and the text the signature hashes are the same text.
+// @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:df415af10d739698174e3358d1293c5c82973190a3202adf8f50300ab0f4f3d5
 fn interface_signature(workspace: &Workspace, unit: &Unit) -> String {
     source_hash(&interface_of(workspace, unit))
 }
@@ -396,9 +428,12 @@ fn members_of(model: &Model, entity: EntityId) -> Vec<EntityId> {
 
 /// One entity as an interface line: identifier, kind, definition, type, and for a fn its
 /// parameters with their types and its output. No line number is written, so the text
-/// depends on nothing but what a dependent may rely on. A type is spelled by the
-/// identifier of the entity it names, wherever that entity was declared, so an entity of
-/// the `elfie` package reads `List` or `Path` and never a path or a module name.
+/// depends on nothing but what a dependent may rely on. Every type is spelled by
+/// [`model::type_text_of`], the one speller of a type as Elfie source, so a generic type
+/// keeps its arguments, a type that declares no name reads as it was written, and a
+/// function type reads as its parameters and its output; a declaration is spelled by its
+/// identifier alone, wherever it was declared, so an entity of the `elfie` package reads
+/// `List` or `Path` and never a path or a module name.
 // @lfy def/generation/main.lfy:interfaceOf
 fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, indent: &str) {
     let record = &model.entities[entity];
@@ -411,16 +446,17 @@ fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, ind
     if let Some(definition) = &record.definition {
         let _ = write!(out, ": {definition}");
     }
-    if let Some(ty) = &record.ty {
-        let _ = write!(out, " — type `{}`", model::type_text(model, ty));
+    // @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:fd62af8a8ab692d82a9ff1cd315fe1ba7411cb837421fff2038240e570114c59
+    if let Some(spelled) = model::type_text_of(model, record.ty.as_ref()) {
+        let _ = write!(out, " — type `{spelled}`");
     }
     let parameters: Vec<String> = record
         .parameters()
         .iter()
         .map(|&symbol| {
             let symbol = &model.symbols[symbol];
-            match &model.entities[symbol.entity].ty {
-                Some(ty) => format!("{}: {}", symbol.name, model::type_text(model, ty)),
+            match model::type_text_of(model, model.entities[symbol.entity].ty.as_ref()) {
+                Some(spelled) => format!("{}: {spelled}", symbol.name),
                 None => symbol.name.clone(),
             }
         })
@@ -428,8 +464,8 @@ fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, ind
     if !parameters.is_empty() {
         let _ = write!(out, " — parameters ({})", parameters.join(", "));
     }
-    if let Some(output) = record.output() {
-        let _ = write!(out, " — output `{}`", model::type_text(model, output));
+    if let Some(spelled) = model::type_text_of(model, record.output()) {
+        let _ = write!(out, " — output `{spelled}`");
     }
     out.push('\n');
 }
@@ -469,7 +505,8 @@ pub fn plan(
     violated: &[String],
 ) -> (Program, Plan) {
     // The plan's program is the workspace lowered: runtime code only, with every
-    // compile-time result in place. @lfy def/generation/main.lfy:plan
+    // compile-time result in place.
+    // @lfy def/generation/main.lfy:plan#plan:plan:3303e4532dda74155594c480805a56fc6c02f04473a087e4e299c538bd992142
     let lowered = crate::interpret::lower(workspace);
     let program = &lowered;
     let workspace = &program.workspace;
@@ -499,7 +536,7 @@ pub fn plan(
             // @lfy def/generation/main.lfy:plan
             let lowered = lowered_entities(&program.files[file_index]);
             buildable.extend(lowered.iter().copied());
-            // @lfy def/generation/main.lfy:plan#plan:plan:1b7fdf3d190f89a93b4da6eaafc7774096e2d8f5a64d61a43e54f3fec690750c
+            // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
             let entities: Vec<EntityId> = built_entities(model, file.source, target.declaration)
                 .into_iter()
                 .filter(|entity| lowered.contains(entity))
@@ -580,12 +617,13 @@ pub fn plan(
                 entities: entities[item].clone(),
                 // The program's files run parallel to the workspace's, so a file's index
                 // is the index of the file lowered from it.
+                // @lfy def/generation/main.lfy:plan#plan:plan:f1d41358bbe62b7bc098a9056623218e8f88baf629ec9d4f2caab39e89f37bfc
                 lowered: file_index,
                 // @lfy def/generation/main.lfy:plan
                 text: unit_text(model, program, file_index, &moved_out, &moved_in),
                 stem: stem_of(&file.path, &workspace.source_directory), // @lfy def/generation/main.lfy:plan
                 dependencies: dependencies[item].iter().map(|&d| position[d]).collect(),
-                // @lfy def/generation/main.lfy:plan
+                // @lfy def/generation/main.lfy:plan#plan:plan:84b9ddea7d9b6f73bdde004e1e9dee2c746f57ff862c8302fd0a3150a4df7817
                 outputs: source_maps
                     .iter()
                     .filter(|map| map.target == target.identifier && map.source == file.path)
@@ -700,10 +738,16 @@ fn resolve_cycles(
             }
             // @lfy def/generation/main.lfy:plan
             let Some(lowest) = lowest_file(workspace, files, &cycle) else {
-                // @lfy def/generation/main.lfy:plan
-                let problem = cycle_problem(workspace, files, entities, &cycle);
-                if !problems.contains(&problem) {
-                    problems.push(problem);
+                // A cycle whose files use one another is the uses' own doing, and the
+                // workspace already holds a problem at each of those uses: planning adds
+                // nothing to it and moves nothing out of it.
+                // @lfy def/generation/main.lfy:plan#plan:plan:9e6d3d70db8eebce09554eb34d8e0c45134ec1eba5d58f6da4e57b8a378c0f4e
+                if !cycle_among_uses(workspace, files, &cycle) {
+                    // @lfy def/generation/main.lfy:plan#plan:plan:fa7d90dd8bdab380388515f7c40bb7848f1274eb5d75942a04288b75a656c7bf
+                    let problem = cycle_problem(workspace, files, entities, &cycle);
+                    if !problems.contains(&problem) {
+                        problems.push(problem);
+                    }
                 }
                 settled.push(cycle);
                 continue;
@@ -736,8 +780,8 @@ fn resolve_cycles(
                 again = true;
                 break;
             }
-            // A cycle among uses that no reaching accompanies adds nothing: the uses
-            // themselves are a problem the workspace already holds.
+            // A cycle whose lowest file reaches nothing of the others leaves them where they
+            // are: there is nothing to move, so the rounds end rather than repeat.
             // @lfy def/generation/main.lfy:plan
             settled.push(cycle);
         }
@@ -749,7 +793,7 @@ fn resolve_cycles(
 
 /// Every group of two or more items each of which depends on every other, directly or
 /// through other items, each item in at most one group and the groups in item order.
-// @lfy def/generation/main.lfy:plan
+// @lfy def/generation/main.lfy:plan#plan:plan:5ea9c1a46ff002cb966b639dd7fa5752f17660d0d99bf21d939baffb3c345b31
 fn cycles(dependencies: &[Vec<usize>]) -> Vec<Vec<usize>> {
     let count = dependencies.len();
     let mut reaches = vec![vec![false; count]; count];
@@ -790,20 +834,39 @@ fn cycles(dependencies: &[Vec<usize>]) -> Vec<Vec<usize>> {
 }
 
 /// The unit of a cycle whose file the file of every other unit of the cycle uses, directly or
-/// through other files; the first such in file order, and `None` when there is none.
-// @lfy def/generation/main.lfy:plan
+/// through other files, and which itself uses none of them; the first such in file order, and
+/// `None` when there is none.
+///
+/// Both halves are needed: a file that uses another file of the cycle is below nothing, so a
+/// cycle among uses, where each file uses every other, has no lowest file at all.
+// @lfy def/generation/main.lfy:plan#plan:plan:e32007c54b7c28a4e6102a813e4c61dc2c7f36b487af8e3f5c778220338975cf
 fn lowest_file(workspace: &Workspace, files: &[usize], cycle: &[usize]) -> Option<usize> {
     let mut candidates: Vec<usize> = cycle
         .iter()
         .copied()
         .filter(|&lowest| {
             cycle.iter().all(|&other| {
-                other == lowest || used_by(workspace, files[other], files[lowest])
+                other == lowest
+                    || (used_by(workspace, files[other], files[lowest])
+                        && !used_by(workspace, files[lowest], files[other]))
             })
         })
         .collect();
     candidates.sort_by_key(|&unit| files[unit]);
     candidates.first().copied()
+}
+
+/// Whether the files of a cycle's units form a cycle among uses: two of them each of which
+/// uses the other, directly or through other files.
+// @lfy def/generation/main.lfy:plan#plan:plan:9e6d3d70db8eebce09554eb34d8e0c45134ec1eba5d58f6da4e57b8a378c0f4e
+fn cycle_among_uses(workspace: &Workspace, files: &[usize], cycle: &[usize]) -> bool {
+    cycle.iter().any(|&one| {
+        cycle.iter().any(|&other| {
+            other != one
+                && used_by(workspace, files[one], files[other])
+                && used_by(workspace, files[other], files[one])
+        })
+    })
 }
 
 /// Whether one file uses another, directly or through other files.
@@ -1136,9 +1199,9 @@ fn reached_by(model: &Model, roots: &[EntityId]) -> Vec<EntityId> {
 /// entity that holds it.
 // @lfy def/generation/main.lfy:plan#plan:plan:c3b45b9c75fa54e5426018d8de412d9c76d287a296f9384ce03c03717a3ee93c
 fn built_entities(model: &Model, source: usize, declaration: EntityId) -> Vec<EntityId> {
-    // @lfy def/generation/main.lfy:plan#plan:plan:f50e1e1e7d1202cefb738ac1a35aaf701a527d714a98bf508187d9e62711111d
+    // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
     let global: &[EntityId] = &model.entities[model.global].targets;
-    // @lfy def/generation/main.lfy:plan#plan:plan:9d9bdedaf21744127b3df06a905fda651438a8d0a428da8e1f1411fa653c7e11
+    // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
     let of_file: &[EntityId] = model
         .file_entities
         .get(source)
@@ -1157,7 +1220,7 @@ fn built_entities(model: &Model, source: usize, declaration: EntityId) -> Vec<En
             {
                 continue;
             }
-            // @lfy def/generation/main.lfy:plan#plan:plan:b289c015fc19940e37cc73ea07c7ad9132652a5f7e844d6c739186fb3606576c
+            // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
             let chosen: &[EntityId] = if !entity.targets.is_empty() {
                 entity.targets.as_slice()
             } else if of_file.is_empty() {
@@ -1239,15 +1302,20 @@ fn order_after_dependencies(dependencies: &[Vec<usize>]) -> Vec<usize> {
     order
 }
 
-/// `Unit.stem`: the file's path relative to the source directory, without `.lfy`.
+/// `Unit.stem`: `Path.relative` of the file's path to the source directory, without the
+/// `.lfy` extension. A file the program reached through a `use` from outside the source
+/// directory names itself from there, with one `..` per segment the source directory has
+/// beyond the ones they share, so that two such files cannot collide.
 // @lfy def/generation/main.lfy:plan
+// @lfy def/generation/data.lfy:Unit#Unit:Unit:1fc2e33009d6c55647083813e41979cdcd5f51fe2a856a9f6815fb4aa2b68bd3
 fn stem_of(path: &str, source_directory: &str) -> String {
-    // Decision: a file the program reached through a `use` from outside the source
-    // directory keeps its whole path as its stem, so that two such files cannot collide.
-    let relative = strip_directory(path, source_directory).unwrap_or(path);
+    // A unit is only ever made for a file of the project itself, so the file's path and the
+    // source directory are both relative to the root and `Path.relative` of the two is
+    // always defined; a path that is somehow not keeps itself.
+    let relative = path_relative(path, source_directory).unwrap_or_else(|| path.to_string());
     relative
         .strip_suffix(EXTENSION)
-        .unwrap_or(relative)
+        .unwrap_or(&relative)
         .to_string()
 }
 
@@ -1271,22 +1339,25 @@ fn reason_of(
     let unit = &units[index];
     let file = &workspace.files[unit.file];
     if requested.iter().any(|r| r == &file.path || r == &unit.stem) {
+        // @lfy def/generation/main.lfy:plan#plan:plan:68cc4a6ef4fd0e7da9d24e21b1ef05a1e1d173ad7313adf6c3971c21bd01bd3c
         return Some(Reason::Requested);
     }
     if violated.iter().any(|stem| stem == &unit.stem) {
-        return Some(Reason::Violated); // @lfy def/generation/main.lfy:plan
+        // @lfy def/generation/main.lfy:plan#plan:plan:d02d6ed2f21e62878f97bfce1df0638b8152e90e9d1fbd87429ffad5d31a7be5
+        return Some(Reason::Violated);
     }
     if unit.outputs.is_empty() {
+        // @lfy def/generation/main.lfy:plan#plan:plan:01751bca4d2165839842ab83d64cf2cab13330a74b283b7c2cf83fd8513371c3
         return Some(Reason::Fresh);
     }
     // The lowered text the unit compiles, not the source: an edit that leaves the lowered
     // code the same, such as a comment, changes nothing.
-    // @lfy def/generation/main.lfy:plan
+    // @lfy def/generation/main.lfy:plan#plan:plan:699a0b8df170aed10dd0c3f2cdf3492c7eff895d33b7e542b8928c357895c458
     let hash = source_hash(&unit.text);
     if unit.outputs.iter().any(|output| output.hash != hash) {
         return Some(Reason::Changed);
     }
-    // @lfy def/generation/main.lfy:plan
+    // @lfy def/generation/main.lfy:plan#plan:plan:7725d70d35f6e8be6804e106099b40d9930e162127a1e2c046e3b3a2ec0ff846
     let requirements = requirements_hash(program, unit);
     if unit
         .outputs
@@ -1296,7 +1367,10 @@ fn reason_of(
         return Some(Reason::Requirements);
     }
     // A dependency whose interface differs from the one the outputs were generated
-    // against, or which they record nothing for, plans the unit.
+    // against, or which they record nothing for, plans the unit. An edit that leaves every
+    // dependency's interface the same — the body of one fn, say — therefore plans nothing
+    // but the unit holding it.
+    // @lfy def/generation/main.lfy:plan#plan:plan:43f3dac0dd4bb25573f9bff0c0f81d674671504e8ac666c8ae2bf37faf2d75f8
     let stale = unit.dependencies.iter().any(|&dependency| {
         let path = &workspace.files[units[dependency].file].path;
         let signature = &signatures[dependency];
@@ -1305,9 +1379,11 @@ fn reason_of(
             .any(|output| output.dependencies.get(path) != Some(signature))
     });
     if stale {
+        // @lfy def/generation/main.lfy:plan#plan:plan:772d227fa53dc6d543215df30f2905bc04c628366f07dcbff492bb5ce7333638
         return Some(Reason::Dependency);
     }
-    None // @lfy def/generation/main.lfy:plan
+    // @lfy def/generation/main.lfy:plan#plan:plan:40f45c8240354c40ed6f2a0ef91f2c24787a209455f9f1a93d9e45ae9c1b5dd7
+    None
 }
 
 /// The planned units partitioned into batches, in plan order.
@@ -1321,7 +1397,7 @@ fn reason_of(
 /// produces. Because the units are visited in plan order, and every unit comes after its
 /// dependencies, every batch comes after the batches holding the dependencies of its
 /// units.
-// @lfy def/generation/main.lfy:plan
+// @lfy def/generation/main.lfy:plan#plan:plan:88eb512d83f4888e4edcac53d09e9ed1d190eb09ce99803fb65ec6e80776586c
 fn batches_of(units: &[Unit]) -> Vec<Batch> {
     // Decision: the criteria give one guidance and one set of native dependencies per
     // request, so a batch holds units of one target; two targets never share a batch even
@@ -1339,14 +1415,25 @@ fn batches_of(units: &[Unit]) -> Vec<Batch> {
             let first = &units[open.units[0]];
             // Decision: the exception waives the directory, not the size of a batch; a
             // batch that is already full opens a new one whatever the reason.
-            let dependent = unit.reason == Some(Reason::Dependency) // @lfy def/generation/main.lfy:plan
+            // @lfy def/generation/main.lfy:plan#plan:plan:83ae85d53a06f4a097fb8db49ddcb5211746d5285060c427ab68e0f4d46b4b30
+            let dependent = unit.reason == Some(Reason::Dependency)
+                // Every planned dependency of the unit is in the open batch, and there is at
+                // least one: a unit with no planned dependency waives nothing.
                 && unit
                     .dependencies
                     .iter()
-                    .all(|&d| units[d].reason.is_none() || open.units.contains(&d));
+                    .all(|&d| units[d].reason.is_none() || open.units.contains(&d))
+                && unit
+                    .dependencies
+                    .iter()
+                    .any(|&d| units[d].reason.is_some() && open.units.contains(&d));
+            // @lfy def/generation/main.lfy:plan#plan:plan:139ff97944391c8eb7f3b810897377a8bd64ea54d0fe64b6c29a7043348a5379
             first.target == unit.target
+                // @lfy def/generation/main.lfy:plan#plan:plan:f5945b26c42abf21599b311c49e8448eb81d2fad73e72ff70a5affec2d2f63c7
                 && (first_segment(&first.stem) == first_segment(&unit.stem) || dependent)
+                // @lfy def/generation/main.lfy:plan#plan:plan:46d51e256ac0ed89b3413a7e235770719a0f216b2b18d7b133e7e05e6d930718
                 && open.units.len() < BATCH_UNITS
+                // @lfy def/generation/main.lfy:plan#plan:plan:8b23e12f7a1211640db7cdf6e25859876cd4e9df01a21c0766522b1249acc498
                 && open_characters + characters < BATCH_CHARACTERS
         });
         match batches.last_mut() {
@@ -1354,6 +1441,10 @@ fn batches_of(units: &[Unit]) -> Vec<Batch> {
                 open.units.push(index);
                 open_characters += characters;
             }
+            // With no batch open, or with the open one refusing the unit, the unit opens a
+            // new batch of its own.
+            // @lfy def/generation/main.lfy:plan#plan:plan:018965380af8e7bb6f00c88630feb1dbcd8a2af6c98cfbe47cdbb5c5c5714805
+            // @lfy def/generation/main.lfy:plan#plan:plan:b7a4d3d09495c60318a05c9c39c728fffd85508badbf8aa414d70dbe6b2aef66
             _ => {
                 batches.push(Batch {
                     units: vec![index],
@@ -1439,6 +1530,8 @@ pub fn request(
             requirements: BTreeMap::new(),
             globals: Vec::new(),
             previous: previous.clone(),
+            answered: BTreeMap::new(),
+            removed: BTreeMap::new(),
             existing: BTreeMap::new(),
             interfaces: Vec::new(),
             guidance: Vec::new(),
@@ -1467,6 +1560,82 @@ pub fn request(
             (
                 workspace.files[unit.file].path.clone(),
                 unit.requirements(program),
+            )
+        })
+        .collect();
+    // The file of each unit of the batch as it was when its outputs were accepted, lowered
+    // the way its file is lowered now.
+    // @lfy def/generation/main.lfy:request#request:request:e6a9a7f8f68b31456fa6f45f2971df1eddc6eed03b9bcb155872fff58c0ca957
+    let was: BTreeMap<String, (String, Vec<Requirement>)> = batch
+        .units
+        .iter()
+        .filter_map(|&index| {
+            let path = &workspace.files[plan.units[index].file].path;
+            let text = previous.get(path)?;
+            let (lowered, requirements) = file_as_it_was(program, path, text)?;
+            Some((path.clone(), (lowered, requirements)))
+        })
+        .collect();
+    // The lowered text each unit's outputs were generated from, which the instructions read
+    // against the lowered text of the unit now.
+    // @lfy def/generation/main.lfy:request#request:request:6232735fed99654f7d25efa96687134e92c7667e0be166ba2471ca9d018c3103
+    let previous_lowered: BTreeMap<String, String> = was
+        .iter()
+        .map(|(path, (lowered, _))| (path.clone(), lowered.clone()))
+        .collect();
+    // The ids the existing outputs were generated against: what the map file of the unit
+    // recorded, or, where it recorded none, the ids of the file as it was.
+    // @lfy def/generation/main.lfy:request#request:request:160056c645e3e69afd7ce0bb74137db9a5e5f286df0a983570f9e2569276b533
+    // @lfy def/generation/main.lfy:request#request:request:17f8da3e2ff4913864923cd11e57fe5ff20121b6a364f38e388c25c9113dff54
+    let answered: BTreeMap<String, Vec<String>> = batch
+        .units
+        .iter()
+        .filter_map(|&index| {
+            let path = &workspace.files[plan.units[index].file].path;
+            let recorded = plan.units[index]
+                .outputs
+                .iter()
+                .find(|map| !map.answered.is_empty())
+                .map(|map| map.answered.clone());
+            let ids = match recorded {
+                Some(ids) => ids,
+                None => was
+                    .get(path)?
+                    .1
+                    .iter()
+                    .map(|requirement| requirement.id().to_string())
+                    .collect(),
+            };
+            Some((path.clone(), ids))
+        })
+        .collect();
+    // Each criterion and test of the file as it was that the unit no longer has, in the
+    // order the file as it was gives them: what a compiler reading the existing code needs
+    // in order to tell code that answers for nothing any more from code that still answers.
+    // @lfy def/generation/main.lfy:request#request:request:e9e73367084b12788d91ea49ea57894f06e55c67ebf0856dbb827d3a968fc089
+    let removed_requirements: BTreeMap<String, Vec<Requirement>> = was
+        .iter()
+        .filter_map(|(path, (_, before))| {
+            let held = requirements.get(path)?;
+            let gone: Vec<Requirement> = before
+                .iter()
+                .filter(|requirement| {
+                    !held.iter().any(|other| other.id() == requirement.id())
+                })
+                .cloned()
+                .collect();
+            (!gone.is_empty()).then(|| (path.clone(), gone))
+        })
+        .collect();
+    // @lfy def/generation/data.lfy:Request.removed
+    let removed: BTreeMap<String, Vec<String>> = removed_requirements
+        .iter()
+        .map(|(path, gone)| {
+            (
+                path.clone(),
+                gone.iter()
+                    .map(|requirement| requirement.id().to_string())
+                    .collect(),
             )
         })
         .collect();
@@ -1514,12 +1683,12 @@ pub fn request(
         }
     }
     let guidance = guidance_for(model, target);
-    // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+    // @lfy def/generation/main.lfy:request
     let native_dependencies: Vec<NativeDependency> = target.native_dependencies.clone();
     let commands: Vec<Command> = target.commands.clone();
     // The target's knowledge, then that of each entity of the batch's units, then that of
     // each entity of an interface, each item once.
-    // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+    // @lfy def/generation/main.lfy:request
     let mut knowledge: Vec<Knowledge> = Vec::new();
     let hold = |items: &[Knowledge], knowledge: &mut Vec<Knowledge>| {
         for item in items {
@@ -1548,7 +1717,9 @@ pub fn request(
         &Quoted {
             sources: &sources,
             globals: &globals,
-            previous,
+            previous: &previous_lowered,
+            answered: &answered,
+            removed: &removed_requirements,
             existing: &existing,
             interfaces: &interfaces,
             guidance: &guidance,
@@ -1564,7 +1735,9 @@ pub fn request(
         sources,
         requirements,
         globals,
-        previous: previous.clone(),
+        previous: previous_lowered,
+        answered,
+        removed,
         existing,
         interfaces,
         guidance,
@@ -1582,6 +1755,8 @@ struct Quoted<'r> {
     sources: &'r BTreeMap<String, String>,
     globals: &'r [Requirement],
     previous: &'r BTreeMap<String, String>,
+    answered: &'r BTreeMap<String, Vec<String>>,
+    removed: &'r BTreeMap<String, Vec<Requirement>>,
     existing: &'r BTreeMap<String, String>,
     interfaces: &'r [Interface],
     guidance: &'r [Criterion],
@@ -1603,12 +1778,12 @@ struct Quoted<'r> {
 // trait's own criteria keep a template value of its parameters as written — the parameters
 // are unbound where the trait is declared — and the application that bound them is what the
 // declaration holds.
-// @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+// @lfy def/generation/main.lfy:request#request:request:3d9e3582187fd1f1532a46bf0f938c787311c81feb59f4a7d7d5b0da9a813a9a
 pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
     let held = model::criteria_of(model, target.declaration);
     // A trait reached through two layers is inherited by the declaration once per path, so
     // what one contributor gave is taken once.
-    // @lfy def/generation/main.lfy:request#request:request:7ba99d5e747662531bb244f8f0f9640426e9b36113f67099d0a02904a6a282e5
+    // @lfy def/generation/main.lfy:request
     let once = |criteria: Vec<Criterion>| -> Vec<Criterion> {
         let mut out: Vec<Criterion> = Vec::new();
         for criterion in criteria {
@@ -1622,7 +1797,7 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
     // what comes first is what none of them gave. Nearest first: a trait is reached a whole
     // level after the trait that extends it, and a trait reached twice keeps its first
     // place.
-    // @lfy def/generation/main.lfy:request#request:request:7ba99d5e747662531bb244f8f0f9640426e9b36113f67099d0a02904a6a282e5
+    // @lfy def/generation/main.lfy:request
     let mut layered: Vec<EntityId> = Vec::new();
     for &layer in &target.layers {
         if layered.contains(&layer) {
@@ -1645,7 +1820,7 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
     }
     // Whoever else gave the declaration a criterion comes first: the declaration's own body,
     // or the file that adds one with an add call on the const's acceptanceCriteria.
-    // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+    // @lfy def/generation/main.lfy:request
     let mut out: Vec<Criterion> = once(
         held.iter()
             .filter(|criterion| !layered.contains(&criterion.contributor))
@@ -1669,7 +1844,7 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
                 .collect(),
         )
     };
-    // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+    // @lfy def/generation/main.lfy:request
     for &entity in &layered {
         out.extend(by(entity));
     }
@@ -1690,8 +1865,10 @@ fn instructions(
     let Quoted {
         sources,
         globals,
-        previous,
-        existing,
+        previous: _,
+        answered,
+        removed,
+        existing: _,
         interfaces,
         guidance,
         native_dependencies,
@@ -1701,7 +1878,9 @@ fn instructions(
     let model = &workspace.model;
     let mut out = String::new();
 
-    // The reader and its job, and the units by stem. @lfy def/generation/main.lfy:request
+    // The reader and its job, and the units by stem.
+    // @lfy def/generation/main.lfy:request#request:request:571bc891f6509a3d1997b846f685a316e34804763d8271373888f530426558b3
+    // @lfy def/generation/main.lfy:request#request:request:d650f0548150afb04ee79524e308a0150e9cf8a3f4dcc9ffde74e3d90e7fcada
     let _ = writeln!(
         out,
         "# Compiling the batch `{}` for the target `{}`\n",
@@ -1723,7 +1902,8 @@ fn instructions(
     }
     out.push('\n');
 
-    // Where the outputs go. @lfy def/generation/main.lfy:request
+    // Where the outputs go.
+    // @lfy def/generation/main.lfy:request#request:request:800766e448bfb8ed73777735dcb6d1a81a50d15783302ad27486b92c2d669f5e
     out.push_str("## Where the outputs go\n\n");
     let _ = writeln!(
         out,
@@ -1740,6 +1920,7 @@ fn instructions(
                 unit.stem
             );
         } else {
+            // @lfy def/generation/main.lfy:request#request:request:28c71f256cbace38745c677d86962737a051927e499b97ac10dc63f2550643be
             let paths: Vec<String> = unit
                 .outputs
                 .iter()
@@ -1754,8 +1935,10 @@ fn instructions(
         }
     }
     out.push('\n');
+    write_existing(&mut out, workspace, plan, batch, quoted);
 
-    // The guidance. @lfy def/generation/main.lfy:request
+    // The guidance.
+    // @lfy def/generation/main.lfy:request#request:request:3d9e3582187fd1f1532a46bf0f938c787311c81feb59f4a7d7d5b0da9a813a9a
     out.push_str("## Guidance\n\n");
     let _ = writeln!(
         out,
@@ -1800,11 +1983,13 @@ fn instructions(
     // The knowledge. @lfy def/generation/main.lfy:request
     write_knowledge(&mut out, workspace, knowledge);
 
-    // Each interface. @lfy def/generation/main.lfy:request
+    // Each interface.
+    // @lfy def/generation/main.lfy:request#request:request:43df411fd74fc148bd737fdeb88ec86747b9ad9eb955912e272384f7def7a93f
     out.push_str("## Interfaces\n\n");
     if interfaces.is_empty() {
         out.push_str("The units of this batch depend on no unit outside it.\n\n");
     } else {
+        // @lfy def/generation/main.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
         out.push_str(
             "The units of this batch depend on the units below. Use their entities by the names their \
              outputs spell, and never edit their outputs.\n\n",
@@ -1833,16 +2018,42 @@ fn instructions(
         out.push('\n');
     }
 
-    // The commands. @lfy def/generation/main.lfy:request
+    // The commands.
+    // @lfy def/generation/main.lfy:request#request:request:09b0190ee8969e01b9ff7a561a98c3663f87fb8b97fa83c588d0631e7989bc20
     write_commands(&mut out, target, commands);
 
-    // One section per unit of the batch, in order. @lfy def/generation/main.lfy:request
+    // One section per unit of the batch, in order.
+    // @lfy def/generation/main.lfy:request#request:request:d86c17626a07f5e8ec807bd7740a5f6f8280e6af67444bf1bf5d18744b801d3b
     out.push_str("## The units to compile\n\n");
     for &index in &batch.units {
         let unit = &plan.units[index];
         let file = &workspace.files[unit.file];
         let lowered = &program.files[unit.lowered];
+        let answered = answered.get(&file.path).map(Vec::as_slice);
         let _ = writeln!(out, "### `{}` (stem `{}`)\n", file.path, unit.stem);
+        // A unit whose lowered code is unchanged has criteria or tests that are not: the
+        // code is held to what each of them now says, which may be behavior it never had.
+        // @lfy def/generation/main.lfy:request#request:request:dab229dc001954e941ede8f9cf711d6ff5830dd88e08a35f3bccea3da26ad09b
+        if unit.reason == Some(Reason::Requirements) {
+            out.push_str(
+                "The lowered code of this unit is unchanged, but its criteria or tests differ. The \
+                 code must do what each criterion and test now says, which may mean writing \
+                 behavior it does not have yet.\n\n",
+            );
+        }
+        // A criterion or test the existing outputs did not answer for may be a removed one
+        // put in other words, and the code is held to the new wording either way.
+        // @lfy def/generation/main.lfy:request#request:request:40e519bc14a840e00c6e0fb7bff68febae9b5b591f182632fddc0a29f6f47704
+        if answered.is_some_and(|ids| {
+            unit.requirements(program)
+                .iter()
+                .any(|requirement| !ids.iter().any(|id| id == requirement.id()))
+        }) {
+            out.push_str(
+                "A criterion or test marked new may restate a removed one in other words. Read the \
+                 code against what the new one says, never against the removed one.\n\n",
+            );
+        }
         if let Some(source) = sources.get(&file.path) {
             out.push_str("Lowered source:\n\n```elfie\n");
             out.push_str(source);
@@ -1858,7 +2069,7 @@ fn instructions(
         // Each entity's lowered code, and then, apart from the code, its local criteria and
         // tests, each on its own line with its id. @lfy def/generation/main.lfy:request
         for &entity in &unit.entities {
-            write_entity(&mut out, model, program, unit.lowered, entity);
+            write_entity(&mut out, model, program, unit.lowered, entity, answered);
         }
         // The criteria and tests of the file's own entity belong to no declaration of it.
         // @lfy def/generation/main.lfy:request
@@ -1871,12 +2082,19 @@ fn instructions(
             .collect();
         if !own.is_empty() {
             let _ = writeln!(out, "#### `{}` (file)\n", file.path);
-            write_requirements(&mut out, &own);
+            write_requirements(&mut out, &own, answered);
+        }
+        // What the outputs answered for and the unit no longer has, last in its section: an
+        // id and a text are all that is left of a criterion or a test a unit has dropped.
+        // @lfy def/generation/main.lfy:request#request:request:85fafd5b7c6201f807d532b93b487771bdd141c7ee6bd8854cdc7d981176ff9a
+        if let Some(gone) = removed.get(&file.path) {
+            out.push_str("#### Removed since its outputs were accepted\n\n");
+            write_requirements(&mut out, gone, None);
         }
     }
 
     // Every global criterion and test, each once with its id.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/main.lfy:request#request:request:947030aa711f453c710b970e654a978a41f4db5a2776707bc669e1c0efd5bea8
     out.push_str("## Global criteria and tests\n\n");
     out.push_str(
         "These hold across the whole program. A unit answers for one only where it is relevant to \
@@ -1886,12 +2104,12 @@ fn instructions(
     if globals.is_empty() {
         out.push_str("(none)\n\n");
     } else {
-        write_requirements(&mut out, globals);
+        write_requirements(&mut out, globals, None);
         out.push('\n');
     }
 
     // Criteria and tests are never restated in an output.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/main.lfy:request#request:request:88bad81c76d679b95e82ea566e65627b4a1615584da2fe8b645fd322f0b26fb3
     out.push_str("## Criteria and tests in an output\n\n");
     out.push_str(
         "Never restate a criterion or a test in an output, as a comment or as documentation. An \
@@ -1920,14 +2138,23 @@ fn instructions(
          - A Use is satisfied by the interfaces.\n\n",
     );
 
-    // Markers. @lfy def/generation/main.lfy:request
+    // Markers.
+    // @lfy def/generation/main.lfy:request#request:request:671617e25d98e36f8c646b0c76d941034839245f2544e239cb4ede3581bb2f33
+    // @lfy def/generation/main.lfy:request#request:request:44f9eb2a9dcf558687d93ade60ce6a62697e5ff6c388a512e83449be94e9a7fd
     out.push_str("## Markers\n\n");
-    out.push_str(
+    // The marker comment is spelled out, since the line comment a marker is written in must
+    // begin with it and nothing else in the request says how this language begins one.
+    let _ = write!(
+        out,
         "Every emitted item and every test carries a marker naming the entity it comes from. A marker is \
-         written as a line comment of the target's language reading `@lfy`, a space, the source path \
+         written as a line comment beginning with `{}`, then `@lfy`, a space, the source path \
          relative to the root, a colon, and the name of the entity: its identifier, or its owner's \
          identifier, a dot, and a member's name. Never write a line number. A region that answers \
-         for a criterion or a test spells its id after the entity and a `#`.\n\n",
+         for a criterion or a test spells its id after the entity and a `#`. Write a criterion's id \
+         only on code that does what that criterion says in every situation it names: a marker \
+         never stands in for the code, and a marker on code that does something else is a false \
+         claim about the program.\n\n",
+        target.marker_comment
     );
     for &index in &batch.units {
         let unit = &plan.units[index];
@@ -1935,7 +2162,8 @@ fn instructions(
         if let Some(&entity) = unit.entities.first() {
             let _ = writeln!(
                 out,
-                "For example: `@lfy {}:{}`.",
+                "For example: `{} @lfy {}:{}`.",
+                target.marker_comment,
                 file.path,
                 entity_name(model, entity)
             );
@@ -1943,7 +2171,8 @@ fn instructions(
     }
     out.push('\n');
 
-    // Tests. @lfy def/generation/main.lfy:request
+    // Tests.
+    // @lfy def/generation/main.lfy:request#request:request:6151dc423cf3f97336663532752b0e5607981574be689ec41445917c49163e8d
     out.push_str("## Tests\n\n");
     out.push_str(
         "Each test becomes one test, and each criterion that can be checked mechanically becomes one \
@@ -1951,66 +2180,8 @@ fn instructions(
          comes from and, after a `#`, the id of the criterion or test it answers for.\n\n",
     );
 
-    // A unit whose reason is requirements has code that did not change.
-    // @lfy def/generation/main.lfy:request
-    let restated: Vec<&Unit> = batch
-        .units
-        .iter()
-        .map(|&index| &plan.units[index])
-        .filter(|unit| unit.reason == Some(Reason::Requirements))
-        .collect();
-    if !restated.is_empty() {
-        out.push_str(
-            "The code of these units is unchanged: only the tests and the code answering for the \
-             criteria and tests whose ids were added or removed need to change.\n",
-        );
-        for unit in restated {
-            let _ = writeln!(out, "- `{}`", unit.stem);
-        }
-        out.push('\n');
-    }
-
-    // Existing outputs. @lfy def/generation/main.lfy:request
-    if !existing.is_empty() {
-        out.push_str("## Existing outputs\n\n");
-        out.push_str("These outputs exist already:\n");
-        for path in existing.keys() {
-            let _ = writeln!(out, "- `{path}`");
-        }
-        let known: Vec<&String> = sources
-            .keys()
-            .filter(|path| previous.contains_key(*path))
-            .collect();
-        let unknown: Vec<&String> = sources
-            .keys()
-            .filter(|path| !previous.contains_key(*path))
-            .collect();
-        out.push('\n');
-        if !known.is_empty() {
-            out.push_str(
-                "The previous source each output was generated from is given. Change only what the \
-                 difference between the previous source and the current source requires; keep names and \
-                 structure; keep the markers of unchanged items.\n",
-            );
-            for path in known {
-                let _ = writeln!(
-                    out,
-                    "\nThe previous source of `{path}`:\n\n```elfie\n{}\n```",
-                    previous[path].trim_end()
-                );
-            }
-            out.push('\n');
-        }
-        if !unknown.is_empty() {
-            out.push_str("\nThe source these were generated from is not known; reconcile the existing output with the source:\n");
-            for path in unknown {
-                let _ = writeln!(out, "- `{path}`");
-            }
-            out.push('\n');
-        }
-    }
-
-    // The agent server. @lfy def/generation/main.lfy:request
+    // The tools of the agent server.
+    // @lfy def/generation/main.lfy:request#request:request:45fec551e4527a98d2f44a2d0ad6d8d8a27da9f77f1255f53ede96415cfa364f
     out.push_str("## The agent server\n\n");
     out.push_str(
         "The tools of the agent server are called before files are searched or read by hand, because \
@@ -2025,7 +2196,8 @@ fn instructions(
          - `elfie_check` for whether acceptance would pass.\n\n",
     );
 
-    // How to end the report. @lfy def/generation/main.lfy:request
+    // How to end the report.
+    // @lfy def/generation/main.lfy:request#request:request:e4ff528873311ac2c054d3eb98c7015eca5064897eae15ff47429cfdd53b7860
     out.push_str("## How to report\n\n");
     out.push_str(
         "End your report with exactly one line:\n\n\
@@ -2039,10 +2211,84 @@ fn instructions(
     out
 }
 
+/// What the outputs part says about outputs that exist already: which they are, that only
+/// the difference between the previous lowered source and the current one and the criteria
+/// and tests marked new or removed require a change, the previous lowered source of each
+/// unit that has one, which units have none, and which units have no record of the ids their
+/// outputs were generated against.
+// @lfy def/generation/main.lfy:request#request:request:3d9b718229fc59a2a379fb37aab7b7235c06fee91fa5fc44b6285037204d9a68
+fn write_existing(
+    out: &mut String,
+    workspace: &Workspace,
+    plan: &Plan,
+    batch: &Batch,
+    quoted: &Quoted<'_>,
+) {
+    if quoted.existing.is_empty() {
+        return;
+    }
+    out.push_str("These outputs exist already:\n");
+    for path in quoted.existing.keys() {
+        let _ = writeln!(out, "- `{path}`");
+    }
+    out.push_str(
+        "\nChange only what the difference between the previous source and the current source, and \
+         the criteria and tests marked new or removed, requires. Keep names and structure. Keep the \
+         markers of unchanged items.\n",
+    );
+    let paths: Vec<&String> = batch
+        .units
+        .iter()
+        .map(|&index| &workspace.files[plan.units[index].file].path)
+        .collect();
+    for path in &paths {
+        if let Some(text) = quoted.previous.get(*path) {
+            let _ = writeln!(
+                out,
+                "\nThe previous source of `{path}`, lowered as its current source is:\n\n\
+                 ```elfie\n{}\n```",
+                text.trim_end()
+            );
+        }
+    }
+    // A unit whose outputs record no source is reconciled with its source instead.
+    // @lfy def/generation/main.lfy:request#request:request:3c1f4cba72285105fde5be93378fbda2d3d93aaf4293fbe643ab3a97d7d1b779
+    let unknown: Vec<&&String> = paths
+        .iter()
+        .filter(|path| !quoted.previous.contains_key(**path))
+        .collect();
+    if !unknown.is_empty() {
+        out.push_str(
+            "\nThe source these outputs were generated from is not known. Reconcile the existing \
+             outputs of each of them with its source:\n",
+        );
+        for path in unknown {
+            let _ = writeln!(out, "- `{path}`");
+        }
+    }
+    // A unit whose outputs record no ids leaves nothing to say which of its criteria and
+    // tests are new, so the existing code is read against every one of them.
+    // @lfy def/generation/main.lfy:request#request:request:a960df7e08bfeb90c2fb135fc71e6e80e01a69f9f351d3d8c7eab08f069407c1
+    let unanswered: Vec<&&String> = paths
+        .iter()
+        .filter(|path| !quoted.answered.contains_key(**path))
+        .collect();
+    if !unanswered.is_empty() {
+        out.push_str(
+            "\nWhich criteria and tests of these units are new is not known. Read the existing code \
+             against each of them before you write its marker:\n",
+        );
+        for path in unanswered {
+            let _ = writeln!(out, "- `{path}`");
+        }
+    }
+    out.push('\n');
+}
+
 /// What the compiler is given to read, in the order the request gathered it: a reference
 /// or an example either quoted in full or named to be read; a definition as the files its
 /// use path resolves to; a tool as the tool of the agent server to call.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/main.lfy:request#request:request:3d9e3582187fd1f1532a46bf0f938c787311c81feb59f4a7d7d5b0da9a813a9a
 fn write_knowledge(out: &mut String, workspace: &Workspace, knowledge: &[Knowledge]) {
     out.push_str("## Knowledge\n\n");
     if knowledge.is_empty() {
@@ -2079,12 +2325,12 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, knowledge: &[Knowled
             KnowledgeKind::Reference | KnowledgeKind::Example => {
                 let path = under_root(&knowledge_root(workspace, item), &item.source);
                 if item.quote == Some(true) {
-                    // @lfy def/generation/main.lfy:request#request:request:1e12c61514619140b53196fc805053e31c6c2ea0a866877135393d8bad20973e
+                    // @lfy def/generation/main.lfy:request#request:request:f64fa963c69a9e30aa2c190c595acdbb6221274d050a5a8533b9cf9291684155
                     let text = std::fs::read_to_string(workspace.root.join(&path))
                         .unwrap_or_else(|error| format!("(`{path}` could not be read: {error})"));
                     quoted.push((item.topic.clone(), path, text));
                 } else {
-                    // @lfy def/generation/main.lfy:request#request:request:150b2f04d99c0e10d3fa0a47b44b85712f1b4f40f249081a39b2ceda0240df29
+                    // @lfy def/generation/main.lfy:request#request:request:737e4198f2f6bddc790512ae099b13648ed59405ba19506fb0abff20748ec530
                     let _ = writeln!(
                         out,
                         "- {}: read `{path}` before writing anything it covers.",
@@ -2220,6 +2466,8 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
         .filter(|moved| moved.into == index)
         .collect();
     if !into.is_empty() {
+        // @lfy def/generation/main.lfy:request#request:request:2a957e8526f8fadbdb509afff57d5ee421e83c1bf0bc08f037202c40650af324
+        // @lfy def/generation/main.lfy:request#request:request:69a7dba9df720e986cae645ffafd7885bc8c7022024d385145cf81e43867eea5
         out.push_str(
             "These entities are compiled in this unit although another file declares them, because \
              the two files would otherwise reach each other. Write them into this unit's outputs \
@@ -2227,6 +2475,7 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
              them, a `use` of that file is satisfied by them here and never by importing that \
              file.\n",
         );
+        // @lfy def/generation/main.lfy:request#request:request:78a8534645507634a61935dcee1699d73fdc5735bcadda06eb24bf9f9854ea34
         for moved in into {
             let origin = &plan.units[moved.origin];
             let _ = writeln!(
@@ -2246,12 +2495,15 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
         .filter(|moved| moved.origin == index)
         .collect();
     if !outward.is_empty() {
+        // @lfy def/generation/main.lfy:request#request:request:1672e75b3730e67adb65f5507e3af45281e70066521a13fafb939415a73393da
+        // @lfy def/generation/main.lfy:request#request:request:ab56007e0a1646c5e4d399cc67e5ac36f77f95f1ed5af06ced3edda5f7506ec4
         out.push_str(
             "These entities this file declares are compiled in another unit, because the two files \
              would otherwise reach each other. Import them from that unit's outputs and never write \
              them again, and make each of them available from this unit's outputs under the name \
              and path it would have had, so that code naming it here still finds it.\n",
         );
+        // @lfy def/generation/main.lfy:request#request:request:d8077ccebe94afe4cb2e7e3cf3daafbef0270bf0ca0b6141d42e3be46d002c52
         for moved in outward {
             let into = &plan.units[moved.into];
             let _ = writeln!(
@@ -2270,7 +2522,14 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
 /// and then, apart from the code, its local criteria and tests, each on its own line with
 /// its id.
 // @lfy def/generation/main.lfy:request
-fn write_entity(out: &mut String, model: &Model, program: &Program, lowered: usize, entity: EntityId) {
+fn write_entity(
+    out: &mut String,
+    model: &Model,
+    program: &Program,
+    lowered: usize,
+    entity: EntityId,
+    answered: Option<&[String]>,
+) {
     let record = &model.entities[entity];
     let _ = writeln!(
         out,
@@ -2294,13 +2553,28 @@ fn write_entity(out: &mut String, model: &Model, program: &Program, lowered: usi
         out.push_str(lowered_code(model, node).trim());
         out.push_str("\n```\n\n");
     }
-    write_requirements(out, &declared_requirements(program, lowered, entity));
+    write_requirements(
+        out,
+        &declared_requirements(program, lowered, entity),
+        answered,
+    );
 }
 
 /// Every criterion and test of a list, criteria then tests, each on one line beginning with
 /// its id: what a request and a review quote apart from the code.
-// @lfy def/generation/main.lfy:request
-fn write_requirements(out: &mut String, requirements: &[Requirement]) {
+///
+/// Where `answered` holds the ids the existing outputs were generated against, a line whose
+/// id is none of them is marked new, so that a compiler reading existing code knows which of
+/// them that code was never held to.
+// @lfy def/generation/main.lfy:request#request:request:72801863f22ee154bf0e22299d1405c97cd6309fc630197aa315508e2f4829f7
+// @lfy def/generation/main.lfy:request#request:request:20c8b9f187ae61ac935c6b929921f420eca7b18fd429d76213ce5975b73af64f
+fn write_requirements(out: &mut String, requirements: &[Requirement], answered: Option<&[String]>) {
+    let mark = |id: &str| -> &'static str {
+        match answered {
+            Some(ids) if !ids.iter().any(|known| known == id) => " (new)",
+            _ => "",
+        }
+    };
     let criteria: Vec<&LoweredCriterion> = requirements
         .iter()
         .filter_map(|requirement| match requirement {
@@ -2322,13 +2596,10 @@ fn write_requirements(out: &mut String, requirements: &[Requirement]) {
     for criterion in criteria {
         let _ = writeln!(
             out,
-            "- `{}` — {}",
+            "- `{}` — {}{}",
             criterion.id,
-            criterion_text(
-                criterion.situation.as_ref(),
-                criterion.behavior.as_ref(),
-                criterion.side_effects.as_ref(),
-            )
+            criterion.text(),
+            mark(&criterion.id)
         );
     }
     out.push('\n');
@@ -2337,43 +2608,39 @@ fn write_requirements(out: &mut String, requirements: &[Requirement]) {
         out.push_str("(none)\n");
     }
     for test in tests {
-        let _ = writeln!(out, "- `{}` — {}", test.id, test_text(test));
+        let _ = writeln!(
+            out,
+            "- `{}` — {}{}",
+            test.id,
+            test_text(test),
+            mark(&test.id)
+        );
     }
     out.push('\n');
 }
 
-/// One criterion as a list item: situations, then behaviors, then side effects.
+/// One criterion of the guidance as a list item: `When` and its situations, then its
+/// behaviors, then its side effects.
+///
+/// A criterion of the guidance is a criterion as written, never lowered, so it has no
+/// [`LoweredCriterion::text`] to be shown by; it is spelled here exactly as that spells a
+/// lowered one, so that every criterion a request quotes reads the same way.
+// @lfy def/generation/main.lfy:request
 fn write_criterion(out: &mut String, criterion: &Criterion) {
-    let _ = writeln!(
-        out,
-        "- {}",
-        criterion_text(
-            criterion.situation.as_ref(),
-            criterion.behavior.as_ref(),
-            criterion.side_effects.as_ref(),
-        )
-    );
-}
-
-/// One criterion as one line: `When` and its situations, then its behaviors, then
-/// `Side effects:` and its side effects, joined by `: `.
-// @lfy def/generation/main.lfy:review
-fn criterion_text(
-    situation: Option<&Vec<String>>,
-    behavior: Option<&Vec<String>>,
-    side_effects: Option<&Vec<String>>,
-) -> String {
-    let mut parts = Vec::new();
-    if let Some(situation) = situation {
-        parts.push(format!("When {}", situation.join(" ")));
+    let mut line = String::new();
+    if let Some(situation) = &criterion.situation {
+        line.push_str("When ");
+        line.push_str(&situation.join(", and "));
+        line.push_str(": ");
     }
-    if let Some(behavior) = behavior {
-        parts.push(behavior.join(" "));
+    if let Some(behavior) = &criterion.behavior {
+        line.push_str(&behavior.join("; "));
     }
-    if let Some(side_effects) = side_effects {
-        parts.push(format!("Side effects: {}", side_effects.join(" ")));
+    if let Some(side_effects) = &criterion.side_effects {
+        line.push_str(". Side effects: ");
+        line.push_str(&side_effects.join("; "));
     }
-    parts.join(": ")
+    let _ = writeln!(out, "- {line}");
 }
 
 /// One test as one line: its input and its expectation, as spelled.
@@ -2506,7 +2773,9 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
 /// Whether outputs satisfy a request for one unit structurally, the source maps they
 /// earn, and the outputs with their markers normalized.
 ///
-/// Rejected when there are no outputs, when an output's path is not under the target's
+/// Rejected when there are no outputs, when an output shared with another unit of the
+/// target — one a recorded map of that unit names — has lost a region that map records,
+/// when an output's path is not under the target's
 /// output directory or its extension is not among the target's, when a marker names an
 /// entity that its file does not declare, a line
 /// of the unit's file beyond its last, or — naming the unit's own file — a requirement id
@@ -2519,6 +2788,9 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
 /// region it begins.
 /// Whether an output builds or its tests pass is not checked here; the guidance says how,
 /// and the caller runs it.
+///
+/// `recorded` is the source maps of the other units of the unit's target, which say which
+/// regions of a shared output belong to another unit.
 // Decision: the definition passes the request and the unit; a plan here does not own its
 // workspace or the program lowered from it, so the program and the plan are extra first
 // parameters and the unit is given as its index into the plan.
@@ -2529,6 +2801,7 @@ pub fn accept(
     request: &Request,
     unit: usize,
     outputs: &[Output],
+    recorded: &[SourceMap],
 ) -> Verdict {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -2538,13 +2811,10 @@ pub fn accept(
     let mut problems: Vec<String> = Vec::new();
 
     if outputs.is_empty() {
-        // @lfy def/generation/main.lfy:accept
+        // @lfy def/generation/main.lfy:accept#accept:accept:4a48dc9bd184c822a38d627cf303e55c050d877bac33bf8d5f8794db459af17d
         problems.push(format!("no output was produced for {}", file.path));
     }
 
-    // Decision: a marker names a line of the source file, so the last line is counted from
-    // the file's own text; the request carries the lowered text, whose lines are not its.
-    let last_line = source_text(workspace, file).lines().count().max(1);
     let named = named_entities(model, file.source, &planned.entities);
     // Every requirement id a marker naming this unit's own file may spell: a local criterion
     // or test of this unit, or a global one of the request. An output is often shared with
@@ -2574,13 +2844,13 @@ pub fn accept(
     let mut normalized: Vec<Vec<(Marker, Marker)>> = Vec::new();
     for output in outputs {
         if !under(&output.path, &target.output_directory) {
-            // @lfy def/generation/main.lfy:accept
+            // @lfy def/generation/main.lfy:accept#accept:accept:324f6bd2c925ffa32b5feee5d17d3195c149deb99f00247918a0ee6d58d1b870
             problems.push(format!(
                 "the output {} is not under the output directory {} of the target {}",
                 output.path, target.output_directory, target.identifier
             ));
         }
-        // @lfy def/generation/main.lfy:accept#accept:accept:3155ad6c69d739023b377c20c0889d2723058f8a413e52287daad7c0486af5f7
+        // @lfy def/generation/main.lfy:accept#accept:accept:e25297fa468e4f2b18f120993ee14b756d7715661e928e3e161f9aba05aad304
         if !extension_of(&output.path).is_some_and(|extension| {
             target
                 .extensions
@@ -2604,7 +2874,7 @@ pub fn accept(
             // the ids it spells, or a file outside the program, which is a fixture or prose
             // claiming nothing about it — spells no id this unit answers for, so none of
             // those is checked.
-            // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+            // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
             if let Some(requirement) = &marker.requirement
                 && claimed.contains(&marker.file.as_str())
                 && !local_ids.iter().any(|id| id == requirement)
@@ -2622,7 +2892,7 @@ pub fn accept(
                 file,
                 &named,
                 &marker,
-                last_line,
+                &claimed,
                 output,
                 &mut problems,
             ) {
@@ -2632,7 +2902,49 @@ pub fn accept(
         normalized.push(markers);
     }
 
-    // @lfy def/generation/main.lfy:accept
+    // An output is shared when a recorded map of another unit of the target names it: one
+    // output often holds the code of several definition files, as a crate's root must. What
+    // a unit may not do is take away what another unit recorded there, so every region of
+    // that map which is not this unit's own must still be in the output — compared by the
+    // file, the entity, and the requirement it names rather than by line, since every line
+    // moves when the code above it changes. A region naming a file this unit claims is this
+    // unit's to write or to drop, and a co-owner's map holds those only because a map records
+    // every marker of its output, not because that unit put them there. A co-owner compiled
+    // in the same batch is writing its own regions again in this very run, so its map says
+    // nothing about what this output must still hold.
+    // @lfy def/generation/main.lfy:accept#accept:accept:a61aa4a9283df62d2e6f07fca7d7d134df081b931e93c5cd80d35866633303f7
+    // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+    let batched: Vec<&str> = request
+        .batch
+        .units
+        .iter()
+        .map(|&batched| workspace.files[plan.units[batched].file].path.as_str())
+        .collect();
+    for (output, markers) in outputs.iter().zip(&normalized) {
+        for map in recorded {
+            if map.output != output.path
+                || map.source == file.path
+                || batched.contains(&map.source.as_str())
+            {
+                continue;
+            }
+            for marker in &map.markers {
+                if claimed.contains(&marker.file.as_str())
+                    || markers.iter().any(|(_, kept)| same_region(kept, marker))
+                {
+                    continue;
+                }
+                problems.push(format!(
+                    "the output {} is shared with {}, whose region {} is not in it",
+                    output.path,
+                    map.source,
+                    region_of(marker)
+                ));
+            }
+        }
+    }
+
+    // @lfy def/generation/main.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
     for &entity in &planned.entities {
         let Some((first, last)) = declaration_lines(model, entity) else {
             continue;
@@ -2653,6 +2965,7 @@ pub fn accept(
     }
 
     if !problems.is_empty() {
+        // @lfy def/generation/main.lfy:accept#accept:accept:03e40c9f3bc4db3e262e3c2c66d09c2f2d3d0833ad56ce201f1fafc09fa47f10
         return Verdict {
             accepted: false,
             problems,
@@ -2661,11 +2974,20 @@ pub fn accept(
         };
     }
 
-    // Nothing of a source map comes from the compiler's text except the names it spelled.
-    // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
+    // Nothing of a source map comes from the compiler's text except the names it spelled:
+    // every hash, every signature, and the time are taken here.
+    // @lfy def/generation/main.lfy:accept#accept:accept:1f423d0a0d06e5fc1e0ddf109f2e402b9a84537a80a91e6e4e459fb24ac288dc
+    // @lfy def/generation/main.lfy:accept#accept:accept:90bf10cc4db0c256646cd0f1ba8c45bda247489103c46e1ce26289709829903a
     let hash = source_hash(&planned.text);
+    // @lfy def/generation/main.lfy:accept#accept:accept:666051c035bda35cafa77995ca9f05915cb5d6f3d9dc74b172f9187d403c1a15
     let requirements = requirements_hash(program, planned);
+    // The ids the hash is of, recorded beside it so a later run can say which of them the
+    // unit no longer has.
+    // @lfy def/generation/main.lfy:accept#accept:accept:0bcfc0b4637d084c09be1b3c407696d0b16f9c7f082c7f0d91de9ea2950d2902
+    let answered = answered_ids(program, planned);
+    // @lfy def/generation/main.lfy:accept#accept:accept:4a6c75702e77d3fab75aa1d127f35eaad993c997ed4cd0dd14f01162c019bc21
     let signature = interface_signature(workspace, planned);
+    // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
     let dependencies: BTreeMap<String, String> = planned
         .dependencies
         .iter()
@@ -2677,24 +2999,34 @@ pub fn accept(
             )
         })
         .collect();
+    // @lfy def/generation/main.lfy:accept#accept:accept:95161566ef61156ea6f857f212fb510a3edf6221a4238a87b45595f60b6466bb
     let generated = now_rfc3339();
     let mut source_maps = Vec::new();
     let mut written = Vec::new();
+    // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
     for (output, markers) in outputs.iter().zip(&normalized) {
         source_maps.push(SourceMap {
+            // @lfy def/generation/main.lfy:accept#accept:accept:8d2a3aa698445970d859538af521c42b878c576deae6eac97af3a97c5c7fd25f
             target: target.identifier.clone(),
+            // @lfy def/generation/main.lfy:accept#accept:accept:ea45d8dd2770ae8698006fbdd6aa54ebb0af32fabeb5d9edf8a1a432812d7d7c
             output: output.path.clone(),
+            // @lfy def/generation/main.lfy:accept#accept:accept:b27edcf9cd5b896cb993b81cba1f8faa47d79995f135c37e63d5e9ab648eed77
             source: file.path.clone(),
             hash: hash.clone(),
             requirements: requirements.clone(),
+            answered: answered.clone(),
             signature: signature.clone(),
             dependencies: dependencies.clone(),
             generated: generated.clone(),
-            // @lfy def/generation/main.lfy:accept
+            // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
             markers: markers.iter().map(|(_, marker)| marker.clone()).collect(),
         });
         written.push(rewrite_markers(output, markers));
     }
+    // Nothing here runs a command of the target: whether an output builds or its tests pass
+    // is the caller's to run, as the guidance says.
+    // @lfy def/generation/main.lfy:accept#accept:accept:9bde11d25fcf12e8c1a113f8be1c479d68185569c8170c39b3348772bf613541
+    // @lfy def/generation/main.lfy:accept#accept:accept:03e40c9f3bc4db3e262e3c2c66d09c2f2d3d0833ad56ce201f1fafc09fa47f10
     Verdict {
         accepted: true,
         problems: Vec::new(),
@@ -2703,10 +3035,34 @@ pub fn accept(
     }
 }
 
+/// Whether two markers name the same region: the same file, the same entity, and the same
+/// requirement. Lines are left out on purpose — a region keeps its identity when the code
+/// above it grows — and so is the output line, which is where the region sits rather than
+/// what it is.
+// @lfy def/generation/main.lfy:accept
+fn same_region(one: &Marker, other: &Marker) -> bool {
+    one.file == other.file && one.entity == other.entity && one.requirement == other.requirement
+}
+
+/// A region named the way a marker spells it, for a problem to quote: the file, the entity
+/// or the line, and the requirement when it answers for one.
+// @lfy def/generation/main.lfy:accept
+fn region_of(marker: &Marker) -> String {
+    let place = match &marker.entity {
+        Some(entity) => entity.clone(),
+        None => marker.line.to_string(),
+    };
+    match &marker.requirement {
+        Some(requirement) => format!("{}:{place}#{requirement}", marker.file),
+        None => format!("{}:{place}", marker.file),
+    }
+}
+
 /// One marker with its line derived from the model and, where it named a line inside a
 /// declaration, the name of that entity; problems are pushed for a marker that resolves
-/// nowhere, and `None` is given for one that names a file outside the program or a line no
-/// declaration covers.
+/// nowhere, and `None` is given only for one that names a file outside the program, which
+/// no source map records. A marker naming a line of a file of the program that no
+/// declaration covers is given as written, so that the map records it too.
 ///
 /// A number the compiler wrote is only where to look: whatever the marker was spelled as,
 /// the line kept is the first line of the declaration it resolved to.
@@ -2716,22 +3072,22 @@ fn resolve_marker(
     file: &File,
     named: &[(String, EntityId)],
     marker: &Marker,
-    last_line: usize,
+    claimed: &[&str],
     output: &Output,
     problems: &mut Vec<String>,
 ) -> Option<Marker> {
     let model = &workspace.model;
     // Decision: an output may carry markers for other files of the program (one Rust file
     // often mirrors several definition files). @lfy def/generation/main.lfy:accept
-    let Some(source) = workspace.file(&marker.file).map(|named| named.source) else {
+    let Some(declaring) = workspace.file(&marker.file) else {
         // A marker naming a file outside the program is a fixture or prose, not a claim
         // about the program, so it is ignored and not recorded.
-        // @lfy def/generation/main.lfy:accept
+        // @lfy def/generation/main.lfy:accept#accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481
         return None;
     };
     // The entities the marker's file declares: the unit's own table for its own file, since
     // that one holds the entities the unit builds as well.
-    let own = named_entities(model, source, &[]);
+    let own = named_entities(model, declaring.source, &[]);
     let table = if marker.file == file.path {
         named
     } else {
@@ -2741,6 +3097,8 @@ fn resolve_marker(
     // @lfy def/generation/data.lfy:Marker#Marker:Marker:76e237fb260caf5b11bc6d84be162349e39c76c149a14baf79eb7d16efa750a6
     if let Some(name) = &marker.entity {
         match table.iter().find(|(candidate, _)| candidate == name) {
+            // @lfy def/generation/main.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
+            // @lfy def/generation/main.lfy:accept#accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95
             Some(&(_, entity)) => {
                 return Some(Marker {
                     line: declaration_line(model, entity).unwrap_or(1),
@@ -2748,7 +3106,7 @@ fn resolve_marker(
                 });
             }
             None => {
-                // @lfy def/generation/main.lfy:accept
+                // @lfy def/generation/main.lfy:accept#accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3
                 problems.push(format!(
                     "{}:{}: the marker names {}, which {} does not declare",
                     output.path, marker.output_line, name, marker.file
@@ -2757,33 +3115,47 @@ fn resolve_marker(
             }
         }
     }
-    if marker.file == file.path && (marker.line == 0 || marker.line > last_line) {
-        // @lfy def/generation/main.lfy:accept
-        problems.push(format!(
-            "{}:{}: the marker names line {} of {}, whose last line is {last_line}",
-            output.path, marker.output_line, marker.line, file.path
-        ));
-        return Some(marker.clone());
+    // Decision: a marker names a line of the source file, so the last line is counted from
+    // that file's own text; the request carries the lowered text, whose lines are not its.
+    // The files whose lines this unit answers for are the ones it claims: its own, and the
+    // file of each entity moved into it, which keeps the marker of the file declaring it.
+    // @lfy def/generation/main.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
+    if claimed.contains(&marker.file.as_str()) {
+        let last_line = source_text(workspace, declaring).lines().count().max(1);
+        if marker.line == 0 || marker.line > last_line {
+            problems.push(format!(
+                "{}:{}: the marker names line {} of {}, whose last line is {last_line}",
+                output.path, marker.output_line, marker.line, marker.file
+            ));
+            return Some(marker.clone());
+        }
     }
     // A marker that names a line names the innermost declaration covering it, and the line
     // kept is that declaration's first, from the model: the number the compiler wrote said
-    // where to look and is not itself recorded. A line no declaration covers names nothing
-    // of the model, so there is no line to derive from it and it is not recorded.
-    // @lfy def/generation/main.lfy:accept
-    let name = innermost(model, table, marker.line)?;
-    let &(_, entity) = table.iter().find(|(candidate, _)| *candidate == name)?;
+    // where to look and is not itself recorded. A line no declaration covers names no
+    // entity, so the marker stands as written, with the line it spells, which is what a
+    // line marker's line is; it names a file of the program and is recorded like any other.
+    // @lfy def/generation/main.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
+    // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
+    let Some((name, entity)) = innermost(model, table, marker.line) else {
+        return Some(marker.clone());
+    };
     Some(Marker {
         entity: Some(name),
         column: None,
-        line: declaration_line(model, entity)?,
+        line: declaration_line(model, entity).unwrap_or(marker.line),
         ..marker.clone()
     })
 }
 
-/// The name of the innermost entity whose declaration covers a line.
+/// The innermost entity whose declaration covers a line, with the name it is named by.
 // @lfy def/generation/main.lfy:accept
-fn innermost(model: &Model, named: &[(String, EntityId)], line: usize) -> Option<String> {
-    let mut best: Option<(usize, &str)> = None;
+fn innermost(
+    model: &Model,
+    named: &[(String, EntityId)],
+    line: usize,
+) -> Option<(String, EntityId)> {
+    let mut best: Option<(usize, &str, EntityId)> = None;
     for (name, entity) in named {
         let Some((first, last)) = declaration_lines(model, *entity) else {
             continue;
@@ -2792,11 +3164,11 @@ fn innermost(model: &Model, named: &[(String, EntityId)], line: usize) -> Option
             continue;
         }
         let width = last - first;
-        if best.is_none_or(|(widest, _)| width <= widest) {
-            best = Some((width, name));
+        if best.is_none_or(|(widest, _, _)| width <= widest) {
+            best = Some((width, name, *entity));
         }
     }
-    best.map(|(_, name)| name.to_string())
+    best.map(|(_, name, entity)| (name.to_string(), entity))
 }
 
 /// Every entity of a file a marker may name, with the name it is named by: each
@@ -2948,19 +3320,25 @@ fn declaration_lines(model: &Model, entity: EntityId) -> Option<(usize, usize)> 
 /// keeps its maps until the next compile moves them. A map file that cannot be read, or is
 /// not a JSON list of source maps, contributes nothing, so its unit plans as fresh.
 /// Nothing is written, and nothing under `elfie-compile/cache` is read.
-// @lfy def/generation/main.lfy:sourceMapsOf
+// @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+// @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:1dc22603643b17fad4874110ef09a3391b67d71c28a9f5b35a7dfa18438f3409
 pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<SourceMap> {
     let mut out: Vec<SourceMap> = Vec::new();
+    // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:e3ab53d40653267f2e160d4a7f3251350dc8120cab5217a982112c74085d6a81
     for named in &workspace.targets {
-        // @lfy def/generation/main.lfy:sourceMapsOf
+        // A target other than the one asked for is skipped before its folder is opened, so
+        // neither its order nor a map file of its own that cannot be read changes the result.
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:3fa1873c256699bcc68b376b528e4f35f840fe93aad209cc0f992a5dee017fce
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:4790ed9f6184ca4bd2972e5ec7a734acb1266c6d095e7edebd27bf8dd48cf71b
         if target.is_some_and(|target| named.identifier != target) {
             continue;
         }
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:48e0f71f7db0725ebe634eeac3dac1d913b250a6626d34b72282e59198837589
         let folder = workspace.root.join(MAPS).join(&named.identifier);
         let files = if folder.is_dir() {
             map_files(&folder) // @lfy def/generation/main.lfy:sourceMapsOf
         } else {
-            // @lfy def/generation/main.lfy:sourceMapsOf
+            // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:c968c8acaf4d38cdd8430f58ae5b09a27d1e2e6bd4ee8861bd63a620ddfd7a9c
             let legacy = workspace
                 .root
                 .join(&named.output_directory)
@@ -2968,14 +3346,20 @@ pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<Source
             if legacy.is_file() {
                 vec![legacy]
             } else {
-                Vec::new() // @lfy def/generation/main.lfy:sourceMapsOf
+                // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:55c87b019cd4d2d7c4a69761ea81c9bd9980381c22407c0e202211f03cfe8dc8
+                Vec::new()
             }
         };
         for file in files {
-            // @lfy def/generation/main.lfy:sourceMapsOf
+            // A file that cannot be read, or that is no JSON list of source maps,
+            // contributes nothing; one that is read gives its maps in its own order, and a
+            // map that records no answered ids is read with none.
+            // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:ceffdad2c9ea38bce966887b7756582eba5aca5852cb5980c55faa063210bd93
+            // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:00a062bda31894d720907cb0ec23e4bc5dd3e4d0db76200eab3b747b849ca38d
+            // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:9a20ac7072bf79bbb2d38d819ba4fb8127d258b6f0baf9134dafc7c98398e94a
             for map in read_source_maps(&file) {
                 // A map whose output is gone says nothing about a unit that is up to date.
-                // @lfy def/generation/main.lfy:sourceMapsOf
+                // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:777506c6ffecf859d5436778cd8e1997eef47cd57e5f8f41754058bbe3117d23
                 if workspace.root.join(&map.output).exists() {
                     out.push(map);
                 }
@@ -2985,41 +3369,42 @@ pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<Source
     out
 }
 
-/// Every `.json` file under a target's folder of map files, sorted by path, a directory
-/// walked before the files that follow it.
+/// Every `.json` file under a target's folder of map files, in the ascending text order of
+/// their paths relative to that folder, the segments separated by `/`.
 // Decision: a unit's stem holds the directories it sits in, so its map file does too and
-// the folder is walked; the order within one directory is the sorted order of the names,
-// as the loader lists source files.
+// the folder is walked whole; the order is that of the whole relative paths as text, the
+// order the loader lists a directory of source files in, so a map file beside a directory
+// of the same name sorts where its own path falls rather than after the directory's files.
 // @lfy def/generation/main.lfy:sourceMapsOf
 fn map_files(folder: &Path) -> Vec<PathBuf> {
+    let mut relative: Vec<String> = Vec::new();
+    collect_map_files(folder, "", &mut relative);
+    relative.sort();
+    relative.iter().map(|path| folder.join(path)).collect()
+}
+
+/// Every `.json` file at or under one directory, as a path relative to the folder the walk
+/// began in with `/` between the segments, in whatever order the directories give them.
+// @lfy def/generation/main.lfy:sourceMapsOf
+fn collect_map_files(folder: &Path, prefix: &str, out: &mut Vec<String>) {
     let Ok(entries) = std::fs::read_dir(folder) else {
-        return Vec::new();
+        return;
     };
-    let mut names: Vec<(String, bool)> = entries
-        .filter_map(Result::ok)
-        .map(|entry| {
-            (
-                entry.file_name().to_string_lossy().into_owned(),
-                entry.path().is_dir(),
-            )
-        })
-        .collect();
-    names.sort();
-    let mut out: Vec<PathBuf> = Vec::new();
-    for (name, is_directory) in names {
-        let path = folder.join(&name);
-        if is_directory {
-            out.extend(map_files(&path));
+    for entry in entries.filter_map(Result::ok) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let relative = format!("{prefix}{name}");
+        let path = entry.path();
+        if path.is_dir() {
+            collect_map_files(&path, &format!("{relative}/"), out);
         } else if name.ends_with(".json") {
-            out.push(path);
+            out.push(relative);
         }
     }
-    out
 }
 
 /// The map file of one unit: `elfie-compile/maps`, the target's identifier, and the unit's
 /// stem with the extension `.json`, under the workspace root.
-// @lfy def/generation/main.lfy:sourceMapsOf
+// @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:48e0f71f7db0725ebe634eeac3dac1d913b250a6626d34b72282e59198837589
 pub fn map_file(workspace: &Workspace, unit: &Unit) -> PathBuf {
     workspace
         .root
@@ -3039,26 +3424,34 @@ pub fn map_file(workspace: &Workspace, unit: &Unit) -> PathBuf {
 /// change changes nothing on disk. Every missing folder above the file is created, so a
 /// project cloned without `elfie-compile` records its maps; no source map at all removes
 /// the file, so the unit plans as fresh. `false` when the file cannot be written.
-// @lfy def/generation/main.lfy:record
+// Only the unit's own map file is written, so recording one unit leaves every other byte
+// for byte as it was.
+// @lfy def/generation/main.lfy:record#record:record:d7ed944c0449f01835fd94e7de01e58066347177591b374f6a7beee48113f403
+// @lfy def/generation/main.lfy:record#record:record:8d039cf20453fa3420e6acdb3ce42b2031909a9bc211b646a683be5017efa7fd
 pub fn record(workspace: &Workspace, unit: &Unit, source_maps: &[SourceMap]) -> bool {
     let path = map_file(workspace, unit);
     if source_maps.is_empty() {
-        // @lfy def/generation/main.lfy:record
+        // @lfy def/generation/main.lfy:record#record:record:aa6df37cdc9d7a159ba508148db794c3edbc568247899ccbd55574df85a1177d
         return match std::fs::remove_file(&path) {
             Ok(()) => true,
             Err(error) => error.kind() == std::io::ErrorKind::NotFound,
         };
     }
+    // @lfy def/generation/main.lfy:record#record:record:5b5e70df30f90156b3023da573235ca899c7a55801fbecd76167819cf57e21ad
     let mut ordered: Vec<SourceMap> = source_maps.to_vec();
     ordered.sort_by(|left, right| left.output.cmp(&right.output));
-    // @lfy def/generation/main.lfy:record
+    // The readable layout of the maps, with the keys of every object in alphabetical order,
+    // so the same maps always give the same bytes and a diff shows only what changed.
+    // @lfy def/generation/main.lfy:record#record:record:1a8586a7f2168dcbbbc34c4373d1f944d6e0313f9b0840a53aa8f54e3e3208d6
+    // @lfy def/generation/main.lfy:record#record:record:60d0cd914ebe3c1cbbd582cd3229d8adc3a00b879720f1caeec671fb4c707551
+    // @lfy def/generation/main.lfy:record#record:record:5c0c63725b35e7fab925c81abc27914b55863257ede7a2863a3bce15e5b03ff5
     let value = serde_json::Value::Array(ordered.iter().map(SourceMap::to_json).collect());
     let Ok(mut text) = serde_json::to_string_pretty(&value) else {
         return false;
     };
     text.push('\n');
     // Maps that differ only in when they were generated are the maps the file holds.
-    // @lfy def/generation/main.lfy:record
+    // @lfy def/generation/main.lfy:record#record:record:acccd867dc43a326a46b14f88ac19bb24373ec1a90795894fa96f075e1fcbcd9
     let recorded = read_source_maps(&path);
     if recorded.len() == ordered.len()
         && recorded.iter().zip(&ordered).all(|(held, map)| {
@@ -3071,13 +3464,13 @@ pub fn record(workspace: &Workspace, unit: &Unit, source_maps: &[SourceMap]) -> 
     {
         return true;
     }
-    // @lfy def/generation/main.lfy:record
+    // @lfy def/generation/main.lfy:record#record:record:1ec300497e4609fbc621214de54b44c8b7f666382b4cf02496efdc55ed4cca99
     if let Some(parent) = path.parent()
         && std::fs::create_dir_all(parent).is_err()
     {
         return false;
     }
-    // @lfy def/generation/main.lfy:record
+    // @lfy def/generation/main.lfy:record#record:record:1f4671d2ae5027d4e5bcfaf56dc68c765e27e31a92fc783b7f64a2165f391dd4
     std::fs::write(&path, text).is_ok()
 }
 
@@ -3122,16 +3515,18 @@ fn matching_regions<'m>(
     let member = format!("{name}.");
     let mut out: Vec<(&SourceMap, &Marker)> = Vec::new();
     for map in source_maps {
-        // @lfy def/generation/main.lfy:regionsOf
+        // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:d0dd761f2a88d10b62707b3452f9804e82f4c9ae6d4212b5b8b799f9355a82c5
         if target.is_some_and(|target| map.target != target) {
             continue;
         }
         for marker in &map.markers {
             let matched = match &marker.entity {
-                // @lfy def/generation/main.lfy:regionsOf
+                // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:38d2833b48e58c718adaf9951281dfe50568a87b1fd9fcf0cf493596b2406bae
+                // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:093e721919b4f8d968ccd2497d31d9e1ac8783ddfb5ee2bbda092b4302715a0f
                 Some(entity) => entity == name || entity.starts_with(&member),
                 // A marker that names a line belongs to the entity whose declaration
-                // covers it. @lfy def/generation/main.lfy:regionsOf
+                // covers it.
+                // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:66a35d2038e53526c71eb7ac77c60c00ba7678d9ffc14769336d39c7f3aeadb6
                 None => covers_named(model, &marker.file, name, marker.line),
             };
             if matched {
@@ -3185,11 +3580,16 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&str>) -> Vec<Ch
     let workspace = &program.workspace;
     let model = &workspace.model;
     let path = workspace.files[unit.file].path.clone();
-    let now = entity_table(model, &unit.entities);
+    let target = workspace.targets[unit.target].identifier.clone();
+    // What the unit's file declares for its target, in file order — not what the unit
+    // compiles: an entity that moved to another unit is still one of this file's, and one
+    // that moved in is the declaring file's to report.
+    // @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
+    let declared = declared_entities(program, &target, &path);
+    let now = entity_table(model, &declared);
     let Some(previous) = previous else {
-        // @lfy def/generation/main.lfy:changes
-        return unit
-            .entities
+        // @lfy def/generation/main.lfy:changes#changes:changes:771d19c7cdc3e68ae80e9c437cf28ae04d6d6112c99fdff85bcf61c1efacc428
+        return declared
             .iter()
             .map(|&entity| Change {
                 entity: entity_name(model, entity),
@@ -3200,15 +3600,18 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&str>) -> Vec<Ch
     };
     // The file as it was is bound through the loader and lowered, so that its entities and
     // their requirement ids are read the same way as the unit's own.
-    // @lfy def/generation/main.lfy:changes#changes:changes:7866c7528c3621e91492d3baf344ace83e164319b69106af0733471ab759f3a5
+    // @lfy def/generation/main.lfy:changes#changes:changes:6fd357814bc465ff2deac47548fc8b644c75b3489eab95e456e7d68a0da79754
     let before = crate::interpret::lower(crate::workspace::change(
         workspace,
         &path,
         Some(previous),
     ));
+    // What the file declared then, built for the unit's target, read exactly as what it
+    // declares now was read above, so that neither side is a unit's contents.
+    // @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
     let was = entity_table(
         &before.workspace.model,
-        &previous_entities(&before, &workspace.targets[unit.target].identifier, &path),
+        &declared_entities(&before, &target, &path),
     );
     let lowered = &program.files[unit.lowered];
     let lowered_before = before
@@ -3334,7 +3737,8 @@ fn requirement_ids(file: &LoweredFile, entity: EntityId) -> (Vec<String>, Vec<St
 /// Every entity of a unit and every member it declares, in file order, each with the name
 /// it is compared by: the identifier, or the owner's identifier, a dot, and the member's
 /// name.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/main.lfy:changes#changes:changes:d7b590dfd89c646eecf798bdafc911cd87dc2b66f0c3bc1e3cb916051b5fa6f8
+// @lfy def/generation/main.lfy:changes#changes:changes:f54761e4898e7ebd66aacb630307ee416935a1052c402126c3c712e2eb632c2a
 fn entity_table(model: &Model, entities: &[EntityId]) -> Vec<(String, EntityId)> {
     let mut out: Vec<(String, EntityId)> = Vec::new();
     let push = |name: String, entity: EntityId, out: &mut Vec<(String, EntityId)>| {
@@ -3356,10 +3760,13 @@ fn entity_table(model: &Model, entities: &[EntityId]) -> Vec<(String, EntityId)>
     out
 }
 
-/// The entities the file at a path gives for a target in a workspace bound from the
-/// previous text; none when the file or the target is not in it.
-// @lfy def/generation/main.lfy:changes
-fn previous_entities(before: &Program, target: &str, path: &str) -> Vec<EntityId> {
+/// The entities the file at a path declares for a target in a lowered program, in file
+/// order; none when the file or the target is not in it.
+///
+/// What a unit compiles is not this: an entity of the file may have moved into another
+/// unit, and one of another file may have moved into this one. A change is of the file.
+// @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
+fn declared_entities(before: &Program, target: &str, path: &str) -> Vec<EntityId> {
     let workspace = &before.workspace;
     let Some(index) = workspace.files.iter().position(|file| file.path == path) else {
         return Vec::new();
@@ -3562,10 +3969,7 @@ fn id_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> St
 /// The type of an entity, as `interfaceOf` spells it; empty when it has none.
 // @lfy def/generation/main.lfy:changes
 fn type_spelling(model: &Model, entity: EntityId) -> String {
-    match &model.entities[entity].ty {
-        Some(ty) => model::type_text(model, ty),
-        None => String::new(),
-    }
+    model::type_text_of(model, model.entities[entity].ty.as_ref()).unwrap_or_default()
 }
 
 /// The parameters of a fn with their types, as `interfaceOf` spells them.
@@ -3584,10 +3988,7 @@ fn parameter_spellings(model: &Model, entity: EntityId) -> Vec<(String, String)>
 /// The output of a fn, as `interfaceOf` spells it; empty when it has none.
 // @lfy def/generation/main.lfy:changes
 fn output_spelling(model: &Model, entity: EntityId) -> String {
-    match model.entities[entity].output() {
-        Some(output) => model::type_text(model, output),
-        None => String::new(),
-    }
+    model::type_text_of(model, model.entities[entity].output()).unwrap_or_default()
 }
 
 /// The text of an entity's declaration once its definition, type, parameters, output,
@@ -3755,20 +4156,28 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 /// excerpt every region [`regions_of`] finds for those entities in the target's source
 /// maps, then give the verifier protocol. Only local criteria and tests are reviewed here;
 /// a global one is reviewed once, by [`global_review`].
+///
+/// `directory` is the directory the batch's outputs were written in, which its regions are
+/// read from, and `None` means the workspace root.
 // Decision: the verifier is handed the regions already excerpted, so it reads exactly what a
 // criterion is about, and its protocol allows no edits: a review says where and why, never
 // how to fix.
+// Decision: a batch compiled in a copy of the root is reviewed in that copy, so the regions
+// a verifier is shown are the outputs it is judging and never the root's older ones.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
-// @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+// @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
 pub fn review(
     program: &Program,
     plan: &Plan,
     batch: &Batch,
     source_maps: &[SourceMap],
+    directory: Option<&Path>,
 ) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
+    // @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
+    let directory = directory.unwrap_or(workspace.root.as_path());
     let target = batch
         .units
         .first()
@@ -3776,20 +4185,21 @@ pub fn review(
         .unwrap_or_default();
     let mut out = String::new();
 
-    // A heading naming the batch and the target. @lfy def/generation/main.lfy:review
+    // A heading naming the batch and the target.
+    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
     let _ = writeln!(
         out,
         "# Reviewing the batch `{}` for the target `{}`\n",
         batch.identifier, target
     );
-    // @lfy def/generation/main.lfy:review
+    // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
     out.push_str(
         "Every criterion and test below is local to one entity of this batch. A global one is \
          reviewed once, on its own, across every output of the program.\n\n",
     );
 
     // Every local criterion and test of every entity, with its id and its place.
-    // @lfy def/generation/main.lfy:review
+    // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
     out.push_str("## What was asked\n\n");
     for &index in &batch.units {
         let unit = &plan.units[index];
@@ -3799,35 +4209,38 @@ pub fn review(
             out.push_str("The unit has no entities.\n\n");
         }
         for &entity in &unit.entities {
-            write_review_entity(&mut out, model, &program.files[unit.lowered], entity);
+            write_review_entity(&mut out, program, unit.lowered, entity);
         }
     }
 
     // Then the regions generated for each of those entities, each listed once.
-    // @lfy def/generation/main.lfy:review
+    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
     out.push_str("## What was generated\n\n");
     let mut seen: HashSet<(String, usize)> = HashSet::new();
     for &index in &batch.units {
         let unit = &plan.units[index];
-        let path = workspace.files[unit.file].path.as_str();
         for &entity in &unit.entities {
             let name = qualified_name(model, entity);
             let _ = writeln!(out, "### `{name}`\n");
-            // Only what the unit's own file generated, so an entity of another file with
-            // the same name brings none of its code.
-            // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+            // Only what the file declaring the entity generated, so an entity of another
+            // file with the same name brings none of its code, while an entity moved into
+            // the unit brings its own, which its declaring file marks.
+            // @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
+            let declaring = declaring_path(model, entity);
             let regions: Vec<(&SourceMap, &Marker)> =
                 matching_regions(workspace, source_maps, &name, Some(target))
                     .into_iter()
-                    .filter(|(_, marker)| marker.file == path)
+                    .filter(|(_, marker)| declaring == Some(marker.file.as_str()))
                     .collect();
-            write_regions(&mut out, workspace, regions, &mut seen);
+            write_regions(&mut out, directory, regions, &mut seen);
         }
     }
 
-    // The verifier protocol. @lfy def/generation/main.lfy:review
+    // The verifier protocol.
+    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
     out.push_str(PROTOCOL);
 
+    // @lfy def/generation/main.lfy:review#review:review:197b2d0e6f7458d538f3cc8d8568be98a60636ca07026cd2eeb1d5933910f156
     ReviewRequest {
         batch: Some(batch.clone()),
         instructions: out,
@@ -3836,13 +4249,13 @@ pub fn review(
 
 /// One entity of a unit for a verifier: its name, its definition, then each local criterion
 /// and each local test on one line prefixed by its id and its place.
-// @lfy def/generation/main.lfy:review
-fn write_review_entity(
-    out: &mut String,
-    model: &Model,
-    lowered: &LoweredFile,
-    entity: EntityId,
-) {
+///
+/// `lowered` is the index of the unit's own lowered file; an entity moved into the unit is
+/// declared in another file, so its criteria and tests are taken from there.
+// @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+// @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
+fn write_review_entity(out: &mut String, program: &Program, lowered: usize, entity: EntityId) {
+    let model = &program.workspace.model;
     let record = &model.entities[entity];
     let _ = writeln!(
         out,
@@ -3853,7 +4266,7 @@ fn write_review_entity(
     if let Some(definition) = &record.definition {
         let _ = writeln!(out, "Definition: {definition}\n");
     }
-    let requirements = entity_requirements(lowered, entity);
+    let requirements = declared_requirements(program, lowered, entity);
     out.push_str("Criteria:\n");
     let mut written = 0;
     for requirement in &requirements {
@@ -3864,11 +4277,7 @@ fn write_review_entity(
                 "`{}` {} — {}",
                 criterion.id,
                 origin_place(model, criterion.origin),
-                criterion_text(
-                    criterion.situation.as_ref(),
-                    criterion.behavior.as_ref(),
-                    criterion.side_effects.as_ref(),
-                )
+                criterion.text()
             );
             written += 1;
         }
@@ -3901,6 +4310,7 @@ fn write_review_entity(
 /// A criterion's or test's place: the file of its origin relative to the workspace root, a
 /// colon, and the line its origin begins on.
 // @lfy def/generation/main.lfy:review
+// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:89af425d63c0f40d30e4db0494e14a97b63ea5ff20139e294920432acbccb8cf
 fn origin_place(model: &Model, origin: NodeRef) -> String {
     format!(
         "{}:{}",
@@ -3918,10 +4328,12 @@ fn line_of(model: &Model, node: NodeRef) -> usize {
 /// Every region given: the output path, the line range, and the text of those lines in a
 /// fenced block; a line saying so instead when the output cannot be read. A region `seen`
 /// already holds is repeated as its path and lines alone, without its text.
-// @lfy def/generation/main.lfy:review
+///
+/// `directory` is the directory the outputs were written in, which each region is read from.
+// @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
 fn write_regions(
     out: &mut String,
-    workspace: &Workspace,
+    directory: &Path,
     regions: Vec<(&SourceMap, &Marker)>,
     seen: &mut HashSet<(String, usize)>,
 ) {
@@ -3932,13 +4344,13 @@ fn write_regions(
     for (map, marker) in regions {
         let _ = writeln!(out, "`{}:{}-{}`\n", map.output, marker.output_line, marker.end);
         // A region listed for an earlier entity is listed once.
-        // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+        // @lfy def/generation/main.lfy:review#review:review:72529d6e11ade1756ea5a1a2ea7659b1dec2663d636e04e134ec72309e546cd5
         if !seen.insert((map.output.clone(), marker.output_line)) {
             out.push_str("Listed above.\n\n");
             continue;
         }
-        // @lfy def/generation/main.lfy:review
-        match std::fs::read_to_string(workspace.root.join(&map.output)) {
+        // @lfy def/generation/main.lfy:review#review:review:ab46be2107934463218771ce935af8b1af8c59e0f5656d26a5d6dd846df1087d
+        match std::fs::read_to_string(directory.join(&map.output)) {
             Ok(text) => {
                 let lines: Vec<&str> = text.lines().collect();
                 let last = marker.end.min(lines.len());
@@ -3950,7 +4362,7 @@ fn write_regions(
                 }
                 out.push_str("```\n\n");
             }
-            // @lfy def/generation/main.lfy:review
+            // @lfy def/generation/main.lfy:review#review:review:2f84308152b64a4bdf82224c54c0caf9e0a72ebcf65d5072ef5d52cc1b92cec5
             Err(error) => {
                 let _ = writeln!(out, "The output could not be read: {error}.\n");
             }
@@ -3974,7 +4386,7 @@ fn write_regions(
 /// markers answered for it, for the `violated` argument of [`plan`].
 // Decision: the definition passes the plan; a plan here does not own the program lowered
 // from its workspace, and nothing else of the plan is read, so the program stands in for it.
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:0edfce9bb6241f2f57c1589dcd9fd7f1574114c7bf21269642fd5d61c31e314a
+// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
 pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -4012,23 +4424,17 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
         out.push_str("## What was asked\n\nThe program has no global criterion and no global test.\n\n");
     }
     for requirement in &globals {
-        // @lfy def/generation/main.lfy:globalReview
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
         let (id, origin, text) = match requirement {
-            Requirement::Criterion(criterion) => (
-                &criterion.id,
-                criterion.origin,
-                criterion_text(
-                    criterion.situation.as_ref(),
-                    criterion.behavior.as_ref(),
-                    criterion.side_effects.as_ref(),
-                ),
-            ),
+            Requirement::Criterion(criterion) => {
+                (&criterion.id, criterion.origin, criterion.text())
+            }
             Requirement::Test(test) => (&test.id, test.origin, test_text(test)),
         };
         let _ = writeln!(out, "## `{id}` {}\n", origin_place(model, origin));
         let _ = writeln!(out, "{text}\n");
         // Every region whose marker answers for this id, whatever target it was built for.
-        // @lfy def/generation/main.lfy:globalReview
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
         let regions: Vec<(&SourceMap, &Marker)> = source_maps
             .iter()
             .flat_map(|map| {
@@ -4039,20 +4445,21 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
             })
             .collect();
         if regions.is_empty() {
-            // @lfy def/generation/main.lfy:globalReview
+            // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2
             out.push_str("No unit answered for it, so it cannot be checked against any region.\n\n");
             continue;
         }
         // Each global criterion stands on its own, so every region it names is given whole.
-        // @lfy def/generation/main.lfy:globalReview
-        write_regions(&mut out, workspace, regions, &mut HashSet::new());
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
+        write_regions(&mut out, &workspace.root, regions, &mut HashSet::new());
     }
 
-    // The verifier protocol. @lfy def/generation/main.lfy:globalReview
+    // The verifier protocol.
+    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
     out.push_str(PROTOCOL);
 
     ReviewRequest {
-        // @lfy def/generation/main.lfy:globalReview
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:de84b01e368319ebde8eb693c9242574f7b87c6cdedc5229f53fbdf2a3cdd11d
         batch: None,
         instructions: out,
     }
@@ -4060,17 +4467,23 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
 
 /// What a verifier is told about its own work: that it examines and never edits, what it
 /// writes for each criterion and each test, and how its report ends.
+// Decision: the protocol asks for the place as well as the id, though [`read_review`]
+// derives the place from the id and never from the report; a verifier that copies the
+// place it was given writes a line a person can read on its own, and one that garbles the
+// id is still placed by the file and line it copied.
 // @lfy def/generation/main.lfy:review
+// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:aa241f996c80ef1d728f4ebc6980c6083bdbbf0e2cc1235252d8c42def08b92d
 const PROTOCOL: &str = "\
 ## How to review
 
 You examine and never edit: you change no file, and you propose no code.
 
-Write one JSON object on one line per criterion and per test, with exactly the keys \
-`id`, `status`, `evidence`, and `note`:
+Write one review per criterion and per test, as one JSON object on one line, with exactly \
+the keys `id`, `file`, `line`, `status`, `evidence`, and `note`:
 
-- `id` is the id the criterion or test is quoted with above. Write no place of your own: \
-  the file, the line, and the entity are derived from the id.
+- `id` is copied from the id the criterion or test is given above.
+- `file` and `line` are the two halves of the place given with it above: the path before \
+  the colon, and the number after it.
 - `status` is `satisfied` when the code does what the criterion says, `violated` when it \
   does something else, or `unverifiable` when no region can be checked against it. A \
   criterion no region can be checked against is unverifiable, never violated.
@@ -4104,57 +4517,104 @@ End your report with exactly one line reading `ELFIE: REVIEWED`.
 /// did not end.
 ///
 /// A review line names its criterion or test by its id, by an id a character short or long,
-/// or, with no id at all, by the file and line where exactly one of them begins. Its file,
-/// line, and entity are derived from that origin, as [`Review::at`] fills them.
+/// or — with no id, or with one that names nothing and is near no single one — by the file
+/// and line where exactly one of them begins. Its file, line, and entity are derived from
+/// that origin, as [`Review::at`] fills them.
 // Decision: the report is read leniently and only what tries to be a review can be wrong,
 // because a verifier that adds a sentence or a fence around its lines has still reviewed
 // everything, and running a second verifier for that costs as much as the first.
+///
+/// `asked` is the ids the review request gave the verifier, and empty when they are not
+/// known; each of them no review names is missing.
 // @lfy def/generation/main.lfy:reviewOf
-pub fn review_of(report: &str, program: &Program) -> ReviewReport {
+pub fn review_of(report: &str, program: &Program, asked: &[String]) -> ReviewReport {
     /// What the problems end with when the report has no end line.
     const UNENDED: &str = "the report did not end";
 
     let placed = placed_requirements(program);
     let begun = requirements_by_place(&placed);
     let lines: Vec<&str> = report.lines().collect();
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f33d7c1d482ac83b637de975ac61fc8ad9a4e4464ac8f11554da868087905870
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
     let end = lines.iter().rposition(|line| line.trim() == REVIEWED);
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:996a1867a55f489798d60b80458fe3076f35d155cb98215304e3f0d67902a8b5
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
     let body = match end {
         Some(index) => &lines[..index],
         None => &lines[..],
     };
     let mut reviews: Vec<Review> = Vec::new();
     let mut problems: Vec<String> = Vec::new();
+    let mut unplaced: Vec<String> = Vec::new();
+    // The reviews and the problems come in report order, as the body is read line by line.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b1c6ff8f600f771f320ab8d7d410ceeaff5dd1da6bf5236de9ca661b7efed152
     for line in body {
+        // Whitespace around a line is ignored wherever the line is compared or parsed.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921
         let text = line.trim();
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:61fbd8978cc20a987ca2da1b23ff32eaa104e206ef5e79abf58f8a12e48f173f
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3
         if !text.starts_with('{') {
             continue;
         }
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:11cf2d8d78b0bce109f19de1a111ed0ae3f62225432701c85e24d546e2ae47db
         match read_review(text, &placed, &begun) {
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:76339f7bd0723f745a3bf58a17f3cba2ad29f66aee0236c50c46e6db5dacb357
             Some(review) => {
                 // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
                 reviews.retain(|kept| kept.id != review.id);
                 reviews.push(review);
             }
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fe269d5233297a703d4ba8275070083bf25bed3ae713f4bf18d3ae68bd8899a9
-            None => problems.push(text.to_string()),
+            // A line that reads as no object, that names no status of a review, or that
+            // places itself nowhere is a problem as written.
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490
+            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac
+            None => {
+                // A line that claims a violation and places it nowhere is kept apart as
+                // well, so that no violation is lost to an id a verifier garbled.
+                // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
+                if claims_violation(text) {
+                    unplaced.push(text.to_string());
+                }
+                problems.push(text.to_string());
+            }
         }
     }
     if end.is_none() {
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:3ac47936d62d0ed2bf1749e26c3ea37b8a7e4957588642bbd3df4379c764ba99
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1
         problems.push(UNENDED.to_string());
     }
-    ReviewReport { reviews, problems }
+    // Each id the review was asked about that no review names, in the order it was asked.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535
+    let missing: Vec<String> = asked
+        .iter()
+        .filter(|id| !reviews.iter().any(|review| &&review.id == id))
+        .cloned()
+        .collect();
+    ReviewReport {
+        reviews,
+        problems,
+        unplaced,
+        missing,
+    }
+}
+
+/// Whether a review line that was read as no review still says its status is violated: its
+/// text reads as an object whose status names [`ReviewStatus::Violated`], whatever its case.
+// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
+fn claims_violation(line: &str) -> bool {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+        return false;
+    };
+    let Some(status) = value.get("status").and_then(serde_json::Value::as_str) else {
+        return false;
+    };
+    ReviewStatus::from_name(&status.trim().to_lowercase()) == Some(ReviewStatus::Violated)
 }
 
 /// One review from one review line: `None` unless the line reads as an object whose status
 /// names a member of [`ReviewStatus`], whatever its case, and that names a criterion or
 /// test of the program. Its evidence and note are taken as given, and empty when missing;
 /// every other key is ignored.
-// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:21a6b24a78e64694b883d9271f98d3b5f380dd3f0eeab2f0c8ee3b2f3a6c13a5
+// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea
+// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce
 fn read_review(
     line: &str,
     placed: &BTreeMap<String, (String, usize, String)>,
@@ -4189,7 +4649,8 @@ fn read_review(
 
 /// Which criterion or test of the program a review line names: the one its id is; the one
 /// exactly one id near it begins or is begun by, so an id copied a character short or long
-/// still counts; or, with no id, the one that begins alone where its file and line say.
+/// still counts; or, failing both — with no id, or with one that is no id of the program and
+/// near no single one — the one that begins alone where its file and line say.
 // @lfy def/generation/main.lfy:reviewOf
 fn named_requirement(
     object: &serde_json::Map<String, serde_json::Value>,
@@ -4200,28 +4661,32 @@ fn named_requirement(
         .get("id")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
-    if given.is_empty() {
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0efab5dd030ca49b2ee49759f958db33dc19a3f428271450e2191ca4481b3d47
-        let file = object.get("file")?.as_str()?.to_string();
-        let line = usize::try_from(object.get("line")?.as_u64()?).ok()?;
-        return begun.get(&(file, line)).cloned();
-    }
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f7fc6ddf0c07f86aefccb0bd6b6b10dfa0685431a0a5aa78a88390ca91a58dea
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:76339f7bd0723f745a3bf58a17f3cba2ad29f66aee0236c50c46e6db5dacb357
     if placed.contains_key(given) {
         return Some(given.to_string());
     }
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:caa2b457254f644c392b4567da9f9731a584a27a3042ef5317572eb014f49930
-    let mut near = placed.keys().filter(|id| is_near(id, given));
-    let found = near.next()?;
-    match near.next() {
-        Some(_) => None,
-        None => Some(found.clone()),
+    // An id a character short or long names what it nearly is, as long as it nearly is one
+    // thing only; an empty id is near every id, so it names nothing by this reading.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0550aa5cfc0eed88f66bcf268b82c722bf8105abb701e0dae62ffb013f0dcf2d
+    if !given.is_empty() {
+        let mut near = placed.keys().filter(|id| is_near(id, given));
+        if let Some(found) = near.next()
+            && near.next().is_none()
+        {
+            return Some(found.clone());
+        }
     }
+    // With no id, or with one that names nothing and is near nothing or near more than one
+    // thing, the place the line gives names it when exactly one begins there.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:444b311948403c8fe1a8d3ed69270d86e784a7e0fbbe4de87764ab3fbc950d78
+    let file = object.get("file")?.as_str()?.trim().to_string();
+    let line = usize::try_from(object.get("line")?.as_u64()?).ok()?;
+    begun.get(&(file, line)).cloned()
 }
 
 /// Whether two ids are the same one up to a character: one begins the other, and they share
 /// their receiver, their contributor, and at least sixteen hex digits of their hash.
-// @lfy def/generation/main.lfy:reviewOf
+// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0550aa5cfc0eed88f66bcf268b82c722bf8105abb701e0dae62ffb013f0dcf2d
 fn is_near(id: &str, given: &str) -> bool {
     /// How many hex digits of the hash two ids share to be the same one.
     const SHARED: usize = 16;
@@ -4644,6 +5109,28 @@ fn normalized(path: &str) -> String {
     segments.join("/")
 }
 
+/// `Path.relative`: the path that names the same place from `base`; `None` when one is
+/// absolute and the other is not, since nothing relates them. Both are normalized before
+/// they are compared, and the result is the segments of the path after the ones it shares
+/// with `base`, preceded by one `..` for each segment `base` has beyond the shared ones;
+/// `.` when the two name the same place.
+fn path_relative(path: &str, base: &str) -> Option<String> {
+    if path.starts_with('/') != base.starts_with('/') {
+        return None;
+    }
+    let path = normalized(path);
+    let base = normalized(base);
+    let path: Vec<&str> = path.split('/').filter(|segment| !segment.is_empty()).collect();
+    let base: Vec<&str> = base.split('/').filter(|segment| !segment.is_empty()).collect();
+    let shared = path.iter().zip(&base).take_while(|(a, b)| a == b).count();
+    let mut segments = vec![".."; base.len() - shared];
+    segments.extend_from_slice(&path[shared..]);
+    if segments.is_empty() {
+        return Some(".".to_string());
+    }
+    Some(segments.join("/"))
+}
+
 /// A path relative to a directory it is under, both relative to the root.
 fn strip_directory<'p>(path: &'p str, directory: &str) -> Option<&'p str> {
     if is_root(directory) {
@@ -4931,6 +5418,7 @@ global@targets.add(rust);
                     source: file.path.clone(),
                     hash: source_hash(&program.files[unit.lowered].text),
                     requirements: requirements_hash(program, unit),
+                    answered: answered_ids(program, unit),
                     signature: interface_signature(workspace, unit),
                     dependencies: unit
                         .dependencies
@@ -4965,7 +5453,7 @@ global@targets.add(rust);
     // interfaceOf
     // -----------------------------------------------------------------------------------
 
-    // @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:0a8c932a60ed0656cc05be3e2f629489ee9f346207bc96792c2faa7780b35bc8
+    // @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:df415af10d739698174e3358d1293c5c82973190a3202adf8f50300ab0f4f3d5
     #[test]
     fn an_interface_holds_one_line_per_entity_with_its_kind_definition_type_and_signature() {
         let fixture = a_and_b();
@@ -4979,20 +5467,20 @@ global@targets.add(rust);
         // One line per entity, and one per member after a data.
         assert_eq!(lines.len(), 3, "{text}");
         assert_eq!(lines[0], "- `B` (data: DataDeclaration): A b — type `B`");
-        // @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:d44e18f93ffee843b64a0c2ca005e823ccf79a877a95abadca4b961d6ebf3fbf
+        // @lfy def/generation/main.lfy:interfaceOf
         assert_eq!(lines[1], "  - `x` (member) — type `string`");
         assert!(
             lines[2].starts_with("- `make` (agent function: AgentFunctionDeclaration): Makes a b"),
             "{text}"
         );
-        // @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:55ea69cd92f1fbcd51135a8b7d82e1c483fe8211dec4744efcb7f68b754e9603
+        // @lfy def/generation/main.lfy:interfaceOf
         assert!(lines[2].contains("— parameters (x: string)"), "{text}");
         assert!(lines[2].contains("— output `B`"), "{text}");
         // Nothing in an interface is a line number, so nothing moves with the source.
         assert!(!text.contains(":1"), "{text}");
     }
 
-    // @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:d5cc23ff84d1f7030319204b0c641e1333e40f718e59106f3308017815b43f02
+    // @lfy def/generation/main.lfy:interfaceOf
     #[test]
     fn a_new_criterion_or_a_moved_line_leaves_the_interface_the_same() {
         let fixture = a_and_b();
@@ -5049,7 +5537,8 @@ global@targets.add(rust);
 
     /// A type line names an entity of the `elfie` package by its identifier alone, such as
     /// `List` or `Path`, never by a path or a module name.
-    // @lfy def/generation/main.lfy:interfaceOf#interfaceOf:interfaceOf:e28fb34329366387ffd642da5ca0928aef112290bec530896eeb9a4b63ed9b4a
+    // @lfy def/generation/main.lfy:interfaceOf
+    // @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:38d2eb41999723e89789b375808876aeefd6bae2d41a4f023a97144d33d882a4
     #[test]
     fn a_type_of_the_elfie_package_is_spelled_by_its_identifier_alone() {
         let fixture = Fixture::with_elfie_package();
@@ -5064,6 +5553,51 @@ global@targets.add(rust);
         assert!(!text.contains("lib/"), "{text}");
     }
 
+    /// Every type an interface line spells is spelled by the one speller of a type as Elfie
+    /// source, so a type written with arguments keeps them and a type that declares no name
+    /// reads as it was written rather than as the word `anonymous`.
+    // @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:fd62af8a8ab692d82a9ff1cd315fe1ba7411cb837421fff2038240e570114c59
+    #[test]
+    fn an_interface_spells_every_type_as_elfie_source() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/a.lfy",
+            "d Box<T>: `A box` {\n  $item: `What it holds` = T;\n}\n\nd C: `A c` {\n  $boxed: `A box of strings` = Box<string>;\n  $many: `Boxes` = Box<string>[];\n}\n",
+        );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let text = interface_of(&workspace, a);
+        // A type written with arguments keeps them, so a dependent is told what it holds
+        // and a change to the arguments alone changes the signature.
+        assert!(
+            text.contains("  - `boxed` (member): A box of strings — type `Box<string>`"),
+            "{text}"
+        );
+        assert!(
+            text.contains("  - `many` (member): Boxes — type `Box<string>[]`"),
+            "{text}"
+        );
+        // Every type of every line is what the speller gives for it, and nothing the
+        // interface spells itself.
+        let model = &workspace.model;
+        for &entity in &a.entities {
+            for member in members_of(model, entity) {
+                let Some(spelled) = model::type_text_of(model, model.entities[member].ty.as_ref())
+                else {
+                    continue;
+                };
+                assert!(
+                    text.contains(&format!("— type `{spelled}`")),
+                    "{spelled} is missing:\n{text}"
+                );
+            }
+        }
+        assert!(!text.contains("anonymous"), "{text}");
+    }
+
     // -----------------------------------------------------------------------------------
     // plan
     // -----------------------------------------------------------------------------------
@@ -5071,7 +5605,7 @@ global@targets.add(rust);
     /// The program the plan is for is the workspace lowered: `plan` lowers it itself and
     /// gives that program back beside the plan, and every unit names its lowered file by
     /// its place in it.
-    // @lfy def/generation/main.lfy:plan#plan:plan:c731524b6fa6dd3c90dfca0fafe1f50a433bcd8a45b1191da289c61d71c027a1
+    // @lfy def/generation/main.lfy:plan#plan:plan:3303e4532dda74155594c480805a56fc6c02f04473a087e4e299c538bd992142
     #[test]
     fn the_plan_comes_with_the_workspace_lowered() {
         let fixture = a_and_b();
@@ -5086,7 +5620,7 @@ global@targets.add(rust);
         );
         assert_eq!(program.files.len(), program.workspace.files.len());
         // Each unit's lowered file is that program's file for the unit's file.
-        // @lfy def/generation/main.lfy:plan
+        // @lfy def/generation/main.lfy:plan#plan:plan:f1d41358bbe62b7bc098a9056623218e8f88baf629ec9d4f2caab39e89f37bfc
         assert_eq!(plan.units.len(), 2, "{:?}", plan.units);
         for unit in &plan.units {
             assert_eq!(program.files[unit.lowered].file, unit.file);
@@ -5096,7 +5630,7 @@ global@targets.add(rust);
     /// The standard library is compiled by its own project, so none of its entities is
     /// ever built, even though `global` holds the target among its targets; a unit's
     /// interface may still name them as types.
-    // @lfy def/generation/main.lfy:plan#plan:plan:87a602b422dfb1c2315b5a0c66f06ef773cfacaa36112a52175f3fcd93cf38f1
+    // @lfy def/generation/main.lfy:plan#plan:plan:0ef10d0db096eac5dd73e22dd85ec6f629b3c05181b46ac57a218cc07d64b221
     #[test]
     fn the_elfie_package_gives_no_unit_even_though_global_holds_the_target() {
         let fixture = Fixture::with_elfie_package();
@@ -5113,7 +5647,7 @@ global@targets.add(rust);
         assert_eq!(plan.units[0].file, file_index(&workspace, "def/a.lfy"));
         // Neither `A` nor its file holds a target, so `global`'s targets decide, and every
         // entity the project's own file declares in its file scope is built.
-        // @lfy def/generation/main.lfy:plan#plan:plan:f50e1e1e7d1202cefb738ac1a35aaf701a527d714a98bf508187d9e62711111d
+        // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
         assert_eq!(names(&workspace, &plan.units[0].entities), ["A"]);
     }
 
@@ -5129,10 +5663,10 @@ global@targets.add(rust);
         let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
         let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
         // Each unit comes after its dependencies.
-        // @lfy def/generation/main.lfy:plan#plan:plan:77cdabac2f33206376b13db1d49958e635787db9c6d54db3ac05b2405c0776da
+        // @lfy def/generation/main.lfy:plan#plan:plan:c6bed32df9850fc2409ccc08a49904114e67a864cad86e4c61b6b0addd1d0dab
         assert!(b_index < a_index);
         // The file `a` uses has a unit of the same target, so that unit is its dependency.
-        // @lfy def/generation/main.lfy:plan#plan:plan:25f32ad65d223caa8411f2221f1cfe7adee702020f56a78d3cb0f08f0c92c7c4
+        // @lfy def/generation/main.lfy:plan
         assert_eq!(a.dependencies, [b_index]);
         assert!(b.dependencies.is_empty());
         // Neither unit has an output recorded, so each is fresh.
@@ -5141,7 +5675,7 @@ global@targets.add(rust);
         assert_eq!(b.reason, Some(Reason::Fresh));
         assert!(a.outputs.is_empty());
         // One unit per file, holding the entities built for the target in file order.
-        // @lfy def/generation/main.lfy:plan#plan:plan:1b7fdf3d190f89a93b4da6eaafc7774096e2d8f5a64d61a43e54f3fec690750c
+        // @lfy def/generation/main.lfy:plan#plan:plan:913b20182f0e8f00f27782535dbbf5d543af1d94b5560188f87084191178b772
         assert_eq!(names(&workspace, &a.entities), ["A"]);
         assert_eq!(names(&workspace, &b.entities), ["B", "make"]);
         // @lfy def/generation/main.lfy:plan
@@ -5150,11 +5684,11 @@ global@targets.add(rust);
         assert_eq!(a.target, 0);
         assert_eq!(a.file, file_index(&workspace, "def/a.lfy"));
         // The batches partition the planned units, in `Plan.units` order.
-        // @lfy def/generation/main.lfy:plan#plan:plan:0910ea1930bd237a7aa923b69454c5f6eeff84187858284d5fc76038c57c67f6
+        // @lfy def/generation/main.lfy:plan#plan:plan:88eb512d83f4888e4edcac53d09e9ed1d190eb09ce99803fb65ec6e80776586c
         assert_eq!(plan.planned().count(), 2);
         assert_eq!(plan.batches[0].units, [b_index, a_index]);
         // One batch, named after the first unit and the count of the others.
-        // @lfy def/generation/main.lfy:plan#plan:plan:4a43b797673c64c5f48703569bd883f48a01d65de1f0a00b3afa47cd42bbdd9b
+        // @lfy def/generation/main.lfy:plan
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
         assert_eq!(plan.batches[0].identifier, "b+1");
     }
@@ -5177,17 +5711,18 @@ global@targets.add(rust);
             "{:?}",
             plan.units
         );
-        // @lfy def/generation/main.lfy:plan#plan:plan:bb4bf5858fa1665463b919cafa742a2183b802dd952e3adf3ed7f370c5c06462
+        // @lfy def/generation/main.lfy:plan#plan:plan:84b9ddea7d9b6f73bdde004e1e9dee2c746f57ff862c8302fd0a3150a4df7817
         let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
         assert_eq!(a.outputs.len(), 1);
         assert_eq!(a.outputs[0].source, "def/a.lfy");
+        assert_eq!(a.outputs[0].target, "rust");
         assert_eq!(plan.planned().count(), 0);
         // Nothing is planned, so there is no batch.
-        // @lfy def/generation/main.lfy:plan#plan:plan:00419dd3137b41e45f2661a18ef40a62b4c773266754daf58687bafc6f4fc448
+        // @lfy def/generation/main.lfy:plan
         assert!(plan.batches.is_empty());
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:ec66359827b22c56e28078a9cd8579310aa3ebcbe273f7c1348d153b2c4aab35
+    // @lfy def/generation/main.lfy:plan#plan:plan:da57a14227f845b6550a85e82efd1e2eee97963403833ef1c1a4896da8e0a6c6
     #[test]
     fn a_comment_added_inside_a_dependency_changes_it_and_leaves_its_dependent_alone() {
         let fixture = a_and_b();
@@ -5214,9 +5749,9 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:plan#plan:plan:699a0b8df170aed10dd0c3f2cdf3492c7eff895d33b7e542b8928c357895c458
         assert_eq!(b.reason, Some(Reason::Changed));
         // b is planned only for itself: its interface is the same.
-        // @lfy def/generation/main.lfy:plan#plan:plan:21c936e9eed81333fa424b811e0e619a14ec0d30a43b4bbe09f654365cf1e4f5
+        // @lfy def/generation/main.lfy:plan#plan:plan:40f45c8240354c40ed6f2a0ef91f2c24787a209455f9f1a93d9e45ae9c1b5dd7
         assert_eq!(a.reason, None);
-        // @lfy def/generation/main.lfy:plan#plan:plan:940cf97d0f821e901e514ec764aab55fb31ddcd7848c3b1a6d24143c4b95fea2
+        // @lfy def/generation/main.lfy:plan
         assert_eq!(plan.batches.len(), 1);
         assert_eq!(plan.batches[0].identifier, "b");
     }
@@ -5266,7 +5801,7 @@ global@targets.add(rust);
     /// An entity whose own targets hold the target is built for it, and an entity of the
     /// same file whose own targets are empty is not, because neither its file nor `global`
     /// holds the target either.
-    // @lfy def/generation/main.lfy:plan#plan:plan:b289c015fc19940e37cc73ea07c7ad9132652a5f7e844d6c739186fb3606576c
+    // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
     #[test]
     fn an_entity_whose_own_targets_hold_the_target_is_built() {
         let fixture = Fixture::with_rust_target();
@@ -5287,7 +5822,7 @@ global@targets.add(rust);
 
     /// The target added to a file's own entity builds everything that file declares in its
     /// file scope, and nothing of any other file.
-    // @lfy def/generation/main.lfy:plan#plan:plan:9d9bdedaf21744127b3df06a905fda651438a8d0a428da8e1f1411fa653c7e11
+    // @lfy def/generation/main.lfy:plan#plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45
     #[test]
     fn the_target_on_a_files_own_entity_builds_every_entity_of_that_file() {
         let fixture = Fixture::with_rust_target();
@@ -5364,7 +5899,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:3fddf2695435bb8dea3228dea358a2ab161da48b37a719e59cc8d5caa41b9747
+    // @lfy def/generation/main.lfy:plan#plan:plan:0ef10d0db096eac5dd73e22dd85ec6f629b3c05181b46ac57a218cc07d64b221
     #[test]
     fn a_package_file_gives_no_unit_and_a_nested_file_keeps_its_directory_in_its_stem() {
         let fixture = Fixture::with_rust_target();
@@ -5386,7 +5921,7 @@ global@targets.add(rust);
         assert_eq!(plan.batches[0].identifier, "deep/inner");
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:a07ff11d6307a264a4979182b1c0f831053be1bbda51cbfee833c703d5f5ed4d
+    // @lfy def/generation/main.lfy:plan#plan:plan:c6bed32df9850fc2409ccc08a49904114e67a864cad86e4c61b6b0addd1d0dab
     #[test]
     fn a_used_file_with_no_unit_contributes_the_units_of_its_own_uses() {
         let fixture = Fixture::with_rust_target();
@@ -5407,13 +5942,13 @@ global@targets.add(rust);
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         let (d_index, _) = unit_of(&workspace, &plan, "def/d.lfy");
         // Each once, in use order: c's uses (d, then b) come through c, then b directly.
-        // @lfy def/generation/main.lfy:plan#plan:plan:13f5634596b03beee4c48f43f26a63f8eabec0887876576b9e7c6e76a73ff68c
+        // @lfy def/generation/main.lfy:plan
         assert_eq!(a.dependencies, [d_index, b_index]);
         // @lfy def/generation/main.lfy:plan
         assert!(a_index > b_index && a_index > d_index);
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:a65407acd23ae79d49db581f73620ee82f689fbbc681fa840b44693a10859dcf
+    // @lfy def/generation/main.lfy:plan#plan:plan:9e6d3d70db8eebce09554eb34d8e0c45134ec1eba5d58f6da4e57b8a378c0f4e
     #[test]
     fn a_cycle_among_uses_adds_nothing() {
         let fixture = Fixture::with_rust_target();
@@ -5430,11 +5965,40 @@ global@targets.add(rust);
         let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
         assert_eq!(a.dependencies, [b_index]);
         assert_eq!(b.dependencies, [a_index]);
+        assert_eq!(plan.problems, []);
+        assert_eq!(plan.moves, []);
         assert!(
             plan.units
                 .iter()
                 .all(|unit| unit.reason == Some(Reason::Fresh))
         );
+    }
+
+    /// Two files that use each other and whose entities reach each other too: neither is the
+    /// lowest file, since each uses the other, so the cycle is the uses' and nothing moves.
+    // @lfy def/generation/main.lfy:plan#plan:plan:9e6d3d70db8eebce09554eb34d8e0c45134ec1eba5d58f6da4e57b8a378c0f4e
+    #[test]
+    fn a_cycle_among_uses_whose_entities_reach_each_other_moves_nothing() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("def/a.lfy", "use \"./b\";\n\nd A {\n  $b = B;\n}\n")
+            .write("def/b.lfy", "use \"./a\";\n\nd B {\n  $a = A;\n}\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        let plan = plan_of(&program, &[], &[], &[]);
+        assert_eq!(plan.units.len(), 2, "{:?}", plan.units);
+        let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        // Each file uses the other, so neither can be the lowest file of the cycle.
+        // @lfy def/generation/main.lfy:plan#plan:plan:e32007c54b7c28a4e6102a813e4c61dc2c7f36b487af8e3f5c778220338975cf
+        assert!(used_by(&workspace, a.file, b.file));
+        assert!(used_by(&workspace, b.file, a.file));
+        assert_eq!(lowest_file(&workspace, &[a.file, b.file], &[0, 1]), None);
+        // Nothing of the cycle moves, and the plan adds no problem of its own.
+        assert_eq!(plan.moves, []);
+        assert_eq!(plan.problems, []);
+        assert_eq!(names(&workspace, &plan.units[a_index].entities), ["A"]);
+        assert_eq!(names(&workspace, &plan.units[b_index].entities), ["B"]);
     }
 
     /// `def/b.lfy` declares `B`; `def/a.lfy` uses it and declares `A`, whose member is a
@@ -5458,11 +6022,10 @@ global@targets.add(rust);
     }
 
     // @lfy def/generation/main.lfy:plan#plan:plan:68e2e70ecc72d488671e852fa7cfa8d7f7c969e753b15735cc176d7a82ed8849
-    // @lfy def/generation/main.lfy:plan#plan:plan:a7e951707af08726feeec4863ba2c476ce86be7351a7fceb0a1b5c67107175d2
-    // @lfy def/generation/main.lfy:plan#plan:plan:d81d1ef4e67de0793b9e949537e444534d2ad6ac02e6edc4bc79b50d8b4d84e1
-    // @lfy def/generation/main.lfy:plan#plan:plan:f0fa12d22d2eb82c14ea260d5158bc28c7ab1c25c0d1c4bd93ccb0af875bd72b
-    // @lfy def/generation/main.lfy:plan#plan:plan:acd15bee903685dcff92637045899bf35f12aa97b8c925237c64e91e9a64045e
-    // @lfy def/generation/main.lfy:plan#plan:plan:b53913275f65a5f11119db04a67b103968f296b9ea2efe9099c069165c26c54b
+    // @lfy def/generation/main.lfy:plan#plan:plan:5ea9c1a46ff002cb966b639dd7fa5752f17660d0d99bf21d939baffb3c345b31
+    // @lfy def/generation/main.lfy:plan#plan:plan:e32007c54b7c28a4e6102a813e4c61dc2c7f36b487af8e3f5c778220338975cf
+    // @lfy def/generation/main.lfy:plan#plan:plan:2057c107f5f4608c255f6b82583d495c26804ab224b9335dff27ab7873a8f952
+    // @lfy def/generation/main.lfy:plan#plan:plan:69e49301647aab00316cdcd47da5c0e5daf7b6857c4849316ed9ed3501ec71bb
     #[test]
     fn a_cycle_moves_what_the_lowest_file_reaches_into_the_lowest_files_unit() {
         let fixture = a_cycle();
@@ -5486,11 +6049,11 @@ global@targets.add(rust);
 
         // The moved entity is of the unit it moved into and of no other, its own file order
         // first and the moved entity after it.
-        // @lfy def/generation/main.lfy:plan
+        // @lfy def/generation/main.lfy:plan#plan:plan:d516ff06fa2ea2c1732f166f5a912d694fba72ac3eede32d49c7ac20123fe48d
         assert_eq!(names(&workspace, &b.entities), ["B", "C"]);
         assert_eq!(names(&workspace, &a.entities), ["A"]);
         // The unit it left depends on the unit it moved into, and the cycle is gone.
-        // @lfy def/generation/main.lfy:plan
+        // @lfy def/generation/main.lfy:plan#plan:plan:4a0cb7f3860e04fe587c52b0ce8e9b92e1275445a3ca0b51fd06d8778b47206e
         assert_eq!(a.dependencies, [b_index]);
         assert!(b.dependencies.is_empty(), "{:?}", b.dependencies);
         assert!(b_index < a_index);
@@ -5510,7 +6073,7 @@ global@targets.add(rust);
     /// `def/a.lfy` and `def/b.lfy` reach each other through members a trait of `def/t.lfy`
     /// added, and neither uses the other, so no file of the cycle is used by every other.
     // @lfy def/generation/main.lfy:plan#plan:plan:b4923bbd4e807e07a830205e8adc5377b41e10ed65314c2ba71fb0cc2ecf3740
-    // @lfy def/generation/main.lfy:plan#plan:plan:787934ba8c71768cd28052de5fa8da71a7a34ee8c9b4c6dabc87fb6f5826ea01
+    // @lfy def/generation/main.lfy:plan#plan:plan:fa7d90dd8bdab380388515f7c40bb7848f1274eb5d75942a04288b75a656c7bf
     #[test]
     fn a_cycle_with_no_lowest_file_leaves_one_problem_and_moves_nothing() {
         let fixture = Fixture::with_rust_target();
@@ -5561,7 +6124,7 @@ global@targets.add(rust);
 
     /// Two cycles are resolved in two rounds, each round reading the dependencies the last
     /// round left; afterwards no two units of a target reach each other.
-    // @lfy def/generation/main.lfy:plan#plan:plan:182d8e54974ab9318d1139f6593e0582dbf0b55acc2a9a4f53b1d6b0e396567a
+    // @lfy def/generation/main.lfy:plan#plan:plan:b83fb4e8773d4d2bc8f168802a062c5f8d414beaa418defd0430f736e6928053
     #[test]
     fn moves_repeat_until_no_cycle_is_left() {
         let fixture = Fixture::with_rust_target();
@@ -5609,7 +6172,7 @@ global@targets.add(rust);
 
     /// Reaching is read from the definitions alone, so an entity built for two targets moves
     /// the same way for both.
-    // @lfy def/generation/main.lfy:plan#plan:plan:901dffe19bb11758217009988237c988533444c6a85da4d782be8342e83a1aa9
+    // @lfy def/generation/main.lfy:plan#plan:plan:2aa0a55e70b64bf9e37087a9332dce7e87a8a1376bb6744dab9b2ce7c058717a
     #[test]
     fn every_move_is_the_same_for_every_target() {
         let fixture = a_cycle();
@@ -5648,6 +6211,7 @@ global@targets.add(rust);
     }
 
     // @lfy def/generation/main.lfy:plan#plan:plan:68cc4a6ef4fd0e7da9d24e21b1ef05a1e1d173ad7313adf6c3971c21bd01bd3c
+    // @lfy def/generation/main.lfy:plan#plan:plan:709c271f920bd31e9716cfbd10c64489c0dfa7e2944a2e80c900ba79a40a3d3c
     #[test]
     fn requested_comes_before_every_other_reason_by_path_or_stem() {
         let fixture = a_and_b();
@@ -5661,9 +6225,16 @@ global@targets.add(rust);
         assert_eq!(b.reason, Some(Reason::Requested));
         // b's interface did not change, so a is left alone. @lfy def/generation/main.lfy:plan
         assert_eq!(a.reason, None);
-        let plan = plan_of(&program, &[], &["def/a.lfy".to_string()], &[]);
+        // A path names a unit as well as a stem, and the one requested unit is the one
+        // batch, named after its stem alone.
+        // @lfy def/generation/main.lfy:plan
+        let plan = plan_of(&program, &maps, &["def/a.lfy".to_string()], &[]);
         let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
         assert_eq!(a.reason, Some(Reason::Requested));
+        assert_eq!(b.reason, None);
+        assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
+        assert_eq!(plan.batches[0].identifier, "a");
     }
 
     // @lfy def/generation/main.lfy:plan
@@ -5684,7 +6255,7 @@ global@targets.add(rust);
         assert_eq!(b.reason, None);
     }
 
-    // @lfy def/generation/main.lfy:plan
+    // @lfy def/generation/main.lfy:plan#plan:plan:661840864856b01f6c2f306f700e65aae858a009d8c010124a47b5fd9885985f
     #[test]
     fn a_batch_holds_at_most_six_units_of_one_directory() {
         let fixture = Fixture::with_rust_target();
@@ -5700,14 +6271,23 @@ global@targets.add(rust);
         assert_bound(&workspace);
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.units.len(), 8, "{:?}", plan.units);
+        assert!(
+            plan.units
+                .iter()
+                .all(|unit| unit.reason == Some(Reason::Fresh))
+        );
         let sizes: Vec<usize> = plan.batches.iter().map(|batch| batch.units.len()).collect();
         // Six of `deep`, then the seventh, and `top` on its own: no batch holds more than
         // six units, and none mixes directories.
-        // @lfy def/generation/main.lfy:plan#plan:plan:cd995739fb89900db149444dc0089c9c065ffab2f5e8265739019a8dcc7a1328
+        // @lfy def/generation/main.lfy:plan#plan:plan:46d51e256ac0ed89b3413a7e235770719a0f216b2b18d7b133e7e05e6d930718
         assert_eq!(sizes.iter().sum::<usize>(), 8, "{:?}", plan.batches);
+        assert_eq!(sizes, [BATCH_UNITS, 1, 1], "{:?}", plan.batches);
+        assert_eq!(plan.batches[0].identifier, "deep/u0+5");
+        assert_eq!(plan.batches[1].identifier, "deep/u6");
+        assert_eq!(plan.batches[2].identifier, "top");
         // A unit joins the open batch only while it shares the first segment of its stem and
         // the batch holds fewer than six units.
-        // @lfy def/generation/main.lfy:plan#plan:plan:f71ab7b07fe00efd9b3b473a862beed93f9cdafc988c188117cc9f3bd4ccd0a6
+        // @lfy def/generation/main.lfy:plan#plan:plan:f5945b26c42abf21599b311c49e8448eb81d2fad73e72ff70a5affec2d2f63c7
         assert!(sizes.iter().all(|&size| size <= BATCH_UNITS), "{sizes:?}");
         for batch in &plan.batches {
             let first = first_segment(&plan.units[batch.units[0]].stem).to_string();
@@ -5723,7 +6303,50 @@ global@targets.add(rust);
         assert_eq!(plan.batches.len(), 3, "{:?}", plan.batches);
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:3efc038bcf44bcb431e125c96c27dfc30c04a8243d18fe29c5ce9f0ae2f7388e
+    /// Two units of one directory whose sources together reach the limit go in two batches,
+    /// though neither the count of units nor the directory would have parted them.
+    // @lfy def/generation/main.lfy:plan#plan:plan:8b23e12f7a1211640db7cdf6e25859876cd4e9df01a21c0766522b1249acc498
+    // @lfy def/generation/main.lfy:plan#plan:plan:b5a7643a3fbd7949303b346993c7bec289b1766eb30f651e165467197f2936b0
+    #[test]
+    fn two_units_whose_sources_together_reach_the_limit_go_in_two_batches() {
+        let fixture = Fixture::with_rust_target();
+        // Each file lowers to more than half the limit and less than the whole of it, so
+        // either on its own fits a batch and the two together do not.
+        let members: String = (0..1_200)
+            .map(|index| format!("  $m{index}: `A member of its own name` = string;\n"))
+            .collect();
+        for name in ["a", "b"] {
+            fixture.write(
+                &format!("def/x/{name}.lfy"),
+                &format!("d {}: `A big one` {{\n{members}}}\n", name.to_uppercase()),
+            );
+        }
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        assert_eq!(plan.units.len(), 2, "{:?}", plan.units);
+        let (_, a) = unit_of(&workspace, &plan, "def/x/a.lfy");
+        let (_, b) = unit_of(&workspace, &plan, "def/x/b.lfy");
+        for unit in [a, b] {
+            let characters = unit.text.chars().count();
+            assert!(
+                characters < BATCH_CHARACTERS && characters * 2 >= BATCH_CHARACTERS,
+                "{characters}"
+            );
+            assert_eq!(unit.reason, Some(Reason::Fresh));
+        }
+        // They share the first segment of their stem and would be four units short of the
+        // count, so only the size parts them: one batch each, named after its own unit.
+        // @lfy def/generation/main.lfy:plan
+        assert_eq!(first_segment(&a.stem), first_segment(&b.stem));
+        assert_eq!(plan.batches.len(), 2, "{:?}", plan.batches);
+        assert_eq!(plan.batches[0].identifier, "x/a");
+        assert_eq!(plan.batches[1].identifier, "x/b");
+    }
+
+    // @lfy def/generation/main.lfy:plan#plan:plan:83ae85d53a06f4a097fb8db49ddcb5211746d5285060c427ab68e0f4d46b4b30
+    // @lfy def/generation/main.lfy:plan#plan:plan:f5f747818d71fc77f0063fbd3976422979d7df380c43c8c14e716c5beb4baa4e
     #[test]
     fn a_dependent_planned_only_for_its_dependency_joins_its_batch_across_directories() {
         let fixture = Fixture::with_rust_target();
@@ -5756,7 +6379,45 @@ global@targets.add(rust);
         assert_eq!(plan.batches[0].identifier, "core/b+1");
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:0a1b3b87c23f03559f003a18d9e83520d7918d97679005431f0a124cc6fba191
+    /// A request carries one target's guidance and one set of native dependencies, so units
+    /// of two targets never share a batch however well their stems and sizes would fit.
+    // @lfy def/generation/main.lfy:plan#plan:plan:139ff97944391c8eb7f3b810897377a8bd64ea54d0fe64b6c29a7043348a5379
+    #[test]
+    fn a_unit_of_another_target_opens_a_new_batch() {
+        let fixture = a_and_b();
+        fixture.write(
+            "def/targets.lfy",
+            &format!(
+                "{}\nace const other = targetOf({{ output = \"other\", language = lang, \
+                 layout = flat }});\nglobal@targets.add(other);\n",
+                TARGETS.trim_end()
+            ),
+        );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_eq!(workspace.targets.len(), 2, "{:?}", workspace.problems);
+        let plan = plan_of(&program, &[], &[], &[]);
+        // Two files for each of the two targets, every one of them fresh.
+        assert_eq!(plan.units.len(), 4, "{:?}", plan.units);
+        assert!(plan.units.iter().all(|unit| unit.reason == Some(Reason::Fresh)));
+        // Both files sit directly under the source directory, so every unit shares the first
+        // segment of its stem with every other and only the target parts them: one batch per
+        // target, each holding that target's two units.
+        assert_eq!(plan.batches.len(), 2, "{:?}", plan.batches);
+        for batch in &plan.batches {
+            let target = plan.units[batch.units[0]].target;
+            assert_eq!(batch.units.len(), 2, "{:?}", plan.batches);
+            for &index in &batch.units {
+                assert_eq!(plan.units[index].target, target, "{:?}", plan.batches);
+            }
+        }
+        assert_ne!(
+            plan.units[plan.batches[0].units[0]].target,
+            plan.units[plan.batches[1].units[0]].target
+        );
+    }
+
+    // @lfy def/generation/main.lfy:plan#plan:plan:88eb512d83f4888e4edcac53d09e9ed1d190eb09ce99803fb65ec6e80776586c
     #[test]
     fn every_batch_comes_after_the_batches_holding_its_dependencies() {
         let fixture = Fixture::with_rust_target();
@@ -5788,7 +6449,7 @@ global@targets.add(rust);
     /// A unit's lowered file is the one lowered from its file, and an entity whose code runs
     /// at compile time — a trait, or a declaration inside an `ace` — has no lowered node and
     /// is in no unit, so no output has to carry a marker for it.
-    // @lfy def/generation/main.lfy:plan#plan:plan:5b80bc0e520d453402f4dd60d25a7a6155e3c799559c4db99f3631ad34f7f38c
+    // @lfy def/generation/main.lfy:plan#plan:plan:913b20182f0e8f00f27782535dbbf5d543af1d94b5560188f87084191178b772
     #[test]
     fn an_entity_with_no_lowered_node_is_in_no_unit() {
         let fixture = Fixture::with_rust_target();
@@ -5815,7 +6476,7 @@ global@targets.add(rust);
     /// A criterion added to an entity leaves the lowered code the same, so the unit is
     /// planned for its requirements rather than for a change, and its dependent is left
     /// alone; the request says the code of such a unit did not change.
-    // @lfy def/generation/main.lfy:plan
+    // @lfy def/generation/main.lfy:plan#plan:plan:43f3dac0dd4bb25573f9bff0c0f81d674671504e8ac666c8ae2bf37faf2d75f8
     #[test]
     fn a_new_criterion_plans_the_unit_for_its_requirements() {
         let fixture = a_and_b();
@@ -5843,14 +6504,13 @@ global@targets.add(rust);
         let map = maps.iter().find(|map| map.source == "def/b.lfy").unwrap();
         assert_eq!(map.hash, source_hash(&program.files[b.lowered].text));
         assert_ne!(map.requirements, requirements_hash(&program, b));
-        // The instructions say the code is unchanged, so only what answers for the ids that
-        // were added or removed has to change.
-        // @lfy def/generation/main.lfy:request#request:request:e3e9d568a3c8b1ed6a7ce84f3a68c184829608fc90f1074915bde92e31593b58
+        // The unit's own section says its code is unchanged and that its criteria or tests
+        // differ. @lfy def/generation/main.lfy:request
         let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
         assert!(
             request
                 .instructions
-                .contains("The code of these units is unchanged"),
+                .contains("The lowered code of this unit is unchanged"),
             "{}",
             request.instructions
         );
@@ -5910,7 +6570,7 @@ global@targets.add(rust);
 
     /// A stem the last global review found violated plans its unit again, and a request
     /// still comes first.
-    // @lfy def/generation/main.lfy:plan
+    // @lfy def/generation/main.lfy:plan#plan:plan:7693e6aca754c3b43b49e3c98a9f0532e6853bec3b10d21a9f22fccc00b021ce
     #[test]
     fn a_violated_stem_plans_the_unit_again() {
         let fixture = a_and_b();
@@ -5933,7 +6593,7 @@ global@targets.add(rust);
 
     /// A global criterion added plans no unit of its own: the global review is run instead,
     /// and only a unit whose output answers for one it finds violated is planned again.
-    // @lfy def/generation/main.lfy:plan#plan:plan:fd54ec0e5416cf9dfbd2c15cfc402e49e1591a1287035e4cdd9b6db9102b82b9
+    // @lfy def/generation/main.lfy:plan
     #[test]
     fn a_new_global_criterion_plans_no_unit_and_a_violated_one_plans_its_unit() {
         let fixture = a_and_b();
@@ -5952,7 +6612,7 @@ global@targets.add(rust);
         assert_bound(&workspace);
         assert_eq!(program.criteria.len(), 1, "{:?}", program.criteria);
         // Nothing is violated, so no unit is planned for the difference.
-        // @lfy def/generation/main.lfy:plan#plan:plan:07ce0bbf7752ef1ed97422b09ab526f2a532aec09723bfe61a2d241bd3015a15
+        // @lfy def/generation/main.lfy:plan#plan:plan:40f45c8240354c40ed6f2a0ef91f2c24787a209455f9f1a93d9e45ae9c1b5dd7
         let plan = plan_of(&program, &maps, &[], &[]);
         assert!(
             plan.units.iter().all(|unit| unit.reason.is_none()),
@@ -5961,7 +6621,7 @@ global@targets.add(rust);
         );
         assert!(plan.batches.is_empty(), "{:?}", plan.batches);
         // The global review found it violated in `b`, so `b` alone is planned again.
-        // @lfy def/generation/main.lfy:plan#plan:plan:abcdba359043a80f370bfaa3c6f524b52f343e3847436134859b41d978811831
+        // @lfy def/generation/main.lfy:plan#plan:plan:d02d6ed2f21e62878f97bfce1df0638b8152e90e9d1fbd87429ffad5d31a7be5
         let plan = plan_of(&program, &maps, &[], &["b".to_string()]);
         let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
         let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
@@ -5974,6 +6634,8 @@ global@targets.add(rust);
     // -----------------------------------------------------------------------------------
 
     // @lfy def/generation/main.lfy:request#request:request:b4934a86310e0664a47f5c551266b5e7905fd31e14c52b40314353cca9b1b0f8
+    // @lfy def/generation/main.lfy:request#request:request:571bc891f6509a3d1997b846f685a316e34804763d8271373888f530426558b3
+    // @lfy def/generation/main.lfy:request#request:request:800766e448bfb8ed73777735dcb6d1a81a50d15783302ad27486b92c2d669f5e
     #[test]
     fn a_request_names_the_target_lists_its_units_and_quotes_their_entities() {
         let fixture = a_and_b();
@@ -5985,7 +6647,7 @@ global@targets.add(rust);
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         let batch = &plan.batches[0];
         let request = request(&program, &plan,batch, &[], &BTreeMap::new());
-        // @lfy def/generation/main.lfy:request#request:request:113e7c98ca6101bebc1b4aa6b4d4687cbedcb8207e048edaa1c5855a3cbafc1b
+        // @lfy def/generation/main.lfy:request#request:request:f3979f1497ff9e1b60be372fddce29ffcfe830689ef46680b690554afd9c7a37
         assert_eq!(request.batch, *batch);
         assert_eq!(request.batch.units, [b_index, a_index]);
         // The sources are the lowered text of each unit's file: the body of a fn is its
@@ -6037,7 +6699,7 @@ global@targets.add(rust);
         );
         assert_eq!(request.guidance.len(), 1);
         // What the target's own dependencies, commands, and knowledge give.
-        // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+        // @lfy def/generation/main.lfy:request#request:request:3d9e3582187fd1f1532a46bf0f938c787311c81feb59f4a7d7d5b0da9a813a9a
         assert_eq!(
             request
                 .native_dependencies
@@ -6072,10 +6734,15 @@ global@targets.add(rust);
             text.contains("The units of this batch depend on no unit outside it."),
             "{text}"
         );
-        // Markers name entities, never lines.
-        // @lfy def/generation/main.lfy:request
+        // Markers name entities, never lines, and sit in a line comment beginning with the
+        // target's marker comment.
+        // @lfy def/generation/main.lfy:request#request:request:671617e25d98e36f8c646b0c76d941034839245f2544e239cb4ede3581bb2f33
         assert!(text.contains("Never write a line number."), "{text}");
-        assert!(text.contains("`@lfy def/b.lfy:B`"), "{text}");
+        assert!(
+            text.contains("a line comment beginning with `//`, then `@lfy`"),
+            "{text}"
+        );
+        assert!(text.contains("`// @lfy def/b.lfy:B`"), "{text}");
         // The three report lines.
         // @lfy def/generation/main.lfy:request
         assert!(text.contains("`ELFIE: DONE`"), "{text}");
@@ -6117,7 +6784,7 @@ global@targets.add(rust);
 
         // The commands run with `sh -c` in the output directory, and a dependency is added
         // only by running the add command.
-        // @lfy def/generation/main.lfy:request#request:request:cf8543168241c4d856ad8a9f311c6b59f31b1840f133171e3f365b169fd172f0
+        // @lfy def/generation/main.lfy:request#request:request:09b0190ee8969e01b9ff7a561a98c3663f87fb8b97fa83c588d0631e7989bc20
         assert!(text.contains("These run with `sh -c` in `src`"), "{text}");
         assert!(text.contains("`RUN_SCRIPT`"), "{text}");
         assert!(
@@ -6138,7 +6805,7 @@ global@targets.add(rust);
         );
 
         // The sections come in the definition's order.
-        // @lfy def/generation/main.lfy:request#request:request:cf8543168241c4d856ad8a9f311c6b59f31b1840f133171e3f365b169fd172f0
+        // @lfy def/generation/main.lfy:request#request:request:d650f0548150afb04ee79524e308a0150e9cf8a3f4dcc9ffde74e3d90e7fcada
         let headings = [
             "# Compiling",
             "## Where the outputs go",
@@ -6170,7 +6837,8 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/main.lfy:request#request:request:d86c17626a07f5e8ec807bd7740a5f6f8280e6af67444bf1bf5d18744b801d3b
+    // @lfy def/generation/main.lfy:request#request:request:72801863f22ee154bf0e22299d1405c97cd6309fc630197aa315508e2f4829f7
     #[test]
     fn a_request_quotes_every_criterion_and_test_of_an_entity() {
         let fixture = a_and_b();
@@ -6257,12 +6925,13 @@ global@targets.add(rust);
     }
 
     /// A target whose declaration is given a criterion by an add call at the top of its
-    /// file, whose layout layer and whose language layer each hold criteria, and whose
+    /// file, whose layout layer and whose language layer each hold criteria, whose layout
+    /// layer extends `targetFramework` too and fills the frameworks slot as well, and whose
     /// language is applied with an argument: the guidance is what no layer and no trait a
     /// layer extends gave, then each layer's in guidance order, then those of every trait
     /// the layers extend, nearest first and each trait once, with every template value
     /// rendered from the layer's arguments.
-    // @lfy def/generation/main.lfy:request#request:request:3136fb075ce1d830493d6dff63dda34d48d4e912139494a6958f1bc7b9c6b7f1
+    // @lfy def/generation/main.lfy:request#request:request:da24d79558458ac142aa1e4f6b149223ba5ddfe55377ebb46b2bf0a367536d5f
     #[test]
     fn the_guidance_is_the_declarations_criteria_then_its_layers_then_what_they_extend() {
         let fixture = Fixture::with_rust_target();
@@ -6292,14 +6961,15 @@ global@targets.add(rust);
                  .fileExtension = \"rs\";\n  .markerComment = \"//\";\n  \
                  where (`A unit is written`) -> `Each unit becomes one module named after its stem`;\n  \
                  where (`An output is written`) -> `Outputs are built as Rust {{edition}}`;\n}\n\
-                 trait flat extends targetLayout: `One file per unit` {\n  \
-                 where (`A unit is written`) -> `Its output is its stem and the extension`;\n}\n",
+                 trait flat extends targetLayout, targetFramework: `One file per unit` {\n  \
+                 where (`A unit is written`) -> `Its output is its stem and the extension`;\n}\n\
+                 trait built extends targetFramework: `Built on something, silently` { }\n",
             )
             .write(
                 "def/targets.lfy",
                 "use \"elfie/target\";\nuse \"./roles\";\n\n\
                  ace const t = targetOf({ output = \"src\", language = rust.layer(\"2024\"), \
-                 layout = flat });\n\
+                 frameworks = [flat, built], layout = flat });\n\
                  t@acceptanceCriteria.add({ situation = `An output is written`, \
                  behavior = `Nothing outside the output directory is written` });\n\
                  global@targets.add(t);\n",
@@ -6308,9 +6978,12 @@ global@targets.add(rust);
         let program = fixture.program();
         let workspace = program.workspace.clone();
         assert_bound(&workspace);
+        // `flat` fills the frameworks slot and the layout slot, so it is one layer, at the
+        // first of the two in guidance order: before `built`, which fills the frameworks slot
+        // after it. Were `flat` the layout alone, `built` would come first.
         assert_eq!(
             names(&workspace, &workspace.targets[0].layers),
-            ["flat", "rust"]
+            ["flat", "built", "rust"]
         );
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
@@ -6324,7 +6997,7 @@ global@targets.add(rust);
         // gave it; then the layout and the language, in guidance order, with the language's
         // template value rendered from its argument; then the traits they extend, nearest
         // first.
-        // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+        // @lfy def/generation/main.lfy:request
         assert_eq!(
             behaviors,
             [
@@ -6341,11 +7014,21 @@ global@targets.add(rust);
         );
         // `target` is reached through `targetLayout` and through `targetLanguage`, and
         // contributes once, at its first place.
-        // @lfy def/generation/main.lfy:request#request:request:7ba99d5e747662531bb244f8f0f9640426e9b36113f67099d0a02904a6a282e5
+        // @lfy def/generation/main.lfy:request
         assert_eq!(
             behaviors
                 .iter()
                 .filter(|behavior| *behavior == "Its path is under the output directory")
+                .count(),
+            1,
+            "{behaviors:?}"
+        );
+        // `flat` fills two slots, and contributes once as well.
+        // @lfy def/generation/main.lfy:request
+        assert_eq!(
+            behaviors
+                .iter()
+                .filter(|behavior| *behavior == "Its output is its stem and the extension")
                 .count(),
             1,
             "{behaviors:?}"
@@ -6365,14 +7048,14 @@ global@targets.add(rust);
         );
         // A layer applied with arguments has its template values rendered from them, so no
         // template is left in the guidance.
-        // @lfy def/generation/main.lfy:request#request:request:0c733510974c365124ebbe7d935d16e460b2403f5f135dcf2f11208cf5b5a305
+        // @lfy def/generation/main.lfy:request
         assert!(!text.contains("{{edition}}"), "{text}");
     }
 
     /// The knowledge of the target, of the batch's entities, and of the entities of an
     /// interface, each item once: a reference quoted in full, one named to be read, a
     /// definition as the files its use path resolves to, and a tool of the agent server.
-    // @lfy def/generation/main.lfy:request#request:request:34148acb18e7d2445c641483c77a06693bdc1a12d8644c257b8df4edddd2d3a2
+    // @lfy def/generation/main.lfy:request#request:request:3d9e3582187fd1f1532a46bf0f938c787311c81feb59f4a7d7d5b0da9a813a9a
     #[test]
     fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
         let fixture = Fixture::with_rust_target();
@@ -6418,11 +7101,11 @@ global@targets.add(rust);
         let text = &request.instructions;
         // A reference whose quote is true is quoted in full, from its source joined to the
         // root of the project its contributor is declared in.
-        // @lfy def/generation/main.lfy:request#request:request:1e12c61514619140b53196fc805053e31c6c2ea0a866877135393d8bad20973e
+        // @lfy def/generation/main.lfy:request#request:request:f64fa963c69a9e30aa2c190c595acdbb6221274d050a5a8533b9cf9291684155
         assert!(text.contains("From `docs/style.md`:"), "{text}");
         assert!(text.contains("Two spaces, never a tab."), "{text}");
         // One whose quote is left out is named, to be read first.
-        // @lfy def/generation/main.lfy:request#request:request:150b2f04d99c0e10d3fa0a47b44b85712f1b4f40f249081a39b2ceda0240df29
+        // @lfy def/generation/main.lfy:request#request:request:737e4198f2f6bddc790512ae099b13648ed59405ba19506fb0abff20748ec530
         assert!(
             text.contains(
                 "- the shape of a module: read `docs/shape.md` before writing anything it covers."
@@ -6447,7 +7130,8 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:request#request:request:11b89fec47c462e32fe4f58c1a2c8c62a950c6893d97a50116d46bb998d8957f
+    // @lfy def/generation/main.lfy:request#request:request:43df411fd74fc148bd737fdeb88ec86747b9ad9eb955912e272384f7def7a93f
+    // @lfy def/generation/main.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
     #[test]
     fn a_dependency_outside_the_batch_is_an_interface_with_its_outputs_and_entities() {
         let fixture = a_and_b();
@@ -6485,8 +7169,8 @@ global@targets.add(rust);
     /// The section of a unit entities moved into says which they are, from which file, and
     /// because of which cause, and the section of the unit they left says which they are and
     /// which unit compiles them.
-    // @lfy def/generation/main.lfy:request#request:request:b0d84a09feb5618abeb062c9020ac327265ae43381d2c28fe2bd4082868e5f82
-    // @lfy def/generation/main.lfy:request#request:request:507042c08a431ff6775c733247ffd863a1243e818c8f160dd3e29de594e646aa
+    // @lfy def/generation/main.lfy:request#request:request:78a8534645507634a61935dcee1699d73fdc5735bcadda06eb24bf9f9854ea34
+    // @lfy def/generation/main.lfy:request#request:request:d8077ccebe94afe4cb2e7e3cf3daafbef0270bf0ca0b6141d42e3be46d002c52
     #[test]
     fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
         let fixture = a_cycle();
@@ -6538,7 +7222,10 @@ global@targets.add(rust);
         assert!(!request.sources["def/a.lfy"].contains("d C"), "{text}");
     }
 
-    // @lfy def/generation/main.lfy:request
+    /// An existing output is kept only where its path is among the outputs of a unit of the
+    /// batch, and the previous source each was generated from is the file as it was, lowered
+    /// the way the unit's own source is, so that the two texts can be read side by side.
+    // @lfy def/generation/main.lfy:request#request:request:ce520ffba1e8298b5ff2f6a6376e60e59a17343e640d10ed179732cd788b8075
     #[test]
     fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
         let fixture = a_and_b();
@@ -6557,32 +7244,63 @@ global@targets.add(rust);
                 text: "// other".to_string(),
             },
         ];
-        let previous = BTreeMap::from([("def/a.lfy".to_string(), "d A {}".to_string())]);
+        // The text as written, which the request lowers itself.
+        let previous = BTreeMap::from([(
+            "def/a.lfy".to_string(),
+            "use \"./b\";\n\nd A: `An a` {\n  $b = B;\n}\n".to_string(),
+        )]);
         let with_previous = request(&program, &plan,&plan.batches[0], &existing, &previous);
-        // @lfy def/generation/main.lfy:request#request:request:ce520ffba1e8298b5ff2f6a6376e60e59a17343e640d10ed179732cd788b8075
         assert_eq!(with_previous.existing.len(), 1);
         assert_eq!(with_previous.existing["src/a.rs"], "// old");
-        assert_eq!(with_previous.previous, previous);
+        // `Request.previous` is the lowered text of the file as it was, never the text as
+        // written: it is read against `Request.sources`, which is lowered too.
+        // @lfy def/generation/main.lfy:request#request:request:6232735fed99654f7d25efa96687134e92c7667e0be166ba2471ca9d018c3103
+        assert_eq!(with_previous.previous.keys().collect::<Vec<_>>(), ["def/a.lfy"]);
+        let was = &with_previous.previous["def/a.lfy"];
+        assert_ne!(was, &with_previous.sources["def/a.lfy"]);
+        // It is what lowering the file as it was gives: here the same file but for the
+        // documentation comment the current one carries.
+        // @lfy def/generation/main.lfy:request#request:request:e6a9a7f8f68b31456fa6f45f2971df1eddc6eed03b9bcb155872fff58c0ca957
+        let lowered = crate::interpret::lower(crate::workspace::change(
+            &workspace,
+            "def/a.lfy",
+            Some(&previous["def/a.lfy"]),
+        ));
+        let index = lowered
+            .workspace
+            .files
+            .iter()
+            .position(|file| file.path == "def/a.lfy")
+            .unwrap();
+        assert_eq!(was, &lowered.files[index].text);
+        assert!(!was.contains("A record."), "{was}");
+        assert!(with_previous.sources["def/a.lfy"].contains("A record."));
         let text = &with_previous.instructions;
         // Only what the difference requires changes, and the markers of unchanged items are
-        // kept.
-        // @lfy def/generation/main.lfy:request#request:request:01d7490d7921632770d38e6d0849d5685e281fdf4c5eb600f9567a74d934e961
-        assert!(text.contains("## Existing outputs"), "{text}");
+        // kept. The outputs part says so, not a part of its own.
+        // @lfy def/generation/main.lfy:request#request:request:3d9b718229fc59a2a379fb37aab7b7235c06fee91fa5fc44b6285037204d9a68
         assert!(
-            text.contains("keep the markers of unchanged items"),
+            text.contains("Keep the markers of unchanged items."),
             "{text}"
         );
-        // The item saying so comes right before the one naming the tools of the agent
-        // server.
+        assert!(text.contains("Keep names and structure."), "{text}");
         assert!(
-            text.find("## Existing outputs") < text.find("## The agent server"),
+            text.contains("the criteria and tests marked new or removed"),
             "{text}"
         );
+        let said = text
+            .find("These outputs exist already:")
+            .unwrap_or_else(|| panic!("{text}"));
+        assert!(said < text.find("## Guidance").unwrap(), "{text}");
+        assert!(said > text.find("## Where the outputs go").unwrap(), "{text}");
         // The outputs of a unit that has some go at the paths its `Unit.outputs` names.
-        // @lfy def/generation/main.lfy:request#request:request:5d2a38caea26eaee56682ab34505d4f806c6b5e6b71bb08c89cfe8612b0961ad
+        // @lfy def/generation/main.lfy:request#request:request:28c71f256cbace38745c677d86962737a051927e499b97ac10dc63f2550643be
         assert!(text.contains("write to the same paths"), "{text}");
-        assert!(text.contains("d A {}"), "{text}");
+        assert!(text.contains("- `src/a.rs`"), "{text}");
+        assert!(text.contains(was.trim_end()), "{text}");
 
+        // With no previous source, the existing outputs of that unit are reconciled with it.
+        // @lfy def/generation/main.lfy:request#request:request:3c1f4cba72285105fde5be93378fbda2d3d93aaf4293fbe643ab3a97d7d1b779
         let without = request(
             &program,
             &plan,
@@ -6593,10 +7311,165 @@ global@targets.add(rust);
         assert!(
             without
                 .instructions
-                .contains("reconcile the existing output with the source"),
+                .contains("Reconcile the existing \noutputs of each of them with its source:")
+                || without
+                    .instructions
+                    .contains("Reconcile the existing outputs of each of them with its source:"),
             "{}",
             without.instructions
         );
+    }
+
+    /// A unit whose outputs recorded no answered ids leaves the request nothing to say which
+    /// of its criteria and tests are new, so the outputs part says to read the existing code
+    /// against each of them.
+    // @lfy def/generation/main.lfy:request#request:request:a960df7e08bfeb90c2fb135fc71e6e80e01a69f9f351d3d8c7eab08f069407c1
+    #[test]
+    fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
+        let fixture = a_and_b();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let mut maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+        for map in &mut maps {
+            map.answered.clear();
+        }
+        let plan = plan_of(&program, &maps, &["b".to_string()], &[]);
+        let existing = [Output {
+            path: "src/b.rs".to_string(),
+            text: "// old".to_string(),
+        }];
+        let request = request(&program, &plan, &plan.batches[0], &existing, &BTreeMap::new());
+        assert!(request.answered.is_empty(), "{:?}", request.answered);
+        assert!(
+            request
+                .instructions
+                .contains("Which criteria and tests of these units are new is not known."),
+            "{}",
+            request.instructions
+        );
+        assert!(
+            request.instructions.contains("- `def/b.lfy`"),
+            "{}",
+            request.instructions
+        );
+    }
+
+    /// A unit whose lowered code is unchanged but whose criteria differ: its section says so,
+    /// each criterion the outputs did not answer for is marked new, and each one the unit no
+    /// longer has is listed under a heading of its own with its text.
+    // @lfy def/generation/main.lfy:request#request:request:e7fe398a823291215f9ad291ba742fac6431d4f937badf251af05e9f389ea522
+    #[test]
+    fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone() {
+        let fixture = a_and_b();
+        // `b` as it was: `make` carried a criterion about an empty `x` and one about a short
+        // one. It carries the first and a third now, so the second is gone and the third new.
+        let was = B.replace(
+            "@test(",
+            "@acceptanceCriteria.add({ situation = `x is short`, behavior = `the b is empty` });\n  \
+             @test(",
+        );
+        let now = B.replace(
+            "@test(",
+            "@acceptanceCriteria.add({ situation = `x is long`, behavior = `the b is cut` });\n  \
+             @test(",
+        );
+        fixture.write("def/b.lfy", &was);
+        let old = fixture.program();
+        assert_bound(&old.workspace);
+        let maps = current_maps(&old, &plan_of(&old, &[], &[], &[]));
+        let before: Vec<String> = {
+            let plan = plan_of(&old, &[], &[], &[]);
+            let (_, unit) = unit_of(&old.workspace, &plan, "def/b.lfy");
+            unit.requirements(&old)
+                .iter()
+                .map(|requirement| requirement.id().to_string())
+                .collect()
+        };
+
+        fixture.write("def/b.lfy", &now);
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &maps, &[], &[]);
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        // The lowered code is the same; only the criteria differ.
+        assert_eq!(b.reason, Some(Reason::Requirements));
+        let existing = [Output {
+            path: "src/b.rs".to_string(),
+            text: "// old".to_string(),
+        }];
+        let batch = Batch {
+            units: vec![b_index],
+            identifier: "b".to_string(),
+        };
+        let previous = BTreeMap::from([("def/b.lfy".to_string(), was.clone())]);
+        let request = request(&program, &plan, &batch, &existing, &previous);
+
+        // What the outputs answered for is what the map file recorded.
+        // @lfy def/generation/main.lfy:request#request:request:160056c645e3e69afd7ce0bb74137db9a5e5f286df0a983570f9e2569276b533
+        let mut sorted = before.clone();
+        sorted.sort();
+        assert_eq!(request.answered["def/b.lfy"], sorted);
+        // The one criterion the unit no longer has, in the order the file as it was gave it.
+        // @lfy def/generation/main.lfy:request#request:request:e9e73367084b12788d91ea49ea57894f06e55c67ebf0856dbb827d3a968fc089
+        let gone = &request.removed["def/b.lfy"];
+        assert_eq!(gone.len(), 1, "{gone:?}");
+        assert!(before.contains(&gone[0]), "{gone:?} {before:?}");
+
+        let text = &request.instructions;
+        // The section says the code is unchanged and holds the code to what each criterion
+        // now says.
+        // @lfy def/generation/main.lfy:request#request:request:dab229dc001954e941ede8f9cf711d6ff5830dd88e08a35f3bccea3da26ad09b
+        assert!(
+            text.contains("The lowered code of this unit is unchanged, but its criteria or tests \ndiffer.")
+                || text.contains(
+                    "The lowered code of this unit is unchanged, but its criteria or tests differ."
+                ),
+            "{text}"
+        );
+        assert!(
+            text.contains("must do what each criterion and test now says"),
+            "{text}"
+        );
+        // The criterion the outputs answered for is unmarked; the one they did not is new.
+        // @lfy def/generation/main.lfy:request#request:request:20c8b9f187ae61ac935c6b929921f420eca7b18fd429d76213ce5975b73af64f
+        let held = b.requirements(&program);
+        let kept = held
+            .iter()
+            .find(|requirement| before.contains(&requirement.id().to_string()))
+            .expect("one criterion or test the outputs answered for");
+        let fresh = held
+            .iter()
+            .find(|requirement| !before.contains(&requirement.id().to_string()))
+            .expect("one the outputs did not answer for");
+        assert!(
+            text.contains(&format!("`{}` — When x is long: the b is cut (new)", fresh.id())),
+            "{text}"
+        );
+        assert!(!text.contains(&format!("`{}` — ", kept.id())) || {
+            let line = text
+                .lines()
+                .find(|line| line.contains(kept.id()))
+                .unwrap_or("");
+            !line.ends_with("(new)")
+        });
+        // A new one may restate a removed one in other words.
+        // @lfy def/generation/main.lfy:request#request:request:40e519bc14a840e00c6e0fb7bff68febae9b5b591f182632fddc0a29f6f47704
+        assert!(
+            text.contains("may restate a removed one in other words"),
+            "{text}"
+        );
+        // What is gone is listed last in the unit's section, with its id and its text.
+        // @lfy def/generation/main.lfy:request#request:request:85fafd5b7c6201f807d532b93b487771bdd141c7ee6bd8854cdc7d981176ff9a
+        let heading = text
+            .find("#### Removed since its outputs were accepted")
+            .unwrap_or_else(|| panic!("{text}"));
+        assert!(
+            text[heading..].contains(&format!("`{}` — When x is short: the b is empty", gone[0])),
+            "{text}"
+        );
+        assert!(heading < text.find("## Global criteria and tests").unwrap());
     }
 
     // -----------------------------------------------------------------------------------
@@ -6731,8 +7604,8 @@ global@targets.add(rust);
 
     /// An entity moved into a unit is marked with the file that declares it, so a marker
     /// naming that file covers it and the ids such a marker spells are this unit's.
-    // @lfy def/generation/main.lfy:accept#accept:accept:30f5c9fea521522b0db93130ff39c1ed29c688ede1875cc3e82bfa00376c059a
-    // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+    // @lfy def/generation/main.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
+    // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
     #[test]
     fn a_moved_entity_is_marked_with_the_file_that_declares_it() {
         let fixture = a_cycle();
@@ -6758,6 +7631,7 @@ global@targets.add(rust);
             &request,
             index,
             std::slice::from_ref(&output),
+            &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
         assert_eq!(
@@ -6779,10 +7653,28 @@ global@targets.add(rust);
             text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C#C:C:ffff\npub struct C;\n"
                 .to_string(),
         };
-        let verdict = accept(&program, &plan, &request, index, &[wrong]);
+        let verdict = accept(&program, &plan, &request, index, &[wrong], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(verdict.problems[0].contains("C:C:ffff"), "{:?}", verdict.problems);
+
+        // A line beyond the last line of the file declaring a moved entity is a problem of
+        // this unit's, just as one beyond the last line of its own file is: both files are
+        // this unit's to mark.
+        // @lfy def/generation/main.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
+        let beyond = Output {
+            path: "src/b.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C\npub struct C;\n\n// @lfy def/a.lfy:900\npub struct Extra;\n"
+                .to_string(),
+        };
+        let verdict = accept(&program, &plan, &request, index, &[beyond], &[]);
+        assert!(!verdict.accepted);
+        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
+        assert!(
+            verdict.problems[0].contains("line 900 of def/a.lfy"),
+            "{:?}",
+            verdict.problems
+        );
     }
 
     // @lfy def/generation/main.lfy:accept#accept:accept:499eff9789d84e951586fdadbe7b46cae6dc863092bfb6f280bd8ab26aba5483
@@ -6803,6 +7695,7 @@ global@targets.add(rust);
             &request,
             index,
             std::slice::from_ref(&output),
+            &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
         assert!(verdict.problems.is_empty());
@@ -6810,18 +7703,32 @@ global@targets.add(rust);
         // A marker that names an entity is left as written.
         // @lfy def/generation/main.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
         assert_eq!(verdict.outputs, [output]);
+        // One source map per output, in `outputs` order.
+        // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
         let map = &verdict.source_maps[0];
+        // @lfy def/generation/main.lfy:accept#accept:accept:8d2a3aa698445970d859538af521c42b878c576deae6eac97af3a97c5c7fd25f
         assert_eq!(map.target, "rust");
+        // @lfy def/generation/main.lfy:accept#accept:accept:ea45d8dd2770ae8698006fbdd6aa54ebb0af32fabeb5d9edf8a1a432812d7d7c
         assert_eq!(map.output, "src/a.rs");
+        // @lfy def/generation/main.lfy:accept#accept:accept:b27edcf9cd5b896cb993b81cba1f8faa47d79995f135c37e63d5e9ab648eed77
         assert_eq!(map.source, "def/a.lfy");
         // Every hash of the source map is derived here, never taken from the compiler's text.
-        // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
+        // @lfy def/generation/main.lfy:accept#accept:accept:1f423d0a0d06e5fc1e0ddf109f2e402b9a84537a80a91e6e4e459fb24ac288dc
+        // @lfy def/generation/main.lfy:accept#accept:accept:90bf10cc4db0c256646cd0f1ba8c45bda247489103c46e1ce26289709829903a
         assert_eq!(map.hash, source_hash(&request.sources["def/a.lfy"]));
+        assert_eq!(map.hash, source_hash(&plan.units[index].text));
+        // @lfy def/generation/main.lfy:accept#accept:accept:0bcfc0b4637d084c09be1b3c407696d0b16f9c7f082c7f0d91de9ea2950d2902
+        assert_eq!(map.answered, answered_ids(&program, &plan.units[index]));
+        assert!(map.answered.windows(2).all(|pair| pair[0] <= pair[1]));
+        // @lfy def/generation/main.lfy:accept#accept:accept:4a6c75702e77d3fab75aa1d127f35eaad993c997ed4cd0dd14f01162c019bc21
         assert_eq!(
             map.signature,
-            interface_signature(&workspace, &plan.units[index])
+            source_hash(&interface_of(&workspace, &plan.units[index]))
         );
+        // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
         assert!(map.dependencies.is_empty());
+        assert!(plan.units[index].dependencies.is_empty());
+        // @lfy def/generation/main.lfy:accept#accept:accept:95161566ef61156ea6f857f212fb510a3edf6221a4238a87b45595f60b6466bb
         assert!(parse_rfc3339(&map.generated).is_some(), "{}", map.generated);
         // The lines are derived from the model, never copied from the compiler.
         assert_eq!(
@@ -6832,13 +7739,13 @@ global@targets.add(rust);
             [(Some("A".to_string()), 4), (Some("B".to_string()), 8)]
         );
         // A marker followed by another ends on the line before it.
-        // @lfy def/generation/main.lfy:accept#accept:accept:0c0071afea5332b7a7a9332e540fc4d992d28a802923c64d998295878d840795
+        // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
         assert_eq!((map.markers[0].output_line, map.markers[0].end), (1, 3));
         // The last marker of an output ends on its last line.
-        // @lfy def/generation/main.lfy:accept#accept:accept:3557b46ff0f36e90d1b8872dbb99584bf6a38b73bb8e7d7336c61e83b2497d16
+        // @lfy def/generation/main.lfy:accept
         assert_eq!((map.markers[1].output_line, map.markers[1].end), (4, 5));
         // So the regions partition the output from its first marker on.
-        // @lfy def/generation/main.lfy:accept#accept:accept:a6921061f9e2ca23b5617e1ac741a1b127dbde2de5a1a64157e32a9d5a0341a0
+        // @lfy def/generation/main.lfy:accept
         assert_eq!(
             map.markers
                 .iter()
@@ -6858,6 +7765,181 @@ global@targets.add(rust);
         assert_eq!(plan.units[index].reason, None);
     }
 
+    /// A batch compiled in a copy of the root is reviewed in that copy: the regions the
+    /// verifier is shown are read from the directory given, and from the workspace root when
+    /// none is.
+    // @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
+    #[test]
+    fn the_regions_of_a_review_are_read_from_the_directory_given() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write(
+                "def/a.lfy",
+                "d A: `An a` {\n  @acceptanceCriteria.add({ behavior = `it holds` });\n}\n",
+            )
+            .write("src/a.rs", "the root\n")
+            .write("copy/src/a.rs", "the copy\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        let batch = Batch {
+            units: vec![index],
+            identifier: "a".to_string(),
+        };
+        let maps = vec![SourceMap {
+            markers: vec![entity_marker(1, "A", 1, 1)],
+            ..map_for("src/a.rs", "def/a.lfy")
+        }];
+        let root = review(&program, &plan, &batch, &maps, None).instructions;
+        assert!(root.contains("```\nthe root\n```"), "{root}");
+        let copy = fixture.root.join("copy");
+        let copied = review(&program, &plan, &batch, &maps, Some(&copy)).instructions;
+        assert!(copied.contains("```\nthe copy\n```"), "{copied}");
+        assert!(!copied.contains("the root"), "{copied}");
+    }
+
+    /// Sharing an output with another unit of the same target is no problem while the
+    /// regions that unit's recorded map names are all still in it; dropping one of them is a
+    /// problem naming the path, that unit's source, and the region. A co-owner compiled in
+    /// the same batch writes its own regions again, so its map claims nothing, and the
+    /// unit's own recorded map for the same path is what acceptance replaces.
+    // @lfy def/generation/main.lfy:accept#accept:accept:a61aa4a9283df62d2e6f07fca7d7d134df081b931e93c5cd80d35866633303f7
+    // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+    #[test]
+    fn a_shared_output_keeps_the_regions_another_units_map_records() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write(
+                "def/a.lfy",
+                "\n\n/// A.\nd A {\n  $x = string;\n}\n\nd B {\n  $y = string;\n}\n",
+            )
+            .write("def/c.lfy", "d C {\n  $z = string;\n}\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let (plan, request, index) = one_unit(&program);
+        let mine = "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/a.lfy:B\npub struct B;\n";
+        let theirs = "\n// @lfy def/c.lfy:C\npub struct C;\n";
+        let other = SourceMap {
+            markers: vec![Marker {
+                output_line: 6,
+                file: "def/c.lfy".to_string(),
+                entity: Some("C".to_string()),
+                line: 1,
+                column: None,
+                requirement: None,
+                end: 7,
+            }],
+            ..map_for("src/a.rs", "def/c.lfy")
+        };
+        // The region `def/c.lfy` records is still there, so sharing adds no problem.
+        // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+        let shared = named_output(&format!("{mine}{theirs}"));
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&shared),
+            std::slice::from_ref(&other),
+        );
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        // Dropped, it is one problem naming the path, the other source, and the region.
+        // @lfy def/generation/main.lfy:accept#accept:accept:a61aa4a9283df62d2e6f07fca7d7d134df081b931e93c5cd80d35866633303f7
+        let dropped = named_output(mine);
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&dropped),
+            std::slice::from_ref(&other),
+        );
+        assert!(!verdict.accepted);
+        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
+        for named in ["src/a.rs", "def/c.lfy", "def/c.lfy:C"] {
+            assert!(verdict.problems[0].contains(named), "{:?}", verdict.problems);
+        }
+        // With `def/c.lfy` in the batch, its map claims nothing: it is being rewritten.
+        // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+        let (together, _) = unit_of(&workspace, &plan, "def/c.lfy");
+        let batch = Batch {
+            units: vec![index, together],
+            identifier: "a+1".to_string(),
+        };
+        let both = super::request(&program, &plan, &batch, &[], &BTreeMap::new());
+        let verdict = accept(
+            &program,
+            &plan,
+            &both,
+            index,
+            std::slice::from_ref(&dropped),
+            std::slice::from_ref(&other),
+        );
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        // The unit's own recorded map for the same output is what acceptance replaces.
+        // @lfy def/generation/main.lfy:accept
+        let own = map_for("src/a.rs", "def/a.lfy");
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&dropped),
+            std::slice::from_ref(&own),
+        );
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        // A region of this unit's own file is in the co-owner's map only because a map holds
+        // every marker of its output; it is this unit's to drop, so dropping B is no problem
+        // of sharing. @lfy def/generation/main.lfy:accept
+        let theirs_only = SourceMap {
+            markers: vec![
+                Marker {
+                    output_line: 4,
+                    file: "def/a.lfy".to_string(),
+                    entity: Some("B".to_string()),
+                    line: 8,
+                    column: None,
+                    requirement: None,
+                    end: 5,
+                },
+                Marker {
+                    output_line: 6,
+                    file: "def/c.lfy".to_string(),
+                    entity: Some("C".to_string()),
+                    line: 1,
+                    column: None,
+                    requirement: None,
+                    end: 7,
+                },
+            ],
+            ..map_for("src/a.rs", "def/c.lfy")
+        };
+        let without_b = named_output(&format!(
+            "// @lfy def/a.lfy:A\npub struct A;\npub struct B;\n{theirs}"
+        ));
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&without_b),
+            std::slice::from_ref(&theirs_only),
+        );
+        assert_eq!(
+            verdict
+                .problems
+                .iter()
+                .filter(|problem| problem.contains("is shared with"))
+                .count(),
+            0,
+            "{:?}",
+            verdict.problems
+        );
+    }
+
     // @lfy def/generation/main.lfy:accept#accept:accept:dd9767e93f188ad433adfb81d2b14e5bcc518b6e2d80e9ecca17d5a03a2f1ab3
     #[test]
     fn an_entity_without_a_marker_is_rejected_by_name() {
@@ -6866,8 +7948,8 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         // A marker on the documentation line of A counts for A; nothing names B.
         let output = named_output("// @lfy def/a.lfy:3\npub struct A;\n");
-        let verdict = accept(&program, &plan, &request, index,&[output]);
-        // @lfy def/generation/main.lfy:accept#accept:accept:30f5c9fea521522b0db93130ff39c1ed29c688ede1875cc3e82bfa00376c059a
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        // @lfy def/generation/main.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -6891,9 +7973,9 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         assert_eq!(names(&workspace, &plan.units[index].entities), ["A"]);
         let output = named_output("// @lfy def/a.lfy:3\npub struct A;\n");
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
-        // @lfy def/generation/main.lfy:accept#accept:accept:20bac879246718342cd4a1788980b76a817693a0c3b6bd11addd887e9579c378
+        // @lfy def/generation/main.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
         assert_eq!(
             verdict.outputs[0].text,
             "// @lfy def/a.lfy:A\npub struct A;\n"
@@ -6907,7 +7989,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:3\npub struct A {\n  // @lfy def/a.lfy:4\n  x: String,\n}\n",
         );
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         assert!(
             verdict.outputs[0].text.contains("// @lfy def/a.lfy:A.x"),
@@ -6916,10 +7998,11 @@ global@targets.add(rust);
         );
     }
 
-    /// Every line a source map keeps is the model's: a marker on A's documentation line
-    /// records the line A is declared on rather than the number written, a marker on B's
-    /// last line records B's first, and a line no declaration covers is recorded for
-    /// nothing, since the model gives no line to derive for it.
+    /// Every line a source map derives is the model's: a marker on A's documentation line
+    /// records the line A is declared on rather than the number written, and a marker on
+    /// B's last line records B's first. A marker on a line no declaration covers names no
+    /// entity to derive a line from, so it is recorded as written: it names a file of the
+    /// program, and the map holds every marker that does.
     // @lfy def/generation/main.lfy:accept
     #[test]
     fn the_lines_of_a_source_map_are_derived_and_never_the_compilers() {
@@ -6933,8 +8016,12 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:1\n// @lfy def/a.lfy:3\npub struct A;\n// @lfy def/a.lfy:10\npub struct B;\n",
         );
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
+        // Each marker of the output names a file of the program, so the map holds all three:
+        // the two that resolved, with the line of the declaration they named, and the one
+        // that resolved to no declaration, with the line it spells and no entity.
+        // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
         assert_eq!(
             verdict.source_maps[0]
                 .markers
@@ -6942,6 +8029,7 @@ global@targets.add(rust);
                 .map(|marker| (marker.entity.clone(), marker.output_line, marker.line))
                 .collect::<Vec<_>>(),
             [
+                (None, 1, 1),
                 (Some("A".to_string()), 2, 4),
                 (Some("B".to_string()), 4, 8)
             ]
@@ -6954,13 +8042,13 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:accept#accept:accept:e4e4df7a903109a1bd027ea4215cea9b59b6e1d4a94e01fff48a70c4583d0225
+    // @lfy def/generation/main.lfy:accept#accept:accept:4a48dc9bd184c822a38d627cf303e55c050d877bac33bf8d5f8794db459af17d
     #[test]
     fn no_outputs_are_rejected() {
         let fixture = a_with_two_entities();
         let program = fixture.program();
         let (plan, request, index) = one_unit(&program);
-        let verdict = accept(&program, &plan, &request, index,&[]);
+        let verdict = accept(&program, &plan, &request, index, &[], &[]);
         assert!(!verdict.accepted);
         assert!(
             verdict.problems[0].contains("no output"),
@@ -6969,7 +8057,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:accept#accept:accept:f6666f7e7b09c250e8f74ad9d63d505ac8054121912ba700371d76d9f9396fd9
+    // @lfy def/generation/main.lfy:accept#accept:accept:324f6bd2c925ffa32b5feee5d17d3195c149deb99f00247918a0ee6d58d1b870
     #[test]
     fn an_output_outside_the_output_directory_is_rejected_by_path() {
         let fixture = a_with_two_entities();
@@ -6977,7 +8065,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let mut output = named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n");
         output.path = "srcx/a.rs".to_string();
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -6987,7 +8075,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:accept#accept:accept:3155ad6c69d739023b377c20c0889d2723058f8a413e52287daad7c0486af5f7
+    // @lfy def/generation/main.lfy:accept#accept:accept:e25297fa468e4f2b18f120993ee14b756d7715661e928e3e161f9aba05aad304
     #[test]
     fn an_output_whose_extension_the_target_does_not_allow_is_rejected_by_path() {
         let fixture = a_with_two_entities();
@@ -6996,7 +8084,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let mut output = named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n");
         output.path = "src/a.txt".to_string();
-        let verdict = accept(&program, &plan, &request, index, &[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -7011,7 +8099,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:accept#accept:accept:a1c947537070babac5d735f6d5d16856f9de88cadd132d799c85c366ee84bddf
+    // @lfy def/generation/main.lfy:accept#accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3
     #[test]
     fn a_marker_naming_an_entity_the_file_does_not_declare_is_rejected_by_output_line_and_name() {
         let fixture = a_with_two_entities();
@@ -7019,7 +8107,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let output =
             named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n// @lfy def/a.lfy:Nowhere\n");
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -7034,7 +8122,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:accept#accept:accept:a3e98c9cbbd8253131d2537c09808e4e34f57acedaa9ba29ea709a7fffa209a1
+    // @lfy def/generation/main.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
     #[test]
     fn a_marker_naming_a_line_past_the_last_is_rejected_by_output_line() {
         let fixture = a_with_two_entities();
@@ -7042,7 +8130,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let output =
             named_output("// @lfy def/a.lfy:A\n\n// @lfy def/a.lfy:99\n// @lfy def/a.lfy:B\n");
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -7059,7 +8147,7 @@ global@targets.add(rust);
 
     /// A marker naming a file the program does not hold is a fixture or prose, not a claim
     /// about the program, so it is ignored and not recorded.
-    // @lfy def/generation/main.lfy:accept#accept:accept:8d4634ba98434cb69bdbf4d30ce208612c075efe72c36db22099bd9af0908f8e
+    // @lfy def/generation/main.lfy:accept#accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481
     #[test]
     fn a_marker_naming_a_file_that_is_not_in_the_program_is_ignored() {
         let fixture = a_with_two_entities();
@@ -7068,7 +8156,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:A\n// @lfy def/b.lfy:8\n// @lfy def/b.lfy:Nowhere\n// @lfy def/a.lfy:B\n",
         );
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // Neither marker of the file outside the program is recorded.
         let markers = &verdict.source_maps[0].markers;
@@ -7087,7 +8175,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:accept#accept:accept:ab8082306f2b543640639148fab629f4f62757525189b63950b8409311fca21f
+    // @lfy def/generation/main.lfy:accept#accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95
     #[test]
     fn an_output_may_hold_markers_for_other_files_of_the_program() {
         let fixture = a_and_b();
@@ -7104,7 +8192,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:B\npub struct B;\n",
         );
-        let verdict = accept(&program, &plan, &request, index,&[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // The marker of the other file is kept, and its line is derived from that file.
         let markers = &verdict.source_maps[0].markers;
@@ -7112,42 +8200,42 @@ global@targets.add(rust);
         assert_eq!(markers[1].file, "def/b.lfy");
         assert_eq!(markers[1].entity.as_deref(), Some("B"));
         assert_eq!(markers[1].line, 1);
-        // @lfy def/generation/main.lfy:accept
+        // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
         assert_eq!(verdict.source_maps[0].dependencies.len(), 1);
         let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
         assert_eq!(
             verdict.source_maps[0].dependencies["def/b.lfy"],
-            interface_signature(&workspace, b)
+            source_hash(&interface_of(&workspace, b))
         );
 
         // A marker of another file may name that file's entity and answer for that file's own
         // local criterion: the id belongs to that file's unit, so this unit does not check it.
         // An output shared by two units holds the other unit's markers and ids, and checking
         // them here would make the shared output unacceptable to one of them.
-        // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+        // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
         let make = *b.entities.last().expect("make is an entity of b");
         let (criteria, _) = requirement_ids(&program.files[b.lowered], make);
         let output = named_output(&format!(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#{}\nfn make() {{}}\n",
             criteria[0]
         ));
-        let verdict = accept(&program, &plan, &request, index, &[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // An id no file of the program knows is not checked either, when the marker names
         // another file: only a marker of this unit's own file makes a claim this unit answers
         // for.
-        // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+        // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
         let output = named_output(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#make:make:nowhere\nfn make() {}\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
     }
 
     /// A marker of the unit's own file may answer for a local criterion of the unit or for a
     /// global one, and for nothing else; the source map records the hash of the unit's
     /// requirement ids.
-    // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+    // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
     #[test]
     fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_id() {
         let fixture = Fixture::with_rust_target();
@@ -7165,14 +8253,14 @@ global@targets.add(rust);
 
         // An id of a local criterion and one of a global criterion are both known, so the
         // outputs are accepted and earn their source maps.
-        // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
+        // @lfy def/generation/main.lfy:accept
         let output = named_output(&format!(
             "// @lfy def/a.lfy:A#{}\npub struct A;\n// @lfy def/a.lfy:A#{global}\nfn holds() {{}}\n",
             local[0]
         ));
-        let verdict = accept(&program, &plan, &request, index, &[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
-        // @lfy def/generation/main.lfy:accept#accept:accept:1f7e507b0e94d4a928c4636591d5099fa0e4734d45d70779016ff88e6a9e919d
+        // @lfy def/generation/main.lfy:accept#accept:accept:666051c035bda35cafa77995ca9f05915cb5d6f3d9dc74b172f9187d403c1a15
         assert_eq!(
             verdict.source_maps[0].requirements,
             requirements_hash(&program, unit)
@@ -7184,9 +8272,9 @@ global@targets.add(rust);
 
         // An id of neither, on a marker of the unit's own file, is rejected by output line
         // and id.
-        // @lfy def/generation/main.lfy:accept#accept:accept:a02a93c7eba94f8d2d251ce93a72799d59c2311310b9e4083b9ae1d7af92ee2b
+        // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
         let output = named_output("// @lfy def/a.lfy:A#A:A:nowhere\npub struct A;\n");
-        let verdict = accept(&program, &plan, &request, index, &[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -7204,7 +8292,7 @@ global@targets.add(rust);
     /// Acceptance is structural: an output whose text no compiler of the target would accept
     /// is accepted all the same, because the guidance says how to build it and the caller
     /// runs it.
-    // @lfy def/generation/main.lfy:accept#accept:accept:8a6da7604e29c81dbcd555ed276d68432afa28c292704f6dbde91732e283b4de
+    // @lfy def/generation/main.lfy:accept#accept:accept:9bde11d25fcf12e8c1a113f8be1c479d68185569c8170c39b3348772bf613541
     #[test]
     fn whether_an_output_builds_is_not_checked_here() {
         let fixture = a_with_two_entities();
@@ -7213,7 +8301,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:A\nthis is not Rust at all (((\n// @lfy def/a.lfy:B\nnor is this\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         assert_eq!(verdict.source_maps.len(), 1);
     }
@@ -7230,6 +8318,7 @@ global@targets.add(rust);
             source: source.to_string(),
             hash: source_hash(source),
             requirements: source_hash("requirements"),
+            answered: Vec::new(),
             signature: source_hash("interface"),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
@@ -7243,7 +8332,7 @@ global@targets.add(rust);
 
     /// A unit's map file is `elfie-compile/maps`, the target's identifier, and the unit's
     /// stem with the extension `.json`, under the workspace root.
-    // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:32c5b3bb06791ec929391035efa9799397f878add9b5099e6aaa5a3f15b71743
+    // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:48e0f71f7db0725ebe634eeac3dac1d913b250a6626d34b72282e59198837589
     #[test]
     fn a_units_map_file_is_under_elfie_compile_maps_by_target_and_stem() {
         let fixture = Fixture::with_rust_target();
@@ -7285,9 +8374,20 @@ global@targets.add(rust);
             outputs_of(&maps),
             ["crates/a/src/a.rs", "crates/b/src/b.rs"]
         );
-        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:3cc1ca49afa6466d9c8391008610df4dc1ba5877a6018f5ec20137f18d425209
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:3fa1873c256699bcc68b376b528e4f35f840fe93aad209cc0f992a5dee017fce
         assert_eq!(outputs_of(&source_maps_of(&workspace, Some("rust"))).len(), 2);
         assert!(source_maps_of(&workspace, Some("other")).is_empty());
+        // A map that records no answered ids is read with none.
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:9a20ac7072bf79bbb2d38d819ba4fb8127d258b6f0baf9134dafc7c98398e94a
+        fixture.write(
+            "elfie-compile/maps/rust/a.json",
+            "[{\"target\":\"rust\",\"output\":\"crates/a/src/a.rs\",\"source\":\"def/a.lfy\",\
+             \"hash\":\"\",\"requirements\":\"\",\"signature\":\"\",\"dependencies\":{},\
+             \"generated\":\"\",\"markers\":[]}]",
+        );
+        let maps = source_maps_of(&workspace, Some("rust"));
+        assert_eq!(maps[0].output, "crates/a/src/a.rs");
+        assert!(maps[0].answered.is_empty(), "{:?}", maps[0].answered);
 
         // The map of an output that is gone is left out.
         // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:777506c6ffecf859d5436778cd8e1997eef47cd57e5f8f41754058bbe3117d23
@@ -7298,10 +8398,47 @@ global@targets.add(rust);
             ["crates/a/src/a.rs"]
         );
 
-        // A map file that cannot be read as a JSON list of source maps contributes nothing.
-        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:0bccd0853ef4c61cb0a946b04b8011d43611ca0c2911d156938a87da5a3fa558
-        fixture.write("elfie-compile/maps/rust/a.json", "not json");
-        assert!(source_maps_of(&workspace, None).is_empty());
+        // A map file that cannot be read as a JSON list of source maps contributes nothing,
+        // and every other map file of the target is read all the same.
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:00a062bda31894d720907cb0ec23e4bc5dd3e4d0db76200eab3b747b849ca38d
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:2f53d14209715f08aa022f39c528fe655af6686d5dd463d239c591156a170d73
+        fixture.write("elfie-compile/maps/rust/a.json", "{\"output\":");
+        fixture.write("crates/b/src/b.rs", "// b\n");
+        assert_eq!(
+            outputs_of(&source_maps_of(&workspace, None)),
+            ["crates/b/src/b.rs"]
+        );
+    }
+
+    /// The map files of a target's folder are read in the ascending text order of their
+    /// paths relative to it, so a map file beside a directory of the same name is read
+    /// where its own path falls rather than after the directory's files.
+    // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:e3ab53d40653267f2e160d4a7f3251350dc8120cab5217a982112c74085d6a81
+    #[test]
+    fn a_map_file_beside_a_directory_is_read_in_path_order() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("crates/cli.rs", "// cli\n")
+            .write("crates/cli/main.rs", "// cli main\n")
+            .write("crates/clip.rs", "// clip\n");
+        for (map, output, source) in [
+            ("cli.json", "crates/cli.rs", "def/cli.lfy"),
+            ("cli/main.json", "crates/cli/main.rs", "def/cli/main.lfy"),
+            ("clip.json", "crates/clip.rs", "def/clip.lfy"),
+        ] {
+            write_source_maps(
+                &fixture.root.join("elfie-compile/maps/rust").join(map),
+                &[map_for(output, source)],
+            )
+            .unwrap();
+        }
+        let workspace = load(&fixture.root);
+        // `.` sorts before `/`, which sorts before a letter, so `cli.json` comes first,
+        // then the file under `cli/`, then `clip.json`.
+        assert_eq!(
+            outputs_of(&source_maps_of(&workspace, None)),
+            ["crates/cli.rs", "crates/cli/main.rs", "crates/clip.rs"]
+        );
     }
 
     /// A target with no folder under `elfie-compile/maps` is read from `source-map.json`
@@ -7318,7 +8455,7 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:55c87b019cd4d2d7c4a69761ea81c9bd9980381c22407c0e202211f03cfe8dc8
         assert!(source_maps_of(&workspace, None).is_empty());
 
-        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:01d2a31fa4a7a2da04841b389365d4179bc3b4582f1e2db253c915a9a46cf5e8
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:c968c8acaf4d38cdd8430f58ae5b09a27d1e2e6bd4ee8861bd63a620ddfd7a9c
         write_source_maps(
             &fixture.root.join("src/source-map.json"),
             &[
@@ -7345,9 +8482,11 @@ global@targets.add(rust);
         );
         // Nothing is written: the legacy file is left where it was, and nothing under
         // elfie-compile/cache is read.
-        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:911e7932c6b0a20a3c09d20628728fdc86adf9336718ad41bd9652debf4f9a69
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:1dc22603643b17fad4874110ef09a3391b67d71c28a9f5b35a7dfa18438f3409
         assert!(fixture.root.join("src/source-map.json").is_file());
         assert!(!fixture.root.join("elfie-compile/cache").exists());
+        assert!(!fixture.root.join("elfie-compile/maps/rust/b.json").exists());
     }
 
     /// The plan, and the unit of `def/a.lfy`, of a project whose `def` holds `a.lfy` and
@@ -7388,7 +8527,8 @@ global@targets.add(rust);
         let second = map_for("crates/a/src/other.rs", "def/a.lfy");
 
         // The unit's map file holds exactly these maps afterwards.
-        // @lfy def/generation/main.lfy:record#record:record:b37dc632a905543a14635d6123a188e5db91d356a51971cfd3b14abcad484e5a
+        // @lfy def/generation/main.lfy:record#record:record:d7ed944c0449f01835fd94e7de01e58066347177591b374f6a7beee48113f403
+        // @lfy def/generation/main.lfy:record#record:record:5b5e70df30f90156b3023da573235ca899c7a55801fbecd76167819cf57e21ad
         assert!(record(workspace, unit, &[second.clone(), map.clone()]));
         let path = fixture.root.join("elfie-compile/maps/rust/a.json");
         let recorded = read_source_maps(&path);
@@ -7407,7 +8547,9 @@ global@targets.add(rust);
         );
         // The same maps always give the same bytes, and every object's keys are in
         // alphabetical order.
-        // @lfy def/generation/main.lfy:record#record:record:0b3107676c8e2e0e6f742d7b4bf4f366f17a178f436600faae8ae601afbe6dbd
+        // @lfy def/generation/main.lfy:record#record:record:5c0c63725b35e7fab925c81abc27914b55863257ede7a2863a3bce15e5b03ff5
+        // @lfy def/generation/main.lfy:record#record:record:60d0cd914ebe3c1cbbd582cd3229d8adc3a00b879720f1caeec671fb4c707551
+        // @lfy def/generation/main.lfy:record#record:record:1a8586a7f2168dcbbbc34c4373d1f944d6e0313f9b0840a53aa8f54e3e3208d6
         let text = fs::read_to_string(&path).unwrap();
         assert!(record(workspace, unit, &[map.clone(), second]));
         assert_eq!(fs::read_to_string(&path).unwrap(), text);
@@ -7416,9 +8558,9 @@ global@targets.add(rust);
             .filter_map(|line| line.trim().strip_prefix('"'))
             .filter_map(|line| line.split_once('"').map(|(key, _)| key))
             .collect();
-        assert_eq!(keys.len(), 18, "{text}");
+        assert_eq!(keys.len(), 20, "{text}");
         assert!(
-            keys.chunks(9)
+            keys.chunks(10)
                 .all(|object| object.windows(2).all(|pair| pair[0] < pair[1])),
             "{text}"
         );
@@ -7437,12 +8579,12 @@ global@targets.add(rust);
         let mut map = map_for("crates/a/src/a.rs", "def/a.lfy");
         map.generated = "2030-01-01T00:00:00Z".to_string();
         // Maps that differ only in when they were generated leave the file as it is.
-        // @lfy def/generation/main.lfy:record#record:record:63f4ea9ab8a20860ec82f31dda635344539ad9cf04296961aa5de457fbb7cd3f
+        // @lfy def/generation/main.lfy:record#record:record:acccd867dc43a326a46b14f88ac19bb24373ec1a90795894fa96f075e1fcbcd9
         assert!(record(workspace, unit, std::slice::from_ref(&map)));
         assert_eq!(fs::read_to_string(&path).unwrap(), before);
 
         // No source map at all removes the file.
-        // @lfy def/generation/main.lfy:record#record:record:08ffdd0bd42a6d7ccf648a7ef393f291f365d4e80d00921f07556bfc58201ffc
+        // @lfy def/generation/main.lfy:record#record:record:aa6df37cdc9d7a159ba508148db794c3edbc568247899ccbd55574df85a1177d
         assert!(record(workspace, unit, &[]));
         assert!(!path.exists());
         // Removing what is already gone is recorded all the same.
@@ -7465,7 +8607,7 @@ global@targets.add(rust);
         let (_, unit) = unit_of(&program.workspace, &plan, "def/cli/main.lfy");
         assert!(!fixture.root.join("elfie-compile").exists());
         // Every missing folder above the map file is created.
-        // @lfy def/generation/main.lfy:record#record:record:194ce1752f6c13ca28994e3eca650b6f7b123b12b3fb1a4987ff15e1d2d6f4a4
+        // @lfy def/generation/main.lfy:record#record:record:1ec300497e4609fbc621214de54b44c8b7f666382b4cf02496efdc55ed4cca99
         assert!(record(
             &program.workspace,
             unit,
@@ -7537,6 +8679,7 @@ global@targets.add(rust);
             source: "def/a.lfy".to_string(),
             hash: source_hash("x"),
             requirements: String::new(),
+            answered: Vec::new(),
             signature: source_hash("i"),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
@@ -7573,7 +8716,7 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:38d2833b48e58c718adaf9951281dfe50568a87b1fd9fcf0cf493596b2406bae
         let regions = regions_of(&workspace, &maps, "A", None);
         // A member's region comes with its owner's, since it is part of its owner's code.
-        // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:8915ec165a34269822d7cc1bf1492396f38dd0e75e18cbfcfccdf128f6532ef5
+        // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:093e721919b4f8d968ccd2497d31d9e1ac8783ddfb5ee2bbda092b4302715a0f
         assert_eq!(
             regions
                 .iter()
@@ -7589,7 +8732,7 @@ global@targets.add(rust);
 
     /// A member's own name gives its region alone, and a name nothing was generated for
     /// gives none.
-    // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:b44c74236084b5fe9fc1cd6d551a512812bee292cfaa155dcc6a5eac64764b5c
+    // @lfy def/generation/main.lfy:regionsOf
     #[test]
     fn a_members_name_gives_its_region_alone_and_an_unknown_name_gives_none() {
         let fixture = a_with_a_member_and_a_fn();
@@ -7635,7 +8778,7 @@ global@targets.add(rust);
         assert_eq!(regions[0].output_line, 1);
         assert_eq!(regions_of(&workspace, &maps, "f", Some("rust")).len(), 1);
         // The source map of another target is left out when a target is given.
-        // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:f9024ae8f628b3e934c6b4da514ca9c70f9004cfd2a85ae9d17fb070d9cbc8e1
+        // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:d0dd761f2a88d10b62707b3452f9804e82f4c9ae6d4212b5b8b799f9355a82c5
         let mut maps = two_source_maps();
         maps[1].target = "other".to_string();
         assert_eq!(regions_of(&workspace, &maps, "A", None).len(), 3);
@@ -7665,13 +8808,55 @@ global@targets.add(rust);
         let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
         // No previous text: one addition per entity of the unit, in file order, and nothing
         // else.
-        // @lfy def/generation/main.lfy:changes#changes:changes:1306019827dfec88eae5b6bd940cef6daccef5d2c1398607687088c561f1f181
+        // @lfy def/generation/main.lfy:changes#changes:changes:771d19c7cdc3e68ae80e9c437cf28ae04d6d6112c99fdff85bcf61c1efacc428
         let changes = changes(&program, unit,None);
         // A name declared now and not before is an addition.
         // @lfy def/generation/main.lfy:changes#changes:changes:9fa34ffb6593e18420b047e381120aa4b10d245c1b1cc825bd68c5b21928f000
         assert_eq!(
             change_kinds(&changes),
             [("A", ChangeKind::Added), ("f", ChangeKind::Added)]
+        );
+    }
+
+    /// A change is of the file, not of the unit: `def/a.lfy` declares `A` and `C`, and `C`
+    /// moves into the unit of `def/b.lfy`, so `C` is reported for `def/a.lfy` and not for
+    /// `def/b.lfy`, whose unit compiles it.
+    // @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
+    #[test]
+    fn a_moved_entity_is_reported_for_the_file_that_declares_it() {
+        let fixture = a_cycle();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (_, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        // `C` has left a's unit and joined b's.
+        assert_eq!(names(&workspace, &a.entities), ["A"]);
+        assert_eq!(names(&workspace, &b.entities), ["B", "C"]);
+
+        // With no previous text, each file's own declarations are the additions.
+        // @lfy def/generation/main.lfy:changes#changes:changes:771d19c7cdc3e68ae80e9c437cf28ae04d6d6112c99fdff85bcf61c1efacc428
+        assert_eq!(
+            change_kinds(&changes(&program, a, None)),
+            [("A", ChangeKind::Added), ("C", ChangeKind::Added)]
+        );
+        assert_eq!(
+            change_kinds(&changes(&program, b, None)),
+            [("B", ChangeKind::Added)]
+        );
+
+        // Against its own text, neither side differs: both are read as the file's.
+        // @lfy def/generation/main.lfy:changes
+        let text = "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n}\n";
+        assert_eq!(changes(&program, a, Some(text)), []);
+        // `C` was not in the file then and is now, so it is an addition of `def/a.lfy`
+        // although the unit of `def/b.lfy` is what compiles it.
+        // @lfy def/generation/main.lfy:changes
+        let without = "use \"./b\";\n\nd A {\n  $b = B;\n}\n";
+        assert_eq!(
+            change_kinds(&changes(&program, a, Some(without))),
+            [("C", ChangeKind::Added), ("C.x", ChangeKind::Added)]
         );
     }
 
@@ -7711,7 +8896,8 @@ global@targets.add(rust);
     /// A removed entity comes after the last entity that preceded it before and is still
     /// declared, a member is compared as an entity of its own under its owner, and the
     /// detail of a change of criteria names the count before and the count now.
-    // @lfy def/generation/main.lfy:changes#changes:changes:d1db47c85dc702c7532d80c945cafa1e21614801d0f6395c0aac85bdd144e0ee
+    // @lfy def/generation/main.lfy:changes#changes:changes:1c9565b23d23c4d3bcbb3fe6534631ef1946f8869e3f178f425b4e12595f3e0b
+    // @lfy def/generation/main.lfy:changes#changes:changes:f54761e4898e7ebd66aacb630307ee416935a1052c402126c3c712e2eb632c2a
     #[test]
     fn a_removed_entity_a_removed_member_and_a_new_criterion_are_read_in_file_order() {
         let fixture = Fixture::with_rust_target();
@@ -7799,9 +8985,11 @@ global@targets.add(rust);
         );
     }
 
-    /// A file whose entities read the same after a comment, a reordering of nothing, and
-    /// whitespace gives no change at all; a statement of a written body gives one.
-    // @lfy def/generation/main.lfy:changes
+    /// A file whose entities read the same after the two declarations swap places, a comment
+    /// moves, and the indentation changes gives no change at all; a statement of a written
+    /// body gives one.
+    // @lfy def/generation/main.lfy:changes#changes:changes:ef493f153deb6dbaac3835bfc84dae2266cdd2d04f5c990f3aae5db76de2424e
+    // @lfy def/generation/main.lfy:changes#changes:changes:d7b590dfd89c646eecf798bdafc911cd87dc2b66f0c3bc1e3cb916051b5fa6f8
     #[test]
     fn whitespace_and_comments_give_no_change_and_a_new_statement_is_a_body() {
         let fixture = Fixture::with_rust_target();
@@ -7814,10 +9002,12 @@ global@targets.add(rust);
         assert_bound(&workspace);
         let plan = plan_of(&program, &[], &[], &[]);
         let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
-        // Entities are compared, never lines, so whitespace and comments give nothing.
+        // Entities are compared by name, never by place or by line, so the two declarations
+        // swapping places, a comment moving, and the indentation changing give nothing.
         // @lfy def/generation/main.lfy:changes
-        let same = "d A {\n\n  $x   = string;\n}\n\nfunction g(x: number): `Doubles` -> number {\n  return x * 2;\n}\n";
-        assert!(changes(&program, unit,Some(same)).is_empty());
+        let same = "function g(x: number): `Doubles` -> number {\n    return x * 2;\n}\n\n\
+                    // a comment, somewhere else now\nd A {\n\n  $x   = string;\n}\n";
+        assert!(changes(&program, unit, Some(same)).is_empty());
         // The tokens of the declaring node differ once everything read apart from the body is
         // left out, so there is one change of body.
         // @lfy def/generation/main.lfy:changes#changes:changes:d5f5fa3f7e3377735cb0315378b2cf53df8b6751fbf3bbc207d6a162992f2b14
@@ -7859,6 +9049,7 @@ global@targets.add(rust);
     // -----------------------------------------------------------------------------------
 
     // @lfy def/generation/main.lfy:review#review:review:90e9bf36c1adde74df80ded58ee9c0c22589f0ebc430d828fe6b1e98abf5f2de
+    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
     #[test]
     fn a_review_request_quotes_every_criterion_with_its_place_and_excerpts_every_region() {
         let fixture = Fixture::with_rust_target();
@@ -7882,14 +9073,15 @@ global@targets.add(rust);
             source: "def/a.lfy".to_string(),
             hash: source_hash("x"),
             requirements: String::new(),
+            answered: Vec::new(),
             signature: source_hash("i"),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers: vec![entity_marker(1, "A", 1, 4)],
         }];
-        let request = review(&program, &plan, &batch,&maps);
+        let request = review(&program, &plan, &batch, &maps, None);
         // @lfy def/generation/main.lfy:review#review:review:197b2d0e6f7458d538f3cc8d8568be98a60636ca07026cd2eeb1d5933910f156
-        assert_eq!(request.batch, Some(batch));
+        assert_eq!(request.batch, Some(batch.clone()));
         let text = &request.instructions;
         // The heading names the batch and the target.
         // @lfy def/generation/main.lfy:review
@@ -7901,7 +9093,7 @@ global@targets.add(rust);
         assert!(text.contains("Definition: An a"), "{text}");
         // Each criterion of a chain has a place of its own, on the line its `add` begins
         // on, and is prefixed by its id.
-        // @lfy def/generation/main.lfy:review#review:review:775d8a8dfc4f9a8764fa84a8d56a00ff51d1817460ffacf779ace250865ffcaa
+        // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
         let (criteria, tests) = {
             let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
             requirement_ids(&program.files[unit.lowered], unit.entities[0])
@@ -7930,12 +9122,19 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:review#review:review:ab46be2107934463218771ce935af8b1af8c59e0f5656d26a5d6dd846df1087d
         assert!(text.contains("`src/a.rs:1-4`"), "{text}");
         assert!(text.contains("```\none\ntwo\nthree\nfour\n```"), "{text}");
-        // The protocol: the four keys, the three statuses, the tools that are called before
-        // files are read by hand, and the end line.
-        // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+        // The protocol: the six keys, where the id and the place come from, the three
+        // statuses, the tools that are called before files are read by hand, and the end
+        // line.
+        // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+        // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:aa241f996c80ef1d728f4ebc6980c6083bdbbf0e2cc1235252d8c42def08b92d
         for part in [
             "examine and never edit",
-            "`id`, `status`, `evidence`, and `note`",
+            "you propose no code",
+            "one review per criterion and per test",
+            "one JSON object on one line",
+            "`id`, `file`, `line`, `status`, `evidence`, and `note`",
+            "`id` is copied from the id the criterion or test is given above",
+            "`file` and `line` are the two halves of the place given with it above",
             "`satisfied`",
             "`violated`",
             "`unverifiable`",
@@ -7953,7 +9152,8 @@ global@targets.add(rust);
 
     /// A review excerpts only what the unit's own file generated, and a region a marker of
     /// a second source map names again is repeated as its path and lines alone.
-    // @lfy def/generation/main.lfy:review#review:review:91d1ba32cd1195c8e938078844beb9de43c99f3d8d8228b2a5c2c9c245a0cfef
+    // @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
+    // @lfy def/generation/main.lfy:review#review:review:72529d6e11ade1756ea5a1a2ea7659b1dec2663d636e04e134ec72309e546cd5
     #[test]
     fn a_review_holds_the_regions_of_its_own_file_each_once() {
         let fixture = Fixture::with_rust_target();
@@ -7976,6 +9176,7 @@ global@targets.add(rust);
             source: source.to_string(),
             hash: source_hash("x"),
             requirements: String::new(),
+            answered: Vec::new(),
             signature: source_hash("i"),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
@@ -8001,7 +9202,7 @@ global@targets.add(rust);
             ),
             map("src/b.rs", "def/b.lfy", vec![marker("def/b.lfy", 2)]),
         ];
-        let text = review(&program, &plan, &batch, &maps).instructions;
+        let text = review(&program, &plan, &batch, &maps, None).instructions;
         // `def/b.lfy` declares an `A` of its own, and none of its code comes.
         assert!(!text.contains("src/b.rs"), "{text}");
         assert!(!text.contains("five"), "{text}");
@@ -8015,9 +9216,105 @@ global@targets.add(rust);
         assert!(text.contains("Listed above."), "{text}");
     }
 
+    /// An entity moved into a unit is marked with the file that declares it, not with the
+    /// unit's own file, so its regions are the ones that file's markers name.
+    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+    #[test]
+    fn a_review_holds_the_regions_of_an_entity_moved_into_the_unit() {
+        let fixture = a_cycle();
+        fixture.write("src/b.rs", "one\ntwo\nthree\nfour\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
+        // `C` moved into the unit of `def/b.lfy` from `def/a.lfy`.
+        assert_eq!(names(&workspace, &unit.entities), ["B", "C"]);
+        let batch = Batch {
+            units: vec![index],
+            identifier: "b".to_string(),
+        };
+        let marker = |file: &str, entity: &str, line: usize, end: usize| Marker {
+            output_line: line,
+            file: file.to_string(),
+            entity: Some(entity.to_string()),
+            line: 1,
+            column: None,
+            requirement: None,
+            end,
+        };
+        let maps = vec![SourceMap {
+            target: "rust".to_string(),
+            output: "src/b.rs".to_string(),
+            source: "def/b.lfy".to_string(),
+            hash: source_hash("x"),
+            requirements: String::new(),
+            answered: Vec::new(),
+            signature: source_hash("i"),
+            dependencies: BTreeMap::new(),
+            generated: "2026-09-18T10:00:00Z".to_string(),
+            markers: vec![
+                marker("def/b.lfy", "B", 1, 2),
+                marker("def/a.lfy", "C", 3, 4),
+            ],
+        }];
+        let text = review(&program, &plan, &batch, &maps, None).instructions;
+        // Each entity is given the region its own declaring file marks.
+        assert!(text.contains("`src/b.rs:1-2`"), "{text}");
+        assert!(text.contains("```\none\ntwo\n```"), "{text}");
+        assert!(text.contains("`src/b.rs:3-4`"), "{text}");
+        assert!(text.contains("```\nthree\nfour\n```"), "{text}");
+        assert!(
+            !text.contains("No region of any output was generated for it."),
+            "{text}"
+        );
+    }
+
+    /// An entity moved into a unit is declared in another file, so its criteria and tests
+    /// are taken from the file that declares it and not from the unit's own lowered file,
+    /// which holds no node for it.
+    // @lfy def/generation/main.lfy:review#review:review:6f24bc25048912e6d41e7b58cc69373f911487abd3d52d84fd14270ea53b3dda
+    #[test]
+    fn a_review_holds_the_criteria_of_an_entity_moved_into_the_unit() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("def/b.lfy", "d B: `A b` {\n  $x = string;\n}\n")
+            .write(
+                "def/a.lfy",
+                "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n  \
+                 where (`x is set`) -> `C holds x`;\n}\n",
+            )
+            .write(
+                "def/c.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait holder {\n  $c = C;\n}\nholder.apply(B);\n",
+            );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
+        // `C` moved into the unit of `def/b.lfy` from `def/a.lfy`.
+        assert_eq!(names(&workspace, &unit.entities), ["B", "C"]);
+        let batch = Batch {
+            units: vec![index],
+            identifier: "b".to_string(),
+        };
+        let text = review(&program, &plan, &batch, &[], None).instructions;
+        let at = text
+            .find("#### `C`")
+            .unwrap_or_else(|| panic!("C's section: {text}"));
+        let section = &text[at..];
+        let end = section[1..]
+            .find("\n#### ")
+            .or_else(|| section[1..].find("\n## "))
+            .map_or(section.len(), |found| found + 1);
+        let section = &section[..end];
+        assert!(section.contains("C holds x"), "{section}");
+    }
+
     /// With no source map for the batch the verifier is given the same instructions with
     /// no region, so it can only find the criteria unverifiable.
-    // @lfy def/generation/main.lfy:review#review:review:21df0727a9c7ecebe08a29a6910e791aa77230e050e97b71b77b38380575e408
+    // @lfy def/generation/main.lfy:review#review:review:91048e9381aa6d0069a2596dfb4b5b3dd64056238fb72d470c49669de6aee510
     #[test]
     fn a_review_request_without_a_source_map_holds_no_region() {
         let fixture = a_with_a_member_and_a_fn();
@@ -8030,7 +9327,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let request = review(&program, &plan, &batch,&[]);
+        let request = review(&program, &plan, &batch, &[], None);
         let text = &request.instructions;
         assert!(text.contains("def/a.lfy:6 — it does"), "{text}");
         // @lfy def/generation/main.lfy:review
@@ -8057,7 +9354,7 @@ global@targets.add(rust);
             identifier: "a".to_string(),
         };
         let maps = two_source_maps();
-        let request = review(&program, &plan, &batch,&maps);
+        let request = review(&program, &plan, &batch, &maps, None);
         assert!(
             request
                 .instructions
@@ -8094,6 +9391,7 @@ global@targets.add(rust);
             source: "def/a.lfy".to_string(),
             hash: source_hash("x"),
             requirements: source_hash("r"),
+            answered: vec![id.clone()],
             signature: source_hash("i"),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
@@ -8129,7 +9427,7 @@ global@targets.add(rust);
         assert!(text.contains("`src/b.rs:1-2`"), "{text}");
         assert!(text.contains("```\nthree\nfour\n```"), "{text}");
         // Then the protocol, with the tools that are called before files are read by hand.
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:0edfce9bb6241f2f57c1589dcd9fd7f1574114c7bf21269642fd5d61c31e314a
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:d87c484c16765d60e5f0221fd9b7f5437c8bd15248140b4f4cdc913834f4412a
         assert!(text.contains("`ELFIE: REVIEWED`"), "{text}");
         assert!(text.contains("unverifiable, never violated"), "{text}");
         assert!(
@@ -8161,7 +9459,7 @@ global@targets.add(rust);
         let request = global_review(&program, &[]);
         let text = &request.instructions;
         assert_eq!(request.batch, None);
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:964ff9ee37432a35d1dc0b5b42ac738488193128815e15d568449402840d5340
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2
         assert!(
             text.contains("No unit answered for it, so it cannot be checked against any region."),
             "{text}"
@@ -8181,6 +9479,31 @@ global@targets.add(rust);
             "{{\"id\":\"{id}\",\"status\":\"{status}\",\
              \"evidence\":\"{evidence}\",\"note\":\"{note}\"}}"
         )
+    }
+
+    /// One line of a verifier's report that gives the place of its criterion or test as well
+    /// as its id, as the protocol asks for.
+    fn placed_review_line(
+        id: &str,
+        file: &str,
+        line: usize,
+        status: &str,
+        evidence: &str,
+        note: &str,
+    ) -> String {
+        format!(
+            "{{\"id\":\"{id}\",\"file\":\"{file}\",\"line\":{line},\"status\":\"{status}\",\
+             \"evidence\":\"{evidence}\",\"note\":\"{note}\"}}"
+        )
+    }
+
+    /// An id of the right shape that is the id of nothing and near nothing: the same id with
+    /// its last hex digit changed, so it neither begins the real one nor is begun by it.
+    fn mistyped_id(id: &str) -> String {
+        let mut mistyped = id.to_string();
+        let last = mistyped.pop().expect("an id is not empty");
+        mistyped.push(if last == '0' { '1' } else { '0' });
+        mistyped
     }
 
     /// `def/a.lfy` declaring `A` with two local criteria, on the lines its two `add` calls
@@ -8210,12 +9533,13 @@ global@targets.add(rust);
             review_line(&ids[0], "satisfied", "src/a.rs:1-30", "the field is there"),
             review_line(&ids[1], "violated", "src/a.rs:12-18", "it returns undefined"),
         );
-        let found = review_of(&report, &program);
-        // Each line read beginning with `{` is a review line.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:11cf2d8d78b0bce109f19de1a111ed0ae3f62225432701c85e24d546e2ae47db
+        let found = review_of(&report, &program, &[]);
+        // Each line read beginning with `{` is a review line, and the reviews come in report
+        // order.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b1c6ff8f600f771f320ab8d7d410ceeaff5dd1da6bf5236de9ca661b7efed152
         assert_eq!(found.reviews.len(), 2, "{found:?}");
         // A review line whose id is the id of a criterion of the program names it.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f7fc6ddf0c07f86aefccb0bd6b6b10dfa0685431a0a5aa78a88390ca91a58dea
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:76339f7bd0723f745a3bf58a17f3cba2ad29f66aee0236c50c46e6db5dacb357
         assert_eq!(found.reviews[0].status, ReviewStatus::Satisfied);
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].evidence, "src/a.rs:1-30");
@@ -8232,19 +9556,20 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:reviewOf
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // Lines after the end line are ignored.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:f33d7c1d482ac83b637de975ac61fc8ad9a4e4464ac8f11554da868087905870
-        let found = review_of(&format!("{report}\nand that is all"), &program);
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
+        let found = review_of(&format!("{report}\nand that is all"), &program, &[]);
         assert_eq!(found.reviews.len(), 2);
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // Each line read has the whitespace around it removed, so an indented review line
         // is read like any other.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:996a1867a55f489798d60b80458fe3076f35d155cb98215304e3f0d67902a8b5
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921
         let found = review_of(
             &format!(
                 "   {}   \n{REVIEWED}",
                 review_line(&ids[0], "satisfied", "", "indented")
             ),
             &program,
+            &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert!(found.problems.is_empty(), "{:?}", found.problems);
@@ -8252,7 +9577,7 @@ global@targets.add(rust);
 
     /// An id copied a character short or long still names its criterion, as long as exactly
     /// one id of the program is near it.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:caa2b457254f644c392b4567da9f9731a584a27a3042ef5317572eb014f49930
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0550aa5cfc0eed88f66bcf268b82c722bf8105abb701e0dae62ffb013f0dcf2d
     #[test]
     fn an_id_a_character_short_or_long_names_its_criterion() {
         let (_fixture, program, ids) = a_with_two_criteria();
@@ -8263,7 +9588,7 @@ global@targets.add(rust);
             review_line(short, "satisfied", "", "short"),
             review_line(&long, "violated", "", "long"),
         );
-        let found = review_of(&report, &program);
+        let found = review_of(&report, &program, &[]);
         assert_eq!(found.reviews.len(), 2, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].line, 3);
@@ -8280,7 +9605,7 @@ global@targets.add(rust);
             "",
             "far",
         );
-        let found = review_of(&format!("{far}\n{REVIEWED}"), &program);
+        let found = review_of(&format!("{far}\n{REVIEWED}"), &program, &[]);
         assert!(found.reviews.is_empty(), "{found:?}");
         assert_eq!(found.problems, [far]);
     }
@@ -8298,13 +9623,13 @@ global@targets.add(rust);
              \"evidence\":\"src/a.rs:1-9\",\"note\":\"ok\"}}\n\
              ```\n{REVIEWED}"
         );
-        let found = review_of(&report, &program);
+        let found = review_of(&report, &program, &[]);
         // A line read that does not begin with `{` is ignored, prose and fence alike.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:61fbd8978cc20a987ca2da1b23ff32eaa104e206ef5e79abf58f8a12e48f173f
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3
         assert!(found.problems.is_empty(), "{:?}", found.problems);
         // The place is where exactly one criterion of the program begins, and the status
         // reads whatever its case; the entity key the verifier wrote is ignored.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:0efab5dd030ca49b2ee49759f958db33dc19a3f428271450e2191ca4481b3d47
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:444b311948403c8fe1a8d3ed69270d86e784a7e0fbbe4de87764ab3fbc950d78
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[0]);
         assert_eq!(found.reviews[0].file, "def/a.lfy");
@@ -8315,13 +9640,15 @@ global@targets.add(rust);
         assert_eq!(found.reviews[0].note, "ok");
         // A review line missing its evidence and its note reads with both empty, and the
         // keys it holds beyond the four are ignored.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:21a6b24a78e64694b883d9271f98d3b5f380dd3f0eeab2f0c8ee3b2f3a6c13a5
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce
         let found = review_of(
             &format!(
                 "{{\"id\":\"{}\",\"status\":\"UNVERIFIABLE\",\"reason\":\"none\"}}\n{REVIEWED}",
                 ids[1]
             ),
             &program,
+            &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].status, ReviewStatus::Unverifiable);
@@ -8341,25 +9668,26 @@ global@targets.add(rust);
             review_line(&ids[0], "maybe", "", "unsure"),
             review_line(&ids[1], "unverifiable", "", "no region"),
         );
-        let found = review_of(&report, &program);
+        let found = review_of(&report, &program, &[]);
         // A status that names no member of ReviewStatus is no review.
-        // @lfy def/generation/main.lfy:reviewOf
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].id, ids[1]);
         assert_eq!(found.reviews[0].line, 4);
         assert_eq!(found.reviews[0].status, ReviewStatus::Unverifiable);
         // A review line that is no review is a problem, as written; the prose line is none.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fe269d5233297a703d4ba8275070083bf25bed3ae713f4bf18d3ae68bd8899a9
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490
         assert_eq!(
             found.problems,
             [review_line(&ids[0], "maybe", "", "unsure")]
         );
         // A review line whose id names no criterion and no test of the program is a problem
         // too, and so is one that reads as no object at all.
-        // @lfy def/generation/main.lfy:reviewOf
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6
         let unknown = review_line("A:A:nowhere", "satisfied", "", "made up");
         let broken = "{\"id\":".to_string();
-        let found = review_of(&format!("{unknown}\n{broken}\n{REVIEWED}"), &program);
+        let found = review_of(&format!("{unknown}\n{broken}\n{REVIEWED}"), &program, &[]);
         assert!(found.reviews.is_empty(), "{found:?}");
         assert_eq!(found.problems, [unknown, broken]);
     }
@@ -8376,26 +9704,28 @@ global@targets.add(rust);
             review_line(&ids[0], "violated", "src/a.rs:3-3", "second"),
         );
         // With no end line, reviews are read from every line of the report.
-        // @lfy def/generation/main.lfy:reviewOf
-        let found = review_of(&report, &program);
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
+        let found = review_of(&report, &program, &[]);
         // Of two reviews naming the same criterion only the last is kept, at its own place.
         // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].status, ReviewStatus::Violated);
         assert_eq!(found.reviews[0].note, "second");
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:3ac47936d62d0ed2bf1749e26c3ea37b8a7e4957588642bbd3df4379c764ba99
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1
         assert_eq!(found.problems, ["the report did not end"]);
         // An empty report ends with nothing either.
         assert_eq!(
-            review_of("", &program),
+            review_of("", &program, &[]),
             ReviewReport {
                 reviews: Vec::new(),
                 problems: vec!["the report did not end".to_string()],
+                unplaced: Vec::new(),
+                missing: Vec::new(),
             }
         );
         // The end line stands with whitespace around it.
         // @lfy def/generation/main.lfy:reviewOf
-        let found = review_of(&format!("  {REVIEWED}  "), &program);
+        let found = review_of(&format!("  {REVIEWED}  "), &program, &[]);
         assert!(found.reviews.is_empty());
         assert!(found.problems.is_empty(), "{:?}", found.problems);
 
@@ -8408,9 +9738,60 @@ global@targets.add(rust);
                 review_line(&ids[0], "satisfied", "", "ok")
             ),
             &program,
+            &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.problems, ["the report did not end"]);
+    }
+
+    /// A review line whose id names nothing of the program is still placed when its file and
+    /// line say where exactly one criterion begins; one that claims a violation and places
+    /// itself nowhere at all is kept apart as written, so that a violation is never lost to
+    /// an id a verifier garbled; and each id the review was asked about that no review names
+    /// is missing.
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
+    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ac3a89b9ae9599493a551003577acdff2855f9342959c0d3bc606cddc53e939d
+    #[test]
+    fn a_violation_that_is_placed_nowhere_is_kept_apart() {
+        let (_fixture, program, ids) = a_with_two_criteria();
+        // The second criterion begins on line 4, and nothing else of the program begins
+        // there, so the place names it though the id names nothing.
+        let mistyped = placed_review_line(
+            &mistyped_id(&ids[1]),
+            "def/a.lfy",
+            4,
+            "violated",
+            "src/a.rs:12-18",
+            "returns undefined",
+        );
+        let garbled = review_line("A:A:77aa", "VIOLATED", "src/a.rs:3-3", "no such id");
+        let report = format!("{mistyped}\n{garbled}\n{REVIEWED}");
+        let found = review_of(&report, &program, &[]);
+        // A line whose id is the id of nothing and near nothing is placed by its file and
+        // its line, at the criterion that begins alone there.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:444b311948403c8fe1a8d3ed69270d86e784a7e0fbbe4de87764ab3fbc950d78
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.reviews[0].id, ids[1]);
+        assert_eq!(found.reviews[0].file, "def/a.lfy");
+        assert_eq!(found.reviews[0].line, 4);
+        assert_eq!(found.reviews[0].entity, "A");
+        assert_eq!(found.reviews[0].status, ReviewStatus::Violated);
+        assert_eq!(found.reviews[0].note, "returns undefined");
+        // The line that names nothing and gives no place is a problem, and, claiming a
+        // violation, is kept apart as well.
+        assert_eq!(found.problems, std::slice::from_ref(&garbled));
+        assert_eq!(found.unplaced, std::slice::from_ref(&garbled));
+        // Asked about nothing, nothing is missing.
+        assert!(found.missing.is_empty(), "{:?}", found.missing);
+
+        // Asked about both criteria, the one no review names is missing, in the order it
+        // was asked.
+        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535
+        let asked = vec![ids[0].clone(), ids[1].clone()];
+        let found = review_of(&report, &program, &asked);
+        assert_eq!(found.reviews.len(), 1, "{found:?}");
+        assert_eq!(found.missing, [ids[0].clone()]);
+        assert_eq!(found.unplaced, [garbled]);
     }
 
     /// A review of a global criterion is placed at that criterion's origin and belongs to
@@ -8433,6 +9814,7 @@ global@targets.add(rust);
                 review_line(&id, "satisfied", "src/a.rs:1-3", "it is under src")
             ),
             &program,
+            &[],
         );
         assert_eq!(found.reviews.len(), 1, "{found:?}");
         assert_eq!(found.reviews[0].entity, GLOBAL);
@@ -8581,6 +9963,7 @@ global@targets.add(rust);
                 source: "def/a.lfy".to_string(),
                 hash: source_hash("x"),
                 requirements: source_hash("the requirements of a"),
+                answered: vec!["A:A:abc".to_string()],
                 signature: source_hash("interface of a"),
                 dependencies: BTreeMap::from([(
                     "def/b.lfy".to_string(),
@@ -8614,6 +9997,7 @@ global@targets.add(rust);
                 source: "def/b.lfy".to_string(),
                 hash: source_hash("y"),
                 requirements: String::new(),
+                answered: Vec::new(),
                 signature: source_hash("interface of b"),
                 dependencies: BTreeMap::new(),
                 generated: "2026-09-18T10:00:01Z".to_string(),
@@ -8655,12 +10039,11 @@ global@targets.add(rust);
         assert!(seconds > 1_789_689_600);
     }
 
-    // @lfy def/generation/main.lfy:plan#plan:plan:1fc2e33009d6c55647083813e41979cdcd5f51fe2a856a9f6815fb4aa2b68bd3
+    // @lfy def/generation/main.lfy:plan
     #[test]
     fn stems_and_paths() {
         assert_eq!(stem_of("def/a.lfy", "def"), "a");
         assert_eq!(stem_of("def/deep/inner.lfy", "def/"), "deep/inner");
-        assert_eq!(stem_of("elsewhere/x.lfy", "def"), "elsewhere/x");
         assert_eq!(stem_of("a.lfy", "."), "a");
         assert!(under("src/a.rs", "src"));
         assert!(under("src/a.rs", ""));
@@ -8677,4 +10060,21 @@ global@targets.add(rust);
         assert_eq!(first_segment("deep/deeper/inner"), "deep");
     }
 
+    /// A stem is the file's path from the source directory, `..` segments included, and
+    /// never the whole path of a file that lies outside it.
+    // @lfy def/generation/data.lfy:Unit#Unit:Unit:1fc2e33009d6c55647083813e41979cdcd5f51fe2a856a9f6815fb4aa2b68bd3
+    #[test]
+    fn a_units_stem_is_its_path_relative_to_the_source_directory() {
+        assert_eq!(stem_of("def/a.lfy", "def"), "a");
+        assert_eq!(stem_of("def/deep/inner.lfy", "def"), "deep/inner");
+        assert_eq!(stem_of("other/x.lfy", "def"), "../other/x");
+        assert_eq!(stem_of("x.lfy", "def"), "../x");
+        assert_eq!(stem_of("src/a/x.lfy", "src/b"), "../a/x");
+        assert_eq!(stem_of("a.lfy", ""), "a");
+        // The same path as the source directory names the place itself.
+        assert_eq!(path_relative("def", "def").as_deref(), Some("."));
+        // Nothing relates an absolute path to a relative one.
+        assert_eq!(path_relative("/def/a.lfy", "def"), None);
+        assert_eq!(path_relative("/def/a.lfy", "/def").as_deref(), Some("a.lfy"));
+    }
 }

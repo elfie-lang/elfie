@@ -275,8 +275,7 @@ pub fn receiver_name(model: &Model, entity: Option<EntityId>) -> String {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredCriterion {
     /// The receiving entity's name, or `global` for a global criterion, then a colon, the
-    /// contributor's name, a colon, and the SHA-256 of its situation, behavior, and side
-    /// effects as rendered, in lowercase hex.
+    /// contributor's name, a colon, and the SHA-256 of its hashed text, in lowercase hex.
     pub id: String, // @lfy def/interpret/data.lfy:LoweredCriterion.id
     /// Whether it is for one entity or for the whole program.
     pub scope: RequirementScope, // @lfy def/interpret/data.lfy:LoweredCriterion.scope
@@ -302,7 +301,37 @@ impl LoweredCriterion {
     /// numbered.
     // @lfy def/interpret/data.lfy:LoweredCriterion.id
     pub fn id(receiver: &str, contributor: &str, criterion: &Criterion) -> String {
-        format!("{receiver}:{contributor}:{}", sha256(&rendered(criterion)))
+        format!("{receiver}:{contributor}:{}", sha256(&hashed_text(criterion)))
+    }
+
+    /// The criterion as one line, as a request or a review shows it to a reader.
+    // Decision: the text a reader is shown is built here and the text an id hashes in
+    // `hashed_text`, so that making a criterion read better never changes its id or the
+    // markers that spell it; it is a method rather than a field because the situation,
+    // behavior, and side effects it is built from are already held, and because every
+    // other output that builds a `LoweredCriterion` would otherwise have to repeat it.
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:abdc5ad00a433c2494e07da561b74af06fc7c62bc4f533d07b8f36cb7aea6515
+    pub fn text(&self) -> String {
+        let mut out = String::new();
+        // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:3f5c320edb239128a096a6028f293d835e49cbf29531dbb336b5132bec616cdd
+        // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:c90109cc423844f04137cce942efd15d14ccc882b10b556d8a7d2729a276d983
+        if let Some(situation) = &self.situation {
+            out.push_str("When ");
+            out.push_str(&situation.join(", and "));
+            out.push_str(": ");
+        }
+        // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:46ce3d841563825fbcd5daa838d00f5062b023411107ee32390cd5debec82a84
+        // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:a5757b3e2a9fcbd4ad478b2a8a16889bb473dfced803da15d15be8a862a1e846
+        if let Some(behavior) = &self.behavior {
+            out.push_str(&behavior.join("; "));
+        }
+        // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:958e6254023bfaee1e5d07109716826fa32fa5f87e1c62a918ab35caafde11c4
+        if let Some(side_effects) = &self.side_effects {
+            out.push_str(". Side effects: ");
+            out.push_str(&side_effects.join("; "));
+        }
+        out
     }
 
     /// Numbers the ids that repeat: among the criteria of one entity that would have the
@@ -394,10 +423,11 @@ fn repeats(keys: &[(Option<EntityId>, String)]) -> Vec<Option<usize>> {
     out
 }
 
-/// A criterion as it is rendered for a request: `When` and its situations, then its
-/// behaviors, then `Side effects:` and its side effects, joined by `: `.
+/// The text an [`LoweredCriterion::id`] hashes. It is built here and not from
+/// [`LoweredCriterion::text`] so that the two can be worded apart.
 // @lfy def/interpret/data.lfy:LoweredCriterion.id
-fn rendered(criterion: &Criterion) -> String {
+// @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:bd1c68e497730ab6072b9e054435fc5ecd4cdbb10bd2ff06f5bd52416eb335a8
+fn hashed_text(criterion: &Criterion) -> String {
     let mut parts = Vec::new();
     if let Some(situation) = &criterion.situation {
         parts.push(format!("When {}", situation.join(" ")));
@@ -600,6 +630,30 @@ mod tests {
         }
     }
 
+    /// The text of a lowered criterion with the parts given, each item as written.
+    fn text_of(
+        origin: NodeRef,
+        situation: Option<&[&str]>,
+        behavior: &[&str],
+        side_effects: Option<&[&str]>,
+    ) -> String {
+        fn each(items: &[&str]) -> Vec<String> {
+            items.iter().map(|item| item.to_string()).collect()
+        }
+        LoweredCriterion {
+            id: String::new(),
+            scope: RequirementScope::Local,
+            entity: None,
+            origin,
+            references: Vec::new(),
+            contributor: 0,
+            situation: situation.map(each),
+            behavior: Some(each(behavior)),
+            side_effects: side_effects.map(each),
+        }
+        .text()
+    }
+
     // @lfy def/interpret/data.lfy:Value
     // @lfy def/interpret/data.lfy:Value#Value:Value:a904dd93fc132523ce6216cac3e63589e7509c3269dbe38ee30d35a7a9f362dd
     #[test]
@@ -743,6 +797,132 @@ mod tests {
         LoweredCriterion::number_repeats(&mut criteria);
         let ids: Vec<&str> = criteria.iter().map(|c| c.id.as_str()).collect();
         assert_eq!(ids, [&id, &format!("{id}:2"), &format!("{id}:3"), &id]);
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:bd1c68e497730ab6072b9e054435fc5ecd4cdbb10bd2ff06f5bd52416eb335a8
+    #[test]
+    fn the_text_an_id_hashes_joins_the_parts_the_criterion_has() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let a = entity_named(&model, "A");
+        let every = Criterion {
+            situation: Some(vec!["it is asked".to_string(), "nothing is open".to_string()]),
+            behavior: Some(vec!["it holds".to_string(), "it is written".to_string()]),
+            side_effects: Some(vec!["a file is written".to_string(), "a line is logged".to_string()]),
+            contributor: a,
+            node: None,
+        };
+        let joined = "When it is asked nothing is open: it holds it is written: \
+             Side effects: a file is written a line is logged";
+        assert_eq!(hashed_text(&every), joined);
+        assert_eq!(LoweredCriterion::id("A", "A", &every), format!("A:A:{}", sha256(joined)));
+
+        // A part the criterion does not have is left out, with it the colon that joins it.
+        let only_behavior = Criterion {
+            situation: None,
+            side_effects: None,
+            ..every.clone()
+        };
+        assert_eq!(hashed_text(&only_behavior), "it holds it is written");
+        let without_side_effects = Criterion {
+            side_effects: None,
+            ..every
+        };
+        assert_eq!(
+            hashed_text(&without_side_effects),
+            "When it is asked nothing is open: it holds it is written"
+        );
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:46ce3d841563825fbcd5daa838d00f5062b023411107ee32390cd5debec82a84
+    #[test]
+    fn a_criterion_with_no_situation_begins_with_its_behavior() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let origin = somewhere(&model);
+        assert_eq!(text_of(origin, None, &["it holds"], None), "it holds");
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:3f5c320edb239128a096a6028f293d835e49cbf29531dbb336b5132bec616cdd
+    #[test]
+    fn a_criterion_with_a_situation_begins_with_when_and_its_situation() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let origin = somewhere(&model);
+        assert_eq!(
+            text_of(origin, Some(&["it is asked"]), &["it holds"], None),
+            "When it is asked: it holds"
+        );
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:c90109cc423844f04137cce942efd15d14ccc882b10b556d8a7d2729a276d983
+    #[test]
+    fn the_items_of_a_situation_are_joined_by_a_comma_and_and() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let origin = somewhere(&model);
+        assert_eq!(
+            text_of(
+                origin,
+                Some(&["it is asked", "nothing is open", "the file is read"]),
+                &["it holds"],
+                None,
+            ),
+            "When it is asked, and nothing is open, and the file is read: it holds"
+        );
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:a5757b3e2a9fcbd4ad478b2a8a16889bb473dfced803da15d15be8a862a1e846
+    #[test]
+    fn the_items_of_a_behavior_are_joined_by_a_semicolon() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let origin = somewhere(&model);
+        assert_eq!(
+            text_of(origin, None, &["it holds", "it is written", "it is read"], None),
+            "it holds; it is written; it is read"
+        );
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:958e6254023bfaee1e5d07109716826fa32fa5f87e1c62a918ab35caafde11c4
+    #[test]
+    fn the_side_effects_of_a_criterion_end_its_text() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let origin = somewhere(&model);
+        assert_eq!(
+            text_of(
+                origin,
+                Some(&["it is asked"]),
+                &["it holds"],
+                Some(&["a file is written", "a line is logged"]),
+            ),
+            "When it is asked: it holds. Side effects: a file is written; a line is logged"
+        );
+        // A criterion that writes nothing outside the value ends with its behavior.
+        let without = text_of(origin, Some(&["it is asked"]), &["it holds"], None);
+        assert!(!without.contains("Side effects"));
+        assert!(without.ends_with("it holds"));
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text
+    // @lfy def/interpret/data.lfy:LoweredCriterion.text#text:text:abdc5ad00a433c2494e07da561b74af06fc7c62bc4f533d07b8f36cb7aea6515
+    #[test]
+    fn every_item_of_a_criterion_keeps_its_own_words_and_case() {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let origin = somewhere(&model);
+        let situation = ["A Thing is Asked", "nothing ELSE is open"];
+        let behavior = ["IT Holds, truly", "the Model is read"];
+        let side_effects = ["A File is Written"];
+        let text = text_of(origin, Some(&situation), &behavior, Some(&side_effects));
+        for item in situation.iter().chain(&behavior).chain(&side_effects) {
+            assert!(text.contains(item), "{text} keeps {item} as written");
+        }
+        assert_eq!(
+            text,
+            "When A Thing is Asked, and nothing ELSE is open: IT Holds, truly; \
+             the Model is read. Side effects: A File is Written"
+        );
     }
 
     // @lfy def/interpret/data.lfy:LoweredTest.id

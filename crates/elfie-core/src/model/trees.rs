@@ -263,7 +263,7 @@ impl Trees {
     /// The first node satisfying `holder` found from `r` in token order without entering
     /// a nested `Parameters`, `Block`, `Object`, or `Type`, then the first `Identifier`
     /// token inside it found the same way.
-    // @lfy def/model/traits.lfy:declaring
+    // @lfy def/model/traits.lfy:namedBy
     pub fn declared_name_token(&self, r: NodeRef, holder: Rule) -> Option<usize> {
         let holder_node = if holder == I::Identifier.entity() {
             r

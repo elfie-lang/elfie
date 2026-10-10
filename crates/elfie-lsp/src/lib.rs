@@ -44,13 +44,17 @@ const NOTHING_DECLARED: &str = "nothing is declared here";
 /// Requests are answered in the order received. A request that fails inside the server
 /// yields an error response and the server goes on. Exit after shutdown returns 0; exit
 /// without shutdown before it returns 1.
-// @lfy def/lsp/main.lfy:serve#serve:serve:7196738de4a6bf8ae29e9643c39ab240a403c940fbd56ad082508f89c036e5cf
+// @lfy def/lsp/main.lfy:serve#serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72
+// @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
+// @lfy def/lsp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2
 pub fn serve(root: Option<&Path>) -> i32 {
     let root = root.map(Path::to_path_buf);
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime,
         Err(error) => {
-            eprintln!("elfie lsp: the runtime could not start: {error}"); // @lfy def/lsp/main.lfy:serve#serve:serve:7196738de4a6bf8ae29e9643c39ab240a403c940fbd56ad082508f89c036e5cf
+            // @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
+            // @lfy def/lsp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2
+            eprintln!("elfie lsp: the runtime could not start: {error}");
             return 1;
         }
     };
@@ -58,7 +62,8 @@ pub fn serve(root: Option<&Path>) -> i32 {
 }
 
 /// [`serve`] over any pair of streams, so tests can drive the whole server in memory.
-// @lfy def/lsp/main.lfy:serve#serve:serve:7196738de4a6bf8ae29e9643c39ab240a403c940fbd56ad082508f89c036e5cf
+// @lfy def/lsp/main.lfy:serve#serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72
+// @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
 async fn serve_on<I, O>(input: I, output: O, root: Option<PathBuf>) -> i32
 where
     I: AsyncRead + Unpin,
@@ -66,10 +71,16 @@ where
 {
     let (service, socket) = LspService::build(|client| Backend::new(client, root)).finish();
     let shared = service.inner().shared.clone();
-    // Decision: one request is served at a time, so requests are answered in the order
-    // received as the definition asks. This gives up `$/cancelRequest`, which no feature
-    // here is slow enough to need.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:4937fcd30fb289ef0849fe779932e64c88f1f2bba4f6cd86d0e8a102b01fba3a
+    // Decision: one message is served at a time, so a request is answered against the
+    // documents and files as every notification before it left them, and the responses go
+    // out in the order their requests arrived. This gives up `$/cancelRequest`, which no
+    // feature here is slow enough to need: `tower-lsp` drops the notification and the
+    // request it names is answered normally.
+    // @lfy def/lsp/main.lfy:serve#serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a
+    // @lfy def/lsp/main.lfy:serve#serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d
+    // @lfy def/lsp/main.lfy:serve#serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55
     Server::new(input, output, socket)
         .concurrency_level(1)
         .serve(service)
@@ -141,7 +152,8 @@ impl Backend {
     /// Answers a request from the session. A failure inside the query is an error response
     /// and the server goes on; before initialize there is no session and nothing is
     /// answered.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:52e894544bf48ab65ab233bbd812c781ada5a68b11319afc43c1782210328930
+    // @lfy def/lsp/main.lfy:serve#serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff
     fn with_session<T>(&self, f: impl FnOnce(&Session) -> T) -> Result<Option<T>> {
         let guard = self.session();
         let Some(session) = guard.as_ref() else {
@@ -155,7 +167,7 @@ impl Backend {
 
     /// Answers a request on a document. A document outside the root, or not in the
     /// program, answers as if nothing were there.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b4ebed8149cfbbdc05efa962364790809b8664d6cfc03bcd3f11b8470cb345e8
+    // @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
     fn with_document<T>(
         &self,
         uri: &Url,
@@ -197,7 +209,7 @@ impl Backend {
     /// the root.
     // Decision: `elfie.json` is watched at every depth, not only at the root, because a
     // package's manifest inside the root changes the program just as the root's does.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:446bf5e30c867947956aee2a2210a127e47cae9b58d4270c7a32efdcfe1c8fa6
+    // @lfy def/lsp/main.lfy:serve#serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b
     fn register_watchers(&self) {
         let client = self.client.clone();
         tokio::spawn(async move {
@@ -224,8 +236,9 @@ impl Backend {
     /// text the editor sent. A document outside the root, or neither under the source
     /// directory nor used by a file in the program, gets nothing and one log message says
     /// why.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:182e5604e01a5de3e510428d81a663886ad46818c1e00ea04d00844bfb30bb6e
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b4ebed8149cfbbdc05efa962364790809b8664d6cfc03bcd3f11b8470cb345e8
+    // @lfy def/lsp/main.lfy:serve#serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22
+    // @lfy def/lsp/main.lfy:serve#serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737
+    // @lfy def/lsp/main.lfy:serve#serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5
     async fn document_changed(
         &self,
         uri: &Url,
@@ -235,6 +248,7 @@ impl Backend {
     ) {
         let outcome = self.update(|session| {
             let Some(path) = relative_path(&session.workspace.root, uri) else {
+                // @lfy def/lsp/main.lfy:serve#serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65
                 return opened.then(|| {
                     format!(
                         "{uri} is outside the root {}; it gets nothing",
@@ -262,6 +276,7 @@ impl Backend {
                 None => session.documents.push(document),
             }
             session.workspace = workspace::change(&session.workspace, &path, Some(&text));
+            // @lfy def/lsp/main.lfy:serve#serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04
             (opened && session.workspace.file(&path).is_none()).then(|| {
                 format!(
                     "{path} is neither under {} nor used by a file in the program; it gets nothing",
@@ -286,7 +301,7 @@ impl Backend {
 /// publication whose generation is no longer the latest is dropped, so only the latest
 /// workspace is published.
 // @lfy def/lsp/main.lfy:serve#serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd
-// @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+// @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
 async fn publish(shared: Arc<Shared>, client: Client, generation: u64) {
     let mut published = shared.published.lock().await;
     // @lfy def/lsp/main.lfy:serve#serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254
@@ -335,11 +350,11 @@ impl LanguageServer for Backend {
     /// definition, references, completion, rename with prepare, document symbols, workspace
     /// symbols, document formatting, and semantic tokens for a whole document, and full
     /// text document synchronization.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:30dc14e0f289c1258311c706561d518b00e9be0a7c99c2b8bf4f4fa51f427dfa
+    // @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
     async fn initialize(&self, params: lsp::InitializeParams) -> Result<lsp::InitializeResult> {
         let root = chosen_root(self.shared.root.as_deref(), &params);
-        // @lfy def/lsp/main.lfy:serve#serve:serve:5a0b7fb571d24e54c8199848856e25a156bcb2638bc4afdafbcc29e42fdde20d
-        // @lfy def/lsp/main.lfy:serve#serve:serve:ba7ece03ff9de8b007d301f51ded29f62b4305f54a4f85cdd16cd729c553d371
+        // @lfy def/lsp/main.lfy:serve#serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8
+        // @lfy def/lsp/main.lfy:serve#serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566
         let encoding = negotiate(
             params
                 .capabilities
@@ -364,7 +379,9 @@ impl LanguageServer for Backend {
             encoding,
         });
         Ok(lsp::InitializeResult {
-            capabilities: capabilities(encoding), // @lfy def/lsp/main.lfy:serve#serve:serve:79f6eb4bccf71db134864b486cfcf84547422c24d02478c3e526d8f744682cb9
+            // @lfy def/lsp/main.lfy:serve#serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3
+            // @lfy def/lsp/main.lfy:serve#serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748
+            capabilities: capabilities(encoding),
             server_info: Some(lsp::ServerInfo {
                 name: "elfie".to_string(),
                 version: Some(env!("CARGO_PKG_VERSION").to_string()),
@@ -374,7 +391,7 @@ impl LanguageServer for Backend {
 
     /// After initialized, diagnostics are published for every file of the program, and
     /// the server registers for watched file changes.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
     async fn initialized(&self, _: lsp::InitializedParams) {
         if self.shared.dynamic_watch.load(Ordering::SeqCst) {
             self.register_watchers();
@@ -389,7 +406,8 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:182e5604e01a5de3e510428d81a663886ad46818c1e00ea04d00844bfb30bb6e
+    // @lfy def/lsp/main.lfy:serve#serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22
+    // @lfy def/lsp/main.lfy:serve#serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5
     async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
         let document = params.text_document;
         let change = lsp::TextDocumentContentChangeEvent {
@@ -401,7 +419,8 @@ impl LanguageServer for Backend {
             .await;
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:182e5604e01a5de3e510428d81a663886ad46818c1e00ea04d00844bfb30bb6e
+    // @lfy def/lsp/main.lfy:serve#serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737
+    // @lfy def/lsp/main.lfy:serve#serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5
     async fn did_change(&self, params: lsp::DidChangeTextDocumentParams) {
         self.document_changed(
             &params.text_document.uri,
@@ -414,7 +433,8 @@ impl LanguageServer for Backend {
 
     /// A document closed: the workspace becomes `change` of it with nothing, so the disk
     /// is read again.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b9952d80447661b1f4bc21b235257faeaaf5e82545ead260b127d1699140b876
+    // @lfy def/lsp/main.lfy:serve#serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f
+    // @lfy def/lsp/main.lfy:serve#serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362
     async fn did_close(&self, params: lsp::DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
         let outcome = self.update(|session| {
@@ -433,8 +453,8 @@ impl LanguageServer for Backend {
     /// A watched `.lfy` file that is not open changed, appeared, or vanished: the
     /// workspace becomes `change` of it with nothing. `elfie.json` changed: the workspace
     /// is loaded again and every open document applied to it.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:ec02e46e24878bf02d348987ba906b6878e72ff6ddb4b9955a57849c7eeefb33
-    // @lfy def/lsp/main.lfy:serve#serve:serve:d71245c327c27c0b7ed7588fd887ae9bdf7afc23a61fec09deb75bd6fce23fbb
+    // @lfy def/lsp/main.lfy:serve#serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd
+    // @lfy def/lsp/main.lfy:serve#serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0
     async fn did_change_watched_files(&self, params: lsp::DidChangeWatchedFilesParams) {
         let outcome = self.update(|session| {
             let mut reload = false;
@@ -447,9 +467,9 @@ impl LanguageServer for Backend {
                     .file_name()
                     .is_some_and(|name| name == MANIFEST)
                 {
-                    reload = true; // @lfy def/lsp/main.lfy:serve#serve:serve:d71245c327c27c0b7ed7588fd887ae9bdf7afc23a61fec09deb75bd6fce23fbb
+                    reload = true; // @lfy def/lsp/main.lfy:serve#serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0
                 } else if path.ends_with(EXTENSION) && session.document(&path).is_none() {
-                    changed.push(path); // @lfy def/lsp/main.lfy:serve#serve:serve:ec02e46e24878bf02d348987ba906b6878e72ff6ddb4b9955a57849c7eeefb33
+                    changed.push(path); // @lfy def/lsp/main.lfy:serve#serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd
                 }
             }
             if reload {
@@ -550,8 +570,8 @@ impl LanguageServer for Backend {
 
     /// The range of the token under the position when `symbolAt` finds a symbol; an error
     /// saying nothing is declared here when `symbolAt` finds no symbol.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:8868f2ece5fbde667df29fb1c491f3e589e47ab7c7dcf13b4b95e3fdb6f3cda8
-    // @lfy def/lsp/main.lfy:serve#serve:serve:835c173bd97a488aa98a1838613c55dc63cd9cff3ec5d90020608a1e9b7e0d44
+    // @lfy def/lsp/main.lfy:serve#serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767
+    // @lfy def/lsp/main.lfy:serve#serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d
     async fn prepare_rename(
         &self,
         params: lsp::TextDocumentPositionParams,
@@ -573,8 +593,8 @@ impl LanguageServer for Backend {
 
     /// `renameAt` as one workspace edit with the edits grouped by file when it returns
     /// edits; an error response carrying the reason it returned when it returns a reason.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:748a92f9b1fedc9f365f976776894b79d464951404a4bc6568a67e0b60ee0f30
-    // @lfy def/lsp/main.lfy:serve#serve:serve:707b1bec80ad9693cd2dd8518ff0bec234e2f7f098edaccda133e8d4dba6695b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c
+    // @lfy def/lsp/main.lfy:serve#serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175
     async fn rename(&self, params: lsp::RenameParams) -> Result<Option<lsp::WorkspaceEdit>> {
         let at = params.text_document_position;
         let outcome = self.with_document(&at.text_document.uri, |session, path, converter| {
@@ -665,9 +685,10 @@ impl LanguageServer for Backend {
     /// One edit replacing the whole document with `format` of its tree when the tree has no
     /// errors and that differs from the document; no edits when the tree has no errors and
     /// it is the same; no edits, with a log message, when the tree has errors.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:439a7379dfeebabd58172f24f5ef517eb067a078cabcf0b02cab8ed5b9c76ed3
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b7c85c085f0f4d121a753fd49d66621f7c0d6737432a6bd9fa7ba8ca342c2a27
-    // @lfy def/lsp/main.lfy:serve#serve:serve:13627f82b3b59127f8dcb8782d70df253a9f2af00eb90ddc3167b1c8233438d7
+    // @lfy def/lsp/main.lfy:serve#serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3
+    // @lfy def/lsp/main.lfy:serve#serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a
+    // @lfy def/lsp/main.lfy:serve#serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64
+    // @lfy def/lsp/main.lfy:serve#serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1
     async fn formatting(
         &self,
         params: lsp::DocumentFormattingParams,
@@ -712,11 +733,11 @@ impl LanguageServer for Backend {
 /// The project the session loads: the root `serve` was given when it was given one, the
 /// client's first workspace folder when the client names one, and the current directory
 /// otherwise.
-// @lfy def/lsp/main.lfy:serve#serve:serve:30dc14e0f289c1258311c706561d518b00e9be0a7c99c2b8bf4f4fa51f427dfa
+// @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
 fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf {
     let root = given
         .map(Path::to_path_buf)
-        // @lfy def/lsp/main.lfy:serve#serve:serve:ef49892b8f2fb6e936b6a3e996499aed7a9202a5251d85c6530391d13822d99c
+        // @lfy def/lsp/main.lfy:serve#serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b
         .or_else(|| {
             params
                 .workspace_folders
@@ -726,7 +747,7 @@ fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf 
                 .to_file_path()
                 .ok()
         })
-        // @lfy def/lsp/main.lfy:serve#serve:serve:9b470be59e32acca9166c801c02dc83923c61108c1efc06fc3e63ba9883fb1eb
+        // @lfy def/lsp/main.lfy:serve#serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(|| PathBuf::from("."));
     std::path::absolute(&root).unwrap_or(root)
@@ -734,8 +755,8 @@ fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf 
 
 /// The encoding agreed at initialization: utf-8 when the client offers it, utf-16
 /// otherwise.
-// @lfy def/lsp/main.lfy:serve#serve:serve:5a0b7fb571d24e54c8199848856e25a156bcb2638bc4afdafbcc29e42fdde20d
-// @lfy def/lsp/main.lfy:serve#serve:serve:ba7ece03ff9de8b007d301f51ded29f62b4305f54a4f85cdd16cd729c553d371
+// @lfy def/lsp/main.lfy:serve#serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8
+// @lfy def/lsp/main.lfy:serve#serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566
 fn negotiate(offered: Option<&[lsp::PositionEncodingKind]>) -> Encoding {
     let offers_utf8 = offered
         .unwrap_or_default()
@@ -748,9 +769,10 @@ fn negotiate(offered: Option<&[lsp::PositionEncodingKind]>) -> Encoding {
 }
 
 /// What the server advertises.
-// @lfy def/lsp/main.lfy:serve#serve:serve:79f6eb4bccf71db134864b486cfcf84547422c24d02478c3e526d8f744682cb9
+// @lfy def/lsp/main.lfy:serve#serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748
 fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
     lsp::ServerCapabilities {
+        // @lfy def/lsp/main.lfy:serve#serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3
         position_encoding: Some(encoding.protocol()),
         text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
             lsp::TextDocumentSyncKind::FULL,
@@ -777,7 +799,7 @@ fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
         document_symbol_provider: Some(lsp::OneOf::Left(true)),
         workspace_symbol_provider: Some(lsp::OneOf::Left(true)),
         document_formatting_provider: Some(lsp::OneOf::Left(true)),
-        // @lfy def/lsp/main.lfy:serve#serve:serve:a9a3e15a0294152121c3e797cfcd5d313310cf15f49f240842b5ce26e2030773
+        // @lfy def/lsp/main.lfy:serve#serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951
         semantic_tokens_provider: Some(
             lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(lsp::SemanticTokensOptions {
                 legend: legend(),
@@ -792,7 +814,7 @@ fn capabilities(encoding: Encoding) -> lsp::ServerCapabilities {
 
 /// The semantic tokens legend: the values of `TokenType` then of `TokenModifier`, each in
 /// enum order, so a client maps the custom types `data` and `trait` itself.
-// @lfy def/lsp/main.lfy:serve#serve:serve:a9a3e15a0294152121c3e797cfcd5d313310cf15f49f240842b5ce26e2030773
+// @lfy def/lsp/main.lfy:serve#serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951
 fn legend() -> lsp::SemanticTokensLegend {
     lsp::SemanticTokensLegend {
         token_types: TokenType::ALL.iter().map(|t| lsp::SemanticTokenType::new(t.value())).collect(),
@@ -816,8 +838,8 @@ fn encode_tokens(tokens: &[SemanticToken], protocol: &[lsp::Range]) -> Vec<lsp::
         // The start of a token on the same line as the one before it is the difference from
         // that one's start; the start of the first token, or of one on a different line, is
         // the start itself.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:62c2f8afd2291ac996baf6f72bab173741e824dbfae095fd305eddb7490900f4
-        // @lfy def/lsp/main.lfy:serve#serve:serve:b4de9630aa7442b8a14279471c6cd6fdee8bae7c9a93407f14622e13fc83f5ac
+        // @lfy def/lsp/main.lfy:serve#serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a
+        // @lfy def/lsp/main.lfy:serve#serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c
         let delta_start = if delta_line == 0 { start - previous_start } else { start };
         let length = range.end.character.saturating_sub(range.start.character);
         let modifiers = token.modifiers.iter().fold(0u32, |bits, m| bits | (1 << m.index()));
@@ -872,7 +894,7 @@ fn uri_of(root: &Path, path: &str) -> Option<Url> {
 
 /// The count of code units of an encoding in the characters before a column of a line;
 /// one unit per character past the end of the line.
-// @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+// @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
 fn to_units(encoding: Encoding, line: &str, column: usize) -> usize {
     let mut units = 0;
     let mut chars = 0;
@@ -889,7 +911,7 @@ fn to_units(encoding: Encoding, line: &str, column: usize) -> usize {
 /// The column of the character that a count of code units of an encoding reaches on a
 /// line; a count inside a character gives that character's column, and one past the end
 /// of the line counts one character per unit.
-// @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+// @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
 fn from_units(encoding: Encoding, line: &str, character: usize) -> usize {
     let mut units = 0;
     let mut column = 0;
@@ -937,7 +959,7 @@ fn offset_of(text: &str, encoding: Encoding, position: lsp::Position) -> usize {
 // Decision: full synchronization is what is advertised, but a change that carries a range
 // anyway is reassembled into the full text rather than dropped, since the definition
 // says incremental changes would only be reassembled.
-// @lfy def/lsp/main.lfy:serve#serve:serve:182e5604e01a5de3e510428d81a663886ad46818c1e00ea04d00844bfb30bb6e
+// @lfy def/lsp/main.lfy:serve#serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737
 fn apply_change(
     text: &str,
     encoding: Encoding,
@@ -974,7 +996,8 @@ fn file_lines(session: &Session, file: &str) -> Vec<String> {
 /// Converts positions between the queries' terms and the protocol's for one session: a
 /// protocol line is the position's line minus one, and a protocol character is the count
 /// of the session's encoding's code units in the characters before the column.
-// @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+// @lfy def/lsp/main.lfy:serve#serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f
+// @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
 struct Converter {
     encoding: Encoding,
     lines: HashMap<String, Vec<String>>,
@@ -997,7 +1020,8 @@ impl Converter {
         lines.get(line).map(String::as_str).unwrap_or("")
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+    // @lfy def/lsp/main.lfy:serve#serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f
+    // @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
     fn protocol_position(&mut self, session: &Session, file: &str, at: Position) -> lsp::Position {
         let line = at.line.saturating_sub(1);
         let encoding = self.encoding;
@@ -1008,7 +1032,8 @@ impl Converter {
         }
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+    // @lfy def/lsp/main.lfy:serve#serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f
+    // @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
     fn query_position(&mut self, session: &Session, file: &str, at: lsp::Position) -> Position {
         let encoding = self.encoding;
         let text = self.line(session, file, at.line as usize);
@@ -1021,7 +1046,8 @@ impl Converter {
     /// Every range sent is a `Range` whose positions are converted to a protocol line of
     /// the position's line minus one and a protocol character of the count of the session's
     /// encoding's code units before the position's column on that line.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:c6aaf9c340e97da137353d24f7866c2554e9e82b3605853cfcf41d76d04e32a2
+    // @lfy def/lsp/main.lfy:serve#serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f
+    // @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
     fn range(&mut self, session: &Session, range: &Range) -> lsp::Range {
         lsp::Range {
             start: self.protocol_position(session, &range.file, range.start),
@@ -1056,7 +1082,8 @@ impl Converter {
 // Decision: a file the standard library brought from outside the project is left out; its
 // path is absolute, it is no document of this root, and the criterion on a document
 // outside the root gives it nothing.
-// @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+// @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
+// @lfy def/lsp/main.lfy:serve#serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b
 fn program_files(workspace: &workspace::Workspace) -> Vec<String> {
     workspace
         .files
@@ -1068,7 +1095,7 @@ fn program_files(workspace: &workspace::Workspace) -> Vec<String> {
 
 /// Diagnostics by file, in the order the query gave them, with an empty list for every
 /// file of the program that carries none, so that a clean file is spoken for too.
-// @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+// @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
 fn by_file(
     files: &[String],
     diagnostics: Vec<query::Diagnostic>,
@@ -1089,7 +1116,7 @@ fn by_file(
 /// What to publish: every file whose diagnostics differ from those last published, and
 /// an empty list for a file that left the program.
 // @lfy def/lsp/main.lfy:serve#serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd
-// @lfy def/lsp/main.lfy:serve#serve:serve:8887ce9fee63fc855408cc167c51763a5ffe4985add44b4abc8c37bbf02baf60
+// @lfy def/lsp/main.lfy:serve#serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c
 fn diagnostics_delta(
     published: &BTreeMap<String, Vec<query::Diagnostic>>,
     current: &BTreeMap<String, Vec<query::Diagnostic>>,
@@ -1133,7 +1160,7 @@ fn hover_markdown(hover: &query::Hover) -> String {
     }
     // Decision: the owner closes the code line, so the kind, the name and the type read as
     // they are written and the declaration that owns them follows in parentheses.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:82ed8af526f087dbb8f60d177aff6b9438d990b79b4432612ede9da2ce310740
+    // @lfy def/lsp/main.lfy:serve#serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9
     if let Some(owner) = hover.owner.as_deref().filter(|text| !text.is_empty()) {
         code.push_str(&format!(" ({owner})"));
     }
@@ -1143,7 +1170,7 @@ fn hover_markdown(hover: &query::Hover) -> String {
     }
     // Decision: the traits are one line of their identifiers in application order, joined by
     // a comma, with nothing around them; the criterion names no label.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:db3a71ea06a9558557ec20264744aaab1992bb0cd0faff6697eb4e314f15f4f2
+    // @lfy def/lsp/main.lfy:serve#serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84
     if !hover.traits.is_empty() {
         sections.push(hover.traits.join(", "));
     }
@@ -1291,16 +1318,14 @@ mod tests {
 
     // Pure parts.
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+    // @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
     #[test]
     fn columns_convert_to_code_units_and_back() {
         let line = "aé😀b";
         assert_eq!(to_units(Encoding::Utf8, line, 3), 1 + 2 + 4);
         assert_eq!(to_units(Encoding::Utf16, line, 3), 1 + 1 + 2);
-        assert_eq!(to_units(Encoding::Utf32, line, 3), 3);
         assert_eq!(from_units(Encoding::Utf8, line, 7), 3);
         assert_eq!(from_units(Encoding::Utf16, line, 4), 3);
-        assert_eq!(from_units(Encoding::Utf32, line, 3), 3);
         // Inside a character: the character's own column.
         assert_eq!(from_units(Encoding::Utf16, line, 3), 2);
         assert_eq!(from_units(Encoding::Utf8, line, 2), 1);
@@ -1311,8 +1336,8 @@ mod tests {
         assert_eq!(from_units(Encoding::Utf8, "", 0), 0);
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:c6aaf9c340e97da137353d24f7866c2554e9e82b3605853cfcf41d76d04e32a2
-    // @lfy def/lsp/main.lfy:serve#serve:serve:f2dfae1d6221881edd3eb9b2628e9e91d1515627a0ed6577a10a5075f03d8484
+    // @lfy def/lsp/main.lfy:serve#serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f
+    // @lfy def/lsp/main.lfy:serve#serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5
     #[test]
     fn ranges_convert_through_the_session_lines() {
         let root = fixture(&[("def/a.lfy", "const x = 'é😀';\nconst y = x;\n")]);
@@ -1351,7 +1376,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:182e5604e01a5de3e510428d81a663886ad46818c1e00ea04d00844bfb30bb6e
+    // @lfy def/lsp/main.lfy:serve#serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737
     #[test]
     fn changes_with_a_range_are_reassembled_into_the_text() {
         let text = "const x = 1;\nconst y = 2;\n";
@@ -1396,9 +1421,9 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:30dc14e0f289c1258311c706561d518b00e9be0a7c99c2b8bf4f4fa51f427dfa
-    // @lfy def/lsp/main.lfy:serve#serve:serve:ef49892b8f2fb6e936b6a3e996499aed7a9202a5251d85c6530391d13822d99c
-    // @lfy def/lsp/main.lfy:serve#serve:serve:9b470be59e32acca9166c801c02dc83923c61108c1efc06fc3e63ba9883fb1eb
+    // @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a
     #[test]
     #[allow(deprecated)]
     fn the_given_root_beats_the_first_folder_which_beats_the_current_directory() {
@@ -1433,8 +1458,8 @@ mod tests {
         );
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:5a0b7fb571d24e54c8199848856e25a156bcb2638bc4afdafbcc29e42fdde20d
-    // @lfy def/lsp/main.lfy:serve#serve:serve:ba7ece03ff9de8b007d301f51ded29f62b4305f54a4f85cdd16cd729c553d371
+    // @lfy def/lsp/main.lfy:serve#serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8
+    // @lfy def/lsp/main.lfy:serve#serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566
     #[test]
     fn utf8_is_agreed_only_when_offered() {
         assert_eq!(negotiate(None), Encoding::Utf16);
@@ -1450,13 +1475,13 @@ mod tests {
             Encoding::Utf8
         );
         assert_eq!(Encoding::Utf8.protocol(), lsp::PositionEncodingKind::UTF8);
+        assert_eq!(Encoding::Utf8.value(), "utf-8");
         assert_eq!(Encoding::Utf16.value(), "utf-16");
-        assert_eq!(Encoding::Utf32.value(), "utf-32");
     }
 
     // @lfy def/lsp/main.lfy:serve#serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3
-    // @lfy def/lsp/main.lfy:serve#serve:serve:82ed8af526f087dbb8f60d177aff6b9438d990b79b4432612ede9da2ce310740
-    // @lfy def/lsp/main.lfy:serve#serve:serve:db3a71ea06a9558557ec20264744aaab1992bb0cd0faff6697eb4e314f15f4f2
+    // @lfy def/lsp/main.lfy:serve#serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9
+    // @lfy def/lsp/main.lfy:serve#serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84
     #[test]
     fn hover_reads_code_line_owner_definition_traits_documentation_then_criteria() {
         let hover = query::Hover {
@@ -1485,7 +1510,7 @@ mod tests {
             "```elfie\ndata A: Base\n```\n\nAn A\n\nbuiltin, tool\n\nDoc line\n\n- It rains: Stay in; Read\n- Always"
         );
         // A member's owner closes the code line.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:82ed8af526f087dbb8f60d177aff6b9438d990b79b4432612ede9da2ce310740
+        // @lfy def/lsp/main.lfy:serve#serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9
         let owned = query::Hover {
             kind: elfie_core::model::SymbolKind::Member,
             identifier: "n".to_string(),
@@ -1562,8 +1587,8 @@ mod tests {
     }
 
     // @lfy def/lsp/main.lfy:serve#serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd
-    // @lfy def/lsp/main.lfy:serve#serve:serve:8887ce9fee63fc855408cc167c51763a5ffe4985add44b4abc8c37bbf02baf60
-    // @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+    // @lfy def/lsp/main.lfy:serve#serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
     #[test]
     fn only_files_whose_diagnostics_changed_are_published() {
         let diagnostic = |file: &str, line: usize, message: &str| query::Diagnostic {
@@ -1595,7 +1620,7 @@ mod tests {
         );
         // Nothing was published before the first publication, so every file of the program
         // is in its delta, a file with no problems as an empty list.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+        // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
         assert_eq!(
             names(&diagnostics_delta(&BTreeMap::new(), &published)),
             listed(&[
@@ -1615,7 +1640,7 @@ mod tests {
         );
         // `def/a.lfy` and `def/clean.lfy` did not change, so they are not published again;
         // `def/gone.lfy` left the program, so its diagnostics are published empty.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:8887ce9fee63fc855408cc167c51763a5ffe4985add44b4abc8c37bbf02baf60
+        // @lfy def/lsp/main.lfy:serve#serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c
         assert_eq!(
             names(&diagnostics_delta(&published, &current)),
             listed(&[("def/b.lfy", 1), ("def/new.lfy", 1), ("def/gone.lfy", 0)])
@@ -1802,11 +1827,13 @@ mod tests {
         }
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:1df5bc12c0235689cc0af6c159f4a864f322565d7e78ad72b7a25e1bb20ac88f
-    // @lfy def/lsp/main.lfy:serve#serve:serve:7196738de4a6bf8ae29e9643c39ab240a403c940fbd56ad082508f89c036e5cf
-    // @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
-    // @lfy def/lsp/main.lfy:serve#serve:serve:79f6eb4bccf71db134864b486cfcf84547422c24d02478c3e526d8f744682cb9
-    // @lfy def/lsp/main.lfy:serve#serve:serve:5a0b7fb571d24e54c8199848856e25a156bcb2638bc4afdafbcc29e42fdde20d
+    // @lfy def/lsp/main.lfy:serve#serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e
+    // @lfy def/lsp/main.lfy:serve#serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
+    // @lfy def/lsp/main.lfy:serve#serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3
+    // @lfy def/lsp/main.lfy:serve#serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8
     // @lfy def/lsp/main.lfy:serve#serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c
     #[tokio::test]
     async fn a_binder_error_is_published_after_initialized_and_exit_after_shutdown_is_zero() {
@@ -1839,7 +1866,7 @@ mod tests {
         );
 
         // Every file of the program is published, one with no problems as an empty list.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+        // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
         let published = editor.published_for("def/ok.lfy").await;
         assert_eq!(published["params"]["diagnostics"], json!([]));
 
@@ -1865,8 +1892,10 @@ mod tests {
 
     /// Several requests sent at once are answered in the order they were received, and a
     /// request that fails is one error response among them with the server going on.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:4937fcd30fb289ef0849fe779932e64c88f1f2bba4f6cd86d0e8a102b01fba3a
-    // @lfy def/lsp/main.lfy:serve#serve:serve:52e894544bf48ab65ab233bbd812c781ada5a68b11319afc43c1782210328930
+    // @lfy def/lsp/main.lfy:serve#serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d
+    // @lfy def/lsp/main.lfy:serve#serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a
+    // @lfy def/lsp/main.lfy:serve#serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3
+    // @lfy def/lsp/main.lfy:serve#serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff
     #[tokio::test]
     async fn requests_are_answered_in_the_order_received() {
         let root = fixture(&[("def/a.lfy", "d A {}\nconst y = A;\n")]);
@@ -1930,16 +1959,16 @@ mod tests {
         assert_eq!(editor.exit(false).await, 1);
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:6a551fb00360c29fa3b9d0074fef3369855aad68d014c80903f4c67d7841e334
+    // @lfy def/lsp/main.lfy:serve#serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc
     // @lfy def/lsp/main.lfy:serve#serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767
-    // @lfy def/lsp/main.lfy:serve#serve:serve:748a92f9b1fedc9f365f976776894b79d464951404a4bc6568a67e0b60ee0f30
-    // @lfy def/lsp/main.lfy:serve#serve:serve:8868f2ece5fbde667df29fb1c491f3e589e47ab7c7dcf13b4b95e3fdb6f3cda8
-    // @lfy def/lsp/main.lfy:serve#serve:serve:835c173bd97a488aa98a1838613c55dc63cd9cff3ec5d90020608a1e9b7e0d44
+    // @lfy def/lsp/main.lfy:serve#serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c
+    // @lfy def/lsp/main.lfy:serve#serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767
+    // @lfy def/lsp/main.lfy:serve#serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d
     // @lfy def/lsp/main.lfy:serve#serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9
     // @lfy def/lsp/main.lfy:serve#serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3
     // @lfy def/lsp/main.lfy:serve#serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d
     // @lfy def/lsp/main.lfy:serve#serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b4ebed8149cfbbdc05efa962364790809b8664d6cfc03bcd3f11b8470cb345e8
+    // @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
     #[tokio::test]
     async fn definition_and_rename_cross_files() {
         let root = fixture(&[
@@ -1981,7 +2010,7 @@ mod tests {
         );
 
         // A rename `renameAt` refuses is an error response carrying the reason it returned.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:707b1bec80ad9693cd2dd8518ff0bec234e2f7f098edaccda133e8d4dba6695b
+        // @lfy def/lsp/main.lfy:serve#serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175
         let mut keyword = at.clone();
         keyword["newName"] = json!("const");
         let refused = editor.request("textDocument/rename", keyword).await;
@@ -2049,9 +2078,10 @@ mod tests {
         assert_eq!(editor.exit(true).await, 0);
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:439a7379dfeebabd58172f24f5ef517eb067a078cabcf0b02cab8ed5b9c76ed3
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b7c85c085f0f4d121a753fd49d66621f7c0d6737432a6bd9fa7ba8ca342c2a27
-    // @lfy def/lsp/main.lfy:serve#serve:serve:13627f82b3b59127f8dcb8782d70df253a9f2af00eb90ddc3167b1c8233438d7
+    // @lfy def/lsp/main.lfy:serve#serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3
+    // @lfy def/lsp/main.lfy:serve#serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a
+    // @lfy def/lsp/main.lfy:serve#serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64
+    // @lfy def/lsp/main.lfy:serve#serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1
     #[tokio::test]
     async fn formatting_replaces_the_whole_document_only_when_it_differs() {
         let root = fixture(&[("def/a.lfy", "d A {}\n")]);
@@ -2118,7 +2148,7 @@ mod tests {
     }
 
     // @lfy def/lsp/main.lfy:serve#serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df
-    // @lfy def/lsp/main.lfy:serve#serve:serve:a9a3e15a0294152121c3e797cfcd5d313310cf15f49f240842b5ce26e2030773
+    // @lfy def/lsp/main.lfy:serve#serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951
     #[test]
     fn tokens_are_encoded_relative_to_the_one_before() {
         let range = |line, start, end| lsp::Range { start: lsp::Position::new(line, start), end: lsp::Position::new(line, end) };
@@ -2133,8 +2163,8 @@ mod tests {
         // The first token's start is the start itself, the second is on the same line so its
         // start is the difference from the one before, and the third is on another line so
         // its start is the start itself again.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:62c2f8afd2291ac996baf6f72bab173741e824dbfae095fd305eddb7490900f4
-        // @lfy def/lsp/main.lfy:serve#serve:serve:b4de9630aa7442b8a14279471c6cd6fdee8bae7c9a93407f14622e13fc83f5ac
+        // @lfy def/lsp/main.lfy:serve#serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a
+        // @lfy def/lsp/main.lfy:serve#serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c
         assert_eq!(flat, vec![(0, 2, 1, 1, 0b11), (0, 6, 1, 10, 1 << 4), (2, 6, 1, 9, 0)]);
         let legend = legend();
         assert_eq!(legend.token_types[1].as_str(), "data");
@@ -2144,7 +2174,7 @@ mod tests {
     }
 
     // @lfy def/lsp/main.lfy:serve#serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df
-    // @lfy def/lsp/main.lfy:serve#serve:serve:79f6eb4bccf71db134864b486cfcf84547422c24d02478c3e526d8f744682cb9
+    // @lfy def/lsp/main.lfy:serve#serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748
     #[tokio::test]
     async fn semantic_tokens_are_served_for_a_document() {
         let root = fixture(&[("def/a.lfy", "d A {}\nconst y = A;\n")]);
@@ -2158,10 +2188,11 @@ mod tests {
         editor.exit(true).await;
     }
 
-    // @lfy def/lsp/main.lfy:serve#serve:serve:446bf5e30c867947956aee2a2210a127e47cae9b58d4270c7a32efdcfe1c8fa6
-    // @lfy def/lsp/main.lfy:serve#serve:serve:b9952d80447661b1f4bc21b235257faeaaf5e82545ead260b127d1699140b876
-    // @lfy def/lsp/main.lfy:serve#serve:serve:ec02e46e24878bf02d348987ba906b6878e72ff6ddb4b9955a57849c7eeefb33
-    // @lfy def/lsp/main.lfy:serve#serve:serve:d71245c327c27c0b7ed7588fd887ae9bdf7afc23a61fec09deb75bd6fce23fbb
+    // @lfy def/lsp/main.lfy:serve#serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f
+    // @lfy def/lsp/main.lfy:serve#serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362
+    // @lfy def/lsp/main.lfy:serve#serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd
+    // @lfy def/lsp/main.lfy:serve#serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0
     #[tokio::test]
     async fn watched_files_are_registered_and_the_disk_is_read_again() {
         let root = fixture(&[
@@ -2195,7 +2226,7 @@ mod tests {
 
         // After initialized, every file of the program was published, each of these two with
         // no problems to report.
-        // @lfy def/lsp/main.lfy:serve#serve:serve:515f9ffc52eafb3e6dea5e0d8887a58b960cabe1e7f8d580cdbebfa1a13c69aa
+        // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
         for file in ["def/a.lfy", "def/b.lfy"] {
             let published = editor.published_for(file).await;
             assert_eq!(published["params"]["diagnostics"], json!([]), "{file}");
@@ -2251,6 +2282,107 @@ mod tests {
         let published = editor.published_for("def/b.lfy").await;
         assert!(reported(&published, "C is not declared"), "{published}");
 
+        assert_eq!(editor.exit(true).await, 0);
+    }
+
+    /// A document outside the root, and one under the root that is neither under the source
+    /// directory nor used by a file in the program, each get one log message and nothing
+    /// else.
+    // @lfy def/lsp/main.lfy:serve#serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65
+    // @lfy def/lsp/main.lfy:serve#serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04
+    // @lfy def/lsp/main.lfy:serve#serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
+    #[tokio::test]
+    async fn a_document_the_program_does_not_hold_is_logged_and_gets_nothing() {
+        let root = fixture(&[("def/a.lfy", "d A {}\n"), ("notes/loose.lfy", "d B {}\n")]);
+        let mut editor = Editor::connect(root);
+        editor.initialize(json!({})).await;
+        let logged = |text: &'static str| {
+            move |message: &Value| {
+                message["method"] == "window/logMessage"
+                    && message["params"]["message"]
+                        .as_str()
+                        .is_some_and(|message| message.contains(text))
+            }
+        };
+
+        // Outside the root: one log message names the document and the root.
+        // @lfy def/lsp/main.lfy:serve#serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65
+        let outside =
+            Url::from_file_path(editor.root.parent().unwrap().join("elfie-lsp-outside.lfy"))
+                .unwrap();
+        editor
+            .notify(
+                "textDocument/didOpen",
+                json!({ "textDocument": { "uri": outside, "languageId": "elfie", "version": 1, "text": "d C {}\n" } }),
+            )
+            .await;
+        let message = editor.wait_for(logged("is outside the root")).await;
+        let message = message["params"]["message"].as_str().unwrap().to_string();
+        let root_name = editor.root.file_name().unwrap().to_string_lossy().into_owned();
+        assert!(message.contains("elfie-lsp-outside.lfy"), "{message}");
+        assert!(message.contains(&root_name), "{message}");
+        assert!(message.contains("it gets nothing"), "{message}");
+
+        // Under the root but in no file of the program: one log message names the document
+        // and the source directory.
+        // @lfy def/lsp/main.lfy:serve#serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04
+        let source_directory = workspace::load(&editor.root).source_directory;
+        let loose = editor.uri("notes/loose.lfy");
+        editor
+            .notify(
+                "textDocument/didOpen",
+                json!({ "textDocument": { "uri": loose, "languageId": "elfie", "version": 1, "text": "d B {}\n" } }),
+            )
+            .await;
+        let message = editor.wait_for(logged("nor used by a file in the program")).await;
+        let message = message["params"]["message"].as_str().unwrap().to_string();
+        assert!(message.contains("notes/loose.lfy"), "{message}");
+        assert!(message.contains(&source_directory), "{message}");
+        assert!(message.contains("it gets nothing"), "{message}");
+
+        // It gets no diagnostics, and a request on it answers as if nothing were there.
+        // @lfy def/lsp/main.lfy:serve#serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b
+        // @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
+        let hover = editor
+            .request(
+                "textDocument/hover",
+                json!({ "textDocument": { "uri": editor.uri("notes/loose.lfy") }, "position": { "line": 0, "character": 2 } }),
+            )
+            .await;
+        assert_eq!(hover["result"], Value::Null);
+        assert!(
+            !editor
+                .pending
+                .iter()
+                .any(|message| message["method"] == "textDocument/publishDiagnostics"
+                    && message["params"]["uri"] == json!(editor.uri("notes/loose.lfy").to_string()))
+        );
+
+        assert_eq!(editor.exit(true).await, 0);
+    }
+
+    /// A `$/cancelRequest` is ignored and the request it names is answered normally.
+    // @lfy def/lsp/main.lfy:serve#serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d
+    // @lfy def/lsp/main.lfy:serve#serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55
+    #[tokio::test]
+    async fn a_cancelled_request_is_answered_anyway() {
+        let root = fixture(&[("def/a.lfy", "d A {}\n")]);
+        let mut editor = Editor::connect(root);
+        editor.initialize(json!({})).await;
+        let a = editor.uri("def/a.lfy");
+        let id = editor
+            .send_request(
+                "textDocument/documentSymbol",
+                json!({ "textDocument": { "uri": a } }),
+            )
+            .await;
+        editor.notify("$/cancelRequest", json!({ "id": id })).await;
+        let response = editor
+            .wait_for(|message| message.get("id") == Some(&json!(id)))
+            .await;
+        assert!(response.get("error").is_none(), "{response}");
+        assert_eq!(response["result"][0]["name"], "A");
         assert_eq!(editor.exit(true).await, 0);
     }
 }

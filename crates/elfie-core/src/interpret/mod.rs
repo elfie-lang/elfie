@@ -103,6 +103,11 @@ const SLOTS: [&str; 8] = [
     "language",
 ];
 
+/// The members of a layer every layer of a target adds to rather than sets, so several
+/// layers holding one are no conflict: the target has every item any of them set.
+// @lfy def/interpret/main.lfy:expand
+const ACCUMULATED: [&str; 3] = ["provides", "requires", "outputExtensions"];
+
 /// The member of an entity that adds tests.
 // @lfy def/interpret/main.lfy:expand
 const TEST: &str = "test";
@@ -1767,7 +1772,14 @@ impl<'m> Interpreter<'m> {
                 }
             }
         }
+        // Each layer is applied in guidance order, and what it set is read back from the
+        // const afterwards: the values the window holds are the layer's own and those of
+        // the traits it extends, which a layer sets through it.
+        // @lfy def/interpret/main.lfy:expand#expand:expand:da7602e2b3243080f2623c7ec36d5389af778549e7da59559ebadf2d10ec6e0a
+        // @lfy def/interpret/main.lfy:expand#expand:expand:24896a9f182aab4cba64abb17efdb629e1de1a7ac24c9edcdbc3fa14873d813b
+        let mut set: Vec<(String, Interim, EntityId)> = Vec::new();
         for (subject, arguments) in layers {
+            let before = self.model.entities[entity].values.len();
             self.apply_trait(
                 entity,
                 subject,
@@ -1776,7 +1788,60 @@ impl<'m> Interpreter<'m> {
                 AppliedSource::Apply(declaration),
                 false,
             );
+            let added = self.model.entities[entity].values[before..].to_vec();
+            self.name_disagreeing_layers(declaration, subject, &added, &mut set);
         }
+    }
+
+    /// Names the member and both layers at the const when two layers of one target set the
+    /// same member to different values. [`ACCUMULATED`] is left out: every layer adds to
+    /// those. Within one layer the last value it set is the value it sets, as reading the
+    /// member back from the const gives.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:24896a9f182aab4cba64abb17efdb629e1de1a7ac24c9edcdbc3fa14873d813b
+    fn name_disagreeing_layers(
+        &mut self,
+        declaration: NodeRef,
+        layer: EntityId,
+        added: &[(String, Interim)],
+        set: &mut Vec<(String, Interim, EntityId)>,
+    ) {
+        let mut own: Vec<(String, Interim)> = Vec::new();
+        for (member, value) in added {
+            if ACCUMULATED.contains(&member.as_str()) {
+                continue;
+            }
+            match own.iter_mut().find(|(name, _)| name == member) {
+                Some(slot) => slot.1 = value.clone(),
+                None => own.push((member.clone(), value.clone())),
+            }
+        }
+        for (member, value) in own {
+            match set.iter().find(|(name, _, _)| *name == member) {
+                Some((_, earlier, other)) if *earlier != value => {
+                    let first = self.layer_name(*other);
+                    let second = self.layer_name(layer);
+                    self.problem(
+                        declaration,
+                        format!(
+                            "the layers {first} and {second} of this target set {member} to \
+                             different values"
+                        ),
+                    );
+                }
+                // An earlier layer set it to the same value, so the two agree.
+                Some(_) => {}
+                None => set.push((member, value, layer)),
+            }
+        }
+    }
+
+    /// The name of the trait a layer names, for a message that names the layer.
+    // @lfy def/interpret/main.lfy:expand
+    fn layer_name(&self, layer: EntityId) -> String {
+        self.model.entities[layer]
+            .identifier
+            .clone()
+            .unwrap_or_else(|| "a layer".to_string())
     }
 
     /// The layer of a trait with these arguments: the object holding the trait as its
@@ -1795,25 +1860,46 @@ impl<'m> Interpreter<'m> {
         ])
     }
 
-    /// Names the trait at a call of `layer` that gives a different number of arguments than
-    /// the trait has parameters; a spread parameter takes any number.
+    /// Names the trait at a call of `layer` that gives more arguments than the trait has
+    /// parameters with none of them a spread, or fewer than it has parameters that are
+    /// neither optional nor spread. A parameter may be left out when it is a spread, when a
+    /// question mark marks it optional, or when a setter gives it a default.
     // @lfy def/interpret/main.lfy:expand#expand:expand:199274135094063b0af3eb69ed4b59c3d739b76aca14b459ae4a3f182852b47d
     fn check_layer_arity(&mut self, call: NodeRef, subject: EntityId, given: usize) {
         let parameters: Vec<SymbolId> = self.model.entities[subject].parameters().to_vec();
-        let spread = parameters
-            .last()
-            .is_some_and(|&last| self.model.is(self.model.symbols[last].node, E::SpreadParameter));
-        let wanted = parameters.len();
-        if given == wanted || (spread && given + 1 >= wanted) {
+        let nodes: Vec<NodeRef> = parameters
+            .iter()
+            .map(|&parameter| self.model.symbols[parameter].node)
+            .collect();
+        let spread = nodes
+            .iter()
+            .any(|&node| self.model.is(node, E::SpreadParameter));
+        let required = nodes
+            .iter()
+            .filter(|&&node| {
+                !self.model.is(node, E::SpreadParameter)
+                    && !self.model.has_token(node, P::QuestionMark)
+                    && !self.model.has_token(node, P::PlainSetter)
+            })
+            .count();
+        let wanted = nodes.len();
+        if given >= required && (spread || given <= wanted) {
             return;
         }
         let name = self.model.entities[subject]
             .identifier
             .clone()
             .unwrap_or_else(|| "a trait".to_string());
+        let wants = if spread {
+            format!("at least {required}")
+        } else if required == wanted {
+            format!("{wanted}")
+        } else {
+            format!("{required} to {wanted}")
+        };
         self.problem(
             call,
-            format!("{name} takes {wanted} arguments as a layer, not {given}"),
+            format!("{name} takes {wants} arguments as a layer, not {given}"),
         );
     }
 
@@ -2615,6 +2701,7 @@ impl<'m> Interpreter<'m> {
         // criteria, knowledge, commands, or targets reaches the const as it reaches any
         // declared entity.
         // @lfy def/interpret/main.lfy:expand#expand:expand:b4bd0b259ce526434077c564906e508670bdc503c3ba155c178e39db8f76bce6
+        // @lfy def/interpret/main.lfy:expand#expand:expand:d6d80207ed7ea67fd728b58a28b9ec2288d778cb2ae43de5d0dcf264ce3abd1a
         let declared = self
             .model
             .token_is(r.file, accessor, P::ContextAccessor)
@@ -2630,6 +2717,7 @@ impl<'m> Interpreter<'m> {
     /// The entity a name bound to a `const` or a `let` declares, when it is one: what its
     /// context layer is read from.
     // @lfy def/interpret/main.lfy:expand#expand:expand:b4bd0b259ce526434077c564906e508670bdc503c3ba155c178e39db8f76bce6
+    // @lfy def/interpret/main.lfy:expand#expand:expand:d6d80207ed7ea67fd728b58a28b9ec2288d778cb2ae43de5d0dcf264ce3abd1a
     fn declared_by(&self, left: NodeRef, env: &Env) -> Option<EntityId> {
         if !self.model.is(left, E::Name) {
             return None;
@@ -2963,8 +3051,9 @@ impl<'m> Interpreter<'m> {
     }
 
     /// The value a declared name holds: taken once, and never taken twice while it is
-    /// being taken.
-    // @lfy def/interpret/main.lfy:evaluate
+    /// being taken. It is taken from the declaration wherever the name was read, so a
+    /// compile-time value is the same read before its declaration as after it.
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:bb33b89909ec6ede4b06c592019c0381b73e99575350a939f2f20b06a6775738
     fn value_of_variable(&mut self, entity: EntityId) -> Interim {
         if let Some(value) = self.cache.get(&entity) {
             return value.clone();
@@ -3372,6 +3461,7 @@ impl<'m> Interpreter<'m> {
     /// decides whether a call runs is where the call is written, never where the function
     /// it calls is declared.
     // @lfy def/interpret/main.lfy:expand#expand:expand:d8317dcbe9cf6885feca31d997bb0425e00cd18a2059d87291a8d6105dc664ef
+    // @lfy def/interpret/main.lfy:expand#expand:expand:fbc7d19ecec253d62dde790e452968a3262f174b36abe019d91512e5e02c6165
     fn call_declared(
         &mut self,
         call: NodeRef,
@@ -3400,6 +3490,7 @@ impl<'m> Interpreter<'m> {
                 .identifier
                 .clone()
                 .unwrap_or_else(|| "a fn".to_string());
+            // @lfy def/interpret/main.lfy:expand#expand:expand:dbbc87c48b923ddf49e557eac7e618d72f9965cd61a2e1bed597c92a0d16d4f1
             self.problem(
                 call,
                 format!("{name} is a fn whose body is criteria, so the call has nothing to run"),
@@ -4208,7 +4299,7 @@ impl<'m> Interpreter<'m> {
     }
 
     /// The value of an expression at compile time, in the scope it is written in.
-    // @lfy def/interpret/main.lfy:evaluate
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:721fecc6bbf7d7e099e34bedb0683a009eb68ac5cd6d2ab534899e76c11507a5
     fn evaluate_node(&mut self, node: NodeRef) -> Option<Evaluated> {
         let scope = self.model.enclosing_scope(node);
         let current = self.model.scopes[scope].current;
@@ -5404,6 +5495,9 @@ impl<'m> Lowering<'m> {
             Some(entity) if !is_file => self.tests.remove(&entity).unwrap_or_default(),
             _ => Vec::new(),
         };
+        // A node that is kept keeps its rule, and its kept children in the order they were
+        // written.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:780cd0f400942687d110a357f183ca0c8d29ee46a09884327d3627fb3e2676ac
         Some(LoweredNode {
             rule: self.model().rule_of(r),
             children,
@@ -5520,26 +5614,31 @@ impl<'m> Lowering<'m> {
                 });
             }
         }
-        // Runtime code that calls an ace function with an argument no value can be taken
-        // for has nothing to call, because the function will not exist at runtime.
-        // @lfy def/interpret/main.lfy:lower
+        // Runtime code that calls a function which runs wherever its call is written — an
+        // ace function, or a function declared outside the program's runtime code — with an
+        // argument no value can be taken for has nothing to call, because the function will
+        // not exist at runtime.
+        // @lfy def/interpret/main.lfy:lower#lower:lower:62d2d27335ac81028f0c9e82819680564bcc9debd24a3e002e179a810efaa49f
         if self.model().is(r, E::Call)
-            && self.calls_an_ace_function(r)
+            && self.calls_a_compile_time_function(r)
             && self.interpreter.evaluate_node(r).is_none()
         {
             self.problems.push(Problem {
                 node: r,
-                message: "this calls an ace function with an argument that has no value at \
-                          compile time, and the function will not exist at runtime"
+                message: "this calls a function that runs at compile time with an argument that \
+                          has no value there, and the function will not exist at runtime"
                     .to_string(),
                 stage: crate::model::Stage::Binder,
             });
         }
     }
 
-    /// Whether a call names a function declared inside an `ace`.
-    // @lfy def/interpret/main.lfy:lower
-    fn calls_an_ace_function(&self, call: NodeRef) -> bool {
+    /// Whether a call names a written function that runs wherever its call is written: one
+    /// declared inside an `ace`, and one declared outside the program's runtime code, such
+    /// as a function of a package. A `fn` is left out: one carrying `builtin` is performed
+    /// natively and one carrying none is generated, so either is there at runtime.
+    // @lfy def/interpret/main.lfy:lower#lower:lower:62d2d27335ac81028f0c9e82819680564bcc9debd24a3e002e179a810efaa49f
+    fn calls_a_compile_time_function(&self, call: NodeRef) -> bool {
         let Some(callee) = self.model().left(call) else {
             return false;
         };
@@ -5547,9 +5646,15 @@ impl<'m> Lowering<'m> {
             return false;
         };
         let entity = self.model().symbols[symbol].entity;
+        if !matches!(
+            self.model().entities[entity].kind,
+            EntityKind::Fn { agent: false, .. }
+        ) {
+            return false;
+        }
         self.model().entities[entity]
             .node
-            .is_some_and(|node| self.model().ancestor(node, S::Ace).is_some())
+            .is_some_and(|node| self.interpreter.runs_wherever_called(node))
     }
 
     /// The value a folded node holds, when the node is one.
@@ -5566,15 +5671,15 @@ impl<'m> Lowering<'m> {
         if self.no_fold_region(r) {
             return None;
         }
-        // A call is folded only when it is a call of like, or of an ace function, which will
-        // not exist at runtime.
+        // A call is folded only when it is a call of like, or of a function that runs
+        // wherever its call is written and so will not exist at runtime.
         // @lfy def/interpret/main.lfy:lower
         if rule == E::Call.entity() {
             let mut env = self.interpreter.file_env(r.file);
             if let Some(prompted) = self.interpreter.prompted_of(r, &mut env) {
                 return Some(Evaluated::Prompted(prompted));
             }
-            if !self.calls_an_ace_function(r) {
+            if !self.calls_a_compile_time_function(r) {
                 return None;
             }
         }
@@ -5884,19 +5989,28 @@ fn spell_member(model: &Model, entity: EntityId, aliases: &HashMap<EntityId, Str
     out
 }
 
-/// The type of a member as Elfie spells one.
-// @lfy def/interpret/main.lfy:lower
+/// The type of a member as Elfie spells one: [`crate::model::type_text_of`] of that type,
+/// so what the model decides about brackets, type arguments, a predicate, and a type that
+/// declares no name holds here too, with each entity an added `Use` takes an alias for
+/// spelled through that alias.
+// @lfy def/interpret/main.lfy:lower#lower:lower:1b8bbc7b6e2316e2fb3cfd378dd5fc01093dbefd96e6098d404519e88a6a68ae
 fn member_type_text(model: &Model, ty: &TypeRef, aliases: &HashMap<EntityId, String>) -> String {
+    let spelled = crate::model::type_text_of(model, Some(ty)).unwrap_or_default();
+    // With no alias to write, the model's own spelling is the whole answer.
+    // @lfy def/interpret/main.lfy:lower#lower:lower:1b8bbc7b6e2316e2fb3cfd378dd5fc01093dbefd96e6098d404519e88a6a68ae
+    if aliases.is_empty() {
+        return spelled;
+    }
     match ty {
-        // A list of a union takes parentheses before its brackets, because `A | B[]` is a
-        // union of `A` with a list of `B` and not a list of `A | B`.
+        // A list and a union are spelled from their parts, so an alias inside one reaches
+        // the part that needs it; the brackets and the separator stay the model's.
         // @lfy def/interpret/main.lfy:lower#lower:lower:1b8bbc7b6e2316e2fb3cfd378dd5fc01093dbefd96e6098d404519e88a6a68ae
         TypeRef::List(item) => {
-            let text = member_type_text(model, item, aliases);
-            if matches!(**item, TypeRef::Union(_)) {
-                format!("({text})[]")
+            let inner = member_type_text(model, item, aliases);
+            if parenthesized_item(model, &spelled, item) {
+                format!("({inner})[]")
             } else {
-                format!("{text}[]")
+                format!("{inner}[]")
             }
         }
         TypeRef::Union(items) => items
@@ -5905,20 +6019,39 @@ fn member_type_text(model: &Model, ty: &TypeRef, aliases: &HashMap<EntityId, Str
             .collect::<Vec<_>>()
             .join(" | "),
         // An entity brought in by an aliased use is spelled through that alias, so the name
-        // means one entity.
+        // means one entity; its type arguments are spelled the same way.
         // @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
         TypeRef::Entity(entity) if aliases.contains_key(entity) => {
             let alias = &aliases[entity];
-            format!("{alias}.{}", crate::model::type_text(model, ty))
+            let name = model.entities[*entity].identifier.clone().unwrap_or_default();
+            let arguments = model.type_arguments(*entity);
+            if arguments.is_empty() {
+                format!("{alias}.{name}")
+            } else {
+                let written = arguments
+                    .iter()
+                    .map(|argument| member_type_text(model, argument, aliases))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{alias}.{name}<{written}>")
+            }
         }
         TypeRef::Predicate(entity) if aliases.contains_key(entity) => {
             let alias = &aliases[entity];
             let name = model.entities[*entity].identifier.clone().unwrap_or_default();
             format!("is {alias}.{name}")
         }
-        // Every other type is spelled as the model spells it.
-        ty => crate::model::type_text(model, ty),
+        // Nothing of this type is aliased, so the model's spelling of it stands.
+        _ => spelled,
     }
+}
+
+/// Whether the model wrapped the item of a list in parentheses before its brackets, read
+/// back from its own spelling of that list rather than decided a second time.
+// @lfy def/interpret/main.lfy:lower#lower:lower:1b8bbc7b6e2316e2fb3cfd378dd5fc01093dbefd96e6098d404519e88a6a68ae
+fn parenthesized_item(model: &Model, list: &str, item: &TypeRef) -> bool {
+    let plain = crate::model::type_text_of(model, Some(item)).unwrap_or_default();
+    list == format!("({plain})[]")
 }
 
 /// A folded value as Elfie spells it; a prompted value as the call that asked for it.
@@ -6087,7 +6220,10 @@ mod tests {
         let target = source(
             "lib/target/main.lfy",
             "use \"../prelude/builtin\";\n\
-             trait target: `Anything else the compiler is told` {}\n\
+             trait target: `Anything else the compiler is told` {\n\
+               $provides: `Capabilities this layer gives its target` = string[];\n\
+               $style: `Something one layer of a target sets` = string;\n\
+             }\n\
              trait targetLanguage: `What code is written in` {}\n\
              trait targetLayout: `Where files go` {}\n\
              d Target is builtin: `One artifact the project is built into` {\n\
@@ -6310,6 +6446,14 @@ mod tests {
         assert_eq!(phase_of(&model, declaration), Phase::Runtime);
     }
 
+    // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:2a01a9a7afcbd15cc69c025b0cf560d009f74520faf3acd45a070b666c52d23b
+    #[test]
+    fn a_data_declaration_is_runtime_though_what_its_body_holds_is_not() {
+        let model = bound("d A {\n  $x: `d` = string;\n}\n");
+        let declaration = first(&model, 0, S::DataDeclaration);
+        assert_eq!(phase_of(&model, declaration), Phase::Runtime);
+    }
+
     // @lfy def/interpret/main.lfy:phaseOf#phaseOf:phaseOf:e296a93f89da71bf1df9226c1abb709c149b656286c7a3d31029d1a5b088a47a
     #[test]
     fn the_body_of_a_data_and_the_clauses_of_a_declaration_run_at_compile_time() {
@@ -6443,6 +6587,7 @@ mod tests {
     }
 
     // @lfy def/interpret/main.lfy:expand#expand:expand:a553d1617c777bb329d3e59b4063f9acee7795a53ddf5cc2ec6afbc82796fe71
+    // @lfy def/interpret/main.lfy:expand#expand:expand:dbbc87c48b923ddf49e557eac7e618d72f9965cd61a2e1bed597c92a0d16d4f1
     #[test]
     fn a_call_of_a_fn_that_carries_no_builtin_has_nothing_to_run() {
         let model = declared(vec![source(
@@ -6843,6 +6988,53 @@ mod tests {
         assert_eq!(layers.first(), Some(&both), "{layers:?}");
     }
 
+    // @lfy def/interpret/main.lfy:expand#expand:expand:24896a9f182aab4cba64abb17efdb629e1de1a7ac24c9edcdbc3fa14873d813b
+    #[test]
+    fn two_layers_setting_one_member_to_different_values_name_the_member_and_both_layers() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\n\
+             trait f extends targetLayout {}\n\
+             trait one extends target {\n  .provides = [\"a\"];\n  .style = \"wide\";\n}\n\
+             trait two extends target {\n  .provides = [\"b\"];\n  .style = \"tall\";\n}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f, \
+             layers = [one, two] });\n",
+        );
+        // `provides` is added to by every layer, so the two holding different items is no
+        // conflict; `style` is set, so it is one.
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        let message = &model.problems[0].message;
+        for named in ["style", "one", "two"] {
+            assert!(message.contains(named), "{named} is named: {message}");
+        }
+        assert!(!message.contains("provides"), "{message}");
+        // The problem is at the const that declares the target.
+        let t = entity_named(&model, "t");
+        assert_eq!(
+            model.entities[t].node.map(|node| node.file),
+            Some(model.problems[0].node.file)
+        );
+        assert!(model.is(model.problems[0].node, S::VariableDeclaration));
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:24896a9f182aab4cba64abb17efdb629e1de1a7ac24c9edcdbc3fa14873d813b
+    #[test]
+    fn two_layers_setting_one_member_to_the_same_value_agree() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\n\
+             trait f extends targetLayout {}\n\
+             trait one extends target {\n  .style = \"wide\";\n}\n\
+             trait two extends target {\n  .style = \"wide\";\n}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f, \
+             layers = [one, two] });\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let t = entity_named(&model, "t");
+        assert_eq!(
+            model.entities[t].value("style"),
+            Some(&Interim::String("wide".to_string()))
+        );
+    }
+
     // @lfy def/interpret/main.lfy:expand#expand:expand:f2da259bc931b16b67600269961004bc2fdf0d760814936c7268ae3ed27c6981
     #[test]
     fn a_slot_holding_neither_a_trait_nor_a_layer_of_one_names_the_slot() {
@@ -6873,6 +7065,33 @@ mod tests {
         assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
         assert!(
             model.problems[0].message.contains("l takes 2 arguments as a layer, not 1"),
+            "{}",
+            model.problems[0].message
+        );
+        // A parameter with a default, like one marked optional, may be left out, so one
+        // argument is not fewer than the parameters a call must give.
+        let model = expanded_with_targets(
+            "trait l(name: string, root: string = \"o\") extends targetLanguage {}\n\
+             trait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l.layer(\"a\"), layout = f });\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let model = expanded_with_targets(
+            "trait l(name?: string) extends targetLanguage {}\n\
+             trait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l.layer(), layout = f });\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        // More arguments than parameters, with none of them a spread, is still a problem.
+        let model = expanded_with_targets(
+            "trait l(name: string) extends targetLanguage {}\n\
+             trait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", \
+             language = l.layer(\"a\", \"b\"), layout = f });\n",
+        );
+        assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+        assert!(
+            model.problems[0].message.contains("l takes 1 arguments as a layer, not 2"),
             "{}",
             model.problems[0].message
         );
@@ -6990,6 +7209,94 @@ mod tests {
         );
     }
 
+    // @lfy def/interpret/main.lfy:expand#expand:expand:9fd15ed81e451fcd9f336951362bbe3056f84d0c8a72848f35182827c6183df2
+    #[test]
+    fn a_data_that_names_a_target_const_holds_that_target() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\ntrait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f });\n\
+             d A {\n  @targets.add(t);\n}\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let t = entity_named(&model, "t");
+        let a = entity_named(&model, "A");
+        assert_eq!(model.entities[a].targets, vec![t]);
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:324d74ea224e2134d78f0caae9ebd1795e365b8febb4b1960cc6502006aac73a
+    #[test]
+    fn a_value_a_layer_sets_is_the_targets_own() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {\n  .markerComment = \"#\";\n}\n\
+             trait f extends targetLayout {}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f });\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let t = entity_named(&model, "t");
+        assert_eq!(
+            model.entities[t].value("markerComment"),
+            Some(&Interim::String("#".to_string()))
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:328d9016cb991330df7fe7040a6899ac273f8ac167bf7648ddb76949426a70e3
+    #[test]
+    fn a_criterion_of_a_layer_is_rendered_with_the_arguments_the_layer_was_given() {
+        let model = expanded_with_targets(
+            "trait l extends targetLanguage {}\n\
+             trait f(root: string) extends targetLayout {\n  \
+             where (`built`) -> `it is under {{root}}`;\n}\n\
+             ace const t = targetOf({ output = \"o\", language = l, layout = f.layer(\"o\") });\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let t = entity_named(&model, "t");
+        let f = entity_named(&model, "f");
+        let criterion = model.entities[t]
+            .acceptance_criteria
+            .iter()
+            .find(|criterion| criterion.contributor == f)
+            .expect("a criterion contributed by the layout");
+        assert_eq!(
+            criterion.behavior,
+            Some(vec!["it is under o".to_string()]),
+            "{criterion:?}"
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:6524f7346bf65638da4a1898089f030adb78c9937ba28ffcfa22b3fea141b329
+    #[test]
+    fn a_piece_of_knowledge_a_data_adds_is_its_own() {
+        let model = expanded_with_targets(
+            "d A {\n  \
+             @knowledge.add({ topic = `a guide`, kind = KnowledgeKind.reference, \
+             source = \"docs/a.md\", quote = true });\n}\n",
+        );
+        assert!(model.problems.is_empty(), "{:?}", model.problems);
+        let a = entity_named(&model, "A");
+        assert_eq!(
+            model.entities[a].knowledge,
+            vec![Knowledge {
+                topic: "a guide".to_string(),
+                kind: KnowledgeKind::Reference,
+                source: "docs/a.md".to_string(),
+                quote: Some(true),
+                contributor: a,
+            }]
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:expand#expand:expand:d6d80207ed7ea67fd728b58a28b9ec2288d778cb2ae43de5d0dcf264ce3abd1a
+    #[test]
+    fn a_context_layer_of_a_const_is_read_from_the_const_and_not_from_its_value() {
+        let mut model = bound("d A {}\nconst c = A;\nconst n = c@identifier;\n");
+        let declaration = nth(&model, 0, S::VariableDeclaration, 1);
+        let value = value_of(&model, declaration);
+        assert_eq!(
+            evaluate(&mut model, value),
+            Some(Evaluated::Value(Value::String("c".to_string())))
+        );
+    }
+
     // ---- evaluate ------------------------------------------------------------------
 
     // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:655f8825c2e70d824ae70edabe7443b7721c22be55823451930b947ed3672fc9
@@ -7002,6 +7309,40 @@ mod tests {
             evaluate(&mut model, value),
             Some(Evaluated::Value(Value::Number(3.0)))
         );
+    }
+
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:4df2a9ef8751412bab3ea9167a05658df60985f6593960415aadb51eb6973c1b
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:bb33b89909ec6ede4b06c592019c0381b73e99575350a939f2f20b06a6775738
+    #[test]
+    fn a_compile_time_value_is_read_before_the_declaration_that_holds_it() {
+        let mut model = bound("ace const a = b + 1;\nace const b = 2;\n");
+        let declaration = nth(&model, 0, S::VariableDeclaration, 0);
+        let value = value_of(&model, declaration);
+        assert_eq!(
+            evaluate(&mut model, value),
+            Some(Evaluated::Value(Value::Number(3.0)))
+        );
+    }
+
+    // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:721fecc6bbf7d7e099e34bedb0683a009eb68ac5cd6d2ab534899e76c11507a5
+    #[test]
+    fn a_node_is_evaluated_in_the_scope_it_is_written_in() {
+        let mut model = bound(
+            "ace const x = 1;\nfunction f(x: number) -> number {\n  return x;\n}\nconst n = x;\n",
+        );
+        // At the top of the file the name is the const.
+        let outer = value_of(&model, nth(&model, 0, S::VariableDeclaration, 1));
+        assert_eq!(
+            evaluate(&mut model, outer),
+            Some(Evaluated::Value(Value::Number(1.0)))
+        );
+        // The same name inside the function is its parameter, which only runtime answers.
+        let statement = first(&model, 0, S::Return);
+        let inner = model
+            .child(statement, S::ExpressionStatement)
+            .and_then(|s| model.child_nodes(s).into_iter().next())
+            .expect("the returned expression");
+        assert_eq!(evaluate(&mut model, inner), None);
     }
 
     // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:2da60593210808873570bc274bbe86668ab461197169994b03a18e4b09823ed7
@@ -7058,6 +7399,7 @@ mod tests {
     }
 
     // @lfy def/interpret/main.lfy:evaluate#evaluate:evaluate:3e472f6364107275a9eb1e7fbdf35e80d3d334ece89274fea50b202686c4c567
+    // @lfy def/interpret/main.lfy:expand#expand:expand:fbc7d19ecec253d62dde790e452968a3262f174b36abe019d91512e5e02c6165
     #[test]
     fn a_call_of_a_function_declared_outside_the_programs_runtime_code_is_run() {
         let library = source(
@@ -7265,6 +7607,7 @@ mod tests {
     // ---- lower ---------------------------------------------------------------------
 
     // @lfy def/interpret/main.lfy:lower#lower:lower:19c61e03880d4a18f2b273191a8e8ffae4a8b61376fa29fde230cb24987ab258
+    // @lfy def/interpret/main.lfy:lower#lower:lower:780cd0f400942687d110a357f183ca0c8d29ee46a09884327d3627fb3e2676ac
     #[test]
     fn a_data_is_kept_with_its_members_and_its_criteria_and_its_trait_is_dropped() {
         let program = lower(workspace(
@@ -7335,6 +7678,24 @@ mod tests {
             "{}",
             file.text
         );
+    }
+
+    /// The spelling is the one `typeTextOf` gives, so a predicate, a list, and a union all
+    /// read as they were written, and a type the model reads no further than its text is
+    /// spelled by that text rather than by a stand-in name.
+    // @lfy def/interpret/main.lfy:lower#lower:lower:1b8bbc7b6e2316e2fb3cfd378dd5fc01093dbefd96e6098d404519e88a6a68ae
+    #[test]
+    fn a_member_type_is_spelled_as_type_text_of_spells_it() {
+        let program = lower(workspace(
+            "d A {}\ntrait t {}\n\
+             d B {\n  $pred: `d` = is t;\n  $many: `d` = A[];\n}\n",
+        ));
+        let file = &program.files[0];
+        for written in ["$pred: `d` = is t;", "$many: `d` = A[];"] {
+            assert!(file.text.contains(written), "{written}: {}", file.text);
+        }
+        // Nothing is spelled by a stand-in name.
+        assert!(!file.text.contains("anonymous"), "{}", file.text);
     }
 
     // @lfy def/interpret/main.lfy:lower#lower:lower:80853ddbab06f702bb5005757c1b4ec768c77cb9b15b1be8a9713a493900dd40
@@ -7783,12 +8144,49 @@ mod tests {
         ));
         assert_eq!(program.problems.len(), 1, "{:?}", program.problems);
         assert!(
-            program.problems[0].message.contains("ace function"),
+            program.problems[0].message.contains("runs at compile time"),
             "{}",
             program.problems[0].message
         );
         let model = &program.workspace.model;
         assert!(model.is(program.problems[0].node, E::Call));
+    }
+
+    /// The other half of the same situation: a function declared outside the program's
+    /// runtime code runs wherever its call is written, so it will not be there at runtime
+    /// either, though nothing about it is `ace`.
+    // @lfy def/interpret/main.lfy:lower#lower:lower:62d2d27335ac81028f0c9e82819680564bcc9debd24a3e002e179a810efaa49f
+    #[test]
+    fn runtime_code_that_calls_a_package_function_with_no_compile_time_argument_is_a_problem() {
+        let library = source(
+            "lib/wrap.lfy",
+            "function wrap(held: string): `What it was given` -> string {\n  return held;\n}\n",
+            &[],
+            Origin::Library,
+        );
+        let main = source(
+            "lib/main.lfy",
+            "use \"./wrap\";",
+            &[Some("lib/wrap.lfy")],
+            Origin::Prelude,
+        );
+        let program = source(
+            "a.lfy",
+            "function f(x: string) -> string {\n  return wrap(x);\n}\n",
+            &[],
+            Origin::Program,
+        );
+        let lowered = lower(workspace_of(vec![library, main, program]));
+        assert_eq!(lowered.problems.len(), 1, "{:?}", lowered.problems);
+        assert!(
+            lowered.problems[0]
+                .message
+                .contains("runs at compile time"),
+            "{}",
+            lowered.problems[0].message
+        );
+        let model = &lowered.workspace.model;
+        assert!(model.is(lowered.problems[0].node, E::Call));
     }
 
     // @lfy def/interpret/main.lfy:lower#lower:lower:699284343b9ef81cb11db5668663aac649e418507ad5cea495ddceee254e4d43

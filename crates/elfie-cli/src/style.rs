@@ -14,7 +14,7 @@ use elfie_core::query::Severity;
 
 use crate::data::Step;
 
-/// When the CLI colors what it prints, as `--color` names it.
+/// When the CLI colors what it prints; each value is the word `--color` takes.
 // @lfy def/cli/style.lfy:ColorChoice
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorChoice {
@@ -42,6 +42,26 @@ impl ColorChoice {
     // @lfy def/cli/style.lfy:ColorChoice
     pub fn lookup(text: &str) -> Option<ColorChoice> {
         ColorChoice::ALL.into_iter().find(|choice| choice.value() == text)
+    }
+}
+
+/// One of the two text streams a process writes, as the standard library's
+/// `Process.Stream` names them: the two the CLI decides color for apart.
+// @lfy def/cli/style.lfy:colorsOn
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stream {
+    Output,
+    Error,
+}
+
+impl Stream {
+    /// Whether the stream is written to a terminal rather than a file or a pipe.
+    // @lfy def/cli/style.lfy:colorsOn
+    fn is_terminal(self) -> bool {
+        match self {
+            Stream::Output => std::io::stdout().is_terminal(),
+            Stream::Error => std::io::stderr().is_terminal(),
+        }
     }
 }
 
@@ -84,10 +104,10 @@ const ESCAPE: char = '\u{1b}';
 
 /// Whether text printed to one stream is colored.
 ///
-/// `choice` is what `--color` asked for; `is_error` is true for standard error and false for
-/// standard output, so the two streams are decided apart.
+/// `choice` is what `--color` asked for; `stream` is the stream the text is printed to, so
+/// standard output and standard error are decided apart.
 // @lfy def/cli/style.lfy:colorsOn
-pub fn colors_on(choice: ColorChoice, is_error: bool) -> bool {
+pub fn colors_on(choice: ColorChoice, stream: Stream) -> bool {
     let variable = |name: &str| std::env::var(name).ok();
     // @lfy def/cli/style.lfy:colorsOn
     colored(
@@ -95,14 +115,8 @@ pub fn colors_on(choice: ColorChoice, is_error: bool) -> bool {
         variable("NO_COLOR").as_deref(),
         variable("TERM").as_deref(),
         variable("CLICOLOR_FORCE").as_deref(),
-        // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:13ea2914d2ef0d42364a5666b7b2e3e5ad5a2bec225c08e5074369ec2a1486ed
-        || {
-            if is_error {
-                std::io::stderr().is_terminal()
-            } else {
-                std::io::stdout().is_terminal()
-            }
-        },
+        // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967
+        move || stream.is_terminal(),
     )
 }
 
@@ -119,7 +133,7 @@ fn colored(
 ) -> bool {
     match choice {
         // Always, whatever the environment says.
-        // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:301b6c7660010e2ddf5897afb4219bba93647bf791c7d83c62ffc2fd6dc246ed
+        // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:cd544380f546397d1071f89849f1daa1878e747601e015261b0c6b6ba3029a4f
         ColorChoice::Always => true,
         // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:51b5bc7dcc299fd9e0162c246879a8a7677937b08cdb8efab6713912b41d712f
         ColorChoice::Never => false,
@@ -134,11 +148,11 @@ fn colored(
                 return false;
             }
             // Any text but the empty one and 0 keeps color through a pager.
-            // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:08cff9bf4762648d7455742690fb1012d29c0148f78173fae42aeac6896769ad
+            // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:5ad3b31609f776334b71beceb50e4ed4c72f51139b57b31677bec1ba7b8ac634
             if force.is_some_and(|value| !value.is_empty() && value != "0") {
                 return true;
             }
-            // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:13ea2914d2ef0d42364a5666b7b2e3e5ad5a2bec225c08e5074369ec2a1486ed
+            // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967
             is_terminal()
         }
     }
@@ -147,8 +161,8 @@ fn colored(
 /// Text wrapped in the escapes that color it by its tone, or left as it is.
 ///
 /// `on` is whether the stream it goes to is colored, as [`colors_on`] decides. The reset
-/// always follows, so no color runs past the text, and [`width`] of what is returned is
-/// [`width`] of the text, so a painted column lines up as its plain text would.
+/// always follows the painted text, so no color runs past it, and the escapes take no
+/// columns, so a painted column lines up as its plain text would.
 // @lfy def/cli/style.lfy:paint
 pub fn paint(text: &str, tone: Tone, on: bool) -> String {
     // A stream that is not colored is the text unchanged.
@@ -158,24 +172,25 @@ pub fn paint(text: &str, tone: Tone, on: bool) -> String {
     if !on || text.is_empty() {
         return text.to_string();
     }
-    // The reset always follows, so no color runs past the text and what is returned measures
-    // what the text measures.
-    // @lfy def/cli/style.lfy:paint#paint:paint:a26b232d91a356a224e81e8eae8f29d98a73d6a42635d349c22851e7960204ae
-    // @lfy def/cli/style.lfy:paint#paint:paint:d2394fdec9545fbdcb8b86ed5786fe0b235b7a97b0aed0d14692666e082d6232
+    // The escape character, [, the value of the tone, m, the text, and the escape character,
+    // [, 0, m: the reset always follows, so no color runs past the text.
+    // @lfy def/cli/style.lfy:paint#paint:paint:908e76236a6f4a230ad82b290f0e2fb7b35a7cf4b83bf2aa7290709f3e7e1d55
     format!("{ESCAPE}[{}m{text}{ESCAPE}[0m", tone.value())
 }
 
-/// How many columns text takes in a terminal, painted or not.
+/// How many columns text takes in a terminal, painted or not: what [`padded`] fills up to,
+/// and what tells a caller which of several texts is the longest.
 ///
 /// Characters are counted, not bytes, and every escape sequence that begins with the escape
 /// character and `[` and ends with `m` is skipped, so painted and plain text measure the
 /// same.
-// @lfy def/cli/style.lfy:width
+// @lfy def/cli/style.lfy:padded
 pub fn width(text: &str) -> usize {
     let mut columns = 0;
     let mut characters = text.chars().peekable();
     while let Some(character) = characters.next() {
-        // @lfy def/cli/style.lfy:width#width:width:1c8bf7433715e6af2e4dc86332c9c837f8809157894f987235eead83163027cf
+        // An escape sequence takes no columns.
+        // @lfy def/cli/style.lfy:padded#padded:padded:2253ff73d22ed1d25a013fa11c2998d81885467ef3e649a57d0ad9f7c8a09555
         if character == ESCAPE && characters.peek() == Some(&'[') {
             characters.next();
             for inner in characters.by_ref() {
@@ -185,7 +200,8 @@ pub fn width(text: &str) -> usize {
             }
             continue;
         }
-        // @lfy def/cli/style.lfy:width#width:width:1c8bf7433715e6af2e4dc86332c9c837f8809157894f987235eead83163027cf
+        // Each character takes one column, however many bytes it has.
+        // @lfy def/cli/style.lfy:padded#padded:padded:0cc7a759efec56a39fec3ff1c04cb4db06c81adae743cd1d1b5cc92548386ee1
         columns += 1;
     }
     columns
@@ -196,11 +212,11 @@ pub fn width(text: &str) -> usize {
 // @lfy def/cli/style.lfy:padded
 pub fn padded(text: &str, columns: usize) -> String {
     let have = width(text);
-    // @lfy def/cli/style.lfy:padded#padded:padded:f4d261ad0420755417b66b9631cd961cc36a4f20f25082ab1f6cf0d2aff8ad98
+    // @lfy def/cli/style.lfy:padded#padded:padded:24bf222383423ca110cd5c6379c1e63c4a77daf3a3798e75c73e43044a118ef8
     if have >= columns {
         return text.to_string();
     }
-    // @lfy def/cli/style.lfy:padded#padded:padded:c7299e2ac1d307b6a6dfdb936fc07ea56be5e075d04dab33fca571b588efc33d
+    // @lfy def/cli/style.lfy:padded#padded:padded:8246266464e0a3704c9fd5653df6b5c7c806e0d53455d48116d131042168dac7
     format!("{text}{}", " ".repeat(columns - have))
 }
 
@@ -216,7 +232,7 @@ pub fn duration(seconds: f64) -> String {
     // A tenth of a second, truncated. The tiny margin undoes the error of holding a
     // decimal fraction in binary, so that 0.3 seconds is 0.3s rather than 0.2s; it is far
     // smaller than a tenth, so nothing is ever carried up to the next one.
-    // @lfy def/cli/style.lfy:duration#duration:duration:8ca88562d8c6e5dec77a957242a697f30dc0f73ac0cede5f8c4b237a76d0c419
+    // @lfy def/cli/style.lfy:duration#duration:duration:3fe7dc4f6bad3b5f682e726aa5513053726b47f2a663ac50b7f2dae9b9d906e4
     let tenths = (seconds * 10.0 + 1e-6).floor() as u64;
     let whole = tenths / 10;
     // @lfy def/cli/style.lfy:duration#duration:duration:bdaf33d10a559c31fed03ad63033171ff7748854325342070ef9005bcd9e726c
@@ -235,39 +251,40 @@ pub fn duration(seconds: f64) -> String {
 // @lfy def/cli/style.lfy:toneOf
 pub fn tone_of(step: Step) -> Tone {
     match step {
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:80d019b710b01db5e2ec24642071f7f1e01b6845806c26d4c35ae43b1a37bb87
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2
         Step::Accepted | Step::Reviewed | Step::GlobalReviewed => Tone::Success,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:7c99092c688d2e1c6afefb08fe08b45571d67677d1ae1f96b868c85f53c58dbb
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:7a3092b23685652356ef40136c995e18bdcb5ef3b54278d351b792cab9d62fbf
         Step::Rejected | Step::Failed => Tone::Failure,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:1d1d00113b3b3f23ccc6f043b93c4a0e372cafc331cedbbf972a0cdc45923fd5
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:9dfe6caa377e781205875223f7abe8b862523b0ebc84d556053c45413798b497
         Step::Retrying | Step::Blocked | Step::Clarification => Tone::Warning,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:bbca4f24023ee9e8c8a9cf9a5d9f763c46b4237ee5bb9566ab980120014c4409
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca
         Step::Requesting | Step::Compiling | Step::Checking | Step::Verifying | Step::GlobalVerifying => Tone::Active,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:58836dc724cf2963083aa70014885f28a3b6370d6f123ee57956f0b156ad301e
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7
         Step::Planned | Step::Finished => Tone::Subject,
     }
 }
 
-/// One character that marks a progress line's step, so the eye finds the outcomes without
-/// reading.
+/// One character that marks a progress line's step.
+///
+/// Each step has a glyph, so the eye finds the outcomes in a long compile without reading.
 // @lfy def/cli/style.lfy:glyphOf
 pub fn glyph_of(step: Step) -> &'static str {
     match step {
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:f5fc9102b729a1695599d9f1c60d947a06f66947aa31a72af718d62b08a0ba8c
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a
         Step::Planned | Step::Finished => "◆",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:18c86a248eae3e7333c065b9e2dc69023a465f7c5112c985230ddccaa2cc996c
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e
         Step::Requesting | Step::Checking => "·",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ff36ebe0ff46f6923c7a8c1123617f2ad6d7b5c219c1e3dc8ceef03e7e811d92
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e
         Step::Compiling | Step::Verifying | Step::GlobalVerifying => "▸",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:c72d261846854334790bdbce4677f86dcb6648858138ef897da2aa026e274640
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b
         Step::Accepted | Step::Reviewed | Step::GlobalReviewed => "✓",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:da6a8a46c2c6f5b8f318dc28656257270d35a12b752260f5d7b691075022951b
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c
         Step::Rejected | Step::Failed => "✗",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d4054bc957dfed7e7c21e21c6304298b7fd86cfad457a667298ef0af7cc5438d
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320
         Step::Retrying => "↻",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d4054bc957dfed7e7c21e21c6304298b7fd86cfad457a667298ef0af7cc5438d
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e
         Step::Blocked => "■",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d4054bc957dfed7e7c21e21c6304298b7fd86cfad457a667298ef0af7cc5438d
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da
         Step::Clarification => "?",
     }
 }
@@ -276,9 +293,11 @@ pub fn glyph_of(step: Step) -> &'static str {
 // @lfy def/cli/style.lfy:severityTone
 pub fn severity_tone(severity: Severity) -> Tone {
     match severity {
-        // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:988a081cdf2488795bd371340bfa3af51271217d1d6f89ff4be4c756bb79ea73
+        // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:6aa259ecfa3a4402af73a3d2711a299f29be7292e37ad3240a2c15bd518c7535
         Severity::Error => Tone::Failure,
+        // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:068fe8b78a1d721c071d0990013048e00b0432eea7cc9cc97b9afe24f7f87f11
         Severity::Warning => Tone::Warning,
+        // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:fcfa327db29ade75bdc1f35a572073de41cb1b08b69befea01c4cafefb760888
         Severity::Information | Severity::Hint => Tone::Active,
     }
 }
@@ -287,26 +306,29 @@ pub fn severity_tone(severity: Severity) -> Tone {
 // @lfy def/cli/style.lfy:statusTone
 pub fn status_tone(status: ReviewStatus) -> Tone {
     match status {
-        // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:b60eaf654eb94c310fcc43a7ae2efec00d4918c0f9ad0e6852dcc98f5aa08835
+        // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:c24f9f3c7757160b932c3f9d9582d7cf05c9fedad083bb2493348ce05446d8c6
         ReviewStatus::Satisfied => Tone::Success,
+        // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:981a47dfe41157a73faec41c3e843c11875d9344170d8d647af7824b03ddb8c6
         ReviewStatus::Violated => Tone::Failure,
+        // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:730e8685ff5d8c9ce873fb71fd6781c7e8981e167f121771f8f30972ccdab6b1
         ReviewStatus::Unverifiable => Tone::Warning,
     }
 }
 
-/// The tone a unit's reason is painted in; `None`, printed as up to date, is muted.
+/// The tone a unit's reason, or up to date, is painted in; `None`, printed as up to date, is
+/// muted.
 // @lfy def/cli/style.lfy:reasonTone
 pub fn reason_tone(reason: Option<Reason>) -> Tone {
     match reason {
-        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:8d6898f1de1b0a930511711a62d207dc605bbf10d23c194db8d0d5c99027adc9
+        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:f04315f94350f0bef98ff50819e968748e5c2f083dceda0c6493aae64397be61
         Some(Reason::Requested) => Tone::Active,
-        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:8d6898f1de1b0a930511711a62d207dc605bbf10d23c194db8d0d5c99027adc9
+        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:f27ff452bb57d8763b5de9c9e6038486b6c8c90d53d811f4c80848a3d0c338c6
         Some(Reason::Fresh) => Tone::Success,
-        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:766ff7ed234740d82081af5018d2c64a3edcda40c6ecdc9e437c3e25256f5a99
+        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:fad0ecf92e8cdc3f558beb6dc223b89dabbe5835f98cb7d605d233975a5dd3bb
         Some(Reason::Changed | Reason::Requirements | Reason::Dependency) => Tone::Warning,
-        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:6e3e72b4caa7cfe4a0b109f5211121030d44d883f3b9583151f1640e720c38a8
+        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:75be1cb8a9f16327a21946c1232feac3af781c105e0528e0b0b537dd6c7ad085
         Some(Reason::Violated) => Tone::Failure,
-        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:6a45d395babe1a35f49fcc8e83830ef2477f6b524531a1baf31095cdffa95a09
+        // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:dcd627388a7601c2b33f1da9e26b5f10a796a79110967bf946361afce58a56de
         None => Tone::Muted,
     }
 }
@@ -317,10 +339,9 @@ pub fn reason_tone(reason: Option<Reason>) -> Tone {
 /// tone, and 0 is muted, so a summary shows at a glance which counts matter.
 // @lfy def/cli/style.lfy:tally
 pub fn tally(count: usize, label: &str, tone: Tone, on: bool) -> String {
-    // @lfy def/cli/style.lfy:tally#tally:tally:d5560e01139c5b0cceeea67c7f5579d2dbd37213245e5f781499a076fdde4de1
     let text = format!("{count} {label}");
-    // @lfy def/cli/style.lfy:tally#tally:tally:df353484a54814b80445678c577e6e3e4cf2405d8c9de995bb17acac86ca4d8b
-    // @lfy def/cli/style.lfy:tally#tally:tally:4cccc0e5af75e2d33b3b247f091056de3fae98a0aecb15e962e97b9e6ff06ebb
+    // @lfy def/cli/style.lfy:tally#tally:tally:22ccbf3f063d8cff61ae44b8bc0c48122eac7cbd166657279f6a9ddbc3a4aa47
+    // @lfy def/cli/style.lfy:tally#tally:tally:808090fb00651fdad96557306be003862711eb272672639c39f0e28851b18aaa
     paint(&text, if count == 0 { Tone::Muted } else { tone }, on)
 }
 
@@ -380,19 +401,19 @@ mod tests {
         assert_eq!(Tone::Muted.value(), "2");
     }
 
-    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:826819f63633d9f55a14686004593dc83a45240b548d4948f442673fe73bc38a
-    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:301b6c7660010e2ddf5897afb4219bba93647bf791c7d83c62ffc2fd6dc246ed
+    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:ff6531ae54a65c432ac61bfcfec9bed47ec3035c12287116d69a25c95fcfe8be
+    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:cd544380f546397d1071f89849f1daa1878e747601e015261b0c6b6ba3029a4f
     #[test]
     fn always_is_colored_whatever_the_environment_says() {
-        assert!(colors_on(ColorChoice::Always, false));
+        assert!(colors_on(ColorChoice::Always, Stream::Output));
         assert!(colored(ColorChoice::Always, Some("1"), Some("dumb"), None, never));
     }
 
-    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:4ccddab6622467889792bc98c596017ee97bef82aa54a6b5704456a4ef6d14b0
+    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:d7a9fd32a01c9a0c828826be76e0eb10eeca5a3d0a1dfe80b4288ecfd480676e
     // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:51b5bc7dcc299fd9e0162c246879a8a7677937b08cdb8efab6713912b41d712f
     #[test]
     fn never_is_not_colored() {
-        assert!(!colors_on(ColorChoice::Never, true));
+        assert!(!colors_on(ColorChoice::Never, Stream::Error));
         assert!(!colored(ColorChoice::Never, None, None, Some("1"), always));
     }
 
@@ -410,15 +431,15 @@ mod tests {
         assert!(!colored(ColorChoice::Auto, None, Some("dumb"), Some("1"), always));
     }
 
-    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:08cff9bf4762648d7455742690fb1012d29c0148f78173fae42aeac6896769ad
+    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:5ad3b31609f776334b71beceb50e4ed4c72f51139b57b31677bec1ba7b8ac634
     #[test]
     fn clicolor_force_keeps_color_through_a_pager() {
         assert!(colored(ColorChoice::Auto, None, Some("xterm"), Some("1"), never));
         assert!(colored(ColorChoice::Auto, Some(""), None, Some("yes"), never));
     }
 
-    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:a46d5515967b7a194a7948144cb6fd6cb6d984e19efecb3bb61dc7d1056df775
-    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:13ea2914d2ef0d42364a5666b7b2e3e5ad5a2bec225c08e5074369ec2a1486ed
+    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:c012147bba6d569ae6683005e50792f5c5e585587e8abb223960264ef3aaf77f
+    // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967
     #[test]
     fn auto_with_nothing_forcing_it_is_what_the_stream_is() {
         // Standard output, piped with CLICOLOR_FORCE unset, is not colored.
@@ -426,10 +447,14 @@ mod tests {
         assert!(!colored(ColorChoice::Auto, None, None, Some(""), never));
         assert!(!colored(ColorChoice::Auto, None, None, Some("0"), never));
         assert!(colored(ColorChoice::Auto, None, None, None, always));
+        // Each stream is asked about itself, so the two are decided apart.
+        // @lfy def/cli/style.lfy:colorsOn#colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967
+        assert_eq!(colors_on(ColorChoice::Auto, Stream::Output), Stream::Output.is_terminal());
+        assert_eq!(colors_on(ColorChoice::Auto, Stream::Error), Stream::Error.is_terminal());
     }
 
     // @lfy def/cli/style.lfy:paint#paint:paint:de381fd52ede1936e22b7a7e414805c9ffc5e7f5f98bb6e0604f5293bd584bd9
-    // @lfy def/cli/style.lfy:paint#paint:paint:a26b232d91a356a224e81e8eae8f29d98a73d6a42635d349c22851e7960204ae
+    // @lfy def/cli/style.lfy:paint#paint:paint:908e76236a6f4a230ad82b290f0e2fb7b35a7cf4b83bf2aa7290709f3e7e1d55
     #[test]
     fn paint_wraps_text_in_the_escapes_of_its_tone() {
         assert_eq!(paint("ok", Tone::Success, true), "\u{1b}[32mok\u{1b}[0m");
@@ -451,49 +476,44 @@ mod tests {
         assert_eq!(paint("", Tone::Failure, true), "");
     }
 
-    // @lfy def/cli/style.lfy:paint#paint:paint:d2394fdec9545fbdcb8b86ed5786fe0b235b7a97b0aed0d14692666e082d6232
-    #[test]
-    fn a_painted_column_lines_up_as_its_plain_text_would() {
-        for tone in [Tone::Success, Tone::Failure, Tone::Warning, Tone::Active, Tone::Subject, Tone::Muted] {
-            assert_eq!(width(&paint("batch", tone, true)), width("batch"));
-        }
-    }
-
-    // @lfy def/cli/style.lfy:width#width:width:9e76b8b723f9540e09b2b776dfaf845e2b8f285bc83a5fa25fc213b3c105409b
-    #[test]
-    fn width_counts_the_characters_of_plain_text() {
-        assert_eq!(width("batch"), 5);
-        assert_eq!(width(""), 0);
-    }
-
-    // @lfy def/cli/style.lfy:width#width:width:f3f70bd8393933c75f4154e52e6fc1f09b03e7021c28ce686f23c8627dceb52a
-    // @lfy def/cli/style.lfy:width#width:width:1c8bf7433715e6af2e4dc86332c9c837f8809157894f987235eead83163027cf
-    #[test]
-    fn width_skips_every_escape_sequence() {
-        assert_eq!(width("\u{1b}[1mbatch\u{1b}[0m"), 5);
-    }
-
-    // @lfy def/cli/style.lfy:width#width:width:d4af67135cd0c7d3c956c72196261778e010f8d01c709e4ef3500b5322e4fb32
-    #[test]
-    fn width_counts_characters_and_not_bytes() {
-        assert_eq!(width("✓ ok"), 4);
-    }
-
     // @lfy def/cli/style.lfy:padded#padded:padded:26429a29e6c03161f9989e316d03d7775c25e490bc1cde9771e058db8d3b9359
-    // @lfy def/cli/style.lfy:padded#padded:padded:c7299e2ac1d307b6a6dfdb936fc07ea56be5e075d04dab33fca571b588efc33d
+    // @lfy def/cli/style.lfy:padded#padded:padded:8246266464e0a3704c9fd5653df6b5c7c806e0d53455d48116d131042168dac7
     #[test]
     fn padded_appends_spaces_up_to_the_width() {
         assert_eq!(padded("ab", 4), "ab  ");
-        // A painted text is padded by what it measures, not by its bytes.
-        assert_eq!(width(&padded(&paint("ab", Tone::Subject, true), 4)), 4);
+        assert_eq!(width(&padded("ab", 4)), 4);
     }
 
     // @lfy def/cli/style.lfy:padded#padded:padded:d13e67da436a0aaa2823e82520f26b91a24330e945f857cb910c002a6078a097
-    // @lfy def/cli/style.lfy:padded#padded:padded:f4d261ad0420755417b66b9631cd961cc36a4f20f25082ab1f6cf0d2aff8ad98
+    // @lfy def/cli/style.lfy:padded#padded:padded:24bf222383423ca110cd5c6379c1e63c4a77daf3a3798e75c73e43044a118ef8
     #[test]
     fn padded_never_cuts() {
         assert_eq!(padded("abcdef", 4), "abcdef");
         assert_eq!(padded("ab", 2), "ab");
+    }
+
+    // @lfy def/cli/style.lfy:padded#padded:padded:cb1f3b1f598c5d084090f45e30f5eddee904bcc25fb6e54a99b38058e89a8210
+    // @lfy def/cli/style.lfy:padded#padded:padded:2253ff73d22ed1d25a013fa11c2998d81885467ef3e649a57d0ad9f7c8a09555
+    #[test]
+    fn an_escape_sequence_takes_no_columns() {
+        assert_eq!(padded("\u{1b}[1mab\u{1b}[0m", 4), "\u{1b}[1mab\u{1b}[0m  ");
+        assert_eq!(width("\u{1b}[1mbatch\u{1b}[0m"), 5);
+        // So a painted column lines up as its plain text would.
+        // @lfy def/cli/style.lfy:padded#padded:padded:2253ff73d22ed1d25a013fa11c2998d81885467ef3e649a57d0ad9f7c8a09555
+        for tone in [Tone::Success, Tone::Failure, Tone::Warning, Tone::Active, Tone::Subject, Tone::Muted] {
+            assert_eq!(width(&paint("batch", tone, true)), width("batch"));
+        }
+        assert_eq!(width(&padded(&paint("ab", Tone::Subject, true), 4)), 4);
+    }
+
+    // @lfy def/cli/style.lfy:padded#padded:padded:4b684620f67ebc661bcabb5995a649fa4519006dc7a42fe29f75544a5b3becf2
+    // @lfy def/cli/style.lfy:padded#padded:padded:0cc7a759efec56a39fec3ff1c04cb4db06c81adae743cd1d1b5cc92548386ee1
+    #[test]
+    fn each_character_takes_one_column_however_many_bytes_it_has() {
+        assert_eq!(padded("✓ ok", 5), "✓ ok ");
+        assert_eq!(width("✓ ok"), 4);
+        assert_eq!(width("batch"), 5);
+        assert_eq!(width(""), 0);
     }
 
     // @lfy def/cli/style.lfy:duration#duration:duration:8a51c8b1053d1d0b2bebccc2a31c2a9c19dda84690ab75418fddf2ecd276b196
@@ -512,7 +532,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:duration#duration:duration:5cceda616cd0c4c6cce21639c18f4b5f3b5646b449845b99d8c12cec76451e09
-    // @lfy def/cli/style.lfy:duration#duration:duration:8ca88562d8c6e5dec77a957242a697f30dc0f73ac0cede5f8c4b237a76d0c419
+    // @lfy def/cli/style.lfy:duration#duration:duration:3fe7dc4f6bad3b5f682e726aa5513053726b47f2a663ac50b7f2dae9b9d906e4
     #[test]
     fn every_part_of_a_duration_is_truncated_and_never_rounded_up() {
         assert_eq!(duration(59.99), "59.9s");
@@ -535,7 +555,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:26e771016ac5d78412265b6ce2f642e945bad5ab4c390694540e314c9e2db6d3
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:80d019b710b01db5e2ec24642071f7f1e01b6845806c26d4c35ae43b1a37bb87
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2
     #[test]
     fn accepted_reviewed_and_global_reviewed_are_success() {
         assert_eq!(tone_of(Step::Accepted), Tone::Success);
@@ -544,7 +564,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:398ba084d601d05be00d95e4cb7fa05f7d4b9d5b77ada16eaee2e88e9ecb9258
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:7c99092c688d2e1c6afefb08fe08b45571d67677d1ae1f96b868c85f53c58dbb
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:7a3092b23685652356ef40136c995e18bdcb5ef3b54278d351b792cab9d62fbf
     #[test]
     fn rejected_and_failed_are_failure() {
         assert_eq!(tone_of(Step::Rejected), Tone::Failure);
@@ -552,7 +572,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:64ef0ccf8dc53c748db7e22025891b0e5700055323e7c72d20738955e09a9822
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:1d1d00113b3b3f23ccc6f043b93c4a0e372cafc331cedbbf972a0cdc45923fd5
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:9dfe6caa377e781205875223f7abe8b862523b0ebc84d556053c45413798b497
     #[test]
     fn retrying_blocked_and_clarification_are_warning() {
         assert_eq!(tone_of(Step::Clarification), Tone::Warning);
@@ -561,7 +581,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:e62a94e69d89b6cf00197a96f8e054019c8bc20c03f01ea04442e78b3bdfb462
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:bbca4f24023ee9e8c8a9cf9a5d9f763c46b4237ee5bb9566ab980120014c4409
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca
     #[test]
     fn the_steps_under_way_are_active() {
         assert_eq!(tone_of(Step::Compiling), Tone::Active);
@@ -571,7 +591,7 @@ mod tests {
         assert_eq!(tone_of(Step::GlobalVerifying), Tone::Active);
     }
 
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:58836dc724cf2963083aa70014885f28a3b6370d6f123ee57956f0b156ad301e
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7
     #[test]
     fn planned_and_finished_are_subject() {
         assert_eq!(tone_of(Step::Planned), Tone::Subject);
@@ -579,7 +599,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:f7a6ac7720627542ea682c531652973a124ab72f22c3acd82dc2b7e51a5c1c9c
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:c72d261846854334790bdbce4677f86dcb6648858138ef897da2aa026e274640
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b
     #[test]
     fn accepted_reviewed_and_global_reviewed_are_a_check() {
         assert_eq!(glyph_of(Step::Accepted), "✓");
@@ -588,7 +608,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:fea38d82fe4a7ac92d163cfb7f1268f6f986aa94cd99f2e727006e6c6f0b6961
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:da6a8a46c2c6f5b8f318dc28656257270d35a12b752260f5d7b691075022951b
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c
     #[test]
     fn rejected_and_failed_are_a_cross() {
         assert_eq!(glyph_of(Step::Failed), "✗");
@@ -596,7 +616,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:e121e7b63e58ebedb21c162928a8e56a1198652788186652f3df7180185086ed
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ff36ebe0ff46f6923c7a8c1123617f2ad6d7b5c219c1e3dc8ceef03e7e811d92
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e
     #[test]
     fn compiling_verifying_and_global_verifying_are_a_triangle() {
         assert_eq!(glyph_of(Step::Compiling), "▸");
@@ -604,21 +624,23 @@ mod tests {
         assert_eq!(glyph_of(Step::GlobalVerifying), "▸");
     }
 
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:f5fc9102b729a1695599d9f1c60d947a06f66947aa31a72af718d62b08a0ba8c
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a
     #[test]
     fn planned_and_finished_are_a_diamond() {
         assert_eq!(glyph_of(Step::Planned), "◆");
         assert_eq!(glyph_of(Step::Finished), "◆");
     }
 
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:18c86a248eae3e7333c065b9e2dc69023a465f7c5112c985230ddccaa2cc996c
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e
     #[test]
     fn requesting_and_checking_are_a_dot() {
         assert_eq!(glyph_of(Step::Requesting), "·");
         assert_eq!(glyph_of(Step::Checking), "·");
     }
 
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d4054bc957dfed7e7c21e21c6304298b7fd86cfad457a667298ef0af7cc5438d
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da
     #[test]
     fn retrying_blocked_and_clarification_have_a_glyph_of_their_own() {
         assert_eq!(glyph_of(Step::Retrying), "↻");
@@ -631,7 +653,8 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:b887b8bbc3bf0d2b35204bb8d40567ee15b8359515d842f0b6aefce7c1514016
-    // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:988a081cdf2488795bd371340bfa3af51271217d1d6f89ff4be4c756bb79ea73
+    // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:6aa259ecfa3a4402af73a3d2711a299f29be7292e37ad3240a2c15bd518c7535
+    // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:068fe8b78a1d721c071d0990013048e00b0432eea7cc9cc97b9afe24f7f87f11
     #[test]
     fn a_severity_has_the_tone_it_means() {
         assert_eq!(severity_tone(Severity::Error), Tone::Failure);
@@ -640,13 +663,16 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:e7820cabe74cc4201ffdb24b7474cf75c4637ae197453aa49d6ec67a0e8c2a38
+    // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:fcfa327db29ade75bdc1f35a572073de41cb1b08b69befea01c4cafefb760888
     #[test]
     fn a_hint_is_active() {
         assert_eq!(severity_tone(Severity::Hint), Tone::Active);
+        assert_eq!(severity_tone(Severity::Information), Tone::Active);
     }
 
     // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:48c63f43020ad019c2446d8b0fcdd7e4649b5cbc68a8f6ce859cbb3d2335d80b
-    // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:b60eaf654eb94c310fcc43a7ae2efec00d4918c0f9ad0e6852dcc98f5aa08835
+    // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:c24f9f3c7757160b932c3f9d9582d7cf05c9fedad083bb2493348ce05446d8c6
+    // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:730e8685ff5d8c9ce873fb71fd6781c7e8981e167f121771f8f30972ccdab6b1
     #[test]
     fn a_status_has_the_tone_it_means() {
         assert_eq!(status_tone(ReviewStatus::Satisfied), Tone::Success);
@@ -654,13 +680,14 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:59313569ee3ab4c04e0454da3401560e252509eca59d21dc061524c8abaed292
+    // @lfy def/cli/style.lfy:statusTone#statusTone:statusTone:981a47dfe41157a73faec41c3e843c11875d9344170d8d647af7824b03ddb8c6
     #[test]
     fn a_violated_review_is_failure() {
         assert_eq!(status_tone(ReviewStatus::Violated), Tone::Failure);
     }
 
     // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:28cde573f1e33dad6b6c8133c43fe701cc242358daa04c84ac138f95353bc234
-    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:766ff7ed234740d82081af5018d2c64a3edcda40c6ecdc9e437c3e25256f5a99
+    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:fad0ecf92e8cdc3f558beb6dc223b89dabbe5835f98cb7d605d233975a5dd3bb
     #[test]
     fn changed_requirements_and_dependency_are_warning() {
         assert_eq!(reason_tone(Some(Reason::Changed)), Tone::Warning);
@@ -669,20 +696,21 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:8d6a1a88a7c0cd4d32dd28b82d1a681c15cfca1dae5ce97b36d3463f874a07bd
-    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:6e3e72b4caa7cfe4a0b109f5211121030d44d883f3b9583151f1640e720c38a8
+    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:75be1cb8a9f16327a21946c1232feac3af781c105e0528e0b0b537dd6c7ad085
     #[test]
     fn a_violated_unit_is_failure() {
         assert_eq!(reason_tone(Some(Reason::Violated)), Tone::Failure);
     }
 
     // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:692c8c2a7bd4e2e8b9e12899b0cffe1543db43a1dbeb701777c21d76f320927b
-    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:6a45d395babe1a35f49fcc8e83830ef2477f6b524531a1baf31095cdffa95a09
+    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:dcd627388a7601c2b33f1da9e26b5f10a796a79110967bf946361afce58a56de
     #[test]
     fn a_unit_that_is_up_to_date_is_muted() {
         assert_eq!(reason_tone(None), Tone::Muted);
     }
 
-    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:8d6898f1de1b0a930511711a62d207dc605bbf10d23c194db8d0d5c99027adc9
+    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:f04315f94350f0bef98ff50819e968748e5c2f083dceda0c6493aae64397be61
+    // @lfy def/cli/style.lfy:reasonTone#reasonTone:reasonTone:f27ff452bb57d8763b5de9c9e6038486b6c8c90d53d811f4c80848a3d0c338c6
     #[test]
     fn requested_is_active_and_fresh_is_success() {
         assert_eq!(reason_tone(Some(Reason::Requested)), Tone::Active);
@@ -690,8 +718,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:tally#tally:tally:d0304e1e1a879d6fbb15edea0c7f5612a2dc8e06e0314f9d56253d6a1544e92d
-    // @lfy def/cli/style.lfy:tally#tally:tally:df353484a54814b80445678c577e6e3e4cf2405d8c9de995bb17acac86ca4d8b
-    // @lfy def/cli/style.lfy:tally#tally:tally:d5560e01139c5b0cceeea67c7f5579d2dbd37213245e5f781499a076fdde4de1
+    // @lfy def/cli/style.lfy:tally#tally:tally:22ccbf3f063d8cff61ae44b8bc0c48122eac7cbd166657279f6a9ddbc3a4aa47
     #[test]
     fn a_count_that_is_not_zero_is_painted_in_its_tone() {
         assert_eq!(tally(2, "rejected", Tone::Failure, true), "\u{1b}[31m2 rejected\u{1b}[0m");
@@ -700,7 +727,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:tally#tally:tally:99193b5bef282bd8e2f1340ab99b6f172e5abb8a11b4d354e823c86c4bb65a72
-    // @lfy def/cli/style.lfy:tally#tally:tally:4cccc0e5af75e2d33b3b247f091056de3fae98a0aecb15e962e97b9e6ff06ebb
+    // @lfy def/cli/style.lfy:tally#tally:tally:808090fb00651fdad96557306be003862711eb272672639c39f0e28851b18aaa
     #[test]
     fn a_count_of_zero_is_muted() {
         assert_eq!(tally(0, "rejected", Tone::Failure, true), "\u{1b}[2m0 rejected\u{1b}[0m");

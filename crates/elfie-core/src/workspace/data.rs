@@ -173,7 +173,8 @@ pub struct Workspace {
     pub problems: Vec<WorkspaceProblem>, // @lfy def/workspace/data.lfy:Workspace.problems
     /// The files `change` replaced, by path, holding the text each is read as instead of
     /// what is on disk. A replacement stands until the same path is given again.
-    pub overlays: BTreeMap<String, String>, // @lfy def/workspace/main.lfy:change
+    // @lfy def/workspace/main.lfy:change#change:change:ffba7bf1aadfe9658e1cc3606237a6f446338ee57a72c8a92ba0c5e9f12e2448
+    pub overlays: BTreeMap<String, String>,
 }
 
 // @lfy def/workspace/data.lfy:Workspace

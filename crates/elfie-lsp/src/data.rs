@@ -24,7 +24,6 @@ pub enum Encoding {
     Utf8, // @lfy def/lsp/data.lfy:Encoding.utf8
     #[default]
     Utf16, // @lfy def/lsp/data.lfy:Encoding.utf16
-    Utf32, // @lfy def/lsp/data.lfy:Encoding.utf32
 }
 
 impl Encoding {
@@ -33,7 +32,6 @@ impl Encoding {
         match self {
             Encoding::Utf8 => "utf-8",
             Encoding::Utf16 => "utf-16",
-            Encoding::Utf32 => "utf-32",
         }
     }
 
@@ -42,7 +40,6 @@ impl Encoding {
         match self {
             Encoding::Utf8 => PositionEncodingKind::UTF8,
             Encoding::Utf16 => PositionEncodingKind::UTF16,
-            Encoding::Utf32 => PositionEncodingKind::UTF32,
         }
     }
 
@@ -51,7 +48,6 @@ impl Encoding {
         match self {
             Encoding::Utf8 => c.len_utf8(),
             Encoding::Utf16 => c.len_utf16(),
-            Encoding::Utf32 => 1,
         }
     }
 }
