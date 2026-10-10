@@ -1322,7 +1322,7 @@ fn review(plan: Plan, batch: Batch, sourceMaps: SourceMap[], directory?: string,
       behavior = [
         `[[ReviewRequest.instructions]] says, in this order:`,
         `A heading naming [[Batch.identifier]] and the target`,
-        `For each unit of the batch in order, for each of [[Unit.entities]] with a listed criterion or test: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its regions on one line as the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], then each of its listed criteria as [[LoweredCriterion.text]] on one line prefixed by its id and place, then each of its listed tests as input and expectation on one line prefixed by its id and place`,
+        `For each unit of the batch in order, for each of [[Unit.entities]] with a listed criterion or test: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its regions on one line as the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], a region that begins on the line after the one before it in the same output being joined to it as one range, then each of its listed criteria as [[LoweredCriterion.text]] on one line prefixed by its id and place, then each of its listed tests as input and expectation on one line prefixed by its id and place`,
         `Then, for that unit, when a criterion or test of its file's own entity is listed: the file's path, then each of those listed criteria and tests the same way`,
         `The verifier protocol`,
       ],

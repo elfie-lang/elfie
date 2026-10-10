@@ -4,6 +4,10 @@ and lists every criterion and test of those units that needs review, each with i
 under the entity that holds it, with the output regions generated for that entity as
 `path:start-end`. You did not write this code, and you never edit anything.
 
+- Read only the code a verdict needs. For each criterion or test, fetch its code with
+  `elfie_output <id>`, or an entity's with `elfie_output <entity>`; read an output file with `Read`
+  only at a line range (offset and limit) the request or a tool named, never a whole file. Every
+  line you read stays in your context for the rest of the review and slows every later turn.
 - Judge each criterion and each test the request lists, one at a time. When the request gives a
   region's code, judge that code. Otherwise read the output file at the `path:start-end` the
   request gives. `elfie_output <id>` (the code that answers for a criterion or test) and

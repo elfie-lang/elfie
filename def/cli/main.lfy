@@ -940,6 +940,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = `A run of the compiler or the verifier returns its [[Process.Exit]]`,
       behavior = `[[McpData.Host.close]] of the run's session URL is called before the run's outcome is read`,
+    })
+    .add({
+      situation = `A run of the compiler or the verifier returns its [[Process.Exit]]`,
+      behavior = `The run's MCP config file is removed, since the token it holds no longer opens anything`,
     });
 
   // Running the compiler
