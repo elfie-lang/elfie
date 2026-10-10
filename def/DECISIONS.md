@@ -497,9 +497,13 @@ was chosen.
   list-valued `provides`, `requires`, and `outputExtensions` gather every layer's items.
 - **Selection is `@targets`**: an entity's own list, else its file's, else `global`'s. Reaching an
   entity not built for the same target is a plan problem.
-- **Knowledge and commands** are context lists on every entity, filled like criteria. Elfie never
-  runs a command; the request lists them. There is deliberately no flag saying whether the
-  compiler knows a layer: what it may not know is knowledge, and how to use it is criteria.
+- **Knowledge and commands** are context lists on every entity, filled like criteria. The request
+  lists the commands. Acceptance never runs one. The agent server's command tools (`elfie_build`,
+  `elfie_test`, `elfie_lint`, `elfie_format`) run the target's declared command for their
+  operation only when an agent in a hosted session calls them, in that run's directory. A session
+  is offered such a tool only when its target has a command with a line for that operation. There
+  is deliberately no flag saying whether the compiler knows a layer: what it may not know is
+  knowledge, and how to use it is criteria.
 - **The compiler's record keeps the name `Target`** (`def/workspace/data.lfy`). Files that need the
   library's record take it as `Targets.Target`, so nothing else had to be renamed.
 - **Migration.** The step-1 compile is run by the binary that reads the old `elfie.json`, so the

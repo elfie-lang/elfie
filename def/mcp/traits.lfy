@@ -38,7 +38,8 @@ trait tool: `Exposed to agents as one tool of the server` {
 // Decision: a command that exits with a code other than 0 is an answer, not a failure of the tool,
 // so the agent reads why from the output and never from an error.
 // Decision: commands run in one directory share its build artifacts and lock files, so they run one
-// at a time, while a command in another directory never waits for them.
+// at a time, while a command in another directory never waits for them; a command that hangs is
+// stopped after 30 minutes so the queue behind it always moves on.
 // Decision: the output kept is the tail, where a build or a test run states its outcome, plus the
 // earlier lines that name an error or a warning and the line after each, which is where a compiler
 // says where; the limits keep a whole result to a few hundred lines.
@@ -69,6 +70,13 @@ trait commandTool(operation: Operation): `Runs the target's command for one oper
   where (`A call of elfie_{{@identifier}} runs the target's command`) -> `Its working directory is [[Target.outputDirectory]] of the target under [[Binding.directory]]`;
   where (`A call of elfie_{{@identifier}} runs the target's command`) -> `Its environment sets RUN_SCRIPT to [[Target.scriptRunner]] of the target, or to the empty string when that is undefined`;
   where (`A call of elfie_{{@identifier}} runs the target's command`) -> `elfie_{{@identifier}} returns only once the command has ended`;
+  where (`The command is still running 30 minutes after it started`) -> [
+    `It is stopped, and it has ended`,
+    `[[CommandRun.succeeded]] is false`,
+    `[[CommandRun.exitCode]] is -1`,
+    `[[CommandRun.output]] ends, after the lines kept as for any run, with a line reading [elfie: stopped after 30 minutes]`,
+    `The next call waiting for the same [[Binding.directory]] runs its command`,
+  ];
   where (`A call of elfie_{{@identifier}} is about to run the target's command`) and (`A call of a command tool, of this session or another, that arrived earlier for the same [[Binding.directory]] has not ended`) -> `The command starts only once every such call has ended, and the calls for one directory run their commands in the order they arrived`;
 
   // The result

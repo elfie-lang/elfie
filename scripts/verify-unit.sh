@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # The verifier command `elfie compile` and `elfie verify` run once per batch: Claude Code, given
 # the review request on standard input, with the Elfie agent server and permission to read and to
-# run cargo, never to edit or write. ELFIE_ROOT, ELFIE_BATCH, ELFIE_UNITS, and ELFIE_MCP_CONFIG are
-# set by the caller; the root is the working directory. ELFIE_MCP_CONFIG names the config of the
-# session the compile hosts for this run, whose elfie_report takes each verdict as it is judged;
-# without it, as when run by hand, the agent server is the one .mcp.json starts, which has no
-# elfie_report, and the verdicts are read from standard output instead.
+# build and test, through the server's command tools or cargo, never to edit or write. ELFIE_ROOT,
+# ELFIE_BATCH, ELFIE_UNITS, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set by the caller; the
+# root is the working directory. ELFIE_MCP_CONFIG names the config of the session the compile hosts
+# for this run, whose elfie_report takes each verdict as it is judged; without it, as when run by
+# hand, the agent server is the one .mcp.json starts, which has no elfie_report, and the verdicts
+# are read from standard output instead.
 set -e
 # The agent server's tools are loaded up front rather than deferred behind a tool search, and no
 # other MCP server is started, so the elfie tools are the first thing the agent sees to reach for.
@@ -20,11 +21,12 @@ export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 # Definitions are read only through the agent server, which answers for an entity, a name, or a
 # file at once; reading or searching def/ and lib/ by hand is denied. Generated code stays open to
 # Read and Grep, for the helpers no marker names.
-# In a session the compile hosts, the target's build and test commands are tools of the agent
-# server (elfie_build, elfie_test), run in this run's directory one at a time, so no shell is
-# allowed at all. Without one, as with an older binary or a run by hand, cargo is run through Bash
-# as before.
-if [ -n "${ELFIE_MCP_CONFIG:-}" ]; then
+# ELFIE_COMMAND_TOOLS names the command tools the hosted session offers, such as
+# `elfie_build elfie_test elfie_lint`: each runs the target's command in this run's directory, one
+# at a time. When it names any, the verifier needs no shell at all, so Bash is denied outright;
+# when it is empty or unset, as with an older binary or a run by hand, cargo test and cargo build
+# are allowed through Bash, as before.
+if [ -n "${ELFIE_COMMAND_TOOLS:-}" ]; then
   allowed="Read Glob Grep mcp__elfie__*"
   denied="Bash"
 else

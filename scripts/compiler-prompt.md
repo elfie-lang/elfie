@@ -32,9 +32,9 @@ definition file compiled for one target. Produce its outputs and nothing else.
   wrote; narrow while you work, and run it once without a filter before you finish. When they are
   not offered, run `cargo build -p <crate>`, `cargo test -p <crate>`, and `cargo clippy -p <crate>`
   for the crate you wrote instead.
-- A dependency is added only by running the target's add command. When no shell is allowed you
-  cannot run it, so a dependency that no `Cargo.toml` lists yet is a reason to stop with
-  `ELFIE: BLOCKED` naming it.
+- A dependency is added only by running the target's add command, `cargo add`, which is allowed
+  through Bash whether or not the command tools are offered; never edit a manifest or a lockfile
+  by hand.
 - The package `elfie` under `lib/` is the standard library: the context layer every entity has,
   the base data every value has (`List`, `String`, `Path`, ...), and the target vocabulary. It is
   a specification, never a unit: a `builtin` data or fn is bound to the native type or function
@@ -44,5 +44,6 @@ definition file compiled for one target. Produce its outputs and nothing else.
   output: stop and report the problem, quoting the criterion, instead of guessing.
 - Do not commit. Print a short report of the files written and any decision you had to make.
 - End your report with exactly one line: `ELFIE: DONE` when every output is written and the
-  target's build, test, and lint commands pass; `ELFIE: BLOCKED: <reason>` when you cannot proceed (write no output for
-  that unit); or `ELFIE: CLARIFY: <question>` when only a person can decide (write nothing).
+  target's build, test, and lint commands pass; `ELFIE: BLOCKED: <reason>` when you cannot
+  proceed (write no output for that unit); or `ELFIE: CLARIFY: <question>` when only a person can
+  decide (write nothing).
