@@ -89,11 +89,16 @@ to scopes. **Not included:** code actions, signature help, inlay hints.
 second copy. Argument descriptions come from `///` documentation lines on the fn because a
 `Parameter` has no place for a description (see Issues).
 
-**The server writes no file itself.** During compilation the agent writes outputs itself and calls
-`elfie_check`; the CLI records source maps. One writer keeps one path for "what is on disk".
-`elfie_report` keeps verdicts in memory until the CLI closes the session. A command tool runs the
-target's own command, which may write what that command always writes, such as build artifacts,
-and never an output.
+**The server writes marker lines and nothing else (2026-10-10).** During compilation the agent
+writes code itself and calls `elfie_check`; the CLI records source maps and review records. The one
+thing the server writes is a marker line: `elfie_mark`, offered only to a compiler session, inserts
+one or rewrites the ids of existing ones, in the outputs of that session's own batch under its
+run's directory. It does so because a 64-hex id is copied wrong often enough to matter, and the
+server can copy one it has checked. Marker lines still pass through acceptance like any other line,
+so the CLI stays the only path to "what was accepted". This replaces the earlier rule that the
+server never writes a file. `elfie_report` and `elfie_submit` keep what they record in memory
+until the CLI closes the session. A command tool runs the target's own command, which may write
+what that command always writes, such as build artifacts, and never an output.
 
 **Two entry points.** `serve` is the stdio server for editors and interactive agents. `host` is
 served over HTTP on 127.0.0.1 for the length of one compile or verify, with one hosted session per
@@ -101,11 +106,13 @@ compiler or verifier run. Each hosted session is bound to its run's directory, p
 review.
 
 **Tools:** `problems`, `find`, `entity`, `references`, `outline`, `grammar`, `units`, `request`,
-`check`, `output`, `source`, `changes`, `review`, `globalReview`, and `report`, plus the command
-tools `build`, `test`, `lint`, and `format`.
-- `serve` offers every tool except `report` and the command tools.
+`task`, `dependency`, `check`, `mark`, `submit`, `output`, `search`, `source`, `changes`,
+`review`, `globalReview`, and `report`, plus the command tools `build`, `test`, `lint`, and
+`format`. The compiler tools `task`, `dependency`, `mark`, and `submit` carry the trait
+`compilerTool`: they act on the request a compiler session's `Binding` holds.
+- `serve` offers every tool except `report`, the command tools, and the compiler tools.
 - A compiler session offers every tool except `report`, and a verifier session every tool except
-  `check`, with the command tools limited as below.
+  `check` and the compiler tools, with the command tools limited as below.
 - A hosted session offers a command tool only when a target of the session has a command with a
   line for its operation.
 
@@ -411,6 +418,34 @@ LSP/MCP protocols are deliberately not part of this round.
   message remain only as the fallback where `elfie_report` is not offered. The review request
   lists region locations, not code. Reviews are incremental: a verdict is carried while the hash
   of its entity's regions is unchanged, and `elfie verify --full` re-judges everything.
+- **The compiler on the agent server (2026-10-10, ROADMAP phase 3).** The rule is to push the
+  obligations, pull the context, and act through tools.
+  - `Binding.request` holds the request a compiler run was given, as `Binding.review` does for a
+    verifier.
+  - `elfie_task` repeats the obligations from that request: per unit the stem, file, reason, and
+    outputs, and per entity each criterion and test with its id, place, and text. Each one is
+    marked `new`, `kept`, or `unknown`, and the removed ones come with their text. The word is
+    `kept` rather than "carried", which already names a review verdict that is not asked again.
+  - `elfie_dependency` gives one entity of a dependency, as `Request.interfaces` holds it, with its
+    lines of `interfaceOf`. The tool cannot be named `elfie_interface`, because `interface` is a
+    reserved word.
+  - `Generation.request` takes `hosted`, which the CLI sets for the compiler runs it hosts. A
+    hosted request's interfaces part names each dependency's file, outputs, and entities, and points
+    to `elfie_dependency`. Every other request still quotes the interfaces whole, so a compiler
+    without the server is not left short.
+  - `elfie_output` takes `text`: with `text` false it gives an outline of the regions without their
+    code. An output file named by its path is now read with the markers it holds when the call
+    arrives, rather than the recorded map, so a compiler that has just edited it sees its regions
+    where they are.
+  - `elfie_search` greps the outputs of the session's targets with a Rust `regex` pattern. It gives
+    each line with its region's marker and stops at 200 lines, saying how many it left out.
+  - `elfie_mark` writes marker lines; see MCP above.
+  - `elfie_submit` records done, blocked, or clarify in the session, and the last call wins.
+    `Host.close` now returns a `SessionRecord` of the reviews and the submission.
+    `Generation.outcomeOf` takes the submission and prefers it to the report's `ELFIE:` line, which
+    is kept as the fallback.
+  - Raw Read and Grep stay allowed (ROADMAP 11) until the share of tool calls that go to the server
+    is measured.
 - **MCP gains `output`, `source`, `changes`, `review`**, all read-only: generated regions by
   entity, the definition line behind a generated line, the entity-level diff since acceptance, and
   the verifier's own request. Resources stay out; four tools keep the surface exact.

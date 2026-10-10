@@ -18,8 +18,9 @@ export CLAUDE_CODE_MCP_PREWAIT_SERVERS_MS=30000
 # minutes before the server stops it, so a tool call is given 40 minutes rather than the default.
 export MCP_TOOL_TIMEOUT=2400000
 # Definitions are read only through the agent server, which answers for an entity, a name, or a
-# file at once; reading or searching def/ and lib/ by hand is denied. Generated code stays open to
-# Read and Grep, for the helpers no marker names.
+# file at once; reading or searching def/ and lib/ by hand is denied. Generated code is read through
+# elfie_output and elfie_search, but stays open to Read and Grep until the share of calls that go to
+# the server is measured (ROADMAP 11).
 # ELFIE_COMMAND_TOOLS names the command tools the hosted session offers, such as
 # `elfie_build elfie_test elfie_lint`: each runs the target's command in this run's directory, one
 # at a time. When it names any, cargo build, test, and clippy are not allowed through Bash; when it

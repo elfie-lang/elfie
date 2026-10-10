@@ -251,7 +251,7 @@ d ReviewRequest: `Everything a verifier is handed to check outputs against what 
         `That the id given to elfie_report is copied from the instructions, or left out when file and line, the two halves of the place the instructions give, are given instead`,
         `That status is satisfied, violated, or unverifiable, evidence is the output path and line range it read or empty, and note is one line saying why and, for a violated one, what the code does instead`,
         `That a criterion no region can be checked against is unverifiable, not violated`,
-        `That the tools of the agent server are called before files are searched or read by hand: elfie_source for where a line of generated code came from, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used`,
+        `That the tools of the agent server are called before files are searched or read by hand: elfie_source for where a line of generated code came from, elfie_search for the lines of the outputs that match a pattern, such as the body of a helper no marker names, elfie_entity for a definition with its criteria and tests, and elfie_references for where a name is used`,
         `That where elfie_report is not offered, each verdict is written in the final message instead, as one JSON object on one line with exactly the keys id, file, line, status, evidence, and note, holding what elfie_report would be given`,
         `That the final message ends with one line reading ELFIE: REVIEWED`,
       ],
@@ -284,7 +284,21 @@ enum OutcomeKind: `How one run of the compiler ended` {
   failed = `the compiler command could not run, or exited without producing anything`,
 }
 
-d Outcome: `What one run of the compiler came to, read mechanically from its report and the verdicts` {
+enum SubmittedOutcome: `How the compiler says its run ended when it submits the outcome through the agent server` {
+  done = `every output is written`,
+  blocked = `it could not proceed`,
+  clarify = `only a person can decide`,
+}
+
+// Decision: the compiler states its outcome through elfie_submit, checked when the call is made, so
+// the CLI reads a structured outcome and never a line of text; the ELFIE: line of the final message
+// is kept for a compiler with no agent server, or one run by hand.
+d Submission: `The outcome a compiler submitted through the agent server` {
+  $outcome: `How it says the run ended` = SubmittedOutcome;
+  $message: `The reason for blocked, the question for clarify, or what it wants a person to know for done; may be empty for done` = string;
+}
+
+d Outcome: `What one run of the compiler came to, read mechanically from its submission or its report, and the verdicts` {
   $kind: `How it ended` = OutcomeKind;
   $message: `The compiler's reason or question, or the first problem; empty when accepted` = string;
   $verdicts: `One [[Verdict]] per unit of the batch, in batch order; empty when the compiler never got that far` = Verdict[];

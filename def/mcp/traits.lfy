@@ -31,6 +31,18 @@ trait tool: `Exposed to agents as one tool of the server` {
   where (`A call names elfie_{{@identifier}}`) and (`{{@identifier}} fails`) -> `The server goes on`;
 }
 
+// Decision: the tools of a compiler session act on the request the compiler was given, which only a
+// hosted session's [[Binding]] holds, so what they share is stated once here, and which entry points
+// offer them is stated by those entry points as for any tool.
+trait compilerTool: `Acts on the batch and the request of the compiler run a hosted session is bound to` {
+  where (`A call of elfie_{{@identifier}} arrives`) and (`[[Session.binding]] is undefined, or its [[Binding.request]] is undefined`) -> [
+    `The result is an error saying elfie_{{@identifier}} acts only in a session bound to a compiler run`,
+    `Nothing is read or written`,
+  ];
+  where (`A call of elfie_{{@identifier}} arrives`) -> `The batch it acts on is [[Request.batch]] of [[Binding.request]], and the units it acts on are units of that batch`;
+  where (`A call of elfie_{{@identifier}} reads or writes an output`) -> `The output is read or written under [[Binding.directory]], as it is when the call arrives`;
+}
+
 // Decision: the command tools differ only in the operation whose command they run, so what running
 // one means is stated once here, and each tool fn adds only what is its own.
 // Decision: a command needs a directory to run in, which only a hosted session's [[Binding]] gives,

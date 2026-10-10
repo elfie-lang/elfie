@@ -36,6 +36,12 @@ d Session: `One agent's connection` {
   $seen: `The modification time and size of every file of the program when it was last read, by path; empty in a hosted session, which never re-reads one` = object;
   $binding: `What a hosted session is bound to; undefined for a session over standard input and output` = Binding | undefined;
   $reviews: `Every review elfie_report recorded in the session, one per id, in the order recorded` = Review[];
+  $submission: `The outcome elfie_submit last recorded in the session; undefined until one is` = Submission | undefined;
+}
+
+d SessionRecord: `What a hosted session recorded, as [[Host.close]] hands it back` {
+  $reviews: `[[Session.reviews]] of the session` = Review[];
+  $submission: `[[Session.submission]] of the session` = Submission | undefined;
 }
 
 enum Role: `What the agent of a hosted session is run as` {
@@ -51,6 +57,7 @@ d Binding: `What one hosted session is bound to, fixed when the CLI opens it` {
   $directory: `The absolute path of the directory the run is in: the batch's copy when it runs in one, the root otherwise` = string;
   $plan: `The plan the compile or verify made` = Plan;
   $program: `The program the compile lowered and planned; its workspace is the one the session reads definitions from` = Program;
+  $request: `The request given to a compiler run as its input; undefined for a verifier run` = Request | undefined;
   $review: `The review request given to a verifier run as its input; undefined for a compiler run` = ReviewRequest | undefined;
   $sourceMaps: `The source maps that review request was made with; empty for a compiler run` = SourceMap[];
 }
@@ -60,7 +67,7 @@ d Host: `An agent server served over HTTP on this machine for the length of one 
   $token: `What every request to it must carry as its bearer token` = string;
   $open: `Opens one hosted session bound to a [[Binding]] and returns the session's URL` = (binding: Binding) => string;
   $offered: `The names of the tools the session at a URL is offered, in the order the server lists them` = (url: string) => string[];
-  $close: `Ends the session at a URL and returns [[Session.reviews]] of it` = (url: string) => Review[];
+  $close: `Ends the session at a URL and returns what it recorded` = (url: string) => SessionRecord;
   $stop: `Ends every session that is still open and stops listening` = () => undefined;
 }
 

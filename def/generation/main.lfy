@@ -340,9 +340,13 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
 }
 
 /// previous: the text of each unit's definition file when its outputs were last accepted, as written and never lowered, by [[File.path]]
+/// hosted: whether the compiler reading the request runs in a compiler session of the compile-hosted agent server, which offers elfie_task, elfie_dependency, elfie_mark, and elfie_submit
 // Decision: the request is handed the source as written and lowers it itself, as [[changes]] does,
 // because lowered text holds no criteria, and the criteria are what a compiler most needs compared.
-fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string> = {}): `Everything the compiler is handed to produce the outputs of one batch` => Request {
+// Decision: the caller says whether the request is for a hosted compiler session, because only the
+// caller knows; a hosted compiler pulls an interface when it needs one, so its request names the
+// interfaces instead of quoting them, while a request read anywhere else quotes them whole.
+fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string> = {}, hosted: boolean = false): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
     .add({ behavior = `[[Request.batch]] is [[batch]]` })
     .add({
@@ -432,7 +436,19 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
       behavior = `The guidance, native dependencies, and knowledge parts give [[Request.guidance]], [[Request.nativeDependencies]], and [[Request.knowledge]]`,
     })
     .add({
+      situation = `[[hosted]] is false`,
       behavior = `The interfaces part gives, for each of [[Request.interfaces]], the dependency's output paths and the identifier, kind, definition, and type of each of its entities`,
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = `The interfaces part gives, for each of [[Request.interfaces]], one line reading the [[File.path]] of [[Interface.unit]], its output paths, and the identifiers of its entities, and no definition, kind, or type`,
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = `The interfaces part says that the interface of one of those entities, with its kind, definition, type, parameters, and output, is read with elfie_dependency`,
+    })
+    .add({
+      behavior = `[[Request.interfaces]] holds every entity of each dependency whether or not [[hosted]] is true`,
     })
     .add({
       behavior = `The interfaces part says that an interface is used by the names its outputs spell and never edited`,
@@ -440,8 +456,9 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       behavior = `The commands part gives [[Request.commands]], one line per operation, and says that the build, test, and lint commands are run before the report and their results stated in it`,
     })
-    // Decision: the request cannot know whether its reader is in a hosted session, so it states both
-    // ways and the tools the reader is offered decide; a reader with the tools never needs a shell.
+    // Decision: the commands part states both ways whether or not [[hosted]] is true, because a
+    // command tool is offered only for an operation the target has a line for, and the tools the
+    // reader is offered decide; a reader with the tools never needs a shell.
     .add({
       behavior = [
         `The commands part says that when the agent server offers elfie_build, elfie_test, elfie_lint, or elfie_format, the command of that operation is run through that tool`,
@@ -521,7 +538,18 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
       behavior = `The rules say that a [[Marker]] carrying a criterion's id is written only on code that does what the criterion says in every situation it names, and that a marker never stands in for code`,
     })
     .add({
-      behavior = `The tools part says that the tools of the agent server are called before files are searched or read by hand: elfie_entity for a definition with its criteria and tests, elfie_find for where a name is declared, elfie_references for where it is used, elfie_outline for the declarations of a file, elfie_output for the generated code of an entity, of a requirement id, or of an output file, elfie_source for where a line of generated code came from, elfie_changes for what changed in a unit since its outputs were accepted, and elfie_check for whether acceptance would pass`,
+      behavior = `The tools part says that the tools of the agent server are called before files are searched or read by hand: elfie_entity for a definition with its criteria and tests, elfie_find for where a name is declared, elfie_references for where it is used, elfie_outline for the declarations of a file, elfie_output for the generated code of an entity, of a requirement id, or of an output file, and with text false for the regions of an output file without their code, elfie_search for the lines of the outputs that match a pattern, elfie_source for where a line of generated code came from, elfie_changes for what changed in a unit since its outputs were accepted, and elfie_check for whether acceptance would pass`,
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = [
+        `The tools part says that elfie_task gives the batch's obligations again: each unit's outputs and reason, and every criterion and test with its id, place, and text, marked new or kept, with the removed ones`,
+        `The tools part says that elfie_mark writes a marker line, and rewrites the id every marker of the batch's outputs names, so that an id is never typed by hand`,
+      ],
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = `The report part says that the outcome is submitted through elfie_submit as done, blocked, or clarify, with the reason or the question as its message, before the final message, which still ends with the line the outcome reads`,
     })
     .add({
       behavior = [
@@ -564,29 +592,71 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
         `A section for a that says its criteria differ and the code must do what each now says; c1's line unmarked, c3's line marked new, and c2 listed with its text as removed`,
       ),
     },
+    {
+      input = [
+        Plan@like(
+          `One batch of one unit a, whose fn f takes a B declared by data B in def/b.lfy, a unit of an earlier batch with the output src/b.rs`,
+        ),
+        Batch@like(`a`),
+        [],
+        {},
+        true,
+      ],
+      expect = Request@like(
+        `Interfaces holding b with B; instructions whose interfaces part is one line reading def/b.lfy, src/b.rs, and B, with no definition of B, and a line saying to read an interface with elfie_dependency; a tools part naming elfie_task and elfie_mark; a report part naming elfie_submit and the three report lines`,
+      ),
+    },
   );
 }
 
-fn outcomeOf(report: string, verdicts: Verdict[]): `How one run of the compiler ended, read from its report and the verdicts of its units` => Outcome {
+/// report: everything the compiler wrote to standard output
+/// submitted: the last outcome the compiler submitted through elfie_submit during the run; undefined when it submitted none
+// Decision: a submitted outcome was checked when it arrived, so it wins over the report's ELFIE:
+// line; the report is read only when nothing was submitted.
+fn outcomeOf(report: string, verdicts: Verdict[], submitted?: Submission): `How one run of the compiler ended, read from its submitted outcome or its report, and the verdicts of its units` => Outcome {
   @acceptanceCriteria
     .add({
-      situation = `The last line of [[report]] that begins with ELFIE: reads ELFIE: BLOCKED:`,
+      situation = `[[submitted]] is given`,
+      behavior = `No line of [[report]] changes the outcome`,
+    })
+    .add({
+      situation = [
+        `[[submitted]] is undefined`,
+        `The last line of [[report]] that begins with ELFIE: reads ELFIE: BLOCKED:`,
+      ],
       behavior = `The kind is blocked and the message is the rest of that line and every line after it`,
     })
     .add({
-      situation = `The last line of [[report]] that begins with ELFIE: reads ELFIE: CLARIFY:`,
+      situation = [
+        `[[submitted]] is undefined`,
+        `The last line of [[report]] that begins with ELFIE: reads ELFIE: CLARIFY:`,
+      ],
       behavior = `The kind is clarification and the message is the rest of that line and every line after it`,
     })
     .add({
-      situation = `[[verdicts]] is empty and no line of [[report]] begins with ELFIE:`,
+      situation = `[[Submission.outcome]] of [[submitted]] is blocked`,
+      behavior = `The kind is blocked and the message is [[Submission.message]] of [[submitted]]`,
+    })
+    .add({
+      situation = `[[Submission.outcome]] of [[submitted]] is clarify`,
+      behavior = `The kind is clarification and the message is [[Submission.message]] of [[submitted]]`,
+    })
+    .add({
+      situation = [`[[submitted]] is undefined`, `[[verdicts]] is empty and no line of [[report]] begins with ELFIE:`],
       behavior = `The kind is failed and the message says the compiler reported nothing`,
     })
     .add({
-      situation = `Some verdict of [[verdicts]] is rejected, and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      situation = [
+        `Some verdict of [[verdicts]] is rejected`,
+        `[[Submission.outcome]] of [[submitted]] is done, or [[submitted]] is undefined and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      ],
       behavior = `The kind is rejected and the message is the first problem of the first rejected verdict`,
     })
     .add({
-      situation = `No verdict of [[verdicts]] is rejected, [[verdicts]] is not empty or some line of [[report]] begins with ELFIE:, and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      situation = [
+        `No verdict of [[verdicts]] is rejected`,
+        `[[Submission.outcome]] of [[submitted]] is done, or [[submitted]] is undefined, [[verdicts]] is not empty or some line of [[report]] begins with ELFIE:, and the last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      ],
       behavior = `The kind is accepted and the message is empty`,
     })
     .add({ behavior = `[[Outcome.verdicts]] is [[verdicts]]` });
@@ -605,6 +675,18 @@ fn outcomeOf(report: string, verdicts: Verdict[]): `How one run of the compiler 
       expect = Outcome@like(`blocked with the reason`),
     },
     { input = [``, []], expect = Outcome@like(`failed`) },
+    {
+      input = [
+        `I wrote it.\nELFIE: DONE`,
+        [Verdict@like(`accepted`)],
+        Submission@like(`blocked, with the message: two criteria of f conflict`),
+      ],
+      expect = Outcome@like(`blocked with the message two criteria of f conflict`),
+    },
+    {
+      input = [``, [Verdict@like(`rejected, with the problem: no marker for B`)], Submission@like(`done`)],
+      expect = Outcome@like(`rejected with the message no marker for B`),
+    },
   );
 }
 

@@ -14,7 +14,10 @@ under the entity that holds it, with the output regions generated for that entit
 - Reach for the `elfie` MCP tools before Grep or a shell search: `elfie_entity <name>` gives a
   definition with its criteria and tests; `elfie_references <name>` its uses; `elfie_source <file>
   <line>` the definition behind a generated line, subject to the same caveat about its maps.
-  Search the files yourself only for what no tool answers, such as a helper function's body.
+  `elfie_search <pattern>` finds lines of the outputs by regular expression (Rust `regex` syntax)
+  and gives each with the marker of its region; use it for a helper function's body. `elfie_output
+  <file>` with `text` false outlines an output file's regions without their code. Both read the
+  files as they are now. Search the files yourself only for what no tool answers.
 - Run the tests once, filtered to what the batch's criteria and tests name when you can, rather
   than the whole crate for each question. When `elfie_test` is offered to you, run them through it
   and nothing else: its `filter` narrows the tests run (each word selects the tests whose names

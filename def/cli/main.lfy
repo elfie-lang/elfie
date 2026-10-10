@@ -895,7 +895,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // The hosted agent server
   // Decision: one host serves every run of a compile or verify, each run through a session of its
   // own, so batches running at once never see each other's work and the CLI learns each run's
-  // verdicts from the session that recorded them.
+  // verdicts, and each compiler run's submitted outcome, from the session that recorded them.
   @acceptanceCriteria
     .add({
       situation = `compile or verify runs the compiler or the verifier`,
@@ -919,7 +919,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `The compiler is run on a batch`,
-      behavior = `The run's [[McpData.Binding]] has the role compiler, the batch, no review, and no source maps`,
+      behavior = `The run's [[McpData.Binding]] has the role compiler, the batch, the request whose [[Request.instructions]] are the run's input, no review, and no source maps`,
     })
     .add({
       situation = `The verifier is run on a batch`,
@@ -950,7 +950,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [`compile`, `elfie.json names a compiler`],
       behavior = [
         `Each run of a batch is one [[Process.stream]] of the command elfie.json names under compiler`,
-        `Its input is [[Request.instructions]] of [[Generation.request]] for the batch`,
+        `Its input is [[Request.instructions]] of [[Generation.request]] for the batch, given hosted true`,
         `Its directory is the batch's directory`,
       ],
     })
@@ -972,7 +972,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
-      behavior = `How the run ended is [[Generation.outcomeOf]] of [[Process.Exit.stdout]] as the report and the verdicts of the batch's units`,
+      behavior = `How the run ended is [[Generation.outcomeOf]] of [[Process.Exit.stdout]] as the report, the verdicts of the batch's units, and [[McpData.SessionRecord.submission]] of what [[McpData.Host.close]] returned for the run's session as submitted`,
     })
     .add({
       situation = `[[Generation.outcomeOf]] of a batch's compiler run is accepted`,
@@ -1089,7 +1089,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     // Without a compiler, the requests are for a compiler run by hand.
     .add({
       situation = [`compile`, `elfie.json names no compiler`],
-      behavior = `The request of each batch is [[Files.write]] to elfie-requests under the root, one file per batch named by its identifier`,
+      behavior = `The request of each batch, [[Generation.request]] given hosted false, is [[Files.write]] to elfie-requests under the root, one file per batch named by its identifier`,
     })
     .add({
       situation = [`compile`, `elfie.json names no compiler`],
@@ -1175,7 +1175,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `compile or verify runs the verifier on a batch or for the global review`,
-      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Generation.reviewOf]], with [[ReviewRequest.asked]] of its review request as asked and the reviews [[McpData.Host.close]] returned for its session as recorded`,
+      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Generation.reviewOf]], with [[ReviewRequest.asked]] of its review request as asked and [[McpData.SessionRecord.reviews]] of what [[McpData.Host.close]] returned for its session as recorded`,
     })
     .add({
       situation = [
