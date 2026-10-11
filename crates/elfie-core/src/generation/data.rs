@@ -199,6 +199,9 @@ pub struct SourceMap {
     pub answered: Vec<String>, // @lfy def/generation/data.lfy:SourceMap.answered
     /// SHA-256 of the unit's interface text when the output was accepted, as lowercase hex.
     pub signature: String, // @lfy def/generation/data.lfy:SourceMap.signature
+    /// SHA-256 of the output's text as it was accepted, as lowercase hex; empty in a map file
+    /// written before it was recorded, which no hash equals.
+    pub text: String, // @lfy def/generation/data.lfy:SourceMap.text
     /// For each dependency's source path, the [`SourceMap::signature`] the output was
     /// generated against.
     pub dependencies: BTreeMap<String, String>, // @lfy def/generation/data.lfy:SourceMap.dependencies
@@ -225,6 +228,7 @@ impl SourceMap {
             "requirements": self.requirements,
             "answered": self.answered,
             "signature": self.signature,
+            "text": self.text,
             "dependencies": dependencies,
             "generated": self.generated,
             "markers": self.markers.iter().map(Marker::to_json).collect::<Vec<_>>(),
@@ -234,10 +238,11 @@ impl SourceMap {
     /// A source map from its JSON object; `None` when a field is missing or mistyped.
     ///
     // Decision: the definition records a requirements hash, the ids it hashes, a signature,
-    // and the signatures of the dependencies at acceptance, so each is always written; a
-    // source map read back without them was written before they were recorded. Reading takes
-    // them as empty rather than failing, which leaves the unit looking out of date against
-    // every current hash and signature, so it is regenerated instead of silently kept.
+    // the hash of the output's own text, and the signatures of the dependencies at
+    // acceptance, so each is always written; a source map read back without them was written
+    // before they were recorded. Reading takes them as empty rather than failing, which
+    // leaves the unit looking out of date against every current hash and signature, so it is
+    // regenerated instead of silently kept.
     pub fn from_json(value: &Value) -> Option<SourceMap> {
         let object = value.as_object()?;
         // @lfy def/generation/data.lfy:SourceMap.answered
@@ -277,6 +282,8 @@ impl SourceMap {
             requirements: string_field(object, "requirements").unwrap_or_default(),
             answered,
             signature: string_field(object, "signature").unwrap_or_default(),
+            // @lfy def/generation/data.lfy:SourceMap.text
+            text: string_field(object, "text").unwrap_or_default(),
             dependencies,
             generated: string_field(object, "generated")?,
             markers,
@@ -447,6 +454,22 @@ pub struct RemovedRequirement {
     pub text: String, // @lfy def/generation/data.lfy:RemovedRequirement.text
 }
 
+/// A local criterion or test whose id changed since a unit's outputs were accepted because
+/// its text changed while it kept its position among its entity's criteria or tests.
+// Decision: a criterion reworded in place keeps its place but not its id, because an id
+// hashes the text. Pairing it with the id it replaces lets markers move to the new id
+// mechanically, while what the new text asks is still read against the code.
+// @lfy def/generation/data.lfy:Rewording
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Rewording {
+    /// The id it has now.
+    pub id: String, // @lfy def/generation/data.lfy:Rewording.id
+    /// The id it had when the unit's outputs were accepted.
+    pub replaces: String, // @lfy def/generation/data.lfy:Rewording.replaces
+    /// What it said then, as a [`RemovedRequirement`] spells what a removed one said.
+    pub text: String, // @lfy def/generation/data.lfy:Rewording.text
+}
+
 /// One criterion or one test, as a request carries it: what the definition writes as
 /// `LoweredCriterion | LoweredTest`. Each carries its own id.
 // @lfy def/generation/data.lfy:Request.globals
@@ -489,9 +512,16 @@ pub struct Request {
     /// against, by the file's path; absent where unknown.
     pub answered: BTreeMap<String, Vec<String>>, // @lfy def/generation/data.lfy:Request.answered
     /// The local criteria and tests each unit's existing outputs were generated against that
-    /// the unit no longer has, by the file's path; absent where the source they were
-    /// generated from is unknown.
+    /// the unit no longer has and that no criterion or test now rewords, by the file's path;
+    /// absent where the source they were generated from is unknown.
     pub removed: BTreeMap<String, Vec<RemovedRequirement>>, // @lfy def/generation/data.lfy:Request.removed
+    /// The local criteria and tests of each unit that reword one its existing outputs were
+    /// generated against, by the file's path; absent where the source they were generated
+    /// from is unknown.
+    pub reworded: BTreeMap<String, Vec<Rewording>>, // @lfy def/generation/data.lfy:Request.reworded
+    /// The path of each unit of the batch whose existing outputs differ from what it asks for
+    /// now only in the ids of reworded criteria and tests, in batch order.
+    pub reworded_only: Vec<String>, // @lfy def/generation/data.lfy:Request.rewordedOnly
     /// The current text of each existing output of the batch, by path.
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
     /// One interface per dependency outside the batch, in dependency order, each once.
@@ -1129,6 +1159,8 @@ mod tests {
             // @lfy def/generation/data.lfy:SourceMap.answered
             answered: vec!["Marker:Marker:abc".to_string()],
             signature: "def".to_string(),
+            // @lfy def/generation/data.lfy:SourceMap.text
+            text: "mno".to_string(),
             dependencies: BTreeMap::from([("def/model/data.lfy".to_string(), "ghi".to_string())]),
             generated: "2026-09-19T00:00:00Z".to_string(),
             markers: vec![Marker {
@@ -1340,6 +1372,9 @@ mod tests {
         assert_eq!(map.signature, "");
         assert_eq!(map.requirements, ""); // @lfy def/generation/data.lfy:SourceMap.requirements
         assert!(map.answered.is_empty()); // @lfy def/generation/data.lfy:SourceMap.answered
+        // An empty text hash equals no hash of an output, so the output looks rewritten.
+        // @lfy def/generation/data.lfy:SourceMap.text
+        assert_eq!(map.text, "");
         assert!(map.dependencies.is_empty());
     }
 }

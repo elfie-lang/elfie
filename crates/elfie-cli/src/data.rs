@@ -123,6 +123,9 @@ impl Invocation {
 pub enum Step {
     Planned,         // @lfy def/cli/data.lfy:Step.planned
     Requesting,      // @lfy def/cli/data.lfy:Step.requesting
+    Resuming,        // @lfy def/cli/data.lfy:Step.resuming
+    Rewording,       // @lfy def/cli/data.lfy:Step.rewording
+    Building,        // @lfy def/cli/data.lfy:Step.building
     Compiling,       // @lfy def/cli/data.lfy:Step.compiling
     Checking,        // @lfy def/cli/data.lfy:Step.checking
     Accepted,        // @lfy def/cli/data.lfy:Step.accepted
@@ -144,6 +147,9 @@ impl Step {
         match self {
             Step::Planned => "planned",
             Step::Requesting => "requesting",
+            Step::Resuming => "resuming",
+            Step::Rewording => "rewording",
+            Step::Building => "building",
             Step::Compiling => "compiling",
             Step::Checking => "checking",
             Step::Accepted => "accepted",
@@ -165,6 +171,14 @@ impl Step {
         match self {
             Step::Planned => "the plan is made",
             Step::Requesting => "a batch's request is being assembled",
+            Step::Resuming => "a batch's copy is taking the work its last rejected run kept",
+            Step::Rewording => {
+                "the markers of a unit's reworded criteria and tests were rewritten to their new ids"
+            }
+            Step::Building => {
+                "the target's build and test commands are running on a batch in place of the \
+                 compiler, or before it is merged"
+            }
             Step::Compiling => "the compiler is running on a batch",
             Step::Checking => "the outputs of a unit are being checked",
             Step::Accepted => "a unit was accepted and recorded",

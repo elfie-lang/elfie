@@ -10,6 +10,7 @@ pub mod data;
 pub mod traits; // @lfy def/mcp/traits.lfy:tool
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -18,8 +19,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use elfie_core::generation::{
-    self, Batch, Marker, Move, Output, Plan, Request, Requirement, Review, ReviewStatus, SourceMap,
-    Submission, SubmittedOutcome, Unit,
+    self, Batch, Marker, Move, Output, Plan, Request, Requirement, Review, ReviewStatus, Rewording,
+    SourceMap, Submission, SubmittedOutcome, Unit,
 };
 use elfie_core::interpret::{self, LoweredCriterion, LoweredNode, LoweredTest, Program};
 use elfie_core::model::{self, Criterion, EntityId, FileId, Model, NodeRef, Operation, Problem, SymbolKind};
@@ -406,10 +407,10 @@ pub fn tools() -> Vec<Registered> {
         // @lfy def/mcp/main.lfy:task#task:tool:b4176adea23f8e6c58f4d041e7a85447286076984bd05464e92528b60fda6d8b
         // @lfy def/mcp/main.lfy:task#task:tool:b4a5feee0df4f25397442a14ddc5789cddaecd15441de63010655c2768703e25
         // @lfy def/mcp/main.lfy:task#task:tool:46ad78939d73914a576d0dce0904cae992474f9eeb184c717a5a0c324091d4d5
-        // @lfy def/mcp/main.lfy:task#task:tool:f5b23bd5edb64b3cb36e8c040f7bd1a88884407cbe6edbf640a673b5011d8917
+        // @lfy def/mcp/main.lfy:task#task:tool:3f09d52a0b71d1b830863b88454d30b98bb821b36e428efed32d7e6169482a3c
         Registered::new(
             "task",
-            "What this compiler run must do: for each unit of its batch, the outputs and the reason, every criterion and test to answer for with its id, place, and text, each marked new, kept, or unknown, and those removed since the outputs were accepted",
+            "What this compiler run must do: for each unit of its batch, the outputs and the reason, every criterion and test to answer for with its id, place, and text, each marked new, reworded, kept, or unknown, and those removed since the outputs were accepted",
             // @lfy def/mcp/main.lfy:task#task:tool:6ddac2bcba95be32011edabc6d0abbc63da57cd4a0182a8c86f882a8482706e7
             vec![
                 // @lfy def/mcp/main.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
@@ -1067,6 +1068,54 @@ fn offered(tools: &[Registered], workspace: &Workspace, binding: Option<&Binding
         .collect()
 }
 
+/// Whether the tool of this name changes a file: `elfie_mark`, which writes a marker line
+/// into one of a compiler run's outputs, and a command tool, which runs the target's own
+/// command and so writes whatever that command always writes.
+// @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+fn changes_files(name: &str) -> bool {
+    name == "elfie_mark" || matches!(carried(name), Carried::Command(_))
+}
+
+/// The instructions the initialize answer carries, named for the one session it is for: the
+/// tools that session is offered and nothing else, which of them change files, and, when it
+/// is bound to a run, which role it is bound to.
+///
+/// A session over standard input and output is offered no command tool and no compiler
+/// tool, so none of its tools writes a file, and the line says so outright.
+// @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
+// @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+fn instructions(offered: &[String], binding: Option<&Binding>) -> String {
+    let mut text = format!("The Elfie agent server. Its tools in this session are {}.", offered.join(", "));
+    let Some(binding) = binding else {
+        // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
+        text.push_str(" None of them writes a file.");
+        return text;
+    };
+    // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+    let writing: Vec<&str> = offered.iter().map(String::as_str).filter(|name| changes_files(name)).collect();
+    let _ = write!(
+        text,
+        " This session is bound to a {} run.",
+        match binding.role {
+            Role::Compiler => "compiler",
+            Role::Verifier => "verifier",
+        }
+    );
+    // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+    if writing.is_empty() {
+        text.push_str(" None of them changes a file.");
+        return text;
+    }
+    let _ = write!(
+        text,
+        " Of them, {} change files: elfie_mark writes a marker line into one of this run's outputs, \
+         and a command tool runs the target's own command, which writes what that command always \
+         writes. Every other tool here changes nothing.",
+        writing.join(", ")
+    );
+    text
+}
+
 /// One call of a fn carrying `tool`: the arguments are checked against the parameters as
 /// the parameters are declared, then the fn is called with the session and them.
 ///
@@ -1135,6 +1184,11 @@ struct Served {
     tools: Vec<Registered>,
     /// The names of the tools the session is offered, as [`offered`] gives them.
     offered: Vec<String>,
+    /// The instructions this session's initialize answer carries, as [`instructions`]
+    /// spells them for the tools it is offered and the role it is bound to.
+    // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
+    // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+    instructions: String,
     /// Whether every call re-reads the files of the program before the tool runs: a session
     /// over standard input and output does, a hosted one never does.
     reread: bool,
@@ -1149,10 +1203,13 @@ impl Served {
         let tools = tools();
         let session = Session::load(root);
         let offered = offered(&tools, &session.workspace, None);
+        // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
+        let instructions = instructions(&offered, None);
         Served {
             session: Mutex::new(session),
             tools,
             offered,
+            instructions,
             // @lfy def/mcp/main.lfy:serve#serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386
             reread: true,
         }
@@ -1252,9 +1309,9 @@ impl ServerHandler for Server {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_protocol_version(ProtocolVersion::V_2025_06_18) // @lfy def/mcp/main.lfy:Protocol
             .with_server_info(Implementation::new("elfie", env!("CARGO_PKG_VERSION")))
-            .with_instructions(
-                "The Elfie agent server. elfie_problems, elfie_find, elfie_entity, elfie_references, and elfie_outline read the program; elfie_grammar gives the language; elfie_units, elfie_request, elfie_check, elfie_review, and elfie_globalReview drive compilation; elfie_output, elfie_source, and elfie_changes read what the last acceptance recorded; elfie_report submits a verifier's verdicts. Nothing here writes a file.",
-            )
+            // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
+            // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+            .with_instructions(self.served.instructions.clone())
     }
 
     async fn list_tools(
@@ -1419,6 +1476,8 @@ impl Hosting {
         workspace.root = binding.directory.clone();
         let tools = tools();
         let offered = offered(&tools, &workspace, Some(&binding));
+        // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+        let instructions = instructions(&offered, Some(&binding));
         let session = Session {
             workspace,
             // A hosted session never re-reads a file of the program, so it stamps none.
@@ -1433,6 +1492,7 @@ impl Hosting {
             session: Mutex::new(session),
             tools,
             offered,
+            instructions,
             reread: false,
         });
         self.sessions
@@ -2067,8 +2127,14 @@ fn output_files(workspace: &Workspace, target: &Target) -> Vec<String> {
 /// are now; the ends are derived over every marker of the file, as a source map derives
 /// them, and only then are the markers of other sources left out, so a region still ends
 /// where the next marker begins whoever wrote it.
+///
+/// Only the markers are read from the file. Everything else a map carries — what the unit's
+/// text and requirements hashed to, which ids were answered, when it was accepted — is the
+/// recorded map's, taken from `recorded`, the maps of those units that the live ones stand
+/// in for, so the unit plans, changes, and requests as the compile planned it.
 // @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
-fn own_source_maps(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
+// @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMap]) -> Vec<SourceMap> {
     let Some(binding) = &session.binding else { return Vec::new() };
     let Some(batch) = &binding.batch else { return Vec::new() };
     let workspace = &session.workspace;
@@ -2090,19 +2156,32 @@ fn own_source_maps(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
             if markers.is_empty() {
                 continue;
             }
+            // The recorded map of the same target, output, and source gives every member but
+            // the markers; where none was recorded, there is nothing to carry over.
+            // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+            let mut map = recorded
+                .iter()
+                .find(|one| {
+                    one.target == of_target.identifier && one.output == output && one.source == file.path
+                })
+                .cloned()
+                // @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
+                .unwrap_or_else(|| SourceMap {
+                    target: of_target.identifier.clone(),
+                    output: output.clone(),
+                    source: file.path.clone(),
+                    hash: String::new(),
+                    requirements: String::new(),
+                    answered: Vec::new(),
+                    signature: String::new(),
+                    text: String::new(),
+                    dependencies: BTreeMap::new(),
+                    generated: String::new(),
+                    markers: Vec::new(),
+                });
             // @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
-            found.push(SourceMap {
-                target: of_target.identifier.clone(),
-                output,
-                source: file.path.clone(),
-                hash: String::new(),
-                requirements: String::new(),
-                answered: Vec::new(),
-                signature: String::new(),
-                dependencies: BTreeMap::new(),
-                generated: String::new(),
-                markers,
-            });
+            map.markers = markers;
+            found.push(map);
         }
     }
     found
@@ -2139,8 +2218,10 @@ fn source_maps_of(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
             .map(|file| file.path.clone())
             .collect();
         // @lfy def/mcp/main.lfy:host#host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba
+        let left_out: Vec<SourceMap> = read.iter().filter(|map| own.contains(&map.source)).cloned().collect();
         read.retain(|map| !own.contains(&map.source));
-        read.extend(own_source_maps(session, target));
+        // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+        read.extend(own_source_maps(session, target, &left_out));
     }
     let given: &[SourceMap] = match &session.binding {
         Some(binding) => &binding.source_maps,
@@ -3286,18 +3367,31 @@ fn requirement_parts(model: &Model, requirement: &Requirement) -> Asked {
     }
 }
 
-/// What a criterion or test of a unit is marked as: `kept` when the unit's existing outputs
-/// were generated against it, `new` when they were generated against a known set that does
-/// not hold it or there are no outputs yet, and `unknown` when what they answered is not
-/// recorded.
+/// The rewording of one criterion or test of a unit, when its id rewords one the unit's
+/// existing outputs were generated against.
+// @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
+fn rewording_of<'r>(request: &'r Request, path: &str, id: &str) -> Option<&'r Rewording> {
+    request.reworded.get(path)?.iter().find(|rewording| rewording.id == id)
+}
+
+/// What a criterion or test of a unit is marked as: `reworded` when its id rewords one the
+/// unit's existing outputs were generated against, `kept` when those outputs were generated
+/// against it, `new` when they were generated against a known set that does not hold it or
+/// there are no outputs yet, and `unknown` when what they answered is not recorded.
 // @lfy def/mcp/main.lfy:task#task:task:00479e8dc9cc7003d7a8fc71ee72b37424f99ac82adaf9497bd8a64df5cd83a2
-// @lfy def/mcp/main.lfy:task#task:task:ff5e2097d427186339c0055971df5b423e71a9e1f5e535d9b9c16a221ea764b6
+// @lfy def/mcp/main.lfy:task#task:task:aa3aedc17d31c8c2288f74ab8d995d37aabd29e988ed6623b3ab368c90880080
 // @lfy def/mcp/main.lfy:task#task:task:3fd2e90fbb5affd82dc46bf4e87ba7bcb8ba2f4df7047de83fea316774ee4d01
 fn mark_of(request: &Request, path: &str, has_outputs: bool, id: &str) -> &'static str {
+    // A criterion that kept its place and changed its words took a new id, which the compile
+    // has already moved its markers to, so it is marked apart from what is really new.
+    // @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
+    if rewording_of(request, path, id).is_some() {
+        return "reworded";
+    }
     match request.answered.get(path) {
         // @lfy def/mcp/main.lfy:task#task:task:00479e8dc9cc7003d7a8fc71ee72b37424f99ac82adaf9497bd8a64df5cd83a2
         Some(answered) if answered.iter().any(|known| known == id) => "kept",
-        // @lfy def/mcp/main.lfy:task#task:task:ff5e2097d427186339c0055971df5b423e71a9e1f5e535d9b9c16a221ea764b6
+        // @lfy def/mcp/main.lfy:task#task:task:aa3aedc17d31c8c2288f74ab8d995d37aabd29e988ed6623b3ab368c90880080
         Some(_) => "new",
         None if !has_outputs => "new",
         // @lfy def/mcp/main.lfy:task#task:task:3fd2e90fbb5affd82dc46bf4e87ba7bcb8ba2f4df7047de83fea316774ee4d01
@@ -3338,7 +3432,8 @@ pub fn task(session: &Session, unit: Option<&str>) -> Result<String, String> {
         None => batch_units(plan, batch),
     };
     let mut lines: Vec<String> = Vec::new();
-    let (mut fresh, mut kept, mut unknown, mut removed) = (0usize, 0usize, 0usize, 0usize);
+    let (mut fresh, mut rephrased, mut kept, mut unknown, mut removed) =
+        (0usize, 0usize, 0usize, 0usize, 0usize);
     for index in indexes {
         let of_unit = &plan.units[index];
         let file = &workspace.files[of_unit.file];
@@ -3398,10 +3493,16 @@ pub fn task(session: &Session, unit: Option<&str>) -> Result<String, String> {
             match marked {
                 "kept" => kept += 1,
                 "unknown" => unknown += 1,
+                "reworded" => rephrased += 1,
                 _ => fresh += 1,
             }
             // @lfy def/mcp/main.lfy:task#task:task:bc0cfc213f87dda7b8e1106191bb902bdb5a2b08b2472742020be295a621309b
             lines.push(format!("{marked} {id} {place} — {text}"));
+            // What a reworded one replaces, on the line after it.
+            // @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
+            if let Some(rewording) = rewording_of(request, &file.path, &id) {
+                lines.push(format!("replaces {} — {}", rewording.replaces, rewording.text));
+            }
         }
         // Every entity of the unit must carry a marker, so those with nothing to answer for
         // are named: no criterion and no test of the unit is for them.
@@ -3439,8 +3540,10 @@ pub fn task(session: &Session, unit: Option<&str>) -> Result<String, String> {
             _ => {}
         }
     }
-    // @lfy def/mcp/main.lfy:task#task:task:7f6d74cc47335d8aadcd745834a634e14b2748fd19001c045d3786dc8abc5438
-    lines.push(format!("{fresh} new, {kept} kept, {unknown} unknown, {removed} removed"));
+    // @lfy def/mcp/main.lfy:task#task:task:ca1abaa819942eb8c6c130e520f1c36ee16815c41b54d388cca6a9b8ad14a76c
+    lines.push(format!(
+        "{fresh} new, {rephrased} reworded, {kept} kept, {unknown} unknown, {removed} removed"
+    ));
     Ok(lines.join("\n"))
 }
 
@@ -3534,7 +3637,7 @@ pub fn dependency(session: &Session, name: &str) -> Result<String, String> {
 
 /// The source paths a marker of one of this batch's regions may name: the file of each unit
 /// of the batch, and the file of each entity moved into one.
-// @lfy def/mcp/main.lfy:mark#mark:mark:69bbcbfa87cdafbd3a3dc243f5e684701eb97695e178b909c1c8425ed4dfc12d
+// @lfy def/mcp/main.lfy:mark#mark:mark:aac83695fcc88a2c0a4688d77974f2d0a6805ebf6b2d752b2141ff71a8a745a2
 fn own_sources(run: &Run<'_>) -> Vec<String> {
     let binding = run.binding;
     let workspace = &binding.program.workspace;
@@ -3549,24 +3652,6 @@ fn own_sources(run: &Run<'_>) -> Vec<String> {
             }
         }
         for path in paths {
-            if !found.contains(&path) {
-                found.push(path);
-            }
-        }
-    }
-    found
-}
-
-/// The source paths a marker of one unit's regions may name: the unit's own file, and the
-/// file of each entity moved into it.
-// @lfy def/mcp/main.lfy:mark#mark:mark:69bbcbfa87cdafbd3a3dc243f5e684701eb97695e178b909c1c8425ed4dfc12d
-fn unit_sources(binding: &Binding, of_unit: &Unit) -> Vec<String> {
-    let workspace = &binding.program.workspace;
-    let model = &workspace.model;
-    let mut found = vec![workspace.files[of_unit.file].path.clone()];
-    for &entity in &of_unit.entities {
-        if let Some(source) = model.entities[entity].file {
-            let path = model.sources[source].path.clone();
             if !found.contains(&path) {
                 found.push(path);
             }
@@ -3630,10 +3715,13 @@ fn markers_on(markers: &[Marker], line: usize) -> Vec<&Marker> {
     markers.iter().filter(|marker| marker.output_line == line).collect()
 }
 
-/// Rewrite to a new id every marker of this run's outputs that names an old one: only those
-/// naming the file of the unit the new id belongs to, or of a file declaring an entity moved
-/// into it, so another unit's markers are never touched.
-// @lfy def/mcp/main.lfy:mark#mark:mark:69bbcbfa87cdafbd3a3dc243f5e684701eb97695e178b909c1c8425ed4dfc12d
+/// Rewrite to a new id every marker of this run's outputs that names an old one.
+///
+/// Which markers those are is [`generation::rename`]'s to decide, and it decides it as
+/// acceptance does: only the markers naming the file of the unit the new id belongs to, or
+/// of a file declaring an entity moved into it, so another unit's markers are never touched.
+/// The outputs it returns are the ones whose markers it rewrote, and only those are written.
+// @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
 fn rename_markers(
     session: &Session,
     run: &Run<'_>,
@@ -3650,41 +3738,39 @@ fn rename_markers(
             run.request.batch.identifier
         ));
     };
-    let allowed = unit_sources(binding, &binding.plan.units[index]);
-    let mut rewritten: Vec<String> = Vec::new();
+    // The output files of the batch's target as they are when the call arrives.
+    // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
+    let mut read: Vec<Output> = Vec::new();
     for output in output_files(workspace, target) {
         let path = workspace.root.join(&output);
         let Ok(text) = fs::read_to_string(&path) else { continue };
-        let markers = markers_of(&text);
-        // @lfy def/mcp/main.lfy:mark#mark:mark:69bbcbfa87cdafbd3a3dc243f5e684701eb97695e178b909c1c8425ed4dfc12d
-        let touched: Vec<usize> = markers
+        read.push(Output { path: output, text });
+    }
+    let ids = BTreeMap::from([(replaces.to_string(), id.to_string())]);
+    // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
+    let renamed = generation::rename(workspace, &binding.plan, index, &read, &ids);
+    let mut rewritten: Vec<String> = Vec::new();
+    for output in &renamed {
+        // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
+        let path = workspace.root.join(&output.path);
+        fs::write(&path, &output.text)
+            .map_err(|error| format!("{} cannot be written: {error}", output.path))?;
+        // The lines that differ from the file as it was read are the rewritten markers, since
+        // `rename` keeps every other line of an output it returns.
+        // @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
+        let before: Vec<&str> = read
             .iter()
-            .filter(|marker| {
-                marker.requirement.as_deref() == Some(replaces) && allowed.contains(&marker.file)
-            })
-            .map(|marker| marker.output_line)
-            .collect();
-        // @lfy def/mcp/main.lfy:mark#mark:mark:33196cd3fd97375f962a233964e2bdaf262b73a0e4e0ca7ce1d55235b5cc7f81
-        if touched.is_empty() {
-            continue;
-        }
-        // Only the id is replaced, so every other character of the line and every other
-        // line of the file is kept; the ids are long and unique, so the one occurrence a
-        // line holds is the marker's own.
-        // @lfy def/mcp/main.lfy:mark#mark:mark:28998da64ee147cca44e18e32eea2a69c7ba2a23355e30936e3cbf466e6060ee
-        let mut pieces: Vec<String> = text.split_inclusive('\n').map(str::to_string).collect();
-        for &line in &touched {
-            if let Some(piece) = pieces.get_mut(line.saturating_sub(1)) {
-                *piece = piece.replace(replaces, id);
+            .find(|one| one.path == output.path)
+            .map(|one| one.text.split_inclusive('\n').collect())
+            .unwrap_or_default();
+        let after = markers_of(&output.text);
+        for (at, line) in output.text.split_inclusive('\n').enumerate() {
+            if before.get(at).is_some_and(|was| *was == line) {
+                continue;
             }
-        }
-        let written = pieces.concat();
-        fs::write(&path, &written).map_err(|error| format!("{output} cannot be written: {error}"))?;
-        // @lfy def/mcp/main.lfy:mark#mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe
-        let after = markers_of(&written);
-        for line in touched {
-            for marker in markers_on(&after, line) {
-                rewritten.push(format!("{output}:{line} {}", marker_text(marker)));
+            // @lfy def/mcp/main.lfy:mark#mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe
+            for marker in markers_on(&after, at + 1) {
+                rewritten.push(format!("{}:{} {}", output.path, at + 1, marker_text(marker)));
             }
         }
     }
@@ -4998,7 +5084,7 @@ global@targets.add(rust);
     /// required arguments its parameters give it, so each of them is one tool.
     // @lfy def/mcp/main.lfy:task#task:tool:b4176adea23f8e6c58f4d041e7a85447286076984bd05464e92528b60fda6d8b
     // @lfy def/mcp/main.lfy:task#task:tool:46ad78939d73914a576d0dce0904cae992474f9eeb184c717a5a0c324091d4d5
-    // @lfy def/mcp/main.lfy:task#task:tool:f5b23bd5edb64b3cb36e8c040f7bd1a88884407cbe6edbf640a673b5011d8917
+    // @lfy def/mcp/main.lfy:task#task:tool:3f09d52a0b71d1b830863b88454d30b98bb821b36e428efed32d7e6169482a3c
     // @lfy def/mcp/main.lfy:task#task:tool:6ddac2bcba95be32011edabc6d0abbc63da57cd4a0182a8c86f882a8482706e7
     // @lfy def/mcp/main.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
     // @lfy def/mcp/main.lfy:task#task:tool:b2e2fadd9a1cd573a4b55e2e77fbd573ec3a9f6184ccd88beca5e743b871e9cd
@@ -5144,6 +5230,19 @@ global@targets.add(rust);
         assert!(initialized["result"]["capabilities"]["tools"].is_object(), "{initialized}");
         assert!(initialized["result"]["capabilities"]["resources"].is_null(), "{initialized}");
         assert!(initialized["result"]["capabilities"]["prompts"].is_null(), "{initialized}");
+        // The instructions name only the tools offered over standard input and output, and
+        // say outright that none of them writes a file.
+        // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
+        let said = initialized["result"]["instructions"]
+            .as_str()
+            .unwrap_or_else(|| panic!("instructions, not {initialized}"));
+        for name in TOOL_NAMES {
+            assert!(said.contains(name), "{said}");
+        }
+        for withheld in ["elfie_report", "elfie_task", "elfie_dependency", "elfie_mark", "elfie_submit", "elfie_build"] {
+            assert!(!said.contains(withheld), "{said}");
+        }
+        assert!(said.contains("None of them writes a file."), "{said}");
         agent
             .send(serde_json::json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }))
             .await;
@@ -5923,6 +6022,24 @@ global@targets.add(rust);
         // `check` is not offered to it, so it is not listed either.
         // @lfy def/mcp/main.lfy:check#check:tool:d1b4319d34a3d00324ec0850bf1e0987ceb4112aab80f13d77b82554c27ca5f9
         assert!(!verifying.list().tools.iter().any(|tool| tool.name == "elfie_check"));
+        // Each session's instructions name only the tools that session is offered, say which
+        // of them change files, and say which role it is bound to. The fixture's target has
+        // no command, so a verifier is offered nothing that changes a file.
+        // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+        for (served, offered, withheld, role) in [
+            (&compiling, COMPILER_TOOLS.as_slice(), "elfie_report", "compiler"),
+            (&verifying, VERIFIER_TOOLS.as_slice(), "elfie_check", "verifier"),
+        ] {
+            let said = &served.instructions;
+            for name in offered {
+                assert!(said.contains(name), "{said}");
+            }
+            assert!(!said.contains(withheld), "{said}");
+            assert!(said.contains(&format!("bound to a {role} run")), "{said}");
+        }
+        // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+        assert!(compiling.instructions.contains("elfie_mark writes a marker line"), "{}", compiling.instructions);
+        assert!(verifying.instructions.contains("None of them changes a file."), "{}", verifying.instructions);
         {
             let session = compiling.session.lock().unwrap();
             let binding = session.binding.as_ref().expect("a binding");
@@ -6134,6 +6251,62 @@ global@targets.add(rust);
         // @lfy def/mcp/main.lfy:host#host:host:232c0725ae5219330822ed9664cc87be38c4591303cbc3dead664044e09b75eb
         let session = bound(&fixture, binding_of(&fixture, Role::Verifier, None));
         assert_eq!(source_maps_of(&session, None), recorded);
+    }
+
+    /// In a compiler's session the map of one of its own units is read from the markers its
+    /// output holds now, while every other member of it is the recorded map's, so the unit
+    /// still plans, changes, and requests as the compile planned it.
+    // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+    #[test]
+    fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
+        let fixture = Fixture::new();
+        fixture.with_rust_target().write(
+            "def/b.lfy",
+            "fn b(): `A b` => string { @acceptanceCriteria.add({ behavior = `It answers` }); }\n",
+        );
+        let local = requirement_id(&fixture, "It answers");
+        let accepted =
+            format!("// @lfy def/b.lfy:b#{local}\npub fn b() -> String {{\n    String::new()\n}}\n");
+        fixture.write("out/b.rs", &accepted);
+        record_unit(&fixture, "b");
+        let of_output = |maps: Vec<SourceMap>| {
+            maps.into_iter()
+                .find(|map| map.output == "out/b.rs")
+                .unwrap_or_else(|| panic!("a map of out/b.rs"))
+        };
+        let recorded = of_output(source_maps_of(&fixture.session(), None));
+        assert_eq!(recorded.markers.first().map(|marker| marker.output_line), Some(1));
+        assert!(!recorded.hash.is_empty() && recorded.answered == vec![local.clone()], "{recorded:?}");
+        // The output as it is now: a line was added before the marker, so its region begins
+        // one line later than the recorded map says.
+        fixture.write("out/b.rs", &format!("// A note.\n{accepted}"));
+        // The unit is up to date, so the plan batches nothing; a compiler run of it is bound
+        // to a batch of its own.
+        let planned = plan_of(&fixture.session());
+        let of_b = (0..planned.plan.units.len())
+            .find(|&unit| planned.plan.units[unit].stem == "b")
+            .expect("the unit b");
+        let session = bound(
+            &fixture,
+            Binding {
+                role: Role::Compiler,
+                batch: Some(Batch { units: vec![of_b], identifier: "b".to_string() }),
+                directory: fixture.root.clone(),
+                plan: planned.plan.clone(),
+                program: planned.program.clone(),
+                request: None,
+                review: None,
+                source_maps: Vec::new(),
+            },
+        );
+        let live = of_output(source_maps_of(&session, None));
+        // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+        assert_eq!(live.markers.first().map(|marker| marker.output_line), Some(2));
+        assert_ne!(live.markers, recorded.markers);
+        // Nothing else differs: with the recorded markers put back, the two maps are one.
+        // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+        let carried = SourceMap { markers: recorded.markers.clone(), ..live };
+        assert_eq!(carried, recorded);
     }
 
     /// A hosted session acts on its own batch and on no other: a request, a check, a
@@ -6545,36 +6718,50 @@ global@targets.add(rust);
         )
     }
 
-    /// A project whose unit `b` has an accepted output answering its first criterion, whose
-    /// second criterion has since been replaced, and the source the output was generated
-    /// from.
+    /// The source of unit `b` as its outputs were accepted: `b` carries two criteria and
+    /// `c` carries one.
+    const WAS: &str = "fn b(): `A b` => string {\n  @acceptanceCriteria.add({ behavior = `It answers` }).add({ behavior = `It never fails` });\n}\nfn c(): `A c` => string {\n  @acceptanceCriteria.add({ behavior = `It was slow` });\n}\n";
+
+    /// The same source now: `b` has dropped its second criterion, and `c` has reworded its
+    /// own and gained another. One criterion is kept, one removed, one reworded, one new.
+    const NOW: &str = "fn b(): `A b` => string {\n  @acceptanceCriteria.add({ behavior = `It answers` });\n}\nfn c(): `A c` => string {\n  @acceptanceCriteria.add({ behavior = `It is quick` }).add({ behavior = `It also returns` });\n}\n";
+
+    /// A project whose unit `b` has an accepted output, one criterion of which has since been
+    /// dropped and one reworded, and the source the output was generated from.
     fn project_with_a_removed_criterion() -> (Fixture, String) {
         let fixture = Fixture::new();
-        let was = two_criteria("It never fails");
-        fixture.with_rust_target().write("def/b.lfy", &was);
-        let first = requirement_id(&fixture, "It answers");
-        let second = requirement_id(&fixture, "It never fails");
+        fixture.with_rust_target().write("def/b.lfy", WAS);
+        let answers = requirement_id(&fixture, "It answers");
+        let never = requirement_id(&fixture, "It never fails");
+        let slow = requirement_id(&fixture, "It was slow");
         fixture.write(
             "out/b.rs",
             &format!(
-                "// @lfy def/b.lfy:b#{first}\n// @lfy def/b.lfy:b#{second}\npub fn b() -> String {{\n    String::new()\n}}\n"
+                "// @lfy def/b.lfy:b#{answers}\n// @lfy def/b.lfy:b#{never}\npub fn b() -> String {{\n    String::new()\n}}\n// @lfy def/b.lfy:c#{slow}\npub fn c() -> String {{\n    String::new()\n}}\n"
             ),
         );
         record_unit(&fixture, "b");
-        fixture.write("def/b.lfy", &two_criteria("It is quick"));
-        (fixture, was)
+        fixture.write("def/b.lfy", NOW);
+        (fixture, WAS.to_string())
     }
 
     /// `elfie_task` gives each unit of the batch with its outputs and its reason, then every
-    /// criterion and test to answer for with its mark, id, place, and text, then what was
-    /// removed, then the counts; a stem of no unit of the batch is an error naming its units.
-    // @lfy def/mcp/main.lfy:task#task:task:5344a4c785aebd895fa405e1bb9c16fe92162b9b508a51ec041be2250c9c8b95
+    /// criterion and test to answer for with its mark, id, place, and text — a reworded one
+    /// followed by the id and the text it replaces — then what was removed, then the counts;
+    /// a stem of no unit of the batch is an error naming its units.
+    // @lfy def/mcp/main.lfy:task#task:task:f5712f43d66f568f15101eeb1ba81a9fc8e2c6c7d9a372433f7bdfc21c443d5f
     // @lfy def/mcp/main.lfy:task#task:task:0ad7d52b1e05307d441d73562c31fb6ed56b23934d94cccfa43bcada539529d3
     #[test]
     fn task_gives_the_obligations_of_the_units_of_its_batch() {
         let (fixture, was) = project_with_a_removed_criterion();
         let kept = requirement_id(&fixture, "It answers");
-        let fresh = requirement_id(&fixture, "It is quick");
+        let fresh = requirement_id(&fixture, "It also returns");
+        let rephrased = requirement_id(&fixture, "It is quick");
+        let replaced = {
+            let older = Fixture::new();
+            older.with_rust_target().write("def/b.lfy", &was);
+            requirement_id(&older, "It was slow")
+        };
         let session = compiling(&fixture, &[("def/b.lfy", &was)]);
         let text = task(&session, None).unwrap();
         // The unit begins with its stem, its file, and its reason, then its outputs.
@@ -6589,11 +6776,20 @@ global@targets.add(rust);
         // @lfy def/mcp/main.lfy:task#task:task:bc0cfc213f87dda7b8e1106191bb902bdb5a2b08b2472742020be295a621309b
         // @lfy def/mcp/main.lfy:task#task:task:48b5a17b6bd8bf11626b7e3c8a77f30620a9bcf76c647c3d0cb15aaa2ac3e582
         // @lfy def/mcp/main.lfy:task#task:task:8bf5a91fa0df3686fb02ff5457cd19a9f3c4d034aceb88db292e7f850ecd6638
-        assert!(text.contains("\nb\n"), "{text}");
+        assert!(text.contains("\nb\n") && text.contains("\nc\n"), "{text}");
         // @lfy def/mcp/main.lfy:task#task:task:00479e8dc9cc7003d7a8fc71ee72b37424f99ac82adaf9497bd8a64df5cd83a2
         assert!(text.contains(&format!("kept {kept} def/b.lfy:2 — It answers")), "{text}");
-        // @lfy def/mcp/main.lfy:task#task:task:ff5e2097d427186339c0055971df5b423e71a9e1f5e535d9b9c16a221ea764b6
-        assert!(text.contains(&format!("new {fresh} def/b.lfy:2 — It is quick")), "{text}");
+        // @lfy def/mcp/main.lfy:task#task:task:aa3aedc17d31c8c2288f74ab8d995d37aabd29e988ed6623b3ab368c90880080
+        assert!(text.contains(&format!("new {fresh} def/b.lfy:5 — It also returns")), "{text}");
+        // A reworded one is marked apart from a new one, and the line after it gives the id
+        // and the text it replaces.
+        // @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
+        assert!(
+            text.contains(&format!(
+                "reworded {rephrased} def/b.lfy:5 — It is quick\nreplaces {replaced} — It was slow\n"
+            )),
+            "{text}"
+        );
         // Every entity of the unit has a criterion, so nothing is said to lack one.
         // @lfy def/mcp/main.lfy:task#task:task:8cda0fab4d2e20c30f36514faa7a119d7713f6defa2830d8a2284e0161739f87
         assert!(text.contains("no entity of the unit lacks a criterion or test"), "{text}");
@@ -6602,8 +6798,8 @@ global@targets.add(rust);
         assert!(text.contains("these were removed since its outputs were accepted"), "{text}");
         assert!(text.contains("\nremoved ") && text.contains("It never fails"), "{text}");
         // The last line counts the marks.
-        // @lfy def/mcp/main.lfy:task#task:task:7f6d74cc47335d8aadcd745834a634e14b2748fd19001c045d3786dc8abc5438
-        assert_eq!(text.lines().next_back(), Some("1 new, 1 kept, 0 unknown, 1 removed"));
+        // @lfy def/mcp/main.lfy:task#task:task:ca1abaa819942eb8c6c130e520f1c36ee16815c41b54d388cca6a9b8ad14a76c
+        assert_eq!(text.lines().next_back(), Some("1 new, 1 reworded, 1 kept, 0 unknown, 1 removed"));
         // Only the unit named is given.
         // @lfy def/mcp/main.lfy:task#task:task:d056015a5c0120d12f5e1daaebd2c2f0c96947c0bbff29ed4ebdeb57af2bcbe2
         assert_eq!(task(&session, Some("b")).unwrap(), text);
@@ -6638,7 +6834,8 @@ global@targets.add(rust);
         // is said to have been removed.
         // @lfy def/mcp/main.lfy:task#task:task:c6544cb71fb79033882e38ad1d044989c8fa3a6dc97e274b3d4054fbb9b65bda
         assert!(!text.contains("is not known"), "{text}");
-        assert_eq!(text.lines().next_back(), Some("0 new, 0 kept, 0 unknown, 0 removed"));
+        // @lfy def/mcp/main.lfy:task#task:task:ca1abaa819942eb8c6c130e520f1c36ee16815c41b54d388cca6a9b8ad14a76c
+        assert_eq!(text.lines().next_back(), Some("0 new, 0 reworded, 0 kept, 0 unknown, 0 removed"));
     }
 
     /// `elfie_dependency` gives one entity of a dependency outside the batch: the unit and
@@ -6735,15 +6932,15 @@ global@targets.add(rust);
             ),
         );
         let session = compiling(&fixture, &[("def/b.lfy", &was)]);
-        // @lfy def/mcp/main.lfy:mark#mark:mark:69bbcbfa87cdafbd3a3dc243f5e684701eb97695e178b909c1c8425ed4dfc12d
+        // @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
         // @lfy def/mcp/main.lfy:mark#mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe
         let text = mark(&session, Some(&fresh), Some(&gone), None, None, None).unwrap();
         assert!(text.starts_with("2 markers rewritten"), "{text}");
         assert!(text.contains(&format!("out/b.rs:2 def/b.lfy:b#{fresh}")), "{text}");
         assert!(text.contains(&format!("out/b.rs:5 def/b.lfy:b#{fresh}")), "{text}");
-        // Only the id changed: every other character of each line, and every other line, is
-        // kept.
-        // @lfy def/mcp/main.lfy:mark#mark:mark:28998da64ee147cca44e18e32eea2a69c7ba2a23355e30936e3cbf466e6060ee
+        // The output `rename` returned was written at its path, and it is the file `rename`
+        // gives: only the id changed.
+        // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
         let written = fs::read_to_string(fixture.root.join("out/b.rs")).unwrap();
         assert_eq!(
             written,

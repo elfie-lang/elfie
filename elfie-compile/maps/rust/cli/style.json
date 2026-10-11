@@ -20,10 +20,10 @@
       "duration:duration:bdaf33d10a559c31fed03ad63033171ff7748854325342070ef9005bcd9e726c",
       "duration:duration:dd742c1c3cc3a97b80b6de90cc6c051d50a547c403eede626647736f71a1aac3",
       "glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b",
+      "glyphOf:glyphOf:1be0717c3d831d2d1416f1d0f87b81075849a9670c40370d210374c46997fd45",
       "glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c",
       "glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e",
-      "glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e",
-      "glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e",
+      "glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32",
       "glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da",
       "glyphOf:glyphOf:e121e7b63e58ebedb21c162928a8e56a1198652788186652f3df7180185086ed",
       "glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320",
@@ -67,7 +67,6 @@
       "tally:tally:808090fb00651fdad96557306be003862711eb272672639c39f0e28851b18aaa",
       "tally:tally:99193b5bef282bd8e2f1340ab99b6f172e5abb8a11b4d354e823c86c4bb65a72",
       "tally:tally:d0304e1e1a879d6fbb15edea0c7f5612a2dc8e06e0314f9d56253d6a1544e92d",
-      "toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca",
       "toneOf:toneOf:26e771016ac5d78412265b6ce2f642e945bad5ab4c390694540e314c9e2db6d3",
       "toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2",
       "toneOf:toneOf:398ba084d601d05be00d95e4cb7fa05f7d4b9d5b77ada16eaee2e88e9ecb9258",
@@ -75,14 +74,15 @@
       "toneOf:toneOf:7a3092b23685652356ef40136c995e18bdcb5ef3b54278d351b792cab9d62fbf",
       "toneOf:toneOf:9dfe6caa377e781205875223f7abe8b862523b0ebc84d556053c45413798b497",
       "toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7",
+      "toneOf:toneOf:c73f16a1da224984fdb78f97585a0cab3052893e0f1852d564a07fec27743b90",
       "toneOf:toneOf:e62a94e69d89b6cf00197a96f8e054019c8bc20c03f01ea04442e78b3bdfb462"
     ],
     "dependencies": {
-      "def/cli/data.lfy": "e6d7aa1996a759def2d5053e53a67f949bd0e82c3894c82d5d0176d66a31f98e",
-      "def/generation/data.lfy": "26aad3b3aaca685f67b2a2225e2d552fc2026e0d0af10502b3ba63373356ba7d",
+      "def/cli/data.lfy": "55f4a93f8e5aa41d57a2ad3c26fcc828fd6d467ebaaa979b4bca12bd2a5e64ab",
+      "def/generation/data.lfy": "9ff0da89015d7e095a8e4259f6b50a45fb265ac35ce5f365e7620d31a7ad8e00",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42"
     },
-    "generated": "2026-10-11T00:32:58Z",
+    "generated": "2026-10-11T03:55:51Z",
     "hash": "0aaf7bb3088ee619a4e71cd983f7cf8b0a82b4843938f343947518513359fc1c",
     "markers": [
       {
@@ -510,345 +510,327 @@
       },
       {
         "column": null,
-        "end": 261,
+        "end": 268,
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
         "outputLine": 260,
-        "requirement": "toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca"
-      },
-      {
-        "column": null,
-        "end": 269,
-        "entity": "toneOf",
-        "file": "def/cli/style.lfy",
-        "line": 141,
-        "outputLine": 262,
-        "requirement": "toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7"
-      },
-      {
-        "column": null,
-        "end": 272,
-        "entity": "glyphOf",
-        "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 270,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 274,
-        "entity": "glyphOf",
-        "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 273,
-        "requirement": "glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a"
+        "requirement": "toneOf:toneOf:c73f16a1da224984fdb78f97585a0cab3052893e0f1852d564a07fec27743b90"
       },
       {
         "column": null,
         "end": 276,
-        "entity": "glyphOf",
+        "entity": "toneOf",
         "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 275,
-        "requirement": "glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e"
+        "line": 141,
+        "outputLine": 269,
+        "requirement": "toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7"
       },
       {
         "column": null,
-        "end": 278,
+        "end": 279,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
         "outputLine": 277,
-        "requirement": "glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e"
+        "requirement": null
       },
       {
         "column": null,
-        "end": 280,
+        "end": 281,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 279,
+        "outputLine": 280,
+        "requirement": "glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a"
+      },
+      {
+        "column": null,
+        "end": 283,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 168,
+        "outputLine": 282,
+        "requirement": "glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32"
+      },
+      {
+        "column": null,
+        "end": 285,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 168,
+        "outputLine": 284,
+        "requirement": "glyphOf:glyphOf:1be0717c3d831d2d1416f1d0f87b81075849a9670c40370d210374c46997fd45"
+      },
+      {
+        "column": null,
+        "end": 287,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 168,
+        "outputLine": 286,
         "requirement": "glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b"
       },
       {
         "column": null,
-        "end": 282,
+        "end": 289,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 281,
+        "outputLine": 288,
         "requirement": "glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c"
       },
       {
         "column": null,
-        "end": 284,
+        "end": 291,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 283,
+        "outputLine": 290,
         "requirement": "glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320"
       },
       {
         "column": null,
-        "end": 286,
+        "end": 293,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 285,
+        "outputLine": 292,
         "requirement": "glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e"
       },
       {
         "column": null,
-        "end": 292,
+        "end": 299,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 287,
+        "outputLine": 294,
         "requirement": "glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da"
       },
       {
         "column": null,
-        "end": 295,
+        "end": 302,
         "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 293,
+        "line": 196,
+        "outputLine": 300,
         "requirement": null
       },
       {
         "column": null,
-        "end": 297,
+        "end": 304,
         "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 296,
+        "line": 196,
+        "outputLine": 303,
         "requirement": "severityTone:severityTone:6aa259ecfa3a4402af73a3d2711a299f29be7292e37ad3240a2c15bd518c7535"
       },
       {
         "column": null,
-        "end": 299,
+        "end": 306,
         "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 298,
+        "line": 196,
+        "outputLine": 305,
         "requirement": "severityTone:severityTone:068fe8b78a1d721c071d0990013048e00b0432eea7cc9cc97b9afe24f7f87f11"
       },
       {
         "column": null,
-        "end": 305,
+        "end": 312,
         "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 300,
+        "line": 196,
+        "outputLine": 307,
         "requirement": "severityTone:severityTone:fcfa327db29ade75bdc1f35a572073de41cb1b08b69befea01c4cafefb760888"
       },
       {
         "column": null,
-        "end": 308,
+        "end": 315,
         "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 306,
+        "line": 209,
+        "outputLine": 313,
         "requirement": null
       },
       {
         "column": null,
-        "end": 310,
+        "end": 317,
         "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 309,
+        "line": 209,
+        "outputLine": 316,
         "requirement": "statusTone:statusTone:c24f9f3c7757160b932c3f9d9582d7cf05c9fedad083bb2493348ce05446d8c6"
-      },
-      {
-        "column": null,
-        "end": 312,
-        "entity": "statusTone",
-        "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 311,
-        "requirement": "statusTone:statusTone:981a47dfe41157a73faec41c3e843c11875d9344170d8d647af7824b03ddb8c6"
       },
       {
         "column": null,
         "end": 319,
         "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 313,
-        "requirement": "statusTone:statusTone:730e8685ff5d8c9ce873fb71fd6781c7e8981e167f121771f8f30972ccdab6b1"
-      },
-      {
-        "column": null,
-        "end": 322,
-        "entity": "reasonTone",
-        "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 320,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 324,
-        "entity": "reasonTone",
-        "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 323,
-        "requirement": "reasonTone:reasonTone:f04315f94350f0bef98ff50819e968748e5c2f083dceda0c6493aae64397be61"
+        "line": 209,
+        "outputLine": 318,
+        "requirement": "statusTone:statusTone:981a47dfe41157a73faec41c3e843c11875d9344170d8d647af7824b03ddb8c6"
       },
       {
         "column": null,
         "end": 326,
+        "entity": "statusTone",
+        "file": "def/cli/style.lfy",
+        "line": 209,
+        "outputLine": 320,
+        "requirement": "statusTone:statusTone:730e8685ff5d8c9ce873fb71fd6781c7e8981e167f121771f8f30972ccdab6b1"
+      },
+      {
+        "column": null,
+        "end": 329,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 325,
+        "line": 222,
+        "outputLine": 327,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 331,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 222,
+        "outputLine": 330,
+        "requirement": "reasonTone:reasonTone:f04315f94350f0bef98ff50819e968748e5c2f083dceda0c6493aae64397be61"
+      },
+      {
+        "column": null,
+        "end": 333,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 222,
+        "outputLine": 332,
         "requirement": "reasonTone:reasonTone:f27ff452bb57d8763b5de9c9e6038486b6c8c90d53d811f4c80848a3d0c338c6"
       },
       {
         "column": null,
-        "end": 328,
+        "end": 335,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 327,
+        "line": 222,
+        "outputLine": 334,
         "requirement": "reasonTone:reasonTone:fad0ecf92e8cdc3f558beb6dc223b89dabbe5835f98cb7d605d233975a5dd3bb"
       },
       {
         "column": null,
-        "end": 330,
+        "end": 337,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 329,
+        "line": 222,
+        "outputLine": 336,
         "requirement": "reasonTone:reasonTone:75be1cb8a9f16327a21946c1232feac3af781c105e0528e0b0b537dd6c7ad085"
       },
       {
         "column": null,
-        "end": 339,
+        "end": 346,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 331,
+        "line": 222,
+        "outputLine": 338,
         "requirement": "reasonTone:reasonTone:dcd627388a7601c2b33f1da9e26b5f10a796a79110967bf946361afce58a56de"
       },
       {
         "column": null,
-        "end": 342,
+        "end": 349,
         "entity": "tally",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 340,
+        "line": 245,
+        "outputLine": 347,
         "requirement": null
       },
       {
         "column": null,
-        "end": 343,
+        "end": 350,
         "entity": "tally",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 343,
+        "line": 245,
+        "outputLine": 350,
         "requirement": "tally:tally:22ccbf3f063d8cff61ae44b8bc0c48122eac7cbd166657279f6a9ddbc3a4aa47"
       },
       {
         "column": null,
-        "end": 380,
+        "end": 390,
         "entity": "tally",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 344,
+        "line": 245,
+        "outputLine": 351,
         "requirement": "tally:tally:808090fb00651fdad96557306be003862711eb272672639c39f0e28851b18aaa"
       },
       {
         "column": null,
-        "end": 392,
+        "end": 402,
         "entity": "ColorChoice",
         "file": "def/cli/style.lfy",
         "line": 13,
-        "outputLine": 381,
+        "outputLine": 391,
         "requirement": null
       },
       {
         "column": null,
-        "end": 403,
+        "end": 413,
         "entity": "Tone",
         "file": "def/cli/style.lfy",
         "line": 19,
-        "outputLine": 393,
+        "outputLine": 403,
         "requirement": null
       },
       {
         "column": null,
-        "end": 404,
+        "end": 414,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 404,
+        "outputLine": 414,
         "requirement": "colorsOn:colorsOn:ff6531ae54a65c432ac61bfcfec9bed47ec3035c12287116d69a25c95fcfe8be"
       },
       {
         "column": null,
-        "end": 411,
+        "end": 421,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 405,
+        "outputLine": 415,
         "requirement": "colorsOn:colorsOn:cd544380f546397d1071f89849f1daa1878e747601e015261b0c6b6ba3029a4f"
       },
       {
         "column": null,
-        "end": 412,
+        "end": 422,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 412,
+        "outputLine": 422,
         "requirement": "colorsOn:colorsOn:d7a9fd32a01c9a0c828826be76e0eb10eeca5a3d0a1dfe80b4288ecfd480676e"
       },
       {
         "column": null,
-        "end": 419,
+        "end": 429,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 413,
+        "outputLine": 423,
         "requirement": "colorsOn:colorsOn:51b5bc7dcc299fd9e0162c246879a8a7677937b08cdb8efab6713912b41d712f"
       },
       {
         "column": null,
-        "end": 427,
+        "end": 437,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 420,
+        "outputLine": 430,
         "requirement": "colorsOn:colorsOn:e6362de3f6ed08806c842adf4a92b9e1389c953e360cdec10164ec440069430f"
       },
       {
         "column": null,
-        "end": 433,
+        "end": 443,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 428,
+        "outputLine": 438,
         "requirement": "colorsOn:colorsOn:5e68c907a3e7ff5175cea826734bfd9aef043996d9ea0da973a5ff0e8cec8c52"
-      },
-      {
-        "column": null,
-        "end": 440,
-        "entity": "colorsOn",
-        "file": "def/cli/style.lfy",
-        "line": 31,
-        "outputLine": 434,
-        "requirement": "colorsOn:colorsOn:5ad3b31609f776334b71beceb50e4ed4c72f51139b57b31677bec1ba7b8ac634"
-      },
-      {
-        "column": null,
-        "end": 441,
-        "entity": "colorsOn",
-        "file": "def/cli/style.lfy",
-        "line": 31,
-        "outputLine": 441,
-        "requirement": "colorsOn:colorsOn:c012147bba6d569ae6683005e50792f5c5e585587e8abb223960264ef3aaf77f"
       },
       {
         "column": null,
@@ -856,143 +838,143 @@
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
-        "outputLine": 442,
-        "requirement": "colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967"
+        "outputLine": 444,
+        "requirement": "colorsOn:colorsOn:5ad3b31609f776334b71beceb50e4ed4c72f51139b57b31677bec1ba7b8ac634"
       },
       {
         "column": null,
-        "end": 455,
+        "end": 451,
         "entity": "colorsOn",
         "file": "def/cli/style.lfy",
         "line": 31,
         "outputLine": 451,
+        "requirement": "colorsOn:colorsOn:c012147bba6d569ae6683005e50792f5c5e585587e8abb223960264ef3aaf77f"
+      },
+      {
+        "column": null,
+        "end": 460,
+        "entity": "colorsOn",
+        "file": "def/cli/style.lfy",
+        "line": 31,
+        "outputLine": 452,
         "requirement": "colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967"
       },
       {
         "column": null,
-        "end": 456,
-        "entity": "paint",
-        "file": "def/cli/style.lfy",
-        "line": 76,
-        "outputLine": 456,
-        "requirement": "paint:paint:de381fd52ede1936e22b7a7e414805c9ffc5e7f5f98bb6e0604f5293bd584bd9"
-      },
-      {
-        "column": null,
-        "end": 464,
-        "entity": "paint",
-        "file": "def/cli/style.lfy",
-        "line": 76,
-        "outputLine": 457,
-        "requirement": "paint:paint:908e76236a6f4a230ad82b290f0e2fb7b35a7cf4b83bf2aa7290709f3e7e1d55"
-      },
-      {
-        "column": null,
         "end": 465,
-        "entity": "paint",
+        "entity": "colorsOn",
         "file": "def/cli/style.lfy",
-        "line": 76,
-        "outputLine": 465,
-        "requirement": "paint:paint:714bf468d158f2876b569511f35c05e1a21fb1724f0ca965c7628d89960dab89"
+        "line": 31,
+        "outputLine": 461,
+        "requirement": "colorsOn:colorsOn:a25c587b03fe66a831b8c8a99ceb6fcbed28fb6856146da98ef190b32680e967"
       },
       {
         "column": null,
-        "end": 471,
+        "end": 466,
         "entity": "paint",
         "file": "def/cli/style.lfy",
         "line": 76,
         "outputLine": 466,
+        "requirement": "paint:paint:de381fd52ede1936e22b7a7e414805c9ffc5e7f5f98bb6e0604f5293bd584bd9"
+      },
+      {
+        "column": null,
+        "end": 474,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 76,
+        "outputLine": 467,
+        "requirement": "paint:paint:908e76236a6f4a230ad82b290f0e2fb7b35a7cf4b83bf2aa7290709f3e7e1d55"
+      },
+      {
+        "column": null,
+        "end": 475,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 76,
+        "outputLine": 475,
+        "requirement": "paint:paint:714bf468d158f2876b569511f35c05e1a21fb1724f0ca965c7628d89960dab89"
+      },
+      {
+        "column": null,
+        "end": 481,
+        "entity": "paint",
+        "file": "def/cli/style.lfy",
+        "line": 76,
+        "outputLine": 476,
         "requirement": "paint:paint:a71b34754c2a1f6fb1875c94ac0f67275289f340fc1aa2289d16aa2b753d50ca"
       },
       {
         "column": null,
-        "end": 472,
+        "end": 482,
         "entity": "paint",
         "file": "def/cli/style.lfy",
         "line": 76,
-        "outputLine": 472,
+        "outputLine": 482,
         "requirement": "paint:paint:bd96aa24959517e862a0e4b99692fbb12fd640fe75292517d756ba594cf16051"
       },
       {
         "column": null,
-        "end": 478,
+        "end": 488,
         "entity": "paint",
         "file": "def/cli/style.lfy",
         "line": 76,
-        "outputLine": 473,
+        "outputLine": 483,
         "requirement": "paint:paint:887caee4bf900a333c30d4891d2ac0cd87f1e9b7e054d0802c5ceae73aff0def"
       },
       {
         "column": null,
-        "end": 479,
+        "end": 489,
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 479,
+        "outputLine": 489,
         "requirement": "padded:padded:26429a29e6c03161f9989e316d03d7775c25e490bc1cde9771e058db8d3b9359"
       },
       {
         "column": null,
-        "end": 486,
+        "end": 496,
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 480,
+        "outputLine": 490,
         "requirement": "padded:padded:8246266464e0a3704c9fd5653df6b5c7c806e0d53455d48116d131042168dac7"
       },
       {
         "column": null,
-        "end": 487,
+        "end": 497,
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 487,
+        "outputLine": 497,
         "requirement": "padded:padded:d13e67da436a0aaa2823e82520f26b91a24330e945f857cb910c002a6078a097"
       },
       {
         "column": null,
-        "end": 494,
+        "end": 504,
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 488,
+        "outputLine": 498,
         "requirement": "padded:padded:24bf222383423ca110cd5c6379c1e63c4a77daf3a3798e75c73e43044a118ef8"
       },
       {
         "column": null,
-        "end": 495,
+        "end": 505,
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 495,
+        "outputLine": 505,
         "requirement": "padded:padded:cb1f3b1f598c5d084090f45e30f5eddee904bcc25fb6e54a99b38058e89a8210"
       },
       {
         "column": null,
-        "end": 501,
+        "end": 511,
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 496,
+        "outputLine": 506,
         "requirement": "padded:padded:2253ff73d22ed1d25a013fa11c2998d81885467ef3e649a57d0ad9f7c8a09555"
-      },
-      {
-        "column": null,
-        "end": 508,
-        "entity": "padded",
-        "file": "def/cli/style.lfy",
-        "line": 94,
-        "outputLine": 502,
-        "requirement": "padded:padded:2253ff73d22ed1d25a013fa11c2998d81885467ef3e649a57d0ad9f7c8a09555"
-      },
-      {
-        "column": null,
-        "end": 509,
-        "entity": "padded",
-        "file": "def/cli/style.lfy",
-        "line": 94,
-        "outputLine": 509,
-        "requirement": "padded:padded:4b684620f67ebc661bcabb5995a649fa4519006dc7a42fe29f75544a5b3becf2"
       },
       {
         "column": null,
@@ -1000,143 +982,134 @@
         "entity": "padded",
         "file": "def/cli/style.lfy",
         "line": 94,
-        "outputLine": 510,
-        "requirement": "padded:padded:0cc7a759efec56a39fec3ff1c04cb4db06c81adae743cd1d1b5cc92548386ee1"
+        "outputLine": 512,
+        "requirement": "padded:padded:2253ff73d22ed1d25a013fa11c2998d81885467ef3e649a57d0ad9f7c8a09555"
       },
       {
         "column": null,
         "end": 519,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 94,
+        "outputLine": 519,
+        "requirement": "padded:padded:4b684620f67ebc661bcabb5995a649fa4519006dc7a42fe29f75544a5b3becf2"
+      },
+      {
+        "column": null,
+        "end": 528,
+        "entity": "padded",
+        "file": "def/cli/style.lfy",
+        "line": 94,
+        "outputLine": 520,
+        "requirement": "padded:padded:0cc7a759efec56a39fec3ff1c04cb4db06c81adae743cd1d1b5cc92548386ee1"
+      },
+      {
+        "column": null,
+        "end": 529,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 519,
+        "outputLine": 529,
         "requirement": "duration:duration:8a51c8b1053d1d0b2bebccc2a31c2a9c19dda84690ab75418fddf2ecd276b196"
       },
       {
         "column": null,
-        "end": 527,
+        "end": 537,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 520,
+        "outputLine": 530,
         "requirement": "duration:duration:bdaf33d10a559c31fed03ad63033171ff7748854325342070ef9005bcd9e726c"
       },
       {
         "column": null,
-        "end": 533,
+        "end": 543,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 528,
+        "outputLine": 538,
         "requirement": "duration:duration:183d9e5f3d4a488194fbfbc8b2d94530103239b383293657a7cf4d3df81421b6"
       },
       {
         "column": null,
-        "end": 534,
+        "end": 544,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 534,
+        "outputLine": 544,
         "requirement": "duration:duration:5cceda616cd0c4c6cce21639c18f4b5f3b5646b449845b99d8c12cec76451e09"
       },
       {
         "column": null,
-        "end": 540,
+        "end": 550,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 535,
+        "outputLine": 545,
         "requirement": "duration:duration:3fe7dc4f6bad3b5f682e726aa5513053726b47f2a663ac50b7f2dae9b9d906e4"
       },
       {
         "column": null,
-        "end": 541,
+        "end": 551,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 541,
+        "outputLine": 551,
         "requirement": "duration:duration:2560969ace129c52e954c736b432cfff0494d09b4f1b5328a38a39902a50c310"
       },
       {
         "column": null,
-        "end": 548,
+        "end": 558,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 542,
+        "outputLine": 552,
         "requirement": "duration:duration:45752ec47a9540a84d457cb57940b15769f2ed08a0ea2868411d6a8491d377ad"
       },
       {
         "column": null,
-        "end": 549,
+        "end": 559,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 549,
+        "outputLine": 559,
         "requirement": "duration:duration:3d4b8564c921f0dcc9152446962bec9fd969cc6478793420bb9476d1c2e477f7"
       },
       {
         "column": null,
-        "end": 556,
+        "end": 566,
         "entity": "duration",
         "file": "def/cli/style.lfy",
         "line": 115,
-        "outputLine": 550,
+        "outputLine": 560,
         "requirement": "duration:duration:dd742c1c3cc3a97b80b6de90cc6c051d50a547c403eede626647736f71a1aac3"
       },
       {
         "column": null,
-        "end": 557,
-        "entity": "toneOf",
-        "file": "def/cli/style.lfy",
-        "line": 141,
-        "outputLine": 557,
-        "requirement": "toneOf:toneOf:26e771016ac5d78412265b6ce2f642e945bad5ab4c390694540e314c9e2db6d3"
-      },
-      {
-        "column": null,
-        "end": 565,
-        "entity": "toneOf",
-        "file": "def/cli/style.lfy",
-        "line": 141,
-        "outputLine": 558,
-        "requirement": "toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2"
-      },
-      {
-        "column": null,
-        "end": 566,
-        "entity": "toneOf",
-        "file": "def/cli/style.lfy",
-        "line": 141,
-        "outputLine": 566,
-        "requirement": "toneOf:toneOf:398ba084d601d05be00d95e4cb7fa05f7d4b9d5b77ada16eaee2e88e9ecb9258"
-      },
-      {
-        "column": null,
-        "end": 573,
+        "end": 567,
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
         "outputLine": 567,
-        "requirement": "toneOf:toneOf:7a3092b23685652356ef40136c995e18bdcb5ef3b54278d351b792cab9d62fbf"
+        "requirement": "toneOf:toneOf:26e771016ac5d78412265b6ce2f642e945bad5ab4c390694540e314c9e2db6d3"
       },
       {
         "column": null,
-        "end": 574,
+        "end": 575,
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
-        "outputLine": 574,
-        "requirement": "toneOf:toneOf:64ef0ccf8dc53c748db7e22025891b0e5700055323e7c72d20738955e09a9822"
+        "outputLine": 568,
+        "requirement": "toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2"
       },
       {
         "column": null,
-        "end": 582,
+        "end": 576,
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
-        "outputLine": 575,
-        "requirement": "toneOf:toneOf:9dfe6caa377e781205875223f7abe8b862523b0ebc84d556053c45413798b497"
+        "outputLine": 576,
+        "requirement": "toneOf:toneOf:398ba084d601d05be00d95e4cb7fa05f7d4b9d5b77ada16eaee2e88e9ecb9258"
       },
       {
         "column": null,
@@ -1144,8 +1117,26 @@
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
-        "outputLine": 583,
-        "requirement": "toneOf:toneOf:e62a94e69d89b6cf00197a96f8e054019c8bc20c03f01ea04442e78b3bdfb462"
+        "outputLine": 577,
+        "requirement": "toneOf:toneOf:7a3092b23685652356ef40136c995e18bdcb5ef3b54278d351b792cab9d62fbf"
+      },
+      {
+        "column": null,
+        "end": 584,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 141,
+        "outputLine": 584,
+        "requirement": "toneOf:toneOf:64ef0ccf8dc53c748db7e22025891b0e5700055323e7c72d20738955e09a9822"
+      },
+      {
+        "column": null,
+        "end": 592,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 141,
+        "outputLine": 585,
+        "requirement": "toneOf:toneOf:9dfe6caa377e781205875223f7abe8b862523b0ebc84d556053c45413798b497"
       },
       {
         "column": null,
@@ -1153,80 +1144,71 @@
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
-        "outputLine": 584,
-        "requirement": "toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca"
+        "outputLine": 593,
+        "requirement": "toneOf:toneOf:e62a94e69d89b6cf00197a96f8e054019c8bc20c03f01ea04442e78b3bdfb462"
       },
       {
         "column": null,
-        "end": 600,
+        "end": 606,
         "entity": "toneOf",
         "file": "def/cli/style.lfy",
         "line": 141,
         "outputLine": 594,
+        "requirement": "toneOf:toneOf:c73f16a1da224984fdb78f97585a0cab3052893e0f1852d564a07fec27743b90"
+      },
+      {
+        "column": null,
+        "end": 613,
+        "entity": "toneOf",
+        "file": "def/cli/style.lfy",
+        "line": 141,
+        "outputLine": 607,
         "requirement": "toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7"
       },
       {
         "column": null,
-        "end": 601,
+        "end": 614,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 601,
+        "outputLine": 614,
         "requirement": "glyphOf:glyphOf:f7a6ac7720627542ea682c531652973a124ab72f22c3acd82dc2b7e51a5c1c9c"
       },
       {
         "column": null,
-        "end": 609,
+        "end": 622,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 602,
+        "outputLine": 615,
         "requirement": "glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b"
       },
       {
         "column": null,
-        "end": 610,
+        "end": 623,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 610,
+        "outputLine": 623,
         "requirement": "glyphOf:glyphOf:fea38d82fe4a7ac92d163cfb7f1268f6f986aa94cd99f2e727006e6c6f0b6961"
       },
       {
         "column": null,
-        "end": 617,
+        "end": 630,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 611,
+        "outputLine": 624,
         "requirement": "glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c"
       },
       {
         "column": null,
-        "end": 618,
+        "end": 631,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 618,
+        "outputLine": 631,
         "requirement": "glyphOf:glyphOf:e121e7b63e58ebedb21c162928a8e56a1198652788186652f3df7180185086ed"
-      },
-      {
-        "column": null,
-        "end": 626,
-        "entity": "glyphOf",
-        "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 619,
-        "requirement": "glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e"
-      },
-      {
-        "column": null,
-        "end": 633,
-        "entity": "glyphOf",
-        "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 627,
-        "requirement": "glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a"
       },
       {
         "column": null,
@@ -1234,246 +1216,264 @@
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
-        "outputLine": 634,
-        "requirement": "glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e"
+        "outputLine": 632,
+        "requirement": "glyphOf:glyphOf:1be0717c3d831d2d1416f1d0f87b81075849a9670c40370d210374c46997fd45"
       },
       {
         "column": null,
-        "end": 641,
+        "end": 647,
         "entity": "glyphOf",
         "file": "def/cli/style.lfy",
         "line": 168,
         "outputLine": 641,
-        "requirement": "glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320"
-      },
-      {
-        "column": null,
-        "end": 642,
-        "entity": "glyphOf",
-        "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 642,
-        "requirement": "glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e"
-      },
-      {
-        "column": null,
-        "end": 654,
-        "entity": "glyphOf",
-        "file": "def/cli/style.lfy",
-        "line": 168,
-        "outputLine": 643,
-        "requirement": "glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da"
-      },
-      {
-        "column": null,
-        "end": 655,
-        "entity": "severityTone",
-        "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 655,
-        "requirement": "severityTone:severityTone:b887b8bbc3bf0d2b35204bb8d40567ee15b8359515d842f0b6aefce7c1514016"
+        "requirement": "glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a"
       },
       {
         "column": null,
         "end": 656,
-        "entity": "severityTone",
+        "entity": "glyphOf",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 656,
-        "requirement": "severityTone:severityTone:6aa259ecfa3a4402af73a3d2711a299f29be7292e37ad3240a2c15bd518c7535"
+        "line": 168,
+        "outputLine": 648,
+        "requirement": "glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32"
       },
       {
         "column": null,
-        "end": 664,
-        "entity": "severityTone",
+        "end": 657,
+        "entity": "glyphOf",
         "file": "def/cli/style.lfy",
-        "line": 193,
+        "line": 168,
         "outputLine": 657,
-        "requirement": "severityTone:severityTone:068fe8b78a1d721c071d0990013048e00b0432eea7cc9cc97b9afe24f7f87f11"
+        "requirement": "glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320"
       },
       {
         "column": null,
-        "end": 665,
+        "end": 658,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 168,
+        "outputLine": 658,
+        "requirement": "glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e"
+      },
+      {
+        "column": null,
+        "end": 670,
+        "entity": "glyphOf",
+        "file": "def/cli/style.lfy",
+        "line": 168,
+        "outputLine": 659,
+        "requirement": "glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da"
+      },
+      {
+        "column": null,
+        "end": 671,
         "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 665,
-        "requirement": "severityTone:severityTone:e7820cabe74cc4201ffdb24b7474cf75c4637ae197453aa49d6ec67a0e8c2a38"
+        "line": 196,
+        "outputLine": 671,
+        "requirement": "severityTone:severityTone:b887b8bbc3bf0d2b35204bb8d40567ee15b8359515d842f0b6aefce7c1514016"
       },
       {
         "column": null,
         "end": 672,
         "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 193,
-        "outputLine": 666,
-        "requirement": "severityTone:severityTone:fcfa327db29ade75bdc1f35a572073de41cb1b08b69befea01c4cafefb760888"
+        "line": 196,
+        "outputLine": 672,
+        "requirement": "severityTone:severityTone:6aa259ecfa3a4402af73a3d2711a299f29be7292e37ad3240a2c15bd518c7535"
       },
       {
         "column": null,
-        "end": 673,
-        "entity": "statusTone",
+        "end": 680,
+        "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 206,
+        "line": 196,
         "outputLine": 673,
-        "requirement": "statusTone:statusTone:48c63f43020ad019c2446d8b0fcdd7e4649b5cbc68a8f6ce859cbb3d2335d80b"
-      },
-      {
-        "column": null,
-        "end": 674,
-        "entity": "statusTone",
-        "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 674,
-        "requirement": "statusTone:statusTone:c24f9f3c7757160b932c3f9d9582d7cf05c9fedad083bb2493348ce05446d8c6"
+        "requirement": "severityTone:severityTone:068fe8b78a1d721c071d0990013048e00b0432eea7cc9cc97b9afe24f7f87f11"
       },
       {
         "column": null,
         "end": 681,
-        "entity": "statusTone",
+        "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 675,
-        "requirement": "statusTone:statusTone:730e8685ff5d8c9ce873fb71fd6781c7e8981e167f121771f8f30972ccdab6b1"
-      },
-      {
-        "column": null,
-        "end": 682,
-        "entity": "statusTone",
-        "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 682,
-        "requirement": "statusTone:statusTone:59313569ee3ab4c04e0454da3401560e252509eca59d21dc061524c8abaed292"
+        "line": 196,
+        "outputLine": 681,
+        "requirement": "severityTone:severityTone:e7820cabe74cc4201ffdb24b7474cf75c4637ae197453aa49d6ec67a0e8c2a38"
       },
       {
         "column": null,
         "end": 688,
-        "entity": "statusTone",
+        "entity": "severityTone",
         "file": "def/cli/style.lfy",
-        "line": 206,
-        "outputLine": 683,
-        "requirement": "statusTone:statusTone:981a47dfe41157a73faec41c3e843c11875d9344170d8d647af7824b03ddb8c6"
+        "line": 196,
+        "outputLine": 682,
+        "requirement": "severityTone:severityTone:fcfa327db29ade75bdc1f35a572073de41cb1b08b69befea01c4cafefb760888"
       },
       {
         "column": null,
         "end": 689,
-        "entity": "reasonTone",
+        "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
+        "line": 209,
         "outputLine": 689,
-        "requirement": "reasonTone:reasonTone:28cde573f1e33dad6b6c8133c43fe701cc242358daa04c84ac138f95353bc234"
+        "requirement": "statusTone:statusTone:48c63f43020ad019c2446d8b0fcdd7e4649b5cbc68a8f6ce859cbb3d2335d80b"
+      },
+      {
+        "column": null,
+        "end": 690,
+        "entity": "statusTone",
+        "file": "def/cli/style.lfy",
+        "line": 209,
+        "outputLine": 690,
+        "requirement": "statusTone:statusTone:c24f9f3c7757160b932c3f9d9582d7cf05c9fedad083bb2493348ce05446d8c6"
       },
       {
         "column": null,
         "end": 697,
-        "entity": "reasonTone",
+        "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 690,
-        "requirement": "reasonTone:reasonTone:fad0ecf92e8cdc3f558beb6dc223b89dabbe5835f98cb7d605d233975a5dd3bb"
+        "line": 209,
+        "outputLine": 691,
+        "requirement": "statusTone:statusTone:730e8685ff5d8c9ce873fb71fd6781c7e8981e167f121771f8f30972ccdab6b1"
       },
       {
         "column": null,
         "end": 698,
-        "entity": "reasonTone",
+        "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
+        "line": 209,
         "outputLine": 698,
-        "requirement": "reasonTone:reasonTone:8d6a1a88a7c0cd4d32dd28b82d1a681c15cfca1dae5ce97b36d3463f874a07bd"
+        "requirement": "statusTone:statusTone:59313569ee3ab4c04e0454da3401560e252509eca59d21dc061524c8abaed292"
       },
       {
         "column": null,
         "end": 704,
-        "entity": "reasonTone",
+        "entity": "statusTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
+        "line": 209,
         "outputLine": 699,
-        "requirement": "reasonTone:reasonTone:75be1cb8a9f16327a21946c1232feac3af781c105e0528e0b0b537dd6c7ad085"
+        "requirement": "statusTone:statusTone:981a47dfe41157a73faec41c3e843c11875d9344170d8d647af7824b03ddb8c6"
       },
       {
         "column": null,
         "end": 705,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
+        "line": 222,
         "outputLine": 705,
-        "requirement": "reasonTone:reasonTone:692c8c2a7bd4e2e8b9e12899b0cffe1543db43a1dbeb701777c21d76f320927b"
+        "requirement": "reasonTone:reasonTone:28cde573f1e33dad6b6c8133c43fe701cc242358daa04c84ac138f95353bc234"
       },
       {
         "column": null,
-        "end": 711,
+        "end": 713,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
+        "line": 222,
         "outputLine": 706,
-        "requirement": "reasonTone:reasonTone:dcd627388a7601c2b33f1da9e26b5f10a796a79110967bf946361afce58a56de"
+        "requirement": "reasonTone:reasonTone:fad0ecf92e8cdc3f558beb6dc223b89dabbe5835f98cb7d605d233975a5dd3bb"
       },
       {
         "column": null,
-        "end": 712,
+        "end": 714,
         "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 712,
-        "requirement": "reasonTone:reasonTone:f04315f94350f0bef98ff50819e968748e5c2f083dceda0c6493aae64397be61"
-      },
-      {
-        "column": null,
-        "end": 719,
-        "entity": "reasonTone",
-        "file": "def/cli/style.lfy",
-        "line": 219,
-        "outputLine": 713,
-        "requirement": "reasonTone:reasonTone:f27ff452bb57d8763b5de9c9e6038486b6c8c90d53d811f4c80848a3d0c338c6"
+        "line": 222,
+        "outputLine": 714,
+        "requirement": "reasonTone:reasonTone:8d6a1a88a7c0cd4d32dd28b82d1a681c15cfca1dae5ce97b36d3463f874a07bd"
       },
       {
         "column": null,
         "end": 720,
-        "entity": "tally",
+        "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 720,
-        "requirement": "tally:tally:d0304e1e1a879d6fbb15edea0c7f5612a2dc8e06e0314f9d56253d6a1544e92d"
+        "line": 222,
+        "outputLine": 715,
+        "requirement": "reasonTone:reasonTone:75be1cb8a9f16327a21946c1232feac3af781c105e0528e0b0b537dd6c7ad085"
+      },
+      {
+        "column": null,
+        "end": 721,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 222,
+        "outputLine": 721,
+        "requirement": "reasonTone:reasonTone:692c8c2a7bd4e2e8b9e12899b0cffe1543db43a1dbeb701777c21d76f320927b"
+      },
+      {
+        "column": null,
+        "end": 727,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 222,
+        "outputLine": 722,
+        "requirement": "reasonTone:reasonTone:dcd627388a7601c2b33f1da9e26b5f10a796a79110967bf946361afce58a56de"
       },
       {
         "column": null,
         "end": 728,
-        "entity": "tally",
+        "entity": "reasonTone",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 721,
-        "requirement": "tally:tally:22ccbf3f063d8cff61ae44b8bc0c48122eac7cbd166657279f6a9ddbc3a4aa47"
-      },
-      {
-        "column": null,
-        "end": 729,
-        "entity": "tally",
-        "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 729,
-        "requirement": "tally:tally:99193b5bef282bd8e2f1340ab99b6f172e5abb8a11b4d354e823c86c4bb65a72"
+        "line": 222,
+        "outputLine": 728,
+        "requirement": "reasonTone:reasonTone:f04315f94350f0bef98ff50819e968748e5c2f083dceda0c6493aae64397be61"
       },
       {
         "column": null,
         "end": 735,
+        "entity": "reasonTone",
+        "file": "def/cli/style.lfy",
+        "line": 222,
+        "outputLine": 729,
+        "requirement": "reasonTone:reasonTone:f27ff452bb57d8763b5de9c9e6038486b6c8c90d53d811f4c80848a3d0c338c6"
+      },
+      {
+        "column": null,
+        "end": 736,
         "entity": "tally",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 730,
+        "line": 245,
+        "outputLine": 736,
+        "requirement": "tally:tally:d0304e1e1a879d6fbb15edea0c7f5612a2dc8e06e0314f9d56253d6a1544e92d"
+      },
+      {
+        "column": null,
+        "end": 744,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 245,
+        "outputLine": 737,
+        "requirement": "tally:tally:22ccbf3f063d8cff61ae44b8bc0c48122eac7cbd166657279f6a9ddbc3a4aa47"
+      },
+      {
+        "column": null,
+        "end": 745,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 245,
+        "outputLine": 745,
+        "requirement": "tally:tally:99193b5bef282bd8e2f1340ab99b6f172e5abb8a11b4d354e823c86c4bb65a72"
+      },
+      {
+        "column": null,
+        "end": 751,
+        "entity": "tally",
+        "file": "def/cli/style.lfy",
+        "line": 245,
+        "outputLine": 746,
         "requirement": "tally:tally:808090fb00651fdad96557306be003862711eb272672639c39f0e28851b18aaa"
       },
       {
         "column": null,
-        "end": 741,
+        "end": 757,
         "entity": "tally",
         "file": "def/cli/style.lfy",
-        "line": 242,
-        "outputLine": 736,
+        "line": 245,
+        "outputLine": 752,
         "requirement": "tally:tally:7ffd7bc4d190179038dd14069b99a6688dc195a93ebc42faa16cc1381c4b7544"
       }
     ],
     "output": "crates/elfie-cli/src/style.rs",
-    "requirements": "d86f8f293ca4530185f948459887fec18069eee375ca9e83e79dbc9be1187856",
+    "requirements": "24e8e5bb7ee90355bf31823e74ae78448443147bc29cd3c0cbb2ddda3514ada1",
     "signature": "8f183859d67ebbc9e4c0194c320216ee3600da30fc3470bf5ede29f2b221b429",
     "source": "def/cli/style.lfy",
     "target": "rust"

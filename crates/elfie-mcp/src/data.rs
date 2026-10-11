@@ -458,6 +458,7 @@ mod tests {
                 requirements: String::new(),
                 answered: Vec::new(),
                 signature: String::new(),
+                text: String::new(),
                 dependencies: Map::new(),
                 generated: String::new(),
                 markers: answered

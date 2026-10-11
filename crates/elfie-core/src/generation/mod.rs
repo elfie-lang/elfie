@@ -15,7 +15,9 @@
 //! the compiler made or from its report; [`accept`] checks
 //! outputs structurally, normalizes their markers, and gives them their source maps.
 //! [`regions_of`] finds the generated regions one entity's name owns, [`changes`] what
-//! differs for each entity of a unit since its outputs were accepted, [`review`] what an
+//! differs for each entity of a unit since its outputs were accepted, [`reworded`] which of
+//! its criteria and tests took a new id only because their text changed and [`rename`]
+//! moves the markers of those ids, [`review`] what an
 //! independent verifier is handed for one batch, [`global_review`] what it is handed for
 //! every global criterion and test, and [`review_of`] what it found. [`source_maps_of`]
 //! reads the source maps a workspace recorded and [`record`] writes those of one accepted
@@ -1543,6 +1545,11 @@ fn source_text(workspace: &Workspace, file: &File) -> String {
 /// interface, each item once. The instructions quote every criterion and test already
 /// resolved, so a compiler with no access to the model can still work.
 ///
+/// What was dropped and what was reworded are kept apart: a criterion that kept its place
+/// and took a new id is a rewording, with the id and the text it replaces, while one the
+/// unit no longer has at all is removed. A unit nothing else differs for is named in
+/// `reworded_only`, so a caller may move its markers and ask no compiler at all.
+///
 /// `hosted` is whether the compiler reading the request runs in a compiler session of the
 /// compile-hosted agent server, which offers `elfie_task`, `elfie_dependency`, `elfie_mark`,
 /// and `elfie_submit`.
@@ -1576,6 +1583,8 @@ pub fn request(
             previous: previous.clone(),
             answered: BTreeMap::new(),
             removed: BTreeMap::new(),
+            reworded: BTreeMap::new(),
+            reworded_only: Vec::new(),
             existing: BTreeMap::new(),
             interfaces: Vec::new(),
             guidance: Vec::new(),
@@ -1653,21 +1662,93 @@ pub fn request(
             Some((path.clone(), ids))
         })
         .collect();
-    // Each criterion and test of the file as it was that the unit no longer has, in the
-    // order the file as it was gives them: what a compiler reading the existing code needs
-    // in order to tell code that answers for nothing any more from code that still answers.
+    // Each criterion and test of the unit that rewords one the outputs were generated
+    // against: the same place among its entity's criteria or tests, another text, and so
+    // another id. What was reworded is not gone, so it is kept apart from what is.
+    // @lfy def/generation/data.lfy:Request.reworded
+    // @lfy def/generation/main.lfy:request#request:request:9b732407010a3f7386f0722240a935b516b238550580f1028291a293d9bb90f3
+    let rewordings: BTreeMap<String, Vec<Rewording>> = batch
+        .units
+        .iter()
+        .filter_map(|&index| {
+            let unit = &plan.units[index];
+            let path = &workspace.files[unit.file].path;
+            let text = previous.get(path)?;
+            Some((path.clone(), reworded(program, unit, text)))
+        })
+        .collect();
+    // Each criterion and test of the file as it was that the unit no longer has and that
+    // none of its own rewords, in the order the file as it was gives them: what a compiler
+    // reading the existing code needs in order to tell code that answers for nothing any
+    // more from code that still answers.
     // @lfy def/generation/data.lfy:Request.removed
-    // @lfy def/generation/main.lfy:request#request:request:7056100416879448a8a243c30c4766b4d371dc89e64e2ef9eb3d748b4099c2a8
+    // @lfy def/generation/main.lfy:request#request:request:295bafcf58bae927898fc55851d86e7b28d31868c6727f09eff3b920abda4539
     let removed: BTreeMap<String, Vec<RemovedRequirement>> = was
         .iter()
         .filter_map(|(path, (_, before))| {
             let held = requirements.get(path)?;
+            let rewords = rewordings.get(path).map(Vec::as_slice).unwrap_or_default();
             let gone: Vec<RemovedRequirement> = before
                 .iter()
                 .filter(|requirement| !held.iter().any(|other| other.id() == requirement.id))
+                .filter(|requirement| {
+                    !rewords
+                        .iter()
+                        .any(|rewording| rewording.replaces == requirement.id)
+                })
                 .cloned()
                 .collect();
-            (!gone.is_empty()).then(|| (path.clone(), gone))
+            Some((path.clone(), gone))
+        })
+        .collect();
+    // A unit whose existing outputs differ from what it asks for now only in the ids of
+    // reworded criteria and tests: its lowered code is unchanged, nothing was dropped and
+    // nothing added, and every interface it was built against still hashes the same. Moving
+    // its markers is then the whole of the work, which the caller may do without the
+    // compiler.
+    // @lfy def/generation/data.lfy:Request.rewordedOnly
+    // @lfy def/generation/main.lfy:request#request:request:c32c00721f9f1fa8b577fab78118638f49e67257254297eae4ceebc45306bc77
+    // @lfy def/generation/main.lfy:request#request:request:d1ec465e091ae83573ab2ee5e7fe9ee86667ea44ffe505f8aefe88311e0071b7
+    let reworded_only: Vec<String> = batch
+        .units
+        .iter()
+        .filter_map(|&index| {
+            let unit = &plan.units[index];
+            let path = &workspace.files[unit.file].path;
+            if unit.reason != Some(Reason::Requirements) {
+                return None;
+            }
+            if !previous.contains_key(path) {
+                return None;
+            }
+            if !removed.get(path).is_some_and(Vec::is_empty) {
+                return None;
+            }
+            let rewords = rewordings.get(path).filter(|rewords| !rewords.is_empty())?;
+            let answered = answered.get(path).map(Vec::as_slice).unwrap_or_default();
+            // Every criterion and test of the unit was either answered for under the id it
+            // still has or rewords one that was.
+            if !unit.requirements(program).iter().all(|requirement| {
+                answered.iter().any(|id| id == requirement.id())
+                    || rewords
+                        .iter()
+                        .any(|rewording| rewording.id == requirement.id())
+            }) {
+                return None;
+            }
+            // Every dependency's interface is the one the outputs were generated against,
+            // so nothing of what the unit may rely on has moved either.
+            if !unit.dependencies.iter().all(|&dependency| {
+                let dependency = &plan.units[dependency];
+                let signature = interface_signature(workspace, dependency);
+                let of_path = &workspace.files[dependency.file].path;
+                unit.outputs
+                    .iter()
+                    .all(|map| map.dependencies.get(of_path) == Some(&signature))
+            }) {
+                return None;
+            }
+            Some(path.clone())
         })
         .collect();
     // @lfy def/generation/main.lfy:request
@@ -1756,6 +1837,7 @@ pub fn request(
             previous: &previous_lowered,
             answered: &answered,
             removed: &removed,
+            reworded: &rewordings,
             existing: &existing,
             interfaces: &interfaces,
             guidance: &guidance,
@@ -1774,6 +1856,8 @@ pub fn request(
         previous: previous_lowered,
         answered,
         removed,
+        reworded: rewordings,
+        reworded_only,
         existing,
         interfaces,
         guidance,
@@ -1793,6 +1877,7 @@ struct Quoted<'r> {
     previous: &'r BTreeMap<String, String>,
     answered: &'r BTreeMap<String, Vec<String>>,
     removed: &'r BTreeMap<String, Vec<RemovedRequirement>>,
+    reworded: &'r BTreeMap<String, Vec<Rewording>>,
     existing: &'r BTreeMap<String, String>,
     interfaces: &'r [Interface],
     guidance: &'r [Criterion],
@@ -1905,6 +1990,7 @@ fn instructions(
         previous: _,
         answered,
         removed,
+        reworded,
         existing: _,
         interfaces,
         guidance,
@@ -2108,6 +2194,7 @@ fn instructions(
         let file = &workspace.files[unit.file];
         let lowered = &program.files[unit.lowered];
         let answered = answered.get(&file.path).map(Vec::as_slice);
+        let rewordings = reworded.get(&file.path).map(Vec::as_slice).unwrap_or(&[]);
         let _ = writeln!(out, "### `{}` (stem `{}`)\n", file.path, unit.stem);
         // A unit whose lowered code is unchanged has criteria or tests that are not: the
         // code is held to what each of them now says, which may be behavior it never had.
@@ -2120,16 +2207,32 @@ fn instructions(
             );
         }
         // A criterion or test the existing outputs did not answer for may be a removed one
-        // put in other words, and the code is held to the new wording either way.
+        // put in other words, and the code is held to the new wording either way. One that
+        // rewords a criterion in place is marked reworded rather than new, so it is no part
+        // of this.
         // @lfy def/generation/main.lfy:request#request:request:40e519bc14a840e00c6e0fb7bff68febae9b5b591f182632fddc0a29f6f47704
         if answered.is_some_and(|ids| {
-            unit.requirements(program)
-                .iter()
-                .any(|requirement| !ids.iter().any(|id| id == requirement.id()))
+            unit.requirements(program).iter().any(|requirement| {
+                !ids.iter().any(|id| id == requirement.id())
+                    && !rewordings
+                        .iter()
+                        .any(|rewording| rewording.id == requirement.id())
+            })
         }) {
             out.push_str(
                 "A criterion or test marked new may restate a removed one in other words. Read the \
                  code against what the new one says, never against the removed one.\n\n",
+            );
+        }
+        // A criterion whose text changed keeps its place and takes a new id, so the markers
+        // of its old id have already been moved and only what it now asks is left to read.
+        // @lfy def/generation/main.lfy:request#request:request:5dcbf4d56e0e083dd49457b03e35a549d6a72d10894e442c3a9f608dba553186
+        if !rewordings.is_empty() {
+            out.push_str(
+                "A marker naming the id a reworded criterion or test replaces is rewritten to name \
+                 its new id, and compile has done so before you run. Read the code of a reworded \
+                 one against what it says now, and change it wherever it asks for what the code \
+                 does not do.\n\n",
             );
         }
         if let Some(source) = sources.get(&file.path) {
@@ -2147,7 +2250,15 @@ fn instructions(
         // Each entity's lowered code, and then, apart from the code, its local criteria and
         // tests, each on its own line with its id. @lfy def/generation/main.lfy:request
         for &entity in &unit.entities {
-            write_entity(&mut out, model, program, unit.lowered, entity, answered);
+            write_entity(
+                &mut out,
+                model,
+                program,
+                unit.lowered,
+                entity,
+                answered,
+                rewordings,
+            );
         }
         // The criteria and tests of the file's own entity belong to no declaration of it.
         // @lfy def/generation/main.lfy:request
@@ -2160,7 +2271,7 @@ fn instructions(
             .collect();
         if !own.is_empty() {
             let _ = writeln!(out, "#### `{}` (file)\n", file.path);
-            write_requirements(&mut out, &own, answered);
+            write_requirements(&mut out, &own, answered, rewordings);
         }
         // What the outputs answered for and the unit no longer has, last in its section: an
         // id and a text are all that is left of a criterion or a test a unit has dropped.
@@ -2185,7 +2296,7 @@ fn instructions(
     if globals.is_empty() {
         out.push_str("(none)\n\n");
     } else {
-        write_requirements(&mut out, globals, None);
+        write_requirements(&mut out, globals, None, &[]);
         out.push('\n');
     }
 
@@ -2316,10 +2427,10 @@ fn instructions(
 
 /// What the outputs part says about outputs that exist already: which they are, that only
 /// the difference between the previous lowered source and the current one and the criteria
-/// and tests marked new or removed require a change, the previous lowered source of each
+/// and tests marked new, reworded, or removed require a change, the previous lowered source of each
 /// unit that has one, which units have none, and which units have no record of the ids their
 /// outputs were generated against.
-// @lfy def/generation/main.lfy:request#request:request:3d9b718229fc59a2a379fb37aab7b7235c06fee91fa5fc44b6285037204d9a68
+// @lfy def/generation/main.lfy:request#request:request:7dee7a5d38e5a13ff4a9679707d4112c7e7345f701e26e8381922027f26859c4
 fn write_existing(
     out: &mut String,
     workspace: &Workspace,
@@ -2336,8 +2447,8 @@ fn write_existing(
     }
     out.push_str(
         "\nChange only what the difference between the previous source and the current source, and \
-         the criteria and tests marked new or removed, requires. Keep names and structure. Keep the \
-         markers of unchanged items.\n",
+         the criteria and tests marked new, reworded, or removed, requires. Keep names and \
+         structure. Keep the markers of unchanged items.\n",
     );
     let paths: Vec<&String> = batch
         .units
@@ -2646,6 +2757,7 @@ fn write_entity(
     lowered: usize,
     entity: EntityId,
     answered: Option<&[String]>,
+    reworded: &[Rewording],
 ) {
     let record = &model.entities[entity];
     let _ = writeln!(
@@ -2674,6 +2786,7 @@ fn write_entity(
         out,
         &declared_requirements(program, lowered, entity),
         answered,
+        reworded,
     );
 }
 
@@ -2682,14 +2795,33 @@ fn write_entity(
 ///
 /// Where `answered` holds the ids the existing outputs were generated against, a line whose
 /// id is none of them is marked new, so that a compiler reading existing code knows which of
-/// them that code was never held to.
+/// them that code was never held to. A line whose id rewords one of them is marked reworded
+/// instead, and the id and the text it replaces follow it on a line of their own.
 // @lfy def/generation/main.lfy:request#request:request:72801863f22ee154bf0e22299d1405c97cd6309fc630197aa315508e2f4829f7
-// @lfy def/generation/main.lfy:request#request:request:20c8b9f187ae61ac935c6b929921f420eca7b18fd429d76213ce5975b73af64f
-fn write_requirements(out: &mut String, requirements: &[Requirement], answered: Option<&[String]>) {
+// @lfy def/generation/main.lfy:request#request:request:d2d5d86c8b26bed5bb851853987bcc7fdd4050b23289d7c04705420520afdb99
+fn write_requirements(
+    out: &mut String,
+    requirements: &[Requirement],
+    answered: Option<&[String]>,
+    reworded: &[Rewording],
+) {
+    let rewording = |id: &str| -> Option<&Rewording> {
+        reworded.iter().find(|rewording| rewording.id == id)
+    };
     let mark = |id: &str| -> &'static str {
+        if rewording(id).is_some() {
+            return " (reworded)";
+        }
         match answered {
             Some(ids) if !ids.iter().any(|known| known == id) => " (new)",
             _ => "",
+        }
+    };
+    // What a reworded one replaces, on the line after it.
+    // @lfy def/generation/main.lfy:request#request:request:e1d45d2b90e4f031fa2c8711633c2ef9ff914b2ca15467eee998d20246c6a3d9
+    let replaced = |out: &mut String, id: &str| {
+        if let Some(rewording) = rewording(id) {
+            let _ = writeln!(out, "  replaces {} — {}", rewording.replaces, rewording.text);
         }
     };
     let criteria: Vec<&LoweredCriterion> = requirements
@@ -2718,6 +2850,7 @@ fn write_requirements(out: &mut String, requirements: &[Requirement], answered: 
             criterion.text(),
             mark(&criterion.id)
         );
+        replaced(out, &criterion.id);
     }
     out.push('\n');
     out.push_str("Tests:\n");
@@ -2732,6 +2865,7 @@ fn write_requirements(out: &mut String, requirements: &[Requirement], answered: 
             test_text(test),
             mark(&test.id)
         );
+        replaced(out, &test.id);
     }
     out.push('\n');
 }
@@ -3181,6 +3315,10 @@ pub fn accept(
     let mut written = Vec::new();
     // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
     for (output, markers) in outputs.iter().zip(&normalized) {
+        // The output as it is written back, markers and all, is what the text hash is of, so
+        // that the hash recorded is of the file the caller puts on disk.
+        // @lfy def/generation/main.lfy:accept#accept:accept:588d5e5485c45bd44d48489efaa4d94e9484900e69ce713f90102eefb4570410
+        let normalized_output = rewrite_markers(output, markers);
         source_maps.push(SourceMap {
             // @lfy def/generation/main.lfy:accept#accept:accept:8d2a3aa698445970d859538af521c42b878c576deae6eac97af3a97c5c7fd25f
             target: target.identifier.clone(),
@@ -3192,12 +3330,13 @@ pub fn accept(
             requirements: requirements.clone(),
             answered: answered.clone(),
             signature: signature.clone(),
+            text: source_hash(&normalized_output.text),
             dependencies: dependencies.clone(),
             generated: generated.clone(),
             // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
             markers: markers.iter().map(|(_, marker)| marker.clone()).collect(),
         });
-        written.push(rewrite_markers(output, markers));
+        written.push(normalized_output);
     }
     // Nothing here runs a command of the target: whether an output builds or its tests pass
     // is the caller's to run, as the guidance says.
@@ -3529,10 +3668,12 @@ pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<Source
         for file in files {
             // A file that cannot be read, or that is no JSON list of source maps,
             // contributes nothing; one that is read gives its maps in its own order, and a
-            // map that records no answered ids is read with none.
+            // map that records no answered ids, or no hash of its output's text, is read
+            // with none.
             // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:ceffdad2c9ea38bce966887b7756582eba5aca5852cb5980c55faa063210bd93
             // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:00a062bda31894d720907cb0ec23e4bc5dd3e4d0db76200eab3b747b849ca38d
             // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:9a20ac7072bf79bbb2d38d819ba4fb8127d258b6f0baf9134dafc7c98398e94a
+            // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:3b24f86bf0b585aead2fe1155f89fe18db2e2dc7209da1f6b2d48b9fb06b5619
             for map in read_source_maps(&file) {
                 // A map whose output is gone says nothing about a unit that is up to date.
                 // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:777506c6ffecf859d5436778cd8e1997eef47cd57e5f8f41754058bbe3117d23
@@ -4211,14 +4352,7 @@ fn id_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> St
         old.len(),
         new.len()
     )];
-    // @lfy def/generation/main.lfy:changes
-    let reworded: Vec<(usize, &String, &String)> = old
-        .iter()
-        .zip(new)
-        .enumerate()
-        .filter(|(_, (was, is))| was != is && !new.contains(was) && !old.contains(is))
-        .map(|(position, (was, is))| (position, was, is))
-        .collect();
+    let reworded = reworded_pairs(old, new);
     for (position, was, is) in &reworded {
         parts.push(format!(
             "the {singular} at {} was reworded, from {was} to {is}",
@@ -4242,6 +4376,24 @@ fn id_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> St
         parts.push(format!("the {plural} are in another order"));
     }
     parts.join("; ")
+}
+
+/// Which pairs of a removed and an added requirement id two lists of them call reworded:
+/// counting from the first, the id at a position that the new list does not hold beside the
+/// id at that same position that the old list did not hold. Each pair comes with its
+/// position, counting from 0.
+///
+/// This is the one place the pairing is decided, so that [`id_detail`], which says it in a
+/// line, and [`reworded`], which hands the pairs on, can never differ.
+// @lfy def/generation/main.lfy:changes#changes:changes:7d485ed12575ab1f8fb73fd1af344036fcd0e209e355d3895b8822a170c9d276
+// @lfy def/generation/main.lfy:changes#changes:changes:e4f0785b9f7bbfa92530f7edab6e298a57fbc81f4665bd43e72947b6327ef1d6
+fn reworded_pairs<'i>(old: &'i [String], new: &'i [String]) -> Vec<(usize, &'i String, &'i String)> {
+    old.iter()
+        .zip(new)
+        .enumerate()
+        .filter(|(_, (was, is))| was != is && !new.contains(was) && !old.contains(is))
+        .map(|(position, (was, is))| (position, was, is))
+        .collect()
 }
 
 /// The type of an entity, as `interfaceOf` spells it; empty when it has none.
@@ -4422,6 +4574,202 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 }
 
 // ---------------------------------------------------------------------------------------
+// reworded, rename
+// ---------------------------------------------------------------------------------------
+
+/// The local criteria and tests of a unit whose id changed since its outputs were accepted
+/// only because their text did, each paired with the id it replaces and what that one said.
+///
+/// `previous` is the text of the unit's file when its outputs were last accepted, as
+/// written. One [`Rewording`] comes of each pair of a removed and an added id that a change
+/// of [`changes`] calls reworded, in the order of those changes, so the two never differ
+/// about what was reworded; a pair whose added id is the id of no local criterion or test of
+/// the unit — one of an entity that moved to another unit, say — gives none. The text is
+/// what the removed one said, read off the lowering of the file as it was, exactly as a
+/// [`RemovedRequirement`] takes its own. Nothing is written.
+// Decision: the definition passes the workspace; the ids of a unit's local criteria and
+// tests are the lowered program's, which a plan here does not own, so the program stands in
+// for the workspace as it does for [`changes`].
+// @lfy def/generation/main.lfy:reworded#reworded:reworded:af54e4c28fb74d4c2fa75b4d1a8399d931aa52c592d5f16bd59ab25cc730a812
+// @lfy def/generation/main.lfy:reworded#reworded:reworded:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+pub fn reworded(program: &Program, unit: &Unit, previous: &str) -> Vec<Rewording> {
+    let workspace = &program.workspace;
+    let model = &workspace.model;
+    let path = workspace.files[unit.file].path.clone();
+    let target = workspace.targets[unit.target].identifier.clone();
+    // The file as it was, bound and lowered the one time: its entities are compared with the
+    // unit's, and what each of its criteria and tests said is read off the same lowering.
+    let before = crate::interpret::lower(crate::workspace::change(
+        workspace,
+        &path,
+        Some(previous),
+    ));
+    let Some(index) = before
+        .workspace
+        .files
+        .iter()
+        .position(|file| file.path == path)
+    else {
+        return Vec::new();
+    };
+    let lowered_before = &before.files[index];
+    // @lfy def/generation/main.lfy:reworded#reworded:reworded:ab9d9179b73829cca9561b30789c1b03552c81e265ab5a4d78144f07c0548724
+    let said: BTreeMap<String, String> = local_requirements(lowered_before)
+        .iter()
+        .map(|requirement| match requirement {
+            Requirement::Criterion(criterion) => (criterion.id.clone(), criterion.text()),
+            Requirement::Test(test) => (test.id.clone(), test_text(test)),
+        })
+        .collect();
+    let now = entity_table(model, &declared_entities(program, &target, &path));
+    let was = entity_table(
+        &before.workspace.model,
+        &declared_entities(&before, &target, &path),
+    );
+    let lowered = &program.files[unit.lowered];
+    let local: Vec<String> = unit
+        .requirements(program)
+        .iter()
+        .map(|requirement| requirement.id().to_string())
+        .collect();
+
+    let mut out: Vec<Rewording> = Vec::new();
+    for (name, new) in &now {
+        let Some(&(_, old)) = was.iter().find(|(candidate, _)| candidate == name) else {
+            continue;
+        };
+        let (old_criteria, old_tests) = requirement_ids(lowered_before, old);
+        let (new_criteria, new_tests) = requirement_ids(lowered, *new);
+        // Criteria before tests, as a change of criteria comes before one of tests.
+        for (old_ids, new_ids) in [(&old_criteria, &new_criteria), (&old_tests, &new_tests)] {
+            for (_, replaces, id) in reworded_pairs(old_ids, new_ids) {
+                // A pair whose added id is no local criterion or test of this unit belongs
+                // to an entity the unit does not compile.
+                // @lfy def/generation/main.lfy:reworded#reworded:reworded:76d54235a5b3b04295f6e88bef925ebc2cdc34e3d520ac52acf3457939b122bc
+                if !local.contains(id) {
+                    continue;
+                }
+                // @lfy def/generation/main.lfy:reworded#reworded:reworded:68b8e0096a61b2d00deb8e85b9cff1e55e3c804dbb2f9e01870cd1526955b171
+                out.push(Rewording {
+                    id: id.clone(),
+                    replaces: replaces.clone(),
+                    text: said.get(replaces).cloned().unwrap_or_default(),
+                });
+            }
+        }
+    }
+    out
+}
+
+/// The output files in which a marker of one unit names an id being replaced, with each such
+/// marker rewritten to name the new id.
+///
+/// `ids` maps each id a marker names now to the id it is to name afterwards. A marker is
+/// read as [`accept`] reads one, and is rewritten only where it names a source path this
+/// unit claims — its own file, or the file of an entity moved into it — since a marker
+/// naming another file is another unit's. Everything else of the line, and every other line,
+/// is kept, and an output that holds no rewritten marker is not returned at all. Nothing is
+/// written: the files come back for the caller to write.
+// Decision: one rule rewrites a marker's id, whether a compile moves the markers of reworded
+// criteria before the compiler runs or a compiler asks `elfie_mark` to, so the two never
+// differ.
+// Decision: the definition passes the unit; which files a unit claims is the plan's, which
+// does not own its workspace here, so the workspace and the plan are extra first parameters
+// and the unit is given as its index into the plan, as [`accept`] takes it.
+// @lfy def/generation/main.lfy:rename#rename:rename:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+pub fn rename(
+    workspace: &Workspace,
+    plan: &Plan,
+    unit: usize,
+    outputs: &[Output],
+    ids: &BTreeMap<String, String>,
+) -> Vec<Output> {
+    // The files whose markers are this unit's, exactly as acceptance claims them.
+    // @lfy def/generation/main.lfy:rename#rename:rename:3091710a31989abcb75e52c70a366b960dac1fabd585e5a3bf0971af66686c8f
+    let planned = &plan.units[unit];
+    let mut claimed: Vec<&str> = vec![&workspace.files[planned.file].path];
+    for moved in plan.moves.iter().filter(|moved| moved.into == unit) {
+        let path = &workspace.files[plan.units[moved.origin].file].path;
+        if !claimed.contains(&path.as_str()) {
+            claimed.push(path);
+        }
+    }
+    let mut out: Vec<Output> = Vec::new();
+    // @lfy def/generation/main.lfy:rename#rename:rename:90a597b0c488f100859379a0d11bf0e632fbfbb941a554b7b5c2669c9d8320d3
+    for output in outputs {
+        // Each line with the break that ends it, so that what is not rewritten comes
+        // through character for character, whatever a line ends with.
+        let mut text = String::with_capacity(output.text.len());
+        let mut changed = false;
+        for line in output.text.split_inclusive('\n') {
+            match renamed_line(line, ids, &claimed) {
+                Some(line) => {
+                    text.push_str(&line);
+                    changed = true;
+                }
+                None => text.push_str(line),
+            }
+        }
+        // @lfy def/generation/main.lfy:rename#rename:rename:8cb5f57f44ec1a7de3b03c33feda6e4ceedd4fa55d4d2ec4fdd0ae92c27e9d82
+        if !changed {
+            continue;
+        }
+        out.push(Output {
+            path: output.path.clone(),
+            text,
+        });
+    }
+    out
+}
+
+/// One line of an output with the id of every marker of it that names a replaced id
+/// rewritten, or `None` when it holds no such marker.
+///
+/// The line is walked for markers the way [`parse_markers`] walks it, and each one's id is
+/// replaced within the token it was spelled in, so that the comment opener, the path, the
+/// entity, anything written after the marker, and the break that ends the line are left
+/// exactly as they were.
+// @lfy def/generation/main.lfy:rename#rename:rename:98bd688d7b8dd91a3fbd9fc7eb8c0999c69eba315873a7bcb74f7627b0a5897d
+// @lfy def/generation/main.lfy:rename#rename:rename:4091b5d02c428166459a836f17453935a76b69ac96600c57604d197dccf120e3
+fn renamed_line(line: &str, ids: &BTreeMap<String, String>, claimed: &[&str]) -> Option<String> {
+    let mut out = String::new();
+    let mut rest = line;
+    let mut changed = false;
+    while let Some(position) = rest.find(MARKER_PREFIX) {
+        let start = position + MARKER_PREFIX.len();
+        let (before, after) = rest.split_at(start);
+        let length = after
+            .find(char::is_whitespace)
+            .unwrap_or(after.len());
+        let (token, tail) = after.split_at(length);
+        out.push_str(before);
+        match parse_marker(token, 1) {
+            Some(marker) => {
+                let renamed = marker
+                    .requirement
+                    .as_ref()
+                    .filter(|_| claimed.contains(&marker.file.as_str()))
+                    .and_then(|requirement| {
+                        ids.get(requirement)
+                            .map(|id| token.replacen(requirement.as_str(), id, 1))
+                    });
+                match renamed {
+                    Some(renamed) => {
+                        out.push_str(&renamed);
+                        changed = true;
+                    }
+                    None => out.push_str(token),
+                }
+            }
+            None => out.push_str(token),
+        }
+        rest = tail;
+    }
+    out.push_str(rest);
+    changed.then_some(out)
+}
+
+// ---------------------------------------------------------------------------------------
 // review
 // ---------------------------------------------------------------------------------------
 
@@ -4456,6 +4804,11 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 // Decision: a criterion or test is reviewed again only when nothing says its verdict still
 // holds; a change to code outside the entity's regions, such as a helper no marker names,
 // changes no hash and so carries every verdict of that entity.
+// Decision: a marker comment is no part of a region's hash, while the code on its line is,
+// so moving a reworded criterion's markers to its new id, or adding a marker, does not send
+// the other criteria of the entity to review again. A reworded criterion is reviewed all the
+// same: its new text may ask for something else, so no verdict on the id it replaces stands
+// for it.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
 // @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
@@ -4472,10 +4825,17 @@ pub fn review(
     let model = &workspace.model;
     // @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
     let directory = directory.unwrap_or(workspace.root.as_path());
-    let target = batch
+    let of_target = batch
         .units
         .first()
-        .map(|&index| workspace.targets[plan.units[index].target].identifier.as_str())
+        .map(|&index| &workspace.targets[plan.units[index].target]);
+    let target = of_target
+        .map(|target| target.identifier.as_str())
+        .unwrap_or_default();
+    // How a line comment of the target's language begins, which is where a marker comment
+    // begins and so where the part of a line no hash is taken over begins.
+    let marker_comment = of_target
+        .map(|target| target.marker_comment.as_str())
         .unwrap_or_default();
 
     // Unit by unit, entity by entity: the regions of the entity, the hash they come to, and
@@ -4489,8 +4849,8 @@ pub fn review(
         let mut body = String::new();
         for &entity in &unit.entities {
             let regions = entity_regions(workspace, source_maps, entity, target);
-            // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
-            let hash = source_hash(&regions_text(directory, &regions));
+            // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+            let hash = source_hash(&regions_text(directory, marker_comment, &regions));
             let requirements = reviewed_requirements(program, unit.lowered, entity);
             let listed = listed_requirements(
                 &requirements,
@@ -4616,13 +4976,25 @@ fn entity_regions<'m>(
 }
 
 /// The text the hash of one entity's criteria and tests is taken over: the lines of each
-/// region in its own output, one region after another, each line followed by a line break.
-/// A region whose output cannot be read adds nothing.
+/// region in its own output, one region after another, each line followed by a line break,
+/// each with the marker comment it carries and the white space before it taken off and every
+/// line that is then empty left out. A region whose output cannot be read adds nothing.
 ///
-/// `directory` is the directory the outputs were written in, which each region is read from.
-// @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+/// A marker comment says where code came from and which criterion it answers for, never what
+/// the code does, so moving a reworded criterion's markers to its new id, or writing a
+/// marker that was missing, leaves every hash of the entity as it was and sends no other
+/// criterion of it back to review. The code on the line a marker trails is kept, since that
+/// is code.
+///
+/// `directory` is the directory the outputs were written in, which each region is read from,
+/// and `marker_comment` is how a line comment of the target's language begins.
+// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
 // @lfy def/generation/main.lfy:review#review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903
-fn regions_text(directory: &Path, regions: &[(&SourceMap, &Marker)]) -> String {
+fn regions_text(
+    directory: &Path,
+    marker_comment: &str,
+    regions: &[(&SourceMap, &Marker)],
+) -> String {
     let mut out = String::new();
     for (map, marker) in regions {
         let Ok(text) = std::fs::read_to_string(directory.join(&map.output)) else {
@@ -4632,11 +5004,39 @@ fn regions_text(directory: &Path, regions: &[(&SourceMap, &Marker)]) -> String {
         let last = marker.end.min(lines.len());
         let first = marker.output_line.saturating_sub(1).min(last);
         for line in &lines[first..last] {
-            out.push_str(line);
+            let kept = without_marker_comment(line, marker_comment);
+            if kept.is_empty() {
+                continue;
+            }
+            out.push_str(kept);
             out.push('\n');
         }
     }
     out
+}
+
+/// One line of an output without the marker comment it carries: everything from the comment
+/// opener that a marker follows to the end of the line, and the white space before that
+/// opener, taken off. A line that carries none comes back whole.
+///
+/// The opener is looked for before each marker rather than at the start of the line, so a
+/// comment that is prose stays and a marker trailing code takes only itself away.
+// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+fn without_marker_comment<'l>(line: &'l str, marker_comment: &str) -> &'l str {
+    if marker_comment.is_empty() {
+        return line;
+    }
+    let mut from = 0;
+    while let Some(position) = line[from..].find(MARKER_PREFIX) {
+        let at = from + position;
+        // The comment opener of this marker: the last one before it, which the marker is
+        // written after as the guidance says.
+        if let Some(opener) = line[..at].rfind(marker_comment) {
+            return line[..opener].trim_end();
+        }
+        from = at + MARKER_PREFIX.len();
+    }
+    line
 }
 
 /// Which of one entity's criteria and tests a review lists, with every one of them recorded
@@ -4645,9 +5045,14 @@ fn regions_text(directory: &Path, regions: &[(&SourceMap, &Marker)]) -> String {
 ///
 /// `has_region` is whether the entity generated any region at all: with none, there is no
 /// code whose sameness could stand for a verdict, so nothing is carried.
+///
+/// A record is matched by its id alone, so a criterion that rewords another is never carried
+/// on the verdict the id it replaces earned, however little the code of its entity moved:
+/// the new text may ask for something the code does not do.
 // @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
 // @lfy def/generation/main.lfy:review#review:review:32e025cd22c3a749bbc3afba52f86cb9b26ac41d0f4a822a6e5e00639e557312
 // @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
+// @lfy def/generation/main.lfy:review#review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2
 fn listed_requirements<'r>(
     requirements: &'r [Requirement],
     hash: &str,
@@ -5937,6 +6342,7 @@ global@targets.add(rust);
                     requirements: requirements_hash(program, unit),
                     answered: answered_ids(program, unit),
                     signature: interface_signature(workspace, unit),
+                    text: String::new(),
                     dependencies: unit
                         .dependencies
                         .iter()
@@ -7901,14 +8307,14 @@ global@targets.add(rust);
         let text = &with_previous.instructions;
         // Only what the difference requires changes, and the markers of unchanged items are
         // kept. The outputs part says so, not a part of its own.
-        // @lfy def/generation/main.lfy:request#request:request:3d9b718229fc59a2a379fb37aab7b7235c06fee91fa5fc44b6285037204d9a68
+        // @lfy def/generation/main.lfy:request#request:request:7dee7a5d38e5a13ff4a9679707d4112c7e7345f701e26e8381922027f26859c4
         assert!(
             text.contains("Keep the markers of unchanged items."),
             "{text}"
         );
         assert!(text.contains("Keep names and structure."), "{text}");
         assert!(
-            text.contains("the criteria and tests marked new or removed"),
+            text.contains("the criteria and tests marked new, reworded, or removed"),
             "{text}"
         );
         let said = text
@@ -7982,7 +8388,7 @@ global@targets.add(rust);
     /// A unit whose lowered code is unchanged but whose criteria differ: its section says so,
     /// each criterion the outputs did not answer for is marked new, and each one the unit no
     /// longer has is listed under a heading of its own with its text.
-    // @lfy def/generation/main.lfy:request#request:request:e7fe398a823291215f9ad291ba742fac6431d4f937badf251af05e9f389ea522
+    // @lfy def/generation/main.lfy:request#request:request:9de46d56be23f3f490556fce4a860d42c4757c96422d93e16aae07ec44043eff
     #[test]
     fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone() {
         let fixture = a_and_b();
@@ -7993,10 +8399,13 @@ global@targets.add(rust);
             "@acceptanceCriteria.add({ situation = `x is short`, behavior = `the b is empty` });\n  \
              @test(",
         );
+        // The third is written before the first, so no criterion of the unit stands where a
+        // criterion the outputs answered for stood: nothing is reworded here, and the second
+        // is gone rather than reworded.
         let now = B.replace(
-            "@test(",
+            "@acceptanceCriteria.add({ situation = `x is empty`",
             "@acceptanceCriteria.add({ situation = `x is long`, behavior = `the b is cut` });\n  \
-             @test(",
+             @acceptanceCriteria.add({ situation = `x is empty`",
         );
         fixture.write("def/b.lfy", &was);
         let old = fixture.program();
@@ -8037,7 +8446,7 @@ global@targets.add(rust);
         assert_eq!(request.answered["def/b.lfy"], sorted);
         // The one criterion the unit no longer has, in the order the file as it was gave it,
         // with the id it had, its place in the file as it was, and what it said.
-        // @lfy def/generation/main.lfy:request#request:request:7056100416879448a8a243c30c4766b4d371dc89e64e2ef9eb3d748b4099c2a8
+        // @lfy def/generation/main.lfy:request#request:request:295bafcf58bae927898fc55851d86e7b28d31868c6727f09eff3b920abda4539
         // @lfy def/generation/main.lfy:request#request:request:1b7315cf290fcd29e9e15f54bd98742f52b2943246c4cb0414ed750188b9e3da
         let gone = &request.removed["def/b.lfy"];
         assert_eq!(gone.len(), 1, "{gone:?}");
@@ -8068,7 +8477,7 @@ global@targets.add(rust);
             "{text}"
         );
         // The criterion the outputs answered for is unmarked; the one they did not is new.
-        // @lfy def/generation/main.lfy:request#request:request:20c8b9f187ae61ac935c6b929921f420eca7b18fd429d76213ce5975b73af64f
+        // @lfy def/generation/main.lfy:request#request:request:d2d5d86c8b26bed5bb851853987bcc7fdd4050b23289d7c04705420520afdb99
         let held = b.requirements(&program);
         let kept = held
             .iter()
@@ -8105,6 +8514,132 @@ global@targets.add(rust);
             "{text}"
         );
         assert!(heading < text.find("## Global criteria and tests").unwrap());
+        // No criterion of the unit stands where one the outputs answered for stood, so
+        // nothing was reworded, and the unit asks for more than its markers being moved.
+        // @lfy def/generation/main.lfy:request#request:request:9b732407010a3f7386f0722240a935b516b238550580f1028291a293d9bb90f3
+        // @lfy def/generation/main.lfy:request#request:request:d1ec465e091ae83573ab2ee5e7fe9ee86667ea44ffe505f8aefe88311e0071b7
+        assert!(
+            request.reworded["def/b.lfy"].is_empty(),
+            "{:?}",
+            request.reworded
+        );
+        assert!(
+            request.reworded_only.is_empty(),
+            "{:?}",
+            request.reworded_only
+        );
+        assert!(!text.contains("(reworded)"), "{text}");
+    }
+
+    /// A unit whose one criterion was reworded in place: it is marked reworded rather than
+    /// new, the id and the text it replaces follow it, nothing is listed as removed, and the
+    /// unit is one whose outputs differ only in that id.
+    // @lfy def/generation/main.lfy:request#request:request:d003b615015419f91865b0d43a16202327e5faa27462bc24af60cc34549af280
+    #[test]
+    fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replaces() {
+        let fixture = a_and_b();
+        // `b` as it was: `make` carried the criterion about an empty `x` and a second one
+        // about a short one. The second is worded differently now, in the same place, so it
+        // keeps its place and takes a new id.
+        let criterion = |situation: &str, behavior: &str| {
+            B.replace(
+                "@test(",
+                &format!(
+                    "@acceptanceCriteria.add({{ situation = `{situation}`, behavior = \
+                     `{behavior}` }});\n  @test("
+                ),
+            )
+        };
+        let was = criterion("x is short", "the b is empty");
+        let now = criterion("x is brief", "the b is bare");
+        fixture.write("def/b.lfy", &was);
+        let old = fixture.program();
+        assert_bound(&old.workspace);
+        let maps = current_maps(&old, &plan_of(&old, &[], &[], &[]));
+        let replaced: String = {
+            let plan = plan_of(&old, &[], &[], &[]);
+            let (_, unit) = unit_of(&old.workspace, &plan, "def/b.lfy");
+            unit.requirements(&old)
+                .iter()
+                .map(|requirement| requirement.id().to_string())
+                .nth(1)
+                .expect("the second criterion of the file as it was")
+        };
+
+        fixture.write("def/b.lfy", &now);
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &maps, &[], &[]);
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        assert_eq!(b.reason, Some(Reason::Requirements));
+        let existing = [Output {
+            path: "src/b.rs".to_string(),
+            text: "// old".to_string(),
+        }];
+        let batch = Batch {
+            units: vec![b_index],
+            identifier: "b".to_string(),
+        };
+        let previous = BTreeMap::from([("def/b.lfy".to_string(), was.clone())]);
+        let request = request(&program, &plan, &batch, &existing, &previous, false);
+
+        // One rewording: the id the unit has now, the id it replaces, and what that one
+        // said, taken from the lowering of the file as it was.
+        // @lfy def/generation/main.lfy:request#request:request:9b732407010a3f7386f0722240a935b516b238550580f1028291a293d9bb90f3
+        let rewordings = &request.reworded["def/b.lfy"];
+        assert_eq!(rewordings.len(), 1, "{rewordings:?}");
+        assert_eq!(rewordings[0].replaces, replaced);
+        assert_eq!(rewordings[0].text, "When x is short: the b is empty");
+        let reworded = b
+            .requirements(&program)
+            .iter()
+            .map(|requirement| requirement.id().to_string())
+            .nth(1)
+            .expect("the second criterion of the unit");
+        assert_eq!(rewordings[0].id, reworded);
+        // What was reworded is not gone, so nothing is listed as removed.
+        // @lfy def/generation/main.lfy:request#request:request:295bafcf58bae927898fc55851d86e7b28d31868c6727f09eff3b920abda4539
+        assert!(
+            request.removed["def/b.lfy"].is_empty(),
+            "{:?}",
+            request.removed
+        );
+        // Nothing but that id differs from what the outputs were generated against.
+        // @lfy def/generation/main.lfy:request#request:request:c32c00721f9f1fa8b577fab78118638f49e67257254297eae4ceebc45306bc77
+        assert_eq!(request.reworded_only, ["def/b.lfy"]);
+
+        let text = &request.instructions;
+        // The line is marked reworded, not new, and the id and text it replaces follow it.
+        // @lfy def/generation/main.lfy:request#request:request:e1d45d2b90e4f031fa2c8711633c2ef9ff914b2ca15467eee998d20246c6a3d9
+        // @lfy def/generation/main.lfy:request#request:request:d2d5d86c8b26bed5bb851853987bcc7fdd4050b23289d7c04705420520afdb99
+        assert!(
+            text.contains(&format!(
+                "`{reworded}` — When x is brief: the b is bare (reworded)\n  replaces {replaced} \
+                 — When x is short: the b is empty\n"
+            )),
+            "{text}"
+        );
+        assert!(!text.contains(&format!("`{reworded}` — When x is brief: the b is bare (new)")));
+        // The section says the markers have been moved already and what is left to read.
+        // @lfy def/generation/main.lfy:request#request:request:5dcbf4d56e0e083dd49457b03e35a549d6a72d10894e442c3a9f608dba553186
+        for part in [
+            "is rewritten to name \nits new id",
+            "compile has done so before you run",
+            "against what it says now",
+        ] {
+            assert!(
+                text.contains(part) || text.contains(&part.replace(" \n", " ")),
+                "{part} is missing:\n{text}"
+            );
+        }
+        // Nothing is marked new, so the section does not speak of a restated removed one.
+        // @lfy def/generation/main.lfy:request#request:request:40e519bc14a840e00c6e0fb7bff68febae9b5b591f182632fddc0a29f6f47704
+        assert!(!text.contains("may restate a removed one in other words"), "{text}");
+        assert!(
+            !text.contains("#### Removed since its outputs were accepted"),
+            "{text}"
+        );
     }
 
     // -----------------------------------------------------------------------------------
@@ -8418,7 +8953,7 @@ global@targets.add(rust);
         assert_eq!(verdict.source_maps.len(), 1);
         // A marker that names an entity is left as written.
         // @lfy def/generation/main.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
-        assert_eq!(verdict.outputs, [output]);
+        assert_eq!(verdict.outputs, std::slice::from_ref(&output));
         // One source map per output, in `outputs` order.
         // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
         let map = &verdict.source_maps[0];
@@ -8441,6 +8976,11 @@ global@targets.add(rust);
             map.signature,
             source_hash(&interface_of(&workspace, &plan.units[index]))
         );
+        // The text hash is of the output as `Verdict.outputs` holds it, so that it is the
+        // hash of the file the caller writes back.
+        // @lfy def/generation/main.lfy:accept#accept:accept:588d5e5485c45bd44d48489efaa4d94e9484900e69ce713f90102eefb4570410
+        assert_eq!(map.text, source_hash(&verdict.outputs[0].text));
+        assert_eq!(map.text, source_hash(&output.text));
         // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
         assert!(map.dependencies.is_empty());
         assert!(plan.units[index].dependencies.is_empty());
@@ -8710,6 +9250,17 @@ global@targets.add(rust);
             Some("A")
         );
         assert_eq!(verdict.source_maps[0].markers[0].line, 3);
+        // The text hash is of the output with its markers normalized, which is the text the
+        // caller writes back, and not of the text the compiler handed over.
+        // @lfy def/generation/main.lfy:accept#accept:accept:588d5e5485c45bd44d48489efaa4d94e9484900e69ce713f90102eefb4570410
+        assert_eq!(
+            verdict.source_maps[0].text,
+            source_hash(&verdict.outputs[0].text)
+        );
+        assert_ne!(
+            verdict.source_maps[0].text,
+            source_hash("// @lfy def/a.lfy:3\npub struct A;\n")
+        );
         // A line inside a member's declaration names the member.
         let output = named_output(
             "// @lfy def/a.lfy:3\npub struct A {\n  // @lfy def/a.lfy:4\n  x: String,\n}\n",
@@ -9045,6 +9596,7 @@ global@targets.add(rust);
             requirements: source_hash("requirements"),
             answered: Vec::new(),
             signature: source_hash("interface"),
+            text: source_hash(output),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers: Vec::new(),
@@ -9102,8 +9654,10 @@ global@targets.add(rust);
         // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:3fa1873c256699bcc68b376b528e4f35f840fe93aad209cc0f992a5dee017fce
         assert_eq!(outputs_of(&source_maps_of(&workspace, Some("rust"))).len(), 2);
         assert!(source_maps_of(&workspace, Some("other")).is_empty());
-        // A map that records no answered ids is read with none.
+        // A map that records no answered ids, and no hash of its output's text, is read with
+        // neither.
         // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:9a20ac7072bf79bbb2d38d819ba4fb8127d258b6f0baf9134dafc7c98398e94a
+        // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:3b24f86bf0b585aead2fe1155f89fe18db2e2dc7209da1f6b2d48b9fb06b5619
         fixture.write(
             "elfie-compile/maps/rust/a.json",
             "[{\"target\":\"rust\",\"output\":\"crates/a/src/a.rs\",\"source\":\"def/a.lfy\",\
@@ -9113,6 +9667,8 @@ global@targets.add(rust);
         let maps = source_maps_of(&workspace, Some("rust"));
         assert_eq!(maps[0].output, "crates/a/src/a.rs");
         assert!(maps[0].answered.is_empty(), "{:?}", maps[0].answered);
+        assert_eq!(maps[0].text, "");
+        assert_ne!(maps[0].text, source_hash("// a\n"));
 
         // The map of an output that is gone is left out.
         // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:777506c6ffecf859d5436778cd8e1997eef47cd57e5f8f41754058bbe3117d23
@@ -9283,9 +9839,9 @@ global@targets.add(rust);
             .filter_map(|line| line.trim().strip_prefix('"'))
             .filter_map(|line| line.split_once('"').map(|(key, _)| key))
             .collect();
-        assert_eq!(keys.len(), 20, "{text}");
+        assert_eq!(keys.len(), 22, "{text}");
         assert!(
-            keys.chunks(10)
+            keys.chunks(11)
                 .all(|object| object.windows(2).all(|pair| pair[0] < pair[1])),
             "{text}"
         );
@@ -9642,6 +10198,7 @@ global@targets.add(rust);
             requirements: String::new(),
             answered: Vec::new(),
             signature: source_hash("i"),
+            text: String::new(),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers,
@@ -9903,7 +10460,7 @@ global@targets.add(rust);
 
     /// A criterion whose text changed keeps its place and takes a new id, so the detail of
     /// the change calls the pair reworded; a test's is read the same way.
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/main.lfy:changes#changes:changes:50c1ea7f8d6a011259fc7a78f0cc7c039969c689c7e9b36031eaa1c4a2e2ac63
     #[test]
     fn a_criterion_reworded_in_place_is_called_reworded() {
         let fixture = Fixture::with_rust_target();
@@ -9927,7 +10484,7 @@ global@targets.add(rust);
             "{changes:?}"
         );
         // A removed and an added criterion id at the same position are called reworded.
-        // @lfy def/generation/main.lfy:changes#changes:changes:3f4523cbbf2804e4e98595903c9316c9f6f0440cb5e3b253a956481e2599fcd8
+        // @lfy def/generation/main.lfy:changes#changes:changes:7d485ed12575ab1f8fb73fd1af344036fcd0e209e355d3895b8822a170c9d276
         assert!(
             changes[0]
                 .detail
@@ -9936,13 +10493,50 @@ global@targets.add(rust);
             changes[0]
         );
         // A test's is read the same way.
-        // @lfy def/generation/main.lfy:changes#changes:changes:a1ed86de222e6b6c85bcfe97b505f96a6306b459b18710f1f74cf664d7ce804b
+        // @lfy def/generation/main.lfy:changes#changes:changes:e4f0785b9f7bbfa92530f7edab6e298a57fbc81f4665bd43e72947b6327ef1d6
         assert!(
             changes[1]
                 .detail
                 .contains("; the test at 1 was reworded, from "),
             "{:?}",
             changes[1]
+        );
+    }
+
+    /// A criterion added before the ones the file had leaves every later criterion standing
+    /// where another one stood, so counting from the first pairs nothing: each id is named
+    /// added or removed on its own.
+    // @lfy def/generation/main.lfy:changes#changes:changes:04f91148f0aa55ad8aeb5b1e28ce9d809e265016e9e0207a1c1c2a8a70a14f95
+    #[test]
+    fn a_criterion_added_before_the_others_rewords_nothing() {
+        let fixture = Fixture::with_rust_target();
+        // `f` carries three criteria now: one that was not there, the one that was first,
+        // and one worded differently from the one that was second.
+        fixture.write(
+            "def/a.lfy",
+            "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `nought` })\n    .add({ behavior = `one` })\n    .add({ behavior = `two, said better` });\n}\n",
+        );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        let previous = "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n";
+        let changes = changes(&program, unit, Some(previous));
+        assert_eq!(
+            change_kinds(&changes),
+            [("f", ChangeKind::Criteria)],
+            "{changes:?}"
+        );
+        // Counting from the first, the criterion at each position was reworded by nothing:
+        // the one that was first is still held, and the one that is first was not.
+        assert!(!changes[0].detail.contains("reworded"), "{:?}", changes[0]);
+        assert_eq!(changes[0].detail.matches(" was added").count(), 2, "{:?}", changes[0]);
+        assert_eq!(
+            changes[0].detail.matches(" was removed").count(),
+            1,
+            "{:?}",
+            changes[0]
         );
     }
 
@@ -10006,6 +10600,132 @@ global@targets.add(rust);
     }
 
     // -----------------------------------------------------------------------------------
+    // reworded, rename
+    // -----------------------------------------------------------------------------------
+
+    /// A criterion and a test each reworded in place give one rewording apiece, the
+    /// criterion's before the test's, each with the id it replaces and what that one said.
+    // @lfy def/generation/main.lfy:reworded#reworded:reworded:ae7e96a4afd52516a7f472423ea91c10b39bdddaaa74c711bebe31ca89cb2022
+    #[test]
+    fn a_criterion_and_a_test_reworded_in_place_are_paired_with_what_they_replace() {
+        let fixture = Fixture::with_rust_target();
+        // `f` keeps its first criterion and rewords its second; `B` rewords its first test
+        // and keeps its second.
+        let now = "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two, said better` });\n}\n\n\
+                   d B: `A b` {\n  @test({ input = 1, expect = `first, said better` });\n  @test({ input = 2, expect = `second` });\n}\n";
+        let was = "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n\n\
+                   d B: `A b` {\n  @test({ input = 1, expect = `first` });\n  @test({ input = 2, expect = `second` });\n}\n";
+        fixture.write("def/a.lfy", now);
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        // One pair per change that calls a pair reworded, in the order of those changes:
+        // the criteria of `f`, then the tests of `B`.
+        // @lfy def/generation/main.lfy:reworded#reworded:reworded:af54e4c28fb74d4c2fa75b4d1a8399d931aa52c592d5f16bd59ab25cc730a812
+        let rewordings = reworded(&program, unit, was);
+        assert_eq!(rewordings.len(), 2, "{rewordings:?}");
+        // The id it has now and the id it had, read off the two lowerings.
+        // @lfy def/generation/main.lfy:reworded#reworded:reworded:68b8e0096a61b2d00deb8e85b9cff1e55e3c804dbb2f9e01870cd1526955b171
+        let held: Vec<String> = unit
+            .requirements(&program)
+            .iter()
+            .map(|requirement| requirement.id().to_string())
+            .collect();
+        assert!(held.contains(&rewordings[0].id), "{rewordings:?} {held:?}");
+        assert!(held.contains(&rewordings[1].id), "{rewordings:?} {held:?}");
+        assert!(!held.contains(&rewordings[0].replaces), "{rewordings:?}");
+        assert!(!held.contains(&rewordings[1].replaces), "{rewordings:?}");
+        // The text is what the removed one said, as a removed requirement spells it: a
+        // criterion's text for a criterion, an input and an expectation for a test.
+        // @lfy def/generation/main.lfy:reworded#reworded:reworded:ab9d9179b73829cca9561b30789c1b03552c81e265ab5a4d78144f07c0548724
+        assert_eq!(rewordings[0].text, "two");
+        assert_eq!(rewordings[1].text, "Input `1` gives ``first``");
+        // Nothing is written: the file as it is, and the file as it was, are only read.
+        // @lfy def/generation/main.lfy:reworded#reworded:reworded:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+        assert_eq!(fs::read_to_string(fixture.root.join("def/a.lfy")).unwrap(), now);
+    }
+
+    /// Criteria whose ids differ because one was dropped and another added elsewhere, rather
+    /// than because a text changed in place, give no rewording at all.
+    // @lfy def/generation/main.lfy:reworded#reworded:reworded:b68735147b4caf0d742a4450cf54f0b22d08806f8ac2e8463f0605987192d59c
+    #[test]
+    fn criteria_that_only_changed_places_give_no_rewording() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "def/a.lfy",
+            "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `three` })\n    .add({ behavior = `one` });\n}\n",
+        );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
+        let was = "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n";
+        assert_eq!(reworded(&program, unit, was), []);
+    }
+
+    /// Every marker of the unit's own file that names an id being replaced is rewritten in
+    /// place, every other character of its line is kept, and an output whose markers name
+    /// another file is not returned at all.
+    // @lfy def/generation/main.lfy:rename#rename:rename:e6bc4b72f8b7ebef5eec47e1133414f4a958a8832ad53882a94a9cf0dfac72ce
+    #[test]
+    fn a_marker_of_the_units_own_file_is_rewritten_to_the_id_that_replaces_it() {
+        let fixture = a_and_b();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
+        let held = unit
+            .requirements(&program)
+            .first()
+            .expect("one criterion of make")
+            .id()
+            .to_string();
+        let gone = "make:make:1f2e".to_string();
+        let ids = BTreeMap::from([(gone.clone(), held.clone())]);
+        let outputs = [
+            Output {
+                path: "src/b.rs".to_string(),
+                text: format!(
+                    "pub fn make() {{}} // @lfy def/b.lfy:make#{gone}\nlet x = 1;\n\
+                     // @lfy def/b.lfy:make#{gone}\n// @lfy def/b.lfy:B\n"
+                ),
+            },
+            // A marker naming another file is another unit's, whatever id it spells.
+            // @lfy def/generation/main.lfy:rename#rename:rename:3091710a31989abcb75e52c70a366b960dac1fabd585e5a3bf0971af66686c8f
+            Output {
+                path: "src/a.rs".to_string(),
+                text: format!("// @lfy def/a.lfy:A#{gone}\n"),
+            },
+        ];
+        let renamed = rename(&workspace, &plan, index, &outputs, &ids);
+        // Only the output that holds a rewritten marker comes back.
+        // @lfy def/generation/main.lfy:rename#rename:rename:8cb5f57f44ec1a7de3b03c33feda6e4ceedd4fa55d4d2ec4fdd0ae92c27e9d82
+        assert_eq!(renamed.len(), 1, "{renamed:?}");
+        assert_eq!(renamed[0].path, "src/b.rs");
+        // Both markers of that file name the new id, and nothing else of any line moved.
+        // @lfy def/generation/main.lfy:rename#rename:rename:4091b5d02c428166459a836f17453935a76b69ac96600c57604d197dccf120e3
+        // @lfy def/generation/main.lfy:rename#rename:rename:90a597b0c488f100859379a0d11bf0e632fbfbb941a554b7b5c2669c9d8320d3
+        assert_eq!(
+            renamed[0].text,
+            format!(
+                "pub fn make() {{}} // @lfy def/b.lfy:make#{held}\nlet x = 1;\n\
+                 // @lfy def/b.lfy:make#{held}\n// @lfy def/b.lfy:B\n"
+            )
+        );
+        // An id no marker of the unit names leaves every output as it is.
+        // @lfy def/generation/main.lfy:rename#rename:rename:98bd688d7b8dd91a3fbd9fc7eb8c0999c69eba315873a7bcb74f7627b0a5897d
+        let other = BTreeMap::from([("make:make:77aa".to_string(), held)]);
+        assert_eq!(rename(&workspace, &plan, index, &outputs, &other), []);
+        // Nothing is written: the outputs come back for the caller to write.
+        // @lfy def/generation/main.lfy:rename#rename:rename:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+        assert!(!fixture.root.join("src/b.rs").exists());
+    }
+
+    // -----------------------------------------------------------------------------------
     // review
     // -----------------------------------------------------------------------------------
 
@@ -10044,6 +10764,7 @@ global@targets.add(rust);
             requirements: String::new(),
             answered: Vec::new(),
             signature: source_hash("i"),
+            text: source_hash(A_REGION),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers: vec![entity_marker(1, "A", 1, 4)],
@@ -10109,7 +10830,7 @@ global@targets.add(rust);
         );
         assert!(request.carried.is_empty(), "{:?}", request.carried);
         // Each of them is hashed over the lines of the region of the entity it belongs to.
-        // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+        // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
         let region = source_hash(A_REGION);
         for id in &request.asked {
             assert_eq!(request.hashes[id], region, "{id}");
@@ -10208,9 +10929,74 @@ global@targets.add(rust);
         assert!(!text.contains(&criteria[0]), "{text}");
         assert!(text.contains(&criteria[1]), "{text}");
         // Every criterion and test of the unit is hashed, carried or not.
-        // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+        // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
         assert_eq!(request.hashes.len(), 3, "{:?}", request.hashes);
         assert_eq!(request.hashes[&criteria[0]], hash);
+    }
+
+    /// A marker comment is no part of the hash of a region, and the white space before it
+    /// goes with it, so a line that holds nothing else adds nothing: moving a reworded
+    /// criterion's markers to its new id leaves every hash of the entity as it was. The code
+    /// a marker trails, and a comment that is prose, are code and are hashed.
+    // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+    #[test]
+    fn a_marker_comment_is_no_part_of_the_hash_of_a_region() {
+        let (fixture, program, plan, batch) = a_to_review();
+        let (criteria, _) = a_requirement_ids(&program, &plan);
+        let maps = vec![SourceMap {
+            markers: vec![entity_marker(1, "A", 1, 6)],
+            ..a_source_map().remove(0)
+        }];
+        fixture.write(
+            "src/a.rs",
+            "  // @lfy def/a.lfy:A\nalpha\nbeta // @lfy def/a.lfy:A.x\n// a comment\ngamma\ndelta\n",
+        );
+        let request = review(&program, &plan, &batch, &maps, None, &[]);
+        let code = source_hash("alpha\nbeta\n// a comment\ngamma\ndelta\n");
+        assert_eq!(request.hashes[&criteria[0]], code);
+        // The same code with a criterion's id spelled on one of those markers hashes to the
+        // same thing, so no other criterion of the entity is sent back to review.
+        fixture.write(
+            "src/a.rs",
+            &format!(
+                "  // @lfy def/a.lfy:A#{}\nalpha\nbeta // @lfy def/a.lfy:A.x\n// a comment\n\
+                 gamma\ndelta\n",
+                criteria[0]
+            ),
+        );
+        let moved = review(&program, &plan, &batch, &maps, None, &[]);
+        assert_eq!(moved.hashes[&criteria[0]], code);
+        // A line of code that changed does change it.
+        fixture.write(
+            "src/a.rs",
+            "  // @lfy def/a.lfy:A\nalpha\nbeta // @lfy def/a.lfy:A.x\n// a comment\ngamma\nepsilon\n",
+        );
+        let other = review(&program, &plan, &batch, &maps, None, &[]);
+        assert_ne!(other.hashes[&criteria[0]], code);
+    }
+
+    /// A record is carried for the criterion whose id it holds and for no other, so the
+    /// criterion that rewords it is listed although the regions of their entity are the ones
+    /// the record was judged against.
+    // @lfy def/generation/main.lfy:review#review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2
+    #[test]
+    fn a_record_of_the_id_a_criterion_replaced_carries_nothing() {
+        let (_fixture, program, plan, batch) = a_to_review();
+        let maps = a_source_map();
+        let (criteria, tests) = a_requirement_ids(&program, &plan);
+        // The id the second criterion would have replaced, judged against the very code the
+        // entity's regions hold now.
+        let records = vec![ReviewRecord {
+            id: format!("{}x", criteria[1]),
+            status: ReviewStatus::Satisfied,
+            hash: source_hash(A_REGION),
+        }];
+        let request = review(&program, &plan, &batch, &maps, None, &records);
+        assert_eq!(
+            request.asked,
+            [criteria[0].clone(), criteria[1].clone(), tests[0].clone()]
+        );
+        assert!(request.carried.is_empty(), "{:?}", request.carried);
     }
 
     /// A record made against code the entity's regions no longer hash to carries nothing:
@@ -10299,6 +11085,7 @@ global@targets.add(rust);
             requirements: String::new(),
             answered: Vec::new(),
             signature: source_hash("i"),
+            text: String::new(),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers,
@@ -10385,6 +11172,7 @@ global@targets.add(rust);
             requirements: String::new(),
             answered: Vec::new(),
             signature: source_hash("i"),
+            text: String::new(),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers: vec![
@@ -10402,7 +11190,7 @@ global@targets.add(rust);
             "{text}"
         );
         // Each entity's criteria are hashed over its own region alone.
-        // @lfy def/generation/main.lfy:review#review:review:2406e70a6c25c47a8f50f45cfb28517ffe7990ce2a1647dd53f04024b5ea5269
+        // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
         assert_eq!(request.asked.len(), 2, "{:?}", request.asked);
         let hashes: Vec<&String> = request
             .asked
@@ -10553,6 +11341,7 @@ global@targets.add(rust);
             requirements: source_hash("r"),
             answered: vec![id.clone()],
             signature: source_hash("i"),
+            text: String::new(),
             dependencies: BTreeMap::new(),
             generated: "2026-09-18T10:00:00Z".to_string(),
             markers: vec![Marker {
@@ -11205,6 +11994,7 @@ global@targets.add(rust);
                 requirements: source_hash("the requirements of a"),
                 answered: vec!["A:A:abc".to_string()],
                 signature: source_hash("interface of a"),
+                text: source_hash("the text of src/a.rs"),
                 dependencies: BTreeMap::from([(
                     "def/b.lfy".to_string(),
                     source_hash("interface of b"),
@@ -11239,6 +12029,7 @@ global@targets.add(rust);
                 requirements: String::new(),
                 answered: Vec::new(),
                 signature: source_hash("interface of b"),
+                text: String::new(),
                 dependencies: BTreeMap::new(),
                 generated: "2026-09-18T10:00:01Z".to_string(),
                 markers: Vec::new(),

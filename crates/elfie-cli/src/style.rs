@@ -257,8 +257,15 @@ pub fn tone_of(step: Step) -> Tone {
         Step::Rejected | Step::Failed => Tone::Failure,
         // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:9dfe6caa377e781205875223f7abe8b862523b0ebc84d556053c45413798b497
         Step::Retrying | Step::Blocked | Step::Clarification => Tone::Warning,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca
-        Step::Requesting | Step::Compiling | Step::Checking | Step::Verifying | Step::GlobalVerifying => Tone::Active,
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:c73f16a1da224984fdb78f97585a0cab3052893e0f1852d564a07fec27743b90
+        Step::Requesting
+        | Step::Resuming
+        | Step::Rewording
+        | Step::Building
+        | Step::Compiling
+        | Step::Checking
+        | Step::Verifying
+        | Step::GlobalVerifying => Tone::Active,
         // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:a27712c13d5dd0df10d6f286a820faaa7ab5ef5ae98e7addfe626e43c7ba3be7
         Step::Planned | Step::Finished => Tone::Subject,
     }
@@ -272,10 +279,10 @@ pub fn glyph_of(step: Step) -> &'static str {
     match step {
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a
         Step::Planned | Step::Finished => "◆",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e
-        Step::Requesting | Step::Checking => "·",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e
-        Step::Compiling | Step::Verifying | Step::GlobalVerifying => "▸",
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32
+        Step::Requesting | Step::Resuming | Step::Rewording | Step::Checking => "·",
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:1be0717c3d831d2d1416f1d0f87b81075849a9670c40370d210374c46997fd45
+        Step::Building | Step::Compiling | Step::Verifying | Step::GlobalVerifying => "▸",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b
         Step::Accepted | Step::Reviewed | Step::GlobalReviewed => "✓",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c
@@ -350,9 +357,12 @@ mod tests {
     use super::*;
 
     /// Every step, so that a test can walk them all.
-    const STEPS: [Step; 15] = [
+    const STEPS: [Step; 18] = [
         Step::Planned,
         Step::Requesting,
+        Step::Resuming,
+        Step::Rewording,
+        Step::Building,
         Step::Compiling,
         Step::Checking,
         Step::Accepted,
@@ -581,11 +591,14 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:e62a94e69d89b6cf00197a96f8e054019c8bc20c03f01ea04442e78b3bdfb462
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:1af8a393c7bf279145a43a90815be9a411c18213a0780d548c655be28bb4fdca
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:c73f16a1da224984fdb78f97585a0cab3052893e0f1852d564a07fec27743b90
     #[test]
     fn the_steps_under_way_are_active() {
         assert_eq!(tone_of(Step::Compiling), Tone::Active);
         assert_eq!(tone_of(Step::Requesting), Tone::Active);
+        assert_eq!(tone_of(Step::Resuming), Tone::Active);
+        assert_eq!(tone_of(Step::Rewording), Tone::Active);
+        assert_eq!(tone_of(Step::Building), Tone::Active);
         assert_eq!(tone_of(Step::Checking), Tone::Active);
         assert_eq!(tone_of(Step::Verifying), Tone::Active);
         assert_eq!(tone_of(Step::GlobalVerifying), Tone::Active);
@@ -616,9 +629,10 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:e121e7b63e58ebedb21c162928a8e56a1198652788186652f3df7180185086ed
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:bbf90c2aa9a765ca3ce199e9e62c23d50279dfdf45f0e8c7ff73e1dd2662529e
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:1be0717c3d831d2d1416f1d0f87b81075849a9670c40370d210374c46997fd45
     #[test]
-    fn compiling_verifying_and_global_verifying_are_a_triangle() {
+    fn building_compiling_verifying_and_global_verifying_are_a_triangle() {
+        assert_eq!(glyph_of(Step::Building), "▸");
         assert_eq!(glyph_of(Step::Compiling), "▸");
         assert_eq!(glyph_of(Step::Verifying), "▸");
         assert_eq!(glyph_of(Step::GlobalVerifying), "▸");
@@ -631,10 +645,12 @@ mod tests {
         assert_eq!(glyph_of(Step::Finished), "◆");
     }
 
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:3857314fa6190399b2decb0658802905f7c2c792b6bb6d8211188bbfba92605e
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32
     #[test]
-    fn requesting_and_checking_are_a_dot() {
+    fn requesting_resuming_rewording_and_checking_are_a_dot() {
         assert_eq!(glyph_of(Step::Requesting), "·");
+        assert_eq!(glyph_of(Step::Resuming), "·");
+        assert_eq!(glyph_of(Step::Rewording), "·");
         assert_eq!(glyph_of(Step::Checking), "·");
     }
 

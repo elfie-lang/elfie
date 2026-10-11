@@ -7,7 +7,7 @@
       "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "26aad3b3aaca685f67b2a2225e2d552fc2026e0d0af10502b3ba63373356ba7d",
+      "def/generation/data.lfy": "9ff0da89015d7e095a8e4259f6b50a45fb265ac35ce5f365e7620d31a7ad8e00",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -15,7 +15,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
     },
-    "generated": "2026-10-10T23:34:46Z",
+    "generated": "2026-10-11T02:07:12Z",
     "hash": "dbfcafb0e49ffd5444e1b4ac048f7db97f89256b91ed50b53b03b12766ac521e",
     "markers": [
       {
@@ -554,7 +554,7 @@
         "end": 302,
         "entity": "GlobalReview.reviews",
         "file": "def/mcp/data.lfy",
-        "line": 367,
+        "line": 383,
         "outputLine": 300,
         "requirement": null
       },
@@ -563,7 +563,7 @@
         "end": 305,
         "entity": "GlobalReview.problems",
         "file": "def/mcp/data.lfy",
-        "line": 368,
+        "line": 384,
         "outputLine": 303,
         "requirement": null
       },
@@ -572,7 +572,7 @@
         "end": 308,
         "entity": "GlobalReview.unplaced",
         "file": "def/mcp/data.lfy",
-        "line": 369,
+        "line": 385,
         "outputLine": 306,
         "requirement": null
       },
@@ -581,7 +581,7 @@
         "end": 321,
         "entity": "GlobalReview.missing",
         "file": "def/mcp/data.lfy",
-        "line": 370,
+        "line": 386,
         "outputLine": 309,
         "requirement": null
       },
@@ -659,7 +659,7 @@
       },
       {
         "column": null,
-        "end": 479,
+        "end": 480,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
@@ -668,83 +668,83 @@
       },
       {
         "column": null,
-        "end": 499,
+        "end": 500,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 480,
+        "outputLine": 481,
         "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
       },
       {
         "column": null,
-        "end": 519,
+        "end": 520,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 500,
+        "outputLine": 501,
         "requirement": "GlobalReview:GlobalReview:0a7247ddcb559874bf46416d7fad715bfcb5ca46d1b6f9d3d90827ba820dd8d8"
       },
       {
         "column": null,
-        "end": 526,
+        "end": 527,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 520,
+        "outputLine": 521,
         "requirement": "GlobalReview:GlobalReview:d8da2a793916a0f1b55b56ff2e5c895b333113799087cb6f6a586324037f9ebe"
       },
       {
         "column": null,
-        "end": 534,
+        "end": 535,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 527,
+        "outputLine": 528,
         "requirement": "GlobalReview:GlobalReview:d8da2a793916a0f1b55b56ff2e5c895b333113799087cb6f6a586324037f9ebe"
       },
       {
         "column": null,
-        "end": 555,
+        "end": 556,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 535,
+        "outputLine": 536,
         "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
       },
       {
         "column": null,
-        "end": 559,
+        "end": 560,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 556,
+        "outputLine": 557,
         "requirement": "GlobalReview:GlobalReview:39f323338f7f688f8c2a6dd3daca8bded2ff388bf65d8327ef5dc209f13581ab"
       },
       {
         "column": null,
-        "end": 563,
+        "end": 564,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 560,
+        "outputLine": 561,
         "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
       },
       {
         "column": null,
-        "end": 570,
+        "end": 571,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 564,
+        "outputLine": 565,
         "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
       },
       {
         "column": null,
-        "end": 582,
+        "end": 583,
         "entity": "GlobalReview",
         "file": "def/mcp/data.lfy",
         "line": 78,
-        "outputLine": 571,
+        "outputLine": 572,
         "requirement": "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
       }
     ],
