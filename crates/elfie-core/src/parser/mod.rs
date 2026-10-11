@@ -17,6 +17,8 @@ pub mod beginning;
 pub mod components;
 pub mod data;
 #[cfg(test)]
+mod parse_tests;
+#[cfg(test)]
 mod tests;
 pub mod traits;
 
@@ -1031,4 +1033,79 @@ impl<'t> Parser<'t> {
         }
         root
     }
+}
+
+// What more than one of this unit's test submodules reads of a parse.
+
+#[cfg(test)]
+use crate::lexer::lex;
+
+#[cfg(test)]
+fn tokens(source: &str) -> Vec<Token> {
+    lex(source, None).unwrap_or_else(|error| panic!("{source:?}: {error}"))
+}
+
+/// `Token[]@like(`The lexing of: …`)` parsed for the whole file.
+#[cfg(test)]
+fn file(source: &str) -> Tree {
+    parse(tokens(source), None)
+}
+
+/// … parsed for an expression.
+#[cfg(test)]
+fn expr(source: &str) -> Tree {
+    parse(tokens(source), Some(Entity::Expression(Expression::Expression)))
+}
+
+/// The children of a node that its elements produced, each named: a node by its rule, a
+/// token by its terminal and raw text, an error node by `Error`.
+#[cfg(test)]
+fn shape(node: &Node, tree: &Tree) -> Vec<String> {
+    node.significant(&tree.tokens)
+        .into_iter()
+        .map(|child| match child {
+            Child::Node(node) => node.rule.identifier().to_owned(),
+            Child::Error(error) => format!("Error({:?})", tree.raw(error.start, error.end)),
+            Child::Token(index) => {
+                let token = &tree.tokens[*index];
+                format!("{}({})", token.rule.unwrap().identifier(), token.raw)
+            }
+        })
+        .collect()
+}
+
+/// The `Tree@like` check every tree must pass: the root covers every token exactly once
+/// and the errors are those in the tree, ordered by start.
+// @lfy def/parser/main.lfy:parse
+#[cfg(test)]
+fn check_lossless(tree: &Tree, source: &str) {
+    assert_eq!(tree.root.start, 0, "{source:?}");
+    assert_eq!(tree.root.end, tree.tokens.len(), "{source:?}");
+    let reached = tree.root.token_indices();
+    assert_eq!(reached, (0..tree.tokens.len()).collect::<Vec<_>>(), "{source:?}");
+    assert_eq!(tree.raw(0, tree.tokens.len()), source, "{source:?}");
+    let in_tree: Vec<ErrorNode> = tree.root.errors().into_iter().cloned().collect();
+    let mut sorted = in_tree.clone();
+    sorted.sort_by_key(|error| error.start);
+    assert_eq!(tree.errors, sorted, "{source:?}");
+    for node in tree.root.descendants() {
+        // @lfy def/parser/data.lfy:Node
+        assert!(node.start <= node.end, "{source:?}");
+        assert!(
+            node.children.iter().all(|child| node.start <= child.start() && child.end() <= node.end),
+            "{source:?}: {}",
+            node.rule.identifier()
+        );
+        // @lfy def/parser/data.lfy:Node
+        assert!(
+            !node.rule.is_alternation_list() || node.rule == tree.root_rule,
+            "{source:?}: {}",
+            node.rule.identifier()
+        );
+    }
+}
+
+#[cfg(test)]
+fn first_statement(tree: &Tree) -> &Node {
+    tree.root.nodes().next().expect("a statement")
 }

@@ -5735,47 +5735,56 @@
     "markers": [
       {
         "column": null,
-        "end": 73,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 61,
+        "end": 12,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 44,
+        "outputLine": 1,
         "requirement": null
       },
       {
         "column": null,
-        "end": 86,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 74,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 96,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 87,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 127,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 97,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 199,
+        "end": 84,
         "entity": "expand",
         "file": "def/interpret/main.lfy",
         "line": 68,
-        "outputLine": 128,
+        "outputLine": 13,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 222,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 44,
+        "outputLine": 85,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 261,
+        "entity": "ExtendsClause",
+        "file": "def/grammar/rules/expression.lfy",
+        "line": 20,
+        "outputLine": 223,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 262,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 44,
+        "outputLine": 262,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 309,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 44,
+        "outputLine": 263,
         "requirement": null
       },
       {
@@ -5784,16 +5793,25 @@
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 200,
+        "outputLine": 310,
         "requirement": null
       },
       {
         "column": null,
-        "end": 376,
-        "entity": "ExtendsClause",
-        "file": "def/grammar/rules/expression.lfy",
-        "line": 20,
+        "end": 358,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 44,
         "outputLine": 338,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 359,
+        "entity": "bind",
+        "file": "def/model/main.lfy",
+        "line": 44,
+        "outputLine": 359,
         "requirement": null
       },
       {
@@ -5802,12 +5820,12 @@
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 377,
+        "outputLine": 360,
         "requirement": null
       },
       {
         "column": null,
-        "end": 424,
+        "end": 396,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
@@ -5816,326 +5834,110 @@
       },
       {
         "column": null,
-        "end": 452,
+        "end": 397,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 425,
+        "outputLine": 397,
         "requirement": null
       },
       {
         "column": null,
-        "end": 473,
+        "end": 478,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 453,
+        "outputLine": 398,
         "requirement": null
       },
       {
         "column": null,
-        "end": 474,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 474,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 492,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 475,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 511,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 493,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 512,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 512,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 593,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 513,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 617,
+        "end": 502,
         "entity": "Where",
         "file": "def/grammar/rules/statement.lfy",
         "line": 64,
-        "outputLine": 594,
+        "outputLine": 479,
         "requirement": null
       },
       {
         "column": null,
-        "end": 623,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 618,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 642,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 624,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 666,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 643,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 690,
+        "end": 526,
         "entity": "With",
         "file": "def/grammar/rules/statement.lfy",
         "line": 53,
-        "outputLine": 667,
+        "outputLine": 503,
         "requirement": null
       },
       {
         "column": null,
-        "end": 705,
+        "end": 541,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 691,
+        "outputLine": 527,
         "requirement": null
       },
       {
         "column": null,
-        "end": 734,
+        "end": 570,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 706,
+        "outputLine": 542,
         "requirement": null
       },
       {
         "column": null,
-        "end": 764,
+        "end": 600,
         "entity": "For",
         "file": "def/grammar/rules/statement.lfy",
         "line": 41,
-        "outputLine": 735,
+        "outputLine": 571,
         "requirement": null
       },
       {
         "column": null,
-        "end": 765,
+        "end": 601,
         "entity": "ForFrom",
         "file": "def/grammar/rules/statement.lfy",
         "line": 39,
-        "outputLine": 765,
+        "outputLine": 601,
         "requirement": null
       },
       {
         "column": null,
-        "end": 801,
+        "end": 637,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 766,
+        "outputLine": 602,
         "requirement": null
       },
       {
         "column": null,
-        "end": 838,
+        "end": 674,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 802,
+        "outputLine": 638,
         "requirement": null
       },
       {
         "column": null,
-        "end": 1080,
+        "end": 726,
         "entity": "bind",
         "file": "def/model/main.lfy",
         "line": 44,
-        "outputLine": 839,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1311,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1081,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1347,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1312,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1357,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1348,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1358,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1358,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1359,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1359,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1638,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1360,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1655,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1639,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1656,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1656,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1750,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1657,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1765,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1751,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1785,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1766,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1811,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1786,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 2270,
-        "entity": "bind",
-        "file": "def/model/main.lfy",
-        "line": 44,
-        "outputLine": 1812,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 2279,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 2271,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 2291,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 2280,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 2315,
-        "entity": "Conditions",
-        "file": "def/grammar/rules/statement.lfy",
-        "line": 63,
-        "outputLine": 2292,
+        "outputLine": 675,
         "requirement": null
       }
     ],
-    "output": "crates/elfie-core/src/model/eval.rs",
+    "output": "crates/elfie-core/src/model/eval/statements.rs",
     "requirements": "c591b2fde76f604ea2989c8eaa3a9b5171f2d9b8f930e40dfea6ef9944014b5a",
     "signature": "532f8958c4ee4d560a5f5e4cce9637bdd41bfd1accc7eeaa69aee487f4b0c854",
     "source": "def/interpret/main.lfy",
     "target": "rust",
-    "text": "aba7f9e8581405333ad638558a24d3423e35ba3a3e29a88ed99f1336f13380fc"
+    "text": ""
   },
   {
     "answered": [

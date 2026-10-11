@@ -70,16 +70,405 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-08T20:54:26Z",
+    "generated": "2026-10-11T13:50:53Z",
     "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
     "markers": [
       {
         "column": null,
-        "end": 46,
+        "end": 16,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 3,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 37,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 17,
+        "requirement": "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3"
+      },
+      {
+        "column": null,
+        "end": 44,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 38,
+        "requirement": "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3"
+      },
+      {
+        "column": null,
+        "end": 61,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 45,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+      },
+      {
+        "column": null,
+        "end": 109,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 62,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+      },
+      {
+        "column": null,
+        "end": 146,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 110,
+        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
+      },
+      {
+        "column": null,
+        "end": 147,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 147,
+        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
+      },
+      {
+        "column": null,
+        "end": 170,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 148,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+      },
+      {
+        "column": null,
+        "end": 171,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 171,
+        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
+      },
+      {
+        "column": null,
+        "end": 187,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 172,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+      },
+      {
+        "column": null,
+        "end": 188,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 188,
+        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
+      },
+      {
+        "column": null,
+        "end": 206,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 189,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+      },
+      {
+        "column": null,
+        "end": 207,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 207,
+        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
+      },
+      {
+        "column": null,
+        "end": 215,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 208,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+      },
+      {
+        "column": null,
+        "end": 224,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 216,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 256,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 225,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 266,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 257,
+        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
+      },
+      {
+        "column": null,
+        "end": 276,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 267,
+        "requirement": "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9"
+      },
+      {
+        "column": null,
+        "end": 303,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 277,
+        "requirement": "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84"
+      },
+      {
+        "column": null,
+        "end": 330,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 304,
+        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
+      },
+      {
+        "column": null,
+        "end": 352,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 331,
+        "requirement": "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa"
+      },
+      {
+        "column": null,
+        "end": 372,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 353,
+        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
+      },
+      {
+        "column": null,
+        "end": 397,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 373,
+        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
+      },
+      {
+        "column": null,
+        "end": 412,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 398,
+        "requirement": "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547"
+      }
+    ],
+    "output": "crates/elfie-lsp/src/convert.rs",
+    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
+    "source": "def/lsp/main.lfy",
+    "target": "rust",
+    "text": "d371138ad51b257f0a3f0ecec0694694d2a96d124c7c664bbe57c9ccfe22829c"
+  },
+  {
+    "answered": [
+      "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
+      "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
+      "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
+      "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
+      "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
+      "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
+      "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
+      "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d",
+      "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2",
+      "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55",
+      "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175",
+      "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f",
+      "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c",
+      "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767",
+      "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9",
+      "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9",
+      "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3",
+      "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3",
+      "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5",
+      "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
+      "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
+      "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
+      "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
+      "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
+      "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748",
+      "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d",
+      "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
+      "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
+      "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
+      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
+      "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
+      "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
+      "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
+      "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72",
+      "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22",
+      "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15",
+      "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c",
+      "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b",
+      "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c",
+      "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3",
+      "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951",
+      "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a",
+      "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8",
+      "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b",
+      "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
+      "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
+      "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
+      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
+      "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
+      "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
+      "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
+      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
+      "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
+      "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
+      "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
+      "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff",
+      "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
+    ],
+    "dependencies": {
+      "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
+      "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
+      "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
+      "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
+      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
+    },
+    "generated": "2026-10-11T13:50:53Z",
+    "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
+    "markers": [
+      {
+        "column": null,
+        "end": 24,
         "entity": "Protocol",
         "file": "def/lsp/main.lfy",
         "line": 11,
         "outputLine": 9,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-lsp/src/lib.rs",
+    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
+    "source": "def/lsp/main.lfy",
+    "target": "rust",
+    "text": "274273f7ec4bbf3a3d43a1af1757e81822e4adc506307e0bc57be422c1881f83"
+  },
+  {
+    "answered": [
+      "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
+      "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
+      "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
+      "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
+      "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
+      "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
+      "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
+      "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d",
+      "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2",
+      "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55",
+      "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175",
+      "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f",
+      "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c",
+      "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767",
+      "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9",
+      "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9",
+      "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3",
+      "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3",
+      "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5",
+      "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
+      "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
+      "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
+      "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
+      "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
+      "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748",
+      "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d",
+      "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
+      "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
+      "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
+      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
+      "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
+      "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
+      "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
+      "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72",
+      "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22",
+      "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15",
+      "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c",
+      "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b",
+      "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c",
+      "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3",
+      "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951",
+      "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a",
+      "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8",
+      "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b",
+      "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
+      "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
+      "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
+      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
+      "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
+      "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
+      "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
+      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
+      "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
+      "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
+      "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
+      "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff",
+      "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
+    ],
+    "dependencies": {
+      "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
+      "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
+      "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
+      "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
+      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
+    },
+    "generated": "2026-10-11T13:50:53Z",
+    "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
+    "markers": [
+      {
+        "column": null,
+        "end": 29,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 3,
         "requirement": null
       },
       {
@@ -88,8 +477,8 @@
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 47,
-        "requirement": "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72"
+        "outputLine": 30,
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
       },
       {
         "column": null,
@@ -98,133 +487,52 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 48,
-        "requirement": "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c"
+        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
       },
       {
         "column": null,
-        "end": 54,
+        "end": 87,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 49,
-        "requirement": "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2"
+        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
       },
       {
         "column": null,
-        "end": 55,
+        "end": 118,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 55,
-        "requirement": "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c"
+        "outputLine": 88,
+        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
       },
       {
         "column": null,
-        "end": 64,
+        "end": 132,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 56,
-        "requirement": "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2"
+        "outputLine": 119,
+        "requirement": "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3"
       },
       {
         "column": null,
-        "end": 65,
+        "end": 133,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 65,
-        "requirement": "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72"
+        "outputLine": 133,
+        "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b"
       },
       {
         "column": null,
-        "end": 78,
+        "end": 134,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 66,
-        "requirement": "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c"
-      },
-      {
-        "column": null,
-        "end": 79,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 79,
-        "requirement": "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d"
-      },
-      {
-        "column": null,
-        "end": 80,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 80,
-        "requirement": "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b"
-      },
-      {
-        "column": null,
-        "end": 81,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 81,
-        "requirement": "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a"
-      },
-      {
-        "column": null,
-        "end": 82,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 82,
-        "requirement": "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d"
-      },
-      {
-        "column": null,
-        "end": 94,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 83,
-        "requirement": "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55"
-      },
-      {
-        "column": null,
-        "end": 95,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 95,
-        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
-      },
-      {
-        "column": null,
-        "end": 101,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 96,
-        "requirement": "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15"
-      },
-      {
-        "column": null,
-        "end": 154,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 102,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 155,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 155,
-        "requirement": "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3"
+        "outputLine": 134,
+        "requirement": "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b"
       },
       {
         "column": null,
@@ -232,341 +540,269 @@
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 156,
-        "requirement": "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff"
+        "outputLine": 135,
+        "requirement": "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
       },
       {
         "column": null,
-        "end": 200,
+        "end": 170,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 170,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
-      },
-      {
-        "column": null,
-        "end": 211,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 201,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 238,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 212,
-        "requirement": "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b"
-      },
-      {
-        "column": null,
-        "end": 239,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 239,
-        "requirement": "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22"
-      },
-      {
-        "column": null,
-        "end": 240,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 240,
-        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
-      },
-      {
-        "column": null,
-        "end": 250,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 241,
-        "requirement": "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5"
-      },
-      {
-        "column": null,
-        "end": 278,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 251,
-        "requirement": "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65"
-      },
-      {
-        "column": null,
-        "end": 302,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 279,
-        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
-      },
-      {
-        "column": null,
-        "end": 303,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 303,
-        "requirement": "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd"
-      },
-      {
-        "column": null,
-        "end": 306,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 304,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 352,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 307,
-        "requirement": "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254"
-      },
-      {
-        "column": null,
-        "end": 355,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 353,
-        "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b"
-      },
-      {
-        "column": null,
-        "end": 356,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 356,
         "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
       },
       {
         "column": null,
-        "end": 381,
+        "end": 190,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 357,
+        "outputLine": 171,
         "requirement": "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566"
       },
       {
         "column": null,
-        "end": 382,
+        "end": 191,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 382,
-        "requirement": "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3"
-      },
-      {
-        "column": null,
-        "end": 393,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 383,
-        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
-      },
-      {
-        "column": null,
-        "end": 402,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 394,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 408,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 403,
-        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
-      },
-      {
-        "column": null,
-        "end": 409,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 409,
-        "requirement": "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22"
-      },
-      {
-        "column": null,
-        "end": 421,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 410,
-        "requirement": "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5"
-      },
-      {
-        "column": null,
-        "end": 422,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 422,
-        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
-      },
-      {
-        "column": null,
-        "end": 435,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 423,
-        "requirement": "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5"
-      },
-      {
-        "column": null,
-        "end": 436,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 436,
-        "requirement": "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f"
-      },
-      {
-        "column": null,
-        "end": 455,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 437,
-        "requirement": "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362"
-      },
-      {
-        "column": null,
-        "end": 456,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 456,
-        "requirement": "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd"
-      },
-      {
-        "column": null,
-        "end": 469,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 457,
-        "requirement": "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0"
-      },
-      {
-        "column": null,
-        "end": 471,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 470,
-        "requirement": "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0"
-      },
-      {
-        "column": null,
-        "end": 497,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 472,
-        "requirement": "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd"
-      },
-      {
-        "column": null,
-        "end": 514,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 498,
+        "outputLine": 191,
         "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
       },
       {
         "column": null,
-        "end": 529,
+        "end": 192,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 515,
-        "requirement": "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767"
+        "outputLine": 192,
+        "requirement": "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9"
       },
       {
         "column": null,
-        "end": 547,
+        "end": 221,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 530,
-        "requirement": "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9"
+        "outputLine": 193,
+        "requirement": "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84"
       },
       {
         "column": null,
-        "end": 572,
+        "end": 247,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 548,
+        "outputLine": 222,
+        "requirement": "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9"
+      },
+      {
+        "column": null,
+        "end": 272,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 248,
         "requirement": "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa"
       },
       {
         "column": null,
-        "end": 573,
+        "end": 297,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 573,
-        "requirement": "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767"
-      },
-      {
-        "column": null,
-        "end": 595,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 574,
-        "requirement": "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d"
-      },
-      {
-        "column": null,
-        "end": 596,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 596,
-        "requirement": "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c"
-      },
-      {
-        "column": null,
-        "end": 631,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 597,
-        "requirement": "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175"
-      },
-      {
-        "column": null,
-        "end": 651,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 632,
+        "outputLine": 273,
         "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
+      },
+      {
+        "column": null,
+        "end": 298,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 298,
+        "requirement": "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd"
+      },
+      {
+        "column": null,
+        "end": 299,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 299,
+        "requirement": "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c"
+      },
+      {
+        "column": null,
+        "end": 331,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 300,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 351,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 332,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 359,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 352,
+        "requirement": "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c"
+      },
+      {
+        "column": null,
+        "end": 360,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 360,
+        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
+      },
+      {
+        "column": null,
+        "end": 538,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 361,
+        "requirement": "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15"
+      },
+      {
+        "column": null,
+        "end": 539,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 539,
+        "requirement": "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e"
+      },
+      {
+        "column": null,
+        "end": 540,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 540,
+        "requirement": "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72"
+      },
+      {
+        "column": null,
+        "end": 541,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 541,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 542,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 542,
+        "requirement": "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3"
+      },
+      {
+        "column": null,
+        "end": 543,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 543,
+        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
+      },
+      {
+        "column": null,
+        "end": 544,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 544,
+        "requirement": "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b"
+      },
+      {
+        "column": null,
+        "end": 545,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 545,
+        "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
+      },
+      {
+        "column": null,
+        "end": 577,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 546,
+        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
+      },
+      {
+        "column": null,
+        "end": 603,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 578,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 604,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 604,
+        "requirement": "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d"
+      },
+      {
+        "column": null,
+        "end": 605,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 605,
+        "requirement": "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a"
+      },
+      {
+        "column": null,
+        "end": 606,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 606,
+        "requirement": "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3"
+      },
+      {
+        "column": null,
+        "end": 659,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 607,
+        "requirement": "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff"
+      },
+      {
+        "column": null,
+        "end": 668,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 660,
+        "requirement": "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15"
       },
       {
         "column": null,
@@ -574,170 +810,179 @@
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 652,
-        "requirement": "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547"
+        "outputLine": 669,
+        "requirement": "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc"
       },
       {
         "column": null,
-        "end": 687,
+        "end": 670,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 670,
-        "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
+        "requirement": "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767"
       },
       {
         "column": null,
-        "end": 688,
+        "end": 671,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 688,
+        "outputLine": 671,
+        "requirement": "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c"
+      },
+      {
+        "column": null,
+        "end": 672,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 672,
+        "requirement": "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767"
+      },
+      {
+        "column": null,
+        "end": 673,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 673,
+        "requirement": "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d"
+      },
+      {
+        "column": null,
+        "end": 674,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 674,
+        "requirement": "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9"
+      },
+      {
+        "column": null,
+        "end": 675,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 675,
+        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
+      },
+      {
+        "column": null,
+        "end": 676,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 676,
+        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
+      },
+      {
+        "column": null,
+        "end": 677,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 677,
+        "requirement": "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547"
+      },
+      {
+        "column": null,
+        "end": 718,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 678,
+        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
+      },
+      {
+        "column": null,
+        "end": 786,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 719,
+        "requirement": "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175"
+      },
+      {
+        "column": null,
+        "end": 787,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 787,
         "requirement": "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3"
       },
       {
         "column": null,
-        "end": 689,
+        "end": 788,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 689,
+        "outputLine": 788,
         "requirement": "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a"
       },
       {
         "column": null,
-        "end": 690,
+        "end": 789,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 690,
+        "outputLine": 789,
         "requirement": "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64"
       },
       {
         "column": null,
-        "end": 735,
+        "end": 855,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 691,
+        "outputLine": 790,
         "requirement": "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1"
       },
       {
         "column": null,
-        "end": 739,
+        "end": 856,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 736,
-        "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b"
-      },
-      {
-        "column": null,
-        "end": 749,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 740,
-        "requirement": "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b"
-      },
-      {
-        "column": null,
-        "end": 757,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 750,
-        "requirement": "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
-      },
-      {
-        "column": null,
-        "end": 758,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 758,
-        "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
-      },
-      {
-        "column": null,
-        "end": 771,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 759,
-        "requirement": "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566"
-      },
-      {
-        "column": null,
-        "end": 774,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 772,
-        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
-      },
-      {
-        "column": null,
-        "end": 801,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 775,
-        "requirement": "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3"
-      },
-      {
-        "column": null,
-        "end": 816,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 802,
-        "requirement": "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951"
-      },
-      {
-        "column": null,
-        "end": 828,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 817,
-        "requirement": "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951"
-      },
-      {
-        "column": null,
-        "end": 840,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 829,
+        "outputLine": 856,
         "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
       },
       {
         "column": null,
-        "end": 841,
+        "end": 871,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 841,
+        "outputLine": 857,
+        "requirement": "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951"
+      },
+      {
+        "column": null,
+        "end": 872,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 872,
         "requirement": "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a"
       },
       {
         "column": null,
-        "end": 868,
+        "end": 881,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 842,
+        "outputLine": 873,
         "requirement": "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c"
       },
       {
         "column": null,
-        "end": 889,
+        "end": 882,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 869,
-        "requirement": "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3"
+        "outputLine": 882,
+        "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
       },
       {
         "column": null,
@@ -745,26 +990,71 @@
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 890,
-        "requirement": "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3"
+        "outputLine": 883,
+        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
       },
       {
         "column": null,
-        "end": 913,
+        "end": 897,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 897,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+        "requirement": "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b"
       },
       {
         "column": null,
-        "end": 961,
+        "end": 898,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 914,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+        "outputLine": 898,
+        "requirement": "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f"
+      },
+      {
+        "column": null,
+        "end": 899,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 899,
+        "requirement": "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362"
+      },
+      {
+        "column": null,
+        "end": 900,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 900,
+        "requirement": "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd"
+      },
+      {
+        "column": null,
+        "end": 934,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 901,
+        "requirement": "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0"
+      },
+      {
+        "column": null,
+        "end": 996,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 935,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 997,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 997,
+        "requirement": "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65"
       },
       {
         "column": null,
@@ -772,8 +1062,8 @@
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 962,
-        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
+        "outputLine": 998,
+        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
       },
       {
         "column": null,
@@ -782,52 +1072,25 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 999,
-        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
+        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
       },
       {
         "column": null,
-        "end": 1022,
+        "end": 1015,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 1000,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
       },
       {
         "column": null,
-        "end": 1023,
+        "end": 1033,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1023,
-        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
-      },
-      {
-        "column": null,
-        "end": 1034,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1024,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
-      },
-      {
-        "column": null,
-        "end": 1035,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1035,
-        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
-      },
-      {
-        "column": null,
-        "end": 1048,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1036,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
+        "outputLine": 1016,
+        "requirement": "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65"
       },
       {
         "column": null,
@@ -835,824 +1098,835 @@
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1049,
-        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
+        "outputLine": 1034,
+        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
       },
       {
         "column": null,
-        "end": 1057,
+        "end": 1050,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 1050,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
-      },
-      {
-        "column": null,
-        "end": 1066,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1058,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1084,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1067,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 1085,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1085,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 1097,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1086,
         "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
       },
       {
         "column": null,
-        "end": 1117,
+        "end": 1070,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1098,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 1118,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1118,
-        "requirement": "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd"
-      },
-      {
-        "column": null,
-        "end": 1152,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1119,
-        "requirement": "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c"
-      },
-      {
-        "column": null,
-        "end": 1162,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1153,
-        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
-      },
-      {
-        "column": null,
-        "end": 1172,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1163,
-        "requirement": "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9"
-      },
-      {
-        "column": null,
-        "end": 1199,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1173,
-        "requirement": "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84"
-      },
-      {
-        "column": null,
-        "end": 1226,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1200,
-        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
-      },
-      {
-        "column": null,
-        "end": 1248,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1227,
-        "requirement": "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa"
-      },
-      {
-        "column": null,
-        "end": 1268,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1249,
-        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
-      },
-      {
-        "column": null,
-        "end": 1293,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1269,
-        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
-      },
-      {
-        "column": null,
-        "end": 1320,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1294,
-        "requirement": "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547"
-      },
-      {
-        "column": null,
-        "end": 1338,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1321,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
-      },
-      {
-        "column": null,
-        "end": 1339,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1339,
-        "requirement": "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f"
-      },
-      {
-        "column": null,
-        "end": 1378,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1340,
-        "requirement": "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5"
-      },
-      {
-        "column": null,
-        "end": 1409,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1379,
-        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
-      },
-      {
-        "column": null,
-        "end": 1423,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1410,
-        "requirement": "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3"
-      },
-      {
-        "column": null,
-        "end": 1424,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1424,
-        "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b"
-      },
-      {
-        "column": null,
-        "end": 1425,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1425,
-        "requirement": "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b"
-      },
-      {
-        "column": null,
-        "end": 1460,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1426,
-        "requirement": "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
-      },
-      {
-        "column": null,
-        "end": 1461,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1461,
-        "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
-      },
-      {
-        "column": null,
-        "end": 1481,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1462,
-        "requirement": "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566"
-      },
-      {
-        "column": null,
-        "end": 1482,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1482,
-        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
-      },
-      {
-        "column": null,
-        "end": 1483,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1483,
-        "requirement": "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9"
-      },
-      {
-        "column": null,
-        "end": 1512,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1484,
-        "requirement": "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84"
-      },
-      {
-        "column": null,
-        "end": 1538,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1513,
-        "requirement": "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9"
-      },
-      {
-        "column": null,
-        "end": 1563,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1539,
-        "requirement": "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa"
-      },
-      {
-        "column": null,
-        "end": 1588,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1564,
-        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
-      },
-      {
-        "column": null,
-        "end": 1589,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1589,
-        "requirement": "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd"
-      },
-      {
-        "column": null,
-        "end": 1590,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1590,
-        "requirement": "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c"
-      },
-      {
-        "column": null,
-        "end": 1622,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1591,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 1642,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1623,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 1650,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1643,
-        "requirement": "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c"
-      },
-      {
-        "column": null,
-        "end": 1651,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1651,
-        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
-      },
-      {
-        "column": null,
-        "end": 1829,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1652,
-        "requirement": "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15"
-      },
-      {
-        "column": null,
-        "end": 1830,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1830,
-        "requirement": "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e"
-      },
-      {
-        "column": null,
-        "end": 1831,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1831,
-        "requirement": "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72"
-      },
-      {
-        "column": null,
-        "end": 1832,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1832,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 1833,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1833,
-        "requirement": "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3"
-      },
-      {
-        "column": null,
-        "end": 1834,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1834,
-        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
-      },
-      {
-        "column": null,
-        "end": 1835,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1835,
-        "requirement": "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b"
-      },
-      {
-        "column": null,
-        "end": 1836,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1836,
-        "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
-      },
-      {
-        "column": null,
-        "end": 1868,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1837,
-        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
-      },
-      {
-        "column": null,
-        "end": 1894,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1869,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 1895,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1895,
-        "requirement": "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d"
-      },
-      {
-        "column": null,
-        "end": 1896,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1896,
-        "requirement": "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a"
-      },
-      {
-        "column": null,
-        "end": 1897,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1897,
-        "requirement": "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3"
-      },
-      {
-        "column": null,
-        "end": 1952,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1898,
-        "requirement": "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff"
-      },
-      {
-        "column": null,
-        "end": 1961,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1953,
-        "requirement": "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15"
-      },
-      {
-        "column": null,
-        "end": 1962,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1962,
-        "requirement": "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc"
-      },
-      {
-        "column": null,
-        "end": 1963,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1963,
-        "requirement": "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767"
-      },
-      {
-        "column": null,
-        "end": 1964,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1964,
-        "requirement": "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c"
-      },
-      {
-        "column": null,
-        "end": 1965,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1965,
-        "requirement": "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767"
-      },
-      {
-        "column": null,
-        "end": 1966,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1966,
-        "requirement": "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d"
-      },
-      {
-        "column": null,
-        "end": 1967,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1967,
-        "requirement": "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9"
-      },
-      {
-        "column": null,
-        "end": 1968,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1968,
-        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
-      },
-      {
-        "column": null,
-        "end": 1969,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1969,
-        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
-      },
-      {
-        "column": null,
-        "end": 1970,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1970,
-        "requirement": "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547"
-      },
-      {
-        "column": null,
-        "end": 2012,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 1971,
+        "outputLine": 1051,
         "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
       },
       {
         "column": null,
-        "end": 2080,
+        "end": 1071,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 2013,
-        "requirement": "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175"
-      },
-      {
-        "column": null,
-        "end": 2081,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2081,
-        "requirement": "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3"
-      },
-      {
-        "column": null,
-        "end": 2082,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2082,
-        "requirement": "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a"
-      },
-      {
-        "column": null,
-        "end": 2083,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2083,
-        "requirement": "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64"
-      },
-      {
-        "column": null,
-        "end": 2149,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2084,
-        "requirement": "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1"
-      },
-      {
-        "column": null,
-        "end": 2150,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2150,
-        "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
-      },
-      {
-        "column": null,
-        "end": 2165,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2151,
-        "requirement": "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951"
-      },
-      {
-        "column": null,
-        "end": 2166,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2166,
-        "requirement": "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a"
-      },
-      {
-        "column": null,
-        "end": 2175,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2167,
-        "requirement": "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c"
-      },
-      {
-        "column": null,
-        "end": 2176,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2176,
-        "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
-      },
-      {
-        "column": null,
-        "end": 2190,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2177,
-        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
-      },
-      {
-        "column": null,
-        "end": 2191,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2191,
-        "requirement": "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b"
-      },
-      {
-        "column": null,
-        "end": 2192,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2192,
-        "requirement": "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f"
-      },
-      {
-        "column": null,
-        "end": 2193,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2193,
-        "requirement": "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362"
-      },
-      {
-        "column": null,
-        "end": 2194,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2194,
-        "requirement": "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd"
-      },
-      {
-        "column": null,
-        "end": 2228,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2195,
-        "requirement": "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0"
-      },
-      {
-        "column": null,
-        "end": 2290,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2229,
-        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
-      },
-      {
-        "column": null,
-        "end": 2291,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2291,
-        "requirement": "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65"
-      },
-      {
-        "column": null,
-        "end": 2292,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2292,
-        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
-      },
-      {
-        "column": null,
-        "end": 2293,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2293,
-        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
-      },
-      {
-        "column": null,
-        "end": 2309,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2294,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
-      },
-      {
-        "column": null,
-        "end": 2328,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2310,
-        "requirement": "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65"
-      },
-      {
-        "column": null,
-        "end": 2344,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2329,
-        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
-      },
-      {
-        "column": null,
-        "end": 2345,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2345,
-        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
-      },
-      {
-        "column": null,
-        "end": 2365,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2346,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
-      },
-      {
-        "column": null,
-        "end": 2366,
-        "entity": "serve",
-        "file": "def/lsp/main.lfy",
-        "line": 13,
-        "outputLine": 2366,
+        "outputLine": 1071,
         "requirement": "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d"
       },
       {
         "column": null,
-        "end": 2388,
+        "end": 1092,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 2367,
+        "outputLine": 1072,
         "requirement": "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55"
       }
     ],
-    "output": "crates/elfie-lsp/src/lib.rs",
+    "output": "crates/elfie-lsp/src/serve_tests.rs",
     "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
     "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
     "source": "def/lsp/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": "a3ada38dfbdf1af0bf683bf605bd00d0bacd72bf7634d0a2d41d6b144a6b0c40"
+  },
+  {
+    "answered": [
+      "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
+      "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
+      "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
+      "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
+      "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
+      "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
+      "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
+      "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d",
+      "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2",
+      "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55",
+      "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175",
+      "serve:serve:35a0718e0e91d6b10930384042a0fe513dbb8a7188bc60b57f614166263dd04f",
+      "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c",
+      "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767",
+      "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9",
+      "serve:serve:399bc8d9d0952a6a2bfeebf5c3967a47676bc36520e42a430b7035b01cc860f9",
+      "serve:serve:488b56c6bce60decf85f2506fccbabce6330487fb875d7109ca0051f995a67d3",
+      "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3",
+      "serve:serve:4eb913bc998b39b0bc4cd9e2a63d11b56c77c491c2198de374e643b5f6ff06a5",
+      "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
+      "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
+      "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
+      "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
+      "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
+      "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748",
+      "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d",
+      "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
+      "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
+      "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
+      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
+      "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
+      "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
+      "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
+      "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72",
+      "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22",
+      "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15",
+      "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c",
+      "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b",
+      "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c",
+      "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3",
+      "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951",
+      "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a",
+      "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8",
+      "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b",
+      "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
+      "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
+      "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
+      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
+      "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
+      "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
+      "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
+      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
+      "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
+      "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
+      "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
+      "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff",
+      "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
+    ],
+    "dependencies": {
+      "def/format/main.lfy": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
+      "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
+      "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
+      "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
+      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
+    },
+    "generated": "2026-10-11T13:50:53Z",
+    "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
+    "markers": [
+      {
+        "column": null,
+        "end": 37,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 3,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 38,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 38,
+        "requirement": "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72"
+      },
+      {
+        "column": null,
+        "end": 39,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 39,
+        "requirement": "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c"
+      },
+      {
+        "column": null,
+        "end": 45,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 40,
+        "requirement": "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2"
+      },
+      {
+        "column": null,
+        "end": 46,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 46,
+        "requirement": "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c"
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 47,
+        "requirement": "serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2"
+      },
+      {
+        "column": null,
+        "end": 56,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 56,
+        "requirement": "serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72"
+      },
+      {
+        "column": null,
+        "end": 69,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 57,
+        "requirement": "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c"
+      },
+      {
+        "column": null,
+        "end": 70,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 70,
+        "requirement": "serve:serve:7773981fce7710813ac48558af1654223837f348144a83f759bd110529adc40d"
+      },
+      {
+        "column": null,
+        "end": 71,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 71,
+        "requirement": "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b"
+      },
+      {
+        "column": null,
+        "end": 72,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 72,
+        "requirement": "serve:serve:c27811cfbd180c4e28720d3291fd35fc8c1a18495d1de90534e7a92078e2300a"
+      },
+      {
+        "column": null,
+        "end": 73,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 73,
+        "requirement": "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d"
+      },
+      {
+        "column": null,
+        "end": 85,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 74,
+        "requirement": "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55"
+      },
+      {
+        "column": null,
+        "end": 86,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 86,
+        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
+      },
+      {
+        "column": null,
+        "end": 92,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 87,
+        "requirement": "serve:serve:9f66abf6d379ff5502a71a40d7500855a130cd0371d2c538ef5cc2e6122aeb15"
+      },
+      {
+        "column": null,
+        "end": 145,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 93,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 146,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 146,
+        "requirement": "serve:serve:b57406ccac6e090310b7b7f7e364fe74fc203a3a4c7efce6f2ea07443fdcc6e3"
+      },
+      {
+        "column": null,
+        "end": 160,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 147,
+        "requirement": "serve:serve:f9aa1e1b9148be162e7cbcc4ab2175dbea6ce7907b2f1690eda80d80a689f4ff"
+      },
+      {
+        "column": null,
+        "end": 191,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 161,
+        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
+      },
+      {
+        "column": null,
+        "end": 202,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 192,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 229,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 203,
+        "requirement": "serve:serve:c9d12ec7a2554d47185822774257c9f0ebca78f272521b359d6019998633926b"
+      },
+      {
+        "column": null,
+        "end": 230,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 230,
+        "requirement": "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22"
+      },
+      {
+        "column": null,
+        "end": 231,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 231,
+        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
+      },
+      {
+        "column": null,
+        "end": 241,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 232,
+        "requirement": "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5"
+      },
+      {
+        "column": null,
+        "end": 269,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 242,
+        "requirement": "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65"
+      },
+      {
+        "column": null,
+        "end": 293,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 270,
+        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
+      },
+      {
+        "column": null,
+        "end": 294,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 294,
+        "requirement": "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd"
+      },
+      {
+        "column": null,
+        "end": 297,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 295,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 343,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 298,
+        "requirement": "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254"
+      },
+      {
+        "column": null,
+        "end": 346,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 344,
+        "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b"
+      },
+      {
+        "column": null,
+        "end": 347,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 347,
+        "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
+      },
+      {
+        "column": null,
+        "end": 372,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 348,
+        "requirement": "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566"
+      },
+      {
+        "column": null,
+        "end": 373,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 373,
+        "requirement": "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3"
+      },
+      {
+        "column": null,
+        "end": 384,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 374,
+        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
+      },
+      {
+        "column": null,
+        "end": 393,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 385,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 399,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 394,
+        "requirement": "serve:serve:a3eb66fd8aa2ca379fbfd14839959e5a350c90c0887219b3365368fb35b0c94c"
+      },
+      {
+        "column": null,
+        "end": 400,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 400,
+        "requirement": "serve:serve:9b7a4f33c212b5dfe1ee27317e94e0b7de566f70c71c176ce53d5ac208ff2f22"
+      },
+      {
+        "column": null,
+        "end": 412,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 401,
+        "requirement": "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5"
+      },
+      {
+        "column": null,
+        "end": 413,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 413,
+        "requirement": "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737"
+      },
+      {
+        "column": null,
+        "end": 426,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 414,
+        "requirement": "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5"
+      },
+      {
+        "column": null,
+        "end": 427,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 427,
+        "requirement": "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f"
+      },
+      {
+        "column": null,
+        "end": 446,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 428,
+        "requirement": "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362"
+      },
+      {
+        "column": null,
+        "end": 447,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 447,
+        "requirement": "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd"
+      },
+      {
+        "column": null,
+        "end": 460,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 448,
+        "requirement": "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0"
+      },
+      {
+        "column": null,
+        "end": 462,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 461,
+        "requirement": "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0"
+      },
+      {
+        "column": null,
+        "end": 488,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 463,
+        "requirement": "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd"
+      },
+      {
+        "column": null,
+        "end": 505,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 489,
+        "requirement": "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3"
+      },
+      {
+        "column": null,
+        "end": 520,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 506,
+        "requirement": "serve:serve:37382c32c2e5d125cef7e8f2a6960e4c8fa8bfce5a4499fcee1b8332af049767"
+      },
+      {
+        "column": null,
+        "end": 538,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 521,
+        "requirement": "serve:serve:3998738246ab112a54cafc42192f647ffab183141e3fd8f3f1e5dc82409c7dc9"
+      },
+      {
+        "column": null,
+        "end": 563,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 539,
+        "requirement": "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa"
+      },
+      {
+        "column": null,
+        "end": 564,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 564,
+        "requirement": "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767"
+      },
+      {
+        "column": null,
+        "end": 586,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 565,
+        "requirement": "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d"
+      },
+      {
+        "column": null,
+        "end": 587,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 587,
+        "requirement": "serve:serve:36af53505133b481b44d4927a2dd8ef3b7b9cb4c9fc338923acf2b52c83b993c"
+      },
+      {
+        "column": null,
+        "end": 622,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 588,
+        "requirement": "serve:serve:353c36b50bff92902b8106ae8ad5aa2177f9be6dc03e90b2e62c937373fd1175"
+      },
+      {
+        "column": null,
+        "end": 642,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 623,
+        "requirement": "serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d"
+      },
+      {
+        "column": null,
+        "end": 660,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 643,
+        "requirement": "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547"
+      },
+      {
+        "column": null,
+        "end": 678,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 661,
+        "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
+      },
+      {
+        "column": null,
+        "end": 679,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 679,
+        "requirement": "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3"
+      },
+      {
+        "column": null,
+        "end": 680,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 680,
+        "requirement": "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a"
+      },
+      {
+        "column": null,
+        "end": 681,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 681,
+        "requirement": "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64"
+      },
+      {
+        "column": null,
+        "end": 726,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 682,
+        "requirement": "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1"
+      },
+      {
+        "column": null,
+        "end": 730,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 727,
+        "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b"
+      },
+      {
+        "column": null,
+        "end": 740,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 731,
+        "requirement": "serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b"
+      },
+      {
+        "column": null,
+        "end": 748,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 741,
+        "requirement": "serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a"
+      },
+      {
+        "column": null,
+        "end": 749,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 749,
+        "requirement": "serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8"
+      },
+      {
+        "column": null,
+        "end": 762,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 750,
+        "requirement": "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566"
+      },
+      {
+        "column": null,
+        "end": 765,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 763,
+        "requirement": "serve:serve:707ab7a19774623cb46e195663db4cd66b51d81e6762e0089651d25391104748"
+      },
+      {
+        "column": null,
+        "end": 792,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 766,
+        "requirement": "serve:serve:4dfeb9815a7448555bae335da2f77b2f7e33e4ca1b7dc7432e3b0c8c4417afd3"
+      },
+      {
+        "column": null,
+        "end": 807,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 793,
+        "requirement": "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951"
+      },
+      {
+        "column": null,
+        "end": 819,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 808,
+        "requirement": "serve:serve:b8565649d4ab1cf2d67a413d0fe35867a70a2cb423e57de6e2104a415cb6e951"
+      },
+      {
+        "column": null,
+        "end": 834,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 820,
+        "requirement": "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df"
+      },
+      {
+        "column": null,
+        "end": 835,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 835,
+        "requirement": "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a"
+      },
+      {
+        "column": null,
+        "end": 865,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 836,
+        "requirement": "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c"
+      },
+      {
+        "column": null,
+        "end": 866,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 866,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 878,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 867,
+        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
+      },
+      {
+        "column": null,
+        "end": 898,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 879,
+        "requirement": "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862"
+      },
+      {
+        "column": null,
+        "end": 899,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 899,
+        "requirement": "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd"
+      },
+      {
+        "column": null,
+        "end": 917,
+        "entity": "serve",
+        "file": "def/lsp/main.lfy",
+        "line": 13,
+        "outputLine": 900,
+        "requirement": "serve:serve:b132c3ac7e22fcbfed3082c60d6be3e5fce613162d5fbecbc92f52cc490a1c1c"
+      }
+    ],
+    "output": "crates/elfie-lsp/src/server.rs",
+    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
+    "source": "def/lsp/main.lfy",
+    "target": "rust",
+    "text": "d6f22fefd30e40b684b2ac4cb469e199343e92d687ca765befe695224e7c3cf8"
   }
 ]
