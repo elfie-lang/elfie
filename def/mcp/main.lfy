@@ -40,7 +40,7 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
       behavior = `[[Session.workspace]] is [[Loader.load]] of the current directory`,
     })
     .add({
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]], every fn that carries [[commandTool]], and every fn that carries [[compilerTool]]`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]], except [[report]] and [[reportMany]], every fn that carries [[commandTool]], and every fn that carries [[compilerTool]]`,
     })
     .add({ behavior = `[[Session.binding]] is undefined` })
     .add({ behavior = `No resource and no prompt is listed` })
@@ -92,8 +92,8 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
 // Decision: a compile hosts the agent server itself, so every agent it runs reads the plan the
 // compile made, not one a server of its own re-made from files that may have changed since, and its
 // verdicts and its compiler's outcome reach the CLI through the server rather than through text it
-// prints. What elfie_report and elfie_submit record stays in memory until the CLI closes the
-// session, and the only file the host writes itself is a marker line elfie_mark writes.
+// prints. What elfie_report, elfie_reportMany, and elfie_submit record stays in memory until the CLI
+// closes the session, and the only file the host writes itself is a marker line elfie_mark writes.
 // Decision: the server listens only on 127.0.0.1 and refuses any request without the host's token,
 // so no other program on the machine can call a tool, even one that finds the port.
 // Decision: the ecosystem's protocol library already serves the protocol over streamable HTTP
@@ -169,7 +169,7 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
     })
     .add({
       situation = `[[Binding.role]] of a session is compiler`,
-      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[report]], and every fn of this file that carries [[commandTool]] whose operation a target of the session has a command with a defined [[Command.line]] for, among its [[Target.commands]]`,
+      behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[report]] and [[reportMany]], and every fn of this file that carries [[commandTool]] whose operation a target of the session has a command with a defined [[Command.line]] for, among its [[Target.commands]]`,
     })
     .add({
       situation = `[[Binding.role]] of a session is verifier`,
@@ -1150,6 +1150,68 @@ fn report(session: Session, id?: string, file?: string, line?: number, status: s
         `unsure`,
       ],
       expect = ToolResult@like(`An error naming satisfied, violated, and unverifiable, and nothing recorded`),
+    },
+  );
+}
+
+// Decision: a verifier's turns, not its verdicts, set what a review costs, because every turn
+// re-reads the whole context so far, so a verifier submits many verdicts in one call.
+/// lines: one JSON object per line, with the keys id, file, line, status, evidence, and note, holding what report would be given; blank lines are skipped
+fn reportMany(session: Session, lines: string) is tool: `Submit the verdicts on several criteria and tests of the review this session is for, one per line` => ToolResult {
+  @acceptanceCriteria
+    .add({ behavior = `A line of [[lines]] that holds only whitespace is skipped` })
+    .add({
+      situation = `A line of [[lines]] is a JSON object`,
+      behavior = `It is handled as [[report]] given that line's id, file, line, status, evidence, and note`,
+    })
+    .add({
+      situation = `A line of [[lines]] is a JSON object that lacks some of its keys`,
+      behavior = `A lacking id, file, or line is left out, and a lacking status, evidence, or note is the empty string`,
+    })
+    .add({ behavior = `The lines of [[lines]] are handled in the order they are written` })
+    .add({
+      situation = `A line of [[lines]] holds more than whitespace and is not a JSON object`,
+      behavior = [`An error for that line, saying it is not a JSON object`, `Nothing is recorded for it`],
+    })
+    .add({ behavior = `An error for one line never stops a later line from being handled` })
+    .add({
+      behavior = `The text has one line for each line of [[lines]] that is not skipped, in the same order, saying it was recorded, with its id and place, or giving its error`,
+    })
+    .add({
+      behavior = `After those lines, the text counts the ids of [[ReviewRequest.asked]] that no review of [[Session.reviews]] names once every line is handled, and lists the first five of them in the order asked`,
+    })
+    .add({
+      situation = `Every id of [[ReviewRequest.asked]] has a review once every line is handled`,
+      behavior = `The text then says every criterion and test asked has a verdict, and that the final message ends with ELFIE: REVIEWED`,
+    })
+    .add({ situation = `No line of [[lines]] is recorded`, behavior = `[[ToolResult.isError]] is true` })
+    .add({ situation = `Some line of [[lines]] is recorded`, behavior = `[[ToolResult.isError]] is false` })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a verifier run whose review asked A:A:1f2e on def/a.lfy line 4 and A:A:9c0d on def/a.lfy line 7, with no review recorded`,
+        ),
+        string@like(
+          `Three lines: a JSON object with file def/a.lfy, line 7, status violated, evidence src/a.rs:12-18, and note returns undefined; an empty line; and the words satisfied A:A:1f2e`,
+        ),
+      ],
+      expect = ToolResult@like(
+        `Not an error, with three lines of text: recorded A:A:9c0d at def/a.lfy:7; an error saying the line of words is not a JSON object; 1 still missing: A:A:1f2e`,
+      ),
+    },
+    {
+      input = [
+        Session@like(`The same session, after that call`),
+        string@like(
+          `Two lines: a JSON object with id A:A:77aa, status satisfied, and note ok; and a JSON object with id A:A:1f2e, status satisfied, evidence src/a.rs:3-9, and note ok`,
+        ),
+      ],
+      expect = ToolResult@like(
+        `Not an error, with lines of text: an error naming A:A:77aa and saying no criterion or test matches it; recorded A:A:1f2e at def/a.lfy:4; 0 still missing; every criterion and test asked has a verdict, and the final message ends with ELFIE: REVIEWED`,
+      ),
     },
   );
 }

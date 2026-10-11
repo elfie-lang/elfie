@@ -421,6 +421,14 @@ LSP/MCP protocols are deliberately not part of this round.
   message remain only as the fallback where `elfie_report` is not offered. The review request
   lists region locations, not code. Reviews are incremental: a verdict is carried while the hash
   of its entity's regions is unchanged, and `elfie verify --full` re-judges everything.
+- **Many verdicts per call: `elfie_reportMany` (2026-10-11).** Every turn re-reads the whole
+  context so far, so turns, not verdicts, set a review's cost. Measured on generation/main (326
+  verdicts): one `elfie_report` per turn took 403 turns at a mean 413k tokens of context per turn
+  (29.5 min); many `elfie_report` calls per turn took 43 turns (14.9 min). `elfie_reportMany`
+  takes one JSON line per verdict, with the keys of a review line, and handles each as
+  `elfie_report` would. A bad line is an error for that line alone. It is offered wherever
+  `elfie_report` is, so to verifier sessions only. The protocol and `scripts/verifier-prompt.md`
+  now say to judge an entity's criteria together and submit them in one call, never one per turn.
 - **The compiler on the agent server (2026-10-10, ROADMAP phase 3).** The rule is to push the
   obligations, pull the context, and act through tools.
   - `Binding.request` holds the request a compiler run was given, as `Binding.review` does for a

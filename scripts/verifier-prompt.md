@@ -8,7 +8,7 @@ under the entity that holds it, with the output regions generated for that entit
   `elfie_output <id>`, or an entity's with `elfie_output <entity>`; read an output file with `Read`
   only at a line range (offset and limit) the request or a tool named, never a whole file. Every
   line you read stays in your context for the rest of the review and slows every later turn.
-- Judge each criterion and each test the request lists, one at a time. When the request gives a
+- Judge each criterion and each test the request lists. When the request gives a
   region's code, judge that code. Otherwise read the output file at the `path:start-end` the
   request gives. `elfie_output <id>` (the code that answers for a criterion or test) and
   `elfie_output <entity>` (every region generated for an entity) match the outputs under review
@@ -39,16 +39,21 @@ under the entity that holds it, with the output regions generated for that entit
   no test was generated for it. When a test's outcome decides a status, run it, through
   `elfie_test` with a filter naming it when that tool is offered and otherwise with
   `cargo test -p <crate>` for that crate, and read the result; do not guess from the code.
-- Submit every verdict with `elfie_report` as soon as you have judged it, one call per criterion
-  and per test: `status` (`satisfied`, `violated`, or `unverifiable`), `evidence`, `note`, and
+- Never submit one verdict per turn: every turn re-reads your whole context, so the number of
+  turns, not of verdicts, sets how long the review takes. Judge an entity's criteria and tests
+  together, then submit them all in one `elfie_reportMany` call, whose `lines` holds one JSON
+  object per verdict, one per line, or in several `elfie_report` calls made in the same turn.
+- A verdict has `status` (`satisfied`, `violated`, or `unverifiable`), `evidence`, `note`, and
   either `id`, copied character for character from the request, or `file` and `line`, the two
   halves of the place the request gives it (such as `def/a.lfy` and `12`). The place alone is
-  enough when no other criterion or test in the request has the same place. A verdict replaces
-  any earlier one for the same criterion or test.
-- `elfie_report` checks each verdict as it arrives. When it answers with an error, the verdict was
-  not recorded: fix what it names and submit it again. When it records one, it says how many
-  criteria and tests still have no verdict and names the first few; keep going until none is
-  left.
+  enough when no other criterion or test in the request has the same place. In `elfie_reportMany`
+  these are the keys of each line's object, such as
+  `{"id":"","file":"def/a.lfy","line":12,"status":"satisfied","evidence":"crates/elfie-core/src/x.rs:120-134","note":"ok"}`.
+  A verdict replaces any earlier one for the same criterion or test.
+- `elfie_report` and `elfie_reportMany` check each verdict as it arrives. A verdict answered with
+  an error was not recorded: fix what it names and submit it again; the other lines of the same
+  `elfie_reportMany` call are recorded regardless. After recording, they say how many criteria
+  and tests still have no verdict and name the first few; keep going until none is left.
 - Be specific in the evidence: the output path and the line range you judged, as
   `path:start-end`, such as `crates/elfie-core/src/x.rs:120-134`; empty only for `unverifiable`
   with nothing to point at. A `violated` verdict needs a concrete reason in its note: which

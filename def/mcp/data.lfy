@@ -35,7 +35,7 @@ d Session: `One agent's connection` {
   $workspace: `The program as of the last call` = Workspace;
   $seen: `The modification time and size of every file of the program when it was last read, by path; empty in a hosted session, which never re-reads one` = object;
   $binding: `What a hosted session is bound to; undefined for a session over standard input and output` = Binding | undefined;
-  $reviews: `Every review elfie_report recorded in the session, one per id, in the order recorded` = Review[];
+  $reviews: `Every review elfie_report or elfie_reportMany recorded in the session, one per id, in the order recorded` = Review[];
   $submission: `The outcome elfie_submit last recorded in the session; undefined until one is` = Submission | undefined;
 }
 
