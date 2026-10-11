@@ -7,7 +7,7 @@
       "GlobalReview:GlobalReview:e3c16f728df79d47fdf209aba977dbc07df5c6ab2d8443e7cffe5c92dafc7f8a"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "9ff0da89015d7e095a8e4259f6b50a45fb265ac35ce5f365e7620d31a7ad8e00",
+      "def/generation/data.lfy": "84cbc25067968fc274c605d6d0e552401e38f74143319b7d2449548ac2f2f72f",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -15,7 +15,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
     },
-    "generated": "2026-10-11T02:07:12Z",
+    "generated": "2026-10-11T06:08:17Z",
     "hash": "dbfcafb0e49ffd5444e1b4ac048f7db97f89256b91ed50b53b03b12766ac521e",
     "markers": [
       {
@@ -554,7 +554,7 @@
         "end": 302,
         "entity": "GlobalReview.reviews",
         "file": "def/mcp/data.lfy",
-        "line": 383,
+        "line": 421,
         "outputLine": 300,
         "requirement": null
       },
@@ -563,7 +563,7 @@
         "end": 305,
         "entity": "GlobalReview.problems",
         "file": "def/mcp/data.lfy",
-        "line": 384,
+        "line": 422,
         "outputLine": 303,
         "requirement": null
       },
@@ -572,7 +572,7 @@
         "end": 308,
         "entity": "GlobalReview.unplaced",
         "file": "def/mcp/data.lfy",
-        "line": 385,
+        "line": 423,
         "outputLine": 306,
         "requirement": null
       },
@@ -581,7 +581,7 @@
         "end": 321,
         "entity": "GlobalReview.missing",
         "file": "def/mcp/data.lfy",
-        "line": 386,
+        "line": 424,
         "outputLine": 309,
         "requirement": null
       },
@@ -752,6 +752,7 @@
     "requirements": "ba6daaa0010780c506a26deb15673ecbbdefe50f4e9e79c7a90c8300e17d8add",
     "signature": "3e2ef277864b489b20543f0ea352d35b1d4ad7bfcb29503fb35fd1382c8302f6",
     "source": "def/mcp/data.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": "bf20b374540bb4f743e493236cc006b833ffb66ca27925fc88083be44ecfb418"
   }
 ]

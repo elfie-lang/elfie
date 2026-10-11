@@ -1560,6 +1560,13 @@ fn source_text(workspace: &Workspace, file: &File) -> String {
 /// `hosted` is whether the compiler reading the request runs in a compiler session of the
 /// compile-hosted agent server, which offers `elfie_task`, `elfie_dependency`, `elfie_mark`,
 /// and `elfie_submit`.
+///
+/// `hash_matched` holds the path of each unit whose entry in `previous` is its hash-matched
+/// source rather than the source its outputs were accepted from. Such a text lowers to the
+/// same code and says nothing about what the outputs answered for, so nothing of it is read
+/// as a rewording, what was dropped is read off the recorded ids alone — with neither a place
+/// nor a text, which that revision does not hold — and the unit is never one whose markers
+/// are the whole of the work.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
 // Decision: the caller says whether the request is for a hosted compiler session, because
@@ -1575,6 +1582,7 @@ pub fn request(
     existing: &[Output],
     previous: &BTreeMap<String, String>,
     hosted: bool,
+    hash_matched: &[String],
 ) -> Request {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -1673,7 +1681,7 @@ pub fn request(
     // against: the same place among its entity's criteria or tests, another text, and so
     // another id. What was reworded is not gone, so it is kept apart from what is.
     // @lfy def/generation/data.lfy:Request.reworded
-    // @lfy def/generation/main.lfy:request#request:request:9b732407010a3f7386f0722240a935b516b238550580f1028291a293d9bb90f3
+    // @lfy def/generation/main.lfy:request#request:request:de823e5d8fbff081ee17b88c1ae0477dff3832d78d636c05c9b9a8c90ae71da7
     let rewordings: BTreeMap<String, Vec<Rewording>> = batch
         .units
         .iter()
@@ -1681,6 +1689,13 @@ pub fn request(
             let unit = &plan.units[index];
             let path = &workspace.files[unit.file].path;
             let text = previous.get(path)?;
+            // A hash-matched source is some other revision of the file that lowers to the
+            // same code; where its criteria stood says nothing about what the outputs were
+            // accepted against, so none of them is read as a rewording.
+            // @lfy def/generation/main.lfy:request#request:request:68bd098b5b9b98c6a8f66b7bebfe21fd86dc2ead715c655d6f9f940a6408ff30
+            if hash_matched.iter().any(|named| named == path) {
+                return Some((path.clone(), Vec::new()));
+            }
             Some((path.clone(), reworded(program, unit, text)))
         })
         .collect();
@@ -1689,11 +1704,37 @@ pub fn request(
     // reading the existing code needs in order to tell code that answers for nothing any
     // more from code that still answers.
     // @lfy def/generation/data.lfy:Request.removed
-    // @lfy def/generation/main.lfy:request#request:request:295bafcf58bae927898fc55851d86e7b28d31868c6727f09eff3b920abda4539
-    let removed: BTreeMap<String, Vec<RemovedRequirement>> = was
+    // @lfy def/generation/main.lfy:request#request:request:19eae5873e1ffc58511457bc5471084a486c137ebe615a8fdf95f3ac0fe43289
+    let removed: BTreeMap<String, Vec<RemovedRequirement>> = batch
+        .units
         .iter()
-        .filter_map(|(path, (_, before))| {
+        .filter_map(|&index| {
+            let path = &workspace.files[plan.units[index].file].path;
+            if !previous.contains_key(path) {
+                return None;
+            }
             let held = requirements.get(path)?;
+            // A hash-matched source holds another revision's criteria and tests, so what the
+            // outputs answered for is only what their maps recorded: the ids alone, in id
+            // order, with neither the place nor the text that revision does not hold.
+            // @lfy def/generation/main.lfy:request#request:request:68bd098b5b9b98c6a8f66b7bebfe21fd86dc2ead715c655d6f9f940a6408ff30
+            if hash_matched.iter().any(|named| named == path) {
+                let mut gone: Vec<RemovedRequirement> = answered
+                    .get(path)
+                    .map(Vec::as_slice)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter(|id| !held.iter().any(|other| other.id() == id.as_str()))
+                    .map(|id| RemovedRequirement {
+                        id: id.clone(),
+                        place: String::new(),
+                        text: String::new(),
+                    })
+                    .collect();
+                gone.sort_by(|left, right| left.id.cmp(&right.id));
+                return Some((path.clone(), gone));
+            }
+            let (_, before) = was.get(path)?;
             let rewords = rewordings.get(path).map(Vec::as_slice).unwrap_or_default();
             let gone: Vec<RemovedRequirement> = before
                 .iter()
@@ -1714,7 +1755,7 @@ pub fn request(
     // its markers is then the whole of the work, which the caller may do without the
     // compiler.
     // @lfy def/generation/data.lfy:Request.rewordedOnly
-    // @lfy def/generation/main.lfy:request#request:request:c32c00721f9f1fa8b577fab78118638f49e67257254297eae4ceebc45306bc77
+    // @lfy def/generation/main.lfy:request#request:request:4a0dea1f763a8af062fa2366467ce5030e12d175192b8584660d6f3ace3eebc6
     // @lfy def/generation/main.lfy:request#request:request:d1ec465e091ae83573ab2ee5e7fe9ee86667ea44ffe505f8aefe88311e0071b7
     let reworded_only: Vec<String> = batch
         .units
@@ -1726,6 +1767,11 @@ pub fn request(
                 return None;
             }
             if !previous.contains_key(path) {
+                return None;
+            }
+            // A hash-matched source is not the one the outputs were accepted from, so what
+            // differs from what they were generated against is not known to be the ids alone.
+            if hash_matched.iter().any(|named| named == path) {
                 return None;
             }
             if !removed.get(path).is_some_and(Vec::is_empty) {
@@ -2288,7 +2334,15 @@ fn instructions(
         if let Some(gone) = removed.get(&file.path).filter(|gone| !gone.is_empty()) {
             out.push_str("#### Removed since its outputs were accepted\n\n");
             for requirement in gone {
-                let _ = writeln!(out, "- `{}` — {}", requirement.id, requirement.text);
+                // The text of a criterion the outputs answered for is not known where the
+                // source they were accepted from is not: only its id was recorded.
+                // @lfy def/generation/main.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
+                let said = if requirement.text.is_empty() {
+                    "what it said is not known"
+                } else {
+                    &requirement.text
+                };
+                let _ = writeln!(out, "- `{}` — {said}", requirement.id);
             }
             out.push('\n');
         }
@@ -3097,7 +3151,9 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>, submitted: Option<&Submi
 /// earn, and the outputs with their markers normalized.
 ///
 /// Rejected when there are no outputs, when an output shared with another unit of the
-/// target — one a recorded map of that unit names — has lost a region that map records,
+/// target — one a recorded map of that unit names — holds fewer of a region that unit's maps
+/// record than those maps do, counting across the outputs written and every other file of
+/// the output directory,
 /// when an output's path is not under the target's
 /// output directory or its extension is not among the target's, when a marker names an
 /// entity that its file does not declare, a line
@@ -3113,11 +3169,16 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>, submitted: Option<&Submi
 /// and the caller runs it.
 ///
 /// `recorded` is the source maps of the other units of the unit's target, which say which
-/// regions of a shared output belong to another unit.
+/// regions of a shared output belong to another unit, and `elsewhere` is every other file of
+/// the target's output directory, as it is where the outputs are read. A file of `elsewhere`
+/// is read for the markers it holds and for nothing else: it earns no source map, it is in
+/// no [`Verdict::outputs`], and none of its markers is checked, so a region a unit moved out
+/// of a shared file into a file of its own is still found where it went.
 // Decision: the definition passes the request and the unit; a plan here does not own its
 // workspace or the program lowered from it, so the program and the plan are extra first
 // parameters and the unit is given as its index into the plan.
 // @lfy def/generation/main.lfy:accept
+// @lfy def/generation/main.lfy:accept#accept:accept:3735db25617f44c846b04cc15709baf47cbf8bfaeecebcf0e6adb99a577d2af4
 pub fn accept(
     program: &Program,
     plan: &Plan,
@@ -3125,6 +3186,7 @@ pub fn accept(
     unit: usize,
     outputs: &[Output],
     recorded: &[SourceMap],
+    elsewhere: &[Output],
 ) -> Verdict {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -3227,23 +3289,41 @@ pub fn accept(
 
     // An output is shared when a recorded map of another unit of the target names it: one
     // output often holds the code of several definition files, as a crate's root must. What
-    // a unit may not do is take away what another unit recorded there, so every region of
-    // that map which is not this unit's own must still be in the output — compared by the
-    // file, the entity, and the requirement it names rather than by line, since every line
-    // moves when the code above it changes. A region naming a file this unit claims is this
-    // unit's to write or to drop, and a co-owner's map holds those only because a map records
-    // every marker of its output, not because that unit put them there. A co-owner compiled
-    // in the same batch is writing its own regions again in this very run, so its map says
-    // nothing about what this output must still hold.
-    // @lfy def/generation/main.lfy:accept#accept:accept:a61aa4a9283df62d2e6f07fca7d7d134df081b931e93c5cd80d35866633303f7
-    // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+    // a unit may not do is take away what another unit recorded there, so each region of that
+    // map which is not this unit's own must still be among the target's files as often as that
+    // unit's maps record it — compared by the file, the entity, and the requirement it names
+    // rather than by line, since every line moves when the code above it changes, and counted
+    // across the outputs written and every other file of the output directory rather than in
+    // the one output, since splitting a shared module moves a co-owner's regions into files of
+    // their own. A region naming a file this unit claims is this unit's to write or to drop,
+    // and a co-owner's map holds those only because a map records every marker of its output,
+    // not because that unit put them there. A co-owner compiled in the same batch is writing
+    // its own regions again in this very run, so its map says nothing about what this output
+    // must still hold.
+    // @lfy def/generation/main.lfy:accept#accept:accept:14f27c5c2a72fd5634bfa39ff79904e5261edd57a78c9b62e1afdfe63c7a7385
+    // @lfy def/generation/main.lfy:accept#accept:accept:72d604363730e1a186d6ae456843c97ae6a857f121cf28d54e4bb331119e4af4
     let batched: Vec<&str> = request
         .batch
         .units
         .iter()
         .map(|&batched| workspace.files[plan.units[batched].file].path.as_str())
         .collect();
-    for (output, markers) in outputs.iter().zip(&normalized) {
+    // Every marker the target's files hold now: the resolved markers of the outputs this call
+    // writes, and the markers of every other file of the output directory the caller read,
+    // which are read for this count alone.
+    // @lfy def/generation/main.lfy:accept#accept:accept:3735db25617f44c846b04cc15709baf47cbf8bfaeecebcf0e6adb99a577d2af4
+    let mut held: Vec<Marker> = normalized
+        .iter()
+        .flatten()
+        .map(|(_, kept)| kept.clone())
+        .collect();
+    for output in elsewhere {
+        if outputs.iter().any(|written| written.path == output.path) {
+            continue;
+        }
+        held.extend(parse_markers(&output.text));
+    }
+    for output in outputs {
         for map in recorded {
             if map.output != output.path
                 || map.source == file.path
@@ -3252,17 +3332,28 @@ pub fn accept(
                 continue;
             }
             for marker in &map.markers {
-                if claimed.contains(&marker.file.as_str())
-                    || markers.iter().any(|(_, kept)| same_region(kept, marker))
-                {
+                if is_own_marker(workspace, plan, unit, marker) {
                     continue;
                 }
-                problems.push(format!(
-                    "the output {} is shared with {}, whose region {} is not in it",
-                    output.path,
-                    map.source,
-                    region_of(marker)
-                ));
+                let before = recorded
+                    .iter()
+                    .filter(|other| other.source == map.source)
+                    .flat_map(|other| other.markers.iter())
+                    .filter(|other| same_region(other, marker))
+                    .count();
+                let now = held
+                    .iter()
+                    .filter(|other| same_region(other, marker))
+                    .count();
+                if now < before {
+                    problems.push(format!(
+                        "the output {} is shared with {}, whose region {} is in {now} of this \
+                         target's files and in {before} of its recorded maps",
+                        output.path,
+                        map.source,
+                        region_of(marker)
+                    ));
+                }
             }
         }
     }
@@ -3328,10 +3419,22 @@ pub fn accept(
     let mut written = Vec::new();
     // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
     for (output, markers) in outputs.iter().zip(&normalized) {
-        // The output as it is written back, markers and all, is what the text hash is of, so
-        // that the hash recorded is of the file the caller puts on disk.
-        // @lfy def/generation/main.lfy:accept#accept:accept:588d5e5485c45bd44d48489efaa4d94e9484900e69ce713f90102eefb4570410
+        // The output as it is written back is what the text hash is taken over, and of it only
+        // the regions of this unit's own markers, stripped the way a review strips a region:
+        // what another unit wrote in the same file, or added under one of its own markers, is
+        // no part of what this unit's acceptance and review saw.
         let normalized_output = rewrite_markers(output, markers);
+        let own = own_region_text(
+            workspace,
+            plan,
+            unit,
+            &target.marker_comment,
+            &normalized_output.text,
+            &markers
+                .iter()
+                .map(|(_, kept)| kept.clone())
+                .collect::<Vec<_>>(),
+        );
         source_maps.push(SourceMap {
             // @lfy def/generation/main.lfy:accept#accept:accept:8d2a3aa698445970d859538af521c42b878c576deae6eac97af3a97c5c7fd25f
             target: target.identifier.clone(),
@@ -3343,7 +3446,8 @@ pub fn accept(
             requirements: requirements.clone(),
             answered: answered.clone(),
             signature: signature.clone(),
-            text: source_hash(&normalized_output.text),
+            // @lfy def/generation/main.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
+            text: source_hash(&own),
             dependencies: dependencies.clone(),
             generated: generated.clone(),
             // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
@@ -3383,6 +3487,84 @@ fn region_of(marker: &Marker) -> String {
     match &marker.requirement {
         Some(requirement) => format!("{}:{place}#{requirement}", marker.file),
         None => format!("{}:{place}", marker.file),
+    }
+}
+
+/// Whether a marker is one unit's own: it names the unit's file, or it names an entity moved
+/// into the unit and the file that declares that entity.
+///
+/// A marker naming the file an entity moved out of is that unit's own only for the entities
+/// that moved in: the file keeps a unit of its own, which still answers for everything that
+/// stayed there.
+// @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:ebcb994cc8d4e88d7422b2773d618db5d2d5c753477db1c16b1b11635b80e3fb
+fn is_own_marker(workspace: &Workspace, plan: &Plan, unit: usize, marker: &Marker) -> bool {
+    let model = &workspace.model;
+    let planned = &plan.units[unit];
+    if marker.file == workspace.files[planned.file].path {
+        return true;
+    }
+    plan.moves
+        .iter()
+        .filter(|moved| moved.into == unit)
+        .flat_map(|moved| moved.entities.iter())
+        .any(|&entity| {
+            if declaring_path(model, entity) != Some(marker.file.as_str()) {
+                return false;
+            }
+            match &marker.entity {
+                // The entity itself, or one of its members, which a marker names as the
+                // owner's identifier, a dot, and the member's name.
+                Some(name) => {
+                    let own = qualified_name(model, entity);
+                    *name == own
+                        || name
+                            .strip_prefix(&own)
+                            .is_some_and(|rest| rest.starts_with('.'))
+                }
+                None => declaration_lines(model, entity)
+                    .is_some_and(|(first, last)| (first..=last).contains(&marker.line)),
+            }
+        })
+}
+
+/// The unit's own region text of one output: the text of the regions its own markers begin,
+/// in output order, each region's lines stripped as a review strips a region, so that the
+/// hash a source map records is of the code this unit wrote and of nothing another unit put
+/// in the same file.
+// @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:09446c0cd62e3661c21774df9093f0d0bcabcf6e89e04299d1c69e8ff57564e5
+fn own_region_text(
+    workspace: &Workspace,
+    plan: &Plan,
+    unit: usize,
+    marker_comment: &str,
+    text: &str,
+    markers: &[Marker],
+) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut out = String::new();
+    for marker in markers {
+        if is_own_marker(workspace, plan, unit, marker) {
+            push_region(&lines, marker, marker_comment, &mut out);
+        }
+    }
+    out
+}
+
+/// One region's lines of its output, each with the marker comment it carries and the white
+/// space before it taken off, every line that is then empty left out, and each line followed
+/// by a line break.
+// @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:09446c0cd62e3661c21774df9093f0d0bcabcf6e89e04299d1c69e8ff57564e5
+// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+fn push_region(lines: &[&str], marker: &Marker, marker_comment: &str, out: &mut String) {
+    let last = marker.end.min(lines.len());
+    let first = marker.output_line.saturating_sub(1).min(last);
+    for line in &lines[first..last] {
+        let kept = without_marker_comment(line, marker_comment);
+        if kept.is_empty() {
+            continue;
+        }
+        out.push_str(kept);
+        out.push('\n');
     }
 }
 
@@ -3802,6 +3984,186 @@ pub fn record(workspace: &Workspace, unit: &Unit, source_maps: &[SourceMap]) -> 
     }
     // @lfy def/generation/main.lfy:record#record:record:1f4671d2ae5027d4e5bcfaf56dc68c765e27e31a92fc783b7f64a2165f391dd4
     std::fs::write(&path, text).is_ok()
+}
+
+// ---------------------------------------------------------------------------------------
+// rederive
+// ---------------------------------------------------------------------------------------
+
+/// The source maps of a unit as the files of its target's output directory hold its markers
+/// now, carrying over what its last accepted generation recorded.
+///
+/// One map per file of the output directory, recursively, that holds a marker of this unit's
+/// own, in path order; its markers are every marker of that file naming a file of the
+/// program, read and derived as acceptance reads and derives one and left as written. What
+/// the last accepted generation recorded is carried over output by output: a file the unit
+/// already had a map for keeps that map's hash, requirements, answered ids, signature, text
+/// hash, dependency signatures, and time, so what the unit was generated from, and what
+/// decides whether it is planned, stays as it was. A file it had no map for — one another
+/// unit's split moved its regions into — takes the six the unit's maps agree on and an empty
+/// text hash, since no text of that file was ever accepted. Where those six are not the same
+/// across every map, there is nothing to carry and the maps come back as they are, as they do
+/// when the unit has no maps or no file of the output directory holds a marker of its own.
+/// Nothing is written, and no compiler, verifier, or command of the target is run.
+// Decision: the definition passes the workspace and the unit; a plan here does not own its
+// workspace or the program lowered from it, so the program and the plan are extra first
+// parameters and the unit is given as its index into the plan.
+// Decision: `SourceMap.text` is carried over and never read again from the files: it is the
+// hash of the code the unit's own acceptance and review saw, so another unit's unreviewed
+// edit inside one of its regions, or lines put under one of its markers, leaves its outputs
+// no longer matching it.
+// @lfy def/generation/main.lfy:rederive
+// @lfy def/generation/main.lfy:rederive#rederive:rederive:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+// @lfy def/generation/main.lfy:rederive#rederive:rederive:31a78a92552eb31060ad0493c622169b65add6ccf8f0055fb092520eccf37286
+pub fn rederive(
+    program: &Program,
+    plan: &Plan,
+    unit: usize,
+    source_maps: &[SourceMap],
+) -> Vec<SourceMap> {
+    let workspace = &program.workspace;
+    let model = &workspace.model;
+    let planned = &plan.units[unit];
+    let target = &workspace.targets[planned.target];
+    let file = &workspace.files[planned.file];
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:ab3fc93517c19e9574351a5b75cd5adfdb9863d5af006fbb2bf0cac32ef94646
+    if source_maps.is_empty() {
+        return source_maps.to_vec();
+    }
+    // Every file of the output directory, recursively, in the ascending text order of its
+    // path relative to the root.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:33f6e3ae8b3a61bf5f205818bb8797ab2d0475dc7323d5212b3b38734b4ae594
+    let mut paths: Vec<String> = Vec::new();
+    collect_output_files(
+        &workspace.root.join(&target.output_directory),
+        &target.output_directory,
+        &mut paths,
+    );
+    paths.sort();
+
+    let named = named_entities(model, file.source, &planned.entities);
+    // The files whose markers this unit may name a line of, as acceptance claims them: its
+    // own, and the file of each entity moved into it.
+    // @lfy def/generation/main.lfy:rederive
+    let mut claimed: Vec<&str> = vec![&file.path];
+    for moved in plan.moves.iter().filter(|moved| moved.into == unit) {
+        let path = &workspace.files[plan.units[moved.origin].file].path;
+        if !claimed.contains(&path.as_str()) {
+            claimed.push(path);
+        }
+    }
+    // Each file that holds a marker of this unit's own, with every marker of it that names a
+    // file of the program, read and derived as acceptance does and left as written.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:33f6e3ae8b3a61bf5f205818bb8797ab2d0475dc7323d5212b3b38734b4ae594
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:de0c92c8e9054b77050411f99aab03406cef407c814ca97ee7ab8181bdebf960
+    let mut found: Vec<(String, Vec<Marker>)> = Vec::new();
+    for path in paths {
+        let Ok(text) = std::fs::read_to_string(workspace.root.join(&path)) else {
+            continue;
+        };
+        let output = Output {
+            path: path.clone(),
+            text,
+        };
+        // A problem acceptance would report is none of this: nothing here judges an output,
+        // it only reads where the regions are now.
+        let mut ignored: Vec<String> = Vec::new();
+        let markers: Vec<Marker> = parse_markers(&output.text)
+            .iter()
+            .filter_map(|marker| {
+                resolve_marker(
+                    workspace,
+                    file,
+                    &named,
+                    marker,
+                    &claimed,
+                    &output,
+                    &mut ignored,
+                )
+            })
+            .collect();
+        if markers
+            .iter()
+            .any(|marker| is_own_marker(workspace, plan, unit, marker))
+        {
+            found.push((output.path, markers));
+        }
+    }
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:ab3fc93517c19e9574351a5b75cd5adfdb9863d5af006fbb2bf0cac32ef94646
+    if found.is_empty() {
+        return source_maps.to_vec();
+    }
+    // What the last accepted generation recorded, for a file the unit had no map for: the six
+    // every map of the unit agrees on, since each of them is of the unit rather than of one
+    // output. Where two maps differ in any of them, there is nothing to carry.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:838d2f8ee921d0ec16aab7f04aebafa5071a0f529f8cf1a8a06ed85f0a4e5149
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:0ed7b6723ce64cd6cf1e09f24d4516bf399f45d394b5cb0e44753e1df9b7fb01
+    let first = &source_maps[0];
+    let agreed = source_maps.iter().all(|map| {
+        map.hash == first.hash
+            && map.requirements == first.requirements
+            && map.answered == first.answered
+            && map.signature == first.signature
+            && map.dependencies == first.dependencies
+            && map.generated == first.generated
+    });
+    if !agreed
+        && found
+            .iter()
+            .any(|(path, _)| !source_maps.iter().any(|map| &map.output == path))
+    {
+        return source_maps.to_vec();
+    }
+    found
+        .into_iter()
+        .map(|(path, markers)| {
+            // @lfy def/generation/main.lfy:rederive#rederive:rederive:7656b04818cc881ae3204287ce2ad06c3b43ae1293a39033fad0f9eadb054f2b
+            let carried = source_maps
+                .iter()
+                .find(|map| map.output == path)
+                .unwrap_or(first);
+            // A file the unit had no map for has no text that was ever accepted, so its text
+            // hash is empty, which no hash of a region text equals.
+            let text = if carried.output == path {
+                carried.text.clone()
+            } else {
+                String::new()
+            };
+            SourceMap {
+                // @lfy def/generation/main.lfy:rederive#rederive:rederive:17ed6196ab28af701579b3e34153efce5461c44c096f7133d7967b685c4b53c4
+                target: target.identifier.clone(),
+                output: path,
+                source: file.path.clone(),
+                hash: carried.hash.clone(),
+                requirements: carried.requirements.clone(),
+                answered: carried.answered.clone(),
+                signature: carried.signature.clone(),
+                text,
+                dependencies: carried.dependencies.clone(),
+                generated: carried.generated.clone(),
+                markers,
+            }
+        })
+        .collect()
+}
+
+/// Every file at or under one directory, as a path relative to the workspace root with `/`
+/// between the segments, in whatever order the directories give them.
+// @lfy def/generation/main.lfy:rederive
+fn collect_output_files(directory: &Path, prefix: &str, out: &mut Vec<String>) {
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let relative = under_root(prefix, &name);
+        let path = entry.path();
+        if path.is_dir() {
+            collect_output_files(&path, &relative, out);
+        } else {
+            out.push(relative);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -5014,16 +5376,7 @@ fn regions_text(
             continue;
         };
         let lines: Vec<&str> = text.lines().collect();
-        let last = marker.end.min(lines.len());
-        let first = marker.output_line.saturating_sub(1).min(last);
-        for line in &lines[first..last] {
-            let kept = without_marker_comment(line, marker_comment);
-            if kept.is_empty() {
-                continue;
-            }
-            out.push_str(kept);
-            out.push('\n');
-        }
+        push_region(&lines, marker, marker_comment, &mut out);
     }
     out
 }
@@ -7461,7 +7814,7 @@ global@targets.add(rust);
         assert_eq!(program.files[unit.lowered].file, unit.file);
         assert_eq!(
             program.files[unit.lowered].text,
-            request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false).sources
+            request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[]).sources
                 ["def/a.lfy"]
         );
     }
@@ -7499,7 +7852,7 @@ global@targets.add(rust);
         assert_ne!(map.requirements, requirements_hash(&program, b));
         // The unit's own section says its code is unchanged and that its criteria or tests
         // differ. @lfy def/generation/main.lfy:request
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[]);
         assert!(
             request
                 .instructions
@@ -7639,7 +7992,7 @@ global@targets.add(rust);
         let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         let batch = &plan.batches[0];
-        let request = request(&program, &plan,batch, &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan,batch, &[], &BTreeMap::new(), false, &[]);
         // @lfy def/generation/main.lfy:request#request:request:f3979f1497ff9e1b60be372fddce29ffcfe830689ef46680b690554afd9c7a37
         assert_eq!(request.batch, *batch);
         assert_eq!(request.batch.units, [b_index, a_index]);
@@ -7844,7 +8197,7 @@ global@targets.add(rust);
             units: vec![b_index],
             identifier: "b".to_string(),
         };
-        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false, &[]);
         let text = &request.instructions;
         assert!(
             text.contains("#### `make` (agent function: AgentFunctionDeclaration)"),
@@ -7886,7 +8239,7 @@ global@targets.add(rust);
         let program = fixture.program();
         assert_bound(&program.workspace);
         let plan = plan_of(&program, &[], &[], &[]);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[]);
         // @lfy def/generation/main.lfy:request
         assert_eq!(
             request
@@ -7980,7 +8333,7 @@ global@targets.add(rust);
         );
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[]);
         let behaviors: Vec<String> = request
             .guidance
             .iter()
@@ -8075,7 +8428,7 @@ global@targets.add(rust);
             units: vec![a_index],
             identifier: "a".to_string(),
         };
-        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false, &[]);
         // Each item once, in the order the request gathers them.
         // @lfy def/generation/main.lfy:request
         assert_eq!(
@@ -8137,7 +8490,7 @@ global@targets.add(rust);
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
         assert_eq!(plan.batches[0].units, [a_index]);
-        let request = request(&program, &plan,&plan.batches[0], &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan,&plan.batches[0], &[], &BTreeMap::new(), false, &[]);
         assert_eq!(request.interfaces.len(), 1);
         assert_eq!(request.interfaces[0].unit, b_index);
         assert_eq!(request.interfaces[0].outputs, ["src/b.rs"]);
@@ -8172,7 +8525,7 @@ global@targets.add(rust);
         assert_bound(&workspace);
         let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
         let plan = plan_of(&program, &maps, &["a".to_string()], &[]);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), true);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), true, &[]);
         // Hosted or not, the request holds every entity of the dependency.
         // @lfy def/generation/main.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
         assert_eq!(
@@ -8214,7 +8567,7 @@ global@targets.add(rust);
         // tools.
         // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
         let text =
-            super::request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false)
+            super::request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[])
                 .instructions;
         assert!(text.contains("### `def/b.lfy`"), "{text}");
         assert!(text.contains("- `B` (data: DataDeclaration): A b"), "{text}");
@@ -8234,7 +8587,7 @@ global@targets.add(rust);
         let program = fixture.program();
         assert_bound(&program.workspace);
         let plan = plan_of(&program, &[], &[], &[]);
-        let text = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false)
+        let text = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[])
             .instructions;
         for part in [
             "Where the agent server offers `elfie_build`, `elfie_test`, `elfie_lint`, or \
@@ -8278,7 +8631,7 @@ global@targets.add(rust);
         assert_bound(&workspace);
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false, &[]);
         let text = &request.instructions;
 
         // In the section of `def/b.lfy`, which `C` moved into.
@@ -8348,7 +8701,7 @@ global@targets.add(rust);
             "def/a.lfy".to_string(),
             "use \"./b\";\n\nd A: `An a` {\n  $b = B;\n}\n".to_string(),
         )]);
-        let with_previous = request(&program, &plan,&plan.batches[0], &existing, &previous, false);
+        let with_previous = request(&program, &plan,&plan.batches[0], &existing, &previous, false, &[]);
         assert_eq!(with_previous.existing.len(), 1);
         assert_eq!(with_previous.existing["src/a.rs"], "// old");
         // `Request.previous` is the lowered text of the file as it was, never the text as
@@ -8426,6 +8779,7 @@ global@targets.add(rust);
             &existing,
             &BTreeMap::new(),
             false,
+            &[],
         );
         assert!(
             without
@@ -8458,7 +8812,7 @@ global@targets.add(rust);
             path: "src/b.rs".to_string(),
             text: "// old".to_string(),
         }];
-        let request = request(&program, &plan, &plan.batches[0], &existing, &BTreeMap::new(), false);
+        let request = request(&program, &plan, &plan.batches[0], &existing, &BTreeMap::new(), false, &[]);
         assert!(request.answered.is_empty(), "{:?}", request.answered);
         assert!(
             request
@@ -8526,7 +8880,7 @@ global@targets.add(rust);
             identifier: "b".to_string(),
         };
         let previous = BTreeMap::from([("def/b.lfy".to_string(), was.clone())]);
-        let request = request(&program, &plan, &batch, &existing, &previous, false);
+        let request = request(&program, &plan, &batch, &existing, &previous, false, &[]);
 
         // What the outputs answered for is what the map file recorded.
         // @lfy def/generation/main.lfy:request#request:request:160056c645e3e69afd7ce0bb74137db9a5e5f286df0a983570f9e2569276b533
@@ -8535,7 +8889,7 @@ global@targets.add(rust);
         assert_eq!(request.answered["def/b.lfy"], sorted);
         // The one criterion the unit no longer has, in the order the file as it was gave it,
         // with the id it had, its place in the file as it was, and what it said.
-        // @lfy def/generation/main.lfy:request#request:request:295bafcf58bae927898fc55851d86e7b28d31868c6727f09eff3b920abda4539
+        // @lfy def/generation/main.lfy:request#request:request:19eae5873e1ffc58511457bc5471084a486c137ebe615a8fdf95f3ac0fe43289
         // @lfy def/generation/main.lfy:request#request:request:1b7315cf290fcd29e9e15f54bd98742f52b2943246c4cb0414ed750188b9e3da
         let gone = &request.removed["def/b.lfy"];
         assert_eq!(gone.len(), 1, "{gone:?}");
@@ -8605,7 +8959,7 @@ global@targets.add(rust);
         assert!(heading < text.find("## Global criteria and tests").unwrap());
         // No criterion of the unit stands where one the outputs answered for stood, so
         // nothing was reworded, and the unit asks for more than its markers being moved.
-        // @lfy def/generation/main.lfy:request#request:request:9b732407010a3f7386f0722240a935b516b238550580f1028291a293d9bb90f3
+        // @lfy def/generation/main.lfy:request#request:request:de823e5d8fbff081ee17b88c1ae0477dff3832d78d636c05c9b9a8c90ae71da7
         // @lfy def/generation/main.lfy:request#request:request:d1ec465e091ae83573ab2ee5e7fe9ee86667ea44ffe505f8aefe88311e0071b7
         assert!(
             request.reworded["def/b.lfy"].is_empty(),
@@ -8671,11 +9025,11 @@ global@targets.add(rust);
             identifier: "b".to_string(),
         };
         let previous = BTreeMap::from([("def/b.lfy".to_string(), was.clone())]);
-        let request = request(&program, &plan, &batch, &existing, &previous, false);
+        let request = request(&program, &plan, &batch, &existing, &previous, false, &[]);
 
         // One rewording: the id the unit has now, the id it replaces, and what that one
         // said, taken from the lowering of the file as it was.
-        // @lfy def/generation/main.lfy:request#request:request:9b732407010a3f7386f0722240a935b516b238550580f1028291a293d9bb90f3
+        // @lfy def/generation/main.lfy:request#request:request:de823e5d8fbff081ee17b88c1ae0477dff3832d78d636c05c9b9a8c90ae71da7
         let rewordings = &request.reworded["def/b.lfy"];
         assert_eq!(rewordings.len(), 1, "{rewordings:?}");
         assert_eq!(rewordings[0].replaces, replaced);
@@ -8688,14 +9042,14 @@ global@targets.add(rust);
             .expect("the second criterion of the unit");
         assert_eq!(rewordings[0].id, reworded);
         // What was reworded is not gone, so nothing is listed as removed.
-        // @lfy def/generation/main.lfy:request#request:request:295bafcf58bae927898fc55851d86e7b28d31868c6727f09eff3b920abda4539
+        // @lfy def/generation/main.lfy:request#request:request:19eae5873e1ffc58511457bc5471084a486c137ebe615a8fdf95f3ac0fe43289
         assert!(
             request.removed["def/b.lfy"].is_empty(),
             "{:?}",
             request.removed
         );
         // Nothing but that id differs from what the outputs were generated against.
-        // @lfy def/generation/main.lfy:request#request:request:c32c00721f9f1fa8b577fab78118638f49e67257254297eae4ceebc45306bc77
+        // @lfy def/generation/main.lfy:request#request:request:4a0dea1f763a8af062fa2366467ce5030e12d175192b8584660d6f3ace3eebc6
         assert_eq!(request.reworded_only, ["def/b.lfy"]);
 
         let text = &request.instructions;
@@ -8729,6 +9083,98 @@ global@targets.add(rust);
             !text.contains("#### Removed since its outputs were accepted"),
             "{text}"
         );
+    }
+
+    /// Where the text handed over for a unit is only its hash-matched source, nothing of that
+    /// revision says what its outputs answered for: no criterion of the unit rewords one of
+    /// its, what is gone is read off the recorded ids alone — with neither a place nor a text,
+    /// which the instructions say — and the unit is not one whose markers are the whole of the
+    /// work.
+    // @lfy def/generation/main.lfy:request#request:request:68bd098b5b9b98c6a8f66b7bebfe21fd86dc2ead715c655d6f9f940a6408ff30
+    // @lfy def/generation/main.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
+    // @lfy def/generation/main.lfy:request#request:request:4a0dea1f763a8af062fa2366467ce5030e12d175192b8584660d6f3ace3eebc6
+    #[test]
+    fn a_hash_matched_source_gives_the_recorded_ids_alone() {
+        let fixture = a_and_b();
+        let criterion = |situation: &str, behavior: &str| {
+            B.replace(
+                "@test(",
+                &format!(
+                    "@acceptanceCriteria.add({{ situation = `{situation}`, behavior = \
+                     `{behavior}` }});\n  @test("
+                ),
+            )
+        };
+        let was = criterion("x is short", "the b is empty");
+        let now = criterion("x is brief", "the b is bare");
+        fixture.write("def/b.lfy", &was);
+        let old = fixture.program();
+        assert_bound(&old.workspace);
+        let maps = current_maps(&old, &plan_of(&old, &[], &[], &[]));
+        let replaced: String = {
+            let plan = plan_of(&old, &[], &[], &[]);
+            let (_, unit) = unit_of(&old.workspace, &plan, "def/b.lfy");
+            unit.requirements(&old)
+                .iter()
+                .map(|requirement| requirement.id().to_string())
+                .nth(1)
+                .expect("the second criterion of the hash-matched source")
+        };
+
+        fixture.write("def/b.lfy", &now);
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &maps, &[], &[]);
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        assert_eq!(b.reason, Some(Reason::Requirements));
+        let existing = [Output {
+            path: "src/b.rs".to_string(),
+            text: "// old".to_string(),
+        }];
+        let batch = Batch {
+            units: vec![b_index],
+            identifier: "b".to_string(),
+        };
+        let previous = BTreeMap::from([("def/b.lfy".to_string(), was.clone())]);
+        let matched = ["def/b.lfy".to_string()];
+        let request = request(
+            &program,
+            &plan,
+            &batch,
+            &existing,
+            &previous,
+            false,
+            &matched,
+        );
+
+        assert!(
+            request.reworded["def/b.lfy"].is_empty(),
+            "{:?}",
+            request.reworded
+        );
+        // The ids the maps recorded that the unit no longer has, in id order, with neither a
+        // place nor a text.
+        let gone = &request.removed["def/b.lfy"];
+        assert_eq!(
+            gone.iter().map(|one| one.id.as_str()).collect::<Vec<_>>(),
+            [replaced.as_str()]
+        );
+        assert_eq!(gone[0].place, "");
+        assert_eq!(gone[0].text, "");
+        assert!(gone.windows(2).all(|pair| pair[0].id <= pair[1].id));
+        assert!(
+            request.reworded_only.is_empty(),
+            "{:?}",
+            request.reworded_only
+        );
+
+        let text = &request.instructions;
+        assert!(
+            text.contains(&format!("`{replaced}` — what it said is not known")),
+            "{text}"
+        );
+        assert!(!text.contains("(reworded)"), "{text}");
     }
 
     // -----------------------------------------------------------------------------------
@@ -8938,7 +9384,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let request = request(program, &plan, &batch, &[], &BTreeMap::new(), false);
+        let request = request(program, &plan, &batch, &[], &BTreeMap::new(), false, &[]);
         (plan, request, index)
     }
 
@@ -8959,7 +9405,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "b".to_string(),
         };
-        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false, &[]);
         let output = Output {
             path: "src/b.rs".to_string(),
             text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C\npub struct C;\n"
@@ -8971,6 +9417,7 @@ global@targets.add(rust);
             &request,
             index,
             std::slice::from_ref(&output),
+            &[],
             &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
@@ -8993,7 +9440,7 @@ global@targets.add(rust);
             text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C#C:C:ffff\npub struct C;\n"
                 .to_string(),
         };
-        let verdict = accept(&program, &plan, &request, index, &[wrong], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[wrong], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(verdict.problems[0].contains("C:C:ffff"), "{:?}", verdict.problems);
@@ -9007,7 +9454,7 @@ global@targets.add(rust);
             text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C\npub struct C;\n\n// @lfy def/a.lfy:900\npub struct Extra;\n"
                 .to_string(),
         };
-        let verdict = accept(&program, &plan, &request, index, &[beyond], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[beyond], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -9035,6 +9482,7 @@ global@targets.add(rust);
             &request,
             index,
             std::slice::from_ref(&output),
+            &[],
             &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
@@ -9065,11 +9513,22 @@ global@targets.add(rust);
             map.signature,
             source_hash(&interface_of(&workspace, &plan.units[index]))
         );
-        // The text hash is of the output as `Verdict.outputs` holds it, so that it is the
-        // hash of the file the caller writes back.
-        // @lfy def/generation/main.lfy:accept#accept:accept:588d5e5485c45bd44d48489efaa4d94e9484900e69ce713f90102eefb4570410
-        assert_eq!(map.text, source_hash(&verdict.outputs[0].text));
-        assert_eq!(map.text, source_hash(&output.text));
+        // The text hash is of the unit's own region text of the output as `Verdict.outputs`
+        // holds it: both regions are this unit's, and of each line only the code is kept, so
+        // the marker comments and the blank line between them are no part of it.
+        // @lfy def/generation/main.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
+        assert_eq!(
+            map.text,
+            source_hash(&own_region_text(
+                &workspace,
+                &plan,
+                index,
+                "//",
+                &verdict.outputs[0].text,
+                &map.markers,
+            ))
+        );
+        assert_eq!(map.text, source_hash("pub struct A;\npub struct B;\n"));
         // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
         assert!(map.dependencies.is_empty());
         assert!(plan.units[index].dependencies.is_empty());
@@ -9159,8 +9618,8 @@ global@targets.add(rust);
     /// problem naming the path, that unit's source, and the region. A co-owner compiled in
     /// the same batch writes its own regions again, so its map claims nothing, and the
     /// unit's own recorded map for the same path is what acceptance replaces.
-    // @lfy def/generation/main.lfy:accept#accept:accept:a61aa4a9283df62d2e6f07fca7d7d134df081b931e93c5cd80d35866633303f7
-    // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+    // @lfy def/generation/main.lfy:accept#accept:accept:14f27c5c2a72fd5634bfa39ff79904e5261edd57a78c9b62e1afdfe63c7a7385
+    // @lfy def/generation/main.lfy:accept#accept:accept:72d604363730e1a186d6ae456843c97ae6a857f121cf28d54e4bb331119e4af4
     #[test]
     fn a_shared_output_keeps_the_regions_another_units_map_records() {
         let fixture = Fixture::with_rust_target();
@@ -9189,7 +9648,7 @@ global@targets.add(rust);
             ..map_for("src/a.rs", "def/c.lfy")
         };
         // The region `def/c.lfy` records is still there, so sharing adds no problem.
-        // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+        // @lfy def/generation/main.lfy:accept#accept:accept:72d604363730e1a186d6ae456843c97ae6a857f121cf28d54e4bb331119e4af4
         let shared = named_output(&format!("{mine}{theirs}"));
         let verdict = accept(
             &program,
@@ -9198,10 +9657,11 @@ global@targets.add(rust);
             index,
             std::slice::from_ref(&shared),
             std::slice::from_ref(&other),
+            &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // Dropped, it is one problem naming the path, the other source, and the region.
-        // @lfy def/generation/main.lfy:accept#accept:accept:a61aa4a9283df62d2e6f07fca7d7d134df081b931e93c5cd80d35866633303f7
+        // @lfy def/generation/main.lfy:accept#accept:accept:14f27c5c2a72fd5634bfa39ff79904e5261edd57a78c9b62e1afdfe63c7a7385
         let dropped = named_output(mine);
         let verdict = accept(
             &program,
@@ -9210,6 +9670,7 @@ global@targets.add(rust);
             index,
             std::slice::from_ref(&dropped),
             std::slice::from_ref(&other),
+            &[],
         );
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
@@ -9217,13 +9678,13 @@ global@targets.add(rust);
             assert!(verdict.problems[0].contains(named), "{:?}", verdict.problems);
         }
         // With `def/c.lfy` in the batch, its map claims nothing: it is being rewritten.
-        // @lfy def/generation/main.lfy:accept#accept:accept:e1803d0137825c4ab13fa3cc1b4bb2fbcc98d2304ae4776fa3a1b7c4ec27453f
+        // @lfy def/generation/main.lfy:accept#accept:accept:72d604363730e1a186d6ae456843c97ae6a857f121cf28d54e4bb331119e4af4
         let (together, _) = unit_of(&workspace, &plan, "def/c.lfy");
         let batch = Batch {
             units: vec![index, together],
             identifier: "a+1".to_string(),
         };
-        let both = super::request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
+        let both = super::request(&program, &plan, &batch, &[], &BTreeMap::new(), false, &[]);
         let verdict = accept(
             &program,
             &plan,
@@ -9231,6 +9692,7 @@ global@targets.add(rust);
             index,
             std::slice::from_ref(&dropped),
             std::slice::from_ref(&other),
+            &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // The unit's own recorded map for the same output is what acceptance replaces.
@@ -9243,6 +9705,7 @@ global@targets.add(rust);
             index,
             std::slice::from_ref(&dropped),
             std::slice::from_ref(&own),
+            &[],
         );
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // A region of this unit's own file is in the co-owner's map only because a map holds
@@ -9281,6 +9744,7 @@ global@targets.add(rust);
             index,
             std::slice::from_ref(&without_b),
             std::slice::from_ref(&theirs_only),
+            &[],
         );
         assert_eq!(
             verdict
@@ -9294,6 +9758,183 @@ global@targets.add(rust);
         );
     }
 
+    /// One marker of a recorded map, naming an entity of a file of the program.
+    fn marker_of(file: &str, entity: &str, output_line: usize, end: usize) -> Marker {
+        Marker {
+            output_line,
+            file: file.to_string(),
+            entity: Some(entity.to_string()),
+            line: 1,
+            column: None,
+            requirement: None,
+            end,
+        }
+    }
+
+    /// A project of `def/a.lfy`, which declares `A` with a member `f`, and `def/b.lfy`, which
+    /// declares `B`, with the plan, the request, and the unit index of `def/b.lfy`.
+    fn b_beside_a(fixture: &Fixture) -> (Program, Plan, Request, usize) {
+        fixture
+            .write("def/a.lfy", "d A {\n  $f = string;\n}\n")
+            .write("def/b.lfy", "d B {\n  $y = string;\n}\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/b.lfy");
+        let batch = Batch {
+            units: vec![index],
+            identifier: "b".to_string(),
+        };
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false, &[]);
+        (program, plan, request, index)
+    }
+
+    /// Splitting a shared module moves a co-owner's region into a submodule file of the unit,
+    /// where it is counted all the same, so both outputs earn a source map.
+    // @lfy def/generation/main.lfy:accept#accept:accept:10e6e70a3330f82d7742ca3f211796f061eb9cc322a79d280c4c4e84b177e156
+    #[test]
+    fn a_co_owners_region_is_counted_across_the_outputs_written() {
+        let fixture = Fixture::with_rust_target();
+        let (program, plan, request, index) = b_beside_a(&fixture);
+        let other = SourceMap {
+            markers: vec![
+                marker_of("def/a.lfy", "A", 1, 2),
+                marker_of("def/b.lfy", "B", 3, 4),
+            ],
+            ..map_for("src/mod.rs", "def/a.lfy")
+        };
+        let module = Output {
+            path: "src/mod.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\npub struct B;\n".to_string(),
+        };
+        let part = Output {
+            path: "src/mod/part.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\nimpl B {}\n// @lfy def/a.lfy:A\npub struct A;\n"
+                .to_string(),
+        };
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            &[module, part],
+            std::slice::from_ref(&other),
+            &[],
+        );
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
+        assert_eq!(
+            outputs_of(&verdict.source_maps),
+            ["src/mod.rs", "src/mod/part.rs"]
+        );
+    }
+
+    /// A file of `elsewhere` is read for its markers alone: it holds the co-owner's region, so
+    /// nothing is lost, and it earns no source map of its own. With no marker in it the region
+    /// is gone, and the problem names the path, the other source, the region, and both counts.
+    // @lfy def/generation/main.lfy:accept#accept:accept:d1de8415e4bd6d8cde87018eebbc29ae9bdc66a5087f76e672baa866cf680bbc
+    // @lfy def/generation/main.lfy:accept#accept:accept:c47da6d261757f3bb9953d11fbbb65c9bec16903f913ebe579a4c997553b5b13
+    #[test]
+    fn a_file_of_elsewhere_is_read_for_its_markers_and_earns_no_source_map() {
+        let fixture = Fixture::with_rust_target();
+        let (program, plan, request, index) = b_beside_a(&fixture);
+        let other = SourceMap {
+            markers: vec![
+                marker_of("def/a.lfy", "A", 1, 2),
+                marker_of("def/b.lfy", "B", 3, 4),
+            ],
+            ..map_for("src/mod.rs", "def/a.lfy")
+        };
+        let module = Output {
+            path: "src/mod.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\npub struct B;\n".to_string(),
+        };
+        // @lfy def/generation/main.lfy:accept#accept:accept:3735db25617f44c846b04cc15709baf47cbf8bfaeecebcf0e6adb99a577d2af4
+        let moved = Output {
+            path: "src/a.rs".to_string(),
+            text: "// @lfy def/a.lfy:A\npub struct A;\n".to_string(),
+        };
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&module),
+            std::slice::from_ref(&other),
+            std::slice::from_ref(&moved),
+        );
+        assert!(verdict.accepted, "{:?}", verdict.problems);
+        assert_eq!(outputs_of(&verdict.source_maps), ["src/mod.rs"]);
+        assert_eq!(
+            verdict.outputs.iter().map(|output| &output.path).collect::<Vec<_>>(),
+            ["src/mod.rs"]
+        );
+
+        let empty = Output {
+            path: "src/a.rs".to_string(),
+            text: "pub struct A;\n".to_string(),
+        };
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&module),
+            std::slice::from_ref(&other),
+            std::slice::from_ref(&empty),
+        );
+        assert!(!verdict.accepted);
+        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
+        for named in ["src/mod.rs", "def/a.lfy", "def/a.lfy:A", " 0 ", " 1 "] {
+            assert!(verdict.problems[0].contains(named), "{:?}", verdict.problems);
+        }
+    }
+
+    /// A region the co-owner's maps record twice must be among the target's files twice, so a
+    /// file holding it once is one short, and both counts are named.
+    // @lfy def/generation/main.lfy:accept#accept:accept:831b6353380d6f04883110539c89e60a16918ff659f1da4acb2b62f1d344d94d
+    #[test]
+    fn a_region_two_of_a_co_owners_maps_record_is_counted_in_both() {
+        let fixture = Fixture::with_rust_target();
+        let (program, plan, request, index) = b_beside_a(&fixture);
+        let recorded = [
+            SourceMap {
+                markers: vec![
+                    marker_of("def/a.lfy", "A", 1, 2),
+                    marker_of("def/b.lfy", "B", 3, 4),
+                ],
+                ..map_for("src/lib.rs", "def/a.lfy")
+            },
+            SourceMap {
+                markers: vec![marker_of("def/a.lfy", "A", 1, 2)],
+                ..map_for("src/a.rs", "def/a.lfy")
+            },
+        ];
+        let root = Output {
+            path: "src/lib.rs".to_string(),
+            text: "// @lfy def/b.lfy:B\npub struct B;\n".to_string(),
+        };
+        let moved = Output {
+            path: "src/a.rs".to_string(),
+            text: "// @lfy def/a.lfy:A\npub struct A;\n".to_string(),
+        };
+        let verdict = accept(
+            &program,
+            &plan,
+            &request,
+            index,
+            std::slice::from_ref(&root),
+            &recorded,
+            std::slice::from_ref(&moved),
+        );
+        assert!(!verdict.accepted);
+        assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
+        for named in ["src/lib.rs", "def/a.lfy", "def/a.lfy:A", " 1 ", " 2 "] {
+            assert!(verdict.problems[0].contains(named), "{:?}", verdict.problems);
+        }
+    }
+
     // @lfy def/generation/main.lfy:accept#accept:accept:dd9767e93f188ad433adfb81d2b14e5bcc518b6e2d80e9ecca17d5a03a2f1ab3
     #[test]
     fn an_entity_without_a_marker_is_rejected_by_name() {
@@ -9302,7 +9943,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         // A marker on the documentation line of A counts for A; nothing names B.
         let output = named_output("// @lfy def/a.lfy:3\npub struct A;\n");
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         // @lfy def/generation/main.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
@@ -9327,7 +9968,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         assert_eq!(names(&workspace, &plan.units[index].entities), ["A"]);
         let output = named_output("// @lfy def/a.lfy:3\npub struct A;\n");
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // @lfy def/generation/main.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
         assert_eq!(
@@ -9339,22 +9980,19 @@ global@targets.add(rust);
             Some("A")
         );
         assert_eq!(verdict.source_maps[0].markers[0].line, 3);
-        // The text hash is of the output with its markers normalized, which is the text the
-        // caller writes back, and not of the text the compiler handed over.
-        // @lfy def/generation/main.lfy:accept#accept:accept:588d5e5485c45bd44d48489efaa4d94e9484900e69ce713f90102eefb4570410
+        // The text hash is of the unit's own region text of the output, of which a marker
+        // comment is no part, so normalizing a marker from a line to a name leaves it as it
+        // was and sends nothing back to review.
+        // @lfy def/generation/main.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
         assert_eq!(
             verdict.source_maps[0].text,
-            source_hash(&verdict.outputs[0].text)
-        );
-        assert_ne!(
-            verdict.source_maps[0].text,
-            source_hash("// @lfy def/a.lfy:3\npub struct A;\n")
+            source_hash("pub struct A;\n")
         );
         // A line inside a member's declaration names the member.
         let output = named_output(
             "// @lfy def/a.lfy:3\npub struct A {\n  // @lfy def/a.lfy:4\n  x: String,\n}\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         assert!(
             verdict.outputs[0].text.contains("// @lfy def/a.lfy:A.x"),
@@ -9381,7 +10019,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:1\n// @lfy def/a.lfy:3\npub struct A;\n// @lfy def/a.lfy:10\npub struct B;\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // Each marker of the output names a file of the program, so the map holds all three:
         // the two that resolved, with the line of the declaration they named, and the one
@@ -9413,7 +10051,7 @@ global@targets.add(rust);
         let fixture = a_with_two_entities();
         let program = fixture.program();
         let (plan, request, index) = one_unit(&program);
-        let verdict = accept(&program, &plan, &request, index, &[], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[], &[], &[]);
         assert!(!verdict.accepted);
         assert!(
             verdict.problems[0].contains("no output"),
@@ -9430,7 +10068,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let mut output = named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n");
         output.path = "srcx/a.rs".to_string();
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -9449,7 +10087,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let mut output = named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n");
         output.path = "src/a.txt".to_string();
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -9472,7 +10110,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let output =
             named_output("// @lfy def/a.lfy:A\n// @lfy def/a.lfy:B\n// @lfy def/a.lfy:Nowhere\n");
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -9495,7 +10133,7 @@ global@targets.add(rust);
         let (plan, request, index) = one_unit(&program);
         let output =
             named_output("// @lfy def/a.lfy:A\n\n// @lfy def/a.lfy:99\n// @lfy def/a.lfy:B\n");
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -9521,7 +10159,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:A\n// @lfy def/b.lfy:8\n// @lfy def/b.lfy:Nowhere\n// @lfy def/a.lfy:B\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // Neither marker of the file outside the program is recorded.
         let markers = &verdict.source_maps[0].markers;
@@ -9553,11 +10191,11 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let request = request(&program, &plan,&batch, &[], &BTreeMap::new(), false);
+        let request = request(&program, &plan,&batch, &[], &BTreeMap::new(), false, &[]);
         let output = named_output(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:B\npub struct B;\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // The marker of the other file is kept, and its line is derived from that file.
         let markers = &verdict.source_maps[0].markers;
@@ -9584,7 +10222,7 @@ global@targets.add(rust);
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#{}\nfn make() {{}}\n",
             criteria[0]
         ));
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // An id no file of the program knows is not checked either, when the marker names
         // another file: only a marker of this unit's own file makes a claim this unit answers
@@ -9593,7 +10231,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#make:make:nowhere\nfn make() {}\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
     }
 
@@ -9623,7 +10261,7 @@ global@targets.add(rust);
             "// @lfy def/a.lfy:A#{}\npub struct A;\n// @lfy def/a.lfy:A#{global}\nfn holds() {{}}\n",
             local[0]
         ));
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         // @lfy def/generation/main.lfy:accept#accept:accept:666051c035bda35cafa77995ca9f05915cb5d6f3d9dc74b172f9187d403c1a15
         assert_eq!(
@@ -9639,7 +10277,7 @@ global@targets.add(rust);
         // and id.
         // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
         let output = named_output("// @lfy def/a.lfy:A#A:A:nowhere\npub struct A;\n");
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(!verdict.accepted);
         assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
         assert!(
@@ -9666,7 +10304,7 @@ global@targets.add(rust);
         let output = named_output(
             "// @lfy def/a.lfy:A\nthis is not Rust at all (((\n// @lfy def/a.lfy:B\nnor is this\n",
         );
-        let verdict = accept(&program, &plan, &request, index, &[output], &[]);
+        let verdict = accept(&program, &plan, &request, index, &[output], &[], &[]);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         assert_eq!(verdict.source_maps.len(), 1);
     }
@@ -10011,6 +10649,150 @@ global@targets.add(rust);
             unit,
             &[map_for("crates/a/src/a.rs", "def/a.lfy")]
         ));
+    }
+
+    // -----------------------------------------------------------------------------------
+    // rederive
+    // -----------------------------------------------------------------------------------
+
+    /// A project whose `def` holds `a.lfy`, declaring `A` with a member `f`, and `b.lfy`,
+    /// declaring `B`, with the plan and the unit index of `def/a.lfy`.
+    fn a_and_b_for_rederive(fixture: &Fixture) -> (Program, Plan, usize) {
+        fixture
+            .write("def/a.lfy", "d A {\n  $f = string;\n}\n")
+            .write("def/b.lfy", "d B {\n  $y = string;\n}\n");
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+        (program, plan, index)
+    }
+
+    /// A unit whose regions another unit's split moved into a new file gets one map per file
+    /// of the output directory that holds a marker of its own, in path order, with the
+    /// markers each file holds now and everything its last accepted generation recorded
+    /// carried over; the file it had no map for has no accepted text, so its text is empty.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:8b160ed33ce9dfa87e7f2dc0f80128f847a416833285f4de46a725ff27304afe
+    #[test]
+    fn a_split_gives_one_map_per_file_holding_the_units_markers() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write(
+                "src/mod.rs",
+                "// @lfy def/a.lfy:A\npub struct A;\n// @lfy def/b.lfy:B\npub struct B;\n",
+            )
+            .write(
+                "src/mod/part.rs",
+                "// @lfy def/b.lfy:B\nimpl B {}\n// @lfy def/a.lfy:A.f\npub fn f() {}\n",
+            );
+        let (program, plan, index) = a_and_b_for_rederive(&fixture);
+        let recorded = [SourceMap {
+            hash: "h".to_string(),
+            text: "t".to_string(),
+            markers: vec![
+                marker_of("def/a.lfy", "A", 1, 2),
+                marker_of("def/a.lfy", "A.f", 3, 4),
+                marker_of("def/b.lfy", "B", 5, 6),
+            ],
+            ..map_for("src/mod.rs", "def/a.lfy")
+        }];
+        let maps = rederive(&program, &plan, index, &recorded);
+        // @lfy def/generation/main.lfy:rederive#rederive:rederive:33f6e3ae8b3a61bf5f205818bb8797ab2d0475dc7323d5212b3b38734b4ae594
+        assert_eq!(outputs_of(&maps), ["src/mod.rs", "src/mod/part.rs"]);
+        // @lfy def/generation/main.lfy:rederive#rederive:rederive:de0c92c8e9054b77050411f99aab03406cef407c814ca97ee7ab8181bdebf960
+        assert_eq!(
+            maps.iter()
+                .map(|map| map
+                    .markers
+                    .iter()
+                    .map(|marker| format!("{}:{}", marker.file, marker.entity.clone().unwrap()))
+                    .collect::<Vec<_>>())
+                .collect::<Vec<_>>(),
+            [
+                ["def/a.lfy:A", "def/b.lfy:B"],
+                ["def/b.lfy:B", "def/a.lfy:A.f"]
+            ]
+        );
+        // @lfy def/generation/main.lfy:rederive#rederive:rederive:17ed6196ab28af701579b3e34153efce5461c44c096f7133d7967b685c4b53c4
+        for map in &maps {
+            assert_eq!(map.target, "rust");
+            assert_eq!(map.source, "def/a.lfy");
+            // @lfy def/generation/main.lfy:rederive#rederive:rederive:7656b04818cc881ae3204287ce2ad06c3b43ae1293a39033fad0f9eadb054f2b
+            assert_eq!(map.hash, "h");
+            assert_eq!(map.generated, recorded[0].generated);
+            assert_eq!(map.requirements, recorded[0].requirements);
+            assert_eq!(map.signature, recorded[0].signature);
+        }
+        assert_eq!(maps[0].text, "t");
+        // @lfy def/generation/main.lfy:rederive#rederive:rederive:838d2f8ee921d0ec16aab7f04aebafa5071a0f529f8cf1a8a06ed85f0a4e5149
+        assert_eq!(maps[1].text, "");
+    }
+
+    /// A shared output another unit added a line to keeps its map: the markers are re-read
+    /// from the file, while the hash of the text its own acceptance saw is carried over, so
+    /// the unit's outputs no longer match it.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:ebb597e4a11d98fceeaa2cb175126a053cc1a53ac1ea06a15a083c5036a424f7
+    #[test]
+    fn a_shared_output_keeps_its_text_and_re_reads_its_markers() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write(
+            "src/lib.rs",
+            "// @lfy def/a.lfy:A\npub struct A;\n// @lfy def/b.lfy:B\npub struct B;\n",
+        );
+        let (program, plan, index) = a_and_b_for_rederive(&fixture);
+        let recorded = [SourceMap {
+            text: "t".to_string(),
+            markers: vec![marker_of("def/a.lfy", "A", 1, 4)],
+            ..map_for("src/lib.rs", "def/a.lfy")
+        }];
+        let maps = rederive(&program, &plan, index, &recorded);
+        assert_eq!(outputs_of(&maps), ["src/lib.rs"]);
+        assert_eq!(maps[0].text, "t");
+        assert_eq!(
+            maps[0]
+                .markers
+                .iter()
+                .map(|marker| marker.entity.clone().unwrap())
+                .collect::<Vec<_>>(),
+            ["A", "B"]
+        );
+    }
+
+    /// Where the maps of a unit do not agree on what its last accepted generation recorded,
+    /// there is nothing to carry over to a file they have no map for, and they come back as
+    /// they are.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:b7e8748750c50eefa6c4e1df4258cf6235f06854374b6865fe4b5771f2336660
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:0ed7b6723ce64cd6cf1e09f24d4516bf399f45d394b5cb0e44753e1df9b7fb01
+    #[test]
+    fn maps_that_disagree_on_what_was_recorded_come_back_as_they_are() {
+        let fixture = Fixture::with_rust_target();
+        fixture.write("src/new.rs", "// @lfy def/a.lfy:A\npub struct A;\n");
+        let (program, plan, index) = a_and_b_for_rederive(&fixture);
+        let recorded = [
+            SourceMap {
+                hash: "h1".to_string(),
+                ..map_for("src/a.rs", "def/a.lfy")
+            },
+            SourceMap {
+                hash: "h2".to_string(),
+                ..map_for("src/b.rs", "def/a.lfy")
+            },
+        ];
+        assert_eq!(rederive(&program, &plan, index, &recorded), recorded);
+        // With no map at all, and with no file holding a marker of the unit's own, the maps
+        // come back as they are too.
+        // @lfy def/generation/main.lfy:rederive#rederive:rederive:ab3fc93517c19e9574351a5b75cd5adfdb9863d5af006fbb2bf0cac32ef94646
+        assert!(rederive(&program, &plan, index, &[]).is_empty());
+        let (other, _) = unit_of(&program.workspace, &plan, "def/b.lfy");
+        let theirs = [map_for("src/b.rs", "def/b.lfy")];
+        assert_eq!(rederive(&program, &plan, other, &theirs), theirs);
+        // Nothing is written: the file the unit's marker is in is left as it was.
+        // @lfy def/generation/main.lfy:rederive#rederive:rederive:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+        assert_eq!(
+            fs::read_to_string(fixture.root.join("src/new.rs")).unwrap(),
+            "// @lfy def/a.lfy:A\npub struct A;\n"
+        );
     }
 
     // -----------------------------------------------------------------------------------

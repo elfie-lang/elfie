@@ -177,7 +177,8 @@ impl Marker {
 }
 
 /// What one output file was generated from, recorded mechanically at acceptance in the map
-/// file of its unit.
+/// file of its unit, and re-read from the files when another unit writes them, carrying over
+/// what acceptance recorded.
 // @lfy def/generation/data.lfy:SourceMap
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceMap {
@@ -199,14 +200,16 @@ pub struct SourceMap {
     pub answered: Vec<String>, // @lfy def/generation/data.lfy:SourceMap.answered
     /// SHA-256 of the unit's interface text when the output was accepted, as lowercase hex.
     pub signature: String, // @lfy def/generation/data.lfy:SourceMap.signature
-    /// SHA-256 of the output's text as it was accepted, as lowercase hex; empty in a map file
+    /// SHA-256, as lowercase hex, of the unit's own region text of the output as it was
+    /// accepted, as [`own_region_text`](super::own_region_text) takes it; empty in a map file
     /// written before it was recorded, which no hash equals.
     pub text: String, // @lfy def/generation/data.lfy:SourceMap.text
     /// For each dependency's source path, the [`SourceMap::signature`] the output was
     /// generated against.
     pub dependencies: BTreeMap<String, String>, // @lfy def/generation/data.lfy:SourceMap.dependencies
     /// When the output was accepted: the clock at acceptance as an RFC 3339 timestamp, as
-    /// [`now_rfc3339`](super::now_rfc3339) spells it.
+    /// [`now_rfc3339`](super::now_rfc3339) spells it, carried over when the map is re-read
+    /// from the files.
     pub generated: String, // @lfy def/generation/data.lfy:SourceMap.generated
     /// Every marker in the output, in output order, with [`Marker::line`] and
     /// [`Marker::end`] derived.
@@ -447,10 +450,11 @@ pub struct RemovedRequirement {
     /// The id it had.
     pub id: String, // @lfy def/generation/data.lfy:RemovedRequirement.id
     /// Where it was in the unit's file as it was when its outputs were accepted: the file
-    /// relative to the workspace root, a colon, and the line its origin began on.
+    /// relative to the workspace root, a colon, and the line its origin began on; empty when
+    /// not known.
     pub place: String, // @lfy def/generation/data.lfy:RemovedRequirement.place
     /// What it said: the criterion's text for a criterion, its input and its expectation as
-    /// written for a test.
+    /// written for a test; empty when not known.
     pub text: String, // @lfy def/generation/data.lfy:RemovedRequirement.text
 }
 

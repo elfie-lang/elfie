@@ -18,7 +18,7 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Move, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewRecord,
+    self, Batch, Marker, Move, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewRecord,
     ReviewReport, ReviewRequest, ReviewStatus, SourceMap, Unit, Verdict,
 };
 #[cfg(test)]
@@ -1792,6 +1792,15 @@ fn remove_orphan_maps(workspace: &Workspace, plan: &Plan, target: Option<&str>) 
 fn remove_orphan_kept(workspace: &Workspace, plan: &Plan, target: Option<&str>) {
     // @lfy def/cli/main.lfy:main#main:main:720e04231f491a512ec22a28a29c86eb716470a466f2d9524f3039cefcc815f9
     let mine: BTreeSet<&str> = plan.units.iter().map(|unit| unit.stem.as_str()).collect();
+    // The targets the plan holds a unit for, which are the planned ones: work kept for any
+    // other target is not this compile's to remove.
+    // @lfy def/cli/main.lfy:main#main:main:720e04231f491a512ec22a28a29c86eb716470a466f2d9524f3039cefcc815f9
+    let planned_targets: BTreeSet<&str> = plan
+        .units
+        .iter()
+        .map(|unit| workspace.targets[unit.target].identifier.as_str())
+        .filter(|named| target.is_none_or(|target| *named == target))
+        .collect();
     let mut found = Vec::new();
     walk_all(&workspace.root.join(KEPT), &mut found);
     for path in found {
@@ -1807,7 +1816,7 @@ fn remove_orphan_kept(workspace: &Workspace, plan: &Plan, target: Option<&str>) 
         // Only the kept work of a planned target is looked at here; another target's is for
         // the compile that plans it.
         // @lfy def/cli/main.lfy:main#main:main:720e04231f491a512ec22a28a29c86eb716470a466f2d9524f3039cefcc815f9
-        if target.is_some_and(|target| held.target != target) {
+        if !planned_targets.contains(held.target.as_str()) {
             continue;
         }
         // @lfy def/cli/main.lfy:main#main:main:720e04231f491a512ec22a28a29c86eb716470a466f2d9524f3039cefcc815f9
@@ -1845,27 +1854,137 @@ fn remove_orphan_reviews(workspace: &Workspace, plan: &Plan, target: Option<&str
     }
 }
 
-/// The files under the target's output directory, in the directory the batch ran in, that
-/// carry a marker for the unit's file. Their paths are relative to that directory, which is
-/// the root or a copy of it, so an output is named the same either way.
-// @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
-// @lfy def/cli/main.lfy:main#main:main:52173d6aec3bd565923f7f25e65eb917c7805384fb7786a7c28a91349cdfba1a
-fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize, directory: &Path) -> Vec<Output> {
+/// The files under the target's output directory, in the directory the batch ran in, split
+/// into the ones that carry a marker for the unit's file and every other one of that listing.
+/// Their paths are relative to that directory, which is the root or a copy of it, so an
+/// output is named the same either way.
+///
+/// The second list is what `accept` is given as its `elsewhere`: a file of it earns no source
+/// map and none of its markers is checked, and it is there so that a region this unit moved
+/// out of a shared file into a file of its own is still found where it went.
+// @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+// @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
+fn outputs_of(
+    workspace: &Workspace,
+    plan: &Plan,
+    unit: usize,
+    directory: &Path,
+) -> (Vec<Output>, Vec<Output>) {
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
     let file = &workspace.files[unit.file].path;
     let mut paths = Vec::new();
-    // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
+    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
     walk_all(&directory.join(&target.output_directory), &mut paths);
     paths.sort();
     let mut found = Vec::new();
+    let mut elsewhere = Vec::new();
     for path in paths {
         let Ok(text) = fs::read_to_string(&path) else { continue };
-        if generation::parse_markers(&text).iter().any(|m| &m.file == file) {
-            found.push(Output { path: relative(directory, &path), text });
+        let output = Output { path: relative(directory, &path), text };
+        // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+        if generation::parse_markers(&output.text).iter().any(|m| &m.file == file) {
+            found.push(output);
+        } else {
+            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            elsewhere.push(output);
         }
     }
-    found
+    (found, elsewhere)
+}
+
+/// Whether a marker is one unit's own: it names the unit's file, or it names an entity moved
+/// into the unit and the file that declares it.
+// @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+fn own_marker(workspace: &Workspace, plan: &Plan, unit: usize, marker: &Marker) -> bool {
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    if marker.file == workspace.files[plan.units[unit].file].path {
+        return true;
+    }
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    plan.moves
+        .iter()
+        .filter(|moved| moved.into == unit)
+        .filter(|moved| workspace.files[plan.units[moved.origin].file].path == marker.file)
+        .flat_map(|moved| moved.entities.iter())
+        .any(|&entity| {
+            let Some(name) = workspace.model.entities[entity].identifier.as_deref() else {
+                return false;
+            };
+            marker.entity.as_deref().is_some_and(|spelled| {
+                spelled == name || spelled.strip_prefix(name).is_some_and(|rest| rest.starts_with('.'))
+            })
+        })
+}
+
+/// The unit's own region text of one output, as a source map defines it: the text of the
+/// regions its own markers begin, in output order, each line with the marker comment it
+/// carries and the white space before it taken off and every line that is then empty left
+/// out.
+// @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+fn own_region_text(workspace: &Workspace, plan: &Plan, unit: usize, text: &str) -> String {
+    let comment = &workspace.targets[plan.units[unit].target].marker_comment;
+    let lines: Vec<&str> = text.lines().collect();
+    let mut out = String::new();
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    for marker in generation::parse_markers(text) {
+        if !own_marker(workspace, plan, unit, &marker) {
+            continue;
+        }
+        let last = marker.end.min(lines.len());
+        let first = marker.output_line.saturating_sub(1).min(last);
+        for line in &lines[first..last] {
+            // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+            let kept = without_marker(line, comment);
+            if kept.is_empty() {
+                continue;
+            }
+            out.push_str(kept);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// One line of an output with the marker comment it carries, and the white space before it,
+/// taken off; the line as it is when it carries none.
+// @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+fn without_marker<'l>(line: &'l str, comment: &str) -> &'l str {
+    if comment.is_empty() {
+        return line;
+    }
+    let mut from = 0;
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    while let Some(position) = line[from..].find(MARKER) {
+        let at = from + position;
+        // The comment opener of this marker: the last one before it, which the marker is
+        // written after as the guidance says.
+        // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+        if let Some(opener) = line[..at].rfind(comment) {
+            return line[..opener].trim_end();
+        }
+        from = at + MARKER.len();
+    }
+    line
+}
+
+/// What every marker begins with, after the target's comment opener.
+// @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+const MARKER: &str = "@lfy ";
+
+/// One region named the way a marker spells it: the file, the entity or the line, and the
+/// requirement when it answers for one. Two markers of one region spell the same name.
+// @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+fn region_named(marker: &Marker) -> String {
+    let place = match &marker.entity {
+        Some(entity) => entity.clone(),
+        None => marker.line.to_string(),
+    };
+    // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+    match &marker.requirement {
+        Some(requirement) => format!("{}:{place}#{requirement}", marker.file),
+        None => format!("{}:{place}", marker.file),
+    }
 }
 
 /// Every local criterion and test of one unit, by id and sorted: for each of its entities,
@@ -1931,8 +2050,22 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// The source at the last accepted generation, recovered from git when the hash of a recent
-/// revision of the file matches the unit's source map.
+/// One revision of a unit's file recovered from git, and whether it is only the unit's
+/// hash-matched source rather than the source its outputs were accepted from.
+// @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+struct Previous {
+    /// The revision as git holds it, never lowered.
+    // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
+    text: String,
+    /// Whether its lowered text hashes to the map but its criterion and test ids do not.
+    // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+    hash_matched: bool,
+}
+
+/// The source at the last accepted generation, recovered from git when a recent revision of
+/// the file both lowers to the hash the unit's source map holds and has the criterion and test
+/// ids that map was recorded for; otherwise the unit's hash-matched source, the most recent
+/// revision that lowers to that hash alone, marked as such.
 ///
 /// What is given back is that revision as git holds it, never lowered: `request` lowers the
 /// previous text it is handed the way `changes` binds one, so handing it lowered code would
@@ -1940,8 +2073,14 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
 /// of the lowered text, so the revision the outputs were generated from is the one whose
 /// lowered text hashes to it, and a revision that differs only in a comment is the same
 /// revision.
-// @lfy def/cli/main.lfy:main#main:main:d1d6ff8c10482ac79b9be1a0c2c04a7fe4d4ac88493ebdaeb698ae1ef73a3c9a
-fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
+///
+/// A revision that lowers to the hash but whose ids hash to something else is not what the
+/// outputs were accepted from: a rewording leaves the lowered code untouched and changes every
+/// id it touched, so only the ids say which revision the outputs answered for.
+// @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+// @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<Previous> {
     let map = unit.outputs.first()?;
     let file = workspace.files[unit.file].path.clone();
     let log = Process::new("git")
@@ -1953,6 +2092,10 @@ fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
     if !log.status.success() {
         return None;
     }
+    // The most recent revision that lowers to the map's hash and no more, kept in case none
+    // of them has the ids the map was recorded for.
+    // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+    let mut matched: Option<String> = None;
     for revision in String::from_utf8_lossy(&log.stdout).lines() {
         let show = Process::new("git")
             .args(["show", &format!("{revision}:{file}")])
@@ -1966,29 +2109,69 @@ fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
         let text = String::from_utf8_lossy(&show.stdout).into_owned();
         // The revision is recognized by the hash of its text lowered the way `changes` binds
         // a previous text, since that is what the map holds.
-        // @lfy def/cli/main.lfy:main#main:main:d1d6ff8c10482ac79b9be1a0c2c04a7fe4d4ac88493ebdaeb698ae1ef73a3c9a
-        let Some(lowered) = lowered_text(workspace, &file, &text) else { continue };
+        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+        let Some((lowered, requirements)) = lowered_of(workspace, &file, &text) else { continue };
+        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+        if generation::source_hash(&lowered) != map.hash {
+            continue;
+        }
         // What the request is given for the unit is that source as git holds it, never
         // lowered.
         // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-        if generation::source_hash(&lowered) == map.hash {
-            return Some(text);
+        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+        if requirements == map.requirements {
+            return Some(Previous { text, hash_matched: false });
+        }
+        // The lowered code is the map's and the ids are not: this revision only reworded what
+        // the outputs answer for, so it is the hash-matched source and not the source at the
+        // last accepted generation.
+        // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+        if matched.is_none() {
+            // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+            matched = Some(text);
         }
     }
-    None
+    // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+    matched.map(|text| Previous { text, hash_matched: true })
 }
 
 /// One file read as something other than what is on disk, bound through the loader and
 /// lowered: [`elfie_core::interpret::LoweredFile::text`] of it, the way `changes` binds a
-/// previous text.
-// @lfy def/cli/main.lfy:main#main:main:d1d6ff8c10482ac79b9be1a0c2c04a7fe4d4ac88493ebdaeb698ae1ef73a3c9a
-fn lowered_text(workspace: &Workspace, path: &str, text: &str) -> Option<String> {
+/// previous text, and the SHA-256 of its local criterion and test ids as a source map
+/// records them.
+// Decision: the ids are read off the lowered file rather than off a plan made for that
+// revision, since planning every revision of every unit to recover one text would cost more
+// than the recovery is worth; a unit whose entities a plan moves is then not recognized and
+// falls back to its hash-matched source, which the criteria already provide for.
+// @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+fn lowered_of(workspace: &Workspace, path: &str, text: &str) -> Option<(String, String)> {
     // @lfy def/cli/main.lfy:main
     let before = lower(workspace::change(workspace, path, Some(text)));
     // @lfy def/cli/main.lfy:main
     let index = before.workspace.files.iter().position(|file| file.path == path)?;
-    // @lfy def/cli/main.lfy:main
-    Some(before.files[index].text.clone())
+    let file = &before.files[index];
+    let mut ids: Vec<String> = Vec::new();
+    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+    for node in file.root.nodes() {
+        declared_ids(node, &mut ids);
+    }
+    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+    ids.extend(file.criteria.iter().map(|criterion| criterion.id.clone()));
+    ids.extend(file.tests.iter().map(|test| test.id.clone()));
+    ids.sort();
+    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+    Some((file.text.clone(), generation::source_hash(&ids.join("\n"))))
+}
+
+/// The ids of the criteria and tests of one lowered node and of every node under it.
+// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+fn declared_ids(node: &LoweredNode, out: &mut Vec<String>) {
+    out.extend(node.criteria.iter().map(|criterion| criterion.id.clone()));
+    out.extend(node.tests.iter().map(|test| test.id.clone()));
+    for child in node.nodes() {
+        declared_ids(child, out);
+    }
 }
 
 /// One unit as `elfie_units` lists it: the target, the stem, the reason or up to date,
@@ -2425,17 +2608,24 @@ struct Resuming {
 }
 
 impl Resuming {
-    /// The session of the first run of one role on the batch here, kept the first time that
-    /// role runs and left as it is after that.
+    /// What a resuming run of one role goes on from after the run that just ended: that run's
+    /// own `ELFIE_RESUME` when it had one, and its `ELFIE_SESSION` otherwise.
+    ///
+    /// `resumed` is what the run that ended carried, so a run that went on from a session
+    /// passes that session on and a fresh run in the middle of a chain begins a new one: after
+    /// a run that was killed and a fresh run after it, the next resuming run goes on from the
+    /// fresh run rather than from the one before it.
     // @lfy def/cli/main.lfy:main#main:main:9160811ba53e331e41567344fda0fefec31e39e30c8ddd5d3b93fb1dbac571bd
-    fn note(&mut self, role: Role, session: &str) {
+    fn note(&mut self, role: Role, resumed: Option<&str>, session: &str) {
         let chain = match role {
             Role::Compiler => &mut self.compiler,
             Role::Verifier => &mut self.verifier,
         };
         // @lfy def/cli/main.lfy:main#main:main:9160811ba53e331e41567344fda0fefec31e39e30c8ddd5d3b93fb1dbac571bd
-        if chain.is_none() && !session.is_empty() {
-            *chain = Some(session.to_string());
+        let id = resumed.or(if session.is_empty() { None } else { Some(session) });
+        // @lfy def/cli/main.lfy:main#main:main:9160811ba53e331e41567344fda0fefec31e39e30c8ddd5d3b93fb1dbac571bd
+        if let Some(id) = id {
+            *chain = Some(id.to_string());
         }
     }
 
@@ -2948,7 +3138,7 @@ impl Runs {
         self.resuming
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .note(role, &exit.session);
+            .note(role, resume.as_deref(), &exit.session);
         exit
     }
 }
@@ -4208,17 +4398,30 @@ impl Run {
                     .map(|text| Output { path: map.output.clone(), text })
             })
             .collect();
-        // @lfy def/cli/main.lfy:main#main:main:d1d6ff8c10482ac79b9be1a0c2c04a7fe4d4ac88493ebdaeb698ae1ef73a3c9a
+        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
         let mut previous = BTreeMap::new();
+        // The path of each unit whose previous text is only its hash-matched source: it is
+        // given exactly when that text is the hash-matched source and not the source at the
+        // unit's last accepted generation.
+        // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
+        let mut hash_matched: Vec<String> = Vec::new();
         for &index in &batch.units {
             let unit = &self.plan.units[index];
-            if let Some(text) = previous_source(self.workspace(), unit) {
-                previous.insert(self.workspace().files[unit.file].path.clone(), text);
+            if let Some(found) = previous_source(self.workspace(), unit) {
+                let path = self.workspace().files[unit.file].path.clone();
+                // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
+                if found.hash_matched {
+                    // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+                    hash_matched.push(path.clone());
+                }
+                previous.insert(path, found.text);
             }
         }
         // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
         // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
-        let mut request = generation::request(&self.program, &self.plan, batch, &existing, &previous, hosted);
+        // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
+        let mut request =
+            generation::request(&self.program, &self.plan, batch, &existing, &previous, hosted, &hash_matched);
         // The person answers by editing the definitions, or by writing the answer below
         // the question, which the next compile of the batch appends to its instructions.
         // @lfy def/cli/main.lfy:main#main:main:760ac9394baad44b62a3c96e58e305792fb43b2fe0dc7ab8510183a1ad12b070
@@ -4272,24 +4475,53 @@ impl Run {
         }
     }
 
-    /// Whether every output of the batch's units, read in the batch's directory, has a
-    /// SHA-256 equal to [`SourceMap::text`] of its map: the outputs on disk are exactly the
-    /// ones the last acceptance recorded, so nothing of them has to be generated again.
+    /// Whether every output of the batch's units has the unit's own region text that
+    /// [`SourceMap::text`] of its map holds: the outputs on disk are exactly the ones the last
+    /// acceptance recorded, so nothing of them has to be generated again.
     ///
-    /// A unit with no output recorded has nothing on disk that stands, so it never holds.
-    // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
-    // @lfy def/cli/main.lfy:main#main:main:be41f5eb3c9dccc56d47c4b7ade4325954c40d946ef9df6c48bcf5d493b5402e
+    /// Both sides are read in the batch's directory: the output, and the unit's maps from its
+    /// map file there, so maps another unit's acceptance re-derived before the copy was made,
+    /// or in place before this comparison, count. A unit with no map there has nothing on disk
+    /// that stands, so it never holds, and neither does a map recorded before the text hash
+    /// was, whose empty hash no text equals.
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    // @lfy def/cli/main.lfy:main#main:main:c8973e9e2d07a79f390133eefde25b3157ae35c014f978eb58e3a63d4f7eada0
     fn outputs_stand(&self, batch: &Batch, directory: &Path) -> bool {
-        // @lfy def/cli/main.lfy:main#main:main:be41f5eb3c9dccc56d47c4b7ade4325954c40d946ef9df6c48bcf5d493b5402e
+        // @lfy def/cli/main.lfy:main#main:main:c8973e9e2d07a79f390133eefde25b3157ae35c014f978eb58e3a63d4f7eada0
         batch.units.iter().all(|&index| {
-            let unit = &self.plan.units[index];
-            !unit.outputs.is_empty()
-                && unit.outputs.iter().all(|map| {
-                    // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
-                    fs::read_to_string(directory.join(&map.output))
-                        .is_ok_and(|text| generation::source_hash(&text) == map.text)
+            // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+            let maps = self.maps_in(index, directory);
+            !maps.is_empty()
+                && maps.iter().all(|map| {
+                    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+                    fs::read_to_string(directory.join(&map.output)).is_ok_and(|text| {
+                        // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+                        let own = own_region_text(self.workspace(), &self.plan, index, &text);
+                        generation::source_hash(&own) == map.text
+                    })
                 })
         })
+    }
+
+    /// The source maps of one unit as the map file in a directory holds them, as recorded:
+    /// whether or not the outputs they name still exist, which is how `sourceMapsOf` reads a
+    /// map file apart from that.
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    fn maps_in(&self, unit: usize, directory: &Path) -> Vec<SourceMap> {
+        // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+        generation::read_source_maps(&self.map_file_in(unit, directory))
+    }
+
+    /// The map file of one unit under a directory, which is the root or a copy of it, so a
+    /// unit's maps are named the same either way.
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    fn map_file_in(&self, unit: usize, directory: &Path) -> PathBuf {
+        let unit = &self.plan.units[unit];
+        // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+        directory
+            .join(MAPS)
+            .join(&self.workspace().targets[unit.target].identifier)
+            .join(format!("{}.json", unit.stem))
     }
 
     /// The markers of each unit's reworded criteria and tests rewritten to the ids they have
@@ -4304,12 +4536,14 @@ impl Run {
     fn reword_outputs(&mut self, batch: &Batch, directory: &Path) {
         for &index in &batch.units {
             let unit = self.plan.units[index].clone();
+            // Only the source at the unit's last accepted generation says which id replaces
+            // which; its hash-matched source answered for other ids altogether.
             // @lfy def/cli/main.lfy:main#main:main:09bd3d74151cf0e97221debf137fe7f322cd57bc1bae17b8ecd0ef36a1063045
-            let Some(previous) = previous_source(self.workspace(), &unit) else {
+            let Some(previous) = previous_source(self.workspace(), &unit).filter(|found| !found.hash_matched) else {
                 continue;
             };
             // @lfy def/cli/main.lfy:main#main:main:09bd3d74151cf0e97221debf137fe7f322cd57bc1bae17b8ecd0ef36a1063045
-            let rewordings = generation::reworded(&self.program, &unit, &previous);
+            let rewordings = generation::reworded(&self.program, &unit, &previous.text);
             if rewordings.is_empty() {
                 continue;
             }
@@ -4320,7 +4554,7 @@ impl Run {
                 .map(|rewording| (rewording.replaces.clone(), rewording.id.clone()))
                 .collect();
             // @lfy def/cli/main.lfy:main#main:main:09bd3d74151cf0e97221debf137fe7f322cd57bc1bae17b8ecd0ef36a1063045
-            let outputs = outputs_of(self.workspace(), &self.plan, index, directory);
+            let (outputs, _) = outputs_of(self.workspace(), &self.plan, index, directory);
             // @lfy def/cli/main.lfy:main#main:main:09bd3d74151cf0e97221debf137fe7f322cd57bc1bae17b8ecd0ef36a1063045
             let renamed = generation::rename(self.workspace(), &self.plan, index, &outputs, &ids);
             let mut written = 0;
@@ -4354,7 +4588,7 @@ impl Run {
     ///
     /// It takes the compile locked rather than borrowed, since the lock is free while a
     /// command runs: that is what lets the other batches run theirs at the same time.
-    // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
     fn build_and_test(run: &Mutex<Run>, batch: &Batch, directory: &Path, runs: &Runs) -> Result<(), String> {
         let (target, logs) = {
@@ -4363,13 +4597,13 @@ impl Run {
                 return Err("the batch has no target".to_string());
             };
             // A building progress line is printed before the build command runs.
-            // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+            // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
             let line = format!("{} build and then test", target.identifier);
             state.reporter.report(Step::Building, Some(&batch.identifier), None, &line);
             (target, state.reporter.logs.clone())
         };
         // The build command runs first, and the test command only once it succeeded.
-        // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+        // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
         for operation in [Operation::Build, Operation::Test] {
             // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
             let Some(code) = run_target_command(&target, operation, directory, &logs, Some(&runs.running)) else {
@@ -4406,19 +4640,19 @@ impl Run {
 
     /// For each unit of the batch, `accept` runs on the files under the target's output
     /// directory in the batch's directory that carry a marker for the unit.
-    // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
+    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
     fn verdicts_of(&mut self, batch: &Batch, request: &Request, directory: &Path) -> Vec<Verdict> {
         let mut verdicts = Vec::new();
         for &unit in &batch.units {
             let stem = self.plan.units[unit].stem.clone();
             let reason = self.plan.units[unit].reason.map_or_else(|| "up to date".to_string(), |r| r.as_str().to_string());
             self.reporter.report(Step::Checking, Some(&batch.identifier), Some(&stem), &reason);
-            // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
-            let outputs = outputs_of(self.workspace(), &self.plan, unit, directory);
+            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            let (outputs, elsewhere) = outputs_of(self.workspace(), &self.plan, unit, directory);
             // The source maps recorded for the target's other units, which say which outputs
             // already belong to another unit.
-            // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
-            let recorded = self.recorded_elsewhere(unit);
+            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            let recorded = self.recorded_elsewhere(unit, directory);
             verdicts.push(generation::accept(
                 &self.program,
                 &self.plan,
@@ -4426,6 +4660,7 @@ impl Run {
                 unit,
                 &outputs,
                 &recorded,
+                &elsewhere,
             ));
         }
         verdicts
@@ -4434,16 +4669,26 @@ impl Run {
     /// The source maps recorded for the other units of one unit's target: what `accept` reads
     /// to see whether an output already belongs to another unit. The unit's own are left out,
     /// since writing its own output again is what it is being accepted for.
-    // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
-    fn recorded_elsewhere(&self, unit: usize) -> Vec<SourceMap> {
-        let workspace = self.workspace();
-        let target = &workspace.targets[self.plan.units[unit].target].identifier;
-        let source = &workspace.files[self.plan.units[unit].file].path;
-        self.maps
-            .iter()
-            .filter(|map| &map.target == target && &map.source != source)
-            .cloned()
-            .collect()
+    ///
+    /// They are read from the map files in the batch's directory, as recorded, so a map
+    /// another unit's acceptance re-derived is what this one is checked against.
+    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+    fn recorded_elsewhere(&self, unit: usize, directory: &Path) -> Vec<SourceMap> {
+        let target = self.workspace().targets[self.plan.units[unit].target].identifier.clone();
+        let source = self.workspace().files[self.plan.units[unit].file].path.clone();
+        let mut out: Vec<SourceMap> = Vec::new();
+        // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+        for other in 0..self.plan.units.len() {
+            let unit = &self.plan.units[other];
+            if self.workspace().targets[unit.target].identifier != target
+                || self.workspace().files[unit.file].path == source
+            {
+                continue;
+            }
+            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            out.extend(self.maps_in(other, directory));
+        }
+        out
     }
 
     /// One unit's outputs written back in the batch's directory and the unit counted as
@@ -4514,6 +4759,23 @@ impl Run {
         // @lfy def/cli/main.lfy:main#main:main:c2a64cff68c468890c2b64bb46be8472891c54f12fce3e4a2d404d4b2e5f0969
         self.accepted_batch = true;
         let mut unwritten: Vec<String> = Vec::new();
+        // The files the batch's units' maps named before they were recorded, read off their
+        // map files in the root: a unit whose map file names one of them is a co-owner too,
+        // since this batch has just stopped writing a file it used to share with it.
+        // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+        let mut shared: BTreeSet<String> = BTreeSet::new();
+        for &index in &batch.units {
+            let workspace = &self.program.workspace;
+            let unit = &self.plan.units[index];
+            // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+            for map in generation::read_source_maps(&generation::map_file(workspace, unit)) {
+                shared.insert(map.output);
+            }
+        }
+        // The files the maps recorded here name, which are where another unit's marker may now
+        // sit inside a region of this batch's.
+        // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+        let mut recorded_outputs: BTreeSet<String> = BTreeSet::new();
         for &index in &batch.units {
             let unit = &self.plan.units[index];
             // Only a unit written back in this compile has anything new to record.
@@ -4526,6 +4788,8 @@ impl Run {
             let source = workspace.files[unit.file].path.clone();
             let mine: Vec<SourceMap> =
                 held.iter().filter(|map| map.target == target && map.source == source).cloned().collect();
+            // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+            recorded_outputs.extend(mine.iter().map(|map| map.output.clone()));
             // @lfy def/cli/main.lfy:main#main:main:547a317d986ea3f6e5aa1c3f7159cf0286efabfa3aa41ee361f5f5c8c9611f52
             self.maps.retain(|map| !(map.target == target && map.source == source));
             self.maps.extend(mine.iter().cloned());
@@ -4536,6 +4800,12 @@ impl Run {
                 unwritten.push(generation::map_file(workspace, unit).display().to_string());
             }
         }
+        // The maps of every unit of the batch that has them recorded are recorded: each
+        // co-owner's maps are re-derived from the files as they are now, so a unit that shares
+        // an output with the batch is told where its regions went.
+        // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+        shared.extend(recorded_outputs.iter().cloned());
+        self.rederive_co_owners(batch, &shared, &recorded_outputs);
         // The source maps of the batch are recorded: its review records are written beside
         // them, so that the next compile carries the verdicts of what it did not change. A
         // batch accepted on its build and test had no verifier run on it and no review
@@ -4560,6 +4830,135 @@ impl Run {
             complain(self.style.err, Some(&path), "could not be written");
             self.worsen(ExitCode::Failure);
         }
+    }
+
+    /// Each co-owner of the batch has its maps re-derived from the files as they are now and
+    /// recorded, once the maps of every unit of the batch that has them recorded are recorded
+    /// in the root.
+    ///
+    /// The batch's co-owners are the units of its target that are not of the batch and that
+    /// have a marker of their own in a file the recorded maps name, or whose map file names
+    /// such a file or a file a map of the batch's units named before they were recorded.
+    /// `shared` is every one of those files and `recorded` the ones the maps recorded here
+    /// name.
+    ///
+    /// Nothing else is written for a co-owner: no compiler and no verifier runs for it and no
+    /// review record file of its changes, because its code did not change — only where its
+    /// regions sit in files another unit rewrote.
+    // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+    // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+    // @lfy def/cli/main.lfy:main#main:main:14b01e32487ce04075ecbde039b065c7ad9311e9e5e8cb3e8c5117b41e849f61
+    fn rederive_co_owners(&mut self, batch: &Batch, shared: &BTreeSet<String>, recorded: &BTreeSet<String>) {
+        if shared.is_empty() {
+            return;
+        }
+        let root = self.workspace().root.clone();
+        let target = batch_target(self.workspace(), &self.plan, batch).to_string();
+        // The text of each file the maps recorded here name, where a co-owner's own marker may
+        // now sit, read once rather than once per unit.
+        // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+        let texts: Vec<String> =
+            recorded.iter().filter_map(|output| fs::read_to_string(root.join(output)).ok()).collect();
+        // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+        for index in 0..self.plan.units.len() {
+            // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+            if self.workspace().targets[self.plan.units[index].target].identifier != target
+                || batch.units.contains(&index)
+            {
+                continue;
+            }
+            let workspace = &self.program.workspace;
+            // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+            let was = generation::read_source_maps(&generation::map_file(workspace, &self.plan.units[index]));
+            // Its map file names one of the files the batch shares with it, or one of its own
+            // markers sits in a file the batch just recorded.
+            // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+            let named = was.iter().any(|map| shared.contains(&map.output));
+            // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+            let marked = texts.iter().any(|text| {
+                generation::parse_markers(text)
+                    .iter()
+                    .any(|marker| own_marker(self.workspace(), &self.plan, index, marker))
+            });
+            if !named && !marked {
+                continue;
+            }
+            // Each co-owner's maps are re-derived once for the batch, from the maps its map
+            // file holds, whether or not the outputs they name still exist.
+            // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+            let now = generation::rederive(&self.program, &self.plan, index, &was);
+            // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+            self.warn_of_wider_regions(batch, index, &was, &now);
+            let workspace = &self.program.workspace;
+            let unit = &self.plan.units[index];
+            // Only the co-owner's map file is written for it.
+            // @lfy def/cli/main.lfy:main#main:main:14b01e32487ce04075ecbde039b065c7ad9311e9e5e8cb3e8c5117b41e849f61
+            // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+            if !generation::record(workspace, unit, &now) {
+                let path = generation::map_file(workspace, unit).display().to_string();
+                complain(self.style.err, Some(&path), "could not be written");
+                self.worsen(ExitCode::Failure);
+                continue;
+            }
+            // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+            let (target, source) = {
+                let unit = &self.plan.units[index];
+                (
+                    self.workspace().targets[unit.target].identifier.clone(),
+                    self.workspace().files[unit.file].path.clone(),
+                )
+            };
+            // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+            self.maps.retain(|map| !(map.target == target && map.source == source));
+            self.maps.extend(now);
+        }
+    }
+
+    /// A message to standard error for each of a co-owner's own markers whose regions span
+    /// more output lines in total than they did in the maps the re-derived ones replace: the
+    /// re-derived maps are recorded all the same, and the message says that another unit's
+    /// lines may now lie in the co-owner's region.
+    // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+    fn warn_of_wider_regions(&mut self, batch: &Batch, unit: usize, was: &[SourceMap], now: &[SourceMap]) {
+        // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+        let before = self.spans_of(unit, was);
+        // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+        let after = self.spans_of(unit, now);
+        let stem = self.plan.units[unit].stem.clone();
+        for (marker, lines) in after {
+            // A region the maps it replaces did not hold spanned no line in them, so any line
+            // of it now is more.
+            // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+            if lines <= before.get(&marker).copied().unwrap_or(0) {
+                continue;
+            }
+            // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+            let message = format!(
+                "the region of {marker} grew when {} was recorded: another unit's lines may now lie in it",
+                batch.identifier
+            );
+            // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+            complain(self.style.err, Some(&stem), &message);
+        }
+    }
+
+    /// How many output lines the regions of each of one unit's own markers span in total, by
+    /// the marker's file, entity, and requirement, which is what names a region.
+    // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+    fn spans_of(&self, unit: usize, maps: &[SourceMap]) -> BTreeMap<String, usize> {
+        let mut out: BTreeMap<String, usize> = BTreeMap::new();
+        for map in maps {
+            for marker in &map.markers {
+                // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+                if !own_marker(self.workspace(), &self.plan, unit, marker) {
+                    continue;
+                }
+                // @lfy def/cli/main.lfy:main#main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f
+                let lines = marker.end.saturating_sub(marker.output_line) + 1;
+                *out.entry(region_named(marker)).or_default() += lines;
+            }
+        }
+        out
     }
 
     /// The problems of every rejected unit: one rejected line per unit, then its problems
@@ -5298,9 +5697,9 @@ impl Run {
         // What may stand in for the compiler on the batch's first run, decided before any
         // marker of its outputs is rewritten: the outputs on disk must be exactly the ones
         // the last acceptance recorded, and nothing of a rejected run may have been taken.
-        // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
-        // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
-        // @lfy def/cli/main.lfy:main#main:main:be41f5eb3c9dccc56d47c4b7ade4325954c40d946ef9df6c48bcf5d493b5402e
+        // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
+        // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
+        // @lfy def/cli/main.lfy:main#main:main:c8973e9e2d07a79f390133eefde25b3157ae35c014f978eb58e3a63d4f7eada0
         let stand = kept.is_none() && locked(run).outputs_stand(batch, &directory);
         let mut request = {
             let mut state = locked(run);
@@ -5342,7 +5741,7 @@ impl Run {
             }
             // A first run that skips the compiler: the target's build and test commands, or
             // nothing but the markers already moved, and then the outputs checked.
-            // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
+            // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
             // @lfy def/cli/main.lfy:main#main:main:c9e9379aee6642c4c6fd644592fb507b9275e32d2a6daa8928f697b3e30a5b06
             let outcome = if stage == Stage::Compiler {
                 attempt += 1;
@@ -5402,7 +5801,7 @@ impl Run {
                     state
                         .reporter
                         .append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
-                    // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
+                    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
                     let verdicts = state.verdicts_of(batch, &request, &directory);
                     // How the run ended is the outcome of its report, those verdicts, and
                     // what it submitted through its session before the session was closed.
@@ -5413,7 +5812,7 @@ impl Run {
                 // The target's build command and then its test command stand in for the
                 // compiler on a batch whose every unit has the reason dependency; a command
                 // that failed sends the batch to the compiler as its first run.
-                // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+                // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
                 // @lfy def/cli/main.lfy:main#main:main:9253f376492f06a33bd0110d5f3f29c04bffd6a3b5a3a922f56cb3f2d9a668e9
                 if stage == Stage::Dependency
                     && let Err(why) = Run::build_and_test(run, batch, &directory, runs)
@@ -5425,7 +5824,7 @@ impl Run {
                     continue;
                 }
                 // Each unit is accepted or rejected as after a run of the compiler.
-                // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
+                // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
                 // @lfy def/cli/main.lfy:main#main:main:c9e9379aee6642c4c6fd644592fb507b9275e32d2a6daa8928f697b3e30a5b06
                 let verdicts = locked(run).verdicts_of(batch, &request, &directory);
                 // A unit rejected without a run of the compiler: the problems are printed and
@@ -5447,12 +5846,14 @@ impl Run {
                     stage = Stage::Compiler;
                     continue;
                 }
-                // Every unit was accepted: its outputs are written back, and a batch accepted
-                // on its build and test is done there, with no verifier run on it.
-                // @lfy def/cli/main.lfy:main#main:main:64edfa7c41c1dd3ba97140f316748c707c8d82d2e2e9691e156ae3ba2749260f
+                // Every unit was accepted: a batch accepted on its build and test writes its
+                // outputs back and is done there, with no verifier run on it; a batch accepted
+                // on its moved markers alone goes on as a compiler run whose outcome is
+                // accepted does, which writes them back once.
                 // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
-                let held = locked(run).hold_batch(batch, &verdicts, &directory);
                 if stage == Stage::Dependency {
+                    // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
+                    let held = locked(run).hold_batch(batch, &verdicts, &directory);
                     // Every unit was accepted and nothing is to run the compiler on the
                     // batch: what it has accepted is what a copy depending on it takes.
                     // @lfy def/cli/main.lfy:main#main:main:eceff310959fa29bae3da5b35fd3856bfaccd67f6a0866c09241cd83f43af49b
@@ -5460,6 +5861,7 @@ impl Run {
                     // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
                     return Compiled::on_build(held);
                 }
+                // @lfy def/cli/main.lfy:main#main:main:64edfa7c41c1dd3ba97140f316748c707c8d82d2e2e9691e156ae3ba2749260f
                 Outcome { kind: OutcomeKind::Accepted, message: String::new(), verdicts }
             };
             match outcome.kind {
@@ -5469,8 +5871,8 @@ impl Run {
                 // batch's work has reached the root.
                 // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
                 OutcomeKind::Accepted => {
-                    // A batch whose units were accepted without a run of the compiler has had
-                    // its outputs written back already.
+                    // Each unit's outputs are written back once, whether the compiler ran or
+                    // the batch's moved markers stood in for it.
                     // @lfy def/cli/main.lfy:main#main:main:c0ff42fd47c552fedc4e3213d3ec87968ae59279faec3d132caf6866820027d7
                     // @lfy def/cli/main.lfy:main#main:main:64edfa7c41c1dd3ba97140f316748c707c8d82d2e2e9691e156ae3ba2749260f
                     let held = locked(run).hold_batch(batch, &outcome.verdicts, &directory);
@@ -5633,36 +6035,36 @@ impl Run {
     /// moved and its outputs checked, which asks no compiler, but only while a verifier may
     /// look at the result. A batch whose every unit has the reason dependency has the
     /// target's build and test commands run instead, while the target has a line for both.
-    // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
+    // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
     // @lfy def/cli/main.lfy:main#main:main:373a3000fa63b155721a53e3ee16c9fbd2ad88138c3fd6a1ec81ce3eeab80f12
-    // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     // @lfy def/cli/main.lfy:main#main:main:75192ed1a30affcf3c4f5a267b8bf361995b47809aca6cb8e4585e78bffd8551
     // @lfy def/cli/main.lfy:main#main:main:97bd4222037bff6cb9965f2bb80eda7bdf1510086acdf2043dba6c4f6118713f
-    // @lfy def/cli/main.lfy:main#main:main:be41f5eb3c9dccc56d47c4b7ade4325954c40d946ef9df6c48bcf5d493b5402e
+    // @lfy def/cli/main.lfy:main#main:main:c8973e9e2d07a79f390133eefde25b3157ae35c014f978eb58e3a63d4f7eada0
     fn stage_of(&self, batch: &Batch, request: &Request, stand: bool) -> Stage {
         // An output that is no longer what was accepted, or work a rejected run kept, leaves
         // the compiler to do.
-        // @lfy def/cli/main.lfy:main#main:main:be41f5eb3c9dccc56d47c4b7ade4325954c40d946ef9df6c48bcf5d493b5402e
+        // @lfy def/cli/main.lfy:main#main:main:c8973e9e2d07a79f390133eefde25b3157ae35c014f978eb58e3a63d4f7eada0
         if !stand || self.accept_only {
             return Stage::Compiler;
         }
-        // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
+        // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
         let reworded_only = batch.units.iter().all(|&index| {
             let path = &self.workspace().files[self.plan.units[index].file].path;
             request.reworded_only.contains(path)
         });
         // Only a batch a verifier may look at is accepted on its moved markers alone.
-        // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
+        // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
         // @lfy def/cli/main.lfy:main#main:main:373a3000fa63b155721a53e3ee16c9fbd2ad88138c3fd6a1ec81ce3eeab80f12
         if reworded_only && self.verifier.is_some() && !self.no_verify {
             return Stage::Reworded;
         }
-        // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+        // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
         let dependency_only = batch
             .units
             .iter()
             .all(|&index| self.plan.units[index].reason == Some(Reason::Dependency));
-        // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+        // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
         // @lfy def/cli/main.lfy:main#main:main:75192ed1a30affcf3c4f5a267b8bf361995b47809aca6cb8e4585e78bffd8551
         if dependency_only && self.builds_and_tests(batch) {
             return Stage::Dependency;
@@ -5676,12 +6078,12 @@ impl Run {
     /// verified like any other against the source maps held for it; since no compiler runs
     /// there is nothing to run again, so a violated review rejects the batch at once and
     /// those maps are never recorded.
-    // @lfy def/cli/main.lfy:main#main:main:52173d6aec3bd565923f7f25e65eb917c7805384fb7786a7c28a91349cdfba1a
+    // @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
     fn accept_on_disk(run: &Mutex<Run>, batch: &Batch, root: &Path) {
         // No compiler is run; nothing else is writing the root, so the batch needs no copy of
         // its own.
         // @lfy def/cli/main.lfy:main#main:main:c51341f34278d51ccda0b1a75908b211f46b7db736525ed29c88351db922c346
-        // @lfy def/cli/main.lfy:main#main:main:52173d6aec3bd565923f7f25e65eb917c7805384fb7786a7c28a91349cdfba1a
+        // @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
         let where_ = Where::Root(root.to_path_buf());
         let held = {
             let mut state = locked(run);
@@ -5816,11 +6218,11 @@ enum Stage {
     /// Every unit of the batch is reworded only, so moving the markers of its reworded
     /// criteria and tests is the whole of the work and its outputs are checked without the
     /// compiler.
-    // @lfy def/cli/main.lfy:main#main:main:a99ac2397649c519416e88c1b704d8fbdabb2405f18b295a3fe326193d6b8c9d
+    // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
     Reworded,
     /// Every unit of the batch has the reason dependency, so the target's build and test
     /// commands stand in for the compiler.
-    // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     Dependency,
 }
 
@@ -6128,17 +6530,28 @@ fn run_in_copy(
     // What the batches it took changes from actually wrote into the root: where a merge of
     // theirs mixed in other work, the copy takes those files and is built and tested again.
     // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
-    let differs: Changes = took
-        .values()
-        .flatten()
-        .filter(|(path, change)| fs::read(root.join(path)).ok().as_deref() != change.text.as_deref())
-        .map(|(path, change)| {
-            // The base of the merge into the copy is what the copy took for that file.
+    let mut differs: Changes = BTreeMap::new();
+    // The batches whose files differ, in plan order, so the retrying line can name them.
+    // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
+    let mut differing: Vec<&str> = Vec::new();
+    for (&waited, changes) in &took {
+        let mut any = false;
+        for (path, change) in changes {
             // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
             let now = fs::read(root.join(path)).ok();
-            (path.clone(), Change { base: change.text.clone(), text: now, mode: change.mode })
-        })
-        .collect();
+            if now.as_deref() == change.text.as_deref() {
+                continue;
+            }
+            any = true;
+            // The base of the merge into the copy is what the copy took for that file.
+            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+            differs.insert(path.clone(), Change { base: change.text.clone(), text: now, mode: change.mode });
+        }
+        // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
+        if any {
+            differing.push(&round.planned[waited].batch.identifier);
+        }
+    }
     // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
     if !differs.is_empty()
         && let Err(why) = remerge(run, batch, mirror, &differs, &runs)
@@ -6146,7 +6559,9 @@ fn run_in_copy(
         // Nothing of the batch is merged, a retrying line names the batch whose files
         // differ, and the batch runs again from a new copy taking its changes as kept work.
         // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
-        locked(run).reporter.report(Step::Retrying, Some(&batch.identifier), None, &why);
+        let message = format!("the files of {} differ: {why}", differing.join(", "));
+        // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
+        locked(run).reporter.report(Step::Retrying, Some(&batch.identifier), None, &message);
         // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
         let again = kept_of(run, batch, mirror, &Vec::new());
         mirror.remove();
@@ -6308,7 +6723,7 @@ fn run_batches(
                         // @lfy def/cli/main.lfy:main#main:main:db1a5e729050c2e7e4c514c2b1f563a02e48f134099c96fb1af0d2a471cd6bbf
                         let round = Round { schedule, finished, planned, at, copies };
                         let done = match (accept_only, compiler) {
-                            // @lfy def/cli/main.lfy:main#main:main:52173d6aec3bd565923f7f25e65eb917c7805384fb7786a7c28a91349cdfba1a
+                            // @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
                             (true, _) => {
                                 Run::accept_on_disk(run, &batch, root);
                                 Done::Merged
@@ -9111,7 +9526,7 @@ global@targets.add(rust);
         // @lfy def/cli/main.lfy:main
         let workspace = workspace::load(&fixture.root);
         let raw = fixture.read("def/a.lfy");
-        let lowered = lowered_text(&workspace, "def/a.lfy", &raw).unwrap();
+        let (lowered, requirements) = lowered_of(&workspace, "def/a.lfy", &raw).unwrap();
         // Lowering drops the criteria, so the lowered text is not the raw source and a test
         // cannot pass with either one in place of the other. @lfy def/cli/main.lfy:main
         assert!(raw.contains("@acceptanceCriteria"), "{raw}");
@@ -9123,16 +9538,155 @@ global@targets.add(rust);
         let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new());
         let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
         assert_eq!(generation::source_hash(&lowered), unit.outputs[0].hash);
-        // What comes back is that revision as git holds it, never lowered.
+        // And by the ids of its criteria and tests, which the map holds beside the hash: a
+        // revision that lowers to the hash with other ids is only the hash-matched source.
+        // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+        assert_eq!(requirements, unit.outputs[0].requirements);
+        // What comes back is that revision as git holds it, never lowered, and it is the
+        // source at the last accepted generation rather than only the hash-matched one.
         // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-        let previous = previous_source(&program.workspace, unit).unwrap();
+        // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
+        let found = previous_source(&program.workspace, unit).unwrap();
+        assert!(!found.hash_matched);
+        let previous = found.text;
         assert_eq!(previous, raw);
-        // Which the request lowers itself, once, to set beside the unit's own lowered text.
+        // Which the request lowers itself, once, to set beside the unit's own lowered text;
+        // nothing is hash-matched, so the request is given no path among them.
         // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
+        // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
         let handed = BTreeMap::from([("def/a.lfy".to_string(), previous)]);
-        let request = generation::request(&program, &plan, &plan.batches[0], &[], &handed, true);
+        let request = generation::request(&program, &plan, &plan.batches[0], &[], &handed, true, &[]);
         assert_eq!(request.previous["def/a.lfy"], lowered);
         assert!(request.sources["def/a.lfy"].contains("d A"), "{:?}", request.sources);
+    }
+
+    /// A revision that lowers to the hash a unit's map holds but answers for other ids is the
+    /// unit's hash-matched source rather than the source at its last accepted generation: it
+    /// comes back marked as such, and a unit whose previous text is only that is never one
+    /// whose markers are the whole of the work.
+    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+    // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+    // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
+    // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
+    #[test]
+    fn a_revision_that_only_reworded_a_criterion_is_the_hash_matched_source() {
+        let fixture = Fixture::new();
+        a_compiler_and_a_verifier(&fixture, SATISFIED);
+        if !git(&fixture, &["init", "-q"]) {
+            return; // No git here: nothing is recoverable, and nothing to check.
+        }
+        git(&fixture, &["config", "user.email", "p@example.com"]);
+        git(&fixture, &["config", "user.name", "p"]);
+        git(&fixture, &["add", "def/a.lfy"]);
+        git(&fixture, &["commit", "-q", "-m", "a"]);
+        let committed = fixture.read("def/a.lfy");
+        // The criterion is reworded: lowering drops it, so the lowered code is untouched and
+        // only the id changes. @lfy def/cli/main.lfy:main
+        fixture.write(
+            "def/a.lfy",
+            "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts every item of the list` });\n}\n",
+        );
+        // The outputs are accepted from the reworded file, so the map holds the ids it has
+        // now, which the committed revision does not. @lfy def/cli/main.lfy:main
+        assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
+        let workspace = workspace::load(&fixture.root);
+        let maps = generation::source_maps_of(&workspace, None);
+        drop(workspace);
+        let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new());
+        let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
+        // The committed revision lowers to the map's hash and answers for other ids, so it is
+        // the hash-matched source and not the source at the last accepted generation.
+        // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+        // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+        let found = previous_source(&program.workspace, unit).unwrap();
+        assert!(found.hash_matched);
+        assert_eq!(found.text, committed);
+        // Given that path among the hash-matched, the request names no unit whose markers are
+        // the whole of the work.
+        // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
+        // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
+        let handed = BTreeMap::from([("def/a.lfy".to_string(), found.text)]);
+        let hash_matched = vec!["def/a.lfy".to_string()];
+        let request =
+            generation::request(&program, &plan, &plan.batches[0], &[], &handed, true, &hash_matched);
+        assert!(request.reworded_only.is_empty(), "{:?}", request.reworded_only);
+    }
+
+    /// The own region text of an output is the lines of the regions this unit's own markers
+    /// begin, without the marker comments, and nothing another unit wrote in the same file.
+    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    #[test]
+    fn the_own_region_text_of_a_shared_output_leaves_another_unit_out() {
+        let fixture = Fixture::new();
+        one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n").write("def/b.lfy", "d B: `A B` {}\n");
+        let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+        let index = plan.units.iter().position(|unit| unit.stem == "a").unwrap();
+        let text = "// @lfy def/a.lfy:A\npub struct A {}\n// @lfy def/b.lfy:B\npub struct B {}\n";
+        // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+        let own = own_region_text(&program.workspace, &plan, index, text);
+        assert_eq!(own, "pub struct A {}\n");
+    }
+
+    /// A project of two units in two directories, `def/b/one` and `def/a/one` which uses it,
+    /// whose compiler writes both their regions into one shared output: the run for `b/one`
+    /// writes its own region alone, and the run for `a/one` writes its own above it, so what
+    /// `b/one` was accepted with is no longer where its own accept saw it.
+    // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+    fn a_shared_output(fixture: &Fixture) -> &Fixture {
+        let compiler = "#!/bin/sh\ncat > /dev/null\nmkdir -p \"$ELFIE_ROOT/out\"\n\
+             case \"$ELFIE_UNITS\" in\n\
+             *b/one*)\n\
+             echo ran >> \"$ELFIE_ROOT/ran-b.txt\"\n\
+             printf '// @lfy def/b/one.lfy:B\\npub struct B {}\\n' > \"$ELFIE_ROOT/out/shared.rs\"\n\
+             ;;\n\
+             *a/one*)\n\
+             echo ran >> \"$ELFIE_ROOT/ran-a.txt\"\n\
+             printf '// @lfy def/a/one.lfy:A\\npub struct A {}\\n// @lfy def/b/one.lfy:B\\npub struct B {}\\n' \
+             > \"$ELFIE_ROOT/out/shared.rs\"\n\
+             ;;\n\
+             esac\n\
+             echo 'ELFIE: DONE'\n";
+        library(fixture)
+            .write("def/roles.lfy", ROLES)
+            .write("def/targets.lfy", TARGETS)
+            .write("def/b/one.lfy", "d B: `A B` {}\n")
+            .write("def/a/one.lfy", "use \"../b/one\";\n\nd A: `An A` {}\n")
+            .write("compiler.sh", compiler)
+            .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]))
+    }
+
+    /// A unit that shares an output with a batch is one of its co-owners: once the batch's
+    /// source maps are recorded, the co-owner's are re-derived from the file as it is now and
+    /// recorded for it, so its regions are where the batch's write left them; no compiler runs
+    /// for the co-owner and nothing but its map file is written for it.
+    // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+    // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+    // @lfy def/cli/main.lfy:main#main:main:14b01e32487ce04075ecbde039b065c7ad9311e9e5e8cb3e8c5117b41e849f61
+    #[test]
+    fn a_co_owner_of_a_shared_output_has_its_maps_re_derived() {
+        let fixture = Fixture::new();
+        a_shared_output(&fixture);
+        // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+        assert_eq!(fixture.run(&["compile", "--jobs", "1", "--no-verify"]), ExitCode::Success.code());
+        // The run for a/one put its own region above the one b/one was accepted with.
+        // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+        let shared = fixture.read("out/shared.rs");
+        assert!(shared.starts_with("// @lfy def/a/one.lfy:A"), "{shared}");
+        // b/one's map file names the marker where the file holds it now, the third line, and
+        // not the first, where its own accept saw it.
+        // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+        let maps = maps_of(&fixture, "elfie-compile/maps/rust/b/one.json");
+        assert_eq!(maps[0]["output"], "out/shared.rs", "{maps}");
+        let its = maps[0]["markers"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|marker| marker["file"] == "def/b/one.lfy")
+            .unwrap_or_else(|| panic!("{maps}"));
+        assert_eq!(its["outputLine"], 3, "{maps}");
+        // No compiler ran for the co-owner beyond its own batch's one run.
+        // @lfy def/cli/main.lfy:main#main:main:14b01e32487ce04075ecbde039b065c7ad9311e9e5e8cb3e8c5117b41e849f61
+        assert_eq!(fixture.read("ran-b.txt").lines().count(), 1);
     }
 
     /// One git command in the fixture's root; whether it ran and succeeded.
@@ -9544,13 +10098,13 @@ global@targets.add(rust);
     }
 
     /// A build command line and a test command line that both exit 0.
-    // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     const PASSES: &str = "\n    .add({ operation = Operation.build, line = \"true\" })\
                           \n    .add({ operation = Operation.test, line = \"true\" })";
 
     /// A compiler writing the output of `def/b.lfy` and of `def/a.lfy`, the same way every
     /// run, and noting that it ran.
-    // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     const TWO_OUTPUTS: &str = "#!/bin/sh\ncat > /dev/null\n\
                                echo \"$ELFIE_BATCH\" >> \"$ELFIE_ROOT/ran.txt\"\n\
                                mkdir -p \"$ELFIE_ROOT/out\"\n\
@@ -9586,7 +10140,7 @@ global@targets.add(rust);
     }
 
     /// The log of a compile forgotten, so that the next one reads on its own.
-    // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     fn forget_log(fixture: &Fixture) {
         let _ = fs::remove_file(fixture.root.join("elfie-requests/compile.log"));
     }
@@ -9634,7 +10188,7 @@ global@targets.add(rust);
         // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
         assert!(!fixture.root.join("ran.txt").exists(), "the compiler or the verifier ran");
         // A building line for a, and then an accepted line.
-        // @lfy def/cli/main.lfy:main#main:main:dcf00f857cbef6c4dce96412dea7f9b45c00f97c4a811817680fd0fda9da4d04
+        // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
         let log = fixture.read("elfie-requests/compile.log");
         assert!(log.contains("\u{25b8} building"), "{log}");
         assert!(log.lines().any(|line| line.contains("\u{2713} accepted")), "{log}");

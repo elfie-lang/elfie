@@ -9,6 +9,7 @@
 pub mod data;
 pub mod traits; // @lfy def/mcp/traits.lfy:tool
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs;
@@ -2029,10 +2030,14 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// The files under the target's output directory that carry a marker for the unit's
-/// file, read from disk.
-// @lfy def/mcp/main.lfy:check#check:check:77f6c4a5084647dc21eb7114983b08f9ebbf27471071fee839c6113ba37cdfab
-fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> Vec<Output> {
+/// The files under the target's output directory, each read from disk, split into the ones
+/// that carry a marker for the unit's file and every other one.
+///
+/// The first are the unit's outputs, which acceptance judges and records a map for; the rest
+/// are read for the markers they hold and nothing else, so a region of another unit that
+/// moved out of an output of this one is still found where it went.
+// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> (Vec<Output>, Vec<Output>) {
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
     let file = &workspace.files[unit.file].path;
@@ -2040,16 +2045,21 @@ fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> Vec<Output> {
     walk_all(&workspace.root.join(&target.output_directory), &mut paths);
     paths.sort();
     let mut found = Vec::new();
+    let mut elsewhere = Vec::new();
     for path in paths {
         let Ok(text) = fs::read_to_string(&path) else { continue };
-        if generation::parse_markers(&text).iter().any(|marker| &marker.file == file) {
-            found.push(Output {
-                path: relative(&workspace.root, &path),
-                text,
-            });
+        let output = Output {
+            path: relative(&workspace.root, &path),
+            text,
+        };
+        if generation::parse_markers(&output.text).iter().any(|marker| &marker.file == file) {
+            found.push(output);
+        } else {
+            // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+            elsewhere.push(output);
         }
     }
-    found
+    (found, elsewhere)
 }
 
 /// The identifiers of every target, joined.
@@ -2118,26 +2128,49 @@ fn output_files(workspace: &Workspace, target: &Target) -> Vec<String> {
         .collect()
 }
 
+/// The program of a session's binding, with the workspace read at the session's root: the
+/// workspace the binding's plan indexes into, every path of it joining to the directory the
+/// run is in.
+///
+/// A run in a batch's own copy reads the outputs there rather than in the root the compile
+/// was lowered from, so the session's workspace stands in for the program's where the two
+/// roots differ, and the program is read as it is where they do not, which is every run
+/// outside a copy.
+fn program_at_root<'a>(session: &'a Session, binding: &'a Binding) -> Cow<'a, Program> {
+    if binding.program.workspace.root == session.workspace.root {
+        return Cow::Borrowed(&binding.program);
+    }
+    let mut program = binding.program.clone();
+    program.workspace = session.workspace.clone();
+    Cow::Owned(program)
+}
+
 /// The source maps of the units of a compiler session's batch, read from the markers their
-/// target's output files hold now rather than from what the last acceptance recorded: one
-/// map per unit and output file that holds a marker naming the unit's source, whose markers
-/// are the markers of that file naming that source, read as acceptance reads them.
+/// target's output files hold now rather than from where the last acceptance recorded them.
 ///
 /// A compiler has just written and edited those files, so it must see its regions where they
-/// are now; the ends are derived over every marker of the file, as a source map derives
-/// them, and only then are the markers of other sources left out, so a region still ends
-/// where the next marker begins whoever wrote it.
+/// are now. For a unit whose map file holds maps, `generation::rederive` reads them: the
+/// markers are those the files hold when the call arrives, and everything else each map
+/// carries — what the unit's text and requirements hashed to, which ids were answered, when
+/// it was accepted — is carried over from the maps the file holds, so the unit plans,
+/// changes, and requests as the compile planned it.
 ///
-/// Only the markers are read from the file. Everything else a map carries — what the unit's
-/// text and requirements hashed to, which ids were answered, when it was accepted — is the
-/// recorded map's, taken from `recorded`, the maps of those units that the live ones stand
-/// in for, so the unit plans, changes, and requests as the compile planned it.
-// @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
-// @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+/// A unit whose map file holds none has nothing to carry over, so `rederive` is given one
+/// map of the unit whose every other member is empty: it then reads the markers of each
+/// output file that holds one of the unit's own exactly as it reads them for a unit that has
+/// maps, and carries those empty members over to each. It gives that one map back when no
+/// output file holds a marker of the unit, and a map for no output is no map at all.
+///
+/// `recorded` is what the unit's map file holds: the maps read for it that these stand in
+/// for, as the session read them, so that a target whose maps are still recorded under its
+/// output directory is read there as everywhere else.
+// @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
+// @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
 fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMap]) -> Vec<SourceMap> {
     let Some(binding) = &session.binding else { return Vec::new() };
     let Some(batch) = &binding.batch else { return Vec::new() };
     let workspace = &session.workspace;
+    let program = program_at_root(session, binding);
     let mut found: Vec<SourceMap> = Vec::new();
     for &index in &batch.units {
         let Some(unit) = binding.plan.units.get(index) else { continue };
@@ -2146,43 +2179,44 @@ fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMa
             continue;
         }
         let Some(file) = workspace.files.get(unit.file) else { continue };
-        // @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
-        for output in output_files(workspace, of_target) {
-            let Ok(text) = fs::read_to_string(workspace.root.join(&output)) else { continue };
-            let markers: Vec<Marker> = generation::parse_markers(&text)
-                .into_iter()
-                .filter(|marker| marker.file == file.path)
-                .collect();
-            if markers.is_empty() {
-                continue;
-            }
-            // The recorded map of the same target, output, and source gives every member but
-            // the markers; where none was recorded, there is nothing to carry over.
-            // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
-            let mut map = recorded
-                .iter()
-                .find(|one| {
-                    one.target == of_target.identifier && one.output == output && one.source == file.path
-                })
-                .cloned()
-                // @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
-                .unwrap_or_else(|| SourceMap {
-                    target: of_target.identifier.clone(),
-                    output: output.clone(),
-                    source: file.path.clone(),
-                    hash: String::new(),
-                    requirements: String::new(),
-                    answered: Vec::new(),
-                    signature: String::new(),
-                    text: String::new(),
-                    dependencies: BTreeMap::new(),
-                    generated: String::new(),
-                    markers: Vec::new(),
-                });
-            // @lfy def/mcp/main.lfy:host#host:host:e7b0595c23bc940969f71da55611064a2e5d53569ad18ad94b4b021935dc0a65
-            map.markers = markers;
-            found.push(map);
+        let held: Vec<SourceMap> = recorded
+            .iter()
+            .filter(|map| map.target == of_target.identifier && map.source == file.path)
+            .cloned()
+            .collect();
+        // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
+        if !held.is_empty() {
+            found.extend(generation::rederive(&program, &binding.plan, index, &held));
+            continue;
         }
+        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        let empty = SourceMap {
+            target: of_target.identifier.clone(),
+            output: String::new(),
+            source: file.path.clone(),
+            hash: String::new(),
+            requirements: String::new(),
+            answered: Vec::new(),
+            signature: String::new(),
+            text: String::new(),
+            dependencies: BTreeMap::new(),
+            generated: String::new(),
+            markers: Vec::new(),
+        };
+        // An output file is one whose extension is among the target's, as every other walk
+        // of an output directory reads one.
+        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        let of_output = |map: &SourceMap| {
+            Path::new(&map.output)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| of_target.extensions.iter().any(|known| known == extension))
+        };
+        found.extend(
+            generation::rederive(&program, &binding.plan, index, &[empty])
+                .into_iter()
+                .filter(of_output),
+        );
     }
     found
 }
@@ -2220,7 +2254,7 @@ fn source_maps_of(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
         // @lfy def/mcp/main.lfy:host#host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba
         let left_out: Vec<SourceMap> = read.iter().filter(|map| own.contains(&map.source)).cloned().collect();
         read.retain(|map| !own.contains(&map.source));
-        // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+        // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
         read.extend(own_source_maps(session, target, &left_out));
     }
     let given: &[SourceMap] = match &session.binding {
@@ -2541,16 +2575,17 @@ fn request_for(program: &Program, plan: &Plan, batch: &Batch) -> Request {
         })
         .collect();
     // The request is made here rather than handed to the session, so it is no hosted
-    // compiler's request and quotes the interfaces of its dependencies whole.
+    // compiler's request and quotes the interfaces of its dependencies whole. No unit is
+    // given a previous source, so none of them is given a hash-matched one either.
     // @lfy def/mcp/main.lfy:request#request:request:92537a4ab2aac8027576852406e446fcb12c7b5b87c96095a386c6d7dac101ed
-    generation::request(program, plan, batch, &existing, &BTreeMap::new(), false)
+    generation::request(program, plan, batch, &existing, &BTreeMap::new(), false, &[])
 }
 
 /// The request of the batch that holds a unit.
 // Decision: a unit that is up to date is in no batch, because only planned units are
 // batched; it is requested as a batch of its own, which is the request its batch would
 // be, so a check of an up-to-date unit answers rather than failing.
-// @lfy def/mcp/main.lfy:check#check:check:77f6c4a5084647dc21eb7114983b08f9ebbf27471071fee839c6113ba37cdfab
+// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
 fn request_of_unit(program: &Program, plan: &Plan, unit: usize) -> Request {
     match plan.batches.iter().find(|batch| batch.units.contains(&unit)) {
         Some(batch) => request_for(program, plan, batch),
@@ -2604,7 +2639,7 @@ pub fn request(session: &Session, batch: &str, target: Option<&str>) -> Result<S
 
 /// Whether the outputs on disk satisfy the request for one unit, and what is wrong when
 /// they do not. Nothing is written; the CLI records source maps.
-// @lfy def/mcp/main.lfy:check#check:check:77f6c4a5084647dc21eb7114983b08f9ebbf27471071fee839c6113ba37cdfab
+// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
 pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
     let planned = plan_of(session);
     let (workspace, plan) = (planned.workspace(), &planned.plan);
@@ -2614,17 +2649,18 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
     // @lfy def/mcp/main.lfy:check#check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30
     own_unit(session, &plan.units[index].stem)?;
     let request = request_of_unit(&planned.program, plan, index);
-    let outputs = outputs_of(workspace, plan, index); // @lfy def/mcp/main.lfy:check#check:check:77f6c4a5084647dc21eb7114983b08f9ebbf27471071fee839c6113ba37cdfab
+    // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+    let (outputs, elsewhere) = outputs_of(workspace, plan, index);
     // What the last acceptance recorded for the target's other units, so that an output
     // another unit is to write is seen as that unit's rather than as this one's.
-    // @lfy def/mcp/main.lfy:check#check:check:77f6c4a5084647dc21eb7114983b08f9ebbf27471071fee839c6113ba37cdfab
+    // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
     let source = workspace.files[plan.units[index].file].path.clone();
     let identifier = workspace.targets[plan.units[index].target].identifier.clone();
-    let recorded: Vec<SourceMap> = source_maps_of(session, Some(&identifier))
+    let recorded: Vec<SourceMap> = generation::source_maps_of(workspace, Some(&identifier))
         .into_iter()
         .filter(|map| map.source != source)
         .collect();
-    let verdict = generation::accept(&planned.program, plan, &request, index, &outputs, &recorded);
+    let verdict = generation::accept(&planned.program, plan, &request, index, &outputs, &recorded, &elsewhere);
     if verdict.accepted {
         // @lfy def/mcp/main.lfy:check#check:check:7d045cb553e0d306e634e78ed9a299647790d4beae5075ece0962d22ff2d4ef8
         let mut text = format!(
@@ -2933,57 +2969,124 @@ fn unit_of_stem(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&
     })
 }
 
-/// One file read as something other than what is on disk, bound through the loader and
-/// lowered: [`interpret::LoweredFile::text`] of it, which is what a source map's hash is
-/// the hash of.
-// @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-fn lowered_text(workspace: &Workspace, path: &str, text: &str) -> Option<String> {
-    let before = interpret::lower(workspace::change(workspace, path, Some(text)));
-    let index = before.workspace.files.iter().position(|file| file.path == path)?;
-    Some(before.files[index].text.clone())
+/// What was recovered of the source one unit's outputs were accepted from.
+// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+enum Recovered {
+    /// The source its outputs were accepted from.
+    Accepted(String),
+    /// Only the latest revision of its file whose lowered code is the one the outputs were
+    /// accepted from, which says nothing about which criteria and tests they answered for.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+    HashMatched(String),
+    /// Neither.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
+    Nothing,
 }
 
-/// The source at the last accepted generation, recovered as the command line recovers it:
-/// through git when the root is a repository and the unit's source is in it, taking the
-/// revision of the file whose hash is the one the source map recorded.
-///
-/// What is given back is that revision as git holds it, never lowered, because that is what
-/// `generation::changes` takes; the revision is *found* by the hash of its lowered text,
-/// since the map holds the hash of the lowered text rather than of the file's bytes, so a
-/// revision differing only in a comment is the same revision.
+impl Recovered {
+    /// The previous text to pass to `generation::changes`: the revision as git holds it,
+    /// never lowered, and nothing when neither source could be recovered.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    fn text(&self) -> Option<&str> {
+        match self {
+            Recovered::Accepted(text) | Recovered::HashMatched(text) => Some(text),
+            // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
+            Recovered::Nothing => None,
+        }
+    }
+}
+
+/// What one git command wrote to standard output, run in the workspace root; `None` when it
+/// could not be run or did not succeed, as it does not in a root that is no repository.
 // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<String> {
-    let map = unit.outputs.first()?;
-    let file = &workspace.files[unit.file].path;
-    let log = Command::new("git")
-        .args(["log", "--format=%H", "-n", "50", "--", file])
-        .current_dir(&workspace.root)
+fn git(root: &Path, args: &[&str]) -> Option<String> {
+    let run = Command::new("git")
+        .args(args)
+        .current_dir(root)
         .stderr(Stdio::null())
         .output()
         .ok()?;
-    if !log.status.success() {
+    if !run.status.success() {
         return None;
     }
-    for revision in String::from_utf8_lossy(&log.stdout).lines() {
-        let show = Command::new("git")
-            .args(["show", &format!("{revision}:{file}")])
-            .current_dir(&workspace.root)
-            .stderr(Stdio::null())
-            .output()
-            .ok()?;
-        if !show.status.success() {
+    Some(String::from_utf8_lossy(&run.stdout).into_owned())
+}
+
+/// One revision of a unit's file, planned as the workspace would plan it with that revision
+/// in place: the program lowered from it, the plan, and the unit of the same stem for the
+/// same target.
+///
+/// The revision is bound through the loader and lowered the way `generation::changes` binds
+/// a previous text, and planned so that what the file declared then is gathered into a unit
+/// the same way, which is what a source map holds the hash and the answered ids of.
+// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+fn planned_before(workspace: &Workspace, unit: &Unit, text: &str) -> Option<(Program, Plan, usize)> {
+    let path = workspace.files[unit.file].path.clone();
+    let identifier = workspace.targets[unit.target].identifier.clone();
+    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+    let (program, plan) = generation::plan(workspace::change(workspace, &path, Some(text)), &[], &[], &[]);
+    let index = (0..plan.units.len()).find(|&index| {
+        plan.units[index].stem == unit.stem
+            && program.workspace.targets[plan.units[index].target].identifier == identifier
+    })?;
+    Some((program, plan, index))
+}
+
+/// What can be recovered of the source at the unit's last accepted generation, as the
+/// command line recovers it: through git when the root is a repository and the unit's source
+/// is in it, reading the revisions of the file from the most recent back.
+///
+/// What is given back is a revision as git holds it, never lowered, because that is what
+/// `generation::changes` takes; a revision is *recognized* by lowering, since the map holds
+/// the hash of the lowered text rather than of the file's bytes, so a revision differing only
+/// in a comment lowers to the same code. Lowered code is not enough on its own: a criterion
+/// reworded leaves it untouched, so the revision the outputs were accepted from is the one
+/// that also has the ids the map records as answered, and where no revision has them the
+/// latest one with the same lowered code is all there is.
+// @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+fn previous_source(workspace: &Workspace, unit: &Unit) -> Recovered {
+    let Some(map) = unit.outputs.first() else { return Recovered::Nothing };
+    let file = workspace.files[unit.file].path.clone();
+    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    let Some(log) = git(&workspace.root, &["log", "--format=%H", "-n", "50", "--", &file]) else {
+        return Recovered::Nothing;
+    };
+    let mut matched: Option<String> = None;
+    for revision in log.lines() {
+        let Some(text) = git(&workspace.root, &["show", &format!("{revision}:{file}")]) else { continue };
+        let Some((program, plan, index)) = planned_before(workspace, unit, &text) else { continue };
+        let before = &plan.units[index];
+        if generation::source_hash(&program.files[before.lowered].text) != map.hash {
             continue;
         }
-        let text = String::from_utf8_lossy(&show.stdout).into_owned();
-        // The revision is the one whose lowered text hashes to what the map recorded; what
-        // is given back is the revision itself, as git holds it.
-        // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-        let Some(lowered) = lowered_text(workspace, file, &text) else { continue };
-        if generation::source_hash(&lowered) == map.hash {
-            return Some(text);
+        // The most recent revision whose lowered code is the one the outputs were accepted
+        // from; it stands in only if none of them is the source they were accepted from.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+        if matched.is_none() {
+            matched = Some(text.clone());
+        }
+        // A source map records the ids of the unit's local criteria and tests as they were
+        // when its outputs were accepted, as their hash: sorted and joined by line breaks.
+        // The revision they were accepted from is the one whose ids hash to it. A map
+        // written before that was recorded holds no hash at all, and then no revision is
+        // recognized as that source.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+        let mut ids: Vec<String> = before
+            .requirements(&program)
+            .iter()
+            .map(|requirement| requirement.id().to_string())
+            .collect();
+        ids.sort();
+        if !map.requirements.is_empty() && generation::source_hash(&ids.join("\n")) == map.requirements {
+            return Recovered::Accepted(text);
         }
     }
-    None
+    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+    match matched {
+        Some(text) => Recovered::HashMatched(text),
+        None => Recovered::Nothing,
+    }
 }
 
 /// What differs for each entity of a unit since its outputs were last accepted.
@@ -2999,15 +3102,27 @@ pub fn changes(session: &Session, unit: &str, target: Option<&str>) -> Result<St
     if of_stem.outputs.is_empty() {
         return Ok(format!("no previous output for {unit}; nothing has been accepted for it yet")); // @lfy def/mcp/main.lfy:changes#changes:changes:413343511b79d06a29fa38852b4bf26d600fdb0e411965a13d3190ca9375546e
     }
-    let previous = previous_source(workspace, of_stem); // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    let recovered = previous_source(workspace, of_stem); // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
     let mut text = String::new();
-    if previous.is_none() {
-        // @lfy def/mcp/main.lfy:changes#changes:changes:fc5534487756c5701f11c4c00be57babd85dc1275ba585942da27893626d07f4
-        text.push_str("the source the outputs were generated from cannot be recovered; every entity is listed as added\n");
+    match &recovered {
+        Recovered::Accepted(_) => {}
+        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+        Recovered::HashMatched(_) => text.push_str(
+            "the source its outputs were accepted from is not known; the changes below are against \
+             the latest revision of its file with the same lowered code, so the criteria and tests \
+             they report as changed may not be those that changed since its outputs were accepted\n",
+        ),
+        // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
+        Recovered::Nothing => text.push_str(
+            "neither the source its outputs were accepted from nor a revision of its file with the \
+             same lowered code can be recovered; every entity is listed as added\n",
+        ),
     }
-    let found = generation::changes(&planned.program, of_stem, previous.as_deref()); // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+    let found = generation::changes(&planned.program, of_stem, recovered.text()); // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
     if found.is_empty() {
-        return Ok(format!("no changes in {unit} since its outputs were accepted")); // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+        // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+        text.push_str(&format!("no changes in {unit} since its outputs were accepted"));
+        return Ok(text);
     }
     // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
     let lines: Vec<String> = found
@@ -3529,6 +3644,15 @@ pub fn task(session: &Session, unit: Option<&str>) -> Result<String, String> {
                 lines.push("these were removed since its outputs were accepted".to_string());
                 for one in gone {
                     removed += 1;
+                    // A removed criterion or test the request could not quote carries no
+                    // text, and no place either, since the revision that held it is not the
+                    // one its place would be read from; the line says so rather than
+                    // quoting nothing.
+                    // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
+                    if one.text.is_empty() {
+                        lines.push(format!("removed {} — its text is not known", one.id));
+                        continue;
+                    }
                     // @lfy def/mcp/main.lfy:task#task:task:0e1730d59363044ef74bcf4673aef8eae5aecf93a017aa90bc7f8d9d457f6afd
                     lines.push(format!("removed {} {} — {}", one.id, one.place, one.text));
                 }
@@ -5512,7 +5636,7 @@ global@targets.add(rust);
         assert!(error.contains("go is not a target"), "{error}");
     }
 
-    // @lfy def/mcp/main.lfy:check#check:check:77f6c4a5084647dc21eb7114983b08f9ebbf27471071fee839c6113ba37cdfab
+    // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
     #[test]
     fn check_reads_the_outputs_from_disk_and_writes_nothing() {
         let fixture = compiled_project();
@@ -5531,6 +5655,38 @@ global@targets.add(rust);
         assert!(error.contains("rejected a:"), "{error}");
     }
 
+    /// A region another unit moved out of a shared output into a file of its own is still
+    /// found, because the check reads every other file of the output directory where it reads
+    /// the outputs, and so sees that unit's region where it went.
+    // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+    #[test]
+    fn check_reads_every_other_file_of_the_output_directory() {
+        let fixture = compiled_project();
+        // One output holds a region of each unit, and it is accepted for `b`, so what is
+        // recorded for `b` names it.
+        fixture.write(
+            "out/shared.rs",
+            "// @lfy def/b.lfy:B\npub struct B;\n// @lfy def/a.lfy:A\npub struct A;\n",
+        );
+        record_unit(&fixture, "b");
+        // `b` has since moved its region into a file of its own, which carries no marker of
+        // `a` and so is none of the outputs the check judges.
+        // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+        fixture.write("out/shared.rs", "// @lfy def/a.lfy:A\npub struct A;\n");
+        fixture.write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B;\n");
+        let session = fixture.session();
+        // @lfy def/mcp/main.lfy:check#check:check:7d045cb553e0d306e634e78ed9a299647790d4beae5075ece0962d22ff2d4ef8
+        let text = check(&session, "a", None).unwrap();
+        assert!(text.starts_with("accepted a for rust: 1 output\n  out/shared.rs"), "{text}");
+        // With that file gone, the region of `b` is nowhere, and the shared output holds
+        // fewer of its regions than what was recorded for it, so the unit is rejected: it is
+        // the other file that answered for it.
+        // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+        fs::remove_file(fixture.root.join("out/b.rs")).unwrap();
+        let error = check(&session, "a", None).unwrap_err();
+        assert!(error.starts_with("rejected a:") && error.contains("out/shared.rs"), "{error}");
+    }
+
     /// The unit with a stem accepted against the outputs on disk, with its source maps
     /// recorded in the target's output directory the way the command line records them.
     fn record_unit(fixture: &Fixture, stem: &str) {
@@ -5539,8 +5695,8 @@ global@targets.add(rust);
         let (workspace, plan) = (planned.workspace(), &planned.plan);
         let index = resolve_unit(workspace, plan, stem, None).unwrap();
         let request = request_of_unit(&planned.program, plan, index);
-        let outputs = outputs_of(workspace, plan, index);
-        let verdict = generation::accept(&planned.program, plan, &request, index, &outputs, &[]);
+        let (outputs, elsewhere) = outputs_of(workspace, plan, index);
+        let verdict = generation::accept(&planned.program, plan, &request, index, &outputs, &[], &elsewhere);
         assert!(verdict.accepted, "{:?}", verdict.problems);
         generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
     }
@@ -5776,11 +5932,11 @@ global@targets.add(rust);
     fn changes_reports_what_differs_since_the_outputs_were_accepted() {
         let fixture = accepted_project();
         let session = fixture.session();
-        // The unit has outputs and the previous text cannot be recovered: the text says so
-        // first, then every entity as added.
-        // @lfy def/mcp/main.lfy:changes#changes:changes:fc5534487756c5701f11c4c00be57babd85dc1275ba585942da27893626d07f4
+        // The unit has outputs and neither source can be recovered, since the root is no
+        // repository: the text says so first, then every entity as added.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
         let text = changes(&session, "b", None).unwrap();
-        assert!(text.starts_with("the source the outputs were generated from cannot be recovered"), "{text}");
+        assert!(text.starts_with("neither the source its outputs were accepted from nor"), "{text}");
         assert!(text.contains("\nB added "), "{text}");
         // The target may be named, and names the same unit.
         // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
@@ -5833,8 +5989,9 @@ global@targets.add(rust);
         // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
         let planned = plan_of(&session);
         let index = unit_of_stem(planned.workspace(), &planned.plan, "b", None).unwrap();
-        let recovered = previous_source(planned.workspace(), &planned.plan.units[index]).unwrap();
-        assert_eq!(recovered, "d B {}\n");
+        let recovered = previous_source(planned.workspace(), &planned.plan.units[index]);
+        assert!(matches!(recovered, Recovered::Accepted(_)), "the accepted source");
+        assert_eq!(recovered.text(), Some("d B {}\n"));
         // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
         let text = changes(&session, "b", None).unwrap();
         assert!(!text.contains("cannot be recovered"), "{text}");
@@ -5842,6 +5999,105 @@ global@targets.add(rust);
         // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
         assert!(!text.contains("B added"), "{text}");
         assert!(text.lines().any(|line| line.starts_with("C added ")), "{text}");
+    }
+
+    /// A project whose unit `b` has an accepted output answering for one criterion, the
+    /// source it was accepted from, and its id: lowering drops the criteria, so any later
+    /// wording of that criterion lowers to the same code.
+    fn project_with_an_accepted_criterion() -> (Fixture, String, String) {
+        let fixture = project_with_requirements();
+        let local = requirement_id(&fixture, "It answers");
+        fixture.write(
+            "out/b.rs",
+            &format!("// @lfy def/b.lfy:b#{local}\npub fn b() -> String {{\n    String::new()\n}}\n"),
+        );
+        record_unit(&fixture, "b");
+        let accepted = fs::read_to_string(fixture.root.join("def/b.lfy")).unwrap();
+        (fixture, accepted, local)
+    }
+
+    /// One commit in the fixture's root, with an author of its own so that a machine with no
+    /// git identity commits just the same.
+    fn commit(fixture: &Fixture, message: &str) {
+        fixture.git(&["add", "-A"]).git(&[
+            "-c",
+            "user.email=p@example.com",
+            "-c",
+            "user.name=p",
+            "commit",
+            "--quiet",
+            "-m",
+            message,
+        ]);
+    }
+
+    /// Two revisions of a file may lower to the same code and answer for different criteria,
+    /// so the source the outputs were accepted from is the most recent revision whose
+    /// criteria and tests are the ones the map records as answered, not merely the most
+    /// recent one that lowers to the same code.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+    #[test]
+    fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
+        let (fixture, accepted, _) = project_with_an_accepted_criterion();
+        fixture.git(&["init", "--quiet"]);
+        commit(&fixture, "the accepted source");
+        // A criterion reworded leaves the lowered code untouched, so the newer revision
+        // lowers to the same code as the accepted one.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+        fixture.write("def/b.lfy", &accepted.replace("It answers", "It replies"));
+        commit(&fixture, "reworded");
+        let session = fixture.session();
+        let planned = plan_of(&session);
+        let index = unit_of_stem(planned.workspace(), &planned.plan, "b", None).unwrap();
+        let unit = &planned.plan.units[index];
+        let lowered = generation::source_hash(&planned.program.files[unit.lowered].text);
+        assert_eq!(lowered, unit.outputs[0].hash, "both revisions lower to the accepted code");
+        // The older revision is the one the outputs were accepted from, and it is given back
+        // as git holds it, criteria and all.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+        let recovered = previous_source(planned.workspace(), unit);
+        assert!(matches!(recovered, Recovered::Accepted(_)), "the accepted source");
+        assert_eq!(recovered.text(), Some(accepted.as_str()));
+        // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+        let text = changes(&session, "b", None).unwrap();
+        assert!(!text.contains("is not known"), "{text}");
+        // What differs since is the rewording of that criterion, which is a change to `b`.
+        assert!(text.lines().any(|line| line.starts_with("b ")), "{text}");
+    }
+
+    /// Where no revision of the file holds the criteria and tests the map records, the
+    /// latest revision that lowers to the same code stands in for the source the outputs
+    /// were accepted from, and the text says what that means before anything else.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+    #[test]
+    fn changes_falls_back_to_the_latest_revision_with_the_same_lowered_code() {
+        let (fixture, accepted, _) = project_with_an_accepted_criterion();
+        // Only a later wording of the criterion was ever committed, so every revision lowers
+        // to the accepted code and none of them answers for what the map records.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+        let reworded = accepted.replace("It answers", "It replies");
+        fixture.write("def/b.lfy", &reworded);
+        fixture.git(&["init", "--quiet"]);
+        commit(&fixture, "a later wording");
+        let session = fixture.session();
+        let planned = plan_of(&session);
+        let index = unit_of_stem(planned.workspace(), &planned.plan, "b", None).unwrap();
+        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+        let recovered = previous_source(planned.workspace(), &planned.plan.units[index]);
+        assert!(matches!(recovered, Recovered::HashMatched(_)), "the hash-matched source");
+        assert_eq!(recovered.text(), Some(reworded.as_str()));
+        // The text says so first: the source is not known, the changes are against the
+        // latest revision with the same lowered code, and what they say of the criteria and
+        // tests may not be what changed since the outputs were accepted.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+        let text = changes(&session, "b", None).unwrap();
+        let first = text.lines().next().unwrap();
+        assert!(first.starts_with("the source its outputs were accepted from is not known"), "{text}");
+        assert!(first.contains("the latest revision of its file with the same lowered code"), "{text}");
+        assert!(first.contains("may not be those that changed since its outputs were accepted"), "{text}");
+        // Nothing differs between that revision and the file as it is, so the rest says so.
+        // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+        assert_eq!(text.lines().next_back(), Some("no changes in b since its outputs were accepted"));
     }
 
     // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
@@ -5923,6 +6179,7 @@ global@targets.add(rust);
                 &[],
                 &BTreeMap::new(),
                 true,
+                &[],
             )),
             _ => None,
         };
@@ -6256,7 +6513,7 @@ global@targets.add(rust);
     /// In a compiler's session the map of one of its own units is read from the markers its
     /// output holds now, while every other member of it is the recorded map's, so the unit
     /// still plans, changes, and requests as the compile planned it.
-    // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+    // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
     #[test]
     fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
         let fixture = Fixture::new();
@@ -6300,13 +6557,55 @@ global@targets.add(rust);
             },
         );
         let live = of_output(source_maps_of(&session, None));
-        // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+        // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
         assert_eq!(live.markers.first().map(|marker| marker.output_line), Some(2));
         assert_ne!(live.markers, recorded.markers);
         // Nothing else differs: with the recorded markers put back, the two maps are one.
-        // @lfy def/mcp/main.lfy:host#host:host:3e562832ea4cdd3ed23d67fe79f9a9024f6c42e802d43f5e68dde2914e23c677
+        // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
         let carried = SourceMap { markers: recorded.markers.clone(), ..live };
         assert_eq!(carried, recorded);
+    }
+
+    /// In a compiler's session a unit whose map file holds no map still has one map per
+    /// output file holding a marker of its own, read from the file as it is now, with every
+    /// other member of each empty, since nothing was ever recorded to carry over.
+    // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+    #[test]
+    fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
+        let fixture = compiled_project();
+        // Nothing has been accepted, so neither unit has a map; the output of `b` is written
+        // and the output of `a` is not.
+        fixture.write("out/b.rs", "// A note.\n// @lfy def/b.lfy:B\npub struct B;\n");
+        let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b+1")));
+        let maps = source_maps_of(&session, None);
+        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        let read: Vec<&SourceMap> = maps.iter().filter(|map| map.source == "def/b.lfy").collect();
+        let [map] = read[..] else { panic!("one map of def/b.lfy, not {read:?}") };
+        assert_eq!((map.target.as_str(), map.output.as_str()), ("rust", "out/b.rs"));
+        // The markers are the ones the file holds now, read as acceptance reads them.
+        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        assert_eq!(map.markers.len(), 1);
+        assert_eq!(map.markers[0].output_line, 2);
+        assert_eq!(map.markers[0].entity.as_deref(), Some("B"));
+        // Every other member is empty.
+        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        let empty = SourceMap {
+            markers: map.markers.clone(),
+            target: map.target.clone(),
+            output: map.output.clone(),
+            source: map.source.clone(),
+            hash: String::new(),
+            requirements: String::new(),
+            answered: Vec::new(),
+            signature: String::new(),
+            text: String::new(),
+            dependencies: BTreeMap::new(),
+            generated: String::new(),
+        };
+        assert_eq!(map, &empty);
+        // No file holds a marker of `a`, so it has no map at all.
+        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        assert!(!maps.iter().any(|map| map.source == "def/a.lfy"), "{maps:?}");
     }
 
     /// A hosted session acts on its own batch and on no other: a request, a check, a
@@ -6677,6 +6976,14 @@ global@targets.add(rust);
     /// handed knows which criteria and tests were removed.
     // @lfy def/mcp/main.lfy:task#task:compilerTool:1e78463366ba8fbbfbec5fc142e181f67f7b2aead81f243e58972718f0a441a8
     fn compiling(fixture: &Fixture, previous: &[(&str, &str)]) -> Session {
+        compiling_with(fixture, previous, &[])
+    }
+
+    /// The same, with the paths of the units whose previous source is only their
+    /// hash-matched one, which the request reads nothing of as a rewording and whose
+    /// removed criteria and tests it can quote neither the place nor the text of.
+    // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
+    fn compiling_with(fixture: &Fixture, previous: &[(&str, &str)], hash_matched: &[&str]) -> Session {
         let session = fixture.session();
         let planned = plan_of(&session);
         let batch = planned.plan.batches.first().cloned().expect("one batch");
@@ -6694,7 +7001,8 @@ global@targets.add(rust);
                     .map(|text| Output { path: map.output.clone(), text })
             })
             .collect();
-        let request = generation::request(&planned.program, &planned.plan, &batch, &existing, &was, true);
+        let named: Vec<String> = hash_matched.iter().map(|path| (*path).to_string()).collect();
+        let request = generation::request(&planned.program, &planned.plan, &batch, &existing, &was, true, &named);
         bound(
             fixture,
             Binding {
@@ -6816,6 +7124,28 @@ global@targets.add(rust);
         );
     }
 
+    /// A removed criterion the request could not quote is given by its id alone, with words
+    /// saying its text is not known in place of its place and text.
+    // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
+    #[test]
+    fn task_says_when_a_removed_criterion_cannot_be_quoted() {
+        let (fixture, was) = project_with_a_removed_criterion();
+        // The previous source handed over is only the unit's hash-matched one, so the
+        // request reads what was dropped off the recorded ids and holds no text for it.
+        // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
+        let session = compiling_with(&fixture, &[("def/b.lfy", &was)], &["def/b.lfy"]);
+        let text = task(&session, None).unwrap();
+        let removed: Vec<&str> = text.lines().filter(|line| line.starts_with("removed ")).collect();
+        // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
+        assert!(!removed.is_empty(), "{text}");
+        for line in &removed {
+            assert!(line.ends_with(" — its text is not known"), "{line}");
+            assert_eq!(line.split(' ').count(), 8, "{line}");
+        }
+        // @lfy def/mcp/main.lfy:task#task:task:ca1abaa819942eb8c6c130e520f1c36ee16815c41b54d388cca6a9b8ad14a76c
+        assert!(text.lines().next_back().unwrap().ends_with(&format!("{} removed", removed.len())), "{text}");
+    }
+
     /// A unit with no output yet says so and where its outputs go, and names every entity
     /// that has no criterion or test of its own.
     // @lfy def/mcp/main.lfy:task#task:task:3701f0af0023dfc1eadd1dee395415c17f3523d19c39a1d6d8f30a8aff532e9e
@@ -6862,7 +7192,7 @@ global@targets.add(rust);
             .find(|batch| batch.units.iter().any(|&unit| planned.plan.units[unit].stem == "a"))
             .cloned()
             .expect("the batch of a");
-        let request = generation::request(&planned.program, &planned.plan, &batch, &[], &BTreeMap::new(), true);
+        let request = generation::request(&planned.program, &planned.plan, &batch, &[], &BTreeMap::new(), true, &[]);
         let session = bound(
             &fixture,
             Binding {
@@ -7062,7 +7392,7 @@ global@targets.add(rust);
             .find(|batch| batch.units.iter().any(|&unit| planned.plan.units[unit].stem == "a"))
             .cloned()
             .expect("the batch of a");
-        let request = generation::request(&planned.program, &planned.plan, &batch, &[], &BTreeMap::new(), true);
+        let request = generation::request(&planned.program, &planned.plan, &batch, &[], &BTreeMap::new(), true, &[]);
         let session = bound(
             &fixture,
             Binding {
