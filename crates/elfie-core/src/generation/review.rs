@@ -532,7 +532,7 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
 // garbles the id is still placed by the file and line it copied.
 // @lfy def/generation/main.lfy:review
 // @lfy def/generation/main.lfy:globalReview
-// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:8dc8036aa494819b48e614bd9fe82ef867e58e668b969813da46a5327a179c5a
+// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5e59c550936dcf7bf2e5d061524a9f594d0fad8ec3bcde714954a0e266066d26
 const PROTOCOL: &str = "\
 ## How to review
 
@@ -541,8 +541,9 @@ You examine and never edit: you change no file, and you propose no code.
 The code of a region is read through `elfie_output`: by the id of a criterion or test, by \
 the name of an entity, or by reading the lines of the output file the region names.
 
-Submit each verdict through `elfie_report` as soon as you have judged it, one per criterion \
-and per test:
+Submit your verdicts as you judge them, many to a turn: one call of `elfie_reportMany` with \
+one JSON line per verdict, or several calls of `elfie_report` in the same turn. Never one \
+verdict per turn. Each verdict holds:
 
 - `id` is copied from the id the criterion or test is given above, or left out when you \
   give `file` and `line` instead: the two halves of the place given with it above, the path \

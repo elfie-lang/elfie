@@ -15,8 +15,8 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
     },
-    "generated": "2026-10-11T06:08:17Z",
-    "hash": "dbfcafb0e49ffd5444e1b4ac048f7db97f89256b91ed50b53b03b12766ac521e",
+    "generated": "2026-10-11T12:13:40Z",
+    "hash": "aec548fbf2f2172a9dd34f05941da0e013588b01da64fb047e99ef82565cd463",
     "markers": [
       {
         "column": null,
@@ -750,9 +750,9 @@
     ],
     "output": "crates/elfie-mcp/src/data.rs",
     "requirements": "ba6daaa0010780c506a26deb15673ecbbdefe50f4e9e79c7a90c8300e17d8add",
-    "signature": "3e2ef277864b489b20543f0ea352d35b1d4ad7bfcb29503fb35fd1382c8302f6",
+    "signature": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
     "source": "def/mcp/data.lfy",
     "target": "rust",
-    "text": "bf20b374540bb4f743e493236cc006b833ffb66ca27925fc88083be44ecfb418"
+    "text": "40b904e8b115a36ea272898fc3428ccb449d8cf322dcc2d53e4f3b1a35bfaa4b"
   }
 ]

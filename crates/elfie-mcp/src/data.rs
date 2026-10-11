@@ -156,8 +156,8 @@ pub struct Session {
     /// What a hosted session is bound to; `None` for a session over standard input and
     /// output.
     pub binding: Option<Binding>, // @lfy def/mcp/data.lfy:Session.binding
-    /// Every review `elfie_report` recorded in the session, one per id, in the order
-    /// recorded.
+    /// Every review `elfie_report` or `elfie_reportMany` recorded in the session, one per
+    /// id, in the order recorded.
     // Decision: the `tool` trait reaches a fn with the session, not with a session it may
     // change, so the list a call appends to is kept behind a lock of its own; the calls of
     // one session are handled one at a time, so it is never contended.

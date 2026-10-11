@@ -111,13 +111,15 @@ fn a_review_request_lists_every_criterion_with_its_place_and_names_every_region(
     }
     // The protocol: how a region is read, where a verdict goes, the keys of the line it
     // falls back to, the three statuses, the tools, and the end line.
-    // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:8dc8036aa494819b48e614bd9fe82ef867e58e668b969813da46a5327a179c5a
+    // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5e59c550936dcf7bf2e5d061524a9f594d0fad8ec3bcde714954a0e266066d26
     for part in [
         "examine and never edit",
         "you propose no code",
         "The code of a region is read through `elfie_output`",
-        "Submit each verdict through `elfie_report` as soon as you have judged it",
-        "one per criterion and per test",
+        "Submit your verdicts as you judge them, many to a turn",
+        "one call of `elfie_reportMany` with one JSON line per verdict",
+        "several calls of `elfie_report` in the same turn",
+        "Never one verdict per turn",
         "`id` is copied from the id the criterion or test is given above, or left out",
         "the two halves of the place given with it above",
         "`satisfied`",
