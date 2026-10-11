@@ -801,19 +801,35 @@ was chosen.
   another unit's file (they sit in the unit's own code) into the new submodule files. `accept`
   used to look for a co-owner's recorded markers only in the file they were recorded for, so the
   first real split (generation/main's `mod.rs` into 21 files) was rejected over generation/data's
-  regions. It now looks in every output of the unit and every other file of the output directory
-  (`accept`'s `elsewhere`); a marker found in none is still a problem. Markers naming the unit's
-  own file stay the unit's to write or drop, as the Rust already treated them.
-- **Co-owners' maps are re-derived when a batch is recorded.** Otherwise a co-owner's map would
-  keep naming regions that moved and hashing text that changed (any write to `lib.rs` already
-  made every co-owner's `SourceMap.text` stale, which sends its reworded-only or dependency-only
-  batch to the compiler), and its next accept would be judged against that stale map.
-  `Generation.rederive` reads the co-owner's markers and text from the files as they are and
-  carries over its hash, requirements, answered ids, signature, dependencies, and generation time,
-  so its reason to be planned never changes. No compiler or verifier runs for it and its review
-  records are untouched: its regions' text is checked by the region hashes its records carry.
-- **The last accepted source matches requirements too.** Lowered text leaves out criteria, so a
-  committed revision that only reworded a criterion lowered to `SourceMap.hash` and was taken for
-  the accepted source; `reworded` then compared it with itself and the reworded-only path never
-  fired. The revision must also match `SourceMap.requirements`, stated once on `SourceMap` and
-  used by `compile` and `elfie_changes`.
+  regions. It now counts them across every output of the unit and every other file of the output
+  directory (`accept`'s `elsewhere`). For each (file, entity, requirement), there must be at least
+  as many as across the co-owner's recorded maps. Counting rather than finding stops a unit from
+  dropping one of two regions with the same name. A marker that is the unit's own (it names the
+  unit's file, or an entity moved into the unit together with that entity's file) stays the unit's
+  to write or drop.
+- **`SourceMap.text` hashes the unit's own regions, not the whole output.** The text is stripped
+  as a review's region hash strips it. A write to `lib.rs` by another unit used to make every
+  co-owner's text stale, which sent its reworded-only or dependency-only batch to the compiler.
+  Hashing the whole file again after each write would have hidden an unreviewed edit made inside
+  the co-owner's regions. **Cost:** maps recorded before this hash the whole file, so each unit's
+  next reworded-only or dependency-only batch goes to the compiler once.
+- **Co-owners' maps are re-derived once a batch is recorded.** Otherwise a co-owner's map would
+  keep naming regions that moved, and its next accept would be judged against that stale map.
+  `Generation.rederive` reads markers from the files as they are. It carries over every other
+  member output by output, `text` included. An output it had no map for copies the shared
+  members only when all of its maps agree, and gets an empty text. If they disagree, its maps are
+  left as they are. Its reason to be planned never changes, no compiler or verifier runs for it,
+  and its review records are untouched. Regions that grew (by line count) print a warning. Nothing
+  rejects them, because `accept` has no earlier text to compare with. The carried text no longer
+  matches a grown region, so such a region is never kept on that hash. A compiler session's maps
+  for its own units come from the same `rederive`, so regions are bounded the same way everywhere.
+- **The last accepted source must match the requirements too, with a fallback.** Lowered text
+  leaves out criteria, so a committed revision that only reworded a criterion lowered to
+  `SourceMap.hash` and was taken for the accepted source. `reworded` then compared that revision
+  with itself, and the reworded-only path never fired. The revision must now also match
+  `SourceMap.requirements` (stated once on `SourceMap`). Old revisions are lowered against today's
+  workspace, so a unit whose criteria come from a trait or a `with` block in another file may
+  never match both. In that case the latest revision that matches the hash alone is `previous`,
+  and `request` is told so (`hashMatched`). Nothing is then paired as reworded. `removed` lists
+  the ids in `answered` that the unit no longer has, with no text. The reworded-only path needs
+  the revision that matches both. `elfie_changes` says when it fell back.

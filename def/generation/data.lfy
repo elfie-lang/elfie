@@ -53,7 +53,7 @@ d Marker: `One place where generated code says where it came from` {
     });
 }
 
-d SourceMap: `What one output file was generated from, recorded mechanically at acceptance in the map file of its unit` {
+d SourceMap: `What one output file was generated from, recorded mechanically at acceptance in the map file of its unit, and re-read from the files when another unit writes them, carrying over what acceptance recorded` {
   $target: `The identifier of the target it was generated for` = string;
   $output: `The output file's path, relative to [[Workspace.root]]` = string;
   $source: `The source file's path, relative to [[Workspace.root]]` = string;
@@ -65,13 +65,15 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
   // criteria are new even when the source the output was generated from cannot be recovered.
   $answered: `The ids of the unit's local criteria and tests when the output was accepted, sorted; empty in a map file written before they were recorded` = string[];
   $signature: `SHA-256 of the unit's interface text when the output was accepted, as lowercase hex` = string;
-  // Decision: the output's own text is hashed too, so a step that would keep an output as it is can
-  // tell whether it is still the text that was accepted and reviewed.
-  $text: `SHA-256 of the output's text as it was accepted, as lowercase hex; empty in a map file written before it was recorded, which no hash equals` = string;
+  // Decision: the unit's own regions of the output are hashed too, so a step that would keep an
+  // output as it is can tell whether the unit's code in it is still the code that was accepted and
+  // reviewed. Only its own regions are hashed: another unit writing elsewhere in a shared file, such
+  // as lib.rs, changes nothing the unit answers for, while an edit inside one of its regions does.
+  $text: `SHA-256, as lowercase hex, of the unit's own region text of the output as it was accepted; empty in a map file written before it was recorded, which no hash equals` = string;
   $dependencies: `For each dependency's source path, the [[SourceMap.signature]] the output was generated against` = Object<
     string,
   >;
-  $generated: `When the output was accepted: [[Time.Instant.rfc3339]] of [[Time.now]] at acceptance` = string;
+  $generated: `When the output was accepted: [[Time.Instant.rfc3339]] of [[Time.now]] at acceptance, carried over when the map is re-read from the files` = string;
   $markers: `Every [[Marker]] in the output, in output order, with [[Marker.line]] and [[Marker.end]] derived` = Marker[];
 
   // Interface text
@@ -120,6 +122,15 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
       behavior = `[[SourceMap.signature]] is the same as before the change`,
     });
 
+  // Own regions
+  @acceptanceCriteria
+    .add({
+      behavior = `A marker is a unit's own when it names the unit's file, or names an entity moved into the unit and the file declaring that entity`,
+    })
+    .add({
+      behavior = `The unit's own region text of an output is the text of the regions of its own markers in that output, in output order, each region's lines with the marker comment a line carries, from [[Target.markerComment]] before @lfy to the end of the line, and any white space before it, removed, every line that is then empty left out, and each line followed by a line break, as [[ReviewRequest.hashes]] strips a region`,
+    });
+
   // Source at the last accepted generation
   // Decision: lowered text leaves out criteria and tests, so a revision that only reworded a
   // criterion lowers to the same hash as the one the outputs were accepted from. Matching the
@@ -138,6 +149,13 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
     .add({
       situation = `No revision of a unit's file is one its outputs were accepted from`,
       behavior = `The source of the unit at its last accepted generation is not recoverable`,
+    })
+    // Decision: an old revision is lowered against the workspace as it is now, so a unit whose
+    // criteria come from a trait or a with block in another file may have no revision whose ids match.
+    // Its code can still be compared with the revision whose lowered text matches, while its criteria
+    // are known only by the ids recorded in [[SourceMap.answered]].
+    .add({
+      behavior = `A unit's hash-matched source is the most recent revision of its file whose lowered text hashes to [[SourceMap.hash]] of the unit's outputs, whatever its criteria and tests`,
     });
 }
 
@@ -218,8 +236,8 @@ d Interface: `What a dependent unit may rely on from another unit's output` {
 // it was is lowered, because its origin belongs to that lowering and nothing later can read it.
 d RemovedRequirement: `A local criterion or test a unit's existing outputs were generated against that the unit no longer has` {
   $id: `The id it had` = string;
-  $place: `Where it was in the unit's file as it was when its outputs were accepted: the file relative to [[Workspace.root]], a colon, and the line its origin began on` = string;
-  $text: `What it said: [[LoweredCriterion.text]] for a criterion, its input and its expectation as written for a test` = string;
+  $place: `Where it was in the unit's file as it was when its outputs were accepted: the file relative to [[Workspace.root]], a colon, and the line its origin began on; empty when not known` = string;
+  $text: `What it said: [[LoweredCriterion.text]] for a criterion, its input and its expectation as written for a test; empty when not known` = string;
 }
 
 // Decision: a criterion reworded in place keeps its place but not its id, because an id hashes the

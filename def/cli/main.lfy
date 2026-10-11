@@ -962,18 +962,17 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     // Decision: a unit that writes a file another unit has markers in, such as lib.rs, or that moves
     // another unit's markers into new files by splitting a module, leaves that unit's recorded maps
-    // pointing at regions that moved and hashing text that changed. So whenever a batch's maps are
-    // recorded, the maps of every other unit with markers in its files are read again from the files
-    // as they are, carrying over everything else. Nothing that decides whether a unit is planned
-    // changes: only where its regions are and the text its outputs hash to, which now match the
-    // files, so a later reworded-only or dependency-only batch of that unit can still keep its
-    // outputs.
+    // pointing at regions that moved. So once a batch's maps are recorded, the maps of every other
+    // unit with markers in its files are read again from the files as they are, carrying over
+    // everything acceptance recorded, the hash of its own regions included. Nothing that decides
+    // whether a unit is planned changes, and a region another unit's lines were put under no
+    // longer matches that hash, so it is never kept as it is on it.
     .add({
       situation = [
         `compile, with or without --accept`,
         `The source maps of a batch's units are recorded by [[Generation.record]], whether after a run of the compiler, after a first run that skipped it, or with --accept`,
       ],
-      behavior = `The batch's co-owners are the units of the batch's target that are not of the batch and that have a [[Marker]] naming their file in a file the recorded maps name as [[SourceMap.output]], or whose map file names such a file or a file a map of the batch's units named before they were recorded`,
+      behavior = `The batch's co-owners are the units of the batch's target that are not of the batch and that have a marker of their own, as [[SourceMap]] defines one, in a file the recorded maps name as [[SourceMap.output]], or whose map file names such a file or a file a map of the batch's units named before they were recorded`,
     })
     .add({
       situation = [
@@ -982,8 +981,9 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `The batch has a co-owner`,
       ],
       behavior = [
-        `Right after, in the root, the co-owner's maps are [[Generation.rederive]] of the workspace, the co-owner, and the maps its map file holds, read as [[Generation.sourceMapsOf]] reads a map file but whether or not their outputs exist`,
+        `Once the maps of every unit of the batch that has them recorded are recorded, in the root, each co-owner's maps are [[Generation.rederive]] of the workspace, the co-owner, and the maps its map file holds, read as [[Generation.sourceMapsOf]] reads a map file but whether or not their outputs exist`,
         `Those maps are recorded for the co-owner by [[Generation.record]]`,
+        `Each co-owner's maps are re-derived once for the batch`,
       ],
     })
     .add({
@@ -995,6 +995,17 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `No compiler or verifier runs for the co-owner`,
         `No review record file of the co-owner changes`,
         `No file but the co-owner's map file is written for it`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `A co-owner's maps are re-derived after a batch's source maps are recorded`,
+        `The regions of the co-owner's own markers with one [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]] span more output lines in total in the re-derived maps than in the maps they replace`,
+      ],
+      behavior = [
+        `The re-derived maps are recorded all the same`,
+        `A message printed to standard error names the co-owner, the batch, and the marker, and says another unit's lines may now lie in the co-owner's region`,
       ],
     })
     .add({
@@ -1234,6 +1245,22 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `That revision is not the source of the unit at its last accepted generation`,
     })
     .add({
+      situation = [
+        `compile`,
+        `The root is a git repository`,
+        `The source of a unit at its last accepted generation is not recoverable`,
+        `Git holds the unit's hash-matched source, as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
+      ],
+      behavior = [
+        `The previous text [[Generation.request]] is given for that unit is the hash-matched source as git holds it, never lowered`,
+        `[[Generation.request]] is given the unit's [[File.path]] among hashMatched`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `[[Generation.request]] is given a unit's previous text`],
+      behavior = `It is given the unit's [[File.path]] among hashMatched exactly when that text is the unit's hash-matched source and not its source at its last accepted generation`,
+    })
+    .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
       behavior = `Each unit of the batch is accepted or rejected by the [[Verdict]] of [[Generation.accept]] on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units as recorded, and with every other file of that listing, as [[Files.read]] reads it there, as elsewhere`,
     })
@@ -1393,9 +1420,13 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // outputs are accepted as they are and recorded against the new interfaces, and no verifier runs,
   // since no code changed and its review records still hold. Both paths apply only when every unit
   // of the batch qualifies, because a batch with any other unit needs the compiler anyway.
-  // Decision: both paths keep outputs as they are, so both apply only to outputs whose text is still
-  // the text accepted, as [[SourceMap.text]] records it, and never to a batch that took kept work,
-  // which was rejected and never reviewed.
+  // Decision: both paths keep outputs as they are, so both apply only to outputs whose unit's own
+  // regions still hold the code accepted, as [[SourceMap.text]] records it, and never to a batch that
+  // took kept work, which was rejected and never reviewed. Only the unit's own regions are compared,
+  // so another unit writing elsewhere in a shared file, such as lib.rs, does not send it to the
+  // compiler, while an edit inside one of its regions, or lines put under one of its markers, does.
+  // Decision: the reworded-only path needs the source at the last accepted generation, never only
+  // the hash-matched one, since it moves markers by pairing old ids with new.
   // Decision: markers are rewritten only when a run of the compiler or the reworded-only path follows,
   // never for requests written for a compiler run by hand. In place the rewritten ids sit in the root
   // until the batch is accepted; that is intended, since they name criteria the unit has.
@@ -1436,7 +1467,8 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names a compiler and a verifier`,
         `--no-verify is not given`,
         `Every unit of a batch is in [[Request.rewordedOnly]] of the request made for its first run`,
-        `Every output of the batch's units, read in the batch's directory before any of its markers is rewritten, has a SHA-256 equal to [[SourceMap.text]] of its map`,
+        `Every output of the batch's units, read in the batch's directory before any of its markers is rewritten, has its unit's own region text hash to [[SourceMap.text]] of its map`,
+        `The previous text of every unit of the batch is its source at its last accepted generation, not only its hash-matched source`,
         `The batch took no kept work`,
       ],
       behavior = [
@@ -1488,7 +1520,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `elfie.json names a compiler`,
         `Every unit of a batch has the reason dependency`,
         `[[Target.commands]] of the batch's target holds a command with a line for the build operation and one with a line for the test operation`,
-        `Every output of the batch's units, read in the batch's directory, has a SHA-256 equal to [[SourceMap.text]] of its map`,
+        `Every output of the batch's units, read in the batch's directory, has its unit's own region text hash to [[SourceMap.text]] of its map`,
         `The batch took no kept work`,
       ],
       behavior = [
@@ -1553,7 +1585,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `compile compares an output of a batch's units with [[SourceMap.text]] of its map`,
-      behavior = `The outputs and their maps are those the unit's map file in the root holds when the comparison is made, so maps re-derived by [[Generation.rederive]] since the plan was made count`,
+      behavior = [
+        `The unit's own region text is computed as [[SourceMap]] defines it and hashed as SHA-256, as lowercase hex`,
+        `Both sides are read in the batch's directory: the output, and the unit's maps from its map file there, so maps re-derived by [[Generation.rederive]] before the copy was made, or in place before the comparison, count`,
+      ],
     })
     .add({
       situation = [
@@ -1566,7 +1601,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [
         `compile`,
         `Every unit of a batch is in [[Request.rewordedOnly]] of its first request, or every unit of it has the reason dependency`,
-        `An output of the batch's units, read in the batch's directory before any of its markers is rewritten, has a SHA-256 other than [[SourceMap.text]] of its map, or the batch took kept work`,
+        `An output of the batch's units, read in the batch's directory before any of its markers is rewritten, has its unit's own region text hash to other than [[SourceMap.text]] of its map, or the batch took kept work`,
       ],
       behavior = `The compiler runs on the batch as on any batch, and no build or test command runs first`,
     });

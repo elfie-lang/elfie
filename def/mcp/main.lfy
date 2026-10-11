@@ -148,20 +148,24 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
       ],
       behavior = `Every map read whose [[SourceMap.source]] is the [[File.path]] of a unit of [[Binding.batch]] is left out`,
     })
+    // Decision: the maps read in their place are those [[Generation.rederive]] gives, so a region is
+    // bounded the same way in a session as once the batch is recorded, and every member but the
+    // markers, the recorded text included, is what the compile planned with.
     .add({
       situation = [
         `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
         `[[Binding.role]] of the session is compiler`,
+        `A unit of [[Binding.batch]] has maps in its map file`,
       ],
-      behavior = `In their place, for each unit of [[Binding.batch]] and each output file of its target, as [[output]] defines one, that holds a marker naming the unit's file, one map is read whose [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] are those, and whose [[SourceMap.markers]] are the markers naming that file that the output file holds when the call arrives, read as [[Generation.accept]] reads them`,
+      behavior = `In place of its recorded maps, the maps read for it are [[Generation.rederive]] of the workspace, the unit, and the maps its map file holds, with the output files as they are when the call arrives`,
     })
     .add({
       situation = [
         `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
         `[[Binding.role]] of the session is compiler`,
-        `A map read in place of the recorded ones has the same [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] as a recorded map that was left out`,
+        `A unit of [[Binding.batch]] has no map in its map file`,
       ],
-      behavior = `Every member of that map other than its markers is that recorded map's, so its unit plans, changes, and requests as the compile planned it`,
+      behavior = `For each output file of its target, as [[output]] defines one, that holds a marker that is the unit's own, as [[SourceMap]] defines one, one map is read whose [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] are those, whose [[SourceMap.markers]] are read from the file when the call arrives as [[Generation.rederive]] reads them, and whose other members are empty`,
     })
     .add({
       situation = `[[Binding.role]] of a session is compiler`,
@@ -961,9 +965,23 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
       situation = `The root is a git repository`,
       behavior = `The source of the unit at its last accepted generation is the most recent revision of its file, as git holds it, that its outputs were accepted from as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
     })
+    .add({
+      situation = [
+        `The root is a git repository`,
+        `The source of the unit at its last accepted generation is not recoverable`,
+        `Git holds the unit's hash-matched source, as [[SourceMap]] defines one`,
+      ],
+      behavior = [
+        `The previous text passed to [[Generation.changes]] is the hash-matched source as git holds it, never lowered`,
+        `The text first says the source the outputs were accepted from is not known, that the changes are against the latest revision with the same lowered code, and that their criterion and test changes may not be those since acceptance`,
+      ],
+    })
     .add({ situation = `[[Unit.outputs]] of the unit is empty`, behavior = `The text says no previous output` })
     .add({
-      situation = [`The unit has outputs`, `The previous text cannot be recovered`],
+      situation = [
+        `The unit has outputs`,
+        `Neither its source at its last accepted generation nor its hash-matched source can be recovered`,
+      ],
       behavior = `The text says so first, then lists every entity as added, as [[Generation.changes]] gives them with undefined`,
     })
     .add({

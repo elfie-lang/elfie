@@ -341,6 +341,7 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
 
 /// previous: the text of each unit's definition file when its outputs were last accepted, as written and never lowered, by [[File.path]]
 /// hosted: whether the compiler reading the request runs in a compiler session of the compile-hosted agent server, which offers elfie_task, elfie_dependency, elfie_mark, and elfie_submit
+/// hashMatched: the [[File.path]] of each unit whose entry in previous is its hash-matched source, as [[SourceMap]] defines one, because no revision is its source at its last accepted generation
 // Decision: the request is handed the source as written and lowers it itself, as [[changes]] does,
 // because lowered text holds no criteria, and the criteria are what a compiler most needs compared.
 // Decision: the caller says whether the request is for a hosted compiler session, because only the
@@ -348,7 +349,14 @@ fn plan(workspace: Workspace, sourceMaps: SourceMap[], requested: string[] = [],
 // interfaces instead of quoting them, while a request read anywhere else quotes them whole. A
 // compiler command that never uses the session it is hosted in still gets the interfaces by name
 // only, and reads each definition another way.
-fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string> = {}, hosted: boolean = false): `Everything the compiler is handed to produce the outputs of one batch` => Request {
+fn request(
+  plan: Plan,
+  batch: Batch,
+  existing: Output[],
+  previous: Object<string> = {},
+  hosted: boolean = false,
+  hashMatched: string[] = [],
+): `Everything the compiler is handed to produce the outputs of one batch` => Request {
   @acceptanceCriteria
     .add({ behavior = `[[Request.batch]] is [[batch]]` })
     .add({
@@ -369,17 +377,31 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
       behavior = `[[Request.answered]] maps the unit's [[File.path]] to the ids of the local criteria and tests of the file as it was`,
     })
     .add({
-      situation = `[[previous]] has an entry for the file of a unit of [[batch]]`,
+      situation = [
+        `[[previous]] has an entry for the file of a unit of [[batch]]`,
+        `That path is not in [[hashMatched]]`,
+      ],
       behavior = `[[Request.removed]] maps the unit's [[File.path]] to one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now and is the [[Rewording.replaces]] of none of [[Request.reworded]] for that path, in the order the file as it was gives them`,
     })
     .add({
-      situation = `[[previous]] has an entry for the file of a unit of [[batch]]`,
+      situation = [
+        `[[previous]] has an entry for the file of a unit of [[batch]]`,
+        `That path is not in [[hashMatched]]`,
+      ],
       behavior = `[[Request.reworded]] maps the unit's [[File.path]] to [[reworded]] of [[Program.workspace]] of [[Plan.program]], the unit, and that entry`,
+    })
+    .add({
+      situation = [`[[previous]] has an entry for the file of a unit of [[batch]]`, `That path is in [[hashMatched]]`],
+      behavior = [
+        `[[Request.reworded]] maps the unit's [[File.path]] to an empty list`,
+        `[[Request.removed]] maps the unit's [[File.path]] to one [[RemovedRequirement]] for each id of [[Request.answered]] for that path that is none of the unit's local criterion and test ids now, in id order, each with [[RemovedRequirement.place]] and [[RemovedRequirement.text]] empty`,
+      ],
     })
     .add({
       situation = [
         `A unit of [[batch]] has the reason requirements`,
         `[[previous]] has an entry for its file`,
+        `Its file's path is not in [[hashMatched]]`,
         `[[Request.removed]] maps its [[File.path]] to an empty list`,
         `[[Request.reworded]] maps its [[File.path]] to a list that is not empty`,
         `The id of every local criterion and test of the unit is in [[Request.answered]] for its [[File.path]], or is the [[Rewording.id]] of one of [[Request.reworded]] for it`,
@@ -516,6 +538,10 @@ fn request(plan: Plan, batch: Batch, existing: Output[], previous: Object<string
     .add({
       situation = `[[Request.removed]] has a non-empty entry for a unit of [[batch]]`,
       behavior = `That unit's section ends with each [[RemovedRequirement]] of that entry on its own line, reading its [[RemovedRequirement.id]], a space, an em dash, a space, and its [[RemovedRequirement.text]], under a heading saying they were removed since its outputs were accepted`,
+    })
+    .add({
+      situation = `A [[RemovedRequirement]] of [[Request.removed]] has an empty [[RemovedRequirement.text]]`,
+      behavior = `Its line reads its [[RemovedRequirement.id]], a space, an em dash, a space, and words saying its text is not known`,
     })
     .add({
       situation = `A criterion or test of a unit of [[batch]] is marked new`,
@@ -781,22 +807,26 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
     // unit may not do is take away what another unit recorded in it. Moving it is not taking it
     // away: splitting a module carries the markers another unit recorded in the unit's code into new
     // files, so a recorded marker is looked for in every output of the unit and in every other file
-    // of the output directory, never only in the file it was recorded for. A marker naming the
-    // unit's own file, or the file of an entity moved into it, is the unit's to write or drop: a
+    // of the output directory, never only in the file it was recorded for. Markers are counted, not
+    // just found, so dropping one of two regions with the same name is still taking one away. A
+    // marker that is the unit's own, as [[SourceMap]] defines one, is the unit's to write or drop: a
     // co-owner's map holds it only because a map records every marker of its output.
+    // Decision: whether a co-owner's region grew by lines the unit put under it is not judged here,
+    // since accept has no earlier text to compare with. [[SourceMap.text]] hashes the co-owner's own
+    // regions and is carried over when its maps are re-derived, so a grown region no longer matches
+    // it, and the co-owner's outputs are never kept as they are on that hash.
     .add({
       situation = [
         `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
         `That source is the file of no unit of [[Request.batch]] of [[request]]`,
-        `A marker of that source map names neither the unit's file nor the file declaring an entity moved into the unit`,
-        `That marker, compared by [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]], is in no output of [[outputs]] and in no file of [[elsewhere]]`,
+        `For the [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]] of a marker of that source map that is not the unit's own, fewer markers with those three across [[outputs]] and [[elsewhere]] together than across every map of [[recorded]] with that source`,
       ],
-      behavior = `[[Verdict.problems]] holds one naming the path, the other unit's source, and the marker`,
+      behavior = `[[Verdict.problems]] holds one naming the path, the other unit's source, the marker, and both counts`,
     })
     .add({
       situation = [
         `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
-        `That source is the file of a unit of [[Request.batch]] of [[request]], or every marker of that source map that names neither the unit's file nor the file declaring an entity moved into the unit, compared by [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]], is in an output of [[outputs]] or in a file of [[elsewhere]]`,
+        `That source is the file of a unit of [[Request.batch]] of [[request]], or, for the [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]] of every marker of that source map that is not the unit's own, as many markers with those three or more across [[outputs]] and [[elsewhere]] together as across every map of [[recorded]] with that source`,
       ],
       behavior = `Sharing the output with that other unit adds no problem`,
     })
@@ -868,7 +898,7 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
       behavior = `[[SourceMap.signature]] of each of [[Verdict.sourceMaps]] is the SHA-256 of [[interfaceOf]] [[unit]]`,
     })
     .add({
-      behavior = `[[SourceMap.text]] of each of [[Verdict.sourceMaps]] is the SHA-256, as lowercase hex, of [[Output.text]] of the output it is for as [[Verdict.outputs]] holds it`,
+      behavior = `[[SourceMap.text]] of each of [[Verdict.sourceMaps]] is the SHA-256, as lowercase hex, of the unit's own region text, as [[SourceMap]] defines it, of the output it is for as [[Verdict.outputs]] holds it`,
     })
     .add({
       behavior = `[[SourceMap.dependencies]] of each of [[Verdict.sourceMaps]] maps the source path of each of [[Unit.dependencies]] to the SHA-256 of [[interfaceOf]] it, as computed during this call`,
@@ -939,7 +969,20 @@ fn accept(request: Request, unit: Unit, outputs: Output[], recorded: SourceMap[]
         [SourceMap@like(`The recorded map of a.lfy for src/mod.rs, whose markers are a.lfy:A and b.lfy:B`)],
         [Output@like(`src/a.rs with no marker`)],
       ],
-      expect = Verdict@like(`Rejected, one problem naming src/mod.rs, a.lfy, and the marker a.lfy:A`),
+      expect = Verdict@like(`Rejected, one problem naming src/mod.rs, a.lfy, the marker a.lfy:A, 0, and 1`),
+    },
+    {
+      input = [
+        Request@like(`For a batch holding only the unit of b.lfy, which declares B`),
+        Unit@like(`that unit`),
+        [Output@like(`src/lib.rs with a marker b.lfy:B and no marker naming a.lfy`)],
+        [
+          SourceMap@like(`The recorded map of a.lfy for src/lib.rs, whose markers are a.lfy:A and b.lfy:B`),
+          SourceMap@like(`The recorded map of a.lfy for src/a.rs, whose marker is a.lfy:A`),
+        ],
+        [Output@like(`src/a.rs with a marker a.lfy:A`)],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming src/lib.rs, a.lfy, the marker a.lfy:A, 1, and 2`),
     },
   );
 }
@@ -1096,15 +1139,19 @@ fn record(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `Whether t
 
 // Decision: when one unit writes a file another unit also has markers in, such as lib.rs, or moves
 // another unit's markers into new files by splitting a module, the other unit's recorded maps no
-// longer say where its regions are, and their text no longer hashes to the file. Its maps are
-// re-read from the files as they are, while everything its last accepted generation recorded about
-// its source is carried over, so what the other unit was generated from stays as it was.
+// longer say where its regions are. Its maps are re-read from the files as they are, while
+// everything its last accepted generation recorded is carried over output by output, so what it
+// was generated from, and what decides whether it is planned, stays as it was.
+// Decision: [[SourceMap.text]] is carried over and never read again from the files: it is the hash
+// of the code the unit's own acceptance and review saw, so another unit's unreviewed edit inside
+// one of its regions, or lines put under one of its markers, leaves its outputs no longer matching
+// it. An output it had no map for has no text that was accepted, so its text is empty.
 /// unit: a unit of the target whose output files another unit has written since its maps were recorded
 /// sourceMaps: the maps the unit's map file holds, whether or not their outputs still exist
 fn rederive(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `The source maps of a unit as the files of its target's output directory hold its markers now, carrying over what its last accepted generation recorded` => SourceMap[] {
   @acceptanceCriteria
     .add({
-      behavior = `Returns one [[SourceMap]] for each file of [[Files.list]] of [[Target.outputDirectory]] of the unit's target under [[Workspace.root]], recursively, whose [[Files.read]] text holds a [[Marker]] naming the unit's file or the file declaring an entity moved into the unit, in path order`,
+      behavior = `Returns one [[SourceMap]] for each file of [[Files.list]] of [[Target.outputDirectory]] of the unit's target under [[Workspace.root]], recursively, whose [[Files.read]] text holds a [[Marker]] that is the unit's own, as [[SourceMap]] defines one, in path order`,
     })
     .add({
       behavior = `[[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] of each returned map are [[Target.identifier]] of the unit's target, the file's path relative to [[Workspace.root]], and [[File.path]] of the unit's file`,
@@ -1113,22 +1160,29 @@ fn rederive(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `The sou
       behavior = `[[SourceMap.markers]] of each returned map holds every marker of its file that names a file of the program, in output order, read as [[accept]] reads a [[Marker]], left as written, and with its line and end derived as [[accept]] derives them`,
     })
     .add({
-      behavior = `[[SourceMap.text]] of each returned map is the SHA-256, as lowercase hex, of its file's text as [[Files.read]] reads it`,
-    })
-    .add({
       situation = `A map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
-      behavior = `[[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.dependencies]], and [[SourceMap.generated]] of the returned map are that map's`,
+      behavior = `[[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.text]], [[SourceMap.dependencies]], and [[SourceMap.generated]] of the returned map are that map's`,
     })
     .add({
-      situation = `No map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
-      behavior = `[[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.dependencies]], and [[SourceMap.generated]] of the returned map are those of the first map of [[sourceMaps]]`,
+      situation = [
+        `No map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
+        `Every map of [[sourceMaps]] has the same [[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.dependencies]], and [[SourceMap.generated]]`,
+      ],
+      behavior = [
+        `Those six of the returned map are the ones every map of [[sourceMaps]] has`,
+        `[[SourceMap.text]] of the returned map is empty`,
+      ],
     })
     .add({
-      situation = `[[sourceMaps]] is empty, or no file of the output directory holds a marker naming the unit's file or the file declaring an entity moved into the unit`,
+      situation = [
+        `No map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
+        `Two maps of [[sourceMaps]] differ in [[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.dependencies]], or [[SourceMap.generated]]`,
+      ],
       behavior = `Returns [[sourceMaps]] as given`,
     })
     .add({
-      behavior = `[[plan]] gives the unit the same [[Unit.reason]] with the returned maps recorded in place of [[sourceMaps]] as with [[sourceMaps]]`,
+      situation = `[[sourceMaps]] is empty, or no file of the output directory holds a marker that is the unit's own`,
+      behavior = `Returns [[sourceMaps]] as given`,
     })
     .add({ behavior = `Nothing is written` })
     .add({ behavior = `No compiler, verifier, or command of the target is run` });
@@ -1140,22 +1194,35 @@ fn rederive(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `The sou
           `One target rust; src/mod.rs holds markers a.lfy:A and b.lfy:B; src/mod/part.rs, added since a.lfy's maps were recorded, holds b.lfy:B and a.lfy:A.f`,
         ),
         Unit@like(`The unit of a.lfy, which declares A with a member f`),
-        [SourceMap@like(`One map for src/mod.rs with the markers a.lfy:A, a.lfy:A.f, and b.lfy:B, recorded at hash h`)],
+        [
+          SourceMap@like(
+            `One map for src/mod.rs with the markers a.lfy:A, a.lfy:A.f, and b.lfy:B, recorded at hash h with text t`,
+          ),
+        ],
       ],
       expect = [
-        SourceMap@like(`For src/mod.rs, markers a.lfy:A and b.lfy:B, text the hash of the file now, hash h`),
-        SourceMap@like(`For src/mod/part.rs, markers b.lfy:B and a.lfy:A.f, text the hash of the file now, hash h`),
+        SourceMap@like(`For src/mod.rs, markers a.lfy:A and b.lfy:B, hash h, text t`),
+        SourceMap@like(`For src/mod/part.rs, markers b.lfy:B and a.lfy:A.f, hash h, text empty`),
       ],
     },
     {
       input = [
-        Workspace@like(`One target rust; src/lib.rs holds a.lfy:A and nothing else names a.lfy`),
+        Workspace@like(`One target rust; src/lib.rs holds a.lfy:A and a line another unit added since, under b.lfy:B`),
         Unit@like(`The unit of a.lfy`),
-        [SourceMap@like(`One map for src/lib.rs whose text is the hash of an earlier lib.rs`)],
+        [SourceMap@like(`One map for src/lib.rs with text t and the markers lib.rs held when it was accepted`)],
       ],
-      expect = [
-        SourceMap@like(`The same map, its text the hash of src/lib.rs now and its markers as lib.rs holds them`),
+      expect = [SourceMap@like(`The same map, with text t and its markers as lib.rs holds them now`)],
+    },
+    {
+      input = [
+        Workspace@like(`One target rust; src/new.rs holds a.lfy:A`),
+        Unit@like(`The unit of a.lfy`),
+        [
+          SourceMap@like(`A map for src/a.rs at hash h1`),
+          SourceMap@like(`A map for src/b.rs at hash h2, written before a.rs's`),
+        ],
       ],
+      expect = [SourceMap@like(`The map for src/a.rs, unchanged`), SourceMap@like(`The map for src/b.rs, unchanged`)],
     },
   );
 }
