@@ -960,6 +960,43 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [`compile`, `A batch's source maps are recorded by [[Generation.record]]`],
       behavior = `elfie-compile/cache/kept/<batch>.json under the root is removed when it exists, whatever the batch's directory`,
     })
+    // Decision: a unit that writes a file another unit has markers in, such as lib.rs, or that moves
+    // another unit's markers into new files by splitting a module, leaves that unit's recorded maps
+    // pointing at regions that moved and hashing text that changed. So whenever a batch's maps are
+    // recorded, the maps of every other unit with markers in its files are read again from the files
+    // as they are, carrying over everything else. Nothing that decides whether a unit is planned
+    // changes: only where its regions are and the text its outputs hash to, which now match the
+    // files, so a later reworded-only or dependency-only batch of that unit can still keep its
+    // outputs.
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `The source maps of a batch's units are recorded by [[Generation.record]], whether after a run of the compiler, after a first run that skipped it, or with --accept`,
+      ],
+      behavior = `The batch's co-owners are the units of the batch's target that are not of the batch and that have a [[Marker]] naming their file in a file the recorded maps name as [[SourceMap.output]], or whose map file names such a file or a file a map of the batch's units named before they were recorded`,
+    })
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `The source maps of a batch's units are recorded by [[Generation.record]]`,
+        `The batch has a co-owner`,
+      ],
+      behavior = [
+        `Right after, in the root, the co-owner's maps are [[Generation.rederive]] of the workspace, the co-owner, and the maps its map file holds, read as [[Generation.sourceMapsOf]] reads a map file but whether or not their outputs exist`,
+        `Those maps are recorded for the co-owner by [[Generation.record]]`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `A co-owner's maps are re-derived after a batch's source maps are recorded`,
+      ],
+      behavior = [
+        `No compiler or verifier runs for the co-owner`,
+        `No review record file of the co-owner changes`,
+        `No file but the co-owner's map file is written for it`,
+      ],
+    })
     .add({
       situation = [`A file is merged into the root`, `The root's file still holds what the base holds`],
       behavior = `The root's file becomes the copy's, keeping whether it is executable, or is removed when the copy removed it`,
@@ -1186,11 +1223,19 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `The root is a git repository`],
-      behavior = `The source of a unit at its last accepted generation is the most recent revision of its file whose text, lowered as [[Generation.changes]] binds a previous text, hashes to [[SourceMap.hash]] of the unit's outputs`,
+      behavior = `The source of a unit at its last accepted generation is the most recent revision of its file, as git holds it, that its outputs were accepted from as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The root is a git repository`,
+        `A revision of a unit's file lowers to [[SourceMap.hash]] of its outputs but its local criterion and test ids do not hash to [[SourceMap.requirements]] of its outputs, as one that only reworded a criterion does`,
+      ],
+      behavior = `That revision is not the source of the unit at its last accepted generation`,
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
-      behavior = `Each unit of the batch is accepted or rejected by the [[Verdict]] of [[Generation.accept]] on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units as recorded`,
+      behavior = `Each unit of the batch is accepted or rejected by the [[Verdict]] of [[Generation.accept]] on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units as recorded, and with every other file of that listing, as [[Files.read]] reads it there, as elsewhere`,
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
@@ -1320,7 +1365,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({ situation = `compile with --accept`, behavior = `No compiler is run` })
     .add({
       situation = `compile with --accept`,
-      behavior = `The outputs of each planned unit, the files of [[Files.list]] of [[Target.outputDirectory]], recursively, whose text carries a [[Marker]] for the unit, are checked with [[Generation.accept]]`,
+      behavior = `The outputs of each planned unit, the files of [[Files.list]] of [[Target.outputDirectory]], recursively, whose text carries a [[Marker]] for the unit, are checked with [[Generation.accept]], with the source maps recorded for the target's other units as recorded, and with every other file of that listing as elsewhere`,
     })
     .add({
       situation = [`compile with --accept`, `[[Generation.accept]] accepts a planned unit`],
@@ -1505,6 +1550,10 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `The batch's target has no line for the build operation or none for the test operation`,
       ],
       behavior = `The compiler runs on the batch as on any batch, and no build or test command runs first`,
+    })
+    .add({
+      situation = `compile compares an output of a batch's units with [[SourceMap.text]] of its map`,
+      behavior = `The outputs and their maps are those the unit's map file in the root holds when the comparison is made, so maps re-derived by [[Generation.rederive]] since the plan was made count`,
     })
     .add({
       situation = [

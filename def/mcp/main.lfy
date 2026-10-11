@@ -522,7 +522,7 @@ fn dependency(session: Session, name: string) is tool, compilerTool: `What one e
 fn check(session: Session, unit: string, target?: string) is tool: `Whether the outputs on disk satisfy the request for one unit, and what is wrong when they do not` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[Generation.accept]] of the unit against the request of its batch and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk, with the source maps recorded for the target's other units as recorded`,
+      behavior = `[[Generation.accept]] of the unit against the request of its batch and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk, with the source maps recorded for the target's other units as recorded, and with every other file under [[Target.outputDirectory]], read from disk, as elsewhere`,
     })
     .add({
       situation = `[[Generation.accept]] of the unit accepts it`,
@@ -956,6 +956,10 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
         `The source of the unit at its last accepted generation is recoverable from it`,
       ],
       behavior = `The previous text passed to [[Generation.changes]] is that source as git holds it, recovered through [[Process.run]] of git and never lowered`,
+    })
+    .add({
+      situation = `The root is a git repository`,
+      behavior = `The source of the unit at its last accepted generation is the most recent revision of its file, as git holds it, that its outputs were accepted from as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
     })
     .add({ situation = `[[Unit.outputs]] of the unit is empty`, behavior = `The text says no previous output` })
     .add({

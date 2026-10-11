@@ -797,3 +797,23 @@ was chosen.
 - Guidance re-plans nothing (`compile --dry-run` plans the same units before and after). Each
   large module is split the next time its unit is compiled, one unit at a time, or by
   `compile <stem>`.
+- **Moving a co-owner's markers is not taking them away.** A split carries markers that name
+  another unit's file (they sit in the unit's own code) into the new submodule files. `accept`
+  used to look for a co-owner's recorded markers only in the file they were recorded for, so the
+  first real split (generation/main's `mod.rs` into 21 files) was rejected over generation/data's
+  regions. It now looks in every output of the unit and every other file of the output directory
+  (`accept`'s `elsewhere`); a marker found in none is still a problem. Markers naming the unit's
+  own file stay the unit's to write or drop, as the Rust already treated them.
+- **Co-owners' maps are re-derived when a batch is recorded.** Otherwise a co-owner's map would
+  keep naming regions that moved and hashing text that changed (any write to `lib.rs` already
+  made every co-owner's `SourceMap.text` stale, which sends its reworded-only or dependency-only
+  batch to the compiler), and its next accept would be judged against that stale map.
+  `Generation.rederive` reads the co-owner's markers and text from the files as they are and
+  carries over its hash, requirements, answered ids, signature, dependencies, and generation time,
+  so its reason to be planned never changes. No compiler or verifier runs for it and its review
+  records are untouched: its regions' text is checked by the region hashes its records carry.
+- **The last accepted source matches requirements too.** Lowered text leaves out criteria, so a
+  committed revision that only reworded a criterion lowered to `SourceMap.hash` and was taken for
+  the accepted source; `reworded` then compared it with itself and the reworded-only path never
+  fired. The revision must also match `SourceMap.requirements`, stated once on `SourceMap` and
+  used by `compile` and `elfie_changes`.

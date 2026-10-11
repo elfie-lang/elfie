@@ -119,6 +119,26 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
       situation = `A change to the unit's file leaves every line of its interface text the same, such as a new criterion or a moved line`,
       behavior = `[[SourceMap.signature]] is the same as before the change`,
     });
+
+  // Source at the last accepted generation
+  // Decision: lowered text leaves out criteria and tests, so a revision that only reworded a
+  // criterion lowers to the same hash as the one the outputs were accepted from. Matching the
+  // requirement ids as well keeps the reworded revision from being taken for the accepted one.
+  @acceptanceCriteria
+    .add({
+      behavior = `A revision of a unit's file is one its outputs were accepted from exactly when its lowered text hashes to [[SourceMap.hash]] of the unit's outputs and its local criterion and test ids, taken as [[SourceMap.requirements]] takes them, hash to [[SourceMap.requirements]] of the unit's outputs`,
+    })
+    .add({
+      situation = `[[SourceMap.answered]] of the unit's outputs is not empty`,
+      behavior = `Comparing a revision's local criterion and test ids, sorted, with [[SourceMap.answered]] gives the same answer as comparing their hash with [[SourceMap.requirements]]`,
+    })
+    .add({
+      behavior = `The source of a unit at its last accepted generation is the most recent revision of its file that its outputs were accepted from`,
+    })
+    .add({
+      situation = `No revision of a unit's file is one its outputs were accepted from`,
+      behavior = `The source of the unit at its last accepted generation is not recoverable`,
+    });
 }
 
 d Unit: `The work the compiler does as one piece: one source file for one target, with any entities moved into it from other files` {
