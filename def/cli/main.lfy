@@ -1262,7 +1262,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
-      behavior = `Each unit of the batch is accepted or rejected by the [[Verdict]] of [[Generation.accept]] on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units, as the map files in the batch's directory hold them, as recorded, and with every other file of that listing, as [[Files.read]] reads it there, as elsewhere`,
+      behavior = `Each unit of the batch is accepted or rejected by the [[Verdict]] of [[Generation.accept]] on the files of [[Files.list]] of [[Target.outputDirectory]] in the batch's directory, recursively skipping every directory named target, .git, or node_modules, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units, as the map files in the batch's directory hold them, as recorded, and with every other file of that listing, as [[Files.read]] reads it there, as elsewhere`,
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a batch returns its [[Process.Exit]]`,
@@ -1392,7 +1392,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({ situation = `compile with --accept`, behavior = `No compiler is run` })
     .add({
       situation = `compile with --accept`,
-      behavior = `The outputs of each planned unit, the files of [[Files.list]] of [[Target.outputDirectory]], recursively, whose text carries a [[Marker]] for the unit, are checked with [[Generation.accept]], with the source maps recorded for the target's other units, as the map files in the batch's directory hold them, as recorded, and with every other file of that listing as elsewhere`,
+      behavior = `The outputs of each planned unit, the files of [[Files.list]] of [[Target.outputDirectory]], recursively skipping every directory named target, .git, or node_modules, whose text carries a [[Marker]] for the unit, are checked with [[Generation.accept]], with the source maps recorded for the target's other units, as the map files in the batch's directory hold them, as recorded, and with every other file of that listing as elsewhere`,
     })
     .add({
       situation = [`compile with --accept`, `[[Generation.accept]] accepts a planned unit`],

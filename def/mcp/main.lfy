@@ -791,6 +791,11 @@ fn output(session: Session, name: string, target?: string, text: boolean = true)
     .add({
       behavior = `An output file is a file under [[Target.outputDirectory]] of a target, limited to [[target]] when it is set, whose [[Path.extension]] is among [[Target.extensions]] of that target, under [[Binding.directory]], or under [[Workspace.root]] when [[Session.binding]] is undefined`,
     })
+    // Decision: build and version-control directories are never outputs, though a target's output
+    // directory may hold them; walking them would be slow and would find generated or vendored code.
+    .add({
+      behavior = `A file under a directory named target, .git, or node_modules, at any depth below [[Target.outputDirectory]], is no output file`,
+    })
     .add({
       situation = `[[name]] is not the path of an output file`,
       behavior = `Every region is read from [[Generation.sourceMapsOf]] the workspace, limited to [[target]] when it is set`,
