@@ -133,9 +133,19 @@ until accepted.
     - Orphan kept files of unplanned targets are removed.
     - The last four are code defects, to be fixed by recompiling cli/main.
     - Maps recorded before b89cb0d lack SourceMap.text until re-recorded.
-- [ ] Phase 6 item 16 (module split): guidance landed in 7b83be9.
-  - generation/main's compiler built the split (21 files, all green) but had to revert it. accept
-    checks a co-owner's markers per output path, and generation/data's map claims 225 regions in
-    generation/mod.rs.
-  - In progress: accept checks co-owner markers across outputs, and co-owner maps are re-derived
-    after each recording.
+- [x] Phase 6 item 16 (module split), landed 2026-10-11:
+  - generation/main, interpret/main, mcp/main, cli/main, query/main, workspace/main, model/main,
+    parser/main and lsp/main are split.
+  - No Rust file under crates/ exceeds 2,000 lines; the largest is 1,866, against 12,136 before.
+  - Splitting a shared output needed accept to count co-owner markers across outputs, and co-owner
+    maps to be re-derived (348681b).
+- [x] Follow-ups found in use:
+  - Previous-source recovery matches requirements (348681b).
+  - elfie_reportMany for many verdicts per call (20739c2). One verdict per turn had taken
+    403 turns at 413k context each.
+  - Build and version-control directories are never output files (224a276).
+- In real compiles after landing:
+  - The reworded-only path ran: cli/main took 15 s to accept, and its review asked 2 ids and
+    carried 375.
+  - Dependents started on structural acceptance and were revalidated by build and test.
+  - Retry reviews carried 677 of 807 verdicts.
