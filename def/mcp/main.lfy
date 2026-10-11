@@ -44,6 +44,9 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
     })
     .add({ behavior = `[[Session.binding]] is undefined` })
     .add({ behavior = `No resource and no prompt is listed` })
+    .add({
+      behavior = `The instructions the initialize answer carries name only tools offered over standard input and output, and say that none of them writes a file`,
+    })
     .add({ behavior = `Calls are handled one at a time, in the order received` })
     .add({
       behavior = `Every call answers for the program's files and elfie.json as they are on disk when the call arrives`,
@@ -153,6 +156,14 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
       behavior = `In their place, for each unit of [[Binding.batch]] and each output file of its target, as [[output]] defines one, that holds a marker naming the unit's file, one map is read whose [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] are those, and whose [[SourceMap.markers]] are the markers naming that file that the output file holds when the call arrives, read as [[Generation.accept]] reads them`,
     })
     .add({
+      situation = [
+        `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
+        `[[Binding.role]] of the session is compiler`,
+        `A map read in place of the recorded ones has the same [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] as a recorded map that was left out`,
+      ],
+      behavior = `Every member of that map other than its markers is that recorded map's, so its unit plans, changes, and requests as the compile planned it`,
+    })
+    .add({
       situation = `[[Binding.role]] of a session is compiler`,
       behavior = `The tools offered to the session are every fn of this file that carries [[tool]] and not [[commandTool]], except [[report]], and every fn of this file that carries [[commandTool]] whose operation a target of the session has a command with a defined [[Command.line]] for, among its [[Target.commands]]`,
     })
@@ -171,6 +182,9 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
       behavior = `Returns an empty list`,
     })
     .add({ behavior = `No resource and no prompt is listed` })
+    .add({
+      behavior = `The instructions a session's initialize answer carries name only tools offered to that session, say which of them change files, and say which role the session is bound to`,
+    })
     .add({ behavior = `The calls of one session are handled one at a time, in the order received` })
     .add({
       situation = `Two calls of different sessions are not both calls of command tools for the same [[Binding.directory]]`,
