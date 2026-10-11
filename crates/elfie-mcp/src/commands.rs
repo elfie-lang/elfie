@@ -132,16 +132,23 @@ fn collect_lines<R: std::io::Read + Send + 'static>(
     })
 }
 
-/// Every process of a process group stopped, through the platform's own `kill`.
+/// Every process of a process group stopped, through the platform's own way of stopping one:
+/// `taskkill /T /F` on Windows, and a `kill` of the whole group elsewhere.
 // @lfy def/mcp/main.lfy:build#build:commandTool:1ec8e462d2638913d1d6b8cd5b590f00751d033f0891e5ca220c79cd71a87001
 fn stop_group(leader: u32) {
-    let _ = Command::new("sh")
-        .arg("-c")
-        .arg(format!("kill -KILL -- -{leader}"))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    let mut stopping = match cfg!(windows) {
+        true => {
+            let mut stopping = Command::new("taskkill");
+            stopping.arg("/T").arg("/F").arg("/PID").arg(leader.to_string());
+            stopping
+        }
+        false => {
+            let mut stopping = Command::new("sh");
+            stopping.arg("-c").arg(format!("kill -KILL -- -{leader}"));
+            stopping
+        }
+    };
+    let _ = stopping.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
 }
 
 /// One run of a command line through the platform shell, as `Process.stream` runs one: with
@@ -153,9 +160,13 @@ fn stop_group(leader: u32) {
 // @lfy def/mcp/main.lfy:lint#lint:commandTool:bf3147cfd99d2a9b4e23f7bc279599b377502118fe79c0f3e4b61046b9b04474
 // @lfy def/mcp/main.lfy:format#format:commandTool:233a6d05023c94898e39605cf19939d406164ae5ee43f059c1a31f44b94fa768
 fn run_line(line: &str, directory: &Path, environment: &[(&str, String)]) -> (i32, Vec<String>, bool) {
-    let mut spawning = Command::new("sh");
+    let (program, flag) = match cfg!(windows) {
+        true => ("cmd", "/C"),
+        false => ("sh", "-c"),
+    };
+    let mut spawning = Command::new(program);
     spawning
-        .arg("-c")
+        .arg(flag)
         .arg(line)
         .current_dir(directory)
         .stdin(Stdio::null())
@@ -165,9 +176,13 @@ fn run_line(line: &str, directory: &Path, environment: &[(&str, String)]) -> (i3
         spawning.env(name, value);
     }
     // The command leads a process group of its own, so everything it starts is stopped with
-    // it when it runs out of time.
+    // it when it runs out of time: a process group on Unix, and on Windows a process started
+    // with the CREATE_NEW_PROCESS_GROUP creation flag, which is 0x00000200.
     // @lfy def/mcp/main.lfy:build#build:commandTool:f83af6a046e8e4f79a777c2d3c9b677a67d05faab6429155fbda5b26e27e4159
+    #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut spawning, 0);
+    #[cfg(windows)]
+    std::os::windows::process::CommandExt::creation_flags(&mut spawning, 0x0000_0200);
     let mut child = match spawning.spawn() {
         Ok(child) => child,
         // The command could not be started, so its code is -1 and what went wrong is all it

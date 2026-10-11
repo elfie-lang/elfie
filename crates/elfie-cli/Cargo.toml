@@ -11,4 +11,5 @@ path = "src/main.rs"
 elfie-core.workspace = true
 elfie-lsp = { path = "../elfie-lsp" }
 elfie-mcp = { path = "../elfie-mcp" }
+getrandom = "0.4"
 serde_json.workspace = true

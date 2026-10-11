@@ -8,7 +8,9 @@ use "rust" as Rust;
 ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targetOf({
   output = "crates",
   language = Rust.rust,
-  platforms = [posix],
+  // Decision: the release builds x86_64-pc-windows-msvc beside the Linux and macOS targets, so
+  // the target lists windows too; code that only one of them can run is spelled for each.
+  platforms = [posix, windows],
   ecosystem = Rust.cargo,
   layout = Rust.cargoWorkspace.layer(
     { lsp = "crates/elfie-lsp/src", mcp = "crates/elfie-mcp/src", cli = "crates/elfie-cli/src" },
@@ -24,6 +26,7 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
     { name = "rmcp", version = "3" },
     { name = "axum", version = "0.8" },
     { name = "regex", version = "1" },
+    { name = "getrandom", version = "0.4" },
     { name = "clap", version = "4" },
   ],
 });
@@ -31,7 +34,8 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
 // Guidance only this repository needs
 rust
   @acceptanceCriteria
-  .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` });
+  .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })
+  .add({ behavior = `cargo check --target x86_64-pc-windows-msvc for the whole workspace passes without warnings` });
 
 // Module size
 // Decision: a unit's module of 8,000 to 10,000 lines costs every compiler and verifier that reads

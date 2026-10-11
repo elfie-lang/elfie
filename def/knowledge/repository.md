@@ -19,6 +19,22 @@
   of the package names above, passed to cargo as `-p`: `elfie-core`, `elfie-lsp`, `elfie-mcp`, or
   `elfie`. Leaving `scope` out runs the whole workspace.
 
+## Platforms
+
+- The release builds `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
+  `aarch64-apple-darwin`, and `x86_64-pc-windows-msvc`. Code that calls a platform API compiles on
+  every one of them: an API of one platform family sits under `#[cfg(unix)]` or `#[cfg(windows)]`,
+  with a branch for the other.
+- Check the Windows build with `cargo check --target x86_64-pc-windows-msvc --workspace`.
+  `cargo build` and `cargo test` on Linux never compile a `#[cfg(windows)]` branch.
+- The operating system's secure random source is `getrandom::fill`, which works on every one of
+  them. `/dev/urandom` does not exist on Windows.
+- A process group on Windows is a process started with the `CREATE_NEW_PROCESS_GROUP` creation
+  flag, through `std::os::windows::process::CommandExt::creation_flags`. It and every process it
+  started are stopped with `taskkill /T /F /PID <id>`. On Unix, `process_group(0)` and
+  `kill -KILL -- -<id>` do the same.
+- The platform shell is `sh -c` on Unix and `cmd /C` on Windows.
+
 ## Formatting
 
 - `cargo fmt` is never run. The target declares a format command with no line, so it has none, and

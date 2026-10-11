@@ -3,7 +3,6 @@ use "elfie/target/platform";
 /// Platforms: where a target runs. A target may have several, such as a server and browsers.
 
 trait posix extends targetPlatform: `A process on Linux or macOS` {
-  .platform = "Linux and macOS";
   .provides = ["posix", "process", "file-system"];
   @acceptanceCriteria
     .add({
@@ -13,7 +12,6 @@ trait posix extends targetPlatform: `A process on Linux or macOS` {
 }
 
 trait windows extends targetPlatform: `A process on Windows 10 or later` {
-  .platform = "Windows 10 and later";
   .provides = ["windows", "process", "file-system"];
   @acceptanceCriteria
     .add({
@@ -23,7 +21,6 @@ trait windows extends targetPlatform: `A process on Windows 10 or later` {
 }
 
 trait browser extends targetPlatform: `A page in a current browser` {
-  .platform = "Evergreen browsers";
   .provides = ["browser", "dom"];
   @acceptanceCriteria
     .add({ behavior = `Code that runs in the browser reads no file, no environment variable, and no secret` })

@@ -138,17 +138,48 @@ impl Resuming {
     }
 }
 
-/// Every process of a process group stopped, through the platform's own `kill`.
+/// The platform shell and the flag it takes a command line after: `sh -c` on Unix and
+/// `cmd /C` on Windows.
+// @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+// @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
+pub(crate) fn shell() -> (&'static str, &'static str) {
+    match cfg!(windows) {
+        true => ("cmd", "/C"),
+        false => ("sh", "-c"),
+    }
+}
+
+/// A run made the leader of a process group of its own, so that stopping it stops everything
+/// it started: a process group on Unix, and on Windows a process started with the
+/// CREATE_NEW_PROCESS_GROUP creation flag, which is 0x00000200.
+// @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
+pub(crate) fn leads_group(spawning: &mut Process) {
+    // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(spawning, 0);
+    // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
+    #[cfg(windows)]
+    std::os::windows::process::CommandExt::creation_flags(spawning, 0x0000_0200);
+}
+
+/// Every process of a process group stopped, through the platform's own way of stopping one:
+/// `kill` of the group on Unix, and `taskkill /T /F` of the leader on Windows.
 // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
 pub(crate) fn stop_group(leader: u32) {
     // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
-    let _ = Process::new("sh")
-        .arg("-c")
-        .arg(format!("kill -KILL -- -{leader}"))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    let mut stopping = match cfg!(windows) {
+        true => {
+            let mut stopping = Process::new("taskkill");
+            stopping.arg("/T").arg("/F").arg("/PID").arg(leader.to_string());
+            stopping
+        }
+        false => {
+            let mut stopping = Process::new("sh");
+            stopping.arg("-c").arg(format!("kill -KILL -- -{leader}"));
+            stopping
+        }
+    };
+    let _ = stopping.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
 }
 
 /// One stream of the compiler or the verifier, each line shown as it arrives prefixed by the
@@ -278,13 +309,6 @@ pub(crate) fn word_of(role: Role) -> &'static str {
     }
 }
 
-/// The operating system's secure random source, which an agent session id is made from.
-// Decision: `/dev/urandom` is the secure random source of the one platform the target lists,
-// posix; it is a device the kernel answers from, not configuration, so reading it is not
-// configuration read from a fixed absolute path.
-// @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
-pub(crate) const RANDOM: &str = "/dev/urandom";
-
 /// The name of the variable that carries the agent session id of a run.
 // @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
 pub(crate) const SESSION: &str = "ELFIE_SESSION";
@@ -299,9 +323,9 @@ pub(crate) const RESUME: &str = "ELFIE_RESUME";
 pub(crate) fn session_id() -> Result<String, String> {
     // @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
     let mut bytes = [0u8; 16];
-    fs::File::open(RANDOM)
-        .and_then(|mut file| io::Read::read_exact(&mut file, &mut bytes))
-        .map_err(|error| format!("the secure random source {RANDOM} cannot be read: {error}"))?;
+    // The source is the one the operating system offers, whichever platform this is.
+    getrandom::fill(&mut bytes)
+        .map_err(|error| format!("the operating system's secure random source cannot be read: {error}"))?;
     Ok(uuid_of(bytes))
 }
 
@@ -461,9 +485,11 @@ impl Agent {
         // them, so that a run knows what to call instead of knowing the tools.
         // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
         let tools = command_tools_of(&(host.offered)(&session));
-        let mut spawning = Process::new("sh");
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+        let (program, flag) = shell();
+        let mut spawning = Process::new(program);
         spawning
-            .arg("-c")
+            .arg(flag)
             .arg(command)
             .current_dir(directory)
             // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
@@ -505,7 +531,7 @@ impl Agent {
         // The run leads a process group of its own, so that stopping it stops everything it
         // started.
         // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
-        std::os::unix::process::CommandExt::process_group(&mut spawning, 0);
+        leads_group(&mut spawning);
         // The command could not be started: the code is -1 and the failure is the output.
         // @lfy def/cli/main.lfy:main#main:main:979d0574227f5474ed3c9c68fd3f62895696f4c2e92d830ba8016b19b0624a69
         let mut child = match spawning.spawn() {
@@ -707,9 +733,11 @@ pub(crate) fn run_target_command(
     // The command runs in the target's output directory under the batch's directory.
     // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
     let within = directory.join(&target.output_directory);
-    let mut spawning = Process::new("sh");
+    // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
+    let (program, flag) = shell();
+    let mut spawning = Process::new(program);
     spawning
-        .arg("-c")
+        .arg(flag)
         .arg(line)
         .current_dir(&within)
         // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
@@ -725,7 +753,7 @@ pub(crate) fn run_target_command(
     // it when it runs out of time or the batch is stopped.
     // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
     // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
-    std::os::unix::process::CommandExt::process_group(&mut spawning, 0);
+    leads_group(&mut spawning);
     let mut child = match spawning.spawn() {
         Ok(child) => child,
         // @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19

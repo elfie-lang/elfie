@@ -396,13 +396,6 @@ pub(crate) const LOOPBACK: &str = "127.0.0.1";
 // @lfy def/mcp/main.lfy:host#host:host:465078bd14c4c2971c8ae047a59db580f64b30e5fa762af2e656c4accbede7ba
 const SESSIONS: &str = "sessions";
 
-/// The operating system's secure random source.
-// Decision: `/dev/urandom` is the secure random source of the one platform the target
-// lists, posix; it is a device the kernel answers from, not configuration, so reading it is
-// not configuration read from a fixed absolute path.
-// @lfy def/mcp/main.lfy:host#host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852
-const RANDOM: &str = "/dev/urandom";
-
 /// How many bytes a token holds: 32, which is 64 hex digits.
 // @lfy def/mcp/main.lfy:host#host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852
 pub(crate) const TOKEN_BYTES: usize = 32;
@@ -412,9 +405,9 @@ pub(crate) const TOKEN_BYTES: usize = 32;
 // @lfy def/mcp/main.lfy:host#host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852
 fn fresh_token() -> Result<String, String> {
     let mut bytes = [0u8; TOKEN_BYTES];
-    fs::File::open(RANDOM)
-        .and_then(|mut file| std::io::Read::read_exact(&mut file, &mut bytes))
-        .map_err(|error| format!("the secure random source {RANDOM} cannot be read: {error}"))?;
+    // The source is the one the operating system offers, whichever platform this is.
+    getrandom::fill(&mut bytes)
+        .map_err(|error| format!("the operating system's secure random source cannot be read: {error}"))?;
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 

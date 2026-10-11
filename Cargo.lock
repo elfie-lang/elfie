@@ -296,6 +296,7 @@ dependencies = [
  "elfie-core",
  "elfie-lsp",
  "elfie-mcp",
+ "getrandom",
  "serde_json",
 ]
 
@@ -324,6 +325,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "elfie-core",
+ "getrandom",
  "regex",
  "rmcp",
  "serde_json",
