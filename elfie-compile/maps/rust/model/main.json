@@ -200,7 +200,8 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -2464,7 +2465,8 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -3153,7 +3155,7 @@
         "end": 392,
         "entity": "Command.operation",
         "file": "def/model/data.lfy",
-        "line": 22,
+        "line": 26,
         "outputLine": 364,
         "requirement": null
       },
@@ -3171,7 +3173,7 @@
         "end": 399,
         "entity": "Command.operation",
         "file": "def/model/data.lfy",
-        "line": 22,
+        "line": 26,
         "outputLine": 397,
         "requirement": null
       },
@@ -3180,7 +3182,7 @@
         "end": 401,
         "entity": "Command.line",
         "file": "def/model/data.lfy",
-        "line": 23,
+        "line": 27,
         "outputLine": 400,
         "requirement": null
       },
@@ -3666,7 +3668,8 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -4184,7 +4187,8 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -5035,7 +5039,8 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -6606,7 +6611,8 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -6746,6 +6752,7 @@
     "requirements": "768fa476a11c137a6233a44ac2fc98e03858a762cb8faeb7a2d3d970fc597d07",
     "signature": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
     "source": "def/model/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   }
 ]

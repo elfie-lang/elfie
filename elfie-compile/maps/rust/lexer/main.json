@@ -1,5 +1,6 @@
 [
   {
+    "answered": [],
     "dependencies": {
       "def/grammar/main.lfy": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
       "def/grammar/terminals/comment.lfy": "6b9224b89045bf7f7a7ef1bafa923b3625a5140f5fd78ecd2ea66d8489bf12cc",
@@ -111,9 +112,11 @@
     "requirements": "0edec7d503d400b4721c7a1b3676d5c9555525f94c83ac5591f1d385b22af499",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
+    "answered": [],
     "dependencies": {
       "def/grammar/main.lfy": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
       "def/grammar/terminals/comment.lfy": "6b9224b89045bf7f7a7ef1bafa923b3625a5140f5fd78ecd2ea66d8489bf12cc",
@@ -720,9 +723,11 @@
     "requirements": "0edec7d503d400b4721c7a1b3676d5c9555525f94c83ac5591f1d385b22af499",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
+    "answered": [],
     "dependencies": {
       "def/grammar/main.lfy": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
       "def/grammar/terminals/comment.lfy": "6b9224b89045bf7f7a7ef1bafa923b3625a5140f5fd78ecd2ea66d8489bf12cc",
@@ -771,7 +776,7 @@
         "end": 9,
         "entity": "lower",
         "file": "def/interpret/main.lfy",
-        "line": 288,
+        "line": 295,
         "outputLine": 9,
         "requirement": null
       },
@@ -825,6 +830,7 @@
     "requirements": "0edec7d503d400b4721c7a1b3676d5c9555525f94c83ac5591f1d385b22af499",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   }
 ]
