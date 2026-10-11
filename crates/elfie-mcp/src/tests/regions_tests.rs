@@ -20,14 +20,20 @@ fn output_gives_every_region_of_an_entity_with_its_text() {
     // @lfy def/mcp/main.lfy:output#output:output:5f91a9d6a55f8212f9288be65dd547c69391009665dc988e76b8a5150ac20406
     assert_eq!(output(&session, "out/b.rs", None, true).unwrap(), text);
     // Every file under the output directory with an extension of the target's is one, as
-    // deep as it lies and whatever the directories on the way there are named.
+    // deep as it lies.
     // @lfy def/mcp/main.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
-    fixture.write("out/target/deep/c.rs", "// @lfy def/b.lfy:B\npub struct C;\n");
+    fixture.write("out/deep/c.rs", "// @lfy def/b.lfy:B\npub struct C;\n");
     let session = fixture.session();
-    assert_eq!(
-        output(&session, "out/target/deep/c.rs", None, false).unwrap(),
-        "out/target/deep/c.rs:1-2 B"
-    );
+    assert_eq!(output(&session, "out/deep/c.rs", None, false).unwrap(), "out/deep/c.rs:1-2 B");
+    // A file below a directory a build or a version control system keeps is no output
+    // file, however deep below the output directory it lies, so nothing is generated for
+    // its path.
+    // @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+    for kept in ["out/target/deep/c.rs", "out/.git/deep/c.rs", "out/a/node_modules/c.rs"] {
+        fixture.write(kept, "// @lfy def/b.lfy:B\npub struct C;\n");
+        let session = fixture.session();
+        assert_eq!(output(&session, kept, None, false).unwrap(), format!("nothing is generated for {kept}"));
+    }
     // With `text` false the line of each region stands alone, so however long an output
     // is its regions read as a few lines.
     // @lfy def/mcp/main.lfy:output#output:output:a388e41750cae72a1a126c53b636547055414dad9404ae10cd679aed3861fe6a

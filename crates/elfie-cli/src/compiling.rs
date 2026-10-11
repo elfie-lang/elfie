@@ -461,7 +461,7 @@ impl Run {
                     state
                         .reporter
                         .append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
-                    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+                    // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
                     let verdicts = state.verdicts_of(batch, &request, &directory);
                     // How the run ended is the outcome of its report, those verdicts, and
                     // what it submitted through its session before the session was closed.
@@ -738,12 +738,12 @@ impl Run {
     /// verified like any other against the source maps held for it; since no compiler runs
     /// there is nothing to run again, so a violated review rejects the batch at once and
     /// those maps are never recorded.
-    // @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
+    // @lfy def/cli/main.lfy:main#main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27
     pub(crate) fn accept_on_disk(run: &Mutex<Run>, batch: &Batch, root: &Path) {
         // No compiler is run; nothing else is writing the root, so the batch needs no copy of
         // its own.
         // @lfy def/cli/main.lfy:main#main:main:c51341f34278d51ccda0b1a75908b211f46b7db736525ed29c88351db922c346
-        // @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
+        // @lfy def/cli/main.lfy:main#main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27
         let where_ = Where::Root(root.to_path_buf());
         let held = {
             let mut state = locked(run);

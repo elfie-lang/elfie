@@ -65,16 +65,39 @@ fn every_region<'m>(maps: &'m [SourceMap], target: Option<&str>) -> Vec<(&'m str
         .collect()
 }
 
+/// The directories a build or a version control system keeps for itself, which hold no
+/// output however deep below a target's output directory they lie.
+// @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+const KEPT_DIRECTORIES: [&str; 3] = ["target", ".git", "node_modules"];
+
+/// Whether a path, relative to the workspace root, lies below one of those directories.
+/// Only the segments below the target's output directory are read, and the file's own name
+/// is no segment of them, so a target that writes under a directory of that name is read as
+/// it is written.
+// @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+fn below_a_kept_directory(path: &str, output_directory: &str) -> bool {
+    let under = path.strip_prefix(output_directory).unwrap_or(path);
+    let under = under.strip_prefix('/').unwrap_or(under);
+    let mut segments: Vec<&str> = under.split('/').collect();
+    segments.pop();
+    segments.iter().any(|segment| KEPT_DIRECTORIES.contains(segment))
+}
+
 /// Whether a path, relative to the workspace root, is an output file of a target of the
 /// session: under the target's output directory, with an extension among the target's, and
-/// there on disk. Limited to one target when one is named.
+/// there on disk, but below none of the directories a build or a version control system
+/// keeps. Limited to one target when one is named.
 // @lfy def/mcp/main.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
 fn is_output_file(workspace: &Workspace, path: &str, target: Option<&str>) -> bool {
     workspace
         .targets
         .iter()
         .filter(|of_target| target.is_none_or(|target| of_target.identifier == target))
-        .any(|of_target| output_files(workspace, of_target).iter().any(|known| known == path))
+        .any(|of_target| {
+            // @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+            !below_a_kept_directory(path, &of_target.output_directory)
+                && output_files(workspace, of_target).iter().any(|known| known == path)
+        })
 }
 
 /// Every marker one output file holds as it is read now, as acceptance reads them: the ends

@@ -282,7 +282,8 @@ fn line_for(target: &Target, operation: Operation) -> Option<&str> {
 /// Every file under a directory, recursively, with no directory passed over.
 // Decision: no directory is skipped, however it is named: the criteria that read this say
 // every file under the output directory, recursively, and a file a build left behind under,
-// say, `out/target/` is under it like any other.
+// say, `out/target/` is under it like any other. What `output` calls an output file is
+// narrower, and `regions::is_output_file` leaves those directories out for itself.
 fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(directory) else { return };
     for entry in entries.flatten() {

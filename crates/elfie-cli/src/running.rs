@@ -15,8 +15,8 @@ use crate::processes::{Agent, Runs, Running, line_for, run_target_command, word_
 /// The second list is what `accept` is given as its `elsewhere`: a file of it earns no source
 /// map and none of its markers is checked, and it is there so that a region this unit moved
 /// out of a shared file into a file of its own is still found where it went.
-// @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
-// @lfy def/cli/main.lfy:main#main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27
+// @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
+// @lfy def/cli/main.lfy:main#main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27
 pub(crate) fn outputs_of(
     workspace: &Workspace,
     plan: &Plan,
@@ -27,7 +27,7 @@ pub(crate) fn outputs_of(
     let target = &workspace.targets[unit.target];
     let file = &workspace.files[unit.file].path;
     let mut paths = Vec::new();
-    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+    // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
     walk_all(&directory.join(&target.output_directory), &mut paths);
     paths.sort();
     let mut found = Vec::new();
@@ -35,11 +35,11 @@ pub(crate) fn outputs_of(
     for path in paths {
         let Ok(text) = fs::read_to_string(&path) else { continue };
         let output = Output { path: relative(directory, &path), text };
-        // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+        // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
         if generation::parse_markers(&output.text).iter().any(|m| &m.file == file) {
             found.push(output);
         } else {
-            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
             elsewhere.push(output);
         }
     }
@@ -797,18 +797,18 @@ impl Run {
 
     /// For each unit of the batch, `accept` runs on the files under the target's output
     /// directory in the batch's directory that carry a marker for the unit.
-    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+    // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
     pub(crate) fn verdicts_of(&mut self, batch: &Batch, request: &Request, directory: &Path) -> Vec<Verdict> {
         let mut verdicts = Vec::new();
         for &unit in &batch.units {
             let stem = self.plan.units[unit].stem.clone();
             let reason = self.plan.units[unit].reason.map_or_else(|| "up to date".to_string(), |r| r.as_str().to_string());
             self.reporter.report(Step::Checking, Some(&batch.identifier), Some(&stem), &reason);
-            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
             let (outputs, elsewhere) = outputs_of(self.workspace(), &self.plan, unit, directory);
             // The source maps recorded for the target's other units, which say which outputs
             // already belong to another unit.
-            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
             let recorded = self.recorded_elsewhere(unit, directory);
             verdicts.push(generation::accept(
                 &self.program,
@@ -829,12 +829,12 @@ impl Run {
     ///
     /// They are read from the map files in the batch's directory, as recorded, so a map
     /// another unit's acceptance re-derived is what this one is checked against.
-    // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+    // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
     pub(crate) fn recorded_elsewhere(&self, unit: usize, directory: &Path) -> Vec<SourceMap> {
         let target = self.workspace().targets[self.plan.units[unit].target].identifier.clone();
         let source = self.workspace().files[self.plan.units[unit].file].path.clone();
         let mut out: Vec<SourceMap> = Vec::new();
-        // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+        // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
         for other in 0..self.plan.units.len() {
             let unit = &self.plan.units[other];
             if self.workspace().targets[unit.target].identifier != target
@@ -842,7 +842,7 @@ impl Run {
             {
                 continue;
             }
-            // @lfy def/cli/main.lfy:main#main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777
+            // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
             out.extend(self.maps_in(other, directory));
         }
         out

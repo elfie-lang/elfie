@@ -17,6 +17,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -40,7 +41,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -270,6 +270,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -304,7 +305,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -397,7 +397,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -1635,7 +1635,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/commands.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -1659,6 +1659,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -1682,7 +1683,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -1912,6 +1912,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -1946,7 +1947,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -2039,7 +2039,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -2652,7 +2652,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 464,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -3273,7 +3273,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 741,
-        "requirement": "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27"
+        "requirement": "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27"
       },
       {
         "column": null,
@@ -3291,7 +3291,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 746,
-        "requirement": "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27"
+        "requirement": "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27"
       },
       {
         "column": null,
@@ -3952,7 +3952,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/compiling.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -3976,6 +3976,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -3999,7 +4000,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -4229,6 +4229,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -4263,7 +4264,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -4356,7 +4356,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -5261,7 +5261,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/copies.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -5285,6 +5285,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -5308,7 +5309,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -5538,6 +5538,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -5572,7 +5573,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -5665,7 +5665,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -7272,7 +7272,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/main.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -7296,6 +7296,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -7319,7 +7320,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -7549,6 +7549,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -7583,7 +7584,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -7676,7 +7676,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -8887,7 +8887,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/processes.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -8911,6 +8911,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -8934,7 +8935,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -9164,6 +9164,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -9198,7 +9199,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -9291,7 +9291,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -11006,7 +11006,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/reviewing.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -11030,6 +11030,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -11053,7 +11054,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -11283,6 +11283,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -11317,7 +11318,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -11410,7 +11410,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -11429,7 +11429,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 18,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -11438,7 +11438,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 19,
-        "requirement": "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27"
+        "requirement": "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27"
       },
       {
         "column": null,
@@ -11447,7 +11447,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 30,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -11456,7 +11456,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 38,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -11465,7 +11465,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 42,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -12689,7 +12689,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 800,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -12698,7 +12698,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 807,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -12707,7 +12707,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 811,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -12716,7 +12716,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 832,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -12725,7 +12725,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 837,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -12734,7 +12734,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 845,
-        "requirement": "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777"
+        "requirement": "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b"
       },
       {
         "column": null,
@@ -13197,7 +13197,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/running.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -13221,6 +13221,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -13244,7 +13245,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -13474,6 +13474,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -13508,7 +13509,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -13601,7 +13601,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -14835,7 +14835,7 @@
         "file": "def/cli/main.lfy",
         "line": 143,
         "outputLine": 661,
-        "requirement": "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27"
+        "requirement": "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27"
       },
       {
         "column": null,
@@ -15235,7 +15235,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/schedule.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -15259,6 +15259,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -15282,7 +15283,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -15512,6 +15512,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -15546,7 +15547,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -15639,7 +15639,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -15941,7 +15941,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/arguments_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -15965,6 +15965,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -15988,7 +15989,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -16218,6 +16218,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -16252,7 +16253,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -16345,7 +16345,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -16728,7 +16728,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/commands_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -16752,6 +16752,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -16775,7 +16776,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -17005,6 +17005,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -17039,7 +17040,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -17132,7 +17132,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -18352,7 +18352,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/compiling_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -18376,6 +18376,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -18399,7 +18400,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -18629,6 +18629,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -18663,7 +18664,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -18756,7 +18756,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -19418,7 +19418,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/copies_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -19442,6 +19442,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -19465,7 +19466,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -19695,6 +19695,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -19729,7 +19730,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -19822,7 +19822,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -20610,7 +20610,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/maps_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -20634,6 +20634,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -20657,7 +20658,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -20887,6 +20887,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -20921,7 +20922,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -21014,7 +21014,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -21226,7 +21226,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/printing_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -21250,6 +21250,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -21273,7 +21274,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -21503,6 +21503,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -21537,7 +21538,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -21630,7 +21630,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -22508,7 +22508,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/processes_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
@@ -22532,6 +22532,7 @@
       "main:main:0d1ff3a013f40b12d868ee8a8671025d13e0700f5915bc9f9d4b0d9198e0206f",
       "main:main:0dff09f6c30f73ee8dcc8aa60016fb5af42b0b31adeaa63cec1108324df750ae",
       "main:main:0e04fca1d5a1398b0203e9dfa3d58b7324f1ef742ad13c350264b5b958456075",
+      "main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27",
       "main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849",
       "main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f",
       "main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30",
@@ -22555,7 +22556,6 @@
       "main:main:241b41c6ff82ebbd898b2d723f95b5c8d5928b57aa500ba825c546edeaccc6a1",
       "main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1",
       "main:main:2729826dde4194a5d195a8c4990c0f22f3d75eec87f6a0246e625d5120ac05b7",
-      "main:main:28c3fdcd35d73bdee306c14f707035a5db9191c247458cee76933c6058aba777",
       "main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d",
       "main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80",
       "main:main:2a36e0de7040861081f44ec78abe37bf9a365485f6034aa434d08e6f81d442a5",
@@ -22785,6 +22785,7 @@
       "main:main:cd777dab37a66b80b804ad0e2c1c6eb305a85f5c6f365759da5469e81ffe4dbf",
       "main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e",
       "main:main:cf8adcecd483ba999b73ffdeb3f91c23888f965698e95a0a051f183cdc1495f8",
+      "main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b",
       "main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19",
       "main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d",
       "main:main:d45b61bd01620de4f1c204c2a1a111fa2a8b3b2fff6d63bb3cf7faf41c8f0739",
@@ -22819,7 +22820,6 @@
       "main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621",
       "main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4",
       "main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c",
-      "main:main:e6df0c7548d8f79abfca3e578a974cfbbf2949927b4851d9860223b1315c6c27",
       "main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3",
       "main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff",
       "main:main:e79adeb5a0eec8def98674cfa2f63ca863e974bbc0cef0329483f02c0d8cad9f",
@@ -22912,7 +22912,7 @@
       "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T12:08:14Z",
+    "generated": "2026-10-11T13:20:45Z",
     "hash": "d39c2ee55feed51f0c60c2d6b5bd46edd36616ea649e69e802559e8c1ea3ee00",
     "markers": [
       {
@@ -23169,7 +23169,7 @@
       }
     ],
     "output": "crates/elfie-cli/src/tests/schedule_tests.rs",
-    "requirements": "5a92ec645f3ed464d4fa4881c1c071c2593d428105f0fc80037bd1b62dedf413",
+    "requirements": "47646218404c1d056ddc941a03c4bdf89f65329af34dae398a8932d76bbeb64e",
     "signature": "30c919cdd1fd0a72eed3399a9946e00612211b27bfcd159084c5652526ce2b43",
     "source": "def/cli/main.lfy",
     "target": "rust",
