@@ -431,6 +431,13 @@ fn task(session: Session, unit?: string) is tool, compilerTool: `What this compi
     })
     .add({
       situation = [
+        `[[Request.removed]] has a non-empty entry for the unit's [[File.path]]`,
+        `A [[RemovedRequirement]] of that entry has an empty [[RemovedRequirement.text]]`,
+      ],
+      behavior = `Its line reads removed, a space, its [[RemovedRequirement.id]], a space, an em dash, a space, and words saying its text is not known, in place of the line above`,
+    })
+    .add({
+      situation = [
         `[[Request.removed]] has no entry for the unit's [[File.path]]`,
         `The unit's [[Unit.outputs]] is not empty`,
       ],
