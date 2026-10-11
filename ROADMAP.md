@@ -117,6 +117,25 @@ until accepted.
     modules) is the fix.
 - [x] Phases 4, 5 and 6 (17 and knowledge), compiled in b89cb0d on 2026-10-10:
   - 7 of 7 accepted with 0 violated, and 735 verdicts carried.
-  - Validation of the mechanical paths, scheduling, kept work and sessions is in progress.
-- [ ] Phase 6 item 16 (module split): drafted (36e73e1), to land after the above, one unit at a
-  time
+  - Validated with a toy project of fake compilers and in scratch worktrees of this repository.
+  - Passed:
+    - dependency-only acceptance on build and test, with no compiler and no verifier;
+    - early-starting dependents, including revalidation, and reruns from a new copy;
+    - kept work, which resumes, is refused when the source changed, and is cleaned up;
+    - session ids and the resume fallback;
+    - quoted knowledge.
+  - Open:
+    - Reworded-only never fires for a committed reword. Previous-source recovery must match
+      requirements too; this is a def fix, in progress.
+    - The resume chain uses the first session even after a fresh one.
+    - The retry line omits the dependency that changed.
+    - The reworded-only path prints a duplicate accepted line.
+    - Orphan kept files of unplanned targets are removed.
+    - The last four are code defects, to be fixed by recompiling cli/main.
+    - Maps recorded before b89cb0d lack SourceMap.text until re-recorded.
+- [ ] Phase 6 item 16 (module split): guidance landed in 7b83be9.
+  - generation/main's compiler built the split (21 files, all green) but had to revert it. accept
+    checks a co-owner's markers per output path, and generation/data's map claims 225 regions in
+    generation/mod.rs.
+  - In progress: accept checks co-owner markers across outputs, and co-owner maps are re-derived
+    after each recording.

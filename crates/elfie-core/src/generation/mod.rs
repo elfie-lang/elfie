@@ -1031,6 +1031,8 @@ fn unbuilt_problems(
 /// The problem a cycle no file of which is used by every other leaves: it names every file of
 /// the cycle, and sits at the first declaration, in file order and then source order, of a
 /// member, parameter, or output whose type reaches an entity of another file of the cycle.
+/// Reaching is transitive, as [`reaches`] reads it: a type that only names an entity of its
+/// own file whose own types lead to the other file reaches it too.
 // @lfy def/generation/main.lfy:plan
 fn cycle_problem(
     workspace: &Workspace,
@@ -1065,11 +1067,20 @@ fn cycle_problem(
             let foreign = |entity: &EntityId| {
                 elsewhere.contains(entity) && model.entities[*entity].file != declared
             };
-            fallback = fallback.or(model.entities[owner].node);
-            for member in all_members(model, owner) {
-                if named_entities_of(model, model.entities[member].ty.as_ref())
+            // A type reaches across the cycle when what it names, or what the types of what
+            // it names lead to however deep, is an entity of another file of the cycle:
+            // reaching is transitive here, as [`reaches`] and the problem an entity not
+            // built for the target leaves both read it, so a declaration that arrives at
+            // the other file only through a type of its own file is a candidate too.
+            // @lfy def/generation/main.lfy:plan
+            let reaches_across = |ty: Option<&TypeRef>| {
+                closure(model, &named_entities_of(model, ty))
                     .iter()
                     .any(foreign)
+            };
+            fallback = fallback.or(model.entities[owner].node);
+            for member in all_members(model, owner) {
+                if reaches_across(model.entities[member].ty.as_ref())
                     && let Some(node) = model.entities[member].node
                 {
                     candidates.push(node);
@@ -1077,17 +1088,13 @@ fn cycle_problem(
             }
             for &symbol in model.entities[owner].parameters() {
                 let parameter = model.symbols[symbol].entity;
-                if named_entities_of(model, model.entities[parameter].ty.as_ref())
-                    .iter()
-                    .any(foreign)
+                if reaches_across(model.entities[parameter].ty.as_ref())
                     && let Some(node) = model.entities[parameter].node
                 {
                     candidates.push(node);
                 }
             }
-            if named_entities_of(model, model.entities[owner].output())
-                .iter()
-                .any(foreign)
+            if reaches_across(model.entities[owner].output())
                 && let Some(node) = model.entities[owner].node
             {
                 candidates.push(node);
@@ -2043,7 +2050,7 @@ fn instructions(
                 unit.stem
             );
         } else {
-            // @lfy def/generation/main.lfy:request#request:request:28c71f256cbace38745c677d86962737a051927e499b97ac10dc63f2550643be
+            // @lfy def/generation/main.lfy:request#request:request:08f6ffbf337200835b96675249633150fae7cb0d93486e08ccd3b5c9f63847c7
             let paths: Vec<String> = unit
                 .outputs
                 .iter()
@@ -2051,7 +2058,9 @@ fn instructions(
                 .collect();
             let _ = writeln!(
                 out,
-                "- `{}`: the last accepted generation produced {}; write to the same paths.",
+                "- `{}`: the last accepted generation produced {}; write to the same paths, except \
+                 that a module the target's guidance says to split gains submodule files and has \
+                 its code moved into them.",
                 unit.stem,
                 paths.join(", ")
             );
@@ -2426,11 +2435,12 @@ fn instructions(
 }
 
 /// What the outputs part says about outputs that exist already: which they are, that only
-/// the difference between the previous lowered source and the current one and the criteria
-/// and tests marked new, reworded, or removed require a change, the previous lowered source of each
-/// unit that has one, which units have none, and which units have no record of the ids their
-/// outputs were generated against.
-// @lfy def/generation/main.lfy:request#request:request:7dee7a5d38e5a13ff4a9679707d4112c7e7345f701e26e8381922027f26859c4
+/// the difference between the previous lowered source and the current one, the criteria
+/// and tests marked new, reworded, or removed, and a split the target's guidance requires call
+/// for a change, that names and structure are otherwise kept, the previous lowered source of
+/// each unit that has one, which units have none, and which units have no record of the ids
+/// their outputs were generated against.
+// @lfy def/generation/main.lfy:request#request:request:ce2766fa22ba976093fabd91c70450cb8ddf39a9d8bd6e5084875bc916c84425
 fn write_existing(
     out: &mut String,
     workspace: &Workspace,
@@ -2446,9 +2456,12 @@ fn write_existing(
         let _ = writeln!(out, "- `{path}`");
     }
     out.push_str(
-        "\nChange only what the difference between the previous source and the current source, and \
-         the criteria and tests marked new, reworded, or removed, requires. Keep names and \
-         structure. Keep the markers of unchanged items.\n",
+        "\nChange only what the difference between the previous source and the current source, the \
+         criteria and tests marked new, reworded, or removed, and a split the target's guidance \
+         requires, require. Keep names and structure, except that a module the target's guidance \
+         says to split gains submodule files and has its code moved into them: that split is the \
+         one change of structure allowed, and it keeps every name other units use. Keep the \
+         markers of unchanged items.\n",
     );
     let paths: Vec<&String> = batch
         .units
@@ -7045,6 +7058,63 @@ global@targets.add(rust);
         );
     }
 
+    /// The problem of a cycle with no lowest file sits at the first declaration that reaches
+    /// across it, and reaching is transitive: `A.m` is of type `M`, declared in the same file,
+    /// and only `M` has a member of type `B`, so `A.m` reaches `def/b.lfy` through a type of
+    /// its own file and is the first such declaration in file order, ahead of the members the
+    /// trait of `def/t.lfy` added.
+    // @lfy def/generation/main.lfy:plan#plan:plan:fa7d90dd8bdab380388515f7c40bb7848f1274eb5d75942a04288b75a656c7bf
+    #[test]
+    fn a_declaration_reaching_the_other_file_through_its_own_holds_the_cycles_problem() {
+        let fixture = Fixture::with_rust_target();
+        fixture
+            .write("def/a.lfy", "d A {\n  $m = M;\n}\n\nd M {\n  $x = string;\n}\n")
+            .write("def/b.lfy", "d B {\n  $x = string;\n}\n")
+            .write(
+                "def/t.lfy",
+                "use \"./a\";\nuse \"./b\";\n\ntrait toB {\n  $b = B;\n}\n\ntrait toA {\n  $a = A;\n}\ntoB.apply(M);\ntoA.apply(B);\n",
+            );
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
+        let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+        // The two units reach each other, and neither file uses the other, so the cycle has
+        // no lowest file and nothing moves.
+        assert!(a.dependencies.contains(&b_index));
+        assert!(b.dependencies.contains(&a_index));
+        assert!(!used_by(&workspace, a.file, b.file));
+        assert!(!used_by(&workspace, b.file, a.file));
+        assert_eq!(plan.moves, []);
+        assert_eq!(names(&workspace, &plan.units[a_index].entities), ["A", "M"]);
+
+        assert_eq!(plan.problems.len(), 1, "{:?}", plan.problems);
+        let problem = &plan.problems[0];
+        assert!(problem.message.contains("def/a.lfy"), "{problem:?}");
+        assert!(problem.message.contains("def/b.lfy"), "{problem:?}");
+        // `A.m` names no entity of `def/b.lfy`; it is a candidate only because reaching is
+        // transitive, and it is the problem's place because `def/a.lfy` comes before the
+        // `def/t.lfy` where the members that name `B` and `A` outright are declared.
+        // @lfy def/generation/main.lfy:plan
+        let member = workspace
+            .model
+            .entities
+            .iter()
+            .position(|entity| {
+                entity.node == Some(problem.node) && entity.kind == EntityKind::Member
+            })
+            .expect("the problem sits at a member");
+        assert_eq!(
+            workspace.model.entities[member].identifier.as_deref(),
+            Some("m")
+        );
+        assert_eq!(
+            workspace.files[file_index(&workspace, "def/a.lfy")].source,
+            problem.node.file
+        );
+    }
+
     /// Two cycles are resolved in two rounds, each round reading the dependencies the last
     /// round left; afterwards no two units of a target reach each other.
     // @lfy def/generation/main.lfy:plan#plan:plan:b83fb4e8773d4d2bc8f168802a062c5f8d414beaa418defd0430f736e6928053
@@ -8305,16 +8375,28 @@ global@targets.add(rust);
         assert!(!was.contains("A record."), "{was}");
         assert!(with_previous.sources["def/a.lfy"].contains("A record."));
         let text = &with_previous.instructions;
-        // Only what the difference requires changes, and the markers of unchanged items are
-        // kept. The outputs part says so, not a part of its own.
-        // @lfy def/generation/main.lfy:request#request:request:7dee7a5d38e5a13ff4a9679707d4112c7e7345f701e26e8381922027f26859c4
+        // Only what the difference, the marked criteria and tests, and a split the guidance
+        // requires call for changes; names and structure are otherwise kept, and the markers
+        // of unchanged items are kept. The outputs part says so, not a part of its own.
+        // @lfy def/generation/main.lfy:request#request:request:ce2766fa22ba976093fabd91c70450cb8ddf39a9d8bd6e5084875bc916c84425
         assert!(
             text.contains("Keep the markers of unchanged items."),
             "{text}"
         );
-        assert!(text.contains("Keep names and structure."), "{text}");
+        assert!(
+            text.contains(
+                "Keep names and structure, except that a module the target's guidance says to \
+                 split gains submodule files and has its code moved into them: that split is the \
+                 one change of structure allowed, and it keeps every name other units use."
+            ),
+            "{text}"
+        );
         assert!(
             text.contains("the criteria and tests marked new, reworded, or removed"),
+            "{text}"
+        );
+        assert!(
+            text.contains("and a split the target's guidance requires, require."),
             "{text}"
         );
         let said = text
@@ -8322,9 +8404,16 @@ global@targets.add(rust);
             .unwrap_or_else(|| panic!("{text}"));
         assert!(said < text.find("## Guidance").unwrap(), "{text}");
         assert!(said > text.find("## Where the outputs go").unwrap(), "{text}");
-        // The outputs of a unit that has some go at the paths its `Unit.outputs` names.
-        // @lfy def/generation/main.lfy:request#request:request:28c71f256cbace38745c677d86962737a051927e499b97ac10dc63f2550643be
-        assert!(text.contains("write to the same paths"), "{text}");
+        // The outputs of a unit that has some go at the paths its `Unit.outputs` names, except
+        // that a module the guidance says to split gains submodule files.
+        // @lfy def/generation/main.lfy:request#request:request:08f6ffbf337200835b96675249633150fae7cb0d93486e08ccd3b5c9f63847c7
+        assert!(
+            text.contains(
+                "write to the same paths, except that a module the target's guidance says to \
+                 split gains submodule files and has its code moved into them."
+            ),
+            "{text}"
+        );
         assert!(text.contains("- `src/a.rs`"), "{text}");
         assert!(text.contains(was.trim_end()), "{text}");
 
