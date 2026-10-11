@@ -103,8 +103,20 @@ until accepted.
   - A repeat verify after a clean compile carries every verdict and finishes in 9 s.
   - Open: context per turn rose to 389k tokens, because verifiers Read whole files. The prompt fix
     is in 9ad518e, and Phase 3's denial of raw reads is still pending.
-- [ ] Phases 2+3: definitions merged (bba795d..869845c, 9ad518e); compiling
-- [ ] Phase 4
-- [ ] Phase 5
-- [ ] Phase 6
-- [ ] Knowledge items
+- [x] Phases 2+3, compiled in ae52b1c and validated on 2026-10-10:
+  - Each role is offered exactly its tools: 22 for the compiler, 18 for the verifier. elfie_format
+    is absent, since this target's format command has no line.
+  - elfie_test narrows with filter and scope, and long output is trimmed.
+  - ELFIE_COMMAND_TOOLS gates Bash.
+  - 100% of the compiler's tool calls went to the agent server.
+  - The hosted request lists interfaces by name only.
+  - Spent session configs are removed.
+  - Fixed in 041b775: compiler sessions' own maps had empty hashes, and every session got the
+    same instructions.
+  - Open: a verifier still reads a single-entity 2.4k-line file whole. Item 16 (splitting
+    modules) is the fix.
+- [x] Phases 4, 5 and 6 (17 and knowledge), compiled in b89cb0d on 2026-10-10:
+  - 7 of 7 accepted with 0 violated, and 735 verdicts carried.
+  - Validation of the mechanical paths, scheduling, kept work and sessions is in progress.
+- [ ] Phase 6 item 16 (module split): drafted (36e73e1), to land after the above, one unit at a
+  time
