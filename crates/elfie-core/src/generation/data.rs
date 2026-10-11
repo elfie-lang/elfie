@@ -5,7 +5,8 @@
 //! of a workspace, the moves that resolved cycles among files, and how they are
 //! batched; a [`Request`] is everything the compiler is handed for one batch; a
 //! [`Verdict`] is whether one unit's [`Output`]s are accepted, and the [`SourceMap`]s they
-//! earn; an [`Outcome`] is what one run of the compiler came to; a [`Change`] is one
+//! earn; an [`Outcome`] is what one run of the compiler came to, read from the
+//! [`Submission`] it made or from its report; a [`Change`] is one
 //! difference for one entity since a unit's output was accepted; a [`ReviewRequest`] is
 //! everything a verifier is handed, a [`ReviewReport`] of [`Review`]s is what it found, and
 //! a [`ReviewRecord`] is what one of those verdicts is kept as, so that the next review of
@@ -428,6 +429,24 @@ pub struct Interface {
     pub entities: Vec<EntityId>, // @lfy def/generation/data.lfy:Interface.entities
 }
 
+/// A local criterion or test a unit's existing outputs were generated against that the unit
+/// no longer has.
+// Decision: a removed criterion or test is kept as its id, place, and text, taken while the
+// file as it was is lowered, because its origin belongs to that lowering and nothing later
+// can read it.
+// @lfy def/generation/data.lfy:RemovedRequirement
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemovedRequirement {
+    /// The id it had.
+    pub id: String, // @lfy def/generation/data.lfy:RemovedRequirement.id
+    /// Where it was in the unit's file as it was when its outputs were accepted: the file
+    /// relative to the workspace root, a colon, and the line its origin began on.
+    pub place: String, // @lfy def/generation/data.lfy:RemovedRequirement.place
+    /// What it said: the criterion's text for a criterion, its input and its expectation as
+    /// written for a test.
+    pub text: String, // @lfy def/generation/data.lfy:RemovedRequirement.text
+}
+
 /// One criterion or one test, as a request carries it: what the definition writes as
 /// `LoweredCriterion | LoweredTest`. Each carries its own id.
 // @lfy def/generation/data.lfy:Request.globals
@@ -472,11 +491,7 @@ pub struct Request {
     /// The local criteria and tests each unit's existing outputs were generated against that
     /// the unit no longer has, by the file's path; absent where the source they were
     /// generated from is unknown.
-    // Decision: a criterion or test the unit no longer has leaves no text behind — a source
-    // map records the ids alone, and a lowered text never holds a criterion — so each is
-    // carried as the id it was answered under, which is also what a marker of the existing
-    // output spells.
-    pub removed: BTreeMap<String, Vec<String>>, // @lfy def/generation/data.lfy:Request.removed
+    pub removed: BTreeMap<String, Vec<RemovedRequirement>>, // @lfy def/generation/data.lfy:Request.removed
     /// The current text of each existing output of the batch, by path.
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
     /// One interface per dependency outside the batch, in dependency order, each once.
@@ -630,8 +645,70 @@ impl fmt::Display for OutcomeKind {
     }
 }
 
-/// What one run of the compiler came to, read mechanically from its report and the
-/// verdicts.
+/// How the compiler says its run ended when it submits the outcome through the agent server.
+// @lfy def/generation/data.lfy:SubmittedOutcome
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SubmittedOutcome {
+    /// Every output is written.
+    Done, // @lfy def/generation/data.lfy:SubmittedOutcome.done
+    /// It could not proceed.
+    Blocked, // @lfy def/generation/data.lfy:SubmittedOutcome.blocked
+    /// Only a person can decide.
+    Clarify, // @lfy def/generation/data.lfy:SubmittedOutcome.clarify
+}
+
+impl SubmittedOutcome {
+    /// The value of the enum member.
+    pub fn value(self) -> &'static str {
+        match self {
+            SubmittedOutcome::Done => "every output is written",
+            SubmittedOutcome::Blocked => "it could not proceed",
+            SubmittedOutcome::Clarify => "only a person can decide",
+        }
+    }
+
+    /// The member's name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SubmittedOutcome::Done => "done",
+            SubmittedOutcome::Blocked => "blocked",
+            SubmittedOutcome::Clarify => "clarify",
+        }
+    }
+
+    /// The member of this name; `None` when it is no member's name.
+    pub fn from_name(name: &str) -> Option<SubmittedOutcome> {
+        match name {
+            "done" => Some(SubmittedOutcome::Done),
+            "blocked" => Some(SubmittedOutcome::Blocked),
+            "clarify" => Some(SubmittedOutcome::Clarify),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for SubmittedOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// The outcome a compiler submitted through the agent server.
+// Decision: the compiler states its outcome through `elfie_submit`, checked when the call is
+// made, so the CLI reads a structured outcome and never a line of text; the `ELFIE:` line of
+// the final message is kept for a compiler with no agent server, or one run by hand.
+// @lfy def/generation/data.lfy:Submission
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Submission {
+    /// How it says the run ended.
+    pub outcome: SubmittedOutcome, // @lfy def/generation/data.lfy:Submission.outcome
+    /// The reason for blocked or the question for clarify; for done, a note that is no part
+    /// of the outcome, and may be empty.
+    pub message: String, // @lfy def/generation/data.lfy:Submission.message
+}
+
+/// What one run of the compiler came to, read mechanically from its submission or its
+/// report, and the verdicts.
 // @lfy def/generation/data.lfy:Outcome
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Outcome {

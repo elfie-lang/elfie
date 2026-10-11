@@ -11,7 +11,8 @@
 //! on changed; [`plan`] finds every unit of a workspace, which need generating, and how
 //! they are batched; [`request`] gathers everything the compiler is handed for one batch,
 //! with every criterion and test already resolved so that a compiler with no access to
-//! the model can still work; [`outcome_of`] reads how a run ended; [`accept`] checks
+//! the model can still work; [`outcome_of`] reads how a run ended, from the [`Submission`]
+//! the compiler made or from its report; [`accept`] checks
 //! outputs structurally, normalizes their markers, and gives them their source maps.
 //! [`regions_of`] finds the generated regions one entity's name owns, [`changes`] what
 //! differs for each entity of a unit since its outputs were accepted, [`review`] what an
@@ -237,14 +238,22 @@ fn local_requirements(file: &LoweredFile) -> Vec<Requirement> {
 }
 
 /// One file as it was when the outputs generated from it were accepted: its lowered text,
-/// and its local criteria and tests in the order it gives them.
+/// and each of its local criteria and tests as the id, the place, and the text a
+/// [`RemovedRequirement`] holds, in the order it gives them.
 ///
 /// The text as written is bound through [`change`](crate::workspace::change) and lowered, so
 /// the text that comes back is the lowered text a request carries for the file now and the
-/// two can be read side by side, and the ids come out spelled as the unit's own are.
-/// `None` when the workspace holds no file at that path.
+/// two can be read side by side, and the ids come out spelled as the unit's own are. The
+/// place and the text of each criterion and test are taken here rather than kept as a node
+/// to read later, because the origin of a criterion belongs to this lowering, which is gone
+/// once the text has been read off it. `None` when the workspace holds no file at that path.
 // @lfy def/generation/main.lfy:request#request:request:e6a9a7f8f68b31456fa6f45f2971df1eddc6eed03b9bcb155872fff58c0ca957
-fn file_as_it_was(program: &Program, path: &str, text: &str) -> Option<(String, Vec<Requirement>)> {
+// @lfy def/generation/main.lfy:request#request:request:1b7315cf290fcd29e9e15f54bd98742f52b2943246c4cb0414ed750188b9e3da
+fn file_as_it_was(
+    program: &Program,
+    path: &str,
+    text: &str,
+) -> Option<(String, Vec<RemovedRequirement>)> {
     let before = crate::interpret::lower(crate::workspace::change(
         &program.workspace,
         path,
@@ -256,7 +265,23 @@ fn file_as_it_was(program: &Program, path: &str, text: &str) -> Option<(String, 
         .iter()
         .position(|file| file.path == path)?;
     let file = &before.files[index];
-    Some((file.text.clone(), local_requirements(file)))
+    let model = &before.workspace.model;
+    let requirements = local_requirements(file)
+        .iter()
+        .map(|requirement| match requirement {
+            Requirement::Criterion(criterion) => RemovedRequirement {
+                id: criterion.id.clone(),
+                place: origin_place(model, criterion.origin),
+                text: criterion.text(),
+            },
+            Requirement::Test(test) => RemovedRequirement {
+                id: test.id.clone(),
+                place: origin_place(model, test.origin),
+                text: test_text(test),
+            },
+        })
+        .collect();
+    Some((file.text.clone(), requirements))
 }
 
 /// `SourceMap.answered`: the ids of a unit's local criteria and tests, sorted — what a
@@ -1517,8 +1542,17 @@ fn source_text(workspace: &Workspace, file: &File) -> String {
 /// target's, then that of each entity of the batch's units, then that of each entity of an
 /// interface, each item once. The instructions quote every criterion and test already
 /// resolved, so a compiler with no access to the model can still work.
+///
+/// `hosted` is whether the compiler reading the request runs in a compiler session of the
+/// compile-hosted agent server, which offers `elfie_task`, `elfie_dependency`, `elfie_mark`,
+/// and `elfie_submit`.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
+// Decision: the caller says whether the request is for a hosted compiler session, because
+// only the caller knows; a hosted compiler pulls an interface when it needs one, so its
+// request names the interfaces instead of quoting them, while a request read anywhere else
+// quotes them whole. A compiler command that never uses the session it is hosted in still
+// gets the interfaces by name only, and reads each definition another way.
 // @lfy def/generation/main.lfy:request
 pub fn request(
     program: &Program,
@@ -1526,6 +1560,7 @@ pub fn request(
     batch: &Batch,
     existing: &[Output],
     previous: &BTreeMap<String, String>,
+    hosted: bool,
 ) -> Request {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -1575,7 +1610,7 @@ pub fn request(
     // The file of each unit of the batch as it was when its outputs were accepted, lowered
     // the way its file is lowered now.
     // @lfy def/generation/main.lfy:request#request:request:e6a9a7f8f68b31456fa6f45f2971df1eddc6eed03b9bcb155872fff58c0ca957
-    let was: BTreeMap<String, (String, Vec<Requirement>)> = batch
+    let was: BTreeMap<String, (String, Vec<RemovedRequirement>)> = batch
         .units
         .iter()
         .filter_map(|&index| {
@@ -1612,7 +1647,7 @@ pub fn request(
                     .get(path)?
                     .1
                     .iter()
-                    .map(|requirement| requirement.id().to_string())
+                    .map(|requirement| requirement.id.clone())
                     .collect(),
             };
             Some((path.clone(), ids))
@@ -1621,31 +1656,18 @@ pub fn request(
     // Each criterion and test of the file as it was that the unit no longer has, in the
     // order the file as it was gives them: what a compiler reading the existing code needs
     // in order to tell code that answers for nothing any more from code that still answers.
-    // @lfy def/generation/main.lfy:request#request:request:e9e73367084b12788d91ea49ea57894f06e55c67ebf0856dbb827d3a968fc089
-    let removed_requirements: BTreeMap<String, Vec<Requirement>> = was
+    // @lfy def/generation/data.lfy:Request.removed
+    // @lfy def/generation/main.lfy:request#request:request:7056100416879448a8a243c30c4766b4d371dc89e64e2ef9eb3d748b4099c2a8
+    let removed: BTreeMap<String, Vec<RemovedRequirement>> = was
         .iter()
         .filter_map(|(path, (_, before))| {
             let held = requirements.get(path)?;
-            let gone: Vec<Requirement> = before
+            let gone: Vec<RemovedRequirement> = before
                 .iter()
-                .filter(|requirement| {
-                    !held.iter().any(|other| other.id() == requirement.id())
-                })
+                .filter(|requirement| !held.iter().any(|other| other.id() == requirement.id))
                 .cloned()
                 .collect();
             (!gone.is_empty()).then(|| (path.clone(), gone))
-        })
-        .collect();
-    // @lfy def/generation/data.lfy:Request.removed
-    let removed: BTreeMap<String, Vec<String>> = removed_requirements
-        .iter()
-        .map(|(path, gone)| {
-            (
-                path.clone(),
-                gone.iter()
-                    .map(|requirement| requirement.id().to_string())
-                    .collect(),
-            )
         })
         .collect();
     // @lfy def/generation/main.lfy:request
@@ -1669,7 +1691,11 @@ pub fn request(
         })
         .map(|output| (output.path.clone(), output.text.clone()))
         .collect();
+    // One interface per dependency outside the batch, each holding every entity of that
+    // dependency: what a hosted compiler is given by name is the same interface a request
+    // read anywhere else quotes whole, so the request carries no less for being hosted.
     // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/main.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
     let mut interfaces: Vec<Interface> = Vec::new();
     for &index in &batch.units {
         for &dependency in &plan.units[index].dependencies {
@@ -1723,12 +1749,13 @@ pub fn request(
         plan,
         batch,
         target,
+        hosted,
         &Quoted {
             sources: &sources,
             globals: &globals,
             previous: &previous_lowered,
             answered: &answered,
-            removed: &removed_requirements,
+            removed: &removed,
             existing: &existing,
             interfaces: &interfaces,
             guidance: &guidance,
@@ -1765,7 +1792,7 @@ struct Quoted<'r> {
     globals: &'r [Requirement],
     previous: &'r BTreeMap<String, String>,
     answered: &'r BTreeMap<String, Vec<String>>,
-    removed: &'r BTreeMap<String, Vec<Requirement>>,
+    removed: &'r BTreeMap<String, Vec<RemovedRequirement>>,
     existing: &'r BTreeMap<String, String>,
     interfaces: &'r [Interface],
     guidance: &'r [Criterion],
@@ -1868,6 +1895,7 @@ fn instructions(
     plan: &Plan,
     batch: &Batch,
     target: &Target,
+    hosted: bool,
     quoted: &Quoted<'_>,
 ) -> String {
     let workspace = &program.workspace;
@@ -1992,8 +2020,7 @@ fn instructions(
     // The knowledge. @lfy def/generation/main.lfy:request
     write_knowledge(&mut out, workspace, knowledge);
 
-    // Each interface.
-    // @lfy def/generation/main.lfy:request#request:request:43df411fd74fc148bd737fdeb88ec86747b9ad9eb955912e272384f7def7a93f
+    // Each interface: quoted whole, or named for a hosted compiler to pull.
     out.push_str("## Interfaces\n\n");
     if interfaces.is_empty() {
         out.push_str("The units of this batch depend on no unit outside it.\n\n");
@@ -2003,9 +2030,48 @@ fn instructions(
             "The units of this batch depend on the units below. Use their entities by the names their \
              outputs spell, and never edit their outputs.\n\n",
         );
+        if hosted {
+            // A hosted compiler pulls the interface of the one entity it needs, so the
+            // request names the entities and spells none of them out.
+            // @lfy def/generation/main.lfy:request#request:request:91c07c652cfc9edd8b82e5c1bebc5ef3998ae8e528cbd1623161418170399772
+            out.push_str(
+                "Read the interface of one of those entities — its kind, its definition, its type, its \
+                 parameters, and its output — with `elfie_dependency`.\n\n",
+            );
+        }
     }
     for interface in interfaces {
         let dependency = &plan.units[interface.unit];
+        if hosted {
+            // @lfy def/generation/main.lfy:request#request:request:c5448d7c2bb4f497fbdd859f9d7405cd0bdf319c54990d943d33d646b6da87d4
+            let paths: Vec<String> = interface
+                .outputs
+                .iter()
+                .map(|path| format!("`{path}`"))
+                .collect();
+            let names: Vec<String> = interface
+                .entities
+                .iter()
+                .map(|&entity| format!("`{}`", qualified_name(model, entity)))
+                .collect();
+            let _ = writeln!(
+                out,
+                "- `{}`: outputs {}; entities {}",
+                workspace.files[dependency.file].path,
+                if paths.is_empty() {
+                    "(not generated yet)".to_string()
+                } else {
+                    paths.join(", ")
+                },
+                if names.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    names.join(", ")
+                }
+            );
+            continue;
+        }
+        // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
         let _ = writeln!(out, "### `{}`\n", workspace.files[dependency.file].path);
         out.push_str("Outputs:\n");
         if interface.outputs.is_empty() {
@@ -2024,6 +2090,9 @@ fn instructions(
                 write_interface_entity(&mut out, model, member, "  ");
             }
         }
+        out.push('\n');
+    }
+    if hosted && !interfaces.is_empty() {
         out.push('\n');
     }
 
@@ -2095,10 +2164,13 @@ fn instructions(
         }
         // What the outputs answered for and the unit no longer has, last in its section: an
         // id and a text are all that is left of a criterion or a test a unit has dropped.
-        // @lfy def/generation/main.lfy:request#request:request:85fafd5b7c6201f807d532b93b487771bdd141c7ee6bd8854cdc7d981176ff9a
-        if let Some(gone) = removed.get(&file.path) {
+        // @lfy def/generation/main.lfy:request#request:request:11d52a6cfc7c6727d63a4b8f9330ce26ffeb26adddad76ca0ec87d826a89e8b2
+        if let Some(gone) = removed.get(&file.path).filter(|gone| !gone.is_empty()) {
             out.push_str("#### Removed since its outputs were accepted\n\n");
-            write_requirements(&mut out, gone, None);
+            for requirement in gone {
+                let _ = writeln!(out, "- `{}` — {}", requirement.id, requirement.text);
+            }
+            out.push('\n');
         }
     }
 
@@ -2190,7 +2262,7 @@ fn instructions(
     );
 
     // The tools of the agent server.
-    // @lfy def/generation/main.lfy:request#request:request:45fec551e4527a98d2f44a2d0ad6d8d8a27da9f77f1255f53ede96415cfa364f
+    // @lfy def/generation/main.lfy:request#request:request:43974a3eb5968199e4c0d2b5b84afd218c864eb58c47c072bbcc471866a03921
     out.push_str("## The agent server\n\n");
     out.push_str(
         "The tools of the agent server are called before files are searched or read by hand, because \
@@ -2199,15 +2271,37 @@ fn instructions(
          - `elfie_find` for where a name is declared.\n\
          - `elfie_references` for where it is used.\n\
          - `elfie_outline` for the declarations of a file.\n\
-         - `elfie_output` for the generated code of an entity, of a requirement id, or of an output file.\n\
+         - `elfie_output` for the generated code of an entity, of a requirement id, or of an output \
+           file, and, with `text` false, for the regions of an output file without their code.\n\
+         - `elfie_search` for the lines of the outputs that match a pattern.\n\
          - `elfie_source` for where a line of generated code came from.\n\
          - `elfie_changes` for what changed in a unit since its outputs were accepted.\n\
          - `elfie_check` for whether acceptance would pass.\n\n",
     );
+    if hosted {
+        // @lfy def/generation/main.lfy:request#request:request:d7b94bd7ef8593cddf59f563c5936407b8173a96ce3ad639afb1cdab7cd6f327
+        out.push_str(
+            "This session offers these too:\n\n\
+             - `elfie_task` gives the obligations of this batch again: each unit's outputs and why it \
+               is planned, and every criterion and test with its id, its place, and its text, marked \
+               new, kept, or unknown, with the ones removed since the outputs were accepted.\n\
+             - `elfie_mark` writes a marker line, and rewrites the id every marker of this batch's \
+               outputs names, so that you never type an id by hand.\n\n",
+        );
+    }
 
     // How to end the report.
     // @lfy def/generation/main.lfy:request#request:request:e4ff528873311ac2c054d3eb98c7015eca5064897eae15ff47429cfdd53b7860
     out.push_str("## How to report\n\n");
+    if hosted {
+        // @lfy def/generation/main.lfy:request#request:request:4a237f69a0cf92b366172dde838e3583135a0dc294c8ef43f2392d08c1c1e1bd
+        out.push_str(
+            "Submit the outcome through `elfie_submit` before your final message: `done` when every \
+             output is written, `blocked` with the reason as its message, or `clarify` with the \
+             question as its message. Your final message still ends with the line that outcome \
+             reads.\n\n",
+        );
+    }
     out.push_str(
         "End your report with exactly one line:\n\n\
          - `ELFIE: DONE` when every output is written.\n\
@@ -2439,6 +2533,20 @@ fn write_commands(out: &mut String, target: &Target, commands: &[Command]) {
         "\nA dependency is added only by running the add command, never by editing a manifest or a \
          lockfile by hand. The build, test, and lint commands are run before the report, and their \
          results stated in it.\n\n",
+    );
+    // The command of an operation the agent server has a tool for is run through that tool,
+    // which runs the same line; a line is run by hand only where no tool is offered for it.
+    // @lfy def/generation/main.lfy:request#request:request:f700bbb14b11b81fadfe6c18b018250b1c7b9cdadbd0bd8b2a66ce896dfc54c9
+    out.push_str(
+        "Where the agent server offers `elfie_build`, `elfie_test`, `elfie_lint`, or `elfie_format`, \
+         the command of that operation is run through that tool. Run a line by hand only for an \
+         operation whose tool is not offered.\n\n",
+    );
+    // @lfy def/generation/main.lfy:request#request:request:f4b1430a5e2784e149775d2e69bdf4d652782d426521aa999f67d64b6c8a76c5
+    out.push_str(
+        "The filter of `elfie_test` is given to the test command as `TESTS`, and the scope of \
+         `elfie_build`, `elfie_test`, and `elfie_lint` is given to the command as `SCOPE`. Either \
+         narrows the run only where the command's line reads it.\n\n",
     );
 }
 
@@ -2711,18 +2819,75 @@ fn kind_text(entity: &Entity) -> &'static str {
 // outcomeOf
 // ---------------------------------------------------------------------------------------
 
-/// How one run of the compiler ended, read from its report and the verdicts of its units.
+/// How one run of the compiler ended, read from its submitted outcome or its report, and the
+/// verdicts of its units.
 ///
-/// The last line of the report beginning with `ELFIE:` decides first: `ELFIE: BLOCKED:`
-/// gives blocked and `ELFIE: CLARIFY:` gives clarification, each with the rest of that
-/// line and every line after it as the message. With no such line and no verdicts the run
-/// failed; with a rejected verdict it was rejected, with the first problem of the first
-/// rejected verdict as the message; otherwise it was accepted, with an empty message — a
-/// report that ended and left no verdict is accepted, since the compiler said it was done.
+/// `submitted` is the last outcome the compiler submitted through `elfie_submit` during the
+/// run, and `None` when it submitted none. A submitted outcome decides on its own, and no
+/// line of the report is read: `blocked` and `clarify` give blocked and clarification with
+/// the submission's message, and `done` gives rejected with the first problem of the first
+/// rejected verdict, failed when no unit was judged at all, and accepted otherwise — the
+/// note a `done` submission may carry is no part of the message.
+///
+/// With nothing submitted, the last line of the report beginning with `ELFIE:` decides
+/// first: `ELFIE: BLOCKED:` gives blocked and `ELFIE: CLARIFY:` gives clarification, each
+/// with the rest of that line and every line after it as the message. With no such line and
+/// no verdicts the run failed; with a rejected verdict it was rejected, with the first
+/// problem of the first rejected verdict as the message; otherwise it was accepted, with an
+/// empty message — a report that ended and left no verdict is accepted, since the compiler
+/// said it was done.
+// Decision: a submitted outcome was checked when it arrived, so it wins over the report's
+// `ELFIE:` line; the report is read only when nothing was submitted.
 // @lfy def/generation/main.lfy:outcomeOf
-pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
+pub fn outcome_of(report: &str, verdicts: Vec<Verdict>, submitted: Option<&Submission>) -> Outcome {
     const BLOCKED: &str = "ELFIE: BLOCKED:";
     const CLARIFY: &str = "ELFIE: CLARIFY:";
+
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b
+    if let Some(submission) = submitted {
+        return match submission.outcome {
+            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:873c80cfcfc9e8dcfbd60313bc0c671888373485ae58b84fd6d2b1203abec749
+            SubmittedOutcome::Blocked => Outcome {
+                kind: OutcomeKind::Blocked,
+                message: submission.message.clone(),
+                verdicts,
+            },
+            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1
+            SubmittedOutcome::Clarify => Outcome {
+                kind: OutcomeKind::Clarification,
+                message: submission.message.clone(),
+                verdicts,
+            },
+            // A compiler that says it is done is still held to the verdicts of its units,
+            // and the note it may have submitted says nothing about the outcome.
+            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093
+            SubmittedOutcome::Done => {
+                // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:ae2660461f4dd83b7805f1cd5571a95959adc789f1d82cb5dd47b6d1941cebbe
+                if let Some(rejected) = verdicts.iter().find(|verdict| !verdict.accepted) {
+                    let message = rejected.problems.first().cloned().unwrap_or_default();
+                    return Outcome {
+                        kind: OutcomeKind::Rejected,
+                        message,
+                        verdicts,
+                    };
+                }
+                // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:798eb562651952ea80b4b05980552450a02b660a5f0a7a76f38e2e05b130ac04
+                if verdicts.is_empty() {
+                    return Outcome {
+                        kind: OutcomeKind::Failed,
+                        message: "the compiler submitted done but no unit was judged".to_string(),
+                        verdicts,
+                    };
+                }
+                // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:6cbc44baf902ab337f838bc362fc27fd6caace8df9741d15d5c4151081cc920b
+                Outcome {
+                    kind: OutcomeKind::Accepted,
+                    message: String::new(),
+                    verdicts,
+                }
+            }
+        };
+    }
 
     let lines: Vec<&str> = report.lines().collect();
     let last = lines
@@ -2731,9 +2896,11 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
     if let Some(index) = last {
         let line = lines[index].trim_start();
         let prefix = if line.starts_with(BLOCKED) {
-            Some((BLOCKED, OutcomeKind::Blocked)) // @lfy def/generation/main.lfy:outcomeOf
+            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2
+            Some((BLOCKED, OutcomeKind::Blocked))
         } else if line.starts_with(CLARIFY) {
-            Some((CLARIFY, OutcomeKind::Clarification)) // @lfy def/generation/main.lfy:outcomeOf
+            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889
+            Some((CLARIFY, OutcomeKind::Clarification))
         } else {
             None
         };
@@ -2750,15 +2917,15 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
             }; // @lfy def/generation/main.lfy:outcomeOf
         }
     }
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:21fbd937a6b58a02072c2e606c0188be26f64751f8a10f7d260dea1d88e01a21
     if verdicts.is_empty() && last.is_none() {
-        // @lfy def/generation/main.lfy:outcomeOf
         return Outcome {
             kind: OutcomeKind::Failed,
             message: "the compiler reported nothing".to_string(),
             verdicts,
         };
     }
-    // @lfy def/generation/main.lfy:outcomeOf
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0e7476527a35bfd8b4cf324745dc9e2aa10aa07b1fb7a1d6da3f32055f0154ac
     if let Some(rejected) = verdicts.iter().find(|verdict| !verdict.accepted) {
         let message = rejected.problems.first().cloned().unwrap_or_default();
         return Outcome {
@@ -2767,7 +2934,7 @@ pub fn outcome_of(report: &str, verdicts: Vec<Verdict>) -> Outcome {
             verdicts,
         };
     }
-    // @lfy def/generation/main.lfy:outcomeOf
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:9b1f1e3d496ed3a527d2e2d93703ab7d0488cd057539e9129a315be84523bcca
     Outcome {
         kind: OutcomeKind::Accepted,
         message: String::new(),
@@ -4291,7 +4458,7 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 // changes no hash and so carries every verdict of that entity.
 // Decision: the definition passes the plan and the batch; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter.
-// @lfy def/generation/main.lfy:review#review:review:b4d9c6e00da87a0e74023db7212d00d3105247c847c18b29e94bf3fbe6925699
+// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
 // @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
 pub fn review(
     program: &Program,
@@ -4557,7 +4724,7 @@ fn requirements_within(node: &LoweredNode, out: &mut Vec<Requirement>) {
 /// One entity of a unit for a verifier: its name, its definition, where each of its regions
 /// is, and then each criterion and each test under review on one line prefixed by its id and
 /// its place.
-// @lfy def/generation/main.lfy:review#review:review:b4d9c6e00da87a0e74023db7212d00d3105247c847c18b29e94bf3fbe6925699
+// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
 fn write_review_entity(
     out: &mut String,
     model: &Model,
@@ -4576,14 +4743,14 @@ fn write_review_entity(
     if let Some(definition) = &record.definition {
         let _ = writeln!(out, "Definition: {definition}\n");
     }
-    write_regions(out, regions);
+    write_joined_regions(out, regions);
     write_reviewed(out, model, "Criteria", criteria);
     write_reviewed(out, model, "Tests", tests);
 }
 
 /// Each criterion or test under review on one line: its id, its place, an em dash, and its
 /// text.
-// @lfy def/generation/main.lfy:review#review:review:b4d9c6e00da87a0e74023db7212d00d3105247c847c18b29e94bf3fbe6925699
+// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
 fn write_reviewed(out: &mut String, model: &Model, heading: &str, requirements: &[&Requirement]) {
     let _ = writeln!(out, "{heading}:");
     if requirements.is_empty() {
@@ -4633,6 +4800,37 @@ fn write_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
     out.push_str("Regions:\n");
     for (map, marker) in regions {
         let _ = writeln!(out, "`{}:{}-{}`", map.output, marker.output_line, marker.end);
+    }
+    out.push('\n');
+}
+
+/// The same, with a region that begins on the line after the one before it in the same
+/// output joined to it as one range: a verifier reading one entity's code sees the runs of
+/// lines it actually holds, rather than one range per marker where two markers happen to be
+/// adjacent.
+///
+/// The regions come in output order and then in output line order, so a region adjacent to
+/// the one before it is always the one it can be joined to.
+// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+fn write_joined_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
+    if regions.is_empty() {
+        out.push_str("No region of any output was generated for it.\n\n");
+        return;
+    }
+    let mut ranges: Vec<(&str, usize, usize)> = Vec::new();
+    for (map, marker) in regions {
+        match ranges.last_mut() {
+            Some((output, _, end))
+                if *output == map.output.as_str() && marker.output_line == *end + 1 =>
+            {
+                *end = marker.end.max(*end);
+            }
+            _ => ranges.push((map.output.as_str(), marker.output_line, marker.end)),
+        }
+    }
+    out.push_str("Regions:\n");
+    for (output, first, last) in ranges {
+        let _ = writeln!(out, "`{output}:{first}-{last}`");
     }
     out.push('\n');
 }
@@ -4750,7 +4948,7 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
 // garbles the id is still placed by the file and line it copied.
 // @lfy def/generation/main.lfy:review
 // @lfy def/generation/main.lfy:globalReview
-// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5f3541f331f08c11374202659e49f252d011829d997b2663a9a7aa1eb494c55d
+// @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:8dc8036aa494819b48e614bd9fe82ef867e58e668b969813da46a5327a179c5a
 const PROTOCOL: &str = "\
 ## How to review
 
@@ -4773,8 +4971,10 @@ and per test:
 - `note` is one line saying why and, for a violated one, what the code does instead.
 
 The tools of the agent server are called before files are searched or read by hand: \
-`elfie_source` for where a line of generated code came from, `elfie_entity` for a \
-definition with its criteria and tests, and `elfie_references` for where a name is used.
+`elfie_source` for where a line of generated code came from, `elfie_search` for the lines of \
+the outputs that match a pattern, such as the body of a helper no marker names, \
+`elfie_entity` for a definition with its criteria and tests, and `elfie_references` for \
+where a name is used.
 
 Where `elfie_report` is not offered, write each verdict in your final message instead, as \
 one JSON object on one line with exactly the keys `id`, `file`, `line`, `status`, \
@@ -6785,7 +6985,7 @@ global@targets.add(rust);
         assert_eq!(program.files[unit.lowered].file, unit.file);
         assert_eq!(
             program.files[unit.lowered].text,
-            request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new()).sources
+            request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false).sources
                 ["def/a.lfy"]
         );
     }
@@ -6823,7 +7023,7 @@ global@targets.add(rust);
         assert_ne!(map.requirements, requirements_hash(&program, b));
         // The unit's own section says its code is unchanged and that its criteria or tests
         // differ. @lfy def/generation/main.lfy:request
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
         assert!(
             request
                 .instructions
@@ -6963,7 +7163,7 @@ global@targets.add(rust);
         let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         let batch = &plan.batches[0];
-        let request = request(&program, &plan,batch, &[], &BTreeMap::new());
+        let request = request(&program, &plan,batch, &[], &BTreeMap::new(), false);
         // @lfy def/generation/main.lfy:request#request:request:f3979f1497ff9e1b60be372fddce29ffcfe830689ef46680b690554afd9c7a37
         assert_eq!(request.batch, *batch);
         assert_eq!(request.batch.units, [b_index, a_index]);
@@ -7168,7 +7368,7 @@ global@targets.add(rust);
             units: vec![b_index],
             identifier: "b".to_string(),
         };
-        let request = request(&program, &plan, &batch, &[], &BTreeMap::new());
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
         let text = &request.instructions;
         assert!(
             text.contains("#### `make` (agent function: AgentFunctionDeclaration)"),
@@ -7210,7 +7410,7 @@ global@targets.add(rust);
         let program = fixture.program();
         assert_bound(&program.workspace);
         let plan = plan_of(&program, &[], &[], &[]);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
         // @lfy def/generation/main.lfy:request
         assert_eq!(
             request
@@ -7304,7 +7504,7 @@ global@targets.add(rust);
         );
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
         let behaviors: Vec<String> = request
             .guidance
             .iter()
@@ -7399,7 +7599,7 @@ global@targets.add(rust);
             units: vec![a_index],
             identifier: "a".to_string(),
         };
-        let request = request(&program, &plan, &batch, &[], &BTreeMap::new());
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
         // Each item once, in the order the request gathers them.
         // @lfy def/generation/main.lfy:request
         assert_eq!(
@@ -7447,7 +7647,7 @@ global@targets.add(rust);
         );
     }
 
-    // @lfy def/generation/main.lfy:request#request:request:43df411fd74fc148bd737fdeb88ec86747b9ad9eb955912e272384f7def7a93f
+    // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
     // @lfy def/generation/main.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
     #[test]
     fn a_dependency_outside_the_batch_is_an_interface_with_its_outputs_and_entities() {
@@ -7461,7 +7661,7 @@ global@targets.add(rust);
         let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
         assert_eq!(plan.batches[0].units, [a_index]);
-        let request = request(&program, &plan,&plan.batches[0], &[], &BTreeMap::new());
+        let request = request(&program, &plan,&plan.batches[0], &[], &BTreeMap::new(), false);
         assert_eq!(request.interfaces.len(), 1);
         assert_eq!(request.interfaces[0].unit, b_index);
         assert_eq!(request.interfaces[0].outputs, ["src/b.rs"]);
@@ -7483,6 +7683,112 @@ global@targets.add(rust);
         assert!(text.contains("never edit their outputs"), "{text}");
     }
 
+    /// A request for a hosted compiler session names each interface on one line — the file,
+    /// its outputs, and its entities — and says to read one with `elfie_dependency`, while
+    /// the request still holds every entity of the dependency; its tools part names
+    /// `elfie_task` and `elfie_mark`, and its report part `elfie_submit` and the three lines.
+    // @lfy def/generation/main.lfy:request#request:request:5dac7a621007b979c24fe5cf0995510a2642dd47d72fb40a852433feb2a68360
+    #[test]
+    fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
+        let fixture = a_and_b();
+        let program = fixture.program();
+        let workspace = program.workspace.clone();
+        assert_bound(&workspace);
+        let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+        let plan = plan_of(&program, &maps, &["a".to_string()], &[]);
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), true);
+        // Hosted or not, the request holds every entity of the dependency.
+        // @lfy def/generation/main.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
+        assert_eq!(
+            names(&workspace, &request.interfaces[0].entities),
+            ["B", "make"]
+        );
+        let text = &request.instructions;
+        // One line naming the file, its outputs, and its entities.
+        // @lfy def/generation/main.lfy:request#request:request:c5448d7c2bb4f497fbdd859f9d7405cd0bdf319c54990d943d33d646b6da87d4
+        assert!(
+            text.contains("- `def/b.lfy`: outputs `src/b.rs`; entities `B`, `make`"),
+            "{text}"
+        );
+        // No definition, kind, or type of an entity of the interface is spelled out, and
+        // the section a request quotes them in is not there at all.
+        assert!(!text.contains("### `def/b.lfy`"), "{text}");
+        assert!(!text.contains("(data: DataDeclaration): A b"), "{text}");
+        // @lfy def/generation/main.lfy:request#request:request:91c07c652cfc9edd8b82e5c1bebc5ef3998ae8e528cbd1623161418170399772
+        assert!(text.contains("with `elfie_dependency`"), "{text}");
+        // @lfy def/generation/main.lfy:request#request:request:d7b94bd7ef8593cddf59f563c5936407b8173a96ce3ad639afb1cdab7cd6f327
+        for part in [
+            "`elfie_task` gives the obligations of this batch again",
+            "marked new, kept, or unknown",
+            "`elfie_mark` writes a marker line",
+            "never type an id by hand",
+        ] {
+            assert!(text.contains(part), "{part} is missing:\n{text}");
+        }
+        // @lfy def/generation/main.lfy:request#request:request:4a237f69a0cf92b366172dde838e3583135a0dc294c8ef43f2392d08c1c1e1bd
+        assert!(
+            text.contains("Submit the outcome through `elfie_submit` before your final message"),
+            "{text}"
+        );
+        for line in ["`ELFIE: DONE`", "`ELFIE: BLOCKED: `", "`ELFIE: CLARIFY: `"] {
+            assert!(text.contains(line), "{line} is missing:\n{text}");
+        }
+
+        // A request that is not hosted quotes the interface whole and names none of those
+        // tools.
+        // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
+        let text =
+            super::request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false)
+                .instructions;
+        assert!(text.contains("### `def/b.lfy`"), "{text}");
+        assert!(text.contains("- `B` (data: DataDeclaration): A b"), "{text}");
+        assert!(!text.contains("elfie_dependency"), "{text}");
+        assert!(!text.contains("elfie_task"), "{text}");
+        assert!(!text.contains("elfie_mark"), "{text}");
+        assert!(!text.contains("elfie_submit"), "{text}");
+    }
+
+    /// The commands part says which operations the agent server runs through a tool of its
+    /// own, and which variables narrow such a run.
+    // @lfy def/generation/main.lfy:request#request:request:f700bbb14b11b81fadfe6c18b018250b1c7b9cdadbd0bd8b2a66ce896dfc54c9
+    // @lfy def/generation/main.lfy:request#request:request:f4b1430a5e2784e149775d2e69bdf4d652782d426521aa999f67d64b6c8a76c5
+    #[test]
+    fn the_commands_part_says_which_tool_runs_an_operation_and_what_narrows_it() {
+        let fixture = a_and_b();
+        let program = fixture.program();
+        assert_bound(&program.workspace);
+        let plan = plan_of(&program, &[], &[], &[]);
+        let text = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false)
+            .instructions;
+        for part in [
+            "Where the agent server offers `elfie_build`, `elfie_test`, `elfie_lint`, or \
+             `elfie_format`, the command of that operation is run through that tool.",
+            "Run a line by hand only for an operation whose tool is not offered.",
+            "The filter of `elfie_test` is given to the test command as `TESTS`",
+            "the scope of `elfie_build`, `elfie_test`, and `elfie_lint` is given to the command \
+             as `SCOPE`",
+            "narrows the run only where the command's line reads it",
+        ] {
+            assert!(text.contains(part), "{part} is missing:\n{text}");
+        }
+        // The tools part names every tool of the agent server a compiler reads the program
+        // and its outputs through.
+        // @lfy def/generation/main.lfy:request#request:request:43974a3eb5968199e4c0d2b5b84afd218c864eb58c47c072bbcc471866a03921
+        for part in [
+            "`elfie_entity` for a definition with its criteria and tests",
+            "`elfie_find` for where a name is declared",
+            "`elfie_references` for where it is used",
+            "`elfie_outline` for the declarations of a file",
+            "with `text` false, for the regions of an output file without their code",
+            "`elfie_search` for the lines of the outputs that match a pattern",
+            "`elfie_source` for where a line of generated code came from",
+            "`elfie_changes` for what changed in a unit since its outputs were accepted",
+            "`elfie_check` for whether acceptance would pass",
+        ] {
+            assert!(text.contains(part), "{part} is missing:\n{text}");
+        }
+    }
+
     /// The section of a unit entities moved into says which they are, from which file, and
     /// because of which cause, and the section of the unit they left says which they are and
     /// which unit compiles them.
@@ -7496,7 +7802,7 @@ global@targets.add(rust);
         assert_bound(&workspace);
         let plan = plan_of(&program, &[], &[], &[]);
         assert_eq!(plan.batches.len(), 1, "{:?}", plan.batches);
-        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new());
+        let request = request(&program, &plan, &plan.batches[0], &[], &BTreeMap::new(), false);
         let text = &request.instructions;
 
         // In the section of `def/b.lfy`, which `C` moved into.
@@ -7566,7 +7872,7 @@ global@targets.add(rust);
             "def/a.lfy".to_string(),
             "use \"./b\";\n\nd A: `An a` {\n  $b = B;\n}\n".to_string(),
         )]);
-        let with_previous = request(&program, &plan,&plan.batches[0], &existing, &previous);
+        let with_previous = request(&program, &plan,&plan.batches[0], &existing, &previous, false);
         assert_eq!(with_previous.existing.len(), 1);
         assert_eq!(with_previous.existing["src/a.rs"], "// old");
         // `Request.previous` is the lowered text of the file as it was, never the text as
@@ -7624,6 +7930,7 @@ global@targets.add(rust);
             &plan.batches[0],
             &existing,
             &BTreeMap::new(),
+            false,
         );
         assert!(
             without
@@ -7656,7 +7963,7 @@ global@targets.add(rust);
             path: "src/b.rs".to_string(),
             text: "// old".to_string(),
         }];
-        let request = request(&program, &plan, &plan.batches[0], &existing, &BTreeMap::new());
+        let request = request(&program, &plan, &plan.batches[0], &existing, &BTreeMap::new(), false);
         assert!(request.answered.is_empty(), "{:?}", request.answered);
         assert!(
             request
@@ -7721,18 +8028,29 @@ global@targets.add(rust);
             identifier: "b".to_string(),
         };
         let previous = BTreeMap::from([("def/b.lfy".to_string(), was.clone())]);
-        let request = request(&program, &plan, &batch, &existing, &previous);
+        let request = request(&program, &plan, &batch, &existing, &previous, false);
 
         // What the outputs answered for is what the map file recorded.
         // @lfy def/generation/main.lfy:request#request:request:160056c645e3e69afd7ce0bb74137db9a5e5f286df0a983570f9e2569276b533
         let mut sorted = before.clone();
         sorted.sort();
         assert_eq!(request.answered["def/b.lfy"], sorted);
-        // The one criterion the unit no longer has, in the order the file as it was gave it.
-        // @lfy def/generation/main.lfy:request#request:request:e9e73367084b12788d91ea49ea57894f06e55c67ebf0856dbb827d3a968fc089
+        // The one criterion the unit no longer has, in the order the file as it was gave it,
+        // with the id it had, its place in the file as it was, and what it said.
+        // @lfy def/generation/main.lfy:request#request:request:7056100416879448a8a243c30c4766b4d371dc89e64e2ef9eb3d748b4099c2a8
+        // @lfy def/generation/main.lfy:request#request:request:1b7315cf290fcd29e9e15f54bd98742f52b2943246c4cb0414ed750188b9e3da
         let gone = &request.removed["def/b.lfy"];
         assert_eq!(gone.len(), 1, "{gone:?}");
-        assert!(before.contains(&gone[0]), "{gone:?} {before:?}");
+        assert!(before.contains(&gone[0].id), "{gone:?} {before:?}");
+        assert_eq!(gone[0].text, "When x is short: the b is empty");
+        // The place is the file as it was and the line its `add` call began on, which is
+        // the line the criterion was written on in that file and no line of the file now.
+        let line = was
+            .lines()
+            .position(|line| line.contains("x is short"))
+            .expect("the criterion is written in the file as it was")
+            + 1;
+        assert_eq!(gone[0].place, format!("def/b.lfy:{line}"));
 
         let text = &request.instructions;
         // The section says the code is unchanged and holds the code to what each criterion
@@ -7778,12 +8096,12 @@ global@targets.add(rust);
             "{text}"
         );
         // What is gone is listed last in the unit's section, with its id and its text.
-        // @lfy def/generation/main.lfy:request#request:request:85fafd5b7c6201f807d532b93b487771bdd141c7ee6bd8854cdc7d981176ff9a
+        // @lfy def/generation/main.lfy:request#request:request:11d52a6cfc7c6727d63a4b8f9330ce26ffeb26adddad76ca0ec87d826a89e8b2
         let heading = text
             .find("#### Removed since its outputs were accepted")
             .unwrap_or_else(|| panic!("{text}"));
         assert!(
-            text[heading..].contains(&format!("`{}` — When x is short: the b is empty", gone[0])),
+            text[heading..].contains(&format!("`{}` — When x is short: the b is empty", gone[0].id)),
             "{text}"
         );
         assert!(heading < text.find("## Global criteria and tests").unwrap());
@@ -7802,10 +8120,20 @@ global@targets.add(rust);
         }
     }
 
+    /// One verdict with one problem, for the runs whose outcome a rejection decides.
+    fn rejected_verdict(problem: &str) -> Verdict {
+        Verdict {
+            accepted: false,
+            problems: vec![problem.to_string(), "and another".to_string()],
+            source_maps: Vec::new(),
+            outputs: Vec::new(),
+        }
+    }
+
     // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:e5324f4bea05fae7e9593527cb97051401fa31bf436b8e19acaf8723aa328256
     #[test]
     fn a_report_ending_in_done_with_accepted_verdicts_is_accepted() {
-        let outcome = outcome_of("I wrote it.\nELFIE: DONE", vec![accepted_verdict()]);
+        let outcome = outcome_of("I wrote it.\nELFIE: DONE", vec![accepted_verdict()], None);
         // @lfy def/generation/main.lfy:outcomeOf
         assert_eq!(outcome.kind, OutcomeKind::Accepted);
         assert_eq!(outcome.message, "");
@@ -7816,8 +8144,12 @@ global@targets.add(rust);
     // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:7b6eac4728a15e61226e1f610c492516a8c084cb43b331c9a358884b2a104e73
     #[test]
     fn a_report_ending_in_clarify_is_a_clarification_with_the_question() {
-        let outcome = outcome_of("ELFIE: CLARIFY: should Range.end be inclusive?", Vec::new());
-        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:53de4f363ea26bf3a1370bab8f9f83cecf2b3eba54674bdb1eeabebefb27673c
+        let outcome = outcome_of(
+            "ELFIE: CLARIFY: should Range.end be inclusive?",
+            Vec::new(),
+            None,
+        );
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889
         assert_eq!(outcome.kind, OutcomeKind::Clarification);
         assert_eq!(outcome.message, "should Range.end be inclusive?");
         assert!(outcome.verdicts.is_empty());
@@ -7829,15 +8161,16 @@ global@targets.add(rust);
         let outcome = outcome_of(
             "ELFIE: BLOCKED: [[tokenAt]] contradicts [[nodesAt]] on empty files\nand on one-line files",
             Vec::new(),
+            None,
         );
-        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:a4c5e6d3f292645f7f6470a7965c4e918dc86d3ea208ea1161e7aea9b8d54e9a
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2
         assert_eq!(outcome.kind, OutcomeKind::Blocked);
         assert_eq!(
             outcome.message,
             "[[tokenAt]] contradicts [[nodesAt]] on empty files\nand on one-line files"
         );
         // The last such line decides, whatever came before it.
-        let outcome = outcome_of("ELFIE: DONE\nELFIE: BLOCKED: no", Vec::new());
+        let outcome = outcome_of("ELFIE: DONE\nELFIE: BLOCKED: no", Vec::new(), None);
         assert_eq!(outcome.kind, OutcomeKind::Blocked);
         assert_eq!(outcome.message, "no");
     }
@@ -7845,45 +8178,111 @@ global@targets.add(rust);
     // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0fccd9b62ccb962587945c80c1ea93a6c4a0a14d715a11382de9069f057a8717
     #[test]
     fn a_report_with_nothing_and_no_verdicts_has_failed() {
-        let outcome = outcome_of("", Vec::new());
+        let outcome = outcome_of("", Vec::new(), None);
         assert_eq!(outcome.kind, OutcomeKind::Failed);
         assert_eq!(outcome.message, "the compiler reported nothing");
         assert!(outcome.verdicts.is_empty());
         // Prose alone, with no line beginning with `ELFIE:`, has failed too.
-        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:19216d3a88ec8d3f27ae0fb6d97d169f662c7bc5dc93c0a33095dc2abed25312
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:21fbd937a6b58a02072c2e606c0188be26f64751f8a10f7d260dea1d88e01a21
         assert_eq!(
-            outcome_of("I had a look around.", Vec::new()).kind,
+            outcome_of("I had a look around.", Vec::new(), None).kind,
             OutcomeKind::Failed
         );
     }
 
     /// A report that ended but left no verdict is accepted: the compiler said it was done,
     /// and no verdict says otherwise.
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:7493907472b5ae9311e57d728e2778642ee5cb03f7a60f07653450479788690a
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:9b1f1e3d496ed3a527d2e2d93703ab7d0488cd057539e9129a315be84523bcca
     #[test]
     fn a_report_that_ended_with_no_verdicts_is_accepted() {
-        let outcome = outcome_of("ELFIE: DONE", Vec::new());
+        let outcome = outcome_of("ELFIE: DONE", Vec::new(), None);
         assert_eq!(outcome.kind, OutcomeKind::Accepted);
         assert_eq!(outcome.message, "");
         assert!(outcome.verdicts.is_empty());
     }
 
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:c0456656ba1f48f003866e5234345c26bc86461c3655c59997978e13b5ff9d25
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0e7476527a35bfd8b4cf324745dc9e2aa10aa07b1fb7a1d6da3f32055f0154ac
     #[test]
     fn a_rejected_verdict_is_rejected_with_its_first_problem() {
-        let rejected = Verdict {
-            accepted: false,
-            problems: vec![
-                "the entity B has no marker".to_string(),
-                "and another".to_string(),
-            ],
-            source_maps: Vec::new(),
-            outputs: Vec::new(),
-        };
-        let outcome = outcome_of("ELFIE: DONE", vec![accepted_verdict(), rejected]);
+        let rejected = rejected_verdict("the entity B has no marker");
+        let outcome = outcome_of("ELFIE: DONE", vec![accepted_verdict(), rejected], None);
         assert_eq!(outcome.kind, OutcomeKind::Rejected);
         assert_eq!(outcome.message, "the entity B has no marker");
         assert_eq!(outcome.verdicts.len(), 2);
+    }
+
+    /// A submitted outcome decides on its own: the report still ends in `ELFIE: DONE`, and
+    /// the run is blocked with the message the compiler submitted.
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:10b502beb5a91d5c287faae6f0200646349dc3e3bc3a83da1ab4d567904ec23d
+    #[test]
+    fn a_submitted_block_wins_over_a_report_that_ended_in_done() {
+        let submitted = Submission {
+            outcome: SubmittedOutcome::Blocked,
+            message: "two criteria of f conflict".to_string(),
+        };
+        let outcome = outcome_of(
+            "I wrote it.\nELFIE: DONE",
+            vec![accepted_verdict()],
+            Some(&submitted),
+        );
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b
+        assert_eq!(outcome.kind, OutcomeKind::Blocked);
+        assert_eq!(outcome.message, "two criteria of f conflict");
+        assert_eq!(outcome.verdicts.len(), 1);
+
+        // A submitted question is a clarification the same way, whatever the report says.
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1
+        let asked = Submission {
+            outcome: SubmittedOutcome::Clarify,
+            message: "should Range.end be inclusive?".to_string(),
+        };
+        let outcome = outcome_of("ELFIE: DONE", Vec::new(), Some(&asked));
+        assert_eq!(outcome.kind, OutcomeKind::Clarification);
+        assert_eq!(outcome.message, "should Range.end be inclusive?");
+    }
+
+    /// A compiler that submitted `done` is still held to the verdicts of its units, and the
+    /// note it submitted with `done` is no part of the message.
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:046437ef354a9e453f2f8ca9571b5bb39d5795da87aa09b71759be29bf95c1e2
+    #[test]
+    fn a_submitted_done_with_a_rejected_verdict_is_rejected() {
+        let submitted = Submission {
+            outcome: SubmittedOutcome::Done,
+            message: "I had to move a helper".to_string(),
+        };
+        let outcome = outcome_of(
+            "",
+            vec![rejected_verdict("no marker for B")],
+            Some(&submitted),
+        );
+        assert_eq!(outcome.kind, OutcomeKind::Rejected);
+        assert_eq!(outcome.message, "no marker for B");
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093
+        assert!(!outcome.message.contains("I had to move a helper"));
+
+        // With every verdict accepted, a submitted `done` is accepted and the note is gone.
+        // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:6cbc44baf902ab337f838bc362fc27fd6caace8df9741d15d5c4151081cc920b
+        let outcome = outcome_of("", vec![accepted_verdict()], Some(&submitted));
+        assert_eq!(outcome.kind, OutcomeKind::Accepted);
+        assert_eq!(outcome.message, "");
+    }
+
+    /// A compiler that submitted `done` while no unit was judged has failed: its outputs
+    /// never reached acceptance, whatever its report said.
+    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:a6355c8129add74ebe6d1ca1d6f07a38256353426e20a7f3b9f0de624dad10e4
+    #[test]
+    fn a_submitted_done_with_no_verdict_has_failed() {
+        let submitted = Submission {
+            outcome: SubmittedOutcome::Done,
+            message: String::new(),
+        };
+        let outcome = outcome_of("ELFIE: DONE", Vec::new(), Some(&submitted));
+        assert_eq!(outcome.kind, OutcomeKind::Failed);
+        assert_eq!(
+            outcome.message,
+            "the compiler submitted done but no unit was judged"
+        );
+        assert!(outcome.verdicts.is_empty());
     }
 
     // -----------------------------------------------------------------------------------
@@ -7915,7 +8314,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let request = request(program, &plan, &batch, &[], &BTreeMap::new());
+        let request = request(program, &plan, &batch, &[], &BTreeMap::new(), false);
         (plan, request, index)
     }
 
@@ -7936,7 +8335,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "b".to_string(),
         };
-        let request = request(&program, &plan, &batch, &[], &BTreeMap::new());
+        let request = request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
         let output = Output {
             path: "src/b.rs".to_string(),
             text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C\npub struct C;\n"
@@ -8195,7 +8594,7 @@ global@targets.add(rust);
             units: vec![index, together],
             identifier: "a+1".to_string(),
         };
-        let both = super::request(&program, &plan, &batch, &[], &BTreeMap::new());
+        let both = super::request(&program, &plan, &batch, &[], &BTreeMap::new(), false);
         let verdict = accept(
             &program,
             &plan,
@@ -8514,7 +8913,7 @@ global@targets.add(rust);
             units: vec![index],
             identifier: "a".to_string(),
         };
-        let request = request(&program, &plan,&batch, &[], &BTreeMap::new());
+        let request = request(&program, &plan,&batch, &[], &BTreeMap::new(), false);
         let output = named_output(
             "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:B\npub struct B;\n",
         );
@@ -9717,7 +10116,7 @@ global@targets.add(rust);
         }
         // The protocol: how a region is read, where a verdict goes, the keys of the line it
         // falls back to, the three statuses, the tools, and the end line.
-        // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5f3541f331f08c11374202659e49f252d011829d997b2663a9a7aa1eb494c55d
+        // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:8dc8036aa494819b48e614bd9fe82ef867e58e668b969813da46a5327a179c5a
         for part in [
             "examine and never edit",
             "you propose no code",
@@ -9732,6 +10131,8 @@ global@targets.add(rust);
             "unverifiable, never violated",
             "before files are searched or read by hand",
             "`elfie_source`",
+            "`elfie_search` for the lines of the outputs that match a pattern",
+            "the body of a helper no marker names",
             "`elfie_entity`",
             "`elfie_references`",
             "Where `elfie_report` is not offered",
@@ -9741,6 +10142,39 @@ global@targets.add(rust);
         ] {
             assert!(text.contains(part), "{part} is missing:\n{text}");
         }
+    }
+
+    /// Two regions of one entity that meet — the second beginning on the line after the end
+    /// of the first, in the same output — are given as one range, while a gap between two of
+    /// them, and a region of another output, keep them apart.
+    // @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+    #[test]
+    fn two_regions_that_meet_in_one_output_are_given_as_one_range() {
+        let (_fixture, program, plan, batch) = a_to_review();
+        let map = |output: &str, markers: Vec<Marker>| SourceMap {
+            output: output.to_string(),
+            markers,
+            ..a_source_map().remove(0)
+        };
+        let maps = vec![
+            map(
+                "src/a.rs",
+                vec![
+                    entity_marker(1, "A", 1, 2),
+                    entity_marker(3, "A", 1, 4),
+                    entity_marker(6, "A", 1, 7),
+                ],
+            ),
+            map("src/b.rs", vec![entity_marker(8, "A", 1, 9)]),
+        ];
+        let text = review(&program, &plan, &batch, &maps, None, &[]).instructions;
+        assert!(text.contains("`src/a.rs:1-4`"), "{text}");
+        assert!(!text.contains("`src/a.rs:1-2`"), "{text}");
+        assert!(!text.contains("`src/a.rs:3-4`"), "{text}");
+        // Line 5 belongs to no region, so the one beginning on line 6 stands on its own,
+        // and so does a region of another output that begins on the next line.
+        assert!(text.contains("`src/a.rs:6-7`"), "{text}");
+        assert!(text.contains("`src/b.rs:8-9`"), "{text}");
     }
 
     /// A criterion whose record says it was satisfied against the code the entity's regions

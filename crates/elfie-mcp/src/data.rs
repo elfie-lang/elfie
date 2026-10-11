@@ -1,12 +1,13 @@
 //! Compiled from `def/mcp/data.lfy`: the data of the agent server.
 //!
 //! A [`Tool`] is one fn of `def/mcp/main.lfy` as the server lists it, with one
-//! [`ToolArgument`] per parameter; a [`ToolResult`] is what a call returns; a [`Session`]
+//! [`ToolArgument`] per parameter; a [`ToolResult`] is what a call returns; a
+//! [`CommandRun`] is what one run of a target's command came to; a [`Session`]
 //! is one agent's connection, holding the program as of the last call and the stamp of
 //! every file it was read from; a [`Binding`] is what one hosted session is bound to and a
-//! [`Host`] the server that serves such sessions for the length of one compile or verify; a
-//! [`GlobalReview`] is the last global review of a project, which says which units a review
-//! found violated.
+//! [`Host`] the server that serves such sessions for the length of one compile or verify,
+//! each closed for the [`SessionRecord`] it recorded; a [`GlobalReview`] is the last global
+//! review of a project, which says which units a review found violated.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -14,7 +15,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::SystemTime;
 
-use elfie_core::generation::{self, Batch, Plan, Review, ReviewRequest, ReviewStatus, SourceMap};
+use elfie_core::generation::{
+    self, Batch, Plan, Request, Review, ReviewRequest, ReviewStatus, SourceMap, Submission,
+};
 use elfie_core::interpret::Program;
 use elfie_core::workspace::Workspace;
 use serde_json::Value;
@@ -95,6 +98,46 @@ impl From<Result<String, String>> for ToolResult {
     }
 }
 
+/// What one run of a target's command came to, as a command tool returns it.
+// @lfy def/mcp/data.lfy:CommandRun
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandRun {
+    /// The identifier of the target whose command ran.
+    pub target: String, // @lfy def/mcp/data.lfy:CommandRun.target
+    /// The name of the operation whose command ran, as `Operation` spells its member.
+    pub operation: String, // @lfy def/mcp/data.lfy:CommandRun.operation
+    /// The line that ran.
+    pub line: String, // @lfy def/mcp/data.lfy:CommandRun.line
+    /// Whether it exited with 0.
+    pub succeeded: bool, // @lfy def/mcp/data.lfy:CommandRun.succeeded
+    /// Its exit code; -1 when it ended by a signal or could not be started.
+    // Decision: an exit code is a small whole number that may be -1, so it is kept as the
+    // signed integer the platform reports and the command line already holds one as, rather
+    // than as the floating point number any other number of the definition becomes: a code
+    // written as `3.0` would be no code a reader or a shell knows.
+    pub exit_code: i32, // @lfy def/mcp/data.lfy:CommandRun.exitCode
+    /// What it wrote to standard output and standard error, kept short.
+    pub output: String, // @lfy def/mcp/data.lfy:CommandRun.output
+    /// How many lines of what it wrote [`CommandRun::output`] leaves out.
+    pub omitted: usize, // @lfy def/mcp/data.lfy:CommandRun.omitted
+}
+
+impl CommandRun {
+    /// The run as one JSON object, with one key per member as the definition spells it.
+    // @lfy def/mcp/data.lfy:CommandRun
+    pub fn to_json(&self) -> Value {
+        serde_json::json!({
+            "target": self.target,
+            "operation": self.operation,
+            "line": self.line,
+            "succeeded": self.succeeded,
+            "exitCode": self.exit_code,
+            "output": self.output,
+            "omitted": self.omitted,
+        })
+    }
+}
+
 /// The modification time and size of one file when it was last read.
 // Decision: the definition types `Session.seen` as an object; its entries are kept as
 // this pair so that a changed file is noticed by either its time or its size.
@@ -119,6 +162,20 @@ pub struct Session {
     // change, so the list a call appends to is kept behind a lock of its own; the calls of
     // one session are handled one at a time, so it is never contended.
     pub reviews: Mutex<Vec<Review>>, // @lfy def/mcp/data.lfy:Session.reviews
+    /// The outcome `elfie_submit` last recorded in the session; `None` until one is.
+    // Decision: it is kept behind a lock of its own for the reason the reviews are: a tool
+    // fn is reached with the session and not with a session it may change.
+    pub submission: Mutex<Option<Submission>>, // @lfy def/mcp/data.lfy:Session.submission
+}
+
+/// What a hosted session recorded, as [`Host::close`] hands it back.
+// @lfy def/mcp/data.lfy:SessionRecord
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SessionRecord {
+    /// [`Session::reviews`] of the session.
+    pub reviews: Vec<Review>, // @lfy def/mcp/data.lfy:SessionRecord.reviews
+    /// [`Session::submission`] of the session.
+    pub submission: Option<Submission>, // @lfy def/mcp/data.lfy:SessionRecord.submission
 }
 
 /// What the agent of a hosted session is run as.
@@ -163,6 +220,8 @@ pub struct Binding {
     /// The program the compile lowered and planned; its workspace is the one the session
     /// reads definitions from.
     pub program: Program, // @lfy def/mcp/data.lfy:Binding.program
+    /// The request given to a compiler run as its input; `None` for a verifier run.
+    pub request: Option<Request>, // @lfy def/mcp/data.lfy:Binding.request
     /// The review request given to a verifier run as its input; `None` for a compiler run.
     pub review: Option<ReviewRequest>, // @lfy def/mcp/data.lfy:Binding.review
     /// The source maps that review request was made with; empty for a compiler run.
@@ -174,10 +233,14 @@ pub struct Binding {
 // @lfy def/mcp/data.lfy:Host.open
 pub type Open = Box<dyn Fn(Binding) -> String + Send + Sync>;
 
-/// What [`Host::close`] holds: it ends the session at a URL and returns
-/// [`Session::reviews`] of it.
+/// What [`Host::offered`] holds: the names of the tools the session at a URL is offered, in
+/// the order the server lists them.
+// @lfy def/mcp/data.lfy:Host.offered
+pub type Offered = Box<dyn Fn(&str) -> Vec<String> + Send + Sync>;
+
+/// What [`Host::close`] holds: it ends the session at a URL and returns what it recorded.
 // @lfy def/mcp/data.lfy:Host.close
-pub type Close = Box<dyn Fn(&str) -> Vec<Review> + Send + Sync>;
+pub type Close = Box<dyn Fn(&str) -> SessionRecord + Send + Sync>;
 
 /// What [`Host::stop`] holds: it ends every session that is still open and stops listening.
 // @lfy def/mcp/data.lfy:Host.stop
@@ -193,7 +256,10 @@ pub struct Host {
     pub token: String, // @lfy def/mcp/data.lfy:Host.token
     /// Opens one hosted session bound to a [`Binding`] and returns the session's URL.
     pub open: Open, // @lfy def/mcp/data.lfy:Host.open
-    /// Ends the session at a URL and returns [`Session::reviews`] of it.
+    /// The names of the tools the session at a URL is offered, in the order the server lists
+    /// them.
+    pub offered: Offered, // @lfy def/mcp/data.lfy:Host.offered
+    /// Ends the session at a URL and returns what it recorded.
     pub close: Close, // @lfy def/mcp/data.lfy:Host.close
     /// Ends every session that is still open and stops listening.
     pub stop: Stop, // @lfy def/mcp/data.lfy:Host.stop

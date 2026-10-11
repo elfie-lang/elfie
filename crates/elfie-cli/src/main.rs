@@ -21,6 +21,8 @@ use elfie_core::generation::{
     self, Batch, Move, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request, Review, ReviewRecord,
     ReviewReport, ReviewRequest, ReviewStatus, SourceMap, Unit, Verdict,
 };
+#[cfg(test)]
+use elfie_core::generation::{Submission, SubmittedOutcome};
 use elfie_core::grammar::GrammarRule as _;
 use elfie_core::interpret::{LoweredNode, Program, lower};
 use elfie_core::lexer::{Token, lex};
@@ -30,7 +32,7 @@ use elfie_core::query::{self, Diagnostic, Severity};
 use elfie_core::workspace::{self, Workspace};
 // @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
 // @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
-use elfie_mcp::{Binding, GlobalReview, Host, Role};
+use elfie_mcp::{Binding, GlobalReview, Host, Role, SessionRecord};
 
 pub use data::{Command, ExitCode, Invocation, Progress, Step};
 // @lfy def/cli/main.lfy:main
@@ -1668,7 +1670,7 @@ fn manifest_command(root: &Path, key: &str) -> Option<String> {
 }
 
 /// The manifest's `compiler` command, when it names one.
-// @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+// @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
 fn compiler_command(root: &Path) -> Option<String> {
     manifest_command(root, "compiler")
 }
@@ -2281,10 +2283,10 @@ struct Exit {
     code: i32,
     stdout: String,
     stderr: String,
-    /// The reviews the run submitted through the agent server, as closing its session gave
-    /// them.
+    /// What the run recorded through the agent server — the reviews it submitted and the
+    /// outcome it submitted — as closing its session gave it back.
     // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
-    reviews: Vec<Review>,
+    record: SessionRecord,
 }
 
 /// One stream of the compiler or the verifier, each line shown as it arrives prefixed by the
@@ -2387,6 +2389,24 @@ impl Server {
     }
 }
 
+/// The tools that run a target's command, in the order the agent server lists them, so that
+/// a run is told which of them its session was offered.
+// @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+const COMMAND_TOOLS: [&str; 4] = ["elfie_build", "elfie_test", "elfie_lint", "elfie_format"];
+
+/// The command tools among the names a session is offered, in the order the server lists
+/// them, joined by spaces; empty when it was offered none.
+// @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+fn command_tools_of(offered: &[String]) -> String {
+    // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+    offered
+        .iter()
+        .filter(|name| COMMAND_TOOLS.contains(&name.as_str()))
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
+        .join(" ")
+}
+
 /// The word a role goes by in a file name and in the log.
 // @lfy def/cli/main.lfy:main#main:main:db24670f7a47cc1d0d13a51de65a69c1469315a12c8359b5ba6d6f0d620ded13
 fn word_of(role: Role) -> &'static str {
@@ -2399,7 +2419,7 @@ fn word_of(role: Role) -> &'static str {
 /// What running one agent takes, held apart from the rest of a compile so that a batch can
 /// stream its compiler and its verifier while the other batches stream theirs: nothing here
 /// changes once a compile has begun.
-// @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+// @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
 #[derive(Clone)]
 struct Agent {
     json: bool,
@@ -2407,7 +2427,7 @@ struct Agent {
     logs: Vec<PathBuf>,
     /// The path of the running executable, so the agent server an agent starts is this same
     /// program.
-    // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+    // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
     elfie: PathBuf,
     /// The agent server every run works through, shared by every batch.
     // @lfy def/cli/main.lfy:main#main:main:5724f5824450ab53811f66b437b4a0ea4d89fea52c17be8df51e351a55ae8fe9
@@ -2417,7 +2437,7 @@ struct Agent {
 impl Agent {
     // @lfy def/cli/main.lfy:main
     fn new(json: bool, style: Paint, logs: Vec<PathBuf>, root: &Path) -> Agent {
-        // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
         let elfie = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("elfie"));
         // @lfy def/cli/main.lfy:main#main:main:5724f5824450ab53811f66b437b4a0ea4d89fea52c17be8df51e351a55ae8fe9
         Agent { json, style, logs, elfie, server: Arc::new(Server::new(root.to_path_buf())) }
@@ -2454,18 +2474,20 @@ impl Agent {
 
     /// Streams one agent, the compiler or the verifier, once for one batch: the instructions
     /// as its input, the batch's directory as its directory, and ELFIE_ROOT (the batch's
-    /// directory), ELFIE_BATCH, ELFIE_UNITS (the stems, space separated), ELFIE, and
-    /// ELFIE_MCP_CONFIG as its environment. Its standard output is the report. The code is -1
-    /// when the command could not be started or the agent server could not be hosted.
+    /// directory), ELFIE_BATCH, ELFIE_UNITS (the stems, space separated), ELFIE,
+    /// ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS as its environment. Its standard output is
+    /// the report. The code is -1 when the command could not be started or the agent server
+    /// could not be hosted.
     ///
     /// One hosted session is opened for the run just before it starts, bound to what the run
-    /// is, and closed once it has returned, before anything reads its outcome; the reviews it
-    /// submitted through the server come back with its output.
+    /// is, and closed once it has returned, before anything reads its outcome; what it
+    /// submitted through the server comes back with its output. Its config file is removed
+    /// once the run has returned, since the token it holds no longer opens anything.
     ///
-    /// These five are the whole of what it adds: a batch running in a copy of the root reads
+    /// These six are the whole of what it adds: a batch running in a copy of the root reads
     /// the root's history through the `.git` file the copy holds, so nothing of git is set
     /// here and a repository one of its own commands makes elsewhere stays its own.
-    // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+    // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
     // @lfy def/cli/main.lfy:main#main:main:d2f5c1f01307b9fe1c6d81df370dc6346bd4e96c36b925186b2b1ce3aeccae9e
     // @lfy def/cli/main.lfy:main#main:main:dc6670a1659abe98c2ae0ed1502d175a57162b9aa395c843f4fdeaa3d5ce4664
     // @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
@@ -2484,7 +2506,7 @@ impl Agent {
                     code: -1,
                     stdout: String::new(),
                     stderr: format!("the agent server could not be hosted: {error}"),
-                    reviews: Vec::new(),
+                    record: SessionRecord::default(),
                 };
             }
         };
@@ -2493,12 +2515,16 @@ impl Agent {
         let session = (host.open)(binding);
         // @lfy def/cli/main.lfy:main#main:main:db24670f7a47cc1d0d13a51de65a69c1469315a12c8359b5ba6d6f0d620ded13
         let config = self.write_config(&host, &session, label, role);
+        // Which of the command tools this session was offered, in the order the server lists
+        // them, so that a run knows what to call instead of knowing the tools.
+        // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+        let tools = command_tools_of(&(host.offered)(&session));
         let mut spawning = Process::new("sh");
         spawning
             .arg("-c")
             .arg(command)
             .current_dir(directory)
-            // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+            // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
             // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
             .env("ELFIE_ROOT", directory)
             // ELFIE_BATCH is the identifier of the batch and ELFIE_UNITS its stems, separated
@@ -2507,13 +2533,16 @@ impl Agent {
             .env("ELFIE_BATCH", label)
             .env("ELFIE_UNITS", units)
             // ELFIE_ROOT is the directory it runs in, ELFIE the path of the running
-            // executable, and ELFIE_MCP_CONFIG the config file of this run's hosted session;
-            // no git variable is added beyond these five.
-            // @lfy def/cli/main.lfy:main#main:main:4155d2819e4f12deebb502d2ea5c20e6d2183fb43907cc9828afeafa4b092c8b
+            // executable, ELFIE_MCP_CONFIG the config file of this run's hosted session, and
+            // ELFIE_COMMAND_TOOLS the command tools that session was offered; no git variable
+            // is added beyond these six.
+            // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
             // @lfy def/cli/main.lfy:main#main:main:e17f6b936896c49f2d5ae4a8c46ccaf3f569ef4620c0e0e927b573171cbde588
             .env("ELFIE", &self.elfie)
-            // @lfy def/cli/main.lfy:main#main:main:4155d2819e4f12deebb502d2ea5c20e6d2183fb43907cc9828afeafa4b092c8b
+            // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
             .env("ELFIE_MCP_CONFIG", &config)
+            // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+            .env("ELFIE_COMMAND_TOOLS", &tools)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -2523,8 +2552,10 @@ impl Agent {
             Ok(child) => child,
             Err(error) => {
                 // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
-                let reviews = (host.close)(&session);
-                return Exit { code: -1, stdout: String::new(), stderr: error.to_string(), reviews };
+                let record = (host.close)(&session);
+                // @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
+                remove_config(&config, &self.logs);
+                return Exit { code: -1, stdout: String::new(), stderr: error.to_string(), record };
             }
         };
         // Each line is shown as it arrives, prefixed by the batch; with --json it goes to
@@ -2551,17 +2582,32 @@ impl Agent {
         let stdout = out.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
         let stderr = err.map(|handle| handle.join().unwrap_or_default()).unwrap_or_default();
         // The run has returned: its session is closed, and what it submitted through the
-        // server comes back with its output, before anything reads its outcome.
+        // server comes back with its output, before anything reads its outcome. Its config
+        // file goes with the session, whose token no longer opens anything.
         // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
-        let reviews = (host.close)(&session);
+        let record = (host.close)(&session);
+        // @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
+        remove_config(&config, &logs);
         let status = match status {
             Ok(status) => status,
-            Err(error) => return Exit { code: -1, stdout, stderr: error.to_string(), reviews },
+            Err(error) => return Exit { code: -1, stdout, stderr: error.to_string(), record },
         };
         if !status.success() {
             append_to(&logs, &format!("the {what} command exited with {status}"));
         }
-        Exit { code: status.code().unwrap_or(-1), stdout, stderr, reviews }
+        Exit { code: status.code().unwrap_or(-1), stdout, stderr, record }
+    }
+}
+
+/// The MCP config file of a run that has returned, removed: the token it holds no longer
+/// opens anything, so nothing is left behind that reads as a way in.
+// @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
+fn remove_config(config: &Path, logs: &[PathBuf]) {
+    // @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
+    if let Err(error) = fs::remove_file(config)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        append_to(logs, &format!("{} could not be removed: {error}", config.display()));
     }
 }
 
@@ -3079,7 +3125,7 @@ struct Run {
     reporter: Reporter,
     /// What running the compiler and the verifier takes, held apart so that a batch streams
     /// its agents while the lock on the rest of this is free for the other batches.
-    // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+    // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
     agent: Agent,
     json: bool,
     /// Whether each stream is painted.
@@ -3141,7 +3187,7 @@ impl Run {
     // @lfy def/cli/main.lfy:main
     fn new(program: Program, plan: Plan, maps: Vec<SourceMap>, reporter: Reporter, invocation: &Invocation) -> Run {
         let verifier = verifier_command(&program.workspace.root);
-        // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
         let agent = Agent::new(
             invocation.flag("json"),
             Paint::of(invocation),
@@ -3153,7 +3199,7 @@ impl Run {
             plan,
             maps,
             reporter,
-            // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+            // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
             agent,
             json: invocation.flag("json"),
             // @lfy def/cli/main.lfy:main
@@ -3299,8 +3345,12 @@ impl Run {
     /// The request of one batch, with its existing outputs read from the batch's directory,
     /// the source each unit's outputs were generated from where git still holds it, and the
     /// answer to a question asked before appended.
+    ///
+    /// `hosted` is whether the request is for a compiler run in a hosted session of this
+    /// command's agent server: true for the request handed to a compiler command, false for
+    /// the one written out for a compiler run by hand.
     // @lfy def/cli/main.lfy:main
-    fn request_of(&self, batch: &Batch, directory: &Path) -> Request {
+    fn request_of(&self, batch: &Batch, directory: &Path, hosted: bool) -> Request {
         let existing: Vec<Output> = batch
             .units
             .iter()
@@ -3319,8 +3369,9 @@ impl Run {
                 previous.insert(self.workspace().files[unit.file].path.clone(), text);
             }
         }
-        // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
-        let mut request = generation::request(&self.program, &self.plan, batch, &existing, &previous);
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+        // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
+        let mut request = generation::request(&self.program, &self.plan, batch, &existing, &previous, hosted);
         // The person answers by editing the definitions, or by writing the answer below
         // the question, which the next compile of the batch appends to its instructions.
         // @lfy def/cli/main.lfy:main#main:main:760ac9394baad44b62a3c96e58e305792fb43b2fe0dc7ab8510183a1ad12b070
@@ -3756,7 +3807,7 @@ impl Run {
     /// the agent server.
     // @lfy def/cli/main.lfy:main#main:main:d2f5c1f01307b9fe1c6d81df370dc6346bd4e96c36b925186b2b1ce3aeccae9e
     // @lfy def/cli/main.lfy:main#main:main:dc6670a1659abe98c2ae0ed1502d175a57162b9aa395c843f4fdeaa3d5ce4664
-    // @lfy def/cli/main.lfy:main#main:main:404aaf6904035f662d4de28fc9ab1bffcbef88dc40b0aadc5fdfe9547b87339b
+    // @lfy def/cli/main.lfy:main#main:main:8e26beddf232ac15c3c4ca8bec25eccd1e26ac1300d74e2b9144e1839621effe
     #[expect(clippy::too_many_arguments, reason = "one run of the verifier takes all of this")]
     fn ask_verifier(
         run: &Mutex<Run>,
@@ -3778,6 +3829,7 @@ impl Run {
                 Role::Verifier,
                 Some(batch),
                 where_.directory(),
+                None,
                 Some(request.clone()),
                 maps.to_vec(),
             )
@@ -3797,11 +3849,11 @@ impl Run {
     /// The report of one run of the verifier, and whether it ended without every verdict: the
     /// whole of its standard output read with the ids its review request asked about and the
     /// reviews it submitted through the agent server.
-    // @lfy def/cli/main.lfy:main#main:main:404aaf6904035f662d4de28fc9ab1bffcbef88dc40b0aadc5fdfe9547b87339b
+    // @lfy def/cli/main.lfy:main#main:main:8e26beddf232ac15c3c4ca8bec25eccd1e26ac1300d74e2b9144e1839621effe
     // @lfy def/cli/main.lfy:main#main:main:4c0e08888be9dc3b6997e5ea919ad1c9206cd3046b518d1ec20dbd018f279b76
     fn report_of(&self, exit: &Exit, asked: &[String]) -> (ReviewReport, bool) {
-        // @lfy def/cli/main.lfy:main#main:main:404aaf6904035f662d4de28fc9ab1bffcbef88dc40b0aadc5fdfe9547b87339b
-        let mut report = generation::review_of(&exit.stdout, &self.program, asked, &exit.reviews);
+        // @lfy def/cli/main.lfy:main#main:main:8e26beddf232ac15c3c4ca8bec25eccd1e26ac1300d74e2b9144e1839621effe
+        let mut report = generation::review_of(&exit.stdout, &self.program, asked, &exit.record.reviews);
         if exit.code == -1 {
             report.problems.insert(0, format!("the verifier command could not be run: {}", exit.stderr.trim()));
         }
@@ -3827,13 +3879,14 @@ impl Run {
 
     /// The binding one hosted session is opened with: what the run is run as, the batch it is
     /// for, the directory it runs in, the plan and the program the command made, and what the
-    /// verifier was handed.
+    /// compiler or the verifier was handed as its input.
     // @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
     fn binding_of(
         &self,
         role: Role,
         batch: Option<&Batch>,
         directory: &Path,
+        request: Option<Request>,
         review: Option<ReviewRequest>,
         source_maps: Vec<SourceMap>,
     ) -> Binding {
@@ -3844,6 +3897,8 @@ impl Run {
             directory: directory.to_path_buf(),
             plan: self.plan.clone(),
             program: self.program.clone(),
+            // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
+            request,
             review,
             source_maps,
         }
@@ -4117,7 +4172,7 @@ impl Run {
     /// bound to it, no batch, and the source maps that request was made with.
     // @lfy def/cli/main.lfy:main#main:main:9092aae70550a2dbfe8b5fed13d4592a6956f3134ba180faf2fcebe40af78f0b
     // @lfy def/cli/main.lfy:main#main:main:8bc948283105a23f893766f7593a57076a62f423d7ff2093b65ea6acb4853711
-    // @lfy def/cli/main.lfy:main#main:main:404aaf6904035f662d4de28fc9ab1bffcbef88dc40b0aadc5fdfe9547b87339b
+    // @lfy def/cli/main.lfy:main#main:main:8e26beddf232ac15c3c4ca8bec25eccd1e26ac1300d74e2b9144e1839621effe
     fn ask_globally(
         run: &Mutex<Run>,
         agent: &Agent,
@@ -4134,14 +4189,14 @@ impl Run {
             // @lfy def/cli/main.lfy:main#main:main:8bc948283105a23f893766f7593a57076a62f423d7ff2093b65ea6acb4853711
             let binding = {
                 let held = locked(run);
-                held.binding_of(Role::Verifier, None, where_.directory(), Some(request.clone()), maps.to_vec())
+                held.binding_of(Role::Verifier, None, where_.directory(), None, Some(request.clone()), maps.to_vec())
             };
             // @lfy def/cli/main.lfy:main#main:main:9092aae70550a2dbfe8b5fed13d4592a6956f3134ba180faf2fcebe40af78f0b
             let exit = agent.run(command, where_, GLOBAL, units, &request.instructions, binding);
             let mut held = locked(run);
             // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
             held.reporter.append(&format!("--- the review of {GLOBAL} (attempt {attempt}) ---\n{}", exit.stdout));
-            // @lfy def/cli/main.lfy:main#main:main:404aaf6904035f662d4de28fc9ab1bffcbef88dc40b0aadc5fdfe9547b87339b
+            // @lfy def/cli/main.lfy:main#main:main:8e26beddf232ac15c3c4ca8bec25eccd1e26ac1300d74e2b9144e1839621effe
             let (report, failed) = held.report_of(&exit, &request.asked);
             last = report;
             if !failed {
@@ -4158,14 +4213,17 @@ impl Run {
     /// whose reviews violate what was asked is run once more beyond that. Gives the source
     /// maps its units earned when it was accepted, to be recorded once its work has reached
     /// the root, and nothing when it stopped.
-    // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+    // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
     fn compile_batch(run: &Mutex<Run>, batch: &Batch, command: &str, where_: &Where) -> Option<Vec<SourceMap>> {
         let directory = where_.directory().to_path_buf();
         let (agent, mut request) = {
             let mut state = locked(run);
             let stems = stems_of(&state.plan, batch, " ");
             state.reporter.report(Step::Requesting, Some(&batch.identifier), None, &stems);
-            let request = state.request_of(batch, &directory);
+            // The compiler of a batch runs in a hosted session of this compile's agent
+            // server, so its request names its interfaces and the tools that session offers.
+            // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+            let request = state.request_of(batch, &directory, true);
             (state.agent.clone(), request)
         };
         let mut attempt = 0;
@@ -4184,15 +4242,17 @@ impl Run {
                 let mut state = locked(run);
                 let step = if attempt == 1 { Step::Compiling } else { Step::Retrying };
                 state.reporter.report(step, Some(&batch.identifier), None, command);
-                // The run is run as the compiler of this batch, in the batch's directory,
-                // with no review and no source maps: a compiler is given no verdict to read.
-                // @lfy def/cli/main.lfy:main#main:main:94638eeae775f6336b97643243af5647033b01fff02a93afdd7e95a8f9b7e575
-                let binding = state.binding_of(Role::Compiler, Some(batch), &directory, None, Vec::new());
-                // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+                // The run is run as the compiler of this batch, in the batch's directory, with
+                // the request its input is made from, no review, and no source maps: a
+                // compiler is given no verdict to read.
+                // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
+                let binding =
+                    state.binding_of(Role::Compiler, Some(batch), &directory, Some(request.clone()), None, Vec::new());
+                // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
                 (stems_of(&state.plan, batch, " "), binding)
             };
             // The lock is free here, so another batch streams its own compiler meanwhile.
-            // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+            // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
             let exit = agent.run(command, where_, &batch.identifier, &units, &request.instructions, binding);
             let outcome = {
                 let mut state = locked(run);
@@ -4215,9 +4275,10 @@ impl Run {
                         .append(&format!("--- the report of {} (attempt {attempt}) ---\n{report}", batch.identifier));
                     // @lfy def/cli/main.lfy:main#main:main:b55f3f58a515b28848c4350085e1c0f6e6f475bd86bc03b4ec69857dac5ac8e4
                     let verdicts = state.verdicts_of(batch, &request, &directory);
-                    // How the run ended is the outcome of its report and those verdicts.
-                    // @lfy def/cli/main.lfy:main#main:main:633baa9541a258cbbf232fdb9cd99655252bb274963349747d37c1e66ecb9a65
-                    generation::outcome_of(&report, verdicts)
+                    // How the run ended is the outcome of its report, those verdicts, and
+                    // what it submitted through its session before the session was closed.
+                    // @lfy def/cli/main.lfy:main#main:main:37a3061e2d1da4becaf9fd160790f16ed84d77d4efa8b867622b0546149e5262
+                    generation::outcome_of(&report, verdicts, exit.record.submission.as_ref())
                 }
             };
             match outcome.kind {
@@ -4357,7 +4418,10 @@ impl Run {
         let where_ = Where::Root(root.to_path_buf());
         let held = {
             let mut state = locked(run);
-            let request = state.request_of(batch, root);
+            // Nothing reads these instructions: with --accept no compiler is run and no
+            // session is hosted, so the request is for no hosted session.
+            // @lfy def/cli/main.lfy:main#main:main:c51341f34278d51ccda0b1a75908b211f46b7db736525ed29c88351db922c346
+            let request = state.request_of(batch, root, false);
             let verdicts = state.verdicts_of(batch, &request, root);
             let accepted: Vec<Verdict> = verdicts.iter().filter(|v| v.accepted).cloned().collect();
             let mut held = state.maps.clone();
@@ -4398,13 +4462,15 @@ impl Run {
         }
     }
 
-    /// The request of a batch written for a compiler run by hand.
-    // @lfy def/cli/main.lfy:main#main:main:9b08ab424032c9ff369fea8f553d8bec5d162771e2b581211b776889455ed25f
+    /// The request of a batch written for a compiler run by hand, which is in no hosted
+    /// session: its interfaces are quoted whole and it names none of a session's tools.
+    // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
     fn write_request(&mut self, batch: &Batch) {
         let stems = stems_of(&self.plan, batch, " ");
         self.reporter.report(Step::Requesting, Some(&batch.identifier), None, &stems);
         let root = self.workspace().root.clone();
-        let request = self.request_of(batch, &root);
+        // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
+        let request = self.request_of(batch, &root, false);
         if let Some(path) = self.write_note(batch, "md", &request.instructions)
             && !self.json
         {
@@ -4521,7 +4587,7 @@ fn verifier_failed(exit: &Exit, report: &ReviewReport) -> bool {
 fn run_batch(run: &Mutex<Run>, batch: &Batch, command: &str, root: &Path, jobs: usize) -> Done {
     // @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
     let where_ = Where::of(root, &batch.identifier, jobs);
-    // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+    // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
     let held = Run::compile_batch(run, batch, command, &where_);
     let Where::Copy(mirror) = &where_ else {
         // The batch ran in the root: there is nothing to merge, and its source maps are
@@ -4626,7 +4692,7 @@ fn run_batches(
                             }
                             // @lfy def/cli/main.lfy:main#main:main:7601121664134e473626105cac3125b000e79cda3d2961cd835f242773a7987f
                             (false, Some(command)) => run_batch(run, &batch, command, root, jobs),
-                            // @lfy def/cli/main.lfy:main#main:main:9b08ab424032c9ff369fea8f553d8bec5d162771e2b581211b776889455ed25f
+                            // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
                             // @lfy def/cli/main.lfy:main#main:main:3a07f6a4f45336a9a4e1b203912309522b7f93919e3caacfb488b3638af551bd
                             (false, None) => {
                                 locked(run).write_request(&batch);
@@ -6294,8 +6360,11 @@ global@targets.add(rust);
     }
 
     /// With no compiler named, the request of each batch is written to elfie-requests under
-    /// the root, one file per batch named by its identifier, and the code is success.
+    /// the root, one file per batch named by its identifier, and the code is success. It is
+    /// read by a compiler run by hand, in no hosted session, so it names none of the tools a
+    /// session offers.
     // @lfy def/cli/main.lfy:main
+    // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
     #[test]
     fn a_project_with_no_compiler_writes_the_requests() {
         let fixture = Fixture::new();
@@ -6304,6 +6373,12 @@ global@targets.add(rust);
         let instructions = fixture.read("elfie-requests/a.md");
         assert!(instructions.contains("An A"), "{instructions}");
         assert!(instructions.contains("def/a.lfy"), "{instructions}");
+        // The request was made for no hosted session: it names neither the tools only a
+        // hosted session offers nor the way one submits its outcome.
+        // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
+        assert!(!instructions.contains("elfie_task"), "{instructions}");
+        // @lfy def/cli/main.lfy:main#main:main:de437a586cddefeefabed78d855e65916788f25c33c6c0d9b7286be02d199ce5
+        assert!(!instructions.contains("elfie_submit"), "{instructions}");
         // Every progress line is appended to the log, as printed with colors off.
         // @lfy def/cli/main.lfy:main
         let log = fixture.read("elfie-requests/compile.log");
@@ -6515,21 +6590,32 @@ global@targets.add(rust);
             .write("def/a.lfy", "d A: `An A` {}\n")
             .write(
                 "compiler.sh",
-                "#!/bin/sh\ncat > \"$ELFIE_ROOT/instructions.txt\"\nprintf '%s\\n' \"$ELFIE_BATCH\" \"$ELFIE_UNITS\" \"$ELFIE\" > \"$ELFIE_ROOT/environment.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
+                "#!/bin/sh\ncat > \"$ELFIE_ROOT/instructions.txt\"\nprintf '%s\\n' \"$ELFIE_BATCH\" \"$ELFIE_UNITS\" \"$ELFIE\" \"[$ELFIE_COMMAND_TOOLS]\" > \"$ELFIE_ROOT/environment.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
             )
             .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
         // @lfy def/cli/main.lfy:main
         assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
         // ELFIE is the path of the running executable, so the agent server an agent starts
         // is this same program.
-        // @lfy def/cli/main.lfy:main#main:main:356006747871e80e85a46cc91e363f8015764aa278172c9284f962cd3c584e94
+        // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
         let environment = fixture.read("environment.txt");
         let mut lines = environment.lines();
         assert_eq!(lines.next(), Some("a"));
         assert_eq!(lines.next(), Some("a"));
         let elfie = std::env::current_exe().unwrap();
         assert_eq!(lines.next(), Some(elfie.to_string_lossy().as_ref()));
-        assert!(fixture.read("instructions.txt").contains("An A"));
+        // The target of this project has no command, so its session is offered no command
+        // tool and ELFIE_COMMAND_TOOLS is empty.
+        // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+        assert_eq!(lines.next(), Some("[]"));
+        let instructions = fixture.read("instructions.txt");
+        assert!(instructions.contains("An A"), "{instructions}");
+        // The request was made for the run's hosted session, so it names the tools only such
+        // a session offers and how to submit the outcome through it.
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+        assert!(instructions.contains("elfie_task"), "{instructions}");
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+        assert!(instructions.contains("elfie_submit"), "{instructions}");
         // @lfy def/cli/main.lfy:main
         assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
         // The report is appended to the log with every progress line.
@@ -7217,7 +7303,7 @@ global@targets.add(rust);
         // Which the request lowers itself, once, to set beside the unit's own lowered text.
         // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
         let handed = BTreeMap::from([("def/a.lfy".to_string(), previous)]);
-        let request = generation::request(&program, &plan, &plan.batches[0], &[], &handed);
+        let request = generation::request(&program, &plan, &plan.batches[0], &[], &handed, true);
         assert_eq!(request.previous["def/a.lfy"], lowered);
         assert!(request.sources["def/a.lfy"].contains("d A"), "{:?}", request.sources);
     }
@@ -7615,10 +7701,10 @@ global@targets.add(rust);
         stopped: Arc<Mutex<usize>>,
     }
 
-    /// A host made by hand, which records what it is asked and gives back the reviews given
-    /// when a session is closed.
+    /// A host made by hand, which records what it is asked, offers the tool names given, and
+    /// gives back the record given when a session is closed.
     // @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
-    fn a_host(reviews: Vec<Review>) -> (Host, Recorded) {
+    fn a_host(record: SessionRecord, offers: Vec<String>) -> (Host, Recorded) {
         let opened: Arc<Mutex<Vec<Binding>>> = Arc::new(Mutex::new(Vec::new()));
         let closed: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let stopped: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
@@ -7632,9 +7718,11 @@ global@targets.add(rust);
                 held.push(binding);
                 format!("http://127.0.0.1:7/sessions/{}", held.len())
             }),
+            // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+            offered: Box::new(move |_| offers.clone()),
             close: Box::new(move |url| {
                 closed.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(url.to_string());
-                reviews.clone()
+                record.clone()
             }),
             stop: Box::new(move || {
                 *stopped.lock().unwrap_or_else(std::sync::PoisonError::into_inner) += 1;
@@ -7672,14 +7760,16 @@ global@targets.add(rust);
 
     /// Every run of the compiler or the verifier works through one hosted session of the
     /// agent server: it is opened just before the run starts, bound to what the run is, its
-    /// config file is written under the root and named by ELFIE_MCP_CONFIG, and it is closed
-    /// once the run has returned, giving back what the run submitted through it.
+    /// config file is written under the root and named by ELFIE_MCP_CONFIG, the command tools
+    /// it is offered are named by ELFIE_COMMAND_TOOLS, and it is closed once the run has
+    /// returned, giving back what the run submitted through it, its config file removed.
     // @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
-    // @lfy def/cli/main.lfy:main#main:main:94638eeae775f6336b97643243af5647033b01fff02a93afdd7e95a8f9b7e575
+    // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
     // @lfy def/cli/main.lfy:main#main:main:db24670f7a47cc1d0d13a51de65a69c1469315a12c8359b5ba6d6f0d620ded13
     // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
-    // @lfy def/cli/main.lfy:main#main:main:4155d2819e4f12deebb502d2ea5c20e6d2183fb43907cc9828afeafa4b092c8b
+    // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
     // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
+    // @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
     #[test]
     fn a_run_of_an_agent_works_through_one_hosted_session() {
         let fixture = Fixture::new();
@@ -7695,16 +7785,28 @@ global@targets.add(rust);
             evidence: "out/a.rs:1-2".to_string(),
             note: "covered by a test".to_string(),
         };
-        let (host, recorded) = a_host(vec![submitted.clone()]);
+        let record = SessionRecord {
+            reviews: vec![submitted.clone()],
+            submission: Some(Submission { outcome: SubmittedOutcome::Done, message: String::new() }),
+        };
+        // The server lists more than the command tools, and lists them in its own order.
+        // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+        let offers = ["elfie_task", "elfie_test", "elfie_build", "elfie_mark", "elfie_lint"]
+            .map(str::to_string)
+            .to_vec();
+        let (host, recorded) = a_host(record, offers);
         let agent = an_agent(&fixture.root, Ok(host));
         let where_ = Where::Root(fixture.root.clone());
         // The compiler of a batch: its binding has the role compiler, the batch, the
-        // directory the run is in, the plan and the program the command made, no review, and
-        // no source maps.
-        // @lfy def/cli/main.lfy:main#main:main:94638eeae775f6336b97643243af5647033b01fff02a93afdd7e95a8f9b7e575
-        let binding = run.binding_of(Role::Compiler, Some(&batch), &fixture.root, None, Vec::new());
+        // directory the run is in, the plan and the program the command made, the request its
+        // input was made from, no review, and no source maps.
+        // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
+        let request = run.request_of(&batch, &fixture.root, true);
+        let binding =
+            run.binding_of(Role::Compiler, Some(&batch), &fixture.root, Some(request.clone()), None, Vec::new());
         let exit = agent.run(
-            "printf '%s\\n' \"$ELFIE_MCP_CONFIG\" > config.txt",
+            "printf '%s\\n' \"$ELFIE_MCP_CONFIG\" \"$ELFIE_COMMAND_TOOLS\" > config.txt\n\
+             cp \"$ELFIE_MCP_CONFIG\" written.json",
             &where_,
             &batch.identifier,
             "a",
@@ -7717,45 +7819,94 @@ global@targets.add(rust);
         let session = {
             let opened = recorded.opened.lock().unwrap();
             assert_eq!(opened.len(), 1);
-            // @lfy def/cli/main.lfy:main#main:main:94638eeae775f6336b97643243af5647033b01fff02a93afdd7e95a8f9b7e575
+            // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
             assert_eq!(opened[0].role, Role::Compiler);
             assert_eq!(opened[0].batch.as_ref().map(|batch| batch.identifier.clone()), Some("a".to_string()));
             // @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
             assert_eq!(opened[0].directory, fixture.root);
             assert_eq!(opened[0].plan, run.plan);
             assert_eq!(opened[0].program, run.program);
-            // @lfy def/cli/main.lfy:main#main:main:94638eeae775f6336b97643243af5647033b01fff02a93afdd7e95a8f9b7e575
+            // The request the run's input was made from, and nothing a verifier is given.
+            // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
+            assert_eq!(
+                opened[0].request.as_ref().map(|request| request.instructions.clone()),
+                Some(request.instructions.clone()),
+            );
+            // @lfy def/cli/main.lfy:main#main:main:49b8e07b5de76a70728002b1123896a9bea926e67c9452ff6c2c821e84281a04
             assert_eq!(opened[0].review, None);
             assert_eq!(opened[0].source_maps, []);
             "http://127.0.0.1:7/sessions/1".to_string()
         };
         // Its config file is written under the root, named by the batch and the role, and
-        // ELFIE_MCP_CONFIG in its environment is the absolute path of it.
+        // ELFIE_MCP_CONFIG in its environment is the absolute path of it; ELFIE_COMMAND_TOOLS
+        // is the command tools it was offered, in the order the server listed them.
         // @lfy def/cli/main.lfy:main#main:main:db24670f7a47cc1d0d13a51de65a69c1469315a12c8359b5ba6d6f0d620ded13
-        // @lfy def/cli/main.lfy:main#main:main:4155d2819e4f12deebb502d2ea5c20e6d2183fb43907cc9828afeafa4b092c8b
+        // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
         let path = fixture.root.join("elfie-requests/a.compiler.mcp.json");
-        assert_eq!(fixture.read("config.txt").trim(), path.to_string_lossy());
+        let environment = fixture.read("config.txt");
+        let mut lines = environment.lines();
+        assert_eq!(lines.next(), Some(path.to_string_lossy().as_ref()));
         assert!(path.is_absolute(), "{path:?}");
-        // It holds one object naming the session's URL and the bearer token.
+        // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
+        assert_eq!(lines.next(), Some("elfie_test elfie_build elfie_lint"));
+        // It held one object naming the session's URL and the bearer token, and is gone once
+        // the run has returned, since its token no longer opens anything.
         // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
-        let value: serde_json::Value =
-            serde_json::from_str(&fixture.read("elfie-requests/a.compiler.mcp.json")).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&fixture.read("written.json")).unwrap();
         let server = &value["mcpServers"]["elfie"];
         // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
         assert_eq!(server["type"], "http");
         assert_eq!(server["url"], session);
         assert_eq!(server["headers"]["Authorization"], "Bearer a-token");
+        // @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
+        assert!(!path.exists(), "the config file is still there");
         // The session was closed once the run returned, and what it submitted came back with
         // its output.
         // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
         assert_eq!(*recorded.closed.lock().unwrap(), vec![session]);
         // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
-        assert_eq!(exit.reviews, vec![submitted]);
+        assert_eq!(exit.record.reviews, vec![submitted]);
+        // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
+        assert_eq!(exit.record.submission.map(|submission| submission.outcome), Some(SubmittedOutcome::Done));
         // The server is stopped once, however often it is asked to stop.
         // @lfy def/cli/main.lfy:main#main:main:77f1f3a8ea3c2d7f433ee642b0418c00d1ce2b7dd1dca0106b299cb12959c12b
         agent.server.stop();
         agent.server.stop();
         assert_eq!(*recorded.stopped.lock().unwrap(), 1);
+    }
+
+    /// How a compiler run ended is read from the outcome it submitted through its session,
+    /// not from its report: a run that submitted `blocked` is blocked, with the submission's
+    /// message as its reason, though its report says nothing at all.
+    // @lfy def/cli/main.lfy:main#main:main:37a3061e2d1da4becaf9fd160790f16ed84d77d4efa8b867622b0546149e5262
+    #[test]
+    fn the_outcome_of_a_compiler_run_is_read_from_what_it_submitted() {
+        let fixture = Fixture::new();
+        one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+        let mut run = a_run(&fixture);
+        let batch = run.plan.batches[0].clone();
+        // The run submits blocked through its session and writes no report of its own.
+        // @lfy def/cli/main.lfy:main#main:main:37a3061e2d1da4becaf9fd160790f16ed84d77d4efa8b867622b0546149e5262
+        let record = SessionRecord {
+            reviews: Vec::new(),
+            submission: Some(Submission {
+                outcome: SubmittedOutcome::Blocked,
+                message: "two criteria of A conflict".to_string(),
+            }),
+        };
+        let (host, _recorded) = a_host(record, Vec::new());
+        run.agent = an_agent(&fixture.root, Ok(host));
+        let run = Mutex::new(run);
+        let where_ = Where::Root(fixture.root.clone());
+        // @lfy def/cli/main.lfy:main#main:main:37a3061e2d1da4becaf9fd160790f16ed84d77d4efa8b867622b0546149e5262
+        let held = Run::compile_batch(&run, &batch, "true", &where_);
+        // The outcome is blocked: nothing is held to record, and the reason the submission
+        // carried is written out.
+        // @lfy def/cli/main.lfy:main#main:main:37a3061e2d1da4becaf9fd160790f16ed84d77d4efa8b867622b0546149e5262
+        assert!(held.is_none(), "the batch was not blocked");
+        // @lfy def/cli/main.lfy:main#main:main:37a3061e2d1da4becaf9fd160790f16ed84d77d4efa8b867622b0546149e5262
+        let note = fixture.read("elfie-requests/a.blocked.md");
+        assert!(note.contains("two criteria of A conflict"), "{note}");
     }
 
     /// The verifier of a batch is bound to the review request it was given and the source
@@ -7773,7 +7924,7 @@ global@targets.add(rust);
         let request = run.review_request_of(&batch, &maps, Some(&fixture.root), &[]);
         // @lfy def/cli/main.lfy:main#main:main:d7fdc89e00db8f2de0886cdaaecf381963abe8e1eb6392c9dee9bc26a30911b5
         let binding =
-            run.binding_of(Role::Verifier, Some(&batch), &fixture.root, Some(request.clone()), maps.clone());
+            run.binding_of(Role::Verifier, Some(&batch), &fixture.root, None, Some(request.clone()), maps.clone());
         assert_eq!(binding.role, Role::Verifier);
         assert_eq!(binding.batch.as_ref().map(|batch| batch.identifier.clone()), Some("a".to_string()));
         // @lfy def/cli/main.lfy:main#main:main:d7fdc89e00db8f2de0886cdaaecf381963abe8e1eb6392c9dee9bc26a30911b5
@@ -7782,7 +7933,7 @@ global@targets.add(rust);
         // The global review is for no batch.
         // @lfy def/cli/main.lfy:main#main:main:8bc948283105a23f893766f7593a57076a62f423d7ff2093b65ea6acb4853711
         let global = generation::global_review(&run.program, &maps);
-        let binding = run.binding_of(Role::Verifier, None, &fixture.root, Some(global), maps.clone());
+        let binding = run.binding_of(Role::Verifier, None, &fixture.root, None, Some(global), maps.clone());
         // @lfy def/cli/main.lfy:main#main:main:8bc948283105a23f893766f7593a57076a62f423d7ff2093b65ea6acb4853711
         assert_eq!(binding.batch, None);
         assert_eq!(binding.role, Role::Verifier);
@@ -7801,7 +7952,7 @@ global@targets.add(rust);
         let batch = run.plan.batches[0].clone();
         let agent = an_agent(&fixture.root, Err("no port of 127.0.0.1 can be listened on".to_string()));
         let where_ = Where::Root(fixture.root.clone());
-        let binding = run.binding_of(Role::Compiler, Some(&batch), &fixture.root, None, Vec::new());
+        let binding = run.binding_of(Role::Compiler, Some(&batch), &fixture.root, None, None, Vec::new());
         // @lfy def/cli/main.lfy:main#main:main:c98cf702185cba4a24169527abed59a142c455d479534531109ad7041e58476c
         let exit = agent.run("echo ran > ran.txt", &where_, &batch.identifier, "a", "", binding);
         // Nothing ran, and the failure is what the run came to; a run whose code is -1 makes
