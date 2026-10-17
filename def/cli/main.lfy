@@ -360,7 +360,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`format`, `No files are given as arguments`],
-      behavior = `The files formatted are every file of [[Files.list]] of the source directory, recursively, whose [[Path.extension]] is lfy`,
+      behavior = `The files formatted are every file of [[Files.list]] of each of [[Workspace.sourceDirectories]], recursively, whose [[Path.extension]] is lfy`,
     })
     .add({
       situation = `format`,

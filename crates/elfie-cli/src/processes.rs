@@ -397,7 +397,9 @@ impl Agent {
                 }
             }
         });
-        let text = format!("{}\n", serde_json::to_string_pretty(&value).unwrap_or_default());
+        // Json.stringify of it, in its compact layout.
+        // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
+        let text = value.to_string();
         // @lfy def/cli/main.lfy:main#main:main:97749da3fde520bf9fb6a1d4a7f1782131dc4eea08223f3ea0036e11724b6e42
         if let Err(error) = fs::create_dir_all(&directory).and_then(|()| fs::write(&path, &text)) {
             append_to(&self.logs, &format!("{} could not be written: {error}", path.display()));

@@ -259,6 +259,40 @@ fn the_kind_data_of_an_entity_is_the_prelude_data_for_what_it_is() {
     }
 }
 
+// @lfy def/model/main.lfy:bind#bind:bind:04c22787733ff3defc0c5a6b52add93b83e7c0630dafc6c75ee0a897057f1463
+#[test]
+fn a_list_seen_with_one_type_argument_is_seen_through_array() {
+    let model = bind_with_prelude(
+        "const l = List<string>; const a = l@itemType; const b = l@identifier; \
+         const c = List@itemType;",
+    );
+    let file = model.file("a.lfy").unwrap();
+    // This prelude's List lists no type parameter, so its one argument is an arity
+    // problem, and the list is seen with the argument as written all the same.
+    assert_eq!(problems(&model), vec!["List<string>: 1 type arguments, but List lists 0 type parameters"]);
+    // The model spells List seen with one argument as a list type, as it spells `T[]`.
+    let l = model.symbols[file_symbol(&model, file, "l")].entity;
+    assert_eq!(
+        model.entities[l].ty,
+        Some(TypeRef::List(Box::new(TypeRef::Primitive("string"))))
+    );
+    reads_member(
+        &model,
+        node(&model, file, E::Member, "l@itemType"),
+        "Array",
+        "itemType",
+    );
+    reads_member(
+        &model,
+        node(&model, file, E::Member, "l@identifier"),
+        "Entity",
+        "identifier",
+    );
+    // List seen with no argument is a data, not a list seen with its item type.
+    let bare = usage(&model, node(&model, file, E::Member, "List@itemType"));
+    assert_eq!(bare.symbol, None);
+}
+
 // @lfy def/model/main.lfy:bind#bind:bind:a5c1bc569ddb92f8dd361e4827d274e8148ec9c79e5f47f9178da3acd27018eb
 // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
 // @lfy def/model/main.lfy:bind#bind:bind:8615b161cda09a3689fd6b2a04cf2bf8b34b863a2664fe21060d5e9cdad694ea
@@ -291,7 +325,7 @@ fn a_value_resolves_the_members_of_its_base_data() {
     read("i.floor", "Number", "floor");
     read("y.not", "Boolean", "not");
     read("g.parameters", "Function", "parameters");
-    // An object's keys come first and are not known here, so o.a is no problem.
+    // An object's keys come first, and a key declares nothing, so o.a has no symbol.
     assert_eq!(usage(&model, node(&model, file, E::Member, "o.a")).symbol, None);
     // A name the base data does not declare is a problem.
     let model = bind_with_prelude("const s = 'text'; const n = s.nope;");
@@ -300,6 +334,56 @@ fn a_value_resolves_the_members_of_its_base_data() {
         model.problems[0].node,
         node(&model, model.file("a.lfy").unwrap(), E::Member, "s.nope")
     );
+}
+
+// @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+#[test]
+fn an_objects_keys_come_before_the_members_of_object() {
+    let model = bind_with_prelude(
+        "const o = { keys = 1, a = 2 }; const k = o.keys; const v = o.a; const m = o.nope; \
+         const rows = [{ kind = 1 }, { data = 2 }]; \
+         for (const row in rows) { const x = row.kind; const y = row.data; const z = row.other; } \
+         const p = { a = 1 }; const pk = p.keys;",
+    );
+    let file = model.file("a.lfy").unwrap();
+    // A key that shares a name with a member of Object is the key, which declares nothing.
+    assert_eq!(usage(&model, node(&model, file, E::Member, "o.keys")).symbol, None);
+    assert_eq!(usage(&model, node(&model, file, E::Member, "o.a")).symbol, None);
+    // Without such a key, the member of Object.
+    reads_member(&model, node(&model, file, E::Member, "p.keys"), "Object", "keys");
+    // The items of a list of objects have the keys of every item.
+    for raw in ["row.kind", "row.data"] {
+        assert_eq!(usage(&model, node(&model, file, E::Member, raw)).symbol, None);
+    }
+    // A name neither a key nor a member is a problem.
+    assert_eq!(
+        problems(&model),
+        vec![
+            "o.nope: the object has no key or member nope",
+            "row.other: the object has no key or member other",
+        ]
+    );
+}
+
+// @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
+#[test]
+fn a_member_of_a_value_nothing_is_known_of_is_a_problem() {
+    let model = bind_with_prelude(
+        "const u: string | number = 1; const a = u.nope; \
+         const n: object = 1; const b = n.nope; \
+         const m: string | undefined = 'x'; const c = m.length;",
+    );
+    let file = model.file("a.lfy").unwrap();
+    // The left side has a symbol, so finding nothing on it is a problem, whatever it is.
+    assert_eq!(
+        problems(&model),
+        vec![
+            "u.nope: nothing known of the value has a member nope",
+            "n.nope: Object has no member nope",
+        ]
+    );
+    // A value that may be undefined reads as the one other type.
+    reads_member(&model, node(&model, file, E::Member, "m.length"), "String", "length");
 }
 
 // However long the chain.

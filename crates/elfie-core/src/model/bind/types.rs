@@ -65,10 +65,12 @@ impl Binder {
                 let output = trees
                     .child(node, E::TypeExpression)
                     .map(|t| self.type_from_type_expression(t));
-                // FnEntity.parameters is the symbols of the Parameter and SpreadParameter
+                // FnEntity.parameters is the entities of the Parameter and SpreadParameter
                 // nodes of its Parameters, which a FunctionType declares in the scope it
-                // owns just as a declaration does.
+                // owns just as a declaration does; the model holds each by the symbol
+                // that declares it.
                 // @lfy def/model/main.lfy:bind
+                // @lfy def/model/main.lfy:bind#bind:bind:472fbf0e076310689168fd35debec041a25da18b7e113a79f885c9ff8d7c0a2c
                 let parameters = self.value_parameters(e);
                 if let EntityKind::Fn {
                     output: output_slot,

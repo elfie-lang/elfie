@@ -1,7 +1,8 @@
 // @lfy def/workspace/main.lfy:load
-//! Loading a project from disk and binding it: the layout `elfie.json` gives, the
-//! packages it names, the discovery of every file, the order the files are bound in, and
-//! the problems loading adds that only the bound model can point at.
+//! Loading a project from disk and binding it: the configuration each `elfie.json` gives,
+//! the packages its dependencies name, the discovery of every file, the name each file
+//! goes by, the order the files are bound in, and the problems loading adds that only the
+//! bound model can point at.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -15,53 +16,44 @@ use crate::lexer::lex;
 use crate::model::{self, FileId, KnowledgeKind, Model, Origin, Problem, Source};
 use crate::parser::{Node, Tree, parse};
 
-/// The project layout file, at the root of the project.
-///
-/// Decision: the definition names what `elfie.json` holds but never how it is spelled, so
-/// this compile fixes the spelling as a JSON object with the optional keys `"name"`,
-/// `"source"`, `"lib"`, and `"dependencies"` (an object of identifier to `{ "root" }`).
-/// One of those whose value is of the wrong kind is a `LoadProblem` and the rest of the
-/// manifest still stands; any other key is never looked at.
+/// The configuration file, at the root of the project and at the root of each package.
 pub(super) const MANIFEST: &str = "elfie.json";
-/// `Workspace.sourceDirectory` when `elfie.json` gives none.
+/// The one entry of `Workspace.sourceDirectories` when `elfie.json` gives no source.
 pub(super) const DEFAULT_SOURCE_DIRECTORY: &str = "def"; // @lfy def/workspace/main.lfy:load
 /// The file a directory resolves to.
 pub(super) const MAIN_FILE: &str = "main.lfy";
-/// The variable whose directory holds the library, read when neither the dependency entry
-/// `elfie` nor the top level key `lib` of `elfie.json` gives one.
-const LIBRARY_VARIABLE: &str = "ELFIE_LIB"; // @lfy def/workspace/main.lfy:load
 /// The copy of the library the compiler was built with.
 ///
 /// Decision: the criterion leaves how this copy travels to the target's guidance, and the
 /// guidance of the target `rust` says nothing about it. This compile takes the only
 /// spelling that keeps `Package.root` a directory whose files are loaded as any other
 /// package's, and `Package.root` absolute when the library is found outside the project:
-/// the path of the library the crate was built beside, baked in at build time. A compiler
-/// carried away from that directory finds the library through `ELFIE_LIB` instead.
+/// the path of the library the crate was built beside, baked in at build time.
 pub(super) const BUILT_IN_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../lib"); // @lfy def/workspace/main.lfy:load
 /// What a knowledge source never begins with, because knowledge is vendored.
 const NETWORK: [&str; 2] = ["http://", "https://"]; // @lfy def/workspace/main.lfy:load
 
 /// A project loaded from disk and bound.
 ///
-/// Reads the project layout, discovers every file, orders the files by what they use,
+/// Reads the configuration, discovers every file, orders the files by what they use,
 /// then binds them once. `Workspace::root` is `root`. Loading never stops for a failure:
 /// every failure is a `LoadProblem` or a `Problem`, and the rest of the project still
 /// loads.
 // @lfy def/workspace/main.lfy:load
 pub fn load(root: &Path) -> Workspace {
     // @lfy def/workspace/main.lfy:load
-    load_in(root, BTreeMap::new(), std::env::var(LIBRARY_VARIABLE).ok())
+    load_in(root, BTreeMap::new(), None)
 }
 
 /// [`load`] with the files in `overlays` read as the text given there instead of what is
-/// on disk, and `environment` standing for what the environment gives for `ELFIE_LIB`.
+/// on disk, and `built_in` standing for the copy of the library the compiler was built
+/// with when it is given.
 // @lfy def/workspace/main.lfy:change
 // @lfy def/workspace/main.lfy:load
 pub(super) fn load_in(
     root: &Path,
     overlays: BTreeMap<String, String>,
-    environment: Option<String>,
+    built_in: Option<String>,
 ) -> Workspace {
     let mut loader = Loader {
         root,
@@ -70,60 +62,61 @@ pub(super) fn load_in(
         use_problems: Vec::new(),
     };
 
+    // Configuration. @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:d2500ef79b0f845d62d879e55d20851d45ebfa885fa1e7397a17ab04f6f7422d
+    let configuration = loader.configuration(".");
     // Layout. @lfy def/workspace/main.lfy:load
-    let manifest = loader.manifest(MANIFEST);
-    // Only "name", "source", "lib", and "dependencies" are ever looked at; a target, where
-    // its outputs go, and what its generated code needs are declared in the program.
-    // @lfy def/workspace/main.lfy:load#load:load:f3a8e524e11cd59e038a6157e4a0fe362764b553e2b29342b421c3e379ad7cb9
-    // @lfy def/workspace/main.lfy:load#load:load:14ff48a32bf3381366534b9ca3dbdb2f1d46fc634249e46bf5134fb6609d3a39
-    // @lfy def/workspace/main.lfy:load#load:load:fd884247a5f63218e2f23f0ba9abdb91e6a342d07f56f61a79d4f23bfe3eeee7
-    let name = loader
-        .string(manifest.as_ref(), "name")
-        .unwrap_or_else(|| directory_name(root));
-    // @lfy def/workspace/main.lfy:load#load:load:553254e418671149fdc2a87c765c1ff91ddcf349bad7d7055bf05a5234721178
-    // @lfy def/workspace/main.lfy:load#load:load:38338fb46f57a64fa2e744d34eae3279caf9b613709e743808ac4f6fba4a0289
-    let source_directory = loader
-        .string(manifest.as_ref(), "source")
-        .map(|source| trim_directory(&source))
-        .unwrap_or_else(|| DEFAULT_SOURCE_DIRECTORY.to_string());
+    // @lfy def/workspace/main.lfy:load#load:load:bc81bdfb69e2efbe2ffcca801028530c7cbc5a41ff47a15eed0784e947b566cd
+    // @lfy def/workspace/main.lfy:load#load:load:3fcd57f4ebc2aa8bc9b9f2c2fb00087ebaa95f76f3c93971df4f0a7c72e2cd09
+    let name = match &configuration.name {
+        Some(name) => name.clone(),
+        None => directory_name(root),
+    };
+    // @lfy def/workspace/main.lfy:load#load:load:a473c608f5a70cc064c8635bd090121d715b920b42ee0fcbe41e3c3a75fdd9d8
+    let source_directories = match &configuration.source {
+        Some(ConfigurationSource::One(directory)) => vec![directory.clone()],
+        // @lfy def/workspace/main.lfy:load#load:load:83585aea4fc7bf0a367ab795152302d1d333212f48b23d1c5285dd457b336215
+        Some(ConfigurationSource::Several(directories)) => {
+            let mut once = Vec::new();
+            for directory in directories {
+                if !once.contains(directory) {
+                    once.push(directory.clone());
+                }
+            }
+            once
+        }
+        // @lfy def/workspace/main.lfy:load#load:load:8d7ba6d4fe1f04154ef1330dfbe2a0ed619e5674a06aef6b93cf3af417afa0f1
+        None => vec![DEFAULT_SOURCE_DIRECTORY.to_string()],
+    };
 
     // Dependencies. @lfy def/workspace/main.lfy:load
-    let mut packages = loader.packages(manifest.as_ref());
-    // The package elfie is in the program whether or not elfie.json names it.
-    // @lfy def/workspace/main.lfy:load#load:load:932b815f66767e3f29654d009afd1f258dc9f22040a21b8770d2e7aa470350e2
-    // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
-    let library = match packages
-        .iter()
-        .position(|package| package.identifier == LIBRARY_PACKAGE)
-    {
-        Some(library) => library,
-        None => {
-            let root = loader.library_root(manifest.as_ref(), environment);
-            packages.push(loader.package(LIBRARY_PACKAGE, &root));
-            packages.len() - 1
-        }
-    };
+    let packages = loader.packages(&configuration, built_in);
+    let library = packages.library;
 
     // Discovery, use, and order. @lfy def/workspace/main.lfy:load
     let mut sources = Vec::new();
     let mut files = Vec::new();
     if !loader.directory(".") {
-        // @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
+        // @lfy def/workspace/main.lfy:load#load:load:f97a7916ef1a5ec5f8b25e9caca0c7851b745165411bc7008519899125882bac
         loader.problem(None, format!("the root {} does not exist", root.display()));
-    } else if !loader.directory(&source_directory) {
-        // @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
-        loader.problem(
-            None,
-            format!(
-                "the source directory {source_directory} does not exist under {}",
-                root.display()
-            ),
-        );
     } else {
-        // Decision: when the root or the source directory is missing, nothing at all is
-        // discovered, package files included, so that `Workspace.files` is empty as the
-        // criterion says.
-        let entries = loader.discover(&source_directory, &packages);
+        let mut listed = Vec::new();
+        // @lfy def/workspace/main.lfy:load#load:load:0fc20a5c6ed1f12fda66543903de28702cb27892cc578d83c6316902500fef99
+        for directory in &source_directories {
+            let directory = trim_directory(directory);
+            if loader.directory(&directory) {
+                listed.push(directory);
+            } else {
+                loader.problem(
+                    Some(&directory),
+                    format!(
+                        "the source directory {directory} does not exist under {}",
+                        root.display()
+                    ),
+                );
+            }
+        }
+        let entries = loader.discover(&listed, &packages);
         let (order, cycles) = order_by_uses(&entries);
         for (file, index) in cycles {
             let path = entries[file].path.clone();
@@ -131,15 +124,24 @@ pub(super) fn load_in(
             // @lfy def/workspace/main.lfy:load#load:load:b1fbb044be3c701778d0f3eed4d4ad278cdf34c2b917c9b0a33327367959d921
             loader.use_problem(&path, index, spelled.as_deref(), "is part of a cycle");
         }
-        for index in order {
+        let order: Vec<usize> = order
+            .into_iter()
+            .filter(|&index| entries[index].tree.is_some())
+            .collect();
+        let named: Vec<(&str, Option<usize>)> = order
+            .iter()
+            .map(|&index| (entries[index].path.as_str(), entries[index].package))
+            .collect();
+        let names = file_names(&named, &packages.list, &listed);
+        for (index, name) in order.into_iter().zip(names) {
             let entry = &entries[index];
             let Some(tree) = &entry.tree else { continue };
             files.push(File {
                 // @lfy def/workspace/main.lfy:load#load:load:23324d830b23ca1be67dea3c9234abb1945519a3e56b47c394222debdf328fe8
                 path: entry.path.clone(),
-                // @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
                 // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
                 package: entry.package,
+                name,
                 // @lfy def/workspace/main.lfy:load#load:load:c4acf67876f96707cb66e2a889f79373ce852c3192472acb1b3dbff88d3d190a
                 source: sources.len(),
             });
@@ -154,7 +156,12 @@ pub(super) fn load_in(
                     .map(|site| site.resolved.clone())
                     .collect(),
                 // @lfy def/workspace/main.lfy:load#load:load:42ddd4111d6e51a0395e9b1eee8c79a065bd9e53b143029640c9ed2dd233c078
-                origin: origin_of(&entry.path, entry.package, library, &packages[library].root),
+                origin: origin_of(
+                    &entry.path,
+                    entry.package,
+                    library,
+                    &packages.list[library].root,
+                ),
             });
         }
     }
@@ -173,7 +180,12 @@ pub(super) fn load_in(
     // Targets. @lfy def/workspace/main.lfy:load
     let (targets, mut at_targets) = targets_of(&mut model, &files, library);
     added.append(&mut at_targets);
-    added.append(&mut knowledge_problems(&model, &loader, &files, &packages));
+    added.append(&mut knowledge_problems(
+        &model,
+        &loader,
+        &files,
+        &packages.list,
+    ));
     if !added.is_empty() {
         model.problems.append(&mut added);
         model
@@ -192,11 +204,12 @@ pub(super) fn load_in(
     Workspace {
         // @lfy def/workspace/main.lfy:load#load:load:d89e1a3dc76a0474ada8c0015af825a5f5e8c5e26f0b09d9280c88429bbcfba0
         root: root.to_path_buf(),
+        configuration,
         name,
-        source_directory,
+        source_directories,
         files,
         model,
-        packages,
+        packages: packages.list,
         targets,
         problems,
         overlays,
@@ -229,6 +242,111 @@ struct Entry {
     /// out of the program.
     tree: Option<Tree>,
     uses: Vec<UseSite>,
+}
+
+/// The packages of the program and the names each file can reach them by.
+// @lfy def/workspace/main.lfy:load
+struct Packages {
+    /// Every package, the package `elfie` first, then each in the order its dependency
+    /// entry was read.
+    list: Vec<Package>,
+    /// The package `elfie` in [`Packages::list`].
+    library: usize,
+    /// The dependency entries a file of the project can name, by key.
+    project: BTreeMap<String, usize>,
+    /// The dependency entries a file of each package can name, by key, parallel to
+    /// [`Packages::list`].
+    names: Vec<BTreeMap<String, usize>>,
+}
+
+impl Packages {
+    /// The dependency entries a file of a package, or of the project, can name.
+    // @lfy def/workspace/main.lfy:load
+    fn nameable(&self, package: Option<usize>) -> &BTreeMap<String, usize> {
+        match package {
+            Some(package) => &self.names[package],
+            None => &self.project,
+        }
+    }
+
+    /// The package a key names from a file of a package, or of the project; `elfie`
+    /// always names the one package `elfie`.
+    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:56743e9f562e649dc3d6042b20e25fdf4744ba98e77150ff1c635cead47157cb
+    // @lfy def/workspace/main.lfy:load#load:load:a3421e175ba0d8b9bce4fec7e2b2217ba83e5c91e3304b1f4fc241e3a1c7b66a
+    fn named(&self, package: Option<usize>, key: &str) -> Option<usize> {
+        if key == LIBRARY_PACKAGE {
+            return Some(self.library);
+        }
+        self.nameable(package).get(key).copied()
+    }
+}
+
+/// What the value of a dependency entry is.
+// @lfy def/workspace/main.lfy:load
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum DependencyKind {
+    Path,
+    Git,
+    Version,
+}
+
+/// What the value of a dependency entry is: a path, a git URL, or a version.
+// @lfy def/workspace/main.lfy:load
+// @lfy def/workspace/main.lfy:load#load:load:a354cbeef946748f4822d5b7ccc565b0fb084d8ebb9b52938028687e8993b37f
+// @lfy def/workspace/main.lfy:load#load:load:c78f44cea8c4c4a346c72577c2baf833dcae5ef0dfac93f3a0cabee3c6d487fc
+// @lfy def/workspace/main.lfy:load#load:load:5f36f4fd70eb392d120e8c33f16e39c5ec39653ef25fed8c872656b5cc3fbeea
+pub(super) fn dependency_kind(value: &str) -> DependencyKind {
+    if value.starts_with("./") || value.starts_with("../") || Path::new(value).is_absolute() {
+        DependencyKind::Path
+    } else if value.starts_with("git@")
+        || value.starts_with("git+")
+        || value.contains("://")
+        || value.ends_with(".git")
+    {
+        DependencyKind::Git
+    } else {
+        DependencyKind::Version
+    }
+}
+
+/// The root of the package a dependency entry that is a path gives, from the directory
+/// holding its `elfie.json`: the path itself when it is absolute.
+// @lfy def/workspace/main.lfy:load
+fn dependency_root(base: &str, value: &str) -> String {
+    if Path::new(value).is_absolute() {
+        value.to_string()
+    } else {
+        normalize(&join(base, value))
+    }
+}
+
+/// The segments of a path as a `Use` or an export key spells it, without empty and `.`
+/// segments.
+fn segments_of(path: &str) -> Vec<&str> {
+    path.split('/')
+        .filter(|segment| !segment.is_empty() && *segment != ".")
+        .collect()
+}
+
+/// The value of the longest key of `Configuration.exports` whose segments begin `rest`,
+/// and the segments of `rest` after that key.
+// @lfy def/workspace/main.lfy:load
+fn export_of<'c, 'r>(
+    configuration: &'c Configuration,
+    rest: &'r [&'r str],
+) -> Option<(&'c str, &'r [&'r str])> {
+    configuration
+        .exports
+        .as_ref()?
+        .iter()
+        .filter_map(|(key, value)| {
+            let key = segments_of(key);
+            (rest.len() >= key.len() && rest[..key.len()] == key[..])
+                .then_some((key.len(), value.as_str()))
+        })
+        .max_by_key(|&(length, _)| length)
+        .map(|(length, value)| (value, &rest[length..]))
 }
 
 /// The state of one load: where the project is, which files are replaced, and every
@@ -308,136 +426,227 @@ impl Loader<'_> {
         }
     }
 
-    /// The object of an `elfie.json`; `None` when there is none, or when it cannot be
-    /// read or is not an object.
-    ///
-    /// A manifest is optional: where none exists no problem is added and every default
-    /// stands. One that exists but cannot be read, or whose text is not a JSON object, is
-    /// a problem, and every default stands all the same.
-    // @lfy def/workspace/main.lfy:load#load:load:19a7d4fd318b9f7efc5cbe88610e53a0e61be4be62d5831f8646cc1bad17a9ad
-    // @lfy def/workspace/main.lfy:load#load:load:8b89b53b4efb9ae82c650c075c04f5a708529dbc6cec061bdfde65ae7811ca3c
-    // @lfy def/workspace/main.lfy:load#load:load:e1ed96f364bdc98469b9736cdb2e0ce1a008d6ac0623f78e2cb68c8ccaf817a5
-    fn manifest(&mut self, path: &str) -> Option<serde_json::Map<String, serde_json::Value>> {
-        let disk = self.root.join(path);
-        if !disk.exists() {
-            return None;
+    /// The `elfie.json` in a directory, read as JSON, each key of [`Configuration`] taken
+    /// from the key of the same name.
+    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:9955f71e445330d81b0395728fbe576a039b18e3bb889f7d498edbbcd4599dbf
+    fn configuration(&mut self, directory: &str) -> Configuration {
+        let path = join(directory, MANIFEST);
+        // @lfy def/workspace/main.lfy:load#load:load:a450cc5b0bb372bd3f2b9fea6f4218845a10c800e1f81ad8274d5cfb882516f4
+        if !self.exists(&path) {
+            return Configuration::default();
         }
-        let text = match std::fs::read_to_string(&disk) {
-            Ok(text) => text,
+        let object = match self.read(&path) {
+            Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+                Ok(serde_json::Value::Object(object)) => object,
+                Ok(_) => {
+                    // @lfy def/workspace/main.lfy:load#load:load:a4feb706de87193af1f3285b8bd67c396deb25f48611db7160a8930ed6894335
+                    self.problem(Some(&path), "is not a JSON object".to_string());
+                    return Configuration::default();
+                }
+                Err(error) => {
+                    self.problem(Some(&path), format!("is not valid JSON: {error}"));
+                    return Configuration::default();
+                }
+            },
             Err(error) => {
-                self.problem(Some(path), format!("cannot be read: {error}"));
-                return None;
+                self.problem(Some(&path), format!("cannot be read: {error}"));
+                return Configuration::default();
             }
         };
-        match serde_json::from_str::<serde_json::Value>(&text) {
-            Ok(serde_json::Value::Object(object)) => Some(object),
-            Ok(_) => {
-                self.problem(Some(path), "is not a JSON object".to_string());
-                None
-            }
-            Err(error) => {
-                self.problem(Some(path), format!("is not valid JSON: {error}"));
-                None
-            }
+        let string = |value: &serde_json::Value| value.as_str().map(str::to_string);
+        let strings = |value: &serde_json::Value| -> Option<BTreeMap<String, String>> {
+            value
+                .as_object()?
+                .iter()
+                .map(|(key, value)| Some((key.clone(), value.as_str()?.to_string())))
+                .collect()
+        };
+        let source = |value: &serde_json::Value| match value {
+            serde_json::Value::String(one) => Some(ConfigurationSource::One(one.clone())),
+            serde_json::Value::Array(several) => several
+                .iter()
+                .map(|item| item.as_str().map(str::to_string))
+                .collect::<Option<Vec<_>>>()
+                .map(ConfigurationSource::Several),
+            _ => None,
+        };
+        Configuration {
+            name: self.key(&path, &object, "name", "a string", string),
+            version: self.key(&path, &object, "version", "a string", string),
+            source: self.key(
+                &path,
+                &object,
+                "source",
+                "a string or a list of strings",
+                source,
+            ),
+            dependencies: self.key(
+                &path,
+                &object,
+                "dependencies",
+                "an object of strings",
+                strings,
+            ),
+            exports: self.key(&path, &object, "exports", "an object of strings", strings),
         }
     }
 
-    /// The string a key of the manifest gives; `None` when there is no such key, and
-    /// `None` with the key named for the manifest when its value is not a string.
-    // @lfy def/workspace/main.lfy:load#load:load:d60b7d2fc94b097354076890d595ac2106b1b65e366b4cc45271b9e7211aa3cb
-    fn string(
+    /// The value of one key of an `elfie.json` as the type [`Configuration`] declares for
+    /// it; `None` when it is absent, and `None` with the key and its type named for that
+    /// `elfie.json` when it is of another type.
+    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:7bf7f7320ea74ff2dd0d08e518d364c8292228a597b9360c3ab0cf7a4178d8b7
+    // @lfy def/workspace/main.lfy:load#load:load:4fa9b901c6befec4fa20bfa6d19b5371ef837153bfacb6b980b1b0cb23139e3e
+    fn key<T>(
         &mut self,
-        manifest: Option<&serde_json::Map<String, serde_json::Value>>,
+        path: &str,
+        object: &serde_json::Map<String, serde_json::Value>,
         key: &str,
-    ) -> Option<String> {
-        match manifest.and_then(|manifest| manifest.get(key)) {
-            Some(serde_json::Value::String(value)) => Some(value.clone()),
-            None => None,
-            // @lfy def/workspace/main.lfy:load#load:load:b5997648b346dea065f6d06cc85024aa35df3796ec9edbc10d87099971bd1b6b
-            Some(_) => {
-                self.problem(Some(MANIFEST), format!("{key:?} is not a string"));
-                None
-            }
+        wanted: &str,
+        read: impl Fn(&serde_json::Value) -> Option<T>,
+    ) -> Option<T> {
+        let value = object.get(key)?;
+        let read = read(value);
+        if read.is_none() {
+            self.problem(Some(path), format!("{key:?} should be {wanted}"));
         }
+        read
     }
 
-    /// Each dependency `elfie.json` names gives one package.
-    // @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
-    // @lfy def/workspace/main.lfy:load#load:load:b5997648b346dea065f6d06cc85024aa35df3796ec9edbc10d87099971bd1b6b
-    fn packages(
+    /// Every package of the program: the package `elfie`, then each package a dependency
+    /// entry that is a path gives, of the project's configuration and then of each
+    /// package's in turn.
+    // @lfy def/workspace/main.lfy:load
+    fn packages(&mut self, configuration: &Configuration, built_in: Option<String>) -> Packages {
+        let entries = configuration.dependencies.clone().unwrap_or_default();
+        // @lfy def/workspace/main.lfy:load#load:load:edc92a499ae2b8769762be0cc27e701b8a746a8ac3afd23f6816df3f92b21d46
+        // @lfy def/workspace/main.lfy:load#load:load:b32dfca900b488d4e38fbc1eacf76d5247749ba7f635f7daba72260d40877a8d
+        let library_root = match entries.get(LIBRARY_PACKAGE) {
+            Some(value) if dependency_kind(value) == DependencyKind::Path => {
+                dependency_root(".", value)
+            }
+            _ => built_in.unwrap_or_else(|| normalize(BUILT_IN_LIBRARY)),
+        };
+        let mut packages = Packages {
+            list: Vec::new(),
+            library: 0,
+            project: BTreeMap::new(),
+            names: Vec::new(),
+        };
+        packages.library = self.package(&mut packages, LIBRARY_PACKAGE, library_root);
+        self.dependencies(&mut packages, None, &entries);
+        let mut next = 0;
+        while next < packages.list.len() {
+            let entries = packages.list[next]
+                .configuration
+                .dependencies
+                .clone()
+                .unwrap_or_default();
+            self.dependencies(&mut packages, Some(next), &entries);
+            self.exports(&packages.list[next]);
+            next += 1;
+        }
+        packages
+    }
+
+    /// The packages the dependency entries of one `elfie.json` give, and the names a file
+    /// of its project or package reaches them by.
+    // @lfy def/workspace/main.lfy:load
+    fn dependencies(
         &mut self,
-        manifest: Option<&serde_json::Map<String, serde_json::Value>>,
-    ) -> Vec<Package> {
-        let mut out = Vec::new();
-        let Some(dependencies) = manifest.and_then(|manifest| manifest.get("dependencies")) else {
-            return out;
-        };
-        let Some(dependencies) = dependencies.as_object() else {
-            self.problem(
-                Some(MANIFEST),
-                "\"dependencies\" is not an object".to_string(),
-            );
-            return out;
-        };
-        // Decision: dependencies are read in the order `serde_json` keeps the object's
-        // keys, which is sorted by name.
-        for (identifier, dependency) in dependencies {
-            let Some(root) = dependency.get("root").and_then(|v| v.as_str()) else {
+        packages: &mut Packages,
+        owner: Option<usize>,
+        entries: &BTreeMap<String, String>,
+    ) {
+        let base = owner.map_or_else(|| ".".to_string(), |owner| packages.list[owner].root.clone());
+        let manifest = join(&base, MANIFEST);
+        // Decision: entries are read in the order `serde_json` keeps an object's keys,
+        // which is sorted by key.
+        for (key, value) in entries {
+            let kind = dependency_kind(value);
+            // @lfy def/workspace/main.lfy:load#load:load:488bdb4d999605f20285df1be26700cce5e26fe51808ce72c77e2e0e74231548
+            if key == LIBRARY_PACKAGE && (owner.is_some() || kind == DependencyKind::Path) {
+                continue;
+            }
+            // @lfy def/workspace/main.lfy:load#load:load:20cc44ce9010c1d6d8f51447978d2c1bde789da9cd1d0f4bb04869b752e23c86
+            if kind != DependencyKind::Path {
+                let what = if kind == DependencyKind::Git {
+                    "a git URL"
+                } else {
+                    "a version"
+                };
                 self.problem(
-                    Some(MANIFEST),
-                    format!("the dependency {identifier:?} needs a string \"root\""),
+                    Some(&manifest),
+                    format!(
+                        "the dependency {key:?} is {what}, and version and git dependencies \
+                         cannot be loaded yet"
+                    ),
                 );
                 continue;
+            }
+            // @lfy def/workspace/main.lfy:load#load:load:48288ac53c4ce16476eae28d86777ffa3592a5192db841bcde3e89dd31724f71
+            // @lfy def/workspace/main.lfy:load#load:load:6b1ef1b2e8a6e582f3257d3e95d4b94c630efd29f5ec5856edbd629ab7a6ee53
+            let root = dependency_root(&base, value);
+            let package = self.package(packages, key, root);
+            match owner {
+                Some(owner) => packages.names[owner].insert(key.clone(), package),
+                None => packages.project.insert(key.clone(), package),
             };
-            let package = self.package(identifier, root);
-            out.push(package);
         }
-        out
     }
 
-    /// One package at a root.
+    /// The one package at a root, added when no dependency entry has given it before.
     // @lfy def/workspace/main.lfy:load
-    fn package(&mut self, identifier: &str, root: &str) -> Package {
-        let root = trim_directory(root);
-        // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
-        // Checked here rather than in `discover`, which does not run when the root or
-        // the source directory is missing; a missing package root is reported either
-        // way.
-        if !self.directory(&root) {
+    // @lfy def/workspace/main.lfy:load#load:load:d5d5894b6e1a0b68f69a3b71f975fed7a26b6466fdb05517e2dcb72a5888d1a5
+    fn package(&mut self, packages: &mut Packages, identifier: &str, root: String) -> usize {
+        if let Some(package) = packages.list.iter().position(|package| package.root == root) {
+            return package;
+        }
+        // @lfy def/workspace/main.lfy:load#load:load:df79827338f394294ebc29291a335b68f3f6948d1a49732d54593d2f3df93774
+        let configuration = if self.directory(&root) {
+            self.configuration(&root)
+        } else {
             self.problem(
                 Some(&root),
                 format!("the root of the package {identifier} does not exist"),
             );
-        }
-        Package {
+            Configuration::default()
+        };
+        packages.list.push(Package {
             identifier: identifier.to_string(),
             root,
-        }
+            configuration,
+        });
+        packages.names.push(BTreeMap::new());
+        packages.list.len() - 1
     }
 
-    /// The root of the package `elfie` when `elfie.json` names no dependency for it: the
-    /// top level key `lib` relative to the root when `elfie.json` has one, else the
-    /// directory the environment gives for `ELFIE_LIB` when it gives one, else the copy
-    /// of the library the compiler was built with. Each stands whether or not the
-    /// directory it names exists, so a missing one is a problem rather than a reason to
-    /// try the next.
-    // @lfy def/workspace/main.lfy:load#load:load:d907c299c80f931a0deb7cbd87d12cf1f50320cdcfc62ec0ea02ea3217ce3800
-    // @lfy def/workspace/main.lfy:load#load:load:894c6485f9e8ac83db6e6d6dd3340e9ff0e21ccc789a23347307d15fb610664f
-    // @lfy def/workspace/main.lfy:load#load:load:18303ab51dd7497f5981f5a7ebbbefa64f43fca6e87ab6ac5a8aa9acaa26e95f
-    // @lfy def/workspace/main.lfy:load#load:load:a08b7bac9a52807fdcd4c5544ebeb10d60db2a277aef3e01ba0ac257e71291a7
-    fn library_root(
-        &mut self,
-        manifest: Option<&serde_json::Map<String, serde_json::Value>>,
-        environment: Option<String>,
-    ) -> String {
-        self.string(manifest, "lib")
-            .or(environment)
-            .unwrap_or_else(|| normalize(BUILT_IN_LIBRARY))
+    /// A problem for every export of a package that names nothing under its root.
+    // @lfy def/workspace/main.lfy:load
+    // @lfy def/workspace/main.lfy:load#load:load:19b062c31b01faa188b4bbc0532bdbf5c39c0e25ae249b283d34e4476fc8821d
+    fn exports(&mut self, package: &Package) {
+        let Some(exports) = &package.configuration.exports else {
+            return;
+        };
+        let manifest = join(&package.root, MANIFEST);
+        for (key, value) in exports {
+            let target = normalize(&join(&package.root, value));
+            if !self.anything_at(&target) && !self.directory(&target) {
+                self.problem(
+                    Some(&manifest),
+                    format!(
+                        "the export {key:?} names {value}, which is neither a file nor a \
+                         directory under {}",
+                        package.root
+                    ),
+                );
+            }
+        }
     }
 
     /// Every `.lfy` file under a directory, sorted by path, replaced files included.
-    // @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
-    // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
+    // @lfy def/workspace/main.lfy:load
     fn source_files(&mut self, directory: &str) -> Vec<String> {
         // Decision: discovery order within a directory is the sorted order of the paths.
         let mut out = BTreeSet::new();
@@ -483,25 +692,32 @@ impl Loader<'_> {
         }
     }
 
-    /// Every file of the program: the source files, every package's files, and every
-    /// file a `Use` refers to, each parsed with its uses resolved, in discovery order.
+    /// Every file of the program: the files of each source directory, every package's
+    /// files, and every file a `Use` refers to, each parsed with its uses resolved, in
+    /// discovery order.
     // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
-    fn discover(&mut self, source_directory: &str, packages: &[Package]) -> Vec<Entry> {
+    fn discover(&mut self, source_directories: &[String], packages: &Packages) -> Vec<Entry> {
         let mut entries: Vec<Entry> = Vec::new();
         let mut seen: HashSet<String> = HashSet::new();
         let mut pending: Vec<(String, Option<usize>)> = Vec::new();
 
-        for path in self.source_files(source_directory) {
-            enqueue(&mut seen, &mut pending, path, None); // @lfy def/workspace/main.lfy:load
+        // @lfy def/workspace/main.lfy:load#load:load:34b900cfd918601b8e0fbd06775f5015712e20b8edddc83c91a156a80e1e26ff
+        for directory in source_directories {
+            for path in self.source_files(directory) {
+                enqueue(&mut seen, &mut pending, path, None); // @lfy def/workspace/main.lfy:load
+            }
         }
-        for (id, package) in packages.iter().enumerate() {
+        for (id, package) in packages.list.iter().enumerate() {
             // A missing package root is already reported by `packages`; no file of it is
             // in the program. @lfy def/workspace/main.lfy:load
             if !self.directory(&package.root) {
                 continue;
             }
+            // A file under the roots of two packages, one inside the other, carries the
+            // package whose root is nearer to it.
             for path in self.source_files(&package.root) {
-                enqueue(&mut seen, &mut pending, path, Some(id)); // @lfy def/workspace/main.lfy:load
+                let package = package_of(&path, &packages.list).or(Some(id));
+                enqueue(&mut seen, &mut pending, path, package); // @lfy def/workspace/main.lfy:load
             }
         }
 
@@ -515,7 +731,7 @@ impl Loader<'_> {
                     &mut seen,
                     &mut pending,
                     used.to_string(),
-                    package_of(used, packages),
+                    package_of(used, &packages.list),
                 );
             });
             entries.push(entry);
@@ -561,7 +777,7 @@ impl Loader<'_> {
         &mut self,
         path: &str,
         package: Option<usize>,
-        packages: &[Package],
+        packages: &Packages,
         mut found: impl FnMut(&str),
     ) -> Entry {
         let unread = |uses: Vec<UseSite>| Entry {
@@ -598,7 +814,7 @@ impl Loader<'_> {
             let index = uses.len();
             let spelled = use_path(node, &tree);
             let resolved = match &spelled {
-                Some(spelled) => match self.resolve(path, spelled, packages) {
+                Some(spelled) => match self.resolve(path, package, spelled, packages) {
                     Ok(used) => {
                         found(&used);
                         Some(used)
@@ -631,20 +847,37 @@ impl Loader<'_> {
         }
     }
 
-    /// The file a use's path refers to, from the file at `from`.
+    /// The file a use's path refers to, from the file at `from` of the package `package`,
+    /// or of the project when it is `None`.
     // @lfy def/workspace/main.lfy:load
-    fn resolve(&self, from: &str, spelled: &str, packages: &[Package]) -> Result<String, String> {
+    fn resolve(
+        &self,
+        from: &str,
+        package: Option<usize>,
+        spelled: &str,
+        packages: &Packages,
+    ) -> Result<String, String> {
         let base = if spelled.starts_with('.') {
             // @lfy def/workspace/main.lfy:load#load:load:7cd3d4046cd7170c71b67d6747111258f280a6b304e31b968c1adf210b007213
             join(directory_of(from), spelled)
         } else {
-            // @lfy def/workspace/main.lfy:load#load:load:1686133b540c858b4c1ab7edb631811da85b909c80a52d63d4084d22d6c3251f
-            let (first, rest) = spelled.split_once('/').unwrap_or((spelled, ""));
-            let package = packages
-                .iter()
-                .find(|package| package.identifier == first)
-                .ok_or_else(|| format!("no package is named {first:?}"))?;
-            join(&package.root, rest)
+            // @lfy def/workspace/main.lfy:load#load:load:99f8a9365b4ddf9b26525fc56b9850112f86430a002df60a6c1453a745a29f40
+            let segments: Vec<&str> = spelled.split('/').collect();
+            let (count, named) = (1..=segments.len())
+                .rev()
+                .find_map(|count| {
+                    packages
+                        .named(package, &segments[..count].join("/"))
+                        .map(|named| (count, named))
+                })
+                .ok_or_else(|| format!("no package is named {:?}", segments[0]))?;
+            let named = &packages.list[named];
+            let rest = &segments[count..];
+            // @lfy def/workspace/main.lfy:load#load:load:1656e6daf35e6938e3d1f828fb76d318f57cf16a19a3f42543ba0054030bea5d
+            match export_of(&named.configuration, rest) {
+                Some((value, after)) => join(&join(&named.root, value), &after.join("/")),
+                None => join(&named.root, &rest.join("/")),
+            }
         };
         let base = normalize(&base);
         // @lfy def/workspace/main.lfy:load#load:load:0ddc30be18742fce83c1bc733c6db516b1f02d4e58205740f7b26d57638aef3a
@@ -659,6 +892,96 @@ impl Loader<'_> {
         }
         Err(format!("neither {file} nor {main} exists"))
     }
+}
+
+/// A path without its `.lfy` extension.
+fn without_extension(path: &str) -> &str {
+    path.strip_suffix(".lfy").unwrap_or(path)
+}
+
+/// A path relative to a directory it is under, both relative to the root.
+fn relative_to<'p>(path: &'p str, directory: &str) -> &'p str {
+    if is_root(directory) {
+        return path;
+    }
+    path.strip_prefix(directory)
+        .and_then(|rest| rest.strip_prefix('/'))
+        .unwrap_or(path)
+}
+
+/// The name each file of the program goes by, in the order the files are given.
+///
+/// Decision: a file of the project under none of the source directories, which only a
+/// `Use` brings in, is named by its path relative to the root.
+// @lfy def/workspace/main.lfy:load
+fn file_names(
+    files: &[(&str, Option<usize>)],
+    packages: &[Package],
+    source_directories: &[String],
+) -> Vec<String> {
+    let mut names = vec![String::new(); files.len()];
+    // The path of each file of the project relative to its source directory.
+    let mut within: Vec<(usize, &str)> = Vec::new();
+    for (index, &(path, package)) in files.iter().enumerate() {
+        match package {
+            // @lfy def/workspace/main.lfy:load#load:load:f3f04a799f9fa89db29eed53cf6239c78d5d4389948995d43fe22b84eba0cbdc
+            Some(package) => {
+                let package = &packages[package];
+                names[index] = format!(
+                    "{}/{}",
+                    package.identifier,
+                    without_extension(relative_to(path, &package.root))
+                );
+            }
+            None => {
+                // @lfy def/workspace/main.lfy:load#load:load:4e242171bbac221a9235f0dc2f2b41c8ce9461c40c25cecf4661dd81cdd32704
+                let directory = source_directories
+                    .iter()
+                    .filter(|directory| under(path, directory))
+                    .max_by_key(|directory| directory.len())
+                    .map_or(".", String::as_str);
+                within.push((index, without_extension(relative_to(path, directory))));
+            }
+        }
+    }
+    let mut counts: HashMap<&str, usize> = HashMap::new();
+    for &(_, relative) in &within {
+        *counts.entry(relative).or_default() += 1;
+    }
+    let mut shared = Vec::new();
+    for &(index, relative) in &within {
+        if counts[relative] == 1 {
+            names[index] = relative.to_string();
+        } else {
+            shared.push(index);
+        }
+    }
+    let segments: Vec<Vec<&str>> = files
+        .iter()
+        .map(|&(path, _)| without_extension(path).split('/').collect())
+        .collect();
+    // @lfy def/workspace/main.lfy:load#load:load:95ee4c371559a37196b70b48eb49a98edb20b303a2fad0cdde57142a357b6b38
+    for &index in &shared {
+        let own = &segments[index];
+        let mut name = own.join("/");
+        for count in 1..=own.len() {
+            let end = &own[own.len() - count..];
+            let candidate = end.join("/");
+            let ends_another = shared
+                .iter()
+                .any(|&other| other != index && segments[other].ends_with(end));
+            let named = names
+                .iter()
+                .enumerate()
+                .any(|(other, taken)| other != index && *taken == candidate);
+            if !ends_another && !named {
+                name = candidate;
+                break;
+            }
+        }
+        names[index] = name;
+    }
+    names
 }
 
 /// Every recorded problem at a `Use` as a `Problem` at that `Use` node. A use in a file

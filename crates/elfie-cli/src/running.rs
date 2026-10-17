@@ -8,7 +8,8 @@ use crate::copies::{Kept, KeptUnit, kept_file};
 use crate::processes::{Agent, Runs, Running, line_for, run_target_command, word_of_operation};
 
 /// The files under the target's output directory, in the directory the batch ran in, split
-/// into the ones that carry a marker for the unit's file and every other one of that listing.
+/// into the ones that carry a marker for the unit, as [`own_marker`] reads one, and every
+/// other one of that listing.
 /// Their paths are relative to that directory, which is the root or a copy of it, so an
 /// output is named the same either way.
 ///
@@ -23,9 +24,9 @@ pub(crate) fn outputs_of(
     unit: usize,
     directory: &Path,
 ) -> (Vec<Output>, Vec<Output>) {
+    let index = unit;
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
-    let file = &workspace.files[unit.file].path;
     let mut paths = Vec::new();
     // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
     walk_all(&directory.join(&target.output_directory), &mut paths);
@@ -35,8 +36,11 @@ pub(crate) fn outputs_of(
     for path in paths {
         let Ok(text) = fs::read_to_string(&path) else { continue };
         let output = Output { path: relative(directory, &path), text };
+        // A marker for the unit names the unit's file, or an entity moved into the unit and
+        // the file that declares it.
         // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
-        if generation::parse_markers(&output.text).iter().any(|m| &m.file == file) {
+        // @lfy def/cli/main.lfy:main#main:main:0f1a513e22a68d8f32e1ff580303b2671ce0e15b513648dfe24f469f1567ff27
+        if generation::parse_markers(&output.text).iter().any(|m| own_marker(workspace, plan, index, m)) {
             found.push(output);
         } else {
             // @lfy def/cli/main.lfy:main#main:main:d32bb5f8cb99bd6f9ba335bb675a075d075910a07c8e5639cd4c008ec9bfea4b
@@ -151,7 +155,7 @@ pub(crate) struct Previous {
     pub(crate) hash_matched: bool,
 }
 
-/// The source at the last accepted generation, recovered from git when a recent revision of
+/// The source at the last accepted generation, recovered from git when a revision of
 /// the file both lowers to the hash the unit's source map holds and has the criterion and test
 /// ids that map was recorded for; otherwise the unit's hash-matched source, the most recent
 /// revision that lowers to that hash alone, marked as such.
@@ -173,7 +177,9 @@ pub(crate) fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<Prev
     let map = unit.outputs.first()?;
     let file = workspace.files[unit.file].path.clone();
     let log = Process::new("git")
-        .args(["log", "--format=%H", "-n", "50", "--", &file])
+        // Every revision of the file, most recent first, however old the accepted one is.
+        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
+        .args(["log", "--format=%H", "--", &file])
         .current_dir(&workspace.root)
         .stderr(Stdio::null())
         .output()
@@ -307,6 +313,10 @@ pub(crate) struct Run {
     // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
     pub(crate) running: BTreeMap<String, Arc<Running>>,
     pub(crate) halted: bool,
+    /// The batches, by identifier, stopped while they ran because a batch whose accepted
+    /// changes their copies took stopped without its files reaching the root.
+    // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+    pub(crate) abandoned: BTreeSet<String>,
     /// Whether a batch of the round under way was accepted and its source maps recorded, so
     /// that the global review runs even when every unit was counted by an earlier round.
     // @lfy def/cli/main.lfy:main
@@ -375,6 +385,8 @@ impl Run {
             // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
             running: BTreeMap::new(),
             halted: false,
+            // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+            abandoned: BTreeSet::new(),
             accepted_batch: false,
             accepted: 0,
             rejected: 0,
@@ -458,6 +470,23 @@ impl Run {
         if let Some(running) = self.running.get(label) {
             running.stop();
         }
+    }
+
+    /// Whether nothing more is to start for a batch, and what its running runs give is to be
+    /// ignored: the compile stopped, or a batch whose accepted changes its copy took did.
+    // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
+    // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+    pub(crate) fn halts(&self, label: &str) -> bool {
+        self.halted || self.abandoned.contains(label)
+    }
+
+    /// One batch stopped while it runs, because a batch whose accepted changes its copy took
+    /// stopped without its files reaching the root: every run still running for it is
+    /// stopped, with every process of its group, and what it gives is ignored.
+    // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+    pub(crate) fn abandon(&mut self, label: &str) {
+        self.abandoned.insert(label.to_string());
+        self.stop_running(label);
     }
 
     /// Every run still running for any batch stopped, with every process of its group: what

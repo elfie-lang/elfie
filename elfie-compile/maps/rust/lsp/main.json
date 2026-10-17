@@ -4,9 +4,11 @@
       "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
       "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738",
       "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
       "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
       "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47",
       "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
       "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
       "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
@@ -25,6 +27,7 @@
       "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
       "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
       "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da",
       "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
       "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
       "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
@@ -33,7 +36,6 @@
       "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
       "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
       "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
-      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
       "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
       "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
       "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
@@ -51,11 +53,9 @@
       "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
       "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
-      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
       "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
       "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
       "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
-      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
       "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
       "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
       "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
@@ -67,10 +67,10 @@
       "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T13:50:53Z",
+    "generated": "2026-10-17T16:44:09Z",
     "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
     "markers": [
       {
@@ -291,7 +291,7 @@
       }
     ],
     "output": "crates/elfie-lsp/src/convert.rs",
-    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "requirements": "faf1e728d0dc61c561a7a50fdeeb18bafa57472fa9b330d1f79dd0f40c315e2d",
     "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
     "source": "def/lsp/main.lfy",
     "target": "rust",
@@ -302,9 +302,11 @@
       "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
       "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738",
       "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
       "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
       "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47",
       "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
       "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
       "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
@@ -323,6 +325,7 @@
       "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
       "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
       "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da",
       "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
       "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
       "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
@@ -331,7 +334,6 @@
       "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
       "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
       "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
-      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
       "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
       "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
       "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
@@ -349,11 +351,9 @@
       "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
       "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
-      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
       "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
       "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
       "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
-      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
       "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
       "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
       "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
@@ -365,10 +365,10 @@
       "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T13:50:53Z",
+    "generated": "2026-10-17T16:44:09Z",
     "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
     "markers": [
       {
@@ -382,7 +382,7 @@
       }
     ],
     "output": "crates/elfie-lsp/src/lib.rs",
-    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "requirements": "faf1e728d0dc61c561a7a50fdeeb18bafa57472fa9b330d1f79dd0f40c315e2d",
     "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
     "source": "def/lsp/main.lfy",
     "target": "rust",
@@ -393,9 +393,11 @@
       "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
       "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738",
       "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
       "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
       "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47",
       "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
       "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
       "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
@@ -414,6 +416,7 @@
       "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
       "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
       "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da",
       "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
       "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
       "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
@@ -422,7 +425,6 @@
       "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
       "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
       "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
-      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
       "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
       "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
       "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
@@ -440,11 +442,9 @@
       "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
       "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
-      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
       "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
       "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
       "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
-      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
       "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
       "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
       "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
@@ -456,10 +456,10 @@
       "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T13:50:53Z",
+    "generated": "2026-10-17T16:44:09Z",
     "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
     "markers": [
       {
@@ -892,7 +892,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 678,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
+        "requirement": "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da"
       },
       {
         "column": null,
@@ -1063,7 +1063,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 998,
-        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
+        "requirement": "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738"
       },
       {
         "column": null,
@@ -1072,7 +1072,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 999,
-        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
+        "requirement": "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47"
       },
       {
         "column": null,
@@ -1081,7 +1081,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 1000,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
+        "requirement": "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da"
       },
       {
         "column": null,
@@ -1094,65 +1094,67 @@
       },
       {
         "column": null,
-        "end": 1049,
+        "end": 1053,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 1034,
-        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
+        "requirement": "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738"
       },
       {
         "column": null,
-        "end": 1050,
+        "end": 1054,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1050,
-        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
+        "outputLine": 1054,
+        "requirement": "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47"
       },
       {
         "column": null,
-        "end": 1070,
+        "end": 1074,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1051,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
+        "outputLine": 1055,
+        "requirement": "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da"
       },
       {
         "column": null,
-        "end": 1071,
+        "end": 1075,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1071,
+        "outputLine": 1075,
         "requirement": "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d"
       },
       {
         "column": null,
-        "end": 1092,
+        "end": 1096,
         "entity": "serve",
         "file": "def/lsp/main.lfy",
         "line": 13,
-        "outputLine": 1072,
+        "outputLine": 1076,
         "requirement": "serve:serve:2f2c7ecf2aefa7b4950f022eda84b70f726e7b227d3c33dc71422bc342f64b55"
       }
     ],
     "output": "crates/elfie-lsp/src/serve_tests.rs",
-    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "requirements": "faf1e728d0dc61c561a7a50fdeeb18bafa57472fa9b330d1f79dd0f40c315e2d",
     "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
     "source": "def/lsp/main.lfy",
     "target": "rust",
-    "text": "a3ada38dfbdf1af0bf683bf605bd00d0bacd72bf7634d0a2d41d6b144a6b0c40"
+    "text": "75af08199d96fdd4eb2a9bec4a81b69e068ddaaf9b6e2ea6797181ad31354a86"
   },
   {
     "answered": [
       "serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547",
       "serve:serve:0b97846abe098e6a1fbfe6db8abe1bcff1075c32c70e67651fff16cca55c2362",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b",
+      "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738",
       "serve:serve:1495429613832ca963f01ea2a9c05ebba15c1241e34609dbe8c359d5c7adc254",
       "serve:serve:1800e8ae59684dee23afe3307a028fceb453dbcc3af7518f3d52a1793fa2cc8f",
       "serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3",
+      "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47",
       "serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65",
       "serve:serve:260b156ce0f0573917d8a88611dc1a49b4739ec3dbc00a950d59185ba26ba5b5",
       "serve:serve:28700f9f7649b38774e5a69d7bb8341848a793dbcc8fca77e9a8f5f6a04c3a64",
@@ -1171,6 +1173,7 @@
       "serve:serve:5c11eec6ca2131eeb40d9fe0e01d7330d8c6bb85d9ca32ac16990413db81067c",
       "serve:serve:5f45cd42b1869414e0293381505784b60b7c53b1f7e6e745865e038029ef42e0",
       "serve:serve:5f629591078b6612e51dff25a74ae0148764e1dd9d2ab2591e7da093f299a566",
+      "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da",
       "serve:serve:6991b81371beae78826a2fc55a6b814c2a8b3ad40a2e223771a6746735cdf4cd",
       "serve:serve:6b4c40ea0834c4fb7d6b6e15c78c5b97f7d2a5d43c031c9e328542ac9fc2e737",
       "serve:serve:6b702869304d1406c4c91d62256f0e00c22dfe7bc63714e4e23aa92679e4b4b3",
@@ -1179,7 +1182,6 @@
       "serve:serve:777a57de3910fb244406238be7543474c340ffdbe2b0949fec10958ba5478dc1",
       "serve:serve:7866f3607d52874f64675dcd40566e502c90ca8fbccd522413461b5fc6c884dd",
       "serve:serve:799433db73b6bc8325515763025bff551e73ffe3ff0ee5003d855898d90a732e",
-      "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04",
       "serve:serve:84d955371f5f011bf11dd22238bcbd23653d0c8794adb6cd27221db62c7ec47d",
       "serve:serve:8515860f3ec119e6aa9375f57168b7240d07e511f2eb7399afae8b3eca6b3a2a",
       "serve:serve:90077d5afc89f7b023508ef4944e41cc279601008d7a8e3460226b18cd4e5d84",
@@ -1197,11 +1199,9 @@
       "serve:serve:cb81d8e3f0b6567ed41dc152db804c5f411d48090a803d5af4c3a3b6b6bac767",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c",
       "serve:serve:ce4fd9bcf886d04552fa421a2b3c1b42b5cf8a561a7c82e4b934e4741ab52f0a",
-      "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b",
       "serve:serve:d4e7595e6e9f64e2a9a1d19156e9b56857bed804e62b3119f125644cd3276cfa",
       "serve:serve:dd61686d17ea6b5c7edafd85d9b3f1f435cb20bcd3de229295f981606a7b37bc",
       "serve:serve:e3461a08571790d904995f24b1ab330dd9e4038aa3e11df19c4dad085e9ddb3d",
-      "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886",
       "serve:serve:f33fa650fd2296b8e1b899bbc1c94149ffc4905c1be5d32f40ed7b204e1bab6b",
       "serve:serve:f60fe367b8c7bc62490da190f96e531eded102a1ed95a0c464d889b0599a46df",
       "serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862",
@@ -1213,10 +1213,10 @@
       "def/lsp/data.lfy": "a1bf963071dc97338673e4cb7e8f853a30687dda1776c969023b0c4ef52a965d",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T13:50:53Z",
+    "generated": "2026-10-17T16:44:09Z",
     "hash": "6707d9bafc217641fc9aa5ab4251732239daf5dcea1bedd2edc5bd1417011de9",
     "markers": [
       {
@@ -1388,7 +1388,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 161,
-        "requirement": "serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886"
+        "requirement": "serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da"
       },
       {
         "column": null,
@@ -1451,7 +1451,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 270,
-        "requirement": "serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04"
+        "requirement": "serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738"
       },
       {
         "column": null,
@@ -1892,7 +1892,7 @@
         "file": "def/lsp/main.lfy",
         "line": 13,
         "outputLine": 867,
-        "requirement": "serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b"
+        "requirement": "serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47"
       },
       {
         "column": null,
@@ -1923,10 +1923,10 @@
       }
     ],
     "output": "crates/elfie-lsp/src/server.rs",
-    "requirements": "c630af7554bb41c6e17e36109cafb54ac8e5d1b9596a2fb4e45ab1a34922132c",
+    "requirements": "faf1e728d0dc61c561a7a50fdeeb18bafa57472fa9b330d1f79dd0f40c315e2d",
     "signature": "6ec996512a89404d197a08614c81a773608fb98608b6829d2038ee1f5080793a",
     "source": "def/lsp/main.lfy",
     "target": "rust",
-    "text": "d6f22fefd30e40b684b2ac4cb469e199343e92d687ca765befe695224e7c3cf8"
+    "text": "edcc127efbe509672ea44a63707e18e09c2da6ccb5db8324649ebb2d8d3cf4ac"
   }
 ]

@@ -102,7 +102,8 @@ fn prelude() -> Vec<Source> {
          d Member extends Entity { $isMember: `Marks a member` = boolean; } \
          d Parameter extends Entity { $isParameter: `Marks a parameter` = boolean; } \
          d Variable extends Entity { $isVariable: `Marks a variable` = boolean; } \
-         d Module extends Entity { $isModule: `Marks a module` = boolean; }",
+         d Module extends Entity { $isModule: `Marks a module` = boolean; } \
+         d Array extends Entity { $itemType: `What the list holds` = Entity; }",
         &[Some("lib/prelude/entity.lfy")],
         Origin::Library,
     );

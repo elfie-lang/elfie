@@ -428,6 +428,25 @@ fn a_shared_output_keeps_its_text_and_re_reads_its_markers() {
     );
 }
 
+/// A marker naming a line inside a declaration is recorded as written, naming that line and
+/// no entity, where acceptance would have renamed it.
+// @lfy def/generation/main.lfy:rederive#rederive:rederive:de0c92c8e9054b77050411f99aab03406cef407c814ca97ee7ab8181bdebf960
+#[test]
+fn a_line_marker_is_left_as_written() {
+    let fixture = Fixture::with_rust_target();
+    fixture.write("src/lib.rs", "// @lfy def/a.lfy:1\npub struct A;\n");
+    let (program, plan, index) = a_and_b_for_rederive(&fixture);
+    let recorded = [map_for("src/lib.rs", "def/a.lfy")];
+    let maps = rederive(&program, &plan, index, &recorded);
+    assert_eq!(outputs_of(&maps), ["src/lib.rs"]);
+    assert_eq!(maps[0].markers.len(), 1);
+    let marker = &maps[0].markers[0];
+    assert_eq!(marker.file, "def/a.lfy");
+    assert_eq!(marker.entity, None);
+    assert_eq!(marker.line, 1);
+    assert_eq!(marker.output_line, 1);
+}
+
 /// Where the maps of a unit do not agree on what its last accepted generation recorded,
 /// there is nothing to carry over to a file they have no map for, and they come back as
 /// they are.

@@ -230,7 +230,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "lib": "lib", "dependencies": { "p": { "root": "pkg" } } }"#,
+                r#"{ "dependencies": { "elfie": "./lib", "p": "./pkg" } }"#,
             )
             .write("def/a.lfy", "d Alpha { $beta = string; }\n")
             .write("def/b.lfy", "use \"./a\";\nconst gamma = Alpha;\n")

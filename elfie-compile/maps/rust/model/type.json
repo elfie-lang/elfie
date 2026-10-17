@@ -1,0 +1,437 @@
+[
+  {
+    "answered": [
+      "typeTextOf:typeTextOf:2b94113644ba3735487d3a97b0b21f8e6e1121c594ee59bd9e071265a4e452e8",
+      "typeTextOf:typeTextOf:4a96c90b5e69bd1315e4403a97ce4b57f62102d1d36e4ef0780a8337d654743d",
+      "typeTextOf:typeTextOf:556e1568a7db6f418440066dbddc8e1bea76fb5acbd0ade0f41fef3634861ae2",
+      "typeTextOf:typeTextOf:5af54fe6fcd6b47238c1df5415f62eca2d8b4c8d406156fec26f1f13110aa1a1",
+      "typeTextOf:typeTextOf:61414516aa9dcc43d54bb2290614a167fef3bd1189114bcc921d597f01a1d949",
+      "typeTextOf:typeTextOf:71cbc82af844db09e5de8e281ec7fcf92ecd3fb7c81640e38d65ec84d146dd3c",
+      "typeTextOf:typeTextOf:89c6d688f07b4e56903193fa729c9e26ec93a1a0a789a89665d68a4d40f09c6e",
+      "typeTextOf:typeTextOf:8bbc8c58bf42ef089cf559dab4a2940814c858bd3633ad7e969522b99f87d208",
+      "typeTextOf:typeTextOf:a41acb96ef1f511b638ed7a20104a4743c98bb3b644142509f866c74e69da009",
+      "typeTextOf:typeTextOf:b29f2ab17865c51c9fee248c87c30d45d61d4ccb9b48e63fe45223606d734cd1",
+      "typeTextOf:typeTextOf:b64f3996bad7896ba9710253adc19dbf22a7e51e3fc2c012b67aaac677979e0a",
+      "typeTextOf:typeTextOf:b6bd675e8cdc1c15ba551fc96016b949e34f090af28569c0ca06c74db3d2bf91",
+      "typeTextOf:typeTextOf:e0af14e47275fec8225ff8ee614e9ba18f817e1f0880f6f439f644df133a0ee5",
+      "typeTextOf:typeTextOf:e6b5aa146601a2d6b283da1cb7383c613d79dc0e5e10d943245a6c222c068db0",
+      "typeTextOf:typeTextOf:ead93c122f4d87f56344f0d4d43c1dba5eb4890a6ec0616bccca1833d30ee448",
+      "typeTextOf:typeTextOf:edee74f43a9abff4425d49ec621a69d8d9f2187536ca9718daa7b4f53181372a",
+      "typeTextOf:typeTextOf:f16148699adfd180079861fb3fc326f62a6054b22de7cba1572f954cd5c6bc6d",
+      "typeTextOf:typeTextOf:f63f8edb6dfbb860e598b51c9229ac63885f8b1c500cc4f7813ca3ff681d44bf"
+    ],
+    "dependencies": {
+      "def/grammar/rules/expression.lfy": "82aac926f45452d5dba89de60c869d89ef56c4771c42437bdc61961964395d0c",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb"
+    },
+    "generated": "2026-10-17T15:05:13Z",
+    "hash": "25c7c1ab4f5e5b9b3bcfcf1dcac8c7ebb1754fcd28ff6aede7adaceda82c3438",
+    "markers": [
+      {
+        "column": null,
+        "end": 16,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 1,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 18,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 17,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 23,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 19,
+        "requirement": "typeTextOf:typeTextOf:2b94113644ba3735487d3a97b0b21f8e6e1121c594ee59bd9e071265a4e452e8"
+      },
+      {
+        "column": null,
+        "end": 26,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 24,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 30,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 27,
+        "requirement": "typeTextOf:typeTextOf:f16148699adfd180079861fb3fc326f62a6054b22de7cba1572f954cd5c6bc6d"
+      },
+      {
+        "column": null,
+        "end": 31,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 31,
+        "requirement": "typeTextOf:typeTextOf:a41acb96ef1f511b638ed7a20104a4743c98bb3b644142509f866c74e69da009"
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 32,
+        "requirement": "typeTextOf:typeTextOf:61414516aa9dcc43d54bb2290614a167fef3bd1189114bcc921d597f01a1d949"
+      },
+      {
+        "column": null,
+        "end": 54,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 41,
+        "requirement": "typeTextOf:typeTextOf:89c6d688f07b4e56903193fa729c9e26ec93a1a0a789a89665d68a4d40f09c6e"
+      },
+      {
+        "column": null,
+        "end": 64,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 55,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 71,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 65,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 77,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 72,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 79,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 78,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 86,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 80,
+        "requirement": "typeTextOf:typeTextOf:4a96c90b5e69bd1315e4403a97ce4b57f62102d1d36e4ef0780a8337d654743d"
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 87,
+        "requirement": "typeTextOf:typeTextOf:b29f2ab17865c51c9fee248c87c30d45d61d4ccb9b48e63fe45223606d734cd1"
+      },
+      {
+        "column": null,
+        "end": 98,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 88,
+        "requirement": "typeTextOf:typeTextOf:f63f8edb6dfbb860e598b51c9229ac63885f8b1c500cc4f7813ca3ff681d44bf"
+      },
+      {
+        "column": null,
+        "end": 99,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 99,
+        "requirement": "typeTextOf:typeTextOf:edee74f43a9abff4425d49ec621a69d8d9f2187536ca9718daa7b4f53181372a"
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 100,
+        "requirement": "typeTextOf:typeTextOf:5af54fe6fcd6b47238c1df5415f62eca2d8b4c8d406156fec26f1f13110aa1a1"
+      },
+      {
+        "column": null,
+        "end": 110,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 102,
+        "requirement": "typeTextOf:typeTextOf:b64f3996bad7896ba9710253adc19dbf22a7e51e3fc2c012b67aaac677979e0a"
+      },
+      {
+        "column": null,
+        "end": 123,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 111,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 128,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 124,
+        "requirement": "typeTextOf:typeTextOf:71cbc82af844db09e5de8e281ec7fcf92ecd3fb7c81640e38d65ec84d146dd3c"
+      },
+      {
+        "column": null,
+        "end": 143,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 129,
+        "requirement": "typeTextOf:typeTextOf:ead93c122f4d87f56344f0d4d43c1dba5eb4890a6ec0616bccca1833d30ee448"
+      },
+      {
+        "column": null,
+        "end": 153,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 144,
+        "requirement": "typeTextOf:typeTextOf:b6bd675e8cdc1c15ba551fc96016b949e34f090af28569c0ca06c74db3d2bf91"
+      },
+      {
+        "column": null,
+        "end": 159,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 154,
+        "requirement": "typeTextOf:typeTextOf:4a96c90b5e69bd1315e4403a97ce4b57f62102d1d36e4ef0780a8337d654743d"
+      },
+      {
+        "column": null,
+        "end": 164,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 160,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 178,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 165,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 189,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 179,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 196,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 190,
+        "requirement": "typeTextOf:typeTextOf:556e1568a7db6f418440066dbddc8e1bea76fb5acbd0ade0f41fef3634861ae2"
+      },
+      {
+        "column": null,
+        "end": 208,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 197,
+        "requirement": "typeTextOf:typeTextOf:8bbc8c58bf42ef089cf559dab4a2940814c858bd3633ad7e969522b99f87d208"
+      },
+      {
+        "column": null,
+        "end": 215,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 209,
+        "requirement": "typeTextOf:typeTextOf:e0af14e47275fec8225ff8ee614e9ba18f817e1f0880f6f439f644df133a0ee5"
+      },
+      {
+        "column": null,
+        "end": 222,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 216,
+        "requirement": "typeTextOf:typeTextOf:e6b5aa146601a2d6b283da1cb7383c613d79dc0e5e10d943245a6c222c068db0"
+      },
+      {
+        "column": null,
+        "end": 230,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 223,
+        "requirement": "typeTextOf:typeTextOf:f63f8edb6dfbb860e598b51c9229ac63885f8b1c500cc4f7813ca3ff681d44bf"
+      },
+      {
+        "column": null,
+        "end": 237,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 231,
+        "requirement": "typeTextOf:typeTextOf:2b94113644ba3735487d3a97b0b21f8e6e1121c594ee59bd9e071265a4e452e8"
+      },
+      {
+        "column": null,
+        "end": 245,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 238,
+        "requirement": "typeTextOf:typeTextOf:edee74f43a9abff4425d49ec621a69d8d9f2187536ca9718daa7b4f53181372a"
+      },
+      {
+        "column": null,
+        "end": 252,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 246,
+        "requirement": "typeTextOf:typeTextOf:5af54fe6fcd6b47238c1df5415f62eca2d8b4c8d406156fec26f1f13110aa1a1"
+      },
+      {
+        "column": null,
+        "end": 261,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 253,
+        "requirement": "typeTextOf:typeTextOf:f16148699adfd180079861fb3fc326f62a6054b22de7cba1572f954cd5c6bc6d"
+      },
+      {
+        "column": null,
+        "end": 268,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 262,
+        "requirement": "typeTextOf:typeTextOf:89c6d688f07b4e56903193fa729c9e26ec93a1a0a789a89665d68a4d40f09c6e"
+      },
+      {
+        "column": null,
+        "end": 275,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 269,
+        "requirement": "typeTextOf:typeTextOf:b29f2ab17865c51c9fee248c87c30d45d61d4ccb9b48e63fe45223606d734cd1"
+      },
+      {
+        "column": null,
+        "end": 282,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 276,
+        "requirement": "typeTextOf:typeTextOf:a41acb96ef1f511b638ed7a20104a4743c98bb3b644142509f866c74e69da009"
+      },
+      {
+        "column": null,
+        "end": 295,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 283,
+        "requirement": "typeTextOf:typeTextOf:61414516aa9dcc43d54bb2290614a167fef3bd1189114bcc921d597f01a1d949"
+      },
+      {
+        "column": null,
+        "end": 305,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 296,
+        "requirement": "typeTextOf:typeTextOf:4a96c90b5e69bd1315e4403a97ce4b57f62102d1d36e4ef0780a8337d654743d"
+      },
+      {
+        "column": null,
+        "end": 312,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 306,
+        "requirement": "typeTextOf:typeTextOf:b6bd675e8cdc1c15ba551fc96016b949e34f090af28569c0ca06c74db3d2bf91"
+      },
+      {
+        "column": null,
+        "end": 319,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 313,
+        "requirement": "typeTextOf:typeTextOf:ead93c122f4d87f56344f0d4d43c1dba5eb4890a6ec0616bccca1833d30ee448"
+      },
+      {
+        "column": null,
+        "end": 329,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 320,
+        "requirement": "typeTextOf:typeTextOf:71cbc82af844db09e5de8e281ec7fcf92ecd3fb7c81640e38d65ec84d146dd3c"
+      },
+      {
+        "column": null,
+        "end": 349,
+        "entity": "typeTextOf",
+        "file": "def/model/type.lfy",
+        "line": 9,
+        "outputLine": 330,
+        "requirement": "typeTextOf:typeTextOf:b64f3996bad7896ba9710253adc19dbf22a7e51e3fc2c012b67aaac677979e0a"
+      }
+    ],
+    "output": "crates/elfie-core/src/model/type.rs",
+    "requirements": "ca048b9debde22d75892392c98d25d47dcec71efc6c7bc614cbaaca1699e0eab",
+    "signature": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
+    "source": "def/model/type.lfy",
+    "target": "rust",
+    "text": "f2770201ffbfc2636d188072379255423125e3c126deaba0288ed729942f3003"
+  }
+]

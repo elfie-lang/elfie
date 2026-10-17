@@ -103,12 +103,15 @@ fn walk_sources(directory: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Every file of the program: the files bound, every `.lfy` file under the source
-/// directory (so that a new file is noticed), and the manifest.
+/// Every file of the program: the files bound, every `.lfy` file under each of the source
+/// directories (so that a new file is noticed), and the manifest.
+// @lfy def/mcp/main.lfy:serve#serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c
 fn watched(workspace: &Workspace) -> BTreeSet<String> {
     let mut paths: BTreeSet<String> = workspace.files.iter().map(|file| file.path.clone()).collect();
     let mut found = Vec::new();
-    walk_sources(&workspace.root.join(&workspace.source_directory), &mut found);
+    for directory in &workspace.source_directories {
+        walk_sources(&workspace.root.join(directory), &mut found);
+    }
     for path in found {
         paths.insert(relative(&workspace.root, &path));
     }
@@ -178,7 +181,7 @@ impl Session {
             self.seen = stamps(&self.workspace);
             return;
         }
-        // A `.lfy` file under the source directory that is not in the program and that no
+        // A `.lfy` file under one of the source directories that is not in the program and that no
         // earlier call saw has no stamp among those seen, so it is among the paths that
         // differ; a file whose modification time or size differs is too, and so is one that
         // has vanished, which has no stamp now.
@@ -193,7 +196,7 @@ impl Session {
             .collect();
         // Each is read through the loader with no text, which reads it from disk when it is
         // there and drops it from the program when it is not.
-        // @lfy def/mcp/main.lfy:serve#serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc
+        // @lfy def/mcp/main.lfy:serve#serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c
         // @lfy def/mcp/main.lfy:serve#serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a
         for path in &changed {
             self.workspace = workspace::change(&self.workspace, path, None);
@@ -917,7 +920,7 @@ ace const rust = targetOf({
 global@targets.add(rust);
 ";
     /// The manifest of a fixture: it names the library the fixture carries.
-    const LIBRARY_MANIFEST: &str = r#"{ "lib": "lib" }"#;
+    const LIBRARY_MANIFEST: &str = r#"{ "dependencies": { "elfie": "./lib" } }"#;
 
     /// A project directory under the system's temporary directory, removed when dropped.
     struct Fixture {

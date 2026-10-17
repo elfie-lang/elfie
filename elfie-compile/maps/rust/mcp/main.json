@@ -614,6 +614,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -627,7 +628,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -814,14 +814,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -2041,7 +2041,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/commands.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -2662,6 +2662,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -2675,7 +2676,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -2862,14 +2862,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -3873,7 +3873,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/compiling.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -4494,6 +4494,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -4507,7 +4508,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -4694,14 +4694,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -4715,7 +4715,7 @@
       },
       {
         "column": null,
-        "end": 130,
+        "end": 107,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
@@ -4724,291 +4724,273 @@
       },
       {
         "column": null,
-        "end": 131,
+        "end": 133,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 131,
+        "outputLine": 108,
+        "requirement": "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c"
+      },
+      {
+        "column": null,
+        "end": 134,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 28,
+        "outputLine": 134,
         "requirement": "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2"
       },
       {
         "column": null,
-        "end": 152,
+        "end": 155,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 132,
+        "outputLine": 135,
         "requirement": "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331"
       },
       {
         "column": null,
-        "end": 170,
+        "end": 173,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 153,
+        "outputLine": 156,
         "requirement": "host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713"
       },
       {
         "column": null,
-        "end": 174,
+        "end": 177,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 171,
+        "outputLine": 174,
         "requirement": "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386"
       },
       {
         "column": null,
-        "end": 184,
+        "end": 187,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 175,
+        "outputLine": 178,
         "requirement": "serve:serve:4c5aeb9423c7e9206e75798da9c197b91b439325adda5776e09a2061d144988a"
       },
       {
         "column": null,
-        "end": 195,
+        "end": 198,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 185,
+        "outputLine": 188,
         "requirement": "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959"
       },
       {
         "column": null,
-        "end": 196,
+        "end": 199,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 196,
-        "requirement": "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc"
+        "outputLine": 199,
+        "requirement": "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c"
       },
       {
         "column": null,
-        "end": 219,
+        "end": 222,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
-        "outputLine": 197,
+        "outputLine": 200,
         "requirement": "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a"
       },
       {
         "column": null,
-        "end": 225,
+        "end": 228,
         "entity": "problems",
         "file": "def/mcp/main.lfy",
         "line": 222,
-        "outputLine": 220,
+        "outputLine": 223,
         "requirement": "problems:problems:c8c8b536f1269d0fb4bc9adb64fbce292df0715fa51d5d524a18f16685af7bf6"
       },
       {
         "column": null,
-        "end": 240,
+        "end": 243,
         "entity": "source",
         "file": "def/mcp/main.lfy",
         "line": 942,
-        "outputLine": 226,
+        "outputLine": 229,
         "requirement": "source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11"
       },
       {
         "column": null,
-        "end": 242,
+        "end": 245,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 241,
+        "outputLine": 244,
         "requirement": "host:host:f5d226a776398720183cca8da8ecac0ec6273fcfb6503d5533239adec7e2322b"
       },
       {
         "column": null,
-        "end": 257,
+        "end": 260,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 243,
+        "outputLine": 246,
         "requirement": "host:host:f5d226a776398720183cca8da8ecac0ec6273fcfb6503d5533239adec7e2322b"
       },
       {
         "column": null,
-        "end": 263,
+        "end": 266,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 258,
+        "outputLine": 261,
         "requirement": "host:host:f5d226a776398720183cca8da8ecac0ec6273fcfb6503d5533239adec7e2322b"
-      },
-      {
-        "column": null,
-        "end": 269,
-        "entity": "build",
-        "file": "def/mcp/main.lfy",
-        "line": 1232,
-        "outputLine": 264,
-        "requirement": "build:commandTool:394aef9de6082d12b6f9d58c8eaae738d8ab0f6aef3341b5fda12620fe6500a6"
-      },
-      {
-        "column": null,
-        "end": 270,
-        "entity": "build",
-        "file": "def/mcp/main.lfy",
-        "line": 1232,
-        "outputLine": 270,
-        "requirement": "build:commandTool:654d31e36e3f112d06aa532374f30fda36190672b3a323580052a1c0f96e1401"
-      },
-      {
-        "column": null,
-        "end": 271,
-        "entity": "test",
-        "file": "def/mcp/main.lfy",
-        "line": 1257,
-        "outputLine": 271,
-        "requirement": "test:commandTool:82d963f45b5a888916a03e865844e4c1961de319774b2584f65489dee966cdb5"
       },
       {
         "column": null,
         "end": 272,
+        "entity": "build",
+        "file": "def/mcp/main.lfy",
+        "line": 1232,
+        "outputLine": 267,
+        "requirement": "build:commandTool:394aef9de6082d12b6f9d58c8eaae738d8ab0f6aef3341b5fda12620fe6500a6"
+      },
+      {
+        "column": null,
+        "end": 273,
+        "entity": "build",
+        "file": "def/mcp/main.lfy",
+        "line": 1232,
+        "outputLine": 273,
+        "requirement": "build:commandTool:654d31e36e3f112d06aa532374f30fda36190672b3a323580052a1c0f96e1401"
+      },
+      {
+        "column": null,
+        "end": 274,
+        "entity": "test",
+        "file": "def/mcp/main.lfy",
+        "line": 1257,
+        "outputLine": 274,
+        "requirement": "test:commandTool:82d963f45b5a888916a03e865844e4c1961de319774b2584f65489dee966cdb5"
+      },
+      {
+        "column": null,
+        "end": 275,
         "entity": "lint",
         "file": "def/mcp/main.lfy",
         "line": 1286,
-        "outputLine": 272,
+        "outputLine": 275,
         "requirement": "lint:commandTool:db94076681d45420de07709b25f27480d746751609aa1bb42a77c77d453001eb"
       },
       {
         "column": null,
-        "end": 304,
+        "end": 307,
         "entity": "format",
         "file": "def/mcp/main.lfy",
         "line": 1294,
-        "outputLine": 273,
+        "outputLine": 276,
         "requirement": "format:commandTool:a09c5e43d4c38d2e3196576c80db3cf1cb918134842760d0c7e7aa134b552a6b"
       },
       {
         "column": null,
-        "end": 323,
+        "end": 326,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 305,
+        "outputLine": 308,
         "requirement": "check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d"
       },
       {
         "column": null,
-        "end": 337,
+        "end": 340,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 324,
+        "outputLine": 327,
         "requirement": "check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d"
       },
       {
         "column": null,
-        "end": 352,
+        "end": 355,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
-        "outputLine": 338,
+        "outputLine": 341,
         "requirement": "units:units:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab"
       },
       {
         "column": null,
-        "end": 375,
+        "end": 378,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
-        "outputLine": 353,
+        "outputLine": 356,
         "requirement": "units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251"
       },
       {
         "column": null,
-        "end": 376,
+        "end": 379,
         "entity": "output",
         "file": "def/mcp/main.lfy",
         "line": 789,
-        "outputLine": 376,
+        "outputLine": 379,
         "requirement": "output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f"
       },
       {
         "column": null,
-        "end": 377,
+        "end": 380,
         "entity": "mark",
         "file": "def/mcp/main.lfy",
         "line": 567,
-        "outputLine": 377,
+        "outputLine": 380,
         "requirement": "mark:mark:20e94fd8b37ced24d2351848435ef39376d3fc15eeb5d4e64ccffd5f95cb4053"
       },
       {
         "column": null,
-        "end": 429,
+        "end": 432,
         "entity": "search",
         "file": "def/mcp/main.lfy",
         "line": 866,
-        "outputLine": 378,
+        "outputLine": 381,
         "requirement": "search:search:c17cae68f2b3424b9e51c005c2ca4bc5521e610abeb02c841daa9b067c1fa147"
       },
       {
         "column": null,
-        "end": 430,
+        "end": 433,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 430,
+        "outputLine": 433,
         "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
       },
       {
         "column": null,
-        "end": 449,
+        "end": 452,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 431,
+        "outputLine": 434,
         "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
       },
       {
         "column": null,
-        "end": 454,
+        "end": 457,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 450,
+        "outputLine": 453,
         "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
       },
       {
         "column": null,
-        "end": 470,
+        "end": 473,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 455,
+        "outputLine": 458,
         "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
-      },
-      {
-        "column": null,
-        "end": 497,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 471,
-        "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
-      },
-      {
-        "column": null,
-        "end": 498,
-        "entity": "output",
-        "file": "def/mcp/main.lfy",
-        "line": 789,
-        "outputLine": 498,
-        "requirement": "output:output:18bbd05acd9d7ef32f170d4713899aaf2e4c19f93da25c7feae2938e50414fc1"
-      },
-      {
-        "column": null,
-        "end": 499,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 499,
-        "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
       },
       {
         "column": null,
@@ -5016,26 +4998,44 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 500,
-        "requirement": "host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba"
+        "outputLine": 474,
+        "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
       },
       {
         "column": null,
-        "end": 504,
-        "entity": "host",
+        "end": 501,
+        "entity": "output",
         "file": "def/mcp/main.lfy",
-        "line": 102,
+        "line": 789,
         "outputLine": 501,
-        "requirement": "host:host:232c0725ae5219330822ed9664cc87be38c4591303cbc3dead664044e09b75eb"
+        "requirement": "output:output:18bbd05acd9d7ef32f170d4713899aaf2e4c19f93da25c7feae2938e50414fc1"
       },
       {
         "column": null,
-        "end": 516,
+        "end": 502,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 505,
+        "outputLine": 502,
+        "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
+      },
+      {
+        "column": null,
+        "end": 503,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 503,
         "requirement": "host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba"
+      },
+      {
+        "column": null,
+        "end": 507,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 504,
+        "requirement": "host:host:232c0725ae5219330822ed9664cc87be38c4591303cbc3dead664044e09b75eb"
       },
       {
         "column": null,
@@ -5043,48 +5043,48 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 517,
+        "outputLine": 508,
         "requirement": "host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba"
       },
       {
         "column": null,
-        "end": 533,
+        "end": 522,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
         "outputLine": 520,
+        "requirement": "host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba"
+      },
+      {
+        "column": null,
+        "end": 536,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 523,
         "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
       },
       {
         "column": null,
-        "end": 552,
+        "end": 555,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 534,
-        "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
-      },
-      {
-        "column": null,
-        "end": 568,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 553,
+        "outputLine": 537,
         "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
       },
       {
         "column": null,
         "end": 571,
-        "entity": "units",
+        "entity": "host",
         "file": "def/mcp/main.lfy",
-        "line": 287,
-        "outputLine": 569,
-        "requirement": "units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251"
+        "line": 102,
+        "outputLine": 556,
+        "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
       },
       {
         "column": null,
-        "end": 573,
+        "end": 574,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
@@ -5093,236 +5093,245 @@
       },
       {
         "column": null,
-        "end": 578,
+        "end": 576,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
-        "outputLine": 574,
+        "outputLine": 575,
         "requirement": "units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251"
       },
       {
         "column": null,
-        "end": 585,
+        "end": 581,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
-        "outputLine": 579,
+        "outputLine": 577,
         "requirement": "units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251"
       },
       {
         "column": null,
-        "end": 586,
+        "end": 588,
+        "entity": "units",
+        "file": "def/mcp/main.lfy",
+        "line": 287,
+        "outputLine": 582,
+        "requirement": "units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251"
+      },
+      {
+        "column": null,
+        "end": 589,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 586,
+        "outputLine": 589,
         "requirement": "request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0"
       },
       {
         "column": null,
-        "end": 605,
+        "end": 608,
         "entity": "review",
         "file": "def/mcp/main.lfy",
         "line": 1016,
-        "outputLine": 587,
+        "outputLine": 590,
         "requirement": "review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea"
       },
       {
         "column": null,
-        "end": 606,
+        "end": 609,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 606,
+        "outputLine": 609,
         "requirement": "check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30"
       },
       {
         "column": null,
-        "end": 633,
+        "end": 636,
         "entity": "changes",
         "file": "def/mcp/main.lfy",
         "line": 964,
-        "outputLine": 607,
+        "outputLine": 610,
         "requirement": "changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1"
       },
       {
         "column": null,
-        "end": 662,
+        "end": 665,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 634,
+        "outputLine": 637,
         "requirement": null
       },
       {
         "column": null,
-        "end": 666,
+        "end": 669,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 663,
+        "outputLine": 666,
         "requirement": "request:request:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99"
       },
       {
         "column": null,
-        "end": 679,
+        "end": 682,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 667,
+        "outputLine": 670,
         "requirement": "request:request:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99"
       },
       {
         "column": null,
-        "end": 689,
+        "end": 692,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 680,
+        "outputLine": 683,
         "requirement": "request:request:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c"
       },
       {
         "column": null,
-        "end": 702,
+        "end": 705,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 690,
+        "outputLine": 693,
         "requirement": "request:request:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c"
       },
       {
         "column": null,
-        "end": 717,
+        "end": 720,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 703,
+        "outputLine": 706,
         "requirement": "request:request:92537a4ab2aac8027576852406e446fcb12c7b5b87c96095a386c6d7dac101ed"
       },
       {
         "column": null,
-        "end": 725,
+        "end": 728,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 718,
+        "outputLine": 721,
         "requirement": "request:request:92537a4ab2aac8027576852406e446fcb12c7b5b87c96095a386c6d7dac101ed"
       },
       {
         "column": null,
-        "end": 741,
+        "end": 744,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 726,
+        "outputLine": 729,
         "requirement": "check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d"
       },
       {
         "column": null,
-        "end": 742,
+        "end": 745,
         "entity": "mark",
         "file": "def/mcp/main.lfy",
         "line": 567,
-        "outputLine": 742,
+        "outputLine": 745,
         "requirement": "mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe"
       },
       {
         "column": null,
-        "end": 755,
+        "end": 758,
         "entity": "search",
         "file": "def/mcp/main.lfy",
         "line": 866,
-        "outputLine": 743,
+        "outputLine": 746,
         "requirement": "search:search:fa10d4c06de0e21bae6488a493c889c66e5ea9d22f426fbcf0488df26d15e041"
       },
       {
         "column": null,
-        "end": 761,
+        "end": 764,
         "entity": "mark",
         "file": "def/mcp/main.lfy",
         "line": 567,
-        "outputLine": 756,
+        "outputLine": 759,
         "requirement": "mark:mark:c3d247ab4b165bf17b1ba969469f280619af5c95535eec67c2881e691f8a9a83"
       },
       {
         "column": null,
-        "end": 767,
+        "end": 770,
         "entity": "mark",
         "file": "def/mcp/main.lfy",
         "line": 567,
-        "outputLine": 762,
+        "outputLine": 765,
         "requirement": "mark:mark:c3d247ab4b165bf17b1ba969469f280619af5c95535eec67c2881e691f8a9a83"
       },
       {
         "column": null,
-        "end": 771,
+        "end": 774,
         "entity": "search",
         "file": "def/mcp/main.lfy",
         "line": 866,
-        "outputLine": 768,
+        "outputLine": 771,
         "requirement": "search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f"
       },
       {
         "column": null,
-        "end": 775,
+        "end": 778,
         "entity": "search",
         "file": "def/mcp/main.lfy",
         "line": 866,
-        "outputLine": 772,
+        "outputLine": 775,
         "requirement": "search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f"
       },
       {
         "column": null,
-        "end": 977,
+        "end": 980,
         "entity": "search",
         "file": "def/mcp/main.lfy",
         "line": 866,
-        "outputLine": 776,
+        "outputLine": 779,
         "requirement": "search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f"
       },
       {
         "column": null,
-        "end": 1246,
+        "end": 1249,
         "entity": "changes",
         "file": "def/mcp/main.lfy",
         "line": 964,
-        "outputLine": 978,
+        "outputLine": 981,
         "requirement": "changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1"
       },
       {
         "column": null,
-        "end": 1320,
+        "end": 1323,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 1247,
+        "outputLine": 1250,
         "requirement": "request:request:af5eea7b402d3ed59ce0541ca71250ff92ea2e142a768f4b98af9e9bc4f348c9"
       },
       {
         "column": null,
-        "end": 1328,
+        "end": 1331,
         "entity": "task",
         "file": "def/mcp/main.lfy",
         "line": 356,
-        "outputLine": 1321,
+        "outputLine": 1324,
         "requirement": "task:compilerTool:1e78463366ba8fbbfbec5fc142e181f67f7b2aead81f243e58972718f0a441a8"
       },
       {
         "column": null,
-        "end": 1364,
+        "end": 1367,
         "entity": "task",
         "file": "def/mcp/main.lfy",
         "line": 356,
-        "outputLine": 1329,
+        "outputLine": 1332,
         "requirement": "task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d"
       }
     ],
     "output": "crates/elfie-mcp/src/lib.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
-    "text": "606d6e9df0aa1f66426787a892800290fcf2a7ce4182e8f39f6bd8dfed427789"
+    "text": "e42e61c32223df09f2f6d2570a97a7fe08daaff1742b43c1432bede203c90a98"
   },
   {
     "answered": [
@@ -5939,6 +5948,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -5952,7 +5962,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -6139,14 +6148,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -6601,7 +6610,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/planning.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -7222,6 +7231,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -7235,7 +7245,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -7422,14 +7431,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -7641,7 +7650,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/reading.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -8262,6 +8271,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -8275,7 +8285,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -8462,14 +8471,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -8942,7 +8951,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/regions.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -9563,6 +9572,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -9576,7 +9586,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -9763,14 +9772,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -13699,7 +13708,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/registry.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -14320,6 +14329,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -14333,7 +14343,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -14520,14 +14529,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -15531,7 +15540,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/serving.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -16152,6 +16161,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -16165,7 +16175,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -16352,14 +16361,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -16760,7 +16769,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/tests/commands_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -17381,6 +17390,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -17394,7 +17404,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -17581,14 +17590,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -18259,7 +18268,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/tests/compiling_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -18880,6 +18889,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -18893,7 +18903,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -19080,14 +19089,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -19551,7 +19560,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/tests/planning_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -20172,6 +20181,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -20185,7 +20195,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -20372,14 +20381,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -20501,7 +20510,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/tests/reading_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -21122,6 +21131,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -21135,7 +21145,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -21322,14 +21331,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -21757,7 +21766,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/tests/regions_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -22378,6 +22387,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -22391,7 +22401,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -22578,14 +22587,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -23594,7 +23603,7 @@
         "file": "def/mcp/main.lfy",
         "line": 28,
         "outputLine": 370,
-        "requirement": "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc"
+        "requirement": "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c"
       },
       {
         "column": null,
@@ -23616,7 +23625,7 @@
       },
       {
         "column": null,
-        "end": 407,
+        "end": 403,
         "entity": "serve",
         "file": "def/mcp/main.lfy",
         "line": 28,
@@ -23625,84 +23634,75 @@
       },
       {
         "column": null,
-        "end": 408,
+        "end": 424,
+        "entity": "serve",
+        "file": "def/mcp/main.lfy",
+        "line": 28,
+        "outputLine": 404,
+        "requirement": "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c"
+      },
+      {
+        "column": null,
+        "end": 425,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 408,
+        "outputLine": 425,
         "requirement": "host:host:465078bd14c4c2971c8ae047a59db580f64b30e5fa762af2e656c4accbede7ba"
       },
       {
         "column": null,
-        "end": 409,
+        "end": 426,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 409,
+        "outputLine": 426,
         "requirement": "host:host:238a67527a5f81bdc05abb6515eacc7b86b9ead269c56d3b3654d34d47184b50"
       },
       {
         "column": null,
-        "end": 410,
+        "end": 427,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 410,
+        "outputLine": 427,
         "requirement": "host:host:b01f7a894faf3752cba01a91aaed7228df1bb1b93d87ea2c648f034427bcc3fd"
       },
       {
         "column": null,
-        "end": 411,
+        "end": 428,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 411,
+        "outputLine": 428,
         "requirement": "host:host:bb7c6b5258b2c4026015a8f9915717da1ec50aa40dcc10a43e5b50bc9e39310e"
       },
       {
         "column": null,
-        "end": 412,
+        "end": 429,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 412,
+        "outputLine": 429,
         "requirement": "host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1"
       },
       {
         "column": null,
-        "end": 413,
+        "end": 430,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 413,
+        "outputLine": 430,
         "requirement": "host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95"
       },
       {
         "column": null,
-        "end": 414,
+        "end": 431,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 414,
+        "outputLine": 431,
         "requirement": "host:host:91b44b23c29eaf7242b190da7fe5ab5f3642df5ec77212e680331af6b76e01b1"
-      },
-      {
-        "column": null,
-        "end": 415,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 415,
-        "requirement": "host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713"
-      },
-      {
-        "column": null,
-        "end": 420,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 416,
-        "requirement": "host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6"
       },
       {
         "column": null,
@@ -23710,35 +23710,17 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 421,
-        "requirement": "host:host:465078bd14c4c2971c8ae047a59db580f64b30e5fa762af2e656c4accbede7ba"
+        "outputLine": 432,
+        "requirement": "host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713"
       },
       {
         "column": null,
-        "end": 434,
+        "end": 437,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
         "outputLine": 433,
-        "requirement": "host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1"
-      },
-      {
-        "column": null,
-        "end": 442,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 435,
-        "requirement": "host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95"
-      },
-      {
-        "column": null,
-        "end": 445,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 443,
-        "requirement": "host:host:d3b3abd60412e83fb1835597e514740cc7d4648f94a73575cf7f076399063025"
+        "requirement": "host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6"
       },
       {
         "column": null,
@@ -23746,17 +23728,35 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 446,
-        "requirement": "host:host:1f6860e467f9f7b17993f762e5ba4521688af80851fff707da5bbb18f86cdbba"
+        "outputLine": 438,
+        "requirement": "host:host:465078bd14c4c2971c8ae047a59db580f64b30e5fa762af2e656c4accbede7ba"
       },
       {
         "column": null,
-        "end": 454,
-        "entity": "check",
+        "end": 451,
+        "entity": "host",
         "file": "def/mcp/main.lfy",
-        "line": 533,
+        "line": 102,
         "outputLine": 450,
-        "requirement": "check:tool:d1b4319d34a3d00324ec0850bf1e0987ceb4112aab80f13d77b82554c27ca5f9"
+        "requirement": "host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1"
+      },
+      {
+        "column": null,
+        "end": 459,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 452,
+        "requirement": "host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95"
+      },
+      {
+        "column": null,
+        "end": 462,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 460,
+        "requirement": "host:host:d3b3abd60412e83fb1835597e514740cc7d4648f94a73575cf7f076399063025"
       },
       {
         "column": null,
@@ -23764,44 +23764,17 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 455,
-        "requirement": "host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6"
+        "outputLine": 463,
+        "requirement": "host:host:1f6860e467f9f7b17993f762e5ba4521688af80851fff707da5bbb18f86cdbba"
       },
       {
         "column": null,
-        "end": 472,
-        "entity": "host",
+        "end": 471,
+        "entity": "check",
         "file": "def/mcp/main.lfy",
-        "line": 102,
+        "line": 533,
         "outputLine": 467,
-        "requirement": "host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6"
-      },
-      {
-        "column": null,
-        "end": 475,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 473,
-        "requirement": "host:host:238a67527a5f81bdc05abb6515eacc7b86b9ead269c56d3b3654d34d47184b50"
-      },
-      {
-        "column": null,
-        "end": 479,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 476,
-        "requirement": "host:host:b01f7a894faf3752cba01a91aaed7228df1bb1b93d87ea2c648f034427bcc3fd"
-      },
-      {
-        "column": null,
-        "end": 481,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 480,
-        "requirement": "host:host:bb7c6b5258b2c4026015a8f9915717da1ec50aa40dcc10a43e5b50bc9e39310e"
+        "requirement": "check:tool:d1b4319d34a3d00324ec0850bf1e0987ceb4112aab80f13d77b82554c27ca5f9"
       },
       {
         "column": null,
@@ -23809,143 +23782,143 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 482,
-        "requirement": "host:host:91b44b23c29eaf7242b190da7fe5ab5f3642df5ec77212e680331af6b76e01b1"
-      },
-      {
-        "column": null,
-        "end": 488,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 484,
-        "requirement": "host:host:5e5526603ec0ccf1f819bfc584b556e779b3a2a8f9d0f46fdc9b92ad91bb9dc5"
+        "outputLine": 472,
+        "requirement": "host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6"
       },
       {
         "column": null,
         "end": 489,
-        "entity": "check",
+        "entity": "host",
         "file": "def/mcp/main.lfy",
-        "line": 533,
-        "outputLine": 489,
-        "requirement": "check:tool:171e2f1ce748190f5ccbf577a5f91fc2fd8683a6b877bb654a16a48965e01265"
+        "line": 102,
+        "outputLine": 484,
+        "requirement": "host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6"
       },
       {
         "column": null,
-        "end": 497,
-        "entity": "check",
+        "end": 492,
+        "entity": "host",
         "file": "def/mcp/main.lfy",
-        "line": 533,
+        "line": 102,
         "outputLine": 490,
-        "requirement": "check:tool:15fd0657dd9bfbe4565283f531743c14447968c8361b95ba4e874d2a8309c888"
+        "requirement": "host:host:238a67527a5f81bdc05abb6515eacc7b86b9ead269c56d3b3654d34d47184b50"
+      },
+      {
+        "column": null,
+        "end": 496,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 493,
+        "requirement": "host:host:b01f7a894faf3752cba01a91aaed7228df1bb1b93d87ea2c648f034427bcc3fd"
+      },
+      {
+        "column": null,
+        "end": 498,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 497,
+        "requirement": "host:host:bb7c6b5258b2c4026015a8f9915717da1ec50aa40dcc10a43e5b50bc9e39310e"
+      },
+      {
+        "column": null,
+        "end": 500,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 499,
+        "requirement": "host:host:91b44b23c29eaf7242b190da7fe5ab5f3642df5ec77212e680331af6b76e01b1"
       },
       {
         "column": null,
         "end": 505,
-        "entity": "units",
+        "entity": "host",
         "file": "def/mcp/main.lfy",
-        "line": 287,
-        "outputLine": 498,
-        "requirement": "units:tool:c0392f44087e7b29669f0f8d6b5d294cb0195675616839b4f6d80e791125f939"
+        "line": 102,
+        "outputLine": 501,
+        "requirement": "host:host:5e5526603ec0ccf1f819bfc584b556e779b3a2a8f9d0f46fdc9b92ad91bb9dc5"
+      },
+      {
+        "column": null,
+        "end": 506,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 533,
+        "outputLine": 506,
+        "requirement": "check:tool:171e2f1ce748190f5ccbf577a5f91fc2fd8683a6b877bb654a16a48965e01265"
+      },
+      {
+        "column": null,
+        "end": 514,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 533,
+        "outputLine": 507,
+        "requirement": "check:tool:15fd0657dd9bfbe4565283f531743c14447968c8361b95ba4e874d2a8309c888"
       },
       {
         "column": null,
         "end": 522,
-        "entity": "host",
+        "entity": "units",
         "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 506,
-        "requirement": "host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713"
+        "line": 287,
+        "outputLine": 515,
+        "requirement": "units:tool:c0392f44087e7b29669f0f8d6b5d294cb0195675616839b4f6d80e791125f939"
       },
       {
         "column": null,
-        "end": 567,
+        "end": 539,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
         "outputLine": 523,
+        "requirement": "host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713"
+      },
+      {
+        "column": null,
+        "end": 584,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 540,
         "requirement": "host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6"
       },
       {
         "column": null,
-        "end": 568,
+        "end": 585,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 568,
+        "outputLine": 585,
         "requirement": "host:host:d17c6dc3479336c65543a2c99389c29582860e9358d65bd4e36a3d9c355e7825"
       },
       {
         "column": null,
-        "end": 569,
+        "end": 586,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 569,
+        "outputLine": 586,
         "requirement": "host:host:ea1cfd81c073494e7f7377472fc3070be780e4455e629f59e365d21d658269d4"
       },
       {
         "column": null,
-        "end": 570,
+        "end": 587,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 570,
+        "outputLine": 587,
         "requirement": "host:host:c0b5fd0495fb73ed8d21e6599998b9acc5a051a0dde254bb492f14f26417fade"
       },
       {
         "column": null,
-        "end": 571,
+        "end": 588,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 571,
+        "outputLine": 588,
         "requirement": "host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852"
-      },
-      {
-        "column": null,
-        "end": 572,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 572,
-        "requirement": "host:host:b20b250482898ccb1326689317f112cb544e9941949596a5c823ce56f4d692b9"
-      },
-      {
-        "column": null,
-        "end": 573,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 573,
-        "requirement": "host:host:f876706edb4133d6c7e2e9d4f43bf7b7cc00c92572911e227d0c789a95636e5d"
-      },
-      {
-        "column": null,
-        "end": 574,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 574,
-        "requirement": "host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79"
-      },
-      {
-        "column": null,
-        "end": 582,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 575,
-        "requirement": "host:host:e07851ea0cedfcd8e3d913fa15d72b1c389e0d5f87edfc1f52b7841decccbd1e"
-      },
-      {
-        "column": null,
-        "end": 583,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 583,
-        "requirement": "host:host:ea1cfd81c073494e7f7377472fc3070be780e4455e629f59e365d21d658269d4"
       },
       {
         "column": null,
@@ -23953,53 +23926,71 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 584,
-        "requirement": "host:host:c0b5fd0495fb73ed8d21e6599998b9acc5a051a0dde254bb492f14f26417fade"
-      },
-      {
-        "column": null,
-        "end": 603,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 590,
-        "requirement": "host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852"
-      },
-      {
-        "column": null,
-        "end": 608,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 604,
+        "outputLine": 589,
         "requirement": "host:host:b20b250482898ccb1326689317f112cb544e9941949596a5c823ce56f4d692b9"
       },
       {
         "column": null,
-        "end": 615,
+        "end": 590,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 609,
+        "outputLine": 590,
         "requirement": "host:host:f876706edb4133d6c7e2e9d4f43bf7b7cc00c92572911e227d0c789a95636e5d"
       },
       {
         "column": null,
-        "end": 616,
+        "end": 591,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 616,
-        "requirement": "host:host:d17c6dc3479336c65543a2c99389c29582860e9358d65bd4e36a3d9c355e7825"
+        "outputLine": 591,
+        "requirement": "host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79"
       },
       {
         "column": null,
-        "end": 630,
+        "end": 599,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 617,
-        "requirement": "host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79"
+        "outputLine": 592,
+        "requirement": "host:host:e07851ea0cedfcd8e3d913fa15d72b1c389e0d5f87edfc1f52b7841decccbd1e"
+      },
+      {
+        "column": null,
+        "end": 600,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 600,
+        "requirement": "host:host:ea1cfd81c073494e7f7377472fc3070be780e4455e629f59e365d21d658269d4"
+      },
+      {
+        "column": null,
+        "end": 606,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 601,
+        "requirement": "host:host:c0b5fd0495fb73ed8d21e6599998b9acc5a051a0dde254bb492f14f26417fade"
+      },
+      {
+        "column": null,
+        "end": 620,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 607,
+        "requirement": "host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852"
+      },
+      {
+        "column": null,
+        "end": 625,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 621,
+        "requirement": "host:host:b20b250482898ccb1326689317f112cb544e9941949596a5c823ce56f4d692b9"
       },
       {
         "column": null,
@@ -24007,88 +23998,97 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 631,
+        "outputLine": 626,
+        "requirement": "host:host:f876706edb4133d6c7e2e9d4f43bf7b7cc00c92572911e227d0c789a95636e5d"
+      },
+      {
+        "column": null,
+        "end": 633,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 633,
+        "requirement": "host:host:d17c6dc3479336c65543a2c99389c29582860e9358d65bd4e36a3d9c355e7825"
+      },
+      {
+        "column": null,
+        "end": 647,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 634,
+        "requirement": "host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79"
+      },
+      {
+        "column": null,
+        "end": 649,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 648,
         "requirement": "host:host:d3b3abd60412e83fb1835597e514740cc7d4648f94a73575cf7f076399063025"
       },
       {
         "column": null,
-        "end": 637,
+        "end": 654,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
-        "outputLine": 633,
+        "outputLine": 650,
         "requirement": "units:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4"
       },
       {
         "column": null,
-        "end": 646,
+        "end": 663,
         "entity": "units",
         "file": "def/mcp/main.lfy",
         "line": 287,
-        "outputLine": 638,
+        "outputLine": 655,
         "requirement": "units:tool:59e3afe0a4f39564b82a347fa5494defa7421ae95a945c19049ed8e307b1b0e8"
       },
       {
         "column": null,
-        "end": 654,
+        "end": 671,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 647,
+        "outputLine": 664,
         "requirement": "host:host:e07851ea0cedfcd8e3d913fa15d72b1c389e0d5f87edfc1f52b7841decccbd1e"
       },
       {
         "column": null,
-        "end": 666,
+        "end": 683,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 655,
+        "outputLine": 672,
         "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
       },
       {
         "column": null,
-        "end": 677,
+        "end": 694,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 667,
+        "outputLine": 684,
         "requirement": "host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e"
       },
       {
         "column": null,
-        "end": 685,
+        "end": 702,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 678,
+        "outputLine": 695,
         "requirement": "host:host:232c0725ae5219330822ed9664cc87be38c4591303cbc3dead664044e09b75eb"
       },
       {
         "column": null,
-        "end": 695,
+        "end": 712,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 686,
-        "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
-      },
-      {
-        "column": null,
-        "end": 733,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 730,
-        "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
-      },
-      {
-        "column": null,
-        "end": 741,
-        "entity": "host",
-        "file": "def/mcp/main.lfy",
-        "line": 102,
-        "outputLine": 734,
+        "outputLine": 703,
         "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
       },
       {
@@ -24097,169 +24097,187 @@
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 742,
-        "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
+        "outputLine": 747,
+        "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
       },
       {
         "column": null,
-        "end": 755,
+        "end": 758,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
         "outputLine": 751,
-        "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
+        "requirement": "host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa"
       },
       {
         "column": null,
-        "end": 760,
+        "end": 767,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 756,
+        "outputLine": 759,
         "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
       },
       {
         "column": null,
-        "end": 776,
+        "end": 772,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 761,
+        "outputLine": 768,
         "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
       },
       {
         "column": null,
-        "end": 783,
+        "end": 777,
         "entity": "host",
         "file": "def/mcp/main.lfy",
         "line": 102,
-        "outputLine": 777,
+        "outputLine": 773,
         "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
       },
       {
         "column": null,
-        "end": 784,
+        "end": 793,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 778,
+        "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
+      },
+      {
+        "column": null,
+        "end": 800,
+        "entity": "host",
+        "file": "def/mcp/main.lfy",
+        "line": 102,
+        "outputLine": 794,
+        "requirement": "host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5"
+      },
+      {
+        "column": null,
+        "end": 801,
         "entity": "request",
         "file": "def/mcp/main.lfy",
         "line": 320,
-        "outputLine": 784,
+        "outputLine": 801,
         "requirement": "request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0"
       },
       {
         "column": null,
-        "end": 785,
+        "end": 802,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 785,
+        "outputLine": 802,
         "requirement": "check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30"
-      },
-      {
-        "column": null,
-        "end": 786,
-        "entity": "changes",
-        "file": "def/mcp/main.lfy",
-        "line": 964,
-        "outputLine": 786,
-        "requirement": "changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1"
       },
       {
         "column": null,
         "end": 803,
-        "entity": "review",
-        "file": "def/mcp/main.lfy",
-        "line": 1016,
-        "outputLine": 787,
-        "requirement": "review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea"
-      },
-      {
-        "column": null,
-        "end": 806,
-        "entity": "request",
-        "file": "def/mcp/main.lfy",
-        "line": 320,
-        "outputLine": 804,
-        "requirement": "request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0"
-      },
-      {
-        "column": null,
-        "end": 809,
-        "entity": "check",
-        "file": "def/mcp/main.lfy",
-        "line": 533,
-        "outputLine": 807,
-        "requirement": "check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30"
-      },
-      {
-        "column": null,
-        "end": 812,
         "entity": "changes",
         "file": "def/mcp/main.lfy",
         "line": 964,
-        "outputLine": 810,
+        "outputLine": 803,
         "requirement": "changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1"
       },
       {
         "column": null,
-        "end": 817,
+        "end": 820,
         "entity": "review",
         "file": "def/mcp/main.lfy",
         "line": 1016,
-        "outputLine": 813,
+        "outputLine": 804,
         "requirement": "review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea"
       },
       {
         "column": null,
-        "end": 822,
+        "end": 823,
+        "entity": "request",
+        "file": "def/mcp/main.lfy",
+        "line": 320,
+        "outputLine": 821,
+        "requirement": "request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0"
+      },
+      {
+        "column": null,
+        "end": 826,
         "entity": "check",
         "file": "def/mcp/main.lfy",
         "line": 533,
-        "outputLine": 818,
+        "outputLine": 824,
+        "requirement": "check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30"
+      },
+      {
+        "column": null,
+        "end": 829,
+        "entity": "changes",
+        "file": "def/mcp/main.lfy",
+        "line": 964,
+        "outputLine": 827,
+        "requirement": "changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1"
+      },
+      {
+        "column": null,
+        "end": 834,
+        "entity": "review",
+        "file": "def/mcp/main.lfy",
+        "line": 1016,
+        "outputLine": 830,
+        "requirement": "review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea"
+      },
+      {
+        "column": null,
+        "end": 839,
+        "entity": "check",
+        "file": "def/mcp/main.lfy",
+        "line": 533,
+        "outputLine": 835,
         "requirement": "check:check:2a16ea176547468dbe87eb74de7c195dc58e16c26122fc69de5f2ff15dd469f1"
       },
       {
         "column": null,
-        "end": 835,
+        "end": 852,
         "entity": "review",
         "file": "def/mcp/main.lfy",
         "line": 1016,
-        "outputLine": 823,
+        "outputLine": 840,
         "requirement": "review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea"
       },
       {
         "column": null,
-        "end": 846,
+        "end": 863,
         "entity": "review",
         "file": "def/mcp/main.lfy",
         "line": 1016,
-        "outputLine": 836,
+        "outputLine": 853,
         "requirement": "review:review:da108e476bfaee29f25ace2bffd41fea2a2d7605e41824c4b25757bf8287f9b1"
       },
       {
         "column": null,
-        "end": 849,
+        "end": 866,
         "entity": "review",
         "file": "def/mcp/main.lfy",
         "line": 1016,
-        "outputLine": 847,
+        "outputLine": 864,
         "requirement": "review:review:da108e476bfaee29f25ace2bffd41fea2a2d7605e41824c4b25757bf8287f9b1"
       },
       {
         "column": null,
-        "end": 855,
+        "end": 872,
         "entity": "review",
         "file": "def/mcp/main.lfy",
         "line": 1016,
-        "outputLine": 850,
+        "outputLine": 867,
         "requirement": "review:review:f58d35f9aea99f8ea42d7e215a8e84d42b2b414afa745217d99622b1a66e5c0d"
       }
     ],
     "output": "crates/elfie-mcp/src/tests/serving_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
-    "text": "c462f80a6c905b8d43c86ed6d6046556b9f60c4a6563b97e2aa2ae00bb20190e"
+    "text": "ae286f87433950b8145bd9baf806e5dc39c16c659f0bc702f84d1c2f9529ed27"
   },
   {
     "answered": [
@@ -24876,6 +24894,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -24889,7 +24908,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -25076,14 +25094,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -25277,7 +25295,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/tests/verdicts_tests.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",
@@ -25898,6 +25916,7 @@
       "search:tool:d2c7b2635329f74a09d591b5a08a10bf91aec95b06cf165df0d237df2bfe4442",
       "search:tool:d86ec47169d8d453d526a2ae4c472edebcf52bce2a253c8461f5b2a683122d42",
       "search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8",
+      "serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c",
       "serve:serve:01ce18f671ec478741555e6ff345d61120f118da6209c46d18cd01b3cbff3e6a",
       "serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2",
       "serve:serve:1893a7a1afe4f16bc76a47596614b6645e060072995b9387c9386905037fe959",
@@ -25911,7 +25930,6 @@
       "serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336",
       "serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331",
       "serve:serve:995535b9c7a11554f96d88793004bc092de31525b26cd0ca15ce449e17d8e386",
-      "serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc",
       "serve:serve:a0e0712c211c914b7d1655d1a85d5aa373db8b9d94524624d54554e2501f845d",
       "serve:serve:b40b7d13aaacdbb22af8b5a419d2c34ed6ffe19d0e12598b4aa56f9dee24fe22",
       "serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2",
@@ -26098,14 +26116,14 @@
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
       "def/mcp/data.lfy": "770acac3d532d46d1368fcb0066041062f7f35a88f534517ac2f4b33c6a51725",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/main.lfy": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6",
       "def/workspace/main.lfy": "33b66e167568f62e056b3416fe2d412fcd587ccc5687253dd99c81ccdc23df02"
     },
-    "generated": "2026-10-11T17:16:52Z",
+    "generated": "2026-10-17T16:52:06Z",
     "hash": "dbe563acdf42da3b6e218c8b143eb64db36cc5a4dcc11d1f23bd1029d4549b52",
     "markers": [
       {
@@ -26425,7 +26443,7 @@
       }
     ],
     "output": "crates/elfie-mcp/src/verdicts.rs",
-    "requirements": "2670ddfb858fd967038d838baf760e56bf6060bb342a5a2e69137a13c0436648",
+    "requirements": "fd8be04fa8540b99eed7f35ab7bc7fcc92221ceb24c8251a10333993393f9672",
     "signature": "a7360c43ea7c471d8a412faaa8e96a8f35d6739d44de4f31825f30637b82ae63",
     "source": "def/mcp/main.lfy",
     "target": "rust",

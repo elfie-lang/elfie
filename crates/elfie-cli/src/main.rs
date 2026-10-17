@@ -1079,6 +1079,47 @@ mod tests {
             all.push(self.path());
             run(&all)
         }
+
+        /// One invocation run in a child process of this test binary, so that what it prints
+        /// can be read: its code, its standard output, and its standard error. The child runs
+        /// [`a_child_invocation`] alone, which runs the invocation and exits with its code.
+        fn printed(&self, arguments: &[&str]) -> (u8, String, String) {
+            let mut all: Vec<String> = arguments.iter().map(|a| (*a).to_string()).collect();
+            all.push("--root".to_string());
+            all.push(self.path());
+            let output = Process::new(std::env::current_exe().unwrap())
+                .args(["--exact", "tests::a_child_invocation", "--nocapture", "--test-threads=1"])
+                .env(CHILD, all.join("\u{1f}"))
+                .stdin(Stdio::null())
+                .output()
+                .unwrap();
+            let code = output.status.code().and_then(|code| u8::try_from(code).ok()).unwrap_or(u8::MAX);
+            (
+                code,
+                String::from_utf8_lossy(&output.stdout).into_owned(),
+                String::from_utf8_lossy(&output.stderr).into_owned(),
+            )
+        }
+    }
+
+    /// The variable that hands a child process of this test binary the arguments of the one
+    /// invocation it runs, separated by the unit separator.
+    const CHILD: &str = "ELFIE_CLI_TEST_INVOCATION";
+
+    /// The invocation a parent test handed this process, run as the executable runs it, and
+    /// the process ended with its code; nothing when this process is no such child.
+    #[test]
+    fn a_child_invocation() {
+        let Ok(arguments) = std::env::var(CHILD) else { return };
+        let arguments: Vec<String> = arguments.split('\u{1f}').map(str::to_string).collect();
+        // The test harness has begun a line of its own, which the invocation's first line is
+        // not to share.
+        println!();
+        eprintln!();
+        let code = run(&arguments);
+        let _ = io::stdout().flush();
+        let _ = io::stderr().flush();
+        std::process::exit(i32::from(code));
     }
 
     impl Drop for Fixture {
@@ -1092,7 +1133,7 @@ mod tests {
     /// names it, its output, or its dependencies.
     // @lfy def/cli/main.lfy:main
     fn manifest(commands: &[(&str, &str)]) -> String {
-        let mut value = serde_json::json!({ "name": "p", "dependencies": { "elfie": { "root": "lib" } } });
+        let mut value = serde_json::json!({ "name": "p", "dependencies": { "elfie": "./lib" } });
         for (key, command) in commands {
             value[*key] = serde_json::Value::String((*command).to_string());
         }

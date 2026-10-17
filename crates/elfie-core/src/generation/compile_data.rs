@@ -286,6 +286,13 @@ pub fn rederive(
                     &output,
                     &mut ignored,
                 )
+                // Left as written: acceptance renames a line marker to the declaration it
+                // falls in, but here only the line it derives is taken.
+                .map(|derived| Marker {
+                    entity: marker.entity.clone(),
+                    column: marker.column,
+                    ..derived
+                })
             })
             .collect();
         if markers

@@ -1,8 +1,10 @@
 use "./target";
 
+// Decision: a framework's name and versions are its trait's description, not a member. A member
+// would be set by each layer of the frameworks slot, and two frameworks would set it to different
+// values, which binding refuses.
 trait targetFramework extends target: `The role of a framework: what a target's code is built on, such as react or nextjs; a target may have several` {
-  $framework: `The framework and the versions it supports` = string;
-  where (`Code is generated for something the framework covers`) -> `It is written the way the framework's own documentation for that version shows`;
+  where (`Code is generated for something the framework covers`) -> `It is written the way the framework's own documentation shows, for the version a criterion of the framework names when one does`;
   where (`An entity carries a trait of an interface of the target`) -> `A framework of the target realizes the trait`;
   where (`An entity carries a trait of an interface of the target`) and (`No framework of the target realizes the trait`) -> `The compiler stops and names the trait`;
 }

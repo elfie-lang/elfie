@@ -259,8 +259,8 @@ mod tests {
 
     /// What a fixture writes as `elfie.json`: the package `elfie` is the fixture's own
     /// `lib`, which holds nothing until a test fills it. A test that writes its own
-    /// manifest names `"lib"` the same way.
-    const STUB_MANIFEST: &str = r#"{ "lib": "lib" }"#;
+    /// manifest names `"./lib"` the same way.
+    const STUB_MANIFEST: &str = r#"{ "dependencies": { "elfie": "./lib" } }"#;
 
     impl Fixture {
         pub(super) fn new() -> Fixture {
@@ -294,10 +294,7 @@ mod tests {
         // @lfy def/query/main.lfy:completionsAt
         pub(super) fn with_prelude(text: &str) -> Fixture {
             let fixture = Fixture::one(text);
-            fixture.write(
-                "elfie.json",
-                r#"{ "dependencies": { "elfie": { "root": "lib" } } }"#,
-            );
+            fixture.write("elfie.json", STUB_MANIFEST);
             let library = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../lib"));
             fixture.copy(library, "lib");
             fixture

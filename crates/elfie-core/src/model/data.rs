@@ -533,8 +533,9 @@ pub struct Entity {
     // @lfy def/model/data.lfy:Entity#Entity:traitList:a8b6d4d3d7cc54933301dcfe026cc4267738079adceed510560830d01aae2ee0
     // @lfy def/model/data.lfy:Entity#Entity:traitList:49625aa48b0703f6a1c12a97eb8d56fdb19b02bb6918e843148d26465b703698
     pub traits: Vec<Applied>, // @lfy def/model/data.lfy:Entity.traits
-    /// What a list-typed entity holds; `None` when the type is not a list.
-    pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:Entity.itemType
+    /// The `ListEntity.itemType` of its type, kept for the binder; `None` when the type is
+    /// not a list.
+    pub item_type: Option<TypeRef>, // @lfy def/model/data.lfy:ListEntity.itemType
     /// Every entity referenced via a Reference in definition, documentation, or value.
     pub references: Vec<UsageId>, // @lfy def/model/data.lfy:Entity.references
     /// ContextProperty tests: list of all added tests.
@@ -710,6 +711,42 @@ pub struct Model {
     pub(crate) node_keys: HashMap<(FileId, usize, usize, Rule), usize>,
 }
 
+// @lfy def/model/data.lfy:ListEntity
+// @lfy def/model/data.lfy:Entity#Entity:Entity:f85706e67259beaad6bfe345545b3302709fa505affa3df7aedb3c0812a27232
+#[cfg(test)]
+#[test]
+fn list_entity_item_type_is_its_first_type_argument() {
+    let text = "d A {}\nd Box<T> {}\nconst xs: A[] = [];\nconst b = Box<A>;";
+    let tokens = crate::lexer::lex(text, Some("a.lfy")).expect("the text lexes");
+    let tree = crate::parser::parse(tokens, None);
+    assert!(tree.errors.is_empty(), "{}", tree.render());
+    let model = super::bind(vec![Source {
+        path: "a.lfy".to_string(),
+        tree,
+        uses: Vec::new(),
+        origin: Origin::Program,
+    }]);
+    let declared = |name: &str| {
+        model
+            .entities
+            .iter()
+            .position(|entity| entity.identifier.as_deref() == Some(name))
+            .unwrap_or_else(|| panic!("{name} is declared"))
+    };
+    let a = declared("A");
+    let list = model.entities[declared("xs")].ty.clone().expect("xs has a type");
+    assert_eq!(model.list_item_type(&list), Some(TypeRef::Entity(a)));
+    let Some(TypeRef::Entity(seen)) = model.entities[declared("b")].ty.clone() else {
+        panic!("b is a declaration seen with arguments");
+    };
+    assert_eq!(model.type_arguments(seen).first(), Some(&TypeRef::Entity(a)));
+    assert_eq!(
+        model.list_item_type(&TypeRef::Entity(seen)),
+        model.type_arguments(seen).first().cloned()
+    );
+    assert_eq!(model.list_item_type(&TypeRef::Entity(declared("Box"))), None);
+}
+
 // @lfy def/model/data.lfy:Model#Model:Model:7f6312c0336cc0a062228b497a9b06392771a2b287363f8ed24cbfb40efe8d28
 impl Model {
     /// The node a reference names.
@@ -842,6 +879,19 @@ impl Model {
             }
         }
         found
+    }
+
+    /// `ListEntity.itemType` of a list type: the first of its type arguments, `T[]` being
+    /// spelled as a list and `List<T>` as the declaration seen with its one argument;
+    /// `None` for a list type seen with no argument.
+    // @lfy def/model/data.lfy:ListEntity.itemType
+    // @lfy def/model/data.lfy:Entity#Entity:Entity:f85706e67259beaad6bfe345545b3302709fa505affa3df7aedb3c0812a27232
+    pub fn list_item_type(&self, list: &TypeRef) -> Option<TypeRef> {
+        match list {
+            TypeRef::List(item) => Some((**item).clone()),
+            TypeRef::Entity(entity) => self.type_arguments(*entity).into_iter().next(),
+            _ => None,
+        }
     }
 
     /// Whether more than one entity carrying the trait `rule` shares this identifier, so

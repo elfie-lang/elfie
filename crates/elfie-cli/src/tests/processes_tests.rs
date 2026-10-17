@@ -183,7 +183,11 @@ fn a_run_of_an_agent_works_through_one_hosted_session() {
     // It held one object naming the session's URL and the bearer token, and is gone once
     // the run has returned, since its token no longer opens anything.
     // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
-    let value: serde_json::Value = serde_json::from_str(&fixture.read("written.json")).unwrap();
+    let written = fixture.read("written.json");
+    let value: serde_json::Value = serde_json::from_str(&written).unwrap();
+    // It is Json.stringify of the object in the compact layout: nothing but that one line.
+    // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
+    assert_eq!(written, value.to_string());
     let server = &value["mcpServers"]["elfie"];
     // @lfy def/cli/main.lfy:main#main:main:44a95955daee5d89e4435d08b9cc7de1e517c400cca66ecc9ac0f0aecd83045b
     assert_eq!(server["type"], "http");

@@ -4,9 +4,9 @@ use "elfie/target/interface";
 /// such as nextjs, says how each is built.
 
 trait restApi extends targetInterface: `Operations served as JSON over HTTP` {
-  .protocol = "HTTP/1.1 with JSON bodies";
   .requires = ["http-server"];
   @acceptanceCriteria
+    .add({ behavior = `The API speaks HTTP/1.1, and every request and answer body is JSON` })
     .add({ behavior = `Every fn carrying [[endpoint]] is one operation, and nothing else answers a request` })
     .add({ behavior = `An error answers with a JSON body holding a message, never an HTML page or a stack trace` });
 }
@@ -22,9 +22,9 @@ trait endpoint(method: string, path: string): `An fn answering one method on one
 }
 
 trait website extends targetInterface: `Pages people open in a browser` {
-  .protocol = "HTTP/1.1 serving HTML";
   .requires = ["html-pages", "browser"];
   @acceptanceCriteria
+    .add({ behavior = `The website speaks HTTP/1.1, and every page is served as HTML` })
     .add({ behavior = `Every fn carrying [[page]] is one page, and its path can be linked to and survives a reload` })
     .add({
       behavior = `Pages use semantic HTML, every control can be reached with the keyboard, and every image has alt text`,

@@ -144,7 +144,7 @@ fn a_member_type_naming_an_entity_of_an_unused_file_adds_one_use_of_that_file() 
     );
 }
 
-// @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
+// @lfy def/interpret/main.lfy:lower#lower:lower:329857f0c3255927997222dd97d6ffe47c063ae5245311473963c3d3359c7a40
 #[test]
 fn an_added_use_takes_an_alias_when_the_file_already_sees_the_name() {
     let program = lower(workspace_of(vec![
@@ -164,8 +164,8 @@ fn an_added_use_takes_an_alias_when_the_file_already_sees_the_name() {
         ),
     ]));
     let file = &program.files[3];
-    // The alias is the declaring file's path under the source directory, without its
-    // extension and with each slash an underscore, and the type is spelled through it.
+    // The alias is the declaring file's name, model/kinds, with each slash an underscore,
+    // and the type is spelled through it.
     assert!(
         file.text.contains("use \"./model/kinds\" as model_kinds;"),
         "{}",
@@ -178,11 +178,12 @@ fn an_added_use_takes_an_alias_when_the_file_already_sees_the_name() {
     );
 }
 
-// @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
+// @lfy def/interpret/main.lfy:lower#lower:lower:329857f0c3255927997222dd97d6ffe47c063ae5245311473963c3d3359c7a40
 // @lfy def/interpret/main.lfy:lower#lower:lower:7e159bfaa7ce0d4765fa4fdbd906f7230afdf9fce2ae0297f29ee8f15f2af929
 #[test]
 fn an_alias_names_nothing_else_and_a_package_file_is_used_by_its_package() {
-    assert_eq!(alias_of("def", "def/model/kind-set.lfy"), "model_kind_set");
+    assert_eq!(alias_of("model/kind-set"), "model_kind_set");
+    assert_eq!(alias_of("elfie/prelude/trait"), "elfie_prelude_trait");
     assert_eq!(
         package_use_path("elfie", "../lib", "../lib/prelude/trait.lfy"),
         "elfie/prelude/trait"

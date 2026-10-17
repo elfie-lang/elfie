@@ -463,8 +463,13 @@ impl Interpreter<'_> {
             return None;
         }
         let name = self.model.name(left)?;
+        // A name the running code bound to a `let` or `const` of an interpreted body is the
+        // declaration the binder found where the name is written; a parameter or a loop
+        // variable it bound is read from its value.
         if env.get(&name).is_some() {
-            return None;
+            let symbol = lookup(self.model, self.model.enclosing_scope(left), &name)?;
+            let record = &self.model.symbols[symbol];
+            return (record.kind == SymbolKind::Variable).then_some(record.entity);
         }
         let symbol = lookup(self.model, env.scope, &name)
             .or_else(|| lookup(self.model, self.model.enclosing_scope(left), &name))?;

@@ -231,7 +231,7 @@ fn a_declaration_without_type_parameters_has_none() {
     assert!(model.type_arguments(entity(&model, "p")).is_empty());
 }
 
-// @lfy def/model/main.lfy:bind#bind:bind:ae23ffc23c95add84b11276b2987d77d26def0d947d817a507989143282af46c
+// @lfy def/model/main.lfy:bind#bind:bind:472fbf0e076310689168fd35debec041a25da18b7e113a79f885c9ff8d7c0a2c
 // @lfy def/model/main.lfy:bind#bind:bind:c3a2c16f705e37fc0e8e626331285a435d93f0cde33bcb941c715741f6b53131
 #[test]
 fn a_function_type_is_an_anonymous_function_entity() {
@@ -249,7 +249,13 @@ fn a_function_type_is_an_anonymous_function_entity() {
         model.entities[anonymous].kind,
         EntityKind::Fn { agent: false, .. }
     ));
+    // Its parameters are the entities of its Parameter nodes.
     let item = model.symbols[model.entities[anonymous].parameters()[0]].entity;
+    assert_eq!(
+        model.entities[item].node,
+        Some(node(&model, 0, E::Parameter, "item: T"))
+    );
+    assert_eq!(model.entities[item].kind, EntityKind::Parameter);
     assert_eq!(model.entities[item].ty, Some(TypeRef::Entity(t)));
     assert_eq!(model.entities[anonymous].output(), Some(&TypeRef::Entity(t)));
     // Read on a Pair of string, the parameters and the output are substituted.
@@ -453,5 +459,112 @@ fn criteria_of_writes_a_type_as_elfie_source() {
             "Calls (one: string) => A".to_string(),
             "and A".to_string()
         ])
+    );
+}
+
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+#[test]
+fn criteria_of_writes_a_type_a_trait_contributed_as_elfie_source() {
+    let model = bind_one(
+        "d A {} d B {} trait t { $xs: `the items` = (A | B)[]; \
+         @acceptanceCriteria.add({ behavior = `{{@identifier}} holds {{$xs@type}} of [[@]]` }); } \
+         d X is t {}",
+    );
+    assert_clean(&model);
+    let x = entity(&model, "X");
+    let resolved = criteria_of(&model, x);
+    assert_eq!(resolved.len(), 1);
+    assert_ne!(resolved[0].contributor, x, "the trait contributed it");
+    assert_eq!(
+        resolved[0].behavior,
+        Some(vec!["X holds (A | B)[] of X".to_string()])
+    );
+}
+
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+#[test]
+fn criteria_of_writes_a_type_reached_through_a_trait_parameter_as_elfie_source() {
+    let model = bind_one(
+        "d A {} d B {} d Box { $xs: `the items` = (A | B)[]; } \
+         d Bag { $ys: `the others` = (B | A)[]; } \
+         trait t(holder: object) { for (const m in holder) { \
+           @acceptanceCriteria.add({ behavior = `[[holder]] holds {{m@type}}` }); } } \
+         d X is t(Box) {} d Y is t(Bag) {}",
+    );
+    let x = entity(&model, "X");
+    assert_eq!(
+        model.entities[x].acceptance_criteria[0].behavior,
+        Some(vec!["[[Box]] holds A | B[]".to_string()])
+    );
+    let resolved = criteria_of(&model, x);
+    assert_eq!(resolved.len(), 1);
+    assert_eq!(
+        resolved[0].behavior,
+        Some(vec!["Box holds (A | B)[]".to_string()])
+    );
+    let resolved = criteria_of(&model, entity(&model, "Y"));
+    assert_eq!(
+        resolved[0].behavior,
+        Some(vec!["Bag holds (B | A)[]".to_string()])
+    );
+}
+
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+#[test]
+fn criteria_of_writes_a_type_reached_through_a_loop_variable_as_elfie_source() {
+    let model = bind_one(
+        "d A {} d B {} d Box { $xs: `the items` = (A | B)[]; $ys: `the others` = (B | A)[]; } \
+         d X { for (const m in Box) { \
+           @acceptanceCriteria.add({ behavior = `[[m]] holds {{m@type}}` }); } }",
+    );
+    let x = entity(&model, "X");
+    assert_eq!(
+        model.entities[x].acceptance_criteria[1].behavior,
+        Some(vec!["[[ys]] holds B | A[]".to_string()])
+    );
+    let resolved: Vec<_> = criteria_of(&model, x)
+        .into_iter()
+        .map(|criterion| criterion.behavior)
+        .collect();
+    assert_eq!(
+        resolved,
+        [
+            Some(vec!["xs holds (A | B)[]".to_string()]),
+            Some(vec!["ys holds (B | A)[]".to_string()])
+        ]
+    );
+}
+
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+#[test]
+fn criteria_of_writes_a_type_reached_through_a_variable_as_elfie_source() {
+    let model = bind_one(
+        "d A {} d B {} d Box { $xs: `the items` = (A | B)[]; } \
+         d X { const holder = Box; \
+           @acceptanceCriteria.add({ behavior = `{{holder$xs@type}} in [[holder]]` }); }",
+    );
+    let x = entity(&model, "X");
+    let resolved = criteria_of(&model, x);
+    assert_eq!(resolved.len(), 1);
+    assert_eq!(
+        resolved[0].behavior,
+        Some(vec!["(A | B)[] in holder".to_string()])
+    );
+}
+
+// @lfy def/model/main.lfy:criteriaOf#criteriaOf:criteriaOf:42d4fffaea6804d033186fda4ffd02f65ef21b5f6d14c5db018da909d530fcc7
+#[test]
+fn criteria_of_writes_a_type_in_a_where_situation_as_elfie_source() {
+    let model = bind_one(
+        "d A {} d B {} d X { $xs: `the items` = (A | B)[]; \
+         where (`given {{$xs@type}}`) and (`ready`) -> `holds`; }",
+    );
+    assert_clean(&model);
+    let x = entity(&model, "X");
+    let resolved = criteria_of(&model, x);
+    assert_eq!(resolved.len(), 1);
+    assert_eq!(
+        resolved[0].situation,
+        Some(vec!["given (A | B)[]".to_string(), "ready".to_string()])
     );
 }

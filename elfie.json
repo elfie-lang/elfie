@@ -2,18 +2,10 @@
   "name": "elfie",
   "source": "def",
   "dependencies": {
-    "elfie": {
-      "root": "lib"
-    },
-    "platforms": {
-      "root": "vendor/platforms"
-    },
-    "cli": {
-      "root": "vendor/cli"
-    },
-    "rust": {
-      "root": "vendor/rust"
-    }
+    "elfie": "./lib",
+    "platforms": "./vendor/platforms",
+    "cli": "./vendor/cli",
+    "rust": "./vendor/rust"
   },
   "compiler": "scripts/compile-unit.sh",
   "verifier": "scripts/verify-unit.sh"

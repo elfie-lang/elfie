@@ -127,8 +127,13 @@ fn dry_run_prints_the_units_then_the_batches() {
     // @lfy def/cli/main.lfy:main#main:main:58a5e74700d0403711a6d2886923ae95a252437bac01a26eb1bde6f59d71b6a5
     // @lfy def/cli/main.lfy:main#main:main:022c51b85274d94f99424138e1f93c2421f285701b3ad67ff7eba4845f51626a
     assert_eq!(fixture.run(&["compile", "--dry-run", "--target", "go"]), ExitCode::Usage.code());
+    // The usage message, as the executable prints it to standard error, names wasm and the
+    // one target there is, rust.
     // @lfy def/cli/main.lfy:main#main:main:315342ecb200e927c15546ab751e43c381772c3fa07f27e1d0f154a7c2b09afd
-    assert_eq!(fixture.run(&["compile", "--target", "wasm"]), ExitCode::Usage.code());
+    let (code, _, err) = fixture.printed(&["compile", "--target", "wasm", "--color=never"]);
+    assert_eq!(code, ExitCode::Usage.code());
+    let message = err.lines().find(|line| line.starts_with("elfie: ")).unwrap_or_default();
+    assert!(message.contains("wasm") && message.contains("rust"), "{err}");
     assert!(!fixture.root.join("out").exists(), "nothing is compiled");
 }
 

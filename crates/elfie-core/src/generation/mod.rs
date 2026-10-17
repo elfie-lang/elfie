@@ -593,42 +593,65 @@ fn built_entities(model: &Model, source: usize, declaration: EntityId) -> Vec<En
 
 /// The items in an order that places each after its dependencies, otherwise in the order
 /// given. Items in a cycle keep the order given.
-// @lfy def/generation/main.lfy:plan
+// @lfy def/generation/main.lfy:plan#plan:plan:c6bed32df9850fc2409ccc08a49904114e67a864cad86e4c61b6b0addd1d0dab
 fn order_after_dependencies(dependencies: &[Vec<usize>]) -> Vec<usize> {
-    fn visit(item: usize, dependencies: &[Vec<usize>], state: &mut [u8], order: &mut Vec<usize>) {
-        if state[item] != 0 {
+    let count = dependencies.len();
+    // What each item reaches, directly or through other items.
+    let reach: Vec<Vec<bool>> = (0..count)
+        .map(|item| {
+            let mut seen = vec![false; count];
+            let mut stack = dependencies[item].clone();
+            while let Some(next) = stack.pop() {
+                if !seen[next] {
+                    seen[next] = true;
+                    stack.extend(&dependencies[next]);
+                }
+            }
+            seen
+        })
+        .collect();
+    // An item and every other item it shares a cycle with, in the order given. The cycles
+    // form no cycle among themselves, so a cycle is placed whole once every item outside it
+    // that one of its items depends on is placed.
+    fn visit(
+        item: usize,
+        dependencies: &[Vec<usize>],
+        reach: &[Vec<bool>],
+        placed: &mut [bool],
+        order: &mut Vec<usize>,
+    ) {
+        if placed[item] {
             return;
         }
-        state[item] = 1;
-        for &dependency in &dependencies[item] {
-            visit(dependency, dependencies, state, order);
+        let cycle: Vec<usize> = (0..dependencies.len())
+            .filter(|&other| other == item || (reach[item][other] && reach[other][item]))
+            .collect();
+        for &member in &cycle {
+            placed[member] = true;
         }
-        state[item] = 2;
-        order.push(item);
+        for &member in &cycle {
+            for &dependency in &dependencies[member] {
+                if !cycle.contains(&dependency) {
+                    visit(dependency, dependencies, reach, placed, order);
+                }
+            }
+        }
+        order.extend(cycle);
     }
-    let mut state = vec![0u8; dependencies.len()];
-    let mut order = Vec::with_capacity(dependencies.len());
-    for item in 0..dependencies.len() {
-        visit(item, dependencies, &mut state, &mut order);
+    let mut placed = vec![false; count];
+    let mut order = Vec::with_capacity(count);
+    for item in 0..count {
+        visit(item, dependencies, &reach, &mut placed, &mut order);
     }
     order
 }
 
-/// `Unit.stem`: `Path.relative` of the file's path to the source directory, without the
-/// `.lfy` extension. A file the program reached through a `use` from outside the source
-/// directory names itself from there, with one `..` per segment the source directory has
-/// beyond the ones they share, so that two such files cannot collide.
+/// `Unit.stem`: the name its file goes by in the program, which the loader made unique
+/// among the files and spelled without the `.lfy` extension.
 // @lfy def/generation/main.lfy:plan
-// @lfy def/generation/data.lfy:Unit#Unit:Unit:1fc2e33009d6c55647083813e41979cdcd5f51fe2a856a9f6815fb4aa2b68bd3
-fn stem_of(path: &str, source_directory: &str) -> String {
-    // A unit is only ever made for a file of the project itself, so the file's path and the
-    // source directory are both relative to the root and `Path.relative` of the two is
-    // always defined; a path that is somehow not keeps itself.
-    let relative = path_relative(path, source_directory).unwrap_or_else(|| path.to_string());
-    relative
-        .strip_suffix(EXTENSION)
-        .unwrap_or(&relative)
-        .to_string()
+// @lfy def/generation/data.lfy:Unit#Unit:Unit:544d21ab36e8de59ea9fcf77ae7fa34947e690a8e2c4c41f740f290b2efeb354
+fn stem_of(file: &File) -> String {
+    file.name.clone()
 }
 
 /// The first segment of a stem: the directory the unit sits in, and the empty string for
@@ -1365,28 +1388,6 @@ fn normalized(path: &str) -> String {
     segments.join("/")
 }
 
-/// `Path.relative`: the path that names the same place from `base`; `None` when one is
-/// absolute and the other is not, since nothing relates them. Both are normalized before
-/// they are compared, and the result is the segments of the path after the ones it shares
-/// with `base`, preceded by one `..` for each segment `base` has beyond the shared ones;
-/// `.` when the two name the same place.
-fn path_relative(path: &str, base: &str) -> Option<String> {
-    if path.starts_with('/') != base.starts_with('/') {
-        return None;
-    }
-    let path = normalized(path);
-    let base = normalized(base);
-    let path: Vec<&str> = path.split('/').filter(|segment| !segment.is_empty()).collect();
-    let base: Vec<&str> = base.split('/').filter(|segment| !segment.is_empty()).collect();
-    let shared = path.iter().zip(&base).take_while(|(a, b)| a == b).count();
-    let mut segments = vec![".."; base.len() - shared];
-    segments.extend_from_slice(&path[shared..]);
-    if segments.is_empty() {
-        return Some(".".to_string());
-    }
-    Some(segments.join("/"))
-}
-
 /// A path relative to a directory it is under, both relative to the root.
 fn strip_directory<'p>(path: &'p str, directory: &str) -> Option<&'p str> {
     if is_root(directory) {
@@ -1439,7 +1440,7 @@ impl Fixture {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "dependencies": { "elfie": { "root": "lib" } } }"#,
+                r#"{ "dependencies": { "elfie": "./lib" } }"#,
             )
             .library()
             .write("def/roles.lfy", ROLES)

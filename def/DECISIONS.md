@@ -342,8 +342,8 @@ LSP/MCP protocols are deliberately not part of this round.
 - **The prelude is the scope of `lib/main.lfy`** (its own symbols and its imports): every file
   scope's parent is that scope, except the files of the `elfie` package itself, which have none and
   use each other explicitly. System and target files are not in the prelude and are used as
-  `use "elfie/system/path";`. The library is found through `lib` in `elfie.json`, else the
-  `ELFIE_LIB` environment variable, else the copy shipped with the compiler.
+  `use "elfie/system/path";`. The library is found through the `elfie` dependency entry, else the
+  copy shipped with the compiler (superseded 2026-10-17, below).
 - **The `elfie` package still gives no units.** Everything in it is builtin or written out in
   Elfie; the target's guidance says what each builtin binds to and translates written-out members
   where they are used. Compiling the library into a crate of its own is the round after this.
@@ -841,3 +841,33 @@ was chosen.
   and `request` is told so (`hashMatched`). Nothing is then paired as reworded. `removed` lists
   the ids in `answered` that the unit no longer has, with no text. The reworded-only path needs
   the revision that matches both. `elfie_changes` says when it fell back.
+
+# Configuration, file names, and list item types (2026-10-17, from ~/elfie)
+
+- **`elfie.json` is a `Configuration` record** on `Workspace.configuration` and
+  `Package.configuration`: `name`, `version`, `source`, `dependencies`, `exports`. Keys it does not
+  declare (`compiler`, `verifier`, old `targets`) are still ignored without a problem. A declared
+  key of the wrong type is a `LoadProblem` and reads as undefined; the rest still loads.
+- **A dependency is one string:** a path (`./`, `../`, or absolute), a git URL (`git@`, `git+`,
+  `://`, or `.git` at the end), or otherwise a version. Only paths load; a version or git URL is a
+  `LoadProblem` until fetching is defined. A package's own dependencies load too, resolved against
+  its root, and a `use` in a package's file sees only that package's entries.
+- **A `use` names a package by the longest run of leading segments that is a dependency key**, so
+  scoped names such as `@elfie/targets` work. A package's `exports` map a path after its name to a
+  file or directory under its root, and win over a file at the path the key spells. Exports never
+  name entities: the loader resolves files before anything is bound.
+- **The `elfie` package is a dependency entry or the built-in copy.** The `lib` key and
+  `ELFIE_LIB` are gone. A package's own `elfie` entry is ignored. **Migration:** `elfie.json` must
+  change `{ "root": "lib" }` to `"./lib"` once `workspace/main` is recompiled; the binary before
+  that reads only the object form.
+- **`source` may list several directories**, so `Workspace.sourceDirectories` replaces
+  `sourceDirectory`. `File.name` is a file's path in its source directory, without `.lfy`; where
+  two directories hold the same path, each such file takes the shortest run of trailing segments
+  of its path that no other has. A package file's name is the package's name and its path in the
+  package, the same text a `use` spells. `Unit.stem` and the interpreter's `use` alias read it.
+- **`typeTextOf` has its own file, `def/model/type.lfy`,** so changing how types are spelled does
+  not change the data every unit uses.
+- **`itemType` belongs to list types.** `Kinds.Array` is the kind data of `List` seen with one type
+  argument, and `ListEntity` says its item type is that argument. A list-typed const reads it
+  through its type; a bare `List` has none. `FnEntity` and `Entity` no longer restate the
+  prelude's `parameters`, `identifier`, and `definition`.

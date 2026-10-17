@@ -1,0 +1,17 @@
+[
+  {
+    "hash": "a1f21baf7d043960880c6a83d0fa5b35ed2a507821e4f4806955142fb0169cfd",
+    "id": "LoweredNode:LoweredNode:d083601ea96556afaa520610782cea7db94565124e5eb87706a88ea58caf3758",
+    "status": "unverifiable"
+  },
+  {
+    "hash": "a1f21baf7d043960880c6a83d0fa5b35ed2a507821e4f4806955142fb0169cfd",
+    "id": "LoweredNode:LoweredNode:e9deb0370846a9748fe95f5eb5ef3f67f823b463042c92f71770d400a1f499c9",
+    "status": "satisfied"
+  },
+  {
+    "hash": "3b514862275df013bf4a9c39afb08af183c46a5937d8aac03f27aa0e6cb2cdcb",
+    "id": "Value:Value:a904dd93fc132523ce6216cac3e63589e7509c3269dbe38ee30d35a7a9f362dd",
+    "status": "satisfied"
+  }
+]

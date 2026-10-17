@@ -986,17 +986,8 @@ pub fn completions_at(workspace: &Workspace, file: &str, position: Position) -> 
         }
         // @lfy def/query/main.lfy:completionsAt#completionsAt:completionsAt:990efbecf19087309c0d26899b7a2489e562a4cb35262c755027dc912b462da2
         Some(CompletionContext::ParentScope) => {
-            // Decision: the parent of the scope is the nearest enclosing scope whose
-            // current entity differs, since a block inside a declaration shares its
-            // declaration's current entity.
-            let current = model.scopes[scope].current;
-            let mut parent = model.scopes[scope].parent;
-            while let Some(id) = parent {
-                if model.scopes[id].current != current {
-                    out.extend(members_of(model.scopes[id].current));
-                    break;
-                }
-                parent = model.scopes[id].parent;
+            if let Some(parent) = model.scopes[scope].parent {
+                out.extend(members_of(model.scopes[parent].current));
             }
         }
         Some(CompletionContext::Value) => {
@@ -1267,7 +1258,12 @@ mod tests {
             labels(&completions_at(&ws, A, after(find_pos(text, "$;", 0), 1))),
             ["z", "w", "v", "u", "t", "s"]
         );
-        assert!(completions_at(&ws, A, after(find_pos(text, "$&;", 0), 2)).is_empty());
+        // The body of B is a scope of its own whose parent is the scope of B's
+        // declaration, so the parent layer reaches B too.
+        assert_eq!(
+            labels(&completions_at(&ws, A, after(find_pos(text, "$&;", 0), 2))),
+            ["z", "w", "v", "u", "t", "s"]
+        );
         assert_eq!(
             labels(&completions_at(&ws, A, after(find_pos(text, "E.;", 0), 2))),
             ["one", "two"]
@@ -1279,14 +1275,14 @@ mod tests {
             labels(&completions_at(&ws, A, after(find_pos(text, "A$;", 0), 2))),
             ["z", "w", "v", "u", "t", "s"]
         );
-        // At the top of a data the parent scope reaches the file's entity, which has no
-        // members; a nested data reaches its owner's.
+        // The parent scope is the scope's own parent, even where both have the same
+        // current entity: inside the body of a nested data it is still that data.
         let text = "d A { $x = string; d C { $y = $&; } }\n";
         let fixture = Fixture::one(text);
         let ws = fixture.load();
         assert_eq!(
             labels(&completions_at(&ws, A, after(find_pos(text, "$&;", 0), 2))),
-            ["x"]
+            ["y"]
         );
     }
 
@@ -1317,7 +1313,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "lib": "lib", "dependencies": { "rust": { "root": "targets/rust" } } }"#,
+                r#"{ "dependencies": { "elfie": "./lib", "rust": "./targets/rust" } }"#,
             )
             .write(
                 "def/a.lfy",
@@ -1337,7 +1333,10 @@ mod tests {
                 .all(|c| c.kind == OfferedKind::Completion(CompletionKind::Path))
         );
         // Every package is offered, the package elfie every program has among them.
-        assert_eq!(labels(&completions_at(&ws, A, at(2, 5))), ["rust", "elfie"]);
+        let bare = completions_at(&ws, A, at(2, 5));
+        let mut packages = labels(&bare);
+        packages.sort();
+        assert_eq!(packages, ["elfie", "rust"]);
         assert_eq!(
             labels(&completions_at(&ws, A, at(3, 10))),
             ["guidance", "main"]

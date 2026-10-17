@@ -292,7 +292,8 @@
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [],
@@ -542,7 +543,8 @@
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [],
@@ -585,7 +587,8 @@
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [],
@@ -655,7 +658,8 @@
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [],
@@ -698,7 +702,7 @@
         "end": 9,
         "entity": "lower",
         "file": "def/interpret/main.lfy",
-        "line": 295,
+        "line": 296,
         "outputLine": 9,
         "requirement": null
       },
@@ -716,7 +720,7 @@
         "end": 11,
         "entity": "bind",
         "file": "def/model/main.lfy",
-        "line": 44,
+        "line": 46,
         "outputLine": 11,
         "requirement": null
       },
@@ -734,7 +738,7 @@
         "end": 13,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 13,
         "requirement": null
       },
@@ -743,7 +747,7 @@
         "end": 14,
         "entity": "load",
         "file": "def/workspace/main.lfy",
-        "line": 16,
+        "line": 15,
         "outputLine": 14,
         "requirement": null
       }
@@ -752,6 +756,7 @@
     "requirements": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   }
 ]

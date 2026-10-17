@@ -271,7 +271,7 @@ mod tests {
         fixture
             .write(
                 "elfie.json",
-                r#"{ "lib": "lib", "dependencies": { "gone": { "root": "nowhere" } }, "name": 3 }"#,
+                r#"{ "dependencies": { "elfie": "./lib", "gone": "./nowhere" }, "name": 3 }"#,
             )
             .write("def/a.lfy", "use \"./missing\";\n");
         let ws = fixture.load();

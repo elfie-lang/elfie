@@ -11,11 +11,29 @@ use crate::lexer::lex;
 use crate::model::{self, Operation, Origin};
 use crate::parser::parse;
 
-// @lfy def/workspace/main.lfy:load#load:load:364469ca73386a0fadcdccb16065c7b1fbd8cf7954391bff47aa5ac292a37ca7
+/// The identifiers of the packages of a workspace, in order.
+fn identifiers(workspace: &Workspace) -> Vec<&str> {
+    workspace
+        .packages
+        .iter()
+        .map(|package| package.identifier.as_str())
+        .collect()
+}
+
+/// The package of a workspace with an identifier.
+fn package<'w>(workspace: &'w Workspace, identifier: &str) -> &'w Package {
+    workspace
+        .packages
+        .iter()
+        .find(|package| package.identifier == identifier)
+        .unwrap_or_else(|| panic!("the package {identifier} is in the program"))
+}
+
 // @lfy def/workspace/main.lfy:load#load:load:d89e1a3dc76a0474ada8c0015af825a5f5e8c5e26f0b09d9280c88429bbcfba0
 // @lfy def/workspace/main.lfy:load#load:load:932b815f66767e3f29654d009afd1f258dc9f22040a21b8770d2e7aa470350e2
 // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
-// @lfy def/workspace/main.lfy:load#load:load:a08b7bac9a52807fdcd4c5544ebeb10d60db2a277aef3e01ba0ac257e71291a7
+// @lfy def/workspace/main.lfy:load#load:load:edc92a499ae2b8769762be0cc27e701b8a746a8ac3afd23f6816df3f92b21d46
+// @lfy def/workspace/main.lfy:load#load:load:1e7fcb1331fd3ec876fe83870adde4b870652330e329c9ea4f8885b650877a3e
 #[test]
 fn an_empty_def_and_no_manifest_give_the_defaults() {
     let fixture = Fixture::empty();
@@ -27,14 +45,14 @@ fn an_empty_def_and_no_manifest_give_the_defaults() {
         workspace.name,
         fixture.root.file_name().unwrap().to_string_lossy()
     );
-    assert_eq!(workspace.source_directory, "def");
+    assert_eq!(workspace.source_directories, ["def"]);
     assert!(paths(&workspace).is_empty());
     assert!(workspace.targets.is_empty());
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     assert!(workspace.overlays.is_empty());
     // The package elfie is in the program all the same, holding the files of that
     // copy. @lfy def/workspace/main.lfy:load
-    assert_eq!(workspace.packages.len(), 1);
+    assert_eq!(identifiers(&workspace), [LIBRARY_PACKAGE]);
     let library = library(&workspace);
     assert_eq!(library.root, normalize(BUILT_IN_LIBRARY));
     assert!(Path::new(&library.root).is_absolute());
@@ -43,44 +61,63 @@ fn an_empty_def_and_no_manifest_give_the_defaults() {
     assert!(library_paths(&workspace).len() > 1);
 }
 
-/// The library is the first source that is given, and a missing one is a problem
-/// rather than a reason to try the next.
-// @lfy def/workspace/main.lfy:load#load:load:d907c299c80f931a0deb7cbd87d12cf1f50320cdcfc62ec0ea02ea3217ce3800
-// @lfy def/workspace/main.lfy:load#load:load:894c6485f9e8ac83db6e6d6dd3340e9ff0e21ccc789a23347307d15fb610664f
-// @lfy def/workspace/main.lfy:load#load:load:18303ab51dd7497f5981f5a7ebbbefa64f43fca6e87ab6ac5a8aa9acaa26e95f
+/// The library is the dependency entry elfie when that entry is a path, whether or not
+/// its directory exists, and the copy the compiler was built with otherwise.
 // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
 // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
+// @lfy def/workspace/main.lfy:load#load:load:edc92a499ae2b8769762be0cc27e701b8a746a8ac3afd23f6816df3f92b21d46
+// @lfy def/workspace/main.lfy:load#load:load:b32dfca900b488d4e38fbc1eacf76d5247749ba7f635f7daba72260d40877a8d
 #[test]
-fn the_library_is_the_first_source_that_names_one() {
-    // The dependency entry elfie.
+fn the_library_is_the_entry_elfie_when_it_is_a_path_and_else_the_built_in_copy() {
+    // The dependency entry elfie, relative to the root.
     let fixture = Fixture::empty();
     fixture.write(
         "elfie.json",
-        r#"{ "lib": "byKey", "dependencies": { "elfie": { "root": "byDependency" } } }"#,
+        r#"{ "dependencies": { "elfie": "./byDependency/" } }"#,
     );
     fixture.library("byDependency");
-    fixture.library("byKey");
     let workspace = fixture.load();
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
     assert_eq!(library(&workspace).root, "byDependency");
+    assert!(library_paths(&workspace).contains(&"byDependency/main.lfy"));
 
-    // The top level key lib, relative to the root.
+    // An absolute entry is the path itself.
+    let fixture = Fixture::empty();
+    let absolute = fixture.root.join("absolute").to_string_lossy().into_owned();
+    fixture.write(
+        "elfie.json",
+        &serde_json::json!({ "dependencies": { "elfie": absolute } }).to_string(),
+    );
+    fixture.library("absolute");
+    let workspace = fixture.load();
+    assert_eq!(library(&workspace).root, absolute);
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+
+    // No entry elfie: the built-in copy, which the fixture's own library stands for. The
+    // key lib that earlier versions read is ignored.
+    // @lfy def/workspace/main.lfy:load
     let fixture = Fixture::empty();
     fixture.write("elfie.json", r#"{ "lib": "byKey" }"#);
     fixture.library("byKey");
     let workspace = fixture.load();
-    assert_eq!(library(&workspace).root, "byKey");
-    assert!(library_paths(&workspace).contains(&"byKey/main.lfy"));
-
-    // What the environment gives for ELFIE_LIB, when elfie.json names neither.
-    let fixture = Fixture::empty();
-    fixture.write("elfie.json", r#"{ "name": "named" }"#);
-    let workspace = fixture.load();
     assert_eq!(library(&workspace).root, LIBRARY_ROOT);
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
 
-    // A given root that is missing is a problem, and the next source is not tried.
+    // An entry elfie that is not a path: the built-in copy, and the entry is named.
     // @lfy def/workspace/main.lfy:load
     let fixture = Fixture::empty();
-    fixture.write("elfie.json", r#"{ "lib": "gone" }"#);
+    fixture.write("elfie.json", r#"{ "dependencies": { "elfie": "1.0.0" } }"#);
+    let workspace = fixture.load();
+    assert_eq!(library(&workspace).root, LIBRARY_ROOT);
+    let problems = load_problems(&workspace);
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert_eq!(problems[0].path.as_deref(), Some(MANIFEST));
+    assert!(problems[0].message.contains("\"elfie\""), "{}", problems[0]);
+
+    // An entry whose directory is missing stands all the same, and is a problem.
+    // @lfy def/workspace/main.lfy:load
+    let fixture = Fixture::empty();
+    fixture.write("elfie.json", r#"{ "dependencies": { "elfie": "./gone" } }"#);
     let workspace = fixture.load();
     assert_eq!(library(&workspace).root, "gone");
     assert!(library_paths(&workspace).is_empty());
@@ -91,18 +128,31 @@ fn the_library_is_the_first_source_that_names_one() {
 
 /// The main file of the package elfie is the prelude, its other files are the
 /// library, and every file outside it is the program.
-// @lfy def/workspace/main.lfy:load#load:load:c866f7d3a969f48fe5b6606e3e27ea34f62037935306ccc97e6bb293cab19e6b
 // @lfy def/workspace/main.lfy:load#load:load:1c98732ad9dcd0ae1423690fc2bd117e7dbc13effc288ef7a15560f86a0d3064
 // @lfy def/workspace/main.lfy:load#load:load:42ddd4111d6e51a0395e9b1eee8c79a065bd9e53b143029640c9ed2dd233c078
 // @lfy def/workspace/main.lfy:load#load:load:656f24a577ae1949e6a118618dbcf080a5f0418f80c6cbeda85d2792cb3f027e
+// @lfy def/workspace/main.lfy:load#load:load:b4153a74d5f8efd66fd596d740c535d52bbb76f23a9f3d3592456586dfa3f4cc
 #[test]
 fn the_library_gives_the_prelude_and_every_other_file_the_program() {
     let fixture = Fixture::empty();
     fixture
+        .write("elfie.json", r#"{ "dependencies": { "elfie": "./lib" } }"#)
         .write("def/main.lfy", "d Marked is target { }\n")
         .write("lib/values/list.lfy", "d List { }\n");
-    let workspace = fixture.load();
+    let workspace = load_built_in(&fixture.root);
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    assert_eq!(library(&workspace).root, "lib");
+    let library_files: Vec<&File> = workspace
+        .files
+        .iter()
+        .filter(|file| file.path.starts_with("lib/"))
+        .collect();
+    assert!(library_files.len() > 1);
+    assert!(
+        library_files
+            .iter()
+            .all(|file| file.package == Some(workspace.packages.iter().position(|package| package.identifier == LIBRARY_PACKAGE).unwrap()))
+    );
     let origin = |path: &str| {
         let file = workspace.file(path).expect("a file of the program");
         workspace.origin(file)
@@ -123,7 +173,6 @@ fn the_library_gives_the_prelude_and_every_other_file_the_program() {
 // @lfy def/workspace/main.lfy:load#load:load:0fac45ffcbab6307a0cadab9357862b79b40b58f5064ecf56d4f03ef03659a37
 // @lfy def/workspace/main.lfy:load#load:load:97bed938a5d75f39ac08d69a7e0ac6d7a4a2fd040d8d2d4ffa31571a4bc63d87
 // @lfy def/workspace/main.lfy:load#load:load:95adb658d370404e9a9733a98206f9323b5efdaf143f4e927a012d32b58d95c3
-// @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
 #[test]
 fn a_used_file_comes_before_the_file_that_uses_it() {
     let fixture = Fixture::empty();
@@ -205,92 +254,131 @@ fn a_use_of_nothing_gives_a_problem_and_an_undefined_entry() {
     assert_eq!(uses_of(&workspace, "def/main.lfy"), [None]);
 }
 
-// @lfy def/workspace/main.lfy:load#load:load:14ff48a32bf3381366534b9ca3dbdb2f1d46fc634249e46bf5134fb6609d3a39
-// @lfy def/workspace/main.lfy:load#load:load:553254e418671149fdc2a87c765c1ff91ddcf349bad7d7055bf05a5234721178
+// @lfy def/workspace/main.lfy:load#load:load:a473c608f5a70cc064c8635bd090121d715b920b42ee0fcbe41e3c3a75fdd9d8
+// @lfy def/workspace/main.lfy:load#load:load:3fcd57f4ebc2aa8bc9b9f2c2fb00087ebaa95f76f3c93971df4f0a7c72e2cd09
+// @lfy def/workspace/main.lfy:load#load:load:d2500ef79b0f845d62d879e55d20851d45ebfa885fa1e7397a17ab04f6f7422d
 #[test]
-fn the_manifest_names_the_layout() {
+fn the_configuration_names_the_layout() {
     let fixture = Fixture::new();
     fixture
-        .write("elfie.json", r#"{ "name": "named", "source": "source/" }"#)
+        .write(
+            "elfie.json",
+            r#"{ "name": "named", "version": "1.0.0", "source": "source/" }"#,
+        )
         .write("source/main.lfy", "trait t { }\n");
     let workspace = fixture.load();
+    assert_eq!(
+        workspace.configuration,
+        Configuration {
+            name: Some("named".to_string()),
+            version: Some("1.0.0".to_string()),
+            source: Some(ConfigurationSource::One("source/".to_string())),
+            dependencies: None,
+            exports: None,
+        }
+    );
+    // @lfy def/workspace/main.lfy:load
     assert_eq!(workspace.name, "named");
-    assert_eq!(workspace.source_directory, "source");
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(workspace.source_directories, ["source/"]);
     assert_eq!(paths(&workspace), ["source/main.lfy"]);
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
 }
 
-/// A manifest that is a JSON object but gives no name and no source directory leaves
-/// each of those defaults standing, exactly as a root with no manifest at all does.
-// @lfy def/workspace/main.lfy:load#load:load:fd884247a5f63218e2f23f0ba9abdb91e6a342d07f56f61a79d4f23bfe3eeee7
-// @lfy def/workspace/main.lfy:load#load:load:38338fb46f57a64fa2e744d34eae3279caf9b613709e743808ac4f6fba4a0289
+/// A configuration that gives no name and no source leaves each of those defaults
+/// standing, exactly as a root with no `elfie.json` at all does.
+// @lfy def/workspace/main.lfy:load#load:load:8d7ba6d4fe1f04154ef1330dfbe2a0ed619e5674a06aef6b93cf3af417afa0f1
+// @lfy def/workspace/main.lfy:load#load:load:bc81bdfb69e2efbe2ffcca801028530c7cbc5a41ff47a15eed0784e947b566cd
 #[test]
-fn a_manifest_that_gives_no_layout_leaves_the_defaults_standing() {
+fn a_configuration_that_gives_no_layout_leaves_the_defaults_standing() {
     let fixture = Fixture::empty();
     fixture
         .write("elfie.json", r#"{ "lib": "lib" }"#)
         .write("def/main.lfy", "");
     let workspace = fixture.load();
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    assert_eq!(workspace.configuration, Configuration::default());
     // The name of the root directory, since elfie.json gives no name.
     // @lfy def/workspace/main.lfy:load
     assert_eq!(
         workspace.name,
         fixture.root.file_name().unwrap().to_string_lossy()
     );
-    // def, since elfie.json gives no source directory.
+    // def alone, since elfie.json gives no source.
     // @lfy def/workspace/main.lfy:load
-    assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
+    assert_eq!(workspace.source_directories, [DEFAULT_SOURCE_DIRECTORY]);
     assert_eq!(paths(&workspace), ["def/main.lfy"]);
 }
 
-/// A manifest is optional: where no `elfie.json` exists under the root, the name is
-/// the name of the root directory, the source directory is `def`, and no problem is
-/// added.
-// @lfy def/workspace/main.lfy:load#load:load:8b89b53b4efb9ae82c650c075c04f5a708529dbc6cec061bdfde65ae7811ca3c
-// @lfy def/workspace/main.lfy:load#load:load:e1ed96f364bdc98469b9736cdb2e0ce1a008d6ac0623f78e2cb68c8ccaf817a5
+/// An `elfie.json` is optional: where none exists at the root or at a package's root,
+/// every key of that configuration is undefined and no problem is added.
+// @lfy def/workspace/main.lfy:load#load:load:a450cc5b0bb372bd3f2b9fea6f4218845a10c800e1f81ad8274d5cfb882516f4
 #[test]
-fn no_manifest_is_no_problem_and_the_defaults_stand() {
+fn no_configuration_is_no_problem_and_the_defaults_stand() {
+    let fixture = Fixture::empty();
+    fixture
+        .write("elfie.json", r#"{ "dependencies": { "p": "./pkg" } }"#)
+        .write("def/main.lfy", "")
+        .write("pkg/main.lfy", "");
+    assert!(!fixture.root.join("pkg").join(MANIFEST).exists());
+    let workspace = fixture.load();
+    assert_eq!(package(&workspace, "p").configuration, Configuration::default());
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+
     let fixture = Fixture::empty();
     fixture.write("def/main.lfy", "");
     assert!(!fixture.root.join(MANIFEST).exists());
     let workspace = fixture.load();
+    assert_eq!(workspace.configuration, Configuration::default());
     assert_eq!(
         workspace.name,
         fixture.root.file_name().unwrap().to_string_lossy()
     );
-    assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
+    assert_eq!(workspace.source_directories, [DEFAULT_SOURCE_DIRECTORY]);
     assert_eq!(paths(&workspace), ["def/main.lfy"]);
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
 }
 
-// @lfy def/workspace/main.lfy:load#load:load:befcf263b48c79ad8201135ce1c5dbca04ee8a875a161cf8942456e4cb97b8e7
-// @lfy def/workspace/main.lfy:load#load:load:19a7d4fd318b9f7efc5cbe88610e53a0e61be4be62d5831f8646cc1bad17a9ad
+// @lfy def/workspace/main.lfy:load#load:load:a4feb706de87193af1f3285b8bd67c396deb25f48611db7160a8930ed6894335
+// @lfy def/workspace/main.lfy:load#load:load:646df2728f9636f2d0fc69773cfe790b426a6d2eb573efedecea7c9ec800aac2
 #[test]
-fn a_bad_manifest_adds_a_problem_and_the_defaults_stand() {
-    for text in ["{ not json", "[1, 2]", "\"a string\""] {
+fn a_bad_configuration_adds_a_problem_and_the_defaults_stand() {
+    for text in ["{\"name\": \"x\",", "{ not json", "[1, 2]", "\"a string\""] {
         let fixture = Fixture::empty();
         fixture.write("elfie.json", text).write("def/main.lfy", "");
         let workspace = fixture.load();
         let problems = load_problems(&workspace);
         assert_eq!(problems.len(), 1, "{text}: {problems:?}");
         assert_eq!(problems[0].path.as_deref(), Some("elfie.json"));
+        assert_eq!(workspace.configuration, Configuration::default());
         assert_eq!(
             workspace.name,
             fixture.root.file_name().unwrap().to_string_lossy()
         );
-        assert_eq!(workspace.source_directory, "def");
+        assert_eq!(workspace.source_directories, ["def"]);
         assert_eq!(paths(&workspace), ["def/main.lfy"]);
     }
+    // The same for the elfie.json of a package, whose files still load.
+    let fixture = Fixture::empty();
+    fixture
+        .write("elfie.json", r#"{ "dependencies": { "p": "./pkg" } }"#)
+        .write("pkg/elfie.json", "[]")
+        .write("pkg/main.lfy", "");
+    let workspace = fixture.load();
+    let problems = load_problems(&workspace);
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert_eq!(problems[0].path.as_deref(), Some("pkg/elfie.json"));
+    assert_eq!(package(&workspace, "p").configuration, Configuration::default());
+    assert!(paths(&workspace).contains(&"pkg/main.lfy"));
 }
 
 /// Targets, their outputs, and their dependencies are declared in the program, so a
-/// manifest in the shape earlier versions read loads with no problem at all: the keys
-/// the loader does not read, inside an entry as well as at the top, are ignored.
+/// configuration in the shape earlier versions read loads with no problem at all: the
+/// keys `Configuration` does not declare are ignored.
+// @lfy def/workspace/main.lfy:load#load:load:9955f71e445330d81b0395728fbe576a039b18e3bb889f7d498edbbcd4599dbf
 // @lfy def/workspace/main.lfy:load#load:load:9bf0f0938acd565776218f4c5d6a4434294c537b7873cc8a1e3490f8a5103f94
-// @lfy def/workspace/main.lfy:load#load:load:f3a8e524e11cd59e038a6157e4a0fe362764b553e2b29342b421c3e379ad7cb9
 #[test]
-fn a_key_the_loader_does_not_read_is_ignored_and_adds_no_problem() {
+fn a_key_the_configuration_does_not_declare_is_ignored_and_adds_no_problem() {
     let fixture = Fixture::empty();
     fixture
         .write(
@@ -300,48 +388,50 @@ fn a_key_the_loader_does_not_read_is_ignored_and_adds_no_problem() {
                     "targets": { "t": { "package": "p", "marker": "m" } },
                     "output": "crates",
                     "native": [ { "identifier": "serde", "ecosystem": "cargo" } ],
-                    "dependencies": { "p": { "root": "pkg", "version": "1" } },
+                    "dependencies": { "p": "./pkg" },
                     "compiler": "scripts/compile.sh"
                 }"#,
         )
         .write("def/main.lfy", "")
         .write("pkg/main.lfy", "");
     let workspace = fixture.load();
-    // The keys the loader reads still stand.
+    // The keys it declares still stand.
     // @lfy def/workspace/main.lfy:load
     assert_eq!(workspace.name, "named");
     let mut sorted = paths(&workspace);
     sorted.sort_unstable();
     assert_eq!(sorted, ["def/main.lfy", "pkg/main.lfy"]);
-    // The manifest's key targets is ignored, so the program declares every target.
+    // The key targets is ignored, so the program declares every target.
     // @lfy def/workspace/main.lfy:load
     assert!(workspace.targets.is_empty());
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
 }
 
-/// Loading never stops for a failure: a key the loader reads whose value is of the
-/// wrong kind is named, and every other key of the manifest is read all the same.
+/// Loading never stops for a failure: a key whose value is of another type than the one
+/// `Configuration` declares is named with the type it should have and left undefined, and
+/// every other key is read all the same.
 // @lfy def/workspace/main.lfy:load#load:load:fe6fb32b63154e5b9396448cbce2410f62993bbac3c4be6a7db55d8a2f7d0d28
-// @lfy def/workspace/main.lfy:load#load:load:b5997648b346dea065f6d06cc85024aa35df3796ec9edbc10d87099971bd1b6b
-// @lfy def/workspace/main.lfy:load#load:load:d60b7d2fc94b097354076890d595ac2106b1b65e366b4cc45271b9e7211aa3cb
+// @lfy def/workspace/main.lfy:load#load:load:7bf7f7320ea74ff2dd0d08e518d364c8292228a597b9360c3ab0cf7a4178d8b7
+// @lfy def/workspace/main.lfy:load#load:load:4fa9b901c6befec4fa20bfa6d19b5371ef837153bfacb6b980b1b0cb23139e3e
 #[test]
-fn a_key_whose_value_is_of_the_wrong_kind_is_named_and_the_rest_is_read() {
+fn a_key_of_another_type_is_named_and_undefined_and_the_rest_is_read() {
     let fixture = Fixture::empty();
     fixture
         .write(
             "elfie.json",
             r#"{
                     "name": 3,
-                    "source": [ "def" ],
-                    "lib": true,
-                    "dependencies": { "p": { "root": "pkg" }, "q": { "root": 4 } }
+                    "version": "2.0.0",
+                    "source": [ "def", 4 ],
+                    "dependencies": { "p": "./pkg", "q": 4 },
+                    "exports": [ "ui" ]
                 }"#,
         )
         .write("def/main.lfy", "")
         .write("pkg/main.lfy", "");
     let workspace = fixture.load();
     let problems = load_problems(&workspace);
-    // Each one names elfie.json, the key, and what the key should be.
+    // Each one names elfie.json, the key, and the type it should have.
     // @lfy def/workspace/main.lfy:load
     assert!(
         problems
@@ -350,10 +440,10 @@ fn a_key_whose_value_is_of_the_wrong_kind_is_named_and_the_rest_is_read() {
         "{problems:?}"
     );
     for (key, wanted) in [
-        ("\"name\"", "string"),
-        ("\"source\"", "string"),
-        ("\"lib\"", "string"),
-        ("\"q\"", "\"root\""),
+        ("\"name\"", "a string"),
+        ("\"source\"", "a string or a list of strings"),
+        ("\"dependencies\"", "an object of strings"),
+        ("\"exports\"", "an object of strings"),
     ] {
         assert!(
             problems
@@ -364,26 +454,28 @@ fn a_key_whose_value_is_of_the_wrong_kind_is_named_and_the_rest_is_read() {
         );
     }
     assert_eq!(problems.len(), 4, "{problems:?}");
-    // The rest of the manifest is still read: the dependency p gives a package, and
-    // the name and the source directory fall back to their defaults.
+    // Each such key is undefined, and the one that is of its type stands.
     // @lfy def/workspace/main.lfy:load
+    assert_eq!(
+        workspace.configuration,
+        Configuration {
+            version: Some("2.0.0".to_string()),
+            ..Configuration::default()
+        }
+    );
     assert_eq!(
         workspace.name,
         fixture.root.file_name().unwrap().to_string_lossy()
     );
-    assert_eq!(workspace.source_directory, DEFAULT_SOURCE_DIRECTORY);
-    let mut sorted = paths(&workspace);
-    sorted.sort_unstable();
-    assert_eq!(sorted, ["def/main.lfy", "pkg/main.lfy"]);
-    // The library stands where the environment names it, since "lib" gave nothing.
-    // @lfy def/workspace/main.lfy:load
-    assert_eq!(library(&workspace).root, LIBRARY_ROOT);
+    assert_eq!(workspace.source_directories, [DEFAULT_SOURCE_DIRECTORY]);
+    // With no dependencies, the package p is not in the program.
+    assert_eq!(identifiers(&workspace), [LIBRARY_PACKAGE]);
+    assert_eq!(paths(&workspace), ["def/main.lfy"]);
 }
 
-// @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
-// @lfy def/workspace/main.lfy:load#load:load:d89e1a3dc76a0474ada8c0015af825a5f5e8c5e26f0b09d9280c88429bbcfba0
+// @lfy def/workspace/main.lfy:load#load:load:f97a7916ef1a5ec5f8b25e9caca0c7851b745165411bc7008519899125882bac
 #[test]
-fn a_missing_root_or_source_directory_adds_a_problem_with_no_path() {
+fn a_missing_root_adds_a_problem_with_no_path_and_no_files() {
     let fixture = Fixture::new();
     let missing = fixture.root.join("nowhere");
     let workspace = load_built_in(&missing);
@@ -392,28 +484,35 @@ fn a_missing_root_or_source_directory_adds_a_problem_with_no_path() {
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(problems[0].path, None);
     assert!(workspace.files.is_empty());
+}
 
-    // The root exists but holds no source directory; a package there is not read either.
+/// A missing source directory is named, no file comes from it, and the other source
+/// directories and the packages still load.
+// @lfy def/workspace/main.lfy:load#load:load:0fc20a5c6ed1f12fda66543903de28702cb27892cc578d83c6316902500fef99
+#[test]
+fn a_missing_source_directory_is_named_and_the_rest_still_loads() {
+    let fixture = Fixture::new();
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            r#"{ "source": ["def", "src"], "dependencies": { "p": "./pkg" } }"#,
         )
+        .write("src/a.lfy", "")
         .write("pkg/main.lfy", "");
     let workspace = fixture.load();
     let problems = load_problems(&workspace);
     assert_eq!(problems.len(), 1, "{problems:?}");
-    assert_eq!(problems[0].path, None);
-    assert!(problems[0].message.contains("def"), "{}", problems[0]);
-    assert!(workspace.files.is_empty());
-    assert_eq!(workspace.packages.len(), 2);
+    assert_eq!(problems[0].path.as_deref(), Some("def"));
+    let mut sorted = paths(&workspace);
+    sorted.sort_unstable();
+    assert_eq!(sorted, ["pkg/main.lfy", "src/a.lfy"]);
 }
 
-// @lfy def/workspace/main.lfy:load#load:load:247e20d07c0c842a9a7e7075746d74be2254640efab3b1062fdf4d1aec785a68
 // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
 // @lfy def/workspace/main.lfy:load#load:load:912de90eec4ab7a10c1d9fb7853c226b0130e0f61558b54793fccef20e344b08
 // @lfy def/workspace/main.lfy:load#load:load:23324d830b23ca1be67dea3c9234abb1945519a3e56b47c394222debdf328fe8
 // @lfy def/workspace/main.lfy:load#load:load:c4acf67876f96707cb66e2a889f79373ce852c3192472acb1b3dbff88d3d190a
+// @lfy def/workspace/main.lfy:load#load:load:34b900cfd918601b8e0fbd06775f5015712e20b8edddc83c91a156a80e1e26ff
 #[test]
 fn every_lfy_file_under_the_source_directory_is_in_the_program_once() {
     let fixture = Fixture::empty();
@@ -438,6 +537,68 @@ fn every_lfy_file_under_the_source_directory_is_in_the_program_once() {
     }
     assert!(project(&workspace).all(|file| file.package.is_none()));
     assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+}
+
+/// Every source directory gives its files, each directory once, and each file of the
+/// project is named by its path within its source directory, taking as many more of its
+/// leading directories as it needs where two source directories hold the same path.
+// @lfy def/workspace/main.lfy:load#load:load:34b900cfd918601b8e0fbd06775f5015712e20b8edddc83c91a156a80e1e26ff
+// @lfy def/workspace/main.lfy:load#load:load:95ee4c371559a37196b70b48eb49a98edb20b303a2fad0cdde57142a357b6b38
+// @lfy def/workspace/main.lfy:load#load:load:83585aea4fc7bf0a367ab795152302d1d333212f48b23d1c5285dd457b336215
+// @lfy def/workspace/main.lfy:load#load:load:b9fa6ce6f09e94bb3ac78519ff241efe16838c62a8adcb86c40e0a3f8106f5bf
+#[test]
+fn several_source_directories_give_their_files_and_names() {
+    let fixture = Fixture::new();
+    fixture
+        .write("elfie.json", r#"{ "source": ["def", "src", "def"] }"#)
+        .write("def/a.lfy", "")
+        .write("def/b.lfy", "")
+        .write("def/x/a.lfy", "")
+        .write("src/a.lfy", "")
+        .write("src/x/a.lfy", "");
+    let workspace = fixture.load();
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(workspace.source_directories, ["def", "src"]);
+    // @lfy def/workspace/main.lfy:load
+    let mut names: Vec<(&str, &str)> = project(&workspace)
+        .map(|file| (file.path.as_str(), file.name.as_str()))
+        .collect();
+    names.sort_unstable();
+    assert_eq!(
+        names,
+        [
+            ("def/a.lfy", "def/a"),
+            ("def/b.lfy", "b"),
+            ("def/x/a.lfy", "def/x/a"),
+            ("src/a.lfy", "src/a"),
+            ("src/x/a.lfy", "src/x/a"),
+        ]
+    );
+    assert!(project(&workspace).all(|file| file.package.is_none()));
+}
+
+/// A file of a project with one source directory is named by its path within it; a file
+/// of a package by the package's identifier and its path within the package's root.
+// @lfy def/workspace/main.lfy:load#load:load:f3f04a799f9fa89db29eed53cf6239c78d5d4389948995d43fe22b84eba0cbdc
+// @lfy def/workspace/main.lfy:load#load:load:4e242171bbac221a9235f0dc2f2b41c8ce9461c40c25cecf4661dd81cdd32704
+#[test]
+fn a_file_is_named_by_its_path_within_its_source_directory_or_its_package() {
+    let fixture = Fixture::empty();
+    fixture
+        .write("elfie.json", r#"{ "dependencies": { "p": "./pkg" } }"#)
+        .write("def/main.lfy", "")
+        .write("def/rules/main.lfy", "")
+        .write("pkg/deep/thing.lfy", "");
+    let workspace = fixture.load();
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    let name = |path: &str| workspace.file(path).expect("a file of the program").name.as_str();
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(name("def/main.lfy"), "main");
+    assert_eq!(name("def/rules/main.lfy"), "rules/main");
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(name("pkg/deep/thing.lfy"), "p/deep/thing");
+    assert_eq!(name("lib/main.lfy"), "elfie/main");
 }
 
 // @lfy def/workspace/main.lfy:load#load:load:692ecc7501d808fc5c758f804195b305d9436a6d7de2ce76f48185ac315cfdb7
@@ -505,30 +666,36 @@ fn a_dotted_use_resolves_against_the_directory_of_its_file() {
     assert!(position(&workspace, "def/b/data.lfy") < position(&workspace, "def/a/main.lfy"));
 }
 
-// @lfy def/workspace/main.lfy:load#load:load:1686133b540c858b4c1ab7edb631811da85b909c80a52d63d4084d22d6c3251f
 // @lfy def/workspace/main.lfy:load#load:load:5d9353c2d7ef127d55101933cf2d1581e1bf8dfae943a0d3d59cf83a5cb17679
 // @lfy def/workspace/main.lfy:load#load:load:a7bb1ab332ef59bd7ef0b193ca2257a60b8457f57538d11c2fd2c2f0c2610ea5
+// @lfy def/workspace/main.lfy:load#load:load:99f8a9365b4ddf9b26525fc56b9850112f86430a002df60a6c1453a745a29f40
 #[test]
 fn an_undotted_use_names_a_package_and_resolves_against_its_root() {
     let fixture = Fixture::empty();
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "rust": { "root": "targets/rust" } } }"#,
+            r#"{ "dependencies": { "rust": "./targets/rust", "rust/extra": "./targets/extra" } }"#,
         )
         .write(
             "def/main.lfy",
-            "use \"rust/guidance\";\nuse \"rust\";\nuse \"nope/thing\";\n",
+            "use \"rust/guidance\";\nuse \"rust\";\nuse \"nope/thing\";\n\
+             use \"rust/extra/more\";\nuse \"elfie/main\";\n",
         )
         .write("targets/rust/main.lfy", "use \"./guidance\";\n")
-        .write("targets/rust/guidance.lfy", "");
+        .write("targets/rust/guidance.lfy", "")
+        .write("targets/extra/more.lfy", "");
     let workspace = fixture.load();
+    // The longest run of leading segments that names a package wins, and elfie always
+    // names the package elfie. @lfy def/workspace/main.lfy:load
     assert_eq!(
         uses_of(&workspace, "def/main.lfy"),
         [
             Some("targets/rust/guidance.lfy".to_string()),
             Some("targets/rust/main.lfy".to_string()),
-            None
+            None,
+            Some("targets/extra/more.lfy".to_string()),
+            Some("lib/main.lfy".to_string()),
         ]
     );
     assert_eq!(
@@ -550,6 +717,126 @@ fn an_undotted_use_names_a_package_and_resolves_against_its_root() {
         "{}",
         problems[0]
     );
+}
+
+/// A file of a package names the dependency entries of its package's `elfie.json` and
+/// never those of the project's; entries that give one root give one package; and the
+/// entry elfie of a package is ignored, elfie naming the one package elfie all the same.
+// @lfy def/workspace/main.lfy:load#load:load:a3421e175ba0d8b9bce4fec7e2b2217ba83e5c91e3304b1f4fc241e3a1c7b66a
+// @lfy def/workspace/main.lfy:load#load:load:488bdb4d999605f20285df1be26700cce5e26fe51808ce72c77e2e0e74231548
+// @lfy def/workspace/main.lfy:load#load:load:d5d5894b6e1a0b68f69a3b71f975fed7a26b6466fdb05517e2dcb72a5888d1a5
+// @lfy def/workspace/main.lfy:load#load:load:48288ac53c4ce16476eae28d86777ffa3592a5192db841bcde3e89dd31724f71
+// @lfy def/workspace/main.lfy:load#load:load:56743e9f562e649dc3d6042b20e25fdf4744ba98e77150ff1c635cead47157cb
+#[test]
+fn a_file_of_a_package_names_the_entries_of_its_package() {
+    let fixture = Fixture::empty();
+    fixture
+        .write(
+            "elfie.json",
+            r#"{ "dependencies": { "a": "./a", "b": "./b", "same": "./a/" } }"#,
+        )
+        .write(
+            "a/elfie.json",
+            r#"{ "dependencies": { "inner": "./inner", "bee": "../b", "elfie": "1.0.0" } }"#,
+        )
+        .write(
+            "a/main.lfy",
+            "use \"inner/x\";\nuse \"bee\";\nuse \"elfie/main\";\nuse \"a\";\n",
+        )
+        .write("a/inner/x.lfy", "")
+        .write("b/main.lfy", "")
+        .write("def/main.lfy", "use \"same\";\nuse \"inner/x\";\n");
+    let workspace = fixture.load();
+    assert_eq!(load_problems(&workspace), Vec::<&LoadProblem>::new());
+    // One package per root, identified by the first entry that gave it.
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(identifiers(&workspace), [LIBRARY_PACKAGE, "a", "b", "inner"]);
+    assert_eq!(package(&workspace, "inner").root, "a/inner");
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(
+        uses_of(&workspace, "def/main.lfy"),
+        [Some("a/main.lfy".to_string()), None]
+    );
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(
+        uses_of(&workspace, "a/main.lfy"),
+        [
+            Some("a/inner/x.lfy".to_string()),
+            Some("b/main.lfy".to_string()),
+            Some("lib/main.lfy".to_string()),
+            None,
+        ]
+    );
+    let mut at: Vec<(&str, bool)> = bind_problems(&workspace)
+        .into_iter()
+        .map(|problem| at_use(&workspace, problem))
+        .collect();
+    at.sort_unstable();
+    assert_eq!(at, [("a/main.lfy", true), ("def/main.lfy", true)]);
+}
+
+/// A use through a package's name follows the longest export key its next segments begin
+/// with, even where a file of the package has the path the key spells; an export that
+/// names nothing is a problem for the `elfie.json` holding it.
+// @lfy def/workspace/main.lfy:load#load:load:19b062c31b01faa188b4bbc0532bdbf5c39c0e25ae249b283d34e4476fc8821d
+// @lfy def/workspace/main.lfy:load#load:load:1656e6daf35e6938e3d1f828fb76d318f57cf16a19a3f42543ba0054030bea5d
+#[test]
+fn a_use_through_a_package_follows_its_exports() {
+    let fixture = Fixture::empty();
+    fixture
+        .write("elfie.json", r#"{ "dependencies": { "@acme/kit": "./kit" } }"#)
+        .write(
+            "kit/elfie.json",
+            r#"{ "exports": { "ui": "./src/ui", "ui/deep": "./src/deeper", "gone": "./nowhere" } }"#,
+        )
+        .write("kit/src/ui/main.lfy", "")
+        .write("kit/src/deeper/thing.lfy", "")
+        .write("kit/ui.lfy", "")
+        .write(
+            "def/main.lfy",
+            "use \"@acme/kit/ui\";\nuse \"@acme/kit/ui/deep/thing\";\n",
+        );
+    let workspace = fixture.load();
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(
+        uses_of(&workspace, "def/main.lfy"),
+        [
+            Some("kit/src/ui/main.lfy".to_string()),
+            Some("kit/src/deeper/thing.lfy".to_string()),
+        ]
+    );
+    assert_eq!(bind_problems(&workspace), Vec::<&crate::model::Problem>::new());
+    // @lfy def/workspace/main.lfy:load
+    let problems = load_problems(&workspace);
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert_eq!(problems[0].path.as_deref(), Some("kit/elfie.json"));
+    assert!(problems[0].message.contains("\"gone\""), "{}", problems[0]);
+}
+
+// @lfy def/workspace/main.lfy:load#load:load:f3f04a799f9fa89db29eed53cf6239c78d5d4389948995d43fe22b84eba0cbdc
+// @lfy def/workspace/main.lfy:load#load:load:0c8b488d37fb7158b79608cabf8dce157d6af7cad8a6de2e7576d0a25a42cb80
+#[test]
+fn a_use_of_an_export_resolves_into_its_package() {
+    let fixture = Fixture::empty();
+    fixture
+        .write("elfie.json", r#"{ "dependencies": { "@acme/kit": "./kit" } }"#)
+        .write("kit/elfie.json", r#"{ "exports": { "ui": "./src/ui" } }"#)
+        .write("kit/src/ui/main.lfy", "")
+        .write("def/main.lfy", "use \"@acme/kit/ui\";\n");
+    let workspace = fixture.load();
+    assert!(workspace.problems.is_empty(), "{:?}", workspace.problems);
+    assert_eq!(
+        uses_of(&workspace, "def/main.lfy"),
+        [Some("kit/src/ui/main.lfy".to_string())]
+    );
+    let file = workspace.file("kit/src/ui/main.lfy").expect("a file of the program");
+    assert_eq!(
+        file.package
+            .map(|package| workspace.packages[package].identifier.as_str()),
+        Some("@acme/kit")
+    );
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(file.name, "@acme/kit/src/ui/main");
 }
 
 // @lfy def/workspace/main.lfy:load#load:load:360d6474f5e8db42a54f9151cc373d40d39e3e4eb4109f0445a4e06a7160d825
@@ -615,30 +902,39 @@ fn a_file_using_itself_is_a_cycle_of_one() {
     assert_eq!(at_use(&workspace, problems[0]), ("def/main.lfy", true));
 }
 
-// @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
 // @lfy def/workspace/main.lfy:load#load:load:f0c460549fc5debac126dc93031902458c9a539417d42b3b143b29ce41672943
 // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
+// @lfy def/workspace/main.lfy:load#load:load:6b1ef1b2e8a6e582f3257d3e95d4b94c630efd29f5ec5856edbd629ab7a6ee53
 #[test]
-fn each_dependency_gives_a_package_whose_files_are_in_the_program() {
+fn each_path_dependency_gives_a_package_whose_files_are_in_the_program() {
     let fixture = Fixture::empty();
+    let absolute = fixture.root.join("elsewhere").to_string_lossy().into_owned();
     fixture
         .write(
             "elfie.json",
-            r#"{
-                    "dependencies": { "rust": { "root": "targets/rust/" }, "gone": { "root": "targets/gone" } }
-                }"#,
+            &serde_json::json!({
+                "dependencies": {
+                    "rust": "./targets/rust/",
+                    "gone": "./targets/gone",
+                    "far": absolute,
+                }
+            })
+            .to_string(),
         )
         .write("def/main.lfy", "")
         .write("targets/rust/main.lfy", "")
         .write("targets/rust/extra/thing.lfy", "");
+    fs_dir(&fixture, "elsewhere");
     let workspace = fixture.load();
-    assert_eq!(workspace.packages.len(), 3); // @lfy def/workspace/main.lfy:load
+    assert_eq!(workspace.packages.len(), 4); // @lfy def/workspace/main.lfy:load
     let rust = workspace
         .packages
         .iter()
         .position(|package| package.identifier == "rust")
         .unwrap();
+    // @lfy def/workspace/main.lfy:load
     assert_eq!(workspace.packages[rust].root, "targets/rust");
+    assert_eq!(package(&workspace, "far").root, absolute);
     // @lfy def/workspace/main.lfy:load
     let mut sorted = paths(&workspace);
     sorted.sort_unstable();
@@ -668,51 +964,78 @@ fn each_dependency_gives_a_package_whose_files_are_in_the_program() {
     assert_eq!(problems[0].path.as_deref(), Some("targets/gone"));
 }
 
-/// Loading never stops for a failure: a dependency entry that is not an object with a
-/// root is named, and every other dependency still gives a package.
-// @lfy def/workspace/main.lfy:load#load:load:fe6fb32b63154e5b9396448cbce2410f62993bbac3c4be6a7db55d8a2f7d0d28
-// @lfy def/workspace/main.lfy:load#load:load:2c93d3e7305993d3a84ba8f451e28d1e5401c5189c591e98f5d0fe63976426c5
+/// An empty directory at a path under a fixture's root.
+fn fs_dir(fixture: &Fixture, path: &str) {
+    std::fs::create_dir_all(fixture.root.join(path)).unwrap();
+}
+
+/// A dependency entry is a path, a git URL, or a version; only a path gives a package,
+/// and each of the others is named for the `elfie.json` holding it.
+// @lfy def/workspace/main.lfy:load#load:load:20cc44ce9010c1d6d8f51447978d2c1bde789da9cd1d0f4bb04869b752e23c86
+// @lfy def/workspace/main.lfy:load#load:load:fe9905296aa9979983b3f8a27155ccf43190bc1c52ec44a4c429edf8668342dd
 #[test]
-fn a_dependency_that_names_no_root_is_named_and_the_rest_still_load() {
+fn a_version_or_a_git_dependency_is_named_and_gives_no_package() {
     let fixture = Fixture::empty();
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "p": { "root": "pkg" }, "q": 3 } }"#,
+            r#"{ "dependencies": { "a": "1.2.0", "b": "https://example.com/b.git", "c": "./vendor/c" } }"#,
         )
-        .write("pkg/main.lfy", "");
+        .write("vendor/c/main.lfy", "");
     let workspace = fixture.load();
-    assert_eq!(
-        workspace
-            .packages
-            .iter()
-            .map(|package| package.identifier.as_str())
-            .collect::<Vec<_>>(),
-        ["p", LIBRARY_PACKAGE]
-    );
-    assert!(paths(&workspace).contains(&"pkg/main.lfy"));
+    // @lfy def/workspace/main.lfy:load
+    assert_eq!(identifiers(&workspace), [LIBRARY_PACKAGE, "c"]);
+    assert_eq!(package(&workspace, "c").root, "vendor/c");
     let problems = load_problems(&workspace);
-    assert_eq!(problems.len(), 1, "{problems:?}");
-    assert_eq!(problems[0].path.as_deref(), Some("elfie.json"));
-    assert!(problems[0].message.contains("\"q\""), "{}", problems[0]);
+    assert_eq!(problems.len(), 2, "{problems:?}");
+    for (problem, named) in problems.iter().zip(["\"a\"", "\"b\""]) {
+        assert_eq!(problem.path.as_deref(), Some(MANIFEST));
+        assert!(problem.message.contains(named), "{problem}");
+        assert!(problem.message.contains("cannot be loaded yet"), "{problem}");
+    }
 }
 
-/// A missing package root is reported even when nothing can be discovered.
+/// What the value of a dependency entry is.
+// @lfy def/workspace/main.lfy:load#load:load:a354cbeef946748f4822d5b7ccc565b0fb084d8ebb9b52938028687e8993b37f
+// @lfy def/workspace/main.lfy:load#load:load:c78f44cea8c4c4a346c72577c2baf833dcae5ef0dfac93f3a0cabee3c6d487fc
+// @lfy def/workspace/main.lfy:load#load:load:5f36f4fd70eb392d120e8c33f16e39c5ec39653ef25fed8c872656b5cc3fbeea
+#[test]
+fn a_dependency_value_is_a_path_a_git_url_or_a_version() {
+    use super::load::{DependencyKind, dependency_kind};
+    // @lfy def/workspace/main.lfy:load
+    for path in ["./a", "../a", "/abs/a"] {
+        assert_eq!(dependency_kind(path), DependencyKind::Path, "{path}");
+    }
+    // @lfy def/workspace/main.lfy:load
+    for git in [
+        "git@example.com:a/b",
+        "git+ssh://example.com/a",
+        "https://example.com/a",
+        "example.com/a.git",
+    ] {
+        assert_eq!(dependency_kind(git), DependencyKind::Git, "{git}");
+    }
+    // @lfy def/workspace/main.lfy:load
+    for version in ["1.2.0", "^1", "latest", "a/b"] {
+        assert_eq!(dependency_kind(version), DependencyKind::Version, "{version}");
+    }
+}
+
+/// A missing package root is reported even when no source directory exists.
 // @lfy def/workspace/main.lfy:load#load:load:05b8fa2948fcab3e2f28a0331ccd1f1bfbe7b52d62225256478e886cf3e30d7b
-// @lfy def/workspace/main.lfy:load#load:load:387544d4a426f77295d5b183dd0d518a256f465f5f332556561411266aca0a8f
 #[test]
 fn a_missing_package_root_is_a_problem_even_with_no_source_directory() {
     let fixture = Fixture::new();
     fixture.write(
         "elfie.json",
-        r#"{ "dependencies": { "gone": { "root": "packages/gone" } } }"#,
+        r#"{ "dependencies": { "gone": "./packages/gone" } }"#,
     );
     let workspace = fixture.load();
-    // @lfy def/workspace/main.lfy:load
-    assert!(workspace.files.is_empty());
     let problems = load_problems(&workspace);
     assert!(
-        problems.iter().any(|problem| problem.path.is_none()),
+        problems
+            .iter()
+            .any(|problem| problem.path.as_deref() == Some("def")),
         "{problems:?}"
     );
     // @lfy def/workspace/main.lfy:load
@@ -723,7 +1046,9 @@ fn a_missing_package_root_is_a_problem_even_with_no_source_directory() {
                 && problem.message.contains("gone")),
         "{problems:?}"
     );
+    assert!(paths(&workspace).is_empty());
 }
+
 
 /// An `ace const` of a project file whose value is a `Target` of the package `elfie`
 /// gives one target, with the layers of its slots in guidance order and the values its
@@ -780,7 +1105,7 @@ fn a_let_a_plain_const_and_a_const_of_a_package_hold_no_target() {
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            r#"{ "dependencies": { "p": "./pkg" } }"#,
         )
         .write(
             "def/targets.lfy",
@@ -1207,7 +1532,7 @@ fn knowledge_that_is_not_there_or_comes_over_the_network_is_named() {
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            r#"{ "dependencies": { "p": "./pkg" } }"#,
         )
         .write(
             "def/main.lfy",

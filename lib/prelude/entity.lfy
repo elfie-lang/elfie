@@ -12,7 +12,6 @@ d Entity is builtin: `What every declared thing is seen as through its context l
   $acceptanceCriteria: `Its own criteria first, then each trait's in application order` = Criterion[];
   $traits: `Every trait applied to it, direct or inherited, in application order` = Entity[];
   $references: `Every entity referenced with a bracketed reference in its definition, documentation, or value` = Entity[];
-  $itemType: `What a list-typed entity holds; undefined otherwise` = Entity | undefined;
   $like: `A value of its type that a prompt describes` = (prompt: string) => @type;
   with Entity$like {
     where (`Called with a prompt`) -> `The compiler chooses the value, at compile time`;

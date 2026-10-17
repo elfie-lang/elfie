@@ -99,18 +99,16 @@ fn init_creates_the_manifest_once() {
 fn check_reports_the_binder_error_of_a_file() {
     let fixture = Fixture::new();
     fixture.write("def/a.lfy", "const y = z;\n");
-    assert_eq!(fixture.run(&["check"]), ExitCode::Problems.code());
-    let diagnostics = query::diagnostics_of(&workspace::load(&fixture.root), None);
-    // The standard library is part of the program, so only the project's own file is
-    // this file's to report on.
-    let mine: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.range.file == "def/a.lfy").collect();
-    assert_eq!(mine.len(), 1);
-    let printed = format!(
-        "{}:{}:{}: {} {}: {}",
-        mine[0].range.file, mine[0].range.start.line, mine[0].range.start.column, mine[0].stage, mine[0].severity, mine[0].message
-    );
+    // What check itself prints, read from a run of it as the executable runs.
+    let (code, out, _) = fixture.printed(&["check", "--color=never"]);
+    assert_eq!(code, ExitCode::Problems.code());
+    // The standard library is part of the program, so only the project's own file is this
+    // file's to report on: exactly one line names it, and it reads the place, the stage, the
+    // severity, and the message.
     // @lfy def/cli/main.lfy:main
-    assert_eq!(printed, "def/a.lfy:1:10: binder error: z is not declared in scope");
+    let mine: Vec<&str> = out.lines().filter(|line| line.starts_with("def/a.lfy:")).collect();
+    assert_eq!(mine, vec!["def/a.lfy:1:10: binder error: z is not declared in scope"], "{out}");
+    assert_eq!(fixture.run(&["check"]), ExitCode::Problems.code());
     // A file given as an argument narrows the diagnostics. @lfy def/cli/main.lfy:main
     assert_eq!(fixture.run(&["check", "def/a.lfy"]), ExitCode::Problems.code());
 }
@@ -215,6 +213,22 @@ fn format_check_prints_the_file_and_leaves_it_alone() {
     assert_eq!(fixture.read("def/a.lfy"), "const x = 1;\n");
     // And formatting it again changes nothing.
     assert_eq!(fixture.run(&["format", "--check"]), ExitCode::Success.code());
+}
+
+/// With no files given, format takes every .lfy file under each source directory.
+// @lfy def/cli/main.lfy:main#main:main:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
+#[test]
+fn format_takes_the_files_of_every_source_directory() {
+    let fixture = Fixture::new();
+    fixture
+        .write("elfie.json", r#"{ "source": ["def", "src"] }"#)
+        .write("def/a.lfy", "const   x=1;\n")
+        .write("src/x/b.lfy", "const   y=2;\n")
+        .write("other/c.lfy", "const   z=3;\n");
+    assert_eq!(fixture.run(&["format"]), ExitCode::Success.code());
+    assert_eq!(fixture.read("def/a.lfy"), "const x = 1;\n");
+    assert_eq!(fixture.read("src/x/b.lfy"), "const y = 2;\n");
+    assert_eq!(fixture.read("other/c.lfy"), "const   z=3;\n");
 }
 
 /// A file whose tree has errors is left as it is and the code is problems.

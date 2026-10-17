@@ -395,7 +395,7 @@ impl Run {
             // The compile stopped while the batch was running: nothing more starts for it,
             // and nothing of it is merged into the root or recorded.
             // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
-            if locked(run).halted {
+            if locked(run).halts(&batch.identifier) {
                 // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
                 return Compiled::stopped();
             }
@@ -439,7 +439,7 @@ impl Run {
                 // every process of its group: what it gives is ignored, and nothing of the
                 // batch is merged into the root or recorded.
                 // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
-                if locked(run).halted {
+                if locked(run).halts(&batch.identifier) {
                     // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
                     return Compiled::stopped();
                 }
@@ -496,9 +496,16 @@ impl Run {
                     // @lfy def/cli/main.lfy:main#main:main:b8f2ed1f4f7dd347c1fc2031d346ef69e5e80252bfc60209de5f60e9d30ea618
                     state.report_rejections(batch, &verdicts);
                     if stage == Stage::Dependency {
+                        // The line names each unit that was rejected.
                         // @lfy def/cli/main.lfy:main#main:main:9253f376492f06a33bd0110d5f3f29c04bffd6a3b5a3a922f56cb3f2d9a668e9
-                        let stems = stems_of(&state.plan, batch, " ");
-                        let why = format!("a unit of {stems} was rejected on the build and the test");
+                        let rejected: Vec<&str> = batch
+                            .units
+                            .iter()
+                            .zip(&verdicts)
+                            .filter(|(_, verdict)| !verdict.accepted)
+                            .map(|(&unit, _)| state.plan.units[unit].stem.as_str())
+                            .collect();
+                        let why = format!("{} was rejected after the build and the test passed", rejected.join(", "));
                         state.reporter.report(Step::Building, Some(&batch.identifier), None, &why);
                     }
                     drop(state);
@@ -553,7 +560,7 @@ impl Run {
                         // A compile that stopped while the verifier ran stopped that run too:
                         // nothing of the batch is merged into the root or recorded.
                         // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
-                        if locked(run).halted {
+                        if locked(run).halts(&batch.identifier) {
                             // @lfy def/cli/main.lfy:main#main:main:c8d886404dc8c6b8b7e3dab97f05bfe2bebb213411910915c4fc538951c0882e
                             return Compiled::stopped();
                         }
@@ -844,14 +851,10 @@ impl Run {
         // @lfy def/cli/main.lfy:main#main:main:8ad6cc67e5917e94bdf860ca278ad8a72e97989115f12275cd1d47dd6d7499d0
         let went_wrong = self.rejected > 0 || self.blocked > 0 || self.failed > 0;
         let tone = if went_wrong { Tone::Failure } else { Tone::Success };
-        // With --json the one object carries every batch that did not complete too, since
-        // nothing follows a JSON line.
+        // With --json the one object's message is the four counts alone.
         // @lfy def/cli/main.lfy:main#main:main:bbad3c69582995a56ff9152a6a483894f2d276f7b0d0b4805da999767796b37e
         if self.json {
-            let mut message = counts_message(&counts, false);
-            if !self.incomplete.is_empty() {
-                message.push_str(&format!("; did not complete: {}", self.incomplete.join(", ")));
-            }
+            let message = counts_message(&counts, false);
             self.reporter.report(Step::Finished, None, None, &message);
             return;
         }
@@ -1018,8 +1021,10 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     remove_orphan_kept(&program.workspace, &plan, target.as_deref());
     // A review record file belonging to no unit of the plan is removed before any batch runs,
     // the same way, so that nothing carries a verdict for a unit that is gone.
+    // With --accept no review record file changes, so none is removed either.
     // @lfy def/cli/main.lfy:main#main:main:10e95f2d1f7f50e861876b9a7f871b2512aee9bc61e507f2611ac724627d5af7
-    if verifier_command(root).is_some() && !invocation.flag("no-verify") {
+    // @lfy def/cli/main.lfy:main#main:main:6fc3e455a00e35d03fefc6334b35ff96b50c1c9069d3efe7e721a45743f92e1b
+    if verifier_command(root).is_some() && !invocation.flag("no-verify") && !invocation.flag("accept") {
         remove_orphan_reviews(&program.workspace, &plan, target.as_deref());
     }
 

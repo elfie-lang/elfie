@@ -4,7 +4,42 @@
 //! compiler.
 
 use super::*;
-use crate::copies::{Mirror, mode_of, set_mode};
+use crate::copies::{Kept, KeptFile, Mirror, Where, mode_of, set_mode};
+use crate::schedule::take_kept;
+
+/// Kept work taken into a copy that holds what it was based on: a file it changed takes its
+/// kept text, and a file it removed is removed, both counted as taken.
+// @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
+#[test]
+fn kept_work_takes_its_changes_and_its_removals() {
+    let fixture = Fixture::new();
+    one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let invocation = parse_arguments(&args(&["compile", "--color=never"])).unwrap();
+    let log = fixture.root.join("kept.log");
+    let reporter = Reporter::new(false, Paint::of(&invocation), 1, vec![log]);
+    let run = Mutex::new(Run::new(program, plan, Vec::new(), reporter, &invocation));
+    let batch = locked(&run).plan.batches[0].clone();
+    let copy = fixture.root.join("copy");
+    fixture.write("copy/changed.txt", "one\n").write("copy/gone.txt", "old\n");
+    let where_ = Where::Copy(Mirror { directory: copy.clone(), base: BTreeMap::new() });
+    let file = |path: &str, base: &str, text: Option<&str>| KeptFile {
+        path: path.to_string(),
+        base: Some(base.to_string()),
+        text: text.map(str::to_string),
+    };
+    let kept = Kept {
+        target: "rust".to_string(),
+        units: Vec::new(),
+        problems: Vec::new(),
+        files: vec![file("changed.txt", "one\n", Some("two\n")), file("gone.txt", "old\n", None)],
+    };
+    // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
+    assert!(take_kept(&run, &batch, &where_, Some(&kept)).is_some());
+    assert_eq!(fs::read_to_string(copy.join("changed.txt")).unwrap(), "two\n");
+    assert!(!copy.join("gone.txt").exists(), "a kept removal is taken");
+    assert!(fixture.read("kept.log").contains("2 files taken, 0 left"), "{}", fixture.read("kept.log"));
+}
 
 /// Whether a file may be run; false everywhere on a platform with no such mode, so that
 /// comparing two files still holds there.
@@ -310,9 +345,13 @@ fn two_batches<'f>(fixture: &'f Fixture, note: &str) -> &'f Fixture {
 /// `def/a/one`, keeps what its directory held of the output of `def/b/one` when it
 /// started. The body it writes for B is its first on its first run for that unit and its
 /// second after that, so a run once more rewrites one function.
+///
+/// Its run for `def/a/one` also notes, in `events.txt` under the fixture's root, that it
+/// ran, and keeps what the root itself held of the output of `def/b/one` then.
 // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
 // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-fn compiler_of_two(first: &str, again: &str) -> String {
+fn compiler_of_two(fixture: &Fixture, first: &str, again: &str) -> String {
+    let root = fixture.path();
     format!(
         "#!/bin/sh\ncat > /dev/null\nmkdir -p \"$ELFIE_ROOT/out/a\" \"$ELFIE_ROOT/out/b\"\n\
          case \"$ELFIE_UNITS\" in\n\
@@ -324,6 +363,8 @@ fn compiler_of_two(first: &str, again: &str) -> String {
          *a/one*)\n\
          echo ran >> \"$ELFIE_ROOT/ran-a.txt\"\n\
          cp \"$ELFIE_ROOT/out/b/one.rs\" \"$ELFIE_ROOT/seen-b.txt\" || echo missing > \"$ELFIE_ROOT/seen-b.txt\"\n\
+         echo 'compile a' >> '{root}/events.txt'\n\
+         cp '{root}/out/b/one.rs' '{root}/root-b.txt' || echo missing > '{root}/root-b.txt'\n\
          printf '// @lfy def/a/one.lfy:A\\npub struct A {{}}\\n' > \"$ELFIE_ROOT/out/a/one.rs\"\n\
          ;;\n\
          esac\n\
@@ -333,12 +374,16 @@ fn compiler_of_two(first: &str, again: &str) -> String {
 
 /// A verifier that takes long enough for the batch after it to start, notes that it ran,
 /// and answers for the one criterion: violated on its first run when `first` says so, and
-/// satisfied after that.
+/// satisfied after that. It notes in `events.txt` under the fixture's root when each review
+/// begins and when it ends.
 // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
 // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-fn slow_verifier(id: &str, first: &str) -> String {
+fn slow_verifier(fixture: &Fixture, id: &str, first: &str) -> String {
+    let root = fixture.path();
     format!(
-        "#!/bin/sh\ncat > /dev/null\necho \"$ELFIE_BATCH\" >> \"$ELFIE_ROOT/verified.txt\"\nsleep 1\n\
+        "#!/bin/sh\ncat > /dev/null\necho \"$ELFIE_BATCH\" >> \"$ELFIE_ROOT/verified.txt\"\n\
+         echo \"review $ELFIE_BATCH begins\" >> '{root}/events.txt'\nsleep 2\n\
+         echo \"review $ELFIE_BATCH ends\" >> '{root}/events.txt'\n\
          if [ \"$(wc -l < \"$ELFIE_ROOT/verified.txt\")\" -gt 1 ]; then status=satisfied; else status={first}; fi\n\
          printf '{{\"id\":\"{id}\",\"status\":\"%s\",\"evidence\":\"out/b/one.rs:1-2\",\"note\":\"looked at\"}}\\n' \"$status\"\n\
          echo 'ELFIE: REVIEWED'\n"
@@ -350,7 +395,7 @@ fn slow_verifier(id: &str, first: &str) -> String {
 // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
 fn recorded_twice(fixture: &Fixture, first: &str, again: &str) {
     fixture
-        .write("compiler.sh", &compiler_of_two(first, again))
+        .write("compiler.sh", &compiler_of_two(fixture, first, again))
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
     assert_eq!(fixture.run(&["compile", "--jobs", "1", "--no-verify"]), ExitCode::Success.code());
 }
@@ -373,19 +418,35 @@ fn a_batch_starts_against_what_the_batch_before_it_accepted() {
     two_batches(&fixture, "now");
     let id = criterion_in(&fixture, "b/one.lfy");
     fixture
-        .write("compiler.sh", &compiler_of_two("pub struct B(u8);", "pub struct B(u8);"))
-        .write("verifier.sh", &slow_verifier(&id, "satisfied"))
+        .write("compiler.sh", &compiler_of_two(&fixture, "pub struct B(u8);", "pub struct B(u8);"))
+        .write("verifier.sh", &slow_verifier(&fixture, &id, "satisfied"))
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
     let _ = fs::remove_file(fixture.root.join("ran-a.txt"));
     let _ = fs::remove_file(fixture.root.join("ran-b.txt"));
+    let _ = fs::remove_file(fixture.root.join("events.txt"));
     forget_log(&fixture);
     // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
     assert_eq!(fixture.run(&["compile", "--jobs", "2"]), ExitCode::Success.code());
     let log = fixture.read("elfie-requests/compile.log");
     assert!(log.contains("2 units planned, 2 batches"), "{log}");
-    // The copy of a held what b had accepted, before b's review ended.
+    // a's compiler ran after b's review began and before it ended.
+    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
+    let events = fixture.read("events.txt");
+    let order: Vec<&str> = events.lines().collect();
+    assert_eq!(order, vec!["review b/one begins", "compile a", "review b/one ends"], "{events}");
+    // The copy of a held what b had accepted, while the root did not hold it yet: it came
+    // from b's accepted changes, not from b's merge.
     // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
     assert!(fixture.read("seen-b.txt").contains("pub struct B(u8);"), "{}", fixture.read("seen-b.txt"));
+    assert!(!fixture.read("root-b.txt").contains("pub struct B(u8);"), "{}", fixture.read("root-b.txt"));
+    // b is merged into the root, and its maps recorded, before a.
+    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
+    let accepted = |stem: &str| {
+        log.lines()
+            .position(|line| line.contains("\u{2713} accepted") && line.contains(stem))
+            .unwrap_or_else(|| panic!("no accepted line for {stem} in {log}"))
+    };
+    assert!(accepted("b/one") < accepted("a/one"), "{log}");
     // Nothing of b's merge differed from what a took, so no build or test ran.
     // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
     assert!(!log.contains("\u{25b8} building"), "{log}");
@@ -418,8 +479,8 @@ fn a_copy_takes_what_the_batch_before_it_merged_and_is_built_again() {
     // verifier's first review of b finds the criterion violated.
     // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
     fixture
-        .write("compiler.sh", &compiler_of_two("pub struct B(u8);", "pub struct B(u16);"))
-        .write("verifier.sh", &slow_verifier(&id, "violated"))
+        .write("compiler.sh", &compiler_of_two(&fixture, "pub struct B(u8);", "pub struct B(u16);"))
+        .write("verifier.sh", &slow_verifier(&fixture, &id, "violated"))
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
     let _ = fs::remove_file(fixture.root.join("ran-a.txt"));
     let _ = fs::remove_file(fixture.root.join("ran-b.txt"));

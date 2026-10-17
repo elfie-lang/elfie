@@ -407,6 +407,18 @@ impl Binder {
                 {
                     return Some(symbol);
                 }
+                // @lfy def/model/main.lfy:bind#bind:bind:04c22787733ff3defc0c5a6b52add93b83e7c0630dafc6c75ee0a897057f1463
+                // A list type is `List` seen with its one item type, so its kind data is
+                // the one such an entity has.
+                if let Target::Base(data) = &target
+                    && self.prelude_data("List") == Some(*data)
+                    && let Some(symbol) = self
+                        .list_kind_data()
+                        .into_iter()
+                        .find_map(|kind| self.member_symbol(kind, name))
+                {
+                    return Some(symbol);
+                }
                 // A MemberName that is a member of a kind data other than the entity's
                 // yields undefined for it, without a problem.
                 // @lfy def/model/main.lfy:bind
@@ -461,15 +473,29 @@ impl Binder {
                     }
                     symbol
                 }
-                // For a value of a base data, that data's members. An object's keys come
-                // first and are not known here, so a name the data does not declare is
-                // left to the object.
+                // An object's keys first, then the members of Object. A key declares
+                // nothing, so a name found among the keys has no symbol, and is no
+                // problem.
+                // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+                Target::Object(keys) => {
+                    if keys.iter().any(|key| key == name) {
+                        return None;
+                    }
+                    let symbol = self
+                        .prelude_data("Object")
+                        .and_then(|data| self.member_symbol(data, name));
+                    if symbol.is_none() {
+                        self.problem(r, format!("the object has no key or member {name}"));
+                    }
+                    symbol
+                }
+                // For a value of a base data, that data's members; an object whose keys
+                // are not known has none of its own.
                 // @lfy def/model/main.lfy:bind
                 // @lfy def/model/main.lfy:bind
                 Target::Base(data) => {
                     let symbol = self.member_symbol(data, name);
-                    let object = self.prelude_data("Object") == Some(data);
-                    if symbol.is_none() && !object {
+                    if symbol.is_none() {
                         let what = self.model.entities[data]
                             .identifier
                             .clone()
@@ -477,6 +503,13 @@ impl Binder {
                         self.problem(r, format!("{what} has no member {name}"));
                     }
                     symbol
+                }
+                // The left side has a symbol, but nothing is known of what it holds, so
+                // the name is found nowhere.
+                // @lfy def/model/main.lfy:bind#bind:bind:3fce3fdc6efc4c1db0d9e110d857211d0e5138fd4988999728334f627356d678
+                Target::Untyped => {
+                    self.problem(r, format!("nothing known of the value has a member {name}"));
+                    None
                 }
                 // The left side has no symbol either: the usage has no symbol and no
                 // second problem is added.
@@ -619,7 +652,12 @@ impl Binder {
         // @lfy def/model/main.lfy:bind
         if rule == E::Generic.entity() {
             let ty = self.type_from_expression(node);
-            return self.target_of_type(ty);
+            return self.target_of_type(ty).with_no_symbol();
+        }
+        // An object literal is its keys.
+        // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+        if let Some(keys) = self.object_keys(node) {
+            return Target::Object(keys);
         }
         if rule == E::Call.entity() {
             if let Some(left) = trees.left(node) {
@@ -630,7 +668,7 @@ impl Binder {
                 if let Some(symbol) = symbol {
                     let entity = self.model.symbols[symbol].entity;
                     if let Some(output) = self.model.entities[entity].output() {
-                        return self.target_of_type(output.clone());
+                        return self.target_of_type(output.clone()).with_no_symbol();
                     }
                 }
             }
@@ -648,7 +686,7 @@ impl Binder {
                 {
                     Target::Module(file)
                 }
-                _ => Target::Unknown,
+                _ => Target::Untyped,
             },
             SymbolKind::Data
             | SymbolKind::Trait
@@ -662,14 +700,142 @@ impl Binder {
                     | EntityKind::Trait { .. }
                     | EntityKind::Type
                     | EntityKind::Enum => Target::Entity(symbol.entity),
-                    _ => Target::Unknown,
+                    _ => Target::Untyped,
                 }
             }
-            _ => match self.model.entities[symbol.entity].ty.clone() {
-                Some(ty) => self.target_of_type(ty),
-                None => Target::Unknown,
-            },
+            _ => {
+                // A variable declared from an object literal, or a loop variable over a
+                // list of them: its keys are known.
+                // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+                let node = self.model.entities[symbol.entity].node;
+                let keys = match symbol.kind {
+                    SymbolKind::Variable => node
+                        .and_then(|node| self.declared_value(node))
+                        .and_then(|value| self.keys_of(value)),
+                    SymbolKind::LoopVariable => node
+                        .and_then(|node| self.loop_iterable(node))
+                        .and_then(|iterable| self.item_keys_of(iterable)),
+                    _ => None,
+                };
+                if let Some(keys) = keys {
+                    return Target::Object(keys);
+                }
+                match self.model.entities[symbol.entity].ty.clone() {
+                    Some(ty) => self.target_of_type(ty),
+                    None => Target::Untyped,
+                }
+            }
         }
+    }
+
+    /// The value a variable declaration is written with.
+    fn declared_value(&self, declaration: NodeRef) -> Option<NodeRef> {
+        let trees = &self.trees;
+        if !trees.is(declaration, S::VariableDeclaration) {
+            return None;
+        }
+        trees
+            .child_nodes(declaration)
+            .into_iter()
+            .find(|&child| !trees.is(child, E::Declared))
+    }
+
+    /// The expression a For iterates over, from the node of its loop variable.
+    fn loop_iterable(&self, node: NodeRef) -> Option<NodeRef> {
+        let trees = &self.trees;
+        let for_node = if trees.is(node, S::ForFrom) {
+            trees.parent(node)?
+        } else {
+            node
+        };
+        let iterable = trees
+            .child(for_node, S::ForInOf)
+            .or_else(|| trees.child(for_node, S::ForFrom))?;
+        trees
+            .child_nodes(iterable)
+            .into_iter()
+            .find(|&child| !trees.is(child, E::Declared))
+    }
+
+    /// The keys of the object an expression is: an object literal, or a variable declared
+    /// from one.
+    // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+    fn keys_of(&self, expression: NodeRef) -> Option<Vec<String>> {
+        if let Some(keys) = self.object_keys(expression) {
+            return Some(keys);
+        }
+        self.variable_value(expression)
+            .and_then(|value| self.keys_of(value))
+    }
+
+    /// The keys of the objects a list holds, when every item of it is an object the
+    /// binder can read: a list literal, or a variable declared from one.
+    // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+    fn item_keys_of(&self, expression: NodeRef) -> Option<Vec<String>> {
+        let trees = &self.trees;
+        if trees.is(expression, E::List) {
+            let items = trees
+                .child(expression, E::Items)
+                .map(|items| trees.child_nodes(items))
+                .unwrap_or_default();
+            let mut keys: Vec<String> = Vec::new();
+            for item in items {
+                for key in self.keys_of(item)? {
+                    if !keys.contains(&key) {
+                        keys.push(key);
+                    }
+                }
+            }
+            return Some(keys);
+        }
+        self.variable_value(expression)
+            .and_then(|value| self.item_keys_of(value))
+    }
+
+    /// The value the variable a name or member is bound to was declared with.
+    fn variable_value(&self, expression: NodeRef) -> Option<NodeRef> {
+        if !self.trees.is(expression, E::Name) && !self.trees.is(expression, E::Member) {
+            return None;
+        }
+        let symbol = self
+            .model
+            .usage_of(expression)
+            .and_then(|usage| self.model.usages[usage].symbol)?;
+        if self.model.symbols[symbol].kind != SymbolKind::Variable {
+            return None;
+        }
+        self.declared_value(self.model.entities[self.model.symbols[symbol].entity].node?)
+    }
+
+    /// The keys an object literal spells, when an expression is one: each key's
+    /// identifier, or the text of its string.
+    // @lfy def/model/main.lfy:bind#bind:bind:13a7ef34563641503b4fd1a9fdcaa38cbb0f8bb47dc497f235d53d63b8e451da
+    pub(crate) fn object_keys(&self, expression: NodeRef) -> Option<Vec<String>> {
+        let trees = &self.trees;
+        if !trees.is(expression, E::Object) {
+            return None;
+        }
+        let keys = trees
+            .children_of(expression, E::ObjectKey)
+            .into_iter()
+            .filter_map(|key| {
+                let declared = trees.child(key, E::Declared)?;
+                match trees.child_token(
+                    declared,
+                    crate::grammar::terminals::identifier::Identifier::Identifier,
+                ) {
+                    Some(token) => Some(trees.token(key.file, token).value.clone()),
+                    None => trees.child(declared, E::StringLiteral).map(|literal| {
+                        trees
+                            .raw(literal)
+                            .trim()
+                            .trim_matches(|c| c == '"' || c == '\'')
+                            .to_string()
+                    }),
+                }
+            })
+            .collect();
+        Some(keys)
     }
 
     fn target_of_type(&self, ty: TypeRef) -> Target {
@@ -693,17 +859,30 @@ impl Binder {
             },
             TypeRef::Predicate(t) => Target::Predicate(t),
             TypeRef::Union(items) => {
+                // A value that may also be null or undefined reads as the one other type.
+                let items: Vec<TypeRef> = items
+                    .into_iter()
+                    .filter(|item| {
+                        !matches!(
+                            item,
+                            TypeRef::Literal(value) if matches!(**value, Value::Null | Value::Undefined)
+                        )
+                    })
+                    .collect();
+                if let [only] = items.as_slice() {
+                    return self.target_of_type(only.clone());
+                }
                 // A union of entities: the first entity, leniently.
                 for item in items {
                     if let TypeRef::Entity(e) = item {
                         return Target::Predicate(e);
                     }
                 }
-                Target::Unknown
+                Target::Untyped
             }
             // A value of any other base data.
             // @lfy def/model/main.lfy:bind
-            other => self.base_data(&other).map_or(Target::Unknown, Target::Base),
+            other => self.base_data(&other).map_or(Target::Untyped, Target::Base),
         }
     }
 

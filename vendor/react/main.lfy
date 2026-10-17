@@ -1,14 +1,25 @@
 use "elfie/target/framework";
 
+/// React as a framework. Entities join it with component; a layout of the target, such as nextjs,
+/// says where each is written.
+
 trait react extends targetFramework: `React 19` {
-  .framework = "React 19";
   .provides = ["react"];
   .requires = ["javascript-language"];
   .outputExtensions = ["tsx", "jsx"];
   @acceptanceCriteria
+    .add({ behavior = `Code that uses React is written for React 19` })
     .add({ behavior = `A file that holds JSX ends in .tsx when the language is TypeScript and in .jsx otherwise` })
     .add({
       behavior = `Components are function components; state and effects use hooks; a class component is never written`,
     })
     .add({ behavior = `Every element of a rendered list has a key that is stable across renders` });
+}
+
+trait component: `An fn rendered as a React component, which pages and other components render` {
+  where (`The fn is built`) -> `It is a component named like the fn with its first letter in capitals, exported by that name and never as a default export`;
+  where (`The fn has parameters`) -> `Each is a prop named like it, and the props are the component's one argument`;
+  where (`The fn has parameters`) and (`The language is TypeScript`) -> `The props' type is exported, named like the component followed by Props`;
+  where (`The fn has a parameter named children`) -> `It is the content written between the component's tags`;
+  where (`Another fn renders the fn`) -> `It writes the component as a JSX element, never calls it as a function`;
 }

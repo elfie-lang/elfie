@@ -54,7 +54,19 @@ d LoweredCriterion extends Criterion: `One acceptance criterion as generation an
         behavior = `The second and later ones end with a colon and their position among those, counting from 2`,
       })
       .add({
-        behavior = `The hashed text is the parts the criterion has, joined by a colon and a space: When, a space, and its situations joined by a space; its behaviors joined by a space; Side effects:, a space, and its side effects joined by a space`,
+        behavior = `The hashed text is the situation part, the behavior part, and the side-effects part, in that order, each present only when the criterion has at least one of it, joined by a colon and a space`,
+      })
+      .add({
+        situation = `The criterion has situations`,
+        behavior = `Its situation part is When, a space, and its situations joined by a space`,
+      })
+      .add({
+        situation = `The criterion has behaviors`,
+        behavior = `Its behavior part is its behaviors joined by a space`,
+      })
+      .add({
+        situation = `The criterion has side effects`,
+        behavior = `Its side-effects part is Side effects:, a space, and its side effects joined by a space`,
       });
   }
   with LoweredCriterion$text {

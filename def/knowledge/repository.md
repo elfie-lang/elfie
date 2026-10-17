@@ -49,6 +49,20 @@
   reorders, or rewrites another unit's marked regions, and it leaves the `pub mod` lines of other
   units in place.
 
+## A change that breaks a dependent's output
+
+- Batches run in dependency order, so a unit that adds, removes, or renames a member of a data,
+  or changes behavior a dependent's fixtures rely on, is compiled before the units that construct
+  or read it. Their outputs then fail to build until their own batches regenerate them later in the
+  same compile.
+- Such a unit writes the output its definition asks for anyway; it does not stop as blocked. The
+  whole-workspace build, test, and lint gate holds once every planned unit is compiled, not after
+  each batch.
+- It checks its own work by patching the broken sites in other units' outputs temporarily, with
+  plain `cp` snapshots in the scratchpad, running the build and its own tests, then restoring every
+  snapshot so that only its own outputs are changed. It names, in its report, each build error that
+  remains and the unit that owns it.
+
 ## Tests that load the repository
 
 - A generated test that loads the real repository (`def/`, `lib/`, `vendor/`) asserts properties

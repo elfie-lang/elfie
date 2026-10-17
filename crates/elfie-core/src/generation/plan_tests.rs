@@ -476,6 +476,9 @@ fn a_cycle_with_no_lowest_file_leaves_one_problem_and_moves_nothing() {
     assert!(b.dependencies.contains(&a_index));
     assert!(!used_by(&workspace, a.file, b.file));
     assert!(!used_by(&workspace, b.file, a.file));
+    // The cycle is left as it is, so its units keep file order.
+    // @lfy def/generation/main.lfy:plan#plan:plan:c6bed32df9850fc2409ccc08a49904114e67a864cad86e4c61b6b0addd1d0dab
+    assert!(a_index < b_index, "{:?}", plan.units);
 
     // Nothing moves, and one problem names every file of the cycle.
     // @lfy def/generation/main.lfy:plan

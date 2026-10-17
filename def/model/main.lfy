@@ -6,6 +6,7 @@ use "../grammar/terminals/punctuation";
 use "../grammar/traits";
 use "../parser/data";
 use "./data";
+use "./type";
 use "../interpret/main" as Interpreter;
 use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
@@ -29,6 +30,7 @@ ace const kindData: `The prelude data each kind of entity is seen as, besides [[
   { kind = `a parameter or a type parameter`, data = Kinds.Parameter },
   { kind = `a variable`, data = Kinds.Variable },
   { kind = `a module`, data = Kinds.Module },
+  { kind = `[[Lists.List]] seen with one type argument`, data = Kinds.Array },
 ];
 
 ace const baseData: `The prelude data each kind of value has as its base` = [
@@ -353,7 +355,7 @@ fn bind(sources: Source[]): `Build the model of a program from the resolved file
     })
     .add({
       situation = `A [[FunctionType]] is bound`,
-      behavior = `It yields an anonymous entity whose kind data is [[Functions.Function]]: [[FnEntity.parameters]] is the symbols of the [[Parameter]] and [[SpreadParameter]] nodes of its [[Parameters]], declared in the scope the [[FunctionType]] owns, and [[FnEntity.output]] is what the [[TypeExpression]] after its [[DoubleArrowRight]] resolves to`,
+      behavior = `It yields an anonymous entity whose kind data is [[Functions.Function]]: [[FnEntity.parameters]] is the entities of the [[Parameter]] and [[SpreadParameter]] nodes of its [[Parameters]], declared in the scope the [[FunctionType]] owns, and [[FnEntity.output]] is what the [[TypeExpression]] after its [[DoubleArrowRight]] resolves to`,
     })
     .add({
       situation = `A [[Member]] is bound with [[ValueAccessor]] or [[OptionalValueAccessor]] on a left side whose type has [[Entity.typeArguments]]`,

@@ -10,6 +10,7 @@ use "../lexer/data";
 use "../model/data";
 use "../model/main" as Binder;
 use "../model/traits";
+use "../model/type";
 use "../parser/data";
 use "../parser/traits";
 use "../workspace/data";

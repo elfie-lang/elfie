@@ -144,9 +144,9 @@ trait cargoWorkspace(crates: Object<string>, fallback: string, binaries: string[
 }
 
 trait clap extends targetFramework: `Command lines parsed with clap 4 and its derive feature` {
-  .framework = "clap 4";
   .provides = ["argument-parser"];
   .requires = ["rust"];
+  where (`Code parses the command line`) -> `It uses clap 4 with its derive feature`;
   where (`An fn carries [[command]] with a name`) -> `It is one variant of a #[derive(Subcommand)] enum whose fields are its parameters with #[arg] attributes`;
   where (`An fn carries [[command]] with a name`) -> `main dispatches on its variant`;
   where (`An fn carries [[command]] with an empty name`) -> `Its parameters are the fields of the #[derive(Parser)] struct itself`;

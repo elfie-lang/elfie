@@ -3,7 +3,7 @@
 //! where each one runs, what it takes from the batches before it, and what becomes of it.
 
 use super::*;
-use crate::copies::{Change, Changes, Kept, KeptFile, Mirror, Where, kept_file, merge_changes, merged};
+use crate::copies::{Change, Changes, Kept, KeptFile, Mirror, Where, kept_file, merge_changes, merged, mode_of};
 use crate::processes::Runs;
 use crate::running::Run;
 
@@ -72,6 +72,10 @@ pub(crate) struct Schedule {
     /// every unit of the batch was accepted.
     // @lfy def/cli/main.lfy:main#main:main:eceff310959fa29bae3da5b35fd3856bfaccd67f6a0866c09241cd83f43af49b
     accepted: BTreeMap<usize, Changes>,
+    /// The paths each batch's merge wrote into the root, by its place, once its files are
+    /// there.
+    // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+    wrote: BTreeMap<usize, Vec<String>>,
     /// The places of the batches that must run with nothing else, because a file of theirs
     /// could not be merged.
     // @lfy def/cli/main.lfy:main#main:main:778beafa50331ee0e4592814d25234b9b53a467f199785957330b905729b79ac
@@ -193,6 +197,7 @@ impl Schedule {
     pub(crate) fn runs_again(&mut self, at: usize) {
         // @lfy def/cli/main.lfy:main#main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30
         self.accepted.remove(&at);
+        self.wrote.remove(&at);
         self.states[at] = State::Running;
     }
 
@@ -337,6 +342,19 @@ impl Round<'_> {
         self.finished.notify_all();
     }
 
+    /// The paths the batch's merge wrote into the root, kept for the batches whose copies took
+    /// its accepted changes.
+    // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+    pub(crate) fn wrote(&self, paths: Vec<String>) {
+        self.held().wrote.insert(self.at, paths);
+    }
+
+    /// The paths the merge of the batch at one place wrote into the root.
+    // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+    pub(crate) fn written_by(&self, waited: usize) -> Vec<String> {
+        self.held().wrote.get(&waited).cloned().unwrap_or_default()
+    }
+
     /// A batch that was done running again: it is no longer done.
     // @lfy def/cli/main.lfy:main#main:main:107c61d983a8522a99a186d5c8b3e788d5407f1e171398cf2aa4910fa72a7a30
     pub(crate) fn runs_again(&self) {
@@ -425,8 +443,32 @@ pub(crate) fn run_in_copy(
         let agent = state.agent.clone();
         Runs::new(agent, state.running_of(&batch.identifier))
     };
-    // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
-    let compiled = Run::compile_batch(run, batch, command, &where_, &runs, took_kept.as_ref(), round);
+    let waited: Vec<usize> = took.keys().copied().collect();
+    // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+    locked(run).abandoned.remove(&batch.identifier);
+    let over = std::sync::atomic::AtomicBool::new(false);
+    let compiled = std::thread::scope(|scope| {
+        // While the batch runs, a batch whose accepted changes its copy took stopping
+        // without its files reaching the root stops what is running for it at once.
+        // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+        if !waited.is_empty() {
+            scope.spawn(|| watch_taken(run, batch, round, &waited, &over));
+        }
+        // @lfy def/cli/main.lfy:main#main:main:c33603aa1a0daddcd764752355373ba6e9d0a7e056273935466dbfa27de55685
+        let compiled = Run::compile_batch(run, batch, command, &where_, &runs, took_kept.as_ref(), round);
+        over.store(true, std::sync::atomic::Ordering::SeqCst);
+        round.finished.notify_all();
+        compiled
+    });
+    // The batch was stopped while it ran: nothing of it is merged into the root, and it
+    // stops as a batch that depends on a stopped batch does.
+    // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+    if locked(run).abandoned.contains(&batch.identifier) {
+        let mut state = locked(run);
+        state.stop(batch);
+        state.worsen(ExitCode::Problems);
+        return Attempt::Over(Done::Stopped);
+    }
     let Where::Copy(mirror) = &mut where_ else {
         // The batch ran in the root: there is nothing to merge, and its source maps are
         // recorded where they already are. No kept work is written or taken for it, because
@@ -450,7 +492,6 @@ pub(crate) fn run_in_copy(
         }
         return Attempt::Over(Done::Stopped);
     };
-    let waited: Vec<usize> = took.keys().copied().collect();
     // Nothing of the batch is merged into the root while a batch whose accepted changes its
     // copy took has not had its own files merged into it.
     // @lfy def/cli/main.lfy:main#main:main:f5720ad6fd831e736d050c0b20f67ced9fd4c44fe185806606e36c8d267767fc
@@ -470,21 +511,37 @@ pub(crate) fn run_in_copy(
     // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
     let mut differing: Vec<&str> = Vec::new();
     for (&waited, changes) in &took {
-        let mut any = false;
-        for (path, change) in changes {
-            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
-            let now = fs::read(root.join(path)).ok();
-            if now.as_deref() == change.text.as_deref() {
-                continue;
-            }
-            any = true;
-            // The base of the merge into the copy is what the copy took for that file.
-            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
-            differs.insert(path.clone(), Change { base: change.text.clone(), text: now, mode: change.mode });
+        // Whether the root does not hold, for some accepted change the copy took, what that
+        // change held.
+        // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+        let any = changes
+            .iter()
+            .any(|(path, change)| fs::read(root.join(path)).ok().as_deref() != change.text.as_deref());
+        if !any {
+            continue;
         }
         // @lfy def/cli/main.lfy:main#main:main:f787e163d40f9023ad638dd789bab0a8201e514791bc0d85d332f7441ec9b5e5
-        if any {
-            differing.push(&round.planned[waited].batch.identifier);
+        differing.push(&round.planned[waited].batch.identifier);
+        // Each file that batch's merge wrote into the root, and each it was to write, is
+        // merged into the copy.
+        // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+        let mut paths: BTreeSet<String> = round.written_by(waited).into_iter().collect();
+        paths.extend(changes.keys().cloned());
+        for path in paths {
+            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+            let now = fs::read(root.join(&path)).ok();
+            // The base of the merge into the copy is what the copy took for that file: the
+            // change's text where it took one, and its base otherwise.
+            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+            let (base, mode) = match changes.get(&path) {
+                Some(change) => (change.text.clone(), change.mode),
+                None => (mirror.base.get(&path).cloned(), mode_of(&root.join(&path))),
+            };
+            if now.as_deref() == base.as_deref() {
+                continue;
+            }
+            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+            differs.insert(path, Change { base, text: now, mode });
         }
     }
     // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
@@ -507,7 +564,9 @@ pub(crate) fn run_in_copy(
         // Every file merged: the source maps are recorded in the root and the copy is
         // removed.
         // @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-        Ok(_) => {
+        Ok(written) => {
+            // @lfy def/cli/main.lfy:main#main:main:74f2ac185a24604969b28a7efc22aaf4d3a13819529ba16f1f40e7aa2179032d
+            round.wrote(written);
             // @lfy def/cli/main.lfy:main#main:main:e7d188f1e2558f6ab540ea91a682e317f0402c6c88a2e8b1868e626094e26a25
             locked(run).record_maps(batch, &held, compiled.on_build);
             // @lfy def/cli/main.lfy:main#main:main:d4df2511718d78630ac13bf572eebf1307e182b63f7ed82d414c8f8535fc1278
@@ -532,6 +591,40 @@ pub(crate) fn run_in_copy(
             mirror.remove();
             Attempt::Over(Done::Conflicted)
         }
+    }
+}
+
+/// Watches, while a batch runs, the batches whose accepted changes its copy took: when one of
+/// them stops without its files reaching the root, every run of the compiler, the verifier,
+/// or a command of the target running for the batch is stopped, with every process of its
+/// group, and what it gives is ignored. Ends once the batch's run is over.
+// @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+pub(crate) fn watch_taken(
+    run: &Mutex<Run>,
+    batch: &Batch,
+    round: &Round,
+    took: &[usize],
+    over: &std::sync::atomic::AtomicBool,
+) {
+    let mut held = round.held();
+    loop {
+        if over.load(std::sync::atomic::Ordering::SeqCst) {
+            return;
+        }
+        // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+        if took.iter().any(|&waited| held.states[waited] == State::Stopped) {
+            // The schedule's lock is given back before the compile's is taken, so that no
+            // thread ever holds both.
+            drop(held);
+            // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+            locked(run).abandon(&batch.identifier);
+            return;
+        }
+        held = round
+            .finished
+            .wait_timeout(held, std::time::Duration::from_millis(200))
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .0;
     }
 }
 
@@ -743,15 +836,18 @@ pub(crate) fn take_kept(run: &Mutex<Run>, batch: &Batch, where_: &Where, kept: O
     for file in &held.files {
         let at = mirror.directory.join(&file.path);
         let now = fs::read(&at).ok();
+        // What the file becomes: its text, or nothing when the kept work removed it; no
+        // outcome at all when the merge has a conflict.
         // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
-        let merged = match (&file.base, &file.text, &now) {
-            // The copy holds what the kept work was based on: the kept text stands.
+        let merged: Option<Option<String>> = match (&file.base, &file.text, &now) {
+            // The copy holds what the kept work was based on: the kept text stands, and a
+            // file the kept work removed is removed.
             // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
-            (base, text, now) if base.as_deref().map(str::as_bytes) == now.as_deref() => text.clone(),
+            (base, text, now) if base.as_deref().map(str::as_bytes) == now.as_deref() => Some(text.clone()),
             // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
             (Some(base), Some(text), Some(now)) => {
                 merged(now, base.as_bytes(), text.as_bytes(), &scratch)
-                    .map(|held| String::from_utf8_lossy(&held).into_owned())
+                    .map(|held| Some(String::from_utf8_lossy(&held).into_owned()))
             }
             // One of the three missing is a file added or removed on both sides, which no
             // merge settles.
@@ -764,15 +860,17 @@ pub(crate) fn take_kept(run: &Mutex<Run>, batch: &Batch, where_: &Where, kept: O
             left += 1;
             continue;
         };
-        // @lfy def/cli/main.lfy:main#main:main:97749da3fde520bf9fb6a1d4a7f1782131dc4eea08223f3ea0036e11724b6e42
-        if let Some(parent) = at.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
         // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
-        let written = if text.is_empty() && file.text.is_none() {
-            fs::remove_file(&at).is_ok()
-        } else {
-            fs::write(&at, &text).is_ok()
+        let written = match text {
+            // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
+            None => !at.exists() || fs::remove_file(&at).is_ok(),
+            Some(text) => {
+                // @lfy def/cli/main.lfy:main#main:main:97749da3fde520bf9fb6a1d4a7f1782131dc4eea08223f3ea0036e11724b6e42
+                if let Some(parent) = at.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                fs::write(&at, &text).is_ok()
+            }
         };
         if written {
             taken += 1;

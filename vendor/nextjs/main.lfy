@@ -8,10 +8,10 @@ use "typescript";
 
 /// root: the app's directory, relative to the project root
 trait nextjs(root: string) extends targetFramework, targetLayout: `Next.js 15 with the App Router, its source under src` {
-  .framework = "Next.js 15";
   .provides = ["http-server", "html-pages"];
   .requires = ["react", "node-api", "npm-registry", "browser"];
   @acceptanceCriteria
+    .add({ behavior = `Code that uses Next.js is written for Next.js 15 and its App Router` })
     .add({
       situation = `A unit holds an fn that carries [[endpoint]]`,
       behavior = `It is route.ts in {{root}}/src/app followed by the endpoint's path, exporting one handler per method`,
@@ -25,12 +25,37 @@ trait nextjs(root: string) extends targetFramework, targetLayout: `Next.js 15 wi
       behavior = `The compiler stops on the unit and names the paths, because one unit writes one route or page file`,
     })
     .add({
-      situation = `A unit holds no fn carrying [[endpoint]] or [[page]]`,
+      situation = `A unit holds an fn that carries [[component]] and an fn that carries [[endpoint]] or [[page]]`,
+      behavior = `The compiler stops on the unit and names the component, because a route or page file exports nothing but its handlers or its page`,
+    })
+    .add({
+      situation = `A unit holds an fn that carries [[component]] and no fn carrying [[endpoint]] or [[page]]`,
+      behavior = `It is {{root}}/src/components/ then the stem, imported elsewhere as @/components/ then the stem`,
+    })
+    .add({
+      situation = `A unit holds no fn carrying [[endpoint]], [[page]], or [[component]]`,
       behavior = `It is {{root}}/src/lib/ then the stem, imported elsewhere as @/lib/ then the stem`,
     })
     .add({ behavior = `An endpoint's arguments are checked with a zod schema of each parameter's type` })
     .add({
-      behavior = `A component that needs state or a browser API begins with "use client"; every other component renders on the server`,
+      situation = `An fn carrying [[component]] needs state, an effect, an event handler, or a browser API`,
+      behavior = `Its file begins with "use client"`,
+    })
+    .add({
+      situation = `An fn carrying [[component]] needs no state, effect, event handler, or browser API`,
+      behavior = `It is a server component, and it is async when it reads data`,
+    })
+    .add({
+      situation = `A unit holds an fn carrying [[component]] whose file must begin with "use client" and another that reads data on the server`,
+      behavior = `The compiler stops on the unit and names both components, because one file renders either on the client or on the server`,
+    })
+    .add({
+      situation = `A component whose file begins with "use client" shows a server component`,
+      behavior = `It receives the server component's element as children or another prop, and never imports it`,
+    })
+    .add({
+      situation = `A server component or page renders a component whose file begins with "use client"`,
+      behavior = `Every prop it passes is a value Next.js can serialize, and the only function it passes is a server action`,
     })
     .add({ behavior = `Code under src/lib that reads a database, a secret, or a file begins with import "server-only"` })
     .add({ behavior = `package.json's dev, build, and start scripts run next` });

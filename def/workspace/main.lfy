@@ -9,7 +9,6 @@ use "./data";
 use "elfie/criteria/command" as Commands;
 use "elfie/system/file" as FileSystem;
 use "elfie/system/path";
-use "elfie/system/process" as Process;
 use "elfie/prelude/trait" as Traits;
 use "elfie/target" as Targets;
 
@@ -29,59 +28,78 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
     .add({ behavior = `[[Workspace.files]] are the [[Source]]s the model was bound from` })
     .add({ behavior = `Each of [[Workspace.files]] holds, in [[Source.uses]], the path every [[Use]] in it resolved to` });
 
-  // Layout
-  // Decision: keys the loader does not read, such as targets, output, or native, which earlier
-  // versions read, are ignored, so a manifest written for another version or another tool still loads.
+  // Configuration
+  // Decision: keys the loader does not read, such as targets, output, native, compiler, or
+  // verifier, are ignored, so a manifest written for another version or another tool still loads.
   @acceptanceCriteria
     .add({
-      situation = `elfie.json under [[root]] is a JSON object that gives a name`,
-      behavior = `[[Workspace.name]] is the name elfie.json gives`,
+      behavior = `[[Workspace.configuration]] is the elfie.json at [[root]], read as JSON, with each key of [[Configuration]] taken from the key of the same name`,
     })
     .add({
-      situation = `elfie.json under [[root]] is a JSON object that gives no name`,
-      behavior = `[[Workspace.name]] is the name of the [[root]] directory`,
+      behavior = `[[Package.configuration]] is the elfie.json at that [[Package.root]], read the same way`,
     })
     .add({
-      situation = `elfie.json under [[root]] is a JSON object that gives a source directory`,
-      behavior = `[[Workspace.sourceDirectory]] is the source directory elfie.json gives`,
-    })
-    .add({
-      situation = `elfie.json under [[root]] is a JSON object that gives no source directory`,
-      behavior = `[[Workspace.sourceDirectory]] is def`,
-    })
-    .add({
-      situation = `elfie.json under [[root]], or an entry of it, has a key the loader does not read`,
+      situation = `An elfie.json has a key that [[Configuration]] does not declare`,
       behavior = `The key is ignored and adds no problem`,
     })
     .add({
-      situation = `A key the loader reads has a value of the wrong kind, such as a dependency whose root is not a string`,
-      behavior = `A [[LoadProblem]] for elfie.json names the key and what it should be`,
-    })
-    .add({
-      situation = `A key the loader reads has a value of the wrong kind`,
-      behavior = `The rest of the manifest is still read`,
-    })
-    .add({
-      situation = `[[FileSystem.exists]] finds elfie.json under [[root]] but [[FileSystem.read]] of it is undefined, or its text is not a JSON object`,
+      situation = `A key of an elfie.json that [[Configuration]] declares has a value of another type than the one it declares`,
       behavior = [
-        `A [[LoadProblem]] for elfie.json is added`,
-        `[[Workspace.name]] is the name of the [[root]] directory and [[Workspace.sourceDirectory]] is def`,
+        `A [[LoadProblem]] for that elfie.json names the key and the type it should have`,
+        `That key of the [[Configuration]] is undefined`,
       ],
     })
     .add({
-      situation = `No elfie.json exists under [[root]]`,
-      behavior = `[[Workspace.name]] is the name of the [[root]] directory and [[Workspace.sourceDirectory]] is def`,
+      situation = `A key of an elfie.json that [[Configuration]] declares has a value of another type than the one it declares`,
+      behavior = `Every other key of that elfie.json is still read`,
     })
-    .add({ situation = `No elfie.json exists under [[root]]`, behavior = `No problem is added for it` })
     .add({
-      situation = `[[FileSystem.exists]] is false for [[root]], or for [[Workspace.sourceDirectory]] under it`,
+      situation = `[[FileSystem.exists]] finds an elfie.json but [[FileSystem.read]] of it is undefined, or its text is not a JSON object`,
+      behavior = [`A [[LoadProblem]] for that elfie.json is added`, `Every key of its [[Configuration]] is undefined`],
+    })
+    .add({
+      situation = `No elfie.json exists at [[root]] or at a [[Package.root]]`,
+      behavior = [`Every key of that [[Configuration]] is undefined`, `No problem is added for it`],
+    });
+
+  // Layout
+  @acceptanceCriteria
+    .add({
+      situation = `[[Configuration.name]] of [[Workspace.configuration]] is defined`,
+      behavior = `[[Workspace.name]] is that name`,
+    })
+    .add({
+      situation = `[[Configuration.name]] of [[Workspace.configuration]] is undefined`,
+      behavior = `[[Workspace.name]] is the name of the [[root]] directory`,
+    })
+    .add({
+      situation = `[[Configuration.source]] of [[Workspace.configuration]] is a string`,
+      behavior = `[[Workspace.sourceDirectories]] holds that string alone`,
+    })
+    .add({
+      situation = `[[Configuration.source]] of [[Workspace.configuration]] is a list of strings`,
+      behavior = `[[Workspace.sourceDirectories]] is that list, in order, each directory once`,
+    })
+    .add({
+      situation = `[[Configuration.source]] of [[Workspace.configuration]] is undefined`,
+      behavior = `[[Workspace.sourceDirectories]] holds def alone`,
+    })
+    .add({
+      situation = `[[FileSystem.exists]] is false for [[root]]`,
       behavior = [`A [[LoadProblem]] with no path is added`, `[[Workspace.files]] is empty`],
+    })
+    .add({
+      situation = `[[FileSystem.exists]] is false for one of [[Workspace.sourceDirectories]] under [[root]]`,
+      behavior = [
+        `A [[LoadProblem]] for that directory is added`,
+        `No file is taken from it, and the other directories still load`,
+      ],
     });
 
   // Discovery
   @acceptanceCriteria
     .add({
-      behavior = `Every file [[FileSystem.list]] gives recursively under [[Workspace.sourceDirectory]] whose [[Path.extension]] is lfy is in the program, with no [[File.package]]`,
+      behavior = `Every file [[FileSystem.list]] gives recursively under each of [[Workspace.sourceDirectories]] whose [[Path.extension]] is lfy is in the program, with no [[File.package]]`,
     })
     .add({ behavior = `Every file a [[Use]] in a file of the program refers to is in the program` })
     .add({ behavior = `A file is in [[Workspace.files]] once, however many files use it` })
@@ -96,6 +114,30 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
       behavior = [`A [[LoadProblem]] for its path is added`, `It is left out of the program`],
     });
 
+  // Names
+  // Decision: a file of the project is named by its path within its source directory, so that
+  // moving the source directory renames nothing. Where two source directories hold the same
+  // path, each such file takes as many more of its leading directories as it needs to differ.
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `A file has no [[File.package]]`,
+        `No other file of the project has the same path relative to its source directory`,
+      ],
+      behavior = `[[File.name]] is [[Path.relative]] of [[File.path]] to the longest of [[Workspace.sourceDirectories]] it is under, without the .lfy extension`,
+    })
+    .add({
+      situation = [
+        `A file has no [[File.package]]`,
+        `Other files of the project have the same path relative to the longest of [[Workspace.sourceDirectories]] each is under`,
+      ],
+      behavior = `[[File.name]] is the shortest run of the last [[Path.segments]] of [[File.path]], without the .lfy extension and joined by slashes, that is the end of no other such file's path and is no other file's [[File.name]]`,
+    })
+    .add({
+      situation = `A file has a [[File.package]]`,
+      behavior = `[[File.name]] is the [[Package.identifier]], a slash, and [[Path.relative]] of [[File.path]] to the [[Package.root]], without the .lfy extension`,
+    });
+
   // use
   @acceptanceCriteria
     .add({
@@ -104,7 +146,28 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
     })
     .add({
       situation = `A [[Use]] names a path beginning with anything else`,
-      behavior = `The first of its [[Path.segments]] names a [[Package]], and the path is [[Path.join]] of that [[Package.root]] and the remaining segments`,
+      behavior = [
+        `The longest run of its first [[Path.segments]], joined by slashes, that is the key of a dependency entry its file can name, or elfie, names a [[Package]]`,
+        `The path is [[Path.join]] of that [[Package.root]] and the remaining segments`,
+      ],
+    })
+    .add({
+      situation = `The [[Use]] is in a file with no [[File.package]]`,
+      behavior = `The dependency entries its file can name are those of [[Configuration.dependencies]] of [[Workspace.configuration]]`,
+    })
+    .add({
+      situation = `The [[Use]] is in a file of a [[Package]]`,
+      behavior = `The dependency entries its file can name are those of [[Configuration.dependencies]] of that [[Package.configuration]], never those of [[Workspace.configuration]]`,
+    })
+    .add({
+      situation = [
+        `A [[Use]] names a [[Package]]`,
+        `The segments after the package's name begin with the segments of a key of [[Configuration.exports]] of its [[Package.configuration]]`,
+      ],
+      behavior = [
+        `The path is [[Path.join]] of the [[Package.root]], the value of the longest such key, and the segments after that key`,
+        `This holds even when a file of the package has the path the key spells`,
+      ],
     })
     .add({
       situation = `[[FileSystem.exists]] is true for the path a [[Use]] names, once joined to its file's directory or its package's root, plus .lfy`,
@@ -133,13 +196,50 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
 
   // Dependencies
   @acceptanceCriteria
-    .add({ behavior = `Each dependency elfie.json names gives one [[Package]]` })
+    .add({
+      situation = `The value of a dependency entry begins with ./ or ../, or [[Path.isAbsolute]] is true for it`,
+      behavior = `It is a path`,
+    })
+    .add({
+      situation = [
+        `The value of a dependency entry is not a path`,
+        `It begins with git@ or git+, contains ://, or ends with .git`,
+      ],
+      behavior = `It is a git URL`,
+    })
+    .add({
+      situation = `The value of a dependency entry is neither a path nor a git URL`,
+      behavior = `It is a version`,
+    })
+    .add({
+      situation = `A dependency entry of [[Workspace.configuration]], other than elfie, is a path`,
+      behavior = `It gives one [[Package]] whose [[Package.root]] is [[Path.normalize]] of [[Path.join]] of [[root]] and the path, or the path itself when it is absolute`,
+    })
+    .add({
+      situation = `A dependency entry of the [[Package.configuration]] of a package in the program, other than elfie, is a path`,
+      behavior = `It gives one [[Package]] whose [[Package.root]] is [[Path.normalize]] of [[Path.join]] of that package's [[Package.root]] and the path, or the path itself when it is absolute`,
+    })
+    .add({
+      situation = `Two dependency entries give the same [[Package.root]]`,
+      behavior = `The program holds one [[Package]] for it, and a [[Use]] through either entry names that package`,
+    })
+    .add({
+      situation = `A dependency entry is a version or a git URL`,
+      behavior = [
+        `A [[LoadProblem]] for the elfie.json holding it names the dependency and says that version and git dependencies cannot be loaded yet`,
+        `It gives no [[Package]]`,
+      ],
+    })
     .add({
       behavior = `Every file [[FileSystem.list]] gives recursively under a [[Package.root]] whose [[Path.extension]] is lfy is in the program and carries that package as its [[File.package]]`,
     })
     .add({
       situation = `[[FileSystem.exists]] is false for a [[Package.root]]`,
       behavior = [`A [[LoadProblem]] for it is added`, `No file of it is in the program`],
+    })
+    .add({
+      situation = `The value of a key of [[Configuration.exports]] names neither a file nor a directory under that [[Package.root]], once joined to it`,
+      behavior = `A [[LoadProblem]] for the elfie.json holding it names the export`,
     });
 
   // The package elfie
@@ -149,20 +249,19 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
       behavior = `Every file [[FileSystem.list]] gives recursively under the [[Package.root]] of the [[Package]] named elfie whose [[Path.extension]] is lfy is in the program and carries it as its [[File.package]]`,
     })
     .add({
-      situation = `elfie.json has the dependency entry elfie`,
-      behavior = `The [[Package.root]] of the [[Package]] named elfie is the directory that entry gives, whether or not that directory exists`,
+      situation = `[[Workspace.configuration]] has the dependency entry elfie and it is a path`,
+      behavior = `The [[Package.root]] of the [[Package]] named elfie is [[Path.normalize]] of [[Path.join]] of [[root]] and that path, or the path itself when it is absolute, whether or not that directory exists`,
     })
     .add({
-      situation = `elfie.json has no dependency entry elfie and has the top level key lib`,
-      behavior = `The [[Package.root]] of the [[Package]] named elfie is the directory lib gives, relative to [[root]], whether or not that directory exists`,
-    })
-    .add({
-      situation = `elfie.json has neither the dependency entry elfie nor the top level key lib, and [[Process.environment]] gives a directory for ELFIE_LIB`,
-      behavior = `The [[Package.root]] of the [[Package]] named elfie is the directory [[Process.environment]] gives for ELFIE_LIB, whether or not that directory exists`,
-    })
-    .add({
-      situation = `elfie.json has neither the dependency entry elfie nor the top level key lib, and [[Process.environment]] gives no directory for ELFIE_LIB`,
+      situation = `[[Workspace.configuration]] has no dependency entry elfie, or has one that is not a path`,
       behavior = `The [[Package.root]] of the [[Package]] named elfie is the copy of the library the compiler was built with`,
+    })
+    .add({
+      situation = `The [[Package.configuration]] of a package has the dependency entry elfie`,
+      behavior = [
+        `The entry is ignored and adds no problem`,
+        `A [[Use]] of elfie in that package names the one [[Package]] named elfie`,
+      ],
     })
     .add({
       behavior = [
@@ -259,7 +358,7 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
     {
       input = [string@like(`A root with an empty def directory and no elfie.json`)],
       expect = Workspace@like(
-        `[[Workspace.name]] from the directory, source directory def, no files of the project, the files of the package elfie from the copy the compiler was built with, no targets, and no problems`,
+        `[[Workspace.name]] from the directory, source directories def alone, no files of the project, the files of the package elfie from the copy the compiler was built with, no targets, and no problems`,
       ),
     },
     {
@@ -285,11 +384,41 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
     {
       input = [
         string@like(
-          `A root whose elfie.json names no lib and no dependency elfie, loaded while [[Process.environment]] gives a directory holding the library for ELFIE_LIB`,
+          `A root whose elfie.json reads {"dependencies": {"elfie": "./lib"}} and whose lib holds the library`,
         ),
       ],
       expect = Workspace@like(
-        `A [[Package]] elfie whose [[Package.root]] is that directory, every .lfy file under it in [[Workspace.files]] with that package, its main.lfy with [[Origin.prelude]] and the others with [[Origin.library]], and no problems`,
+        `A [[Package]] elfie whose [[Package.root]] is lib, every .lfy file under it in [[Workspace.files]] with that package, its main.lfy with [[Origin.prelude]] and the others with [[Origin.library]], and no problems`,
+      ),
+    },
+    {
+      input = [
+        string@like(
+          `A root whose elfie.json reads {"source": ["def", "src"]}, with def holding a.lfy, b.lfy, and x/a.lfy, and src holding a.lfy and x/a.lfy`,
+        ),
+      ],
+      expect = Workspace@like(
+        `Five files of the project whose [[File.name]]s are def/a, b, def/x/a, src/a, and src/x/a, and no problems`,
+      ),
+    },
+    {
+      input = [
+        string@like(
+          `A root whose elfie.json reads {"dependencies": {"a": "1.2.0", "b": "https://example.com/b.git", "c": "./vendor/c"}}`,
+        ),
+      ],
+      expect = Workspace@like(
+        `One [[Package]] c besides elfie, whose [[Package.root]] is vendor/c, and two [[LoadProblem]]s for elfie.json, one naming a and one naming b`,
+      ),
+    },
+    {
+      input = [
+        string@like(
+          `A root whose elfie.json reads {"dependencies": {"@acme/kit": "./kit"}}, whose kit/elfie.json reads {"exports": {"ui": "./src/ui"}}, whose kit/src/ui holds main.lfy, and whose def holds main.lfy reading: use "@acme/kit/ui";`,
+        ),
+      ],
+      expect = Workspace@like(
+        `The [[Use]] resolved to kit/src/ui/main.lfy, that file's [[File.package]] the package @acme/kit, and no problems`,
       ),
     },
     {
@@ -351,7 +480,7 @@ fn load(root: string): `A project loaded from disk and bound` => Workspace {
     {
       input = [string@like(`A root whose elfie.json reads {"name": "x", and whose def holds main.lfy`)],
       expect = Workspace@like(
-        `[[Workspace.name]] from the directory, source directory def, def/main.lfy in [[Workspace.files]], and one [[LoadProblem]] for elfie.json`,
+        `[[Workspace.name]] from the directory, source directories def alone, def/main.lfy in [[Workspace.files]], and one [[LoadProblem]] for elfie.json`,
       ),
     },
     {
@@ -414,7 +543,7 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
       behavior = `[[Workspace.targets]] and the problems loading adds about targets are found again from the model the change gives`,
     })
     .add({
-      situation = `[[path]] is neither under [[Workspace.sourceDirectory]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program, nor the source path [[load]] gives a knowledge item of the program`,
+      situation = `[[path]] is neither under one of [[Workspace.sourceDirectories]], nor under the [[Package.root]] of a package in the program, nor resolved to by a [[Use]] in the program, nor the source path [[load]] gives a knowledge item of the program`,
       behavior = `The result matches [[workspace]]`,
     });
 

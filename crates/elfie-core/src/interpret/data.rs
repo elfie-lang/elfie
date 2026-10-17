@@ -426,19 +426,39 @@ fn repeats(keys: &[(Option<EntityId>, String)]) -> Vec<Option<usize>> {
 /// The text an [`LoweredCriterion::id`] hashes. It is built here and not from
 /// [`LoweredCriterion::text`] so that the two can be worded apart.
 // @lfy def/interpret/data.lfy:LoweredCriterion.id
-// @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:bd1c68e497730ab6072b9e054435fc5ecd4cdbb10bd2ff06f5bd52416eb335a8
+// @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:e004caf758bedcd41ac9d8394641253961e7709dcd63416ba159249ece45d138
 fn hashed_text(criterion: &Criterion) -> String {
-    let mut parts = Vec::new();
-    if let Some(situation) = &criterion.situation {
-        parts.push(format!("When {}", situation.join(" ")));
-    }
-    if let Some(behavior) = &criterion.behavior {
-        parts.push(behavior.join(" "));
-    }
-    if let Some(side_effects) = &criterion.side_effects {
-        parts.push(format!("Side effects: {}", side_effects.join(" ")));
-    }
-    parts.join(": ")
+    [
+        situation_part(criterion),
+        behavior_part(criterion),
+        side_effects_part(criterion),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(": ")
+}
+
+// @lfy def/interpret/data.lfy:LoweredCriterion.id
+/// The items of one part of a criterion; `None` when it has none of them.
+fn present(items: &Option<Vec<String>>) -> Option<&[String]> {
+    items.as_deref().filter(|items| !items.is_empty())
+}
+
+// @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:b2be1937f9002fd33e371a22fded2a16194a07d4303218667f7e1d3aba4bcc98
+fn situation_part(criterion: &Criterion) -> Option<String> {
+    present(&criterion.situation).map(|situation| format!("When {}", situation.join(" ")))
+}
+
+// @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:6872549bdf0cbb50ad516816064b4359f4b54d53a4e238fbf00c8c5e7824dbef
+fn behavior_part(criterion: &Criterion) -> Option<String> {
+    present(&criterion.behavior).map(|behavior| behavior.join(" "))
+}
+
+// @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:bfe319a1f0d3930d6d8d6a86b24ab4a0b85de067d60f9d577b1adcfaebfc1b94
+fn side_effects_part(criterion: &Criterion) -> Option<String> {
+    present(&criterion.side_effects)
+        .map(|side_effects| format!("Side effects: {}", side_effects.join(" ")))
 }
 
 /// The SHA-256 of a text, in lowercase hex.
@@ -800,7 +820,7 @@ mod tests {
     }
 
     // @lfy def/interpret/data.lfy:LoweredCriterion.id
-    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:bd1c68e497730ab6072b9e054435fc5ecd4cdbb10bd2ff06f5bd52416eb335a8
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:e004caf758bedcd41ac9d8394641253961e7709dcd63416ba159249ece45d138
     #[test]
     fn the_text_an_id_hashes_joins_the_parts_the_criterion_has() {
         let model = bound("d A: `An a` {\n  $x = string;\n}\n");
@@ -832,6 +852,67 @@ mod tests {
             hashed_text(&without_side_effects),
             "When it is asked nothing is open: it holds it is written"
         );
+
+        // A part given as an empty list is one the criterion does not have.
+        let empty = Criterion {
+            situation: Some(Vec::new()),
+            side_effects: Some(Vec::new()),
+            ..without_side_effects
+        };
+        assert_eq!(hashed_text(&empty), "it holds it is written");
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id
+    /// A criterion for `A` with the given parts.
+    fn parts(
+        situation: Option<&[&str]>,
+        behavior: Option<&[&str]>,
+        side_effects: Option<&[&str]>,
+    ) -> Criterion {
+        let model = bound("d A: `An a` {\n  $x = string;\n}\n");
+        let owned = |items: Option<&[&str]>| {
+            items.map(|items| items.iter().map(|item| item.to_string()).collect())
+        };
+        Criterion {
+            situation: owned(situation),
+            behavior: owned(behavior),
+            side_effects: owned(side_effects),
+            contributor: entity_named(&model, "A"),
+            node: None,
+        }
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:b2be1937f9002fd33e371a22fded2a16194a07d4303218667f7e1d3aba4bcc98
+    #[test]
+    fn the_situation_part_is_when_and_the_situations_joined_by_a_space() {
+        let criterion = parts(Some(&["it is asked", "nothing is open"]), None, None);
+        assert_eq!(
+            situation_part(&criterion).as_deref(),
+            Some("When it is asked nothing is open")
+        );
+        assert_eq!(situation_part(&parts(None, None, None)), None);
+        assert_eq!(situation_part(&parts(Some(&[]), None, None)), None);
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:6872549bdf0cbb50ad516816064b4359f4b54d53a4e238fbf00c8c5e7824dbef
+    #[test]
+    fn the_behavior_part_is_the_behaviors_joined_by_a_space() {
+        let criterion = parts(None, Some(&["it holds", "it is written"]), None);
+        assert_eq!(behavior_part(&criterion).as_deref(), Some("it holds it is written"));
+        assert_eq!(behavior_part(&parts(None, None, None)), None);
+        assert_eq!(behavior_part(&parts(None, Some(&[]), None)), None);
+    }
+
+    // @lfy def/interpret/data.lfy:LoweredCriterion.id#id:id:bfe319a1f0d3930d6d8d6a86b24ab4a0b85de067d60f9d577b1adcfaebfc1b94
+    #[test]
+    fn the_side_effects_part_is_side_effects_and_the_side_effects_joined_by_a_space() {
+        let criterion = parts(None, None, Some(&["a file is written", "a line is logged"]));
+        assert_eq!(
+            side_effects_part(&criterion).as_deref(),
+            Some("Side effects: a file is written a line is logged")
+        );
+        assert_eq!(side_effects_part(&parts(None, None, None)), None);
+        assert_eq!(side_effects_part(&parts(None, None, Some(&[]))), None);
     }
 
     // @lfy def/interpret/data.lfy:LoweredCriterion.text

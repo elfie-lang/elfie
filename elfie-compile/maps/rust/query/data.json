@@ -21,10 +21,10 @@
       "def/grammar/terminals/space.lfy": "96d1339dbe32f0b6c9a93dbf6cbf4797fd757278d766d0a26b2453c5e2fd1b75",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb"
     },
-    "generated": "2026-10-08T14:28:34Z",
+    "generated": "2026-10-17T16:24:37Z",
     "hash": "502e0df3592d8a6598d8f4a7b8ed3b1af9cdfe17c6f5f1f2d338f23da5b4b8bd",
     "markers": [
       {
@@ -923,6 +923,7 @@
     "requirements": "aea5cda3469c1ffa4cce1538615fed8cdf3a23f3902723f1581176838f351ef7",
     "signature": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
     "source": "def/query/data.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": "3240658b524edbf4ae35eb23a623f2faa48b30f450a94321f472a4548bd399ef"
   }
 ]

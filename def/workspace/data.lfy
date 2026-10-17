@@ -9,13 +9,29 @@ d NativeDependency: `Something the generated code needs from the target's own ec
   $version: `The version the project asks for, spelled as that ecosystem spells it; undefined when it pins none` = string | undefined;
 }
 
+// Decision: a dependency is one string, a version, a path, or a git URL, so a manifest stays
+// short; only paths load for now.
+d Configuration: `An elfie.json, of the project or of a package, as the loader read it; every key is undefined when it is absent or unreadable` {
+  $name: `The name it gives the project` = string | undefined;
+  $version: `The version it gives the project` = string | undefined;
+  $source: `Where its own Elfie source lives, relative to the directory holding the elfie.json: one directory or several` = string | string[] | undefined;
+  $dependencies: `Each dependency, keyed by the name a [[Use]] refers to it by, with a version, a path, or a git URL` = Object<
+    string,
+  > | undefined;
+  $exports: `Each exported file or directory, keyed by the path a [[Use]] names after the package's name, with its path relative to the directory holding the elfie.json` = Object<
+    string,
+  > | undefined;
+}
+
 d Package: `Elfie source loaded from outside the project` {
-  $identifier: `The name a [[Use]] refers to it by` = string;
+  $identifier: `The name a [[Use]] refers to it by: the key of the first dependency entry that gave it` = string;
   $root: `Its directory, relative to [[Workspace.root]]; absolute for the package elfie when it is found outside the project` = string;
+  $configuration: `The elfie.json at [[Package.root]]; every key undefined when there is none` = Configuration;
 }
 
 d File extends Source: `One .lfy file in the program, ready to bind` {
   $package: `The package it came from; undefined for the project's own source` = Package | undefined;
+  $name: `The name it goes by in the program, unique among its files, without the .lfy extension` = string;
 }
 
 // Decision: a target is declared in the program, as an ace const holding a [[Targets.Target]],
@@ -41,8 +57,9 @@ d LoadProblem: `Something that went wrong before there was a node to point at` {
 
 d Workspace: `A project, loaded and bound` {
   $root: `The project's directory` = string;
+  $configuration: `The elfie.json at [[Workspace.root]]; every key undefined when there is none` = Configuration;
   $name: `The project's name` = string;
-  $sourceDirectory: `Where the project's own source lives, relative to [[Workspace.root]]` = string;
+  $sourceDirectories: `Where the project's own source lives, each relative to [[Workspace.root]], in the order elfie.json gives them` = string[];
   $files: `Every file in the program, in the order they were bound` = File[];
   $model: `The program` = Model;
   $targets: `What the project is compiled into, in the order their consts are declared: file by file in [[Workspace.files]] order, then source order` = Target[];

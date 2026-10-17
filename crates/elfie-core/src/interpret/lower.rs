@@ -67,10 +67,10 @@ struct Lowering<'m> {
     global_tests: Vec<LoweredTest>,
     /// Every problem lowering added.
     problems: Vec<Problem>,
-    /// Where the project's own source lives, relative to the workspace root: what an added
-    /// use's alias is named after.
+    /// The name each file goes by in the program, by source index: what an added use's alias
+    /// is named after.
     // @lfy def/interpret/main.lfy:lower
-    source_directory: String,
+    names: HashMap<FileId, String>,
     /// The name and directory of the package each file came from, by source index.
     // @lfy def/interpret/main.lfy:lower
     packages: HashMap<FileId, (String, String)>,
@@ -141,7 +141,11 @@ impl<'m> Lowering<'m> {
             global_criteria: Vec::new(),
             global_tests: Vec::new(),
             problems: Vec::new(),
-            source_directory: workspace.source_directory.clone(),
+            names: workspace
+                .files
+                .iter()
+                .map(|file| (file.source, file.name.clone()))
+                .collect(),
             packages: workspace
                 .files
                 .iter()
@@ -382,7 +386,7 @@ impl<'m> Lowering<'m> {
         // trait of another file added the member; the text takes a use of that file so the
         // name it spells means something.
         // @lfy def/interpret/main.lfy:lower#lower:lower:80853ddbab06f702bb5005757c1b4ec768c77cb9b15b1be8a9713a493900dd40
-        // @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
+        // @lfy def/interpret/main.lfy:lower#lower:lower:329857f0c3255927997222dd97d6ffe47c063ae5245311473963c3d3359c7a40
         let added = self.added_uses(source, &lowered);
         let text = render(self.model(), &lowered, &added.aliases);
         let text = with_uses(&text, &added.uses);
@@ -459,7 +463,7 @@ impl<'m> Lowering<'m> {
         for (declared, entities) in by_file {
             // The use takes an alias when the file already sees another entity by one of
             // the names it brings, because one name cannot mean two entities.
-            // @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
+            // @lfy def/interpret/main.lfy:lower#lower:lower:329857f0c3255927997222dd97d6ffe47c063ae5245311473963c3d3359c7a40
             let taken = entities.iter().any(|&entity| {
                 let name = model.entities[entity].identifier.as_deref().unwrap_or("");
                 model
@@ -478,7 +482,7 @@ impl<'m> Lowering<'m> {
                 added.uses.push(format!("use \"{path}\";"));
                 continue;
             }
-            let base = alias_of(&self.source_directory, &model.sources[declared].path);
+            let base = alias_of(self.names.get(&declared).map_or("", String::as_str));
             let mut alias = base.clone();
             let mut number = 0usize;
             while model.lookup(scope, &alias).is_some()
@@ -930,15 +934,11 @@ fn use_path(from: &str, to: &str) -> String {
     }
 }
 
-/// The alias an added use takes: the declaring file's path relative to the project's source
-/// directory, without its extension and with each slash replaced by an underscore.
-// @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
-pub(super) fn alias_of(source_directory: &str, path: &str) -> String {
-    let stem = path.strip_suffix(".lfy").unwrap_or(path);
-    let prefix = format!("{}/", source_directory.trim_end_matches('/'));
-    let relative = stem.strip_prefix(&prefix).unwrap_or(stem);
-    relative
-        .chars()
+/// The alias an added use takes: the declaring file's name in the program, with each
+/// character that cannot be in an identifier replaced by an underscore.
+// @lfy def/interpret/main.lfy:lower#lower:lower:329857f0c3255927997222dd97d6ffe47c063ae5245311473963c3d3359c7a40
+pub(super) fn alias_of(name: &str) -> String {
+    name.chars()
         .map(|c| if unicode_ident::is_xid_continue(c) { c } else { '_' })
         .collect()
 }
@@ -1102,7 +1102,7 @@ fn member_type_text(model: &Model, ty: &TypeRef, aliases: &HashMap<EntityId, Str
             .join(" | "),
         // An entity brought in by an aliased use is spelled through that alias, so the name
         // means one entity; its type arguments are spelled the same way.
-        // @lfy def/interpret/main.lfy:lower#lower:lower:3f6b1de42f55afc64a02297dcd69a75780d820b3b323c4b3cb98fe5fd662c66d
+        // @lfy def/interpret/main.lfy:lower#lower:lower:329857f0c3255927997222dd97d6ffe47c063ae5245311473963c3d3359c7a40
         TypeRef::Entity(entity) if aliases.contains_key(entity) => {
             let alias = &aliases[entity];
             let name = model.entities[*entity].identifier.clone().unwrap_or_default();

@@ -221,6 +221,26 @@ fn a_stopped_batch_stops_what_depends_on_it() {
     assert_eq!(run.incomplete, vec!["b".to_string()]);
 }
 
+/// With --json the message of the finished line is the four counts alone, even when a batch
+/// did not complete.
+// @lfy def/cli/main.lfy:main#main:main:e86903be24031cd7d20e2b972c8d08d2fcbbc6ec9495571912401e5762cc2cd6
+#[test]
+fn the_finished_message_with_json_is_the_four_counts() {
+    let fixture = Fixture::new();
+    one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let invocation = parse_arguments(&args(&["compile", "--json"])).unwrap();
+    let log = fixture.root.join("finished.log");
+    let reporter = Reporter::new(true, Paint::of(&invocation), 1, vec![log]);
+    let mut run = Run::new(program, plan, Vec::new(), reporter, &invocation);
+    run.incomplete.push("a".to_string());
+    run.finish();
+    // @lfy def/cli/main.lfy:main#main:main:e86903be24031cd7d20e2b972c8d08d2fcbbc6ec9495571912401e5762cc2cd6
+    let line = fixture.read("finished.log");
+    let value: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
+    assert_eq!(value["message"], "0 accepted, 0 rejected, 0 blocked, 0 failed", "{line}");
+}
+
 /// The code is success when every batch was accepted, problems when any was rejected,
 /// blocked, or asked a question, and failure when a command could not run.
 // @lfy def/cli/main.lfy:main
@@ -424,17 +444,14 @@ fn a_review_is_printed_and_a_violated_one_becomes_a_problem() {
     // An id the review was asked about that no review names counts as unverifiable.
     // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
     assert_eq!(counts_message(&counts_with_missing(&every, 2), false), "1 satisfied, 1 violated, 3 unverifiable");
-    // And is named as not reviewed on a line of its own, which is the line a compile
-    // prints under its reviewed line and a verify under its counts line.
+    // Every such id is named as not reviewed on one line, which is the line a compile prints
+    // under its reviewed line and a verify under its counts line.
     // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
     let unanswered = ["A:A:one".to_string(), "A:A:two".to_string()];
-    assert_eq!(not_reviewed(&unanswered[0]), "A:A:one was not reviewed");
     let report = ReviewReport { missing: unanswered.to_vec(), ..ReviewReport::default() };
-    assert_eq!(missing_lines(&report), "A:A:one was not reviewed\nA:A:two was not reviewed");
-    assert_eq!(
-        missing_lines(&report).lines().collect::<Vec<_>>(),
-        unanswered.iter().map(|id| not_reviewed(id)).collect::<Vec<_>>()
-    );
+    assert_eq!(missing_lines(&report), "not reviewed: A:A:one, A:A:two");
+    assert_eq!(missing_lines(&report).lines().count(), 1);
+    assert_eq!(not_reviewed(&unanswered), missing_lines(&report));
     // Nothing follows when the review answered for every id it was asked about.
     // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
     assert!(missing_lines(&ReviewReport::default()).is_empty());

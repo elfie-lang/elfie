@@ -9,7 +9,7 @@ use crate::model::{Origin, Problem, SymbolKind};
 /// The same `path` names a different file in each workspace, because it is relative
 /// to that workspace's own root and to nothing else.
 // @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
-// @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
+// @lfy def/workspace/main.lfy:change#change:change:015b076544c59f4f220ad0f374271f8dacad4e1c6547652db3ee068e71f97e13
 #[test]
 fn a_change_path_is_relative_to_the_root_of_its_workspace() {
     let one = Fixture::empty();
@@ -145,7 +145,7 @@ fn a_replacement_stands_until_the_same_path_is_given_again() {
 }
 
 // @lfy def/workspace/main.lfy:change#change:change:88c72737ee35d3e8b4fc8faad9b0d27687ae69e994738b39b9c59967b95cd2ff
-// @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
+// @lfy def/workspace/main.lfy:change#change:change:015b076544c59f4f220ad0f374271f8dacad4e1c6547652db3ee068e71f97e13
 #[test]
 fn a_change_out_of_reach_gives_an_equal_workspace() {
     let fixture = Fixture::empty();
@@ -204,14 +204,14 @@ fn a_change_out_of_reach_gives_an_equal_workspace() {
 
 /// A file under the root of a package in the program is in reach of a change, as much
 /// as one under the source directory.
-// @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
+// @lfy def/workspace/main.lfy:change#change:change:015b076544c59f4f220ad0f374271f8dacad4e1c6547652db3ee068e71f97e13
 #[test]
 fn a_change_under_a_package_root_reaches_the_program() {
     let fixture = Fixture::empty();
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            r#"{ "dependencies": { "p": "./pkg" } }"#,
         )
         .write("def/main.lfy", "")
         .write("pkg/main.lfy", "");
@@ -370,7 +370,7 @@ fn a_replacement_stands_in_for_the_directory_that_would_hold_it() {
     fixture
         .write(
             "elfie.json",
-            r#"{ "dependencies": { "p": { "root": "pkg" } } }"#,
+            r#"{ "dependencies": { "p": "./pkg" } }"#,
         )
         .write("def/main.lfy", "");
     let loaded = fixture.load();

@@ -311,6 +311,42 @@ fn a_name_a_statement_needs_that_never_resolves_is_named_once_the_rounds_have_st
     assert!(member_symbol(&model, b, "x").is_some());
 }
 
+// @lfy def/interpret/main.lfy:expand#expand:expand:0ebadc4acebce99f628486e58f24cf71f0da3ccd7eac9ea7d09c7b2bd0db2553
+// @lfy def/interpret/main.lfy:expand#expand:expand:9f92ae8a6753e1a25414725ffb95c7356c3fb1021cf313cd36c68c65c0e8b6a4
+#[test]
+fn a_with_on_a_member_a_later_statement_adds_waits_for_that_statement() {
+    let model = declared(vec![source(
+        "a.lfy",
+        "trait t {\n  $x: `d` = string;\n}\nd A {}\n\
+         with A$x {\n  where (`s`) -> `b`;\n}\nt.apply(A);\n",
+        &[],
+        Origin::Program,
+    )]);
+    let model = expand(model);
+    assert!(model.problems.is_empty(), "{:?}", model.problems);
+    let a = entity_named(&model, "A");
+    let member = member_symbol(&model, a, "x").expect("A has the member x");
+    let x = model.symbols[member].entity;
+    assert_eq!(model.entities[x].acceptance_criteria.len(), 1);
+}
+
+// @lfy def/interpret/main.lfy:expand#expand:expand:8fd627207ea86becebc501f08576d358a6e4d446addee292cd0f1634bb4b9beb
+#[test]
+fn a_with_on_a_member_nothing_adds_is_named_once_the_rounds_have_stopped() {
+    let model = declared(vec![source(
+        "a.lfy",
+        "trait t {\n  $x: `d` = string;\n}\nd A {}\n\
+         with A$y {\n  where (`s`) -> `b`;\n}\nt.apply(A);\n",
+        &[],
+        Origin::Program,
+    )]);
+    let model = expand(model);
+    assert_eq!(model.problems.len(), 1, "{:?}", model.problems);
+    assert_eq!(model.problems[0].message, "A$y does not resolve");
+    let a = entity_named(&model, "A");
+    assert!(member_symbol(&model, a, "x").is_some(), "the apply still ran");
+}
+
 // @lfy def/interpret/main.lfy:expand#expand:expand:9f92ae8a6753e1a25414725ffb95c7356c3fb1021cf313cd36c68c65c0e8b6a4
 #[test]
 fn reading_what_a_trait_was_applied_to_waits_for_a_statement_that_applies_it_by_extension() {
@@ -632,6 +668,13 @@ fn an_argument_that_names_no_ace_const_holding_a_target_is_named_and_adds_nothin
         "{}",
         model.problems[0].message
     );
+    // The problem is at the argument of the add, not at the call.
+    let at = model.problems[0].node;
+    assert_eq!(model.raw(at).trim(), "A");
+    assert!(!model.is(at, E::Call), "the problem is at the argument, not the call");
+    let call = model.ancestor(at, E::Call).expect("the argument is inside the call");
+    assert!(model.raw(call).contains("@targets.add"), "{}", model.raw(call));
+    assert_eq!(model.arguments(call), vec![at]);
 }
 
 // @lfy def/interpret/main.lfy:expand#expand:expand:8159e82000937ae0a26519fa34e1579b5f6a3bcd6325987ebc1729fd11812494
@@ -764,6 +807,21 @@ fn a_context_layer_of_a_const_is_read_from_the_const_and_not_from_its_value() {
     assert_eq!(
         evaluate(&mut model, value),
         Some(Evaluated::Value(Value::String("c".to_string())))
+    );
+}
+
+// @lfy def/interpret/main.lfy:expand#expand:expand:d6d80207ed7ea67fd728b58a28b9ec2288d778cb2ae43de5d0dcf264ce3abd1a
+#[test]
+fn a_context_layer_of_a_const_bound_while_a_body_runs_is_read_from_the_const() {
+    let mut model = bound(
+        "d A {}\nace function f() {\n  const x = A;\n  return x@identifier;\n}\n\
+         ace const n = f();\n",
+    );
+    let declaration = nth(&model, 0, S::VariableDeclaration, 1);
+    let value = value_of(&model, declaration);
+    assert_eq!(
+        evaluate(&mut model, value),
+        Some(Evaluated::Value(Value::String("x".to_string())))
     );
 }
 

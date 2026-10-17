@@ -87,6 +87,7 @@ impl Binder {
         // anonymous entity whose parameters are declared in the scope it owns and whose
         // output is the type after its arrow.
         // @lfy def/model/main.lfy:bind
+        // @lfy def/model/main.lfy:bind#bind:bind:472fbf0e076310689168fd35debec041a25da18b7e113a79f885c9ff8d7c0a2c
         let function_type = trees.is(r, E::FunctionType).then(|| {
             self.new_entity(
                 EntityKind::Fn {

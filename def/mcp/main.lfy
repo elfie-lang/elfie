@@ -54,7 +54,7 @@ fn serve(root?: string): `Serve agents over standard input and output until the 
     .add({
       situation = [
         `A call arrives`,
-        `A .lfy file under [[Workspace.sourceDirectory]] is not in the program, and no earlier call saw it`,
+        `A .lfy file under one of [[Workspace.sourceDirectories]] is not in the program, and no earlier call saw it`,
       ],
       behavior = `The file is read through [[Loader.change]] with undefined before the tool runs`,
     })

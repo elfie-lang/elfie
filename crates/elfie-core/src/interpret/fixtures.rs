@@ -255,14 +255,23 @@ pub(super) fn workspace_of(sources: Vec<Source>) -> Workspace {
         .map(|(index, source)| Loaded {
             path: source.path.clone(),
             package: None,
+            // The name a file under the source directory goes by: its path under it,
+            // without the extension.
+            name: source
+                .path
+                .strip_prefix("def/")
+                .unwrap_or(&source.path)
+                .trim_end_matches(".lfy")
+                .to_string(),
             source: index,
         })
         .collect();
     let model = expand(declared(sources));
     Workspace {
         root: PathBuf::from("."),
+        configuration: Default::default(),
         name: "fixture".to_string(),
-        source_directory: "def".to_string(),
+        source_directories: vec!["def".to_string()],
         files,
         model,
         packages: Vec::new(),

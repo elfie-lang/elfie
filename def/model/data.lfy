@@ -8,6 +8,7 @@ use "elfie/criteria/criterion" as Criteria;
 use "elfie/criteria/knowledge" as Knowledges;
 use "elfie/prelude/entity" as Prelude;
 use "elfie/prelude/fn" as Functions;
+use "elfie/prelude/kinds" as Kinds;
 use "elfie/prelude/trait" as Traits;
 use "elfie/values/list" as Lists;
 
@@ -129,12 +130,9 @@ d Test extends Criteria.Test: `One test, as the prelude declares it` {}
 /// usage, knowledge, and command records are richer than the prelude's, and the binder says how
 /// the values of its naming and typing members are found.
 d Entity extends Prelude.Entity: `A declared thing seen through its context layer` {
-  $identifier: `The declared name; undefined when anonymous` = string | undefined;
-  $definition: `The description provided for it; undefined when there is none` = string | undefined;
   $type: `The declared or inferred type; the entity itself for a data, trait, type, or enum` = Entity | undefined;
   $typeParameters: `The type parameters the declaration lists, in order; empty when none` = Entity[];
   $typeArguments: `The arguments the type was written with when it is generic, in order; empty otherwise` = Entity[];
-  $itemType: `What a list-typed entity holds; undefined otherwise` = Entity | undefined;
   $acceptanceCriteria: `Own criteria first, then each trait's in application order` = Criterion[];
   $traits: `Every trait applied to it, direct or inherited, in application order, each with its [[Applied.source]]` = Applied[];
   $references: `Every use of a [[Reference]] in its definition, documentation, or value` = Usage[];
@@ -193,29 +191,27 @@ d Entity extends Prelude.Entity: `A declared thing seen through its context laye
         behavior = `[[Entity.typeArguments]] holds what each argument resolves to, in order`,
       });
   }
+}
 
-  with Entity$itemType {
+// Decision: the item type belongs to the list type, not to every entity, so a list-typed
+// const reads it through its type. A bare [[Lists.List]], seen with no argument, is a data and
+// has none.
+
+/// The prelude's [[Kinds.Array]]: [[Lists.List]] seen with one type argument, as a list type or a
+/// List with its argument yields it.
+d ListEntity extends Kinds.Array: `A list type seen through its context layer` {
+  with ListEntity$itemType {
     @acceptanceCriteria
-      .add({
-        situation = `[[Entity.type]] is [[Lists.List]]`,
-        behavior = `[[Entity.itemType]] is the first of [[Entity.typeArguments]] of [[Entity.type]]`,
-      })
-      .add({
-        situation = `[[Entity.type]] is not [[Lists.List]]`,
-        behavior = `[[Entity.itemType]] is undefined, even for a bare [[Lists.List]] and a list value`,
-      });
+      .add({ behavior = `[[ListEntity.itemType]] is the first of [[ListEntity.typeArguments]]` });
   }
 }
 
-/// The prelude's [[Functions.Function]] with the parameters held as symbols, whose entities are
-/// [[Functions.Function.parameters]].
+/// The prelude's [[Functions.Function]], with the binder saying how its parameters are found.
 d FnEntity extends Functions.Function: `A declared fn or function seen through its context layer` {
-  $parameters: `The symbols of its parameters, in declaration order` = Symbol[];
-
   with FnEntity$parameters {
     @acceptanceCriteria
       .add({
-        behavior = `[[FnEntity.parameters]] holds the symbols of its [[Parameter]] and [[SpreadParameter]] nodes, in order`,
+        behavior = `[[FnEntity.parameters]] holds the entities of its [[Parameter]] and [[SpreadParameter]] nodes, in order`,
       });
   }
 }
@@ -257,114 +253,4 @@ d Model: `The program, queryable` {
   $problems: `Every [[Problem]], in node order` = Problem[];
   @acceptanceCriteria
     .add({ behavior = `Answers every query of this module for every file it was bound from` });
-}
-
-// Spelling
-
-// Decision: this is the one spelling of a type as Elfie source. It lives beside the data and
-// not in the binder, so the binder, the interpreter, queries, and generation can all name it
-// without a use cycle; it feeds hashes, so every reader must spell a type exactly this way.
-fn typeTextOf(model: Model, entity: Entity | undefined): `How a type is spelled as Elfie source, wherever one is shown, rendered, or hashed` => string | undefined {
-  @acceptanceCriteria
-    .add({ situation = `[[entity]] is undefined`, behavior = `Returns undefined` })
-    .add({ situation = `[[entity]] is defined`, behavior = `Returns Elfie source that reads back as that same type` })
-    .add({
-      situation = [
-        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
-        `[[entity]] is a declaration or a primitive`,
-      ],
-      behavior = `It is spelled by its identifier`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
-        `[[entity]] is a type parameter`,
-      ],
-      behavior = `It is spelled by its name`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is defined, has no [[Entity.typeArguments]], and is not the entity of a [[FunctionType]]`,
-        `[[entity]] is a type that declares no name and is not a union`,
-      ],
-      behavior = `It is spelled by the source text of its type expression, without leading or trailing whitespace`,
-    })
-    .add({
-      situation = `[[entity]] is a union`,
-      behavior = `Each of its members as [[typeTextOf]] spells it, in order, joined by a space, a vertical bar, and a space`,
-    })
-    .add({
-      situation = `[[entity]] has [[Entity.typeArguments]] and is not [[Lists.List]] with one of [[Entity.typeArguments]]`,
-      behavior = `The identifier, then a less-than sign, then each argument as [[typeTextOf]] spells it, joined by a comma and a space, then a greater-than sign`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
-        `The argument is not a function type, a union, or an intersection`,
-      ],
-      behavior = `The argument as [[typeTextOf]] spells it, then square brackets`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is [[Lists.List]] with one of [[Entity.typeArguments]]`,
-        `The argument is a function type, a union, or an intersection`,
-      ],
-      behavior = `The argument as [[typeTextOf]] spells it, parenthesized, then square brackets`,
-    })
-    .add({
-      situation = `[[entity]] is the entity of a [[FunctionType]]`,
-      behavior = `A parenthesized list of its parameters, joined by a comma and a space, then a space, a double arrow, a space, and [[FnEntity.output]] as [[typeTextOf]] spells it`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is the entity of a [[FunctionType]]`,
-        `A parameter of it is neither optional nor spread`,
-      ],
-      behavior = `That parameter is spelled as its name, a colon, a space, and its type as [[typeTextOf]] spells it`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is the entity of a [[FunctionType]]`,
-        `A parameter of it is optional`,
-      ],
-      behavior = `That parameter is spelled as its name, a question mark, a colon, a space, and its type as [[typeTextOf]] spells it`,
-    })
-    .add({
-      situation = [
-        `[[entity]] is the entity of a [[FunctionType]]`,
-        `A parameter of it is a spread one`,
-      ],
-      behavior = `That parameter is spelled as three dots, its name, a colon, a space, and its type as [[typeTextOf]] spells it`,
-    })
-    .add({
-      situation = `[[entity]] is a member's type read on a left side with [[Entity.typeArguments]]`,
-      behavior = `What is spelled is the type after the base's type arguments replace its type parameters`,
-    });
-
-  @test(
-    {
-      input = [Model@like(`Bound from: d Box<T> {} const b = Box<string>;`), Entity@like(`The type of b`)],
-      expect = `Box<string>`,
-    },
-    {
-      input = [
-        Model@like(
-          `Bound from: d Box<T> { $items: \`d\` = T[]; $map: \`e\` = (transform: (item: T) => T) => T[]; }`,
-        ),
-        Entity@like(`The type of the parameter transform`),
-      ],
-      expect = `(item: T) => T`,
-    },
-    {
-      input = [Model@like(`Bound from: d Box<T> { $items: \`d\` = T[]; }`), Entity@like(`The type of the member items`)],
-      expect = `T[]`,
-    },
-    {
-      input = [
-        Model@like(`Bound from: d Box<T> { $item: \`d\` = T; } const b = Box<string>; const i = b.item;`),
-        Entity@like(`The type of the member item as read on b`),
-      ],
-      expect = `string`,
-    },
-  );
 }

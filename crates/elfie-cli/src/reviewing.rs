@@ -59,17 +59,21 @@ pub(crate) fn violations_of(report: &ReviewReport) -> Vec<String> {
     problems
 }
 
-/// One id the review was asked about that no review names, as the line naming it reads.
+/// The one line naming every id the review was asked about that no review names, each as not
+/// reviewed; nothing when there is none.
 // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
-pub(crate) fn not_reviewed(id: &str) -> String {
-    format!("{id} was not reviewed")
+pub(crate) fn not_reviewed(ids: &[String]) -> String {
+    if ids.is_empty() {
+        return String::new();
+    }
+    format!("not reviewed: {}", ids.join(", "))
 }
 
-/// One line per id the review was asked about that no review names, so that a person reading
-/// the reviewed line sees what went unanswered.
+/// The one line under the reviewed line naming what went unanswered, so that a person reading
+/// it sees every id no review names.
 // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
 pub(crate) fn missing_lines(report: &ReviewReport) -> String {
-    report.missing.iter().map(|id| not_reviewed(id)).collect::<Vec<_>>().join("\n")
+    not_reviewed(&report.missing)
 }
 
 impl Run {
@@ -267,7 +271,11 @@ impl Run {
         // @lfy def/cli/main.lfy:main#main:main:9160811ba53e331e41567344fda0fefec31e39e30c8ddd5d3b93fb1dbac571bd
         let (exit, report, failed) =
             Run::ask_verifier(run, runs, command, where_, batch, &units, &request, maps, 1, resuming);
-        let verification = if failed {
+        // A run stopped because the compile or the batch stopped is not run once more: what it
+        // gives is ignored.
+        // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+        let stopped = locked(run).halts(&batch.identifier);
+        let verification = if failed && !stopped {
             // The run ended without every verdict: it is run once more, asked as it was but
             // carrying what it did satisfy.
             // @lfy def/cli/main.lfy:main#main:main:4c0e08888be9dc3b6997e5ea919ad1c9206cd3046b518d1ec20dbd018f279b76
@@ -455,6 +463,11 @@ impl Run {
         };
         let verification =
             Run::review_batch(run, batch, &command, where_, true, held, records, runs, resuming);
+        // What a stopped run gives is ignored.
+        // @lfy def/cli/main.lfy:main#main:main:7abeb271cb2f0100d93f668ddc16303e063bcd2d3df7de58cd6b6d23d0f9ea21
+        if locked(run).halts(&batch.identifier) {
+            return None;
+        }
         let report = &verification.report;
         let carried = verification.request.carried.len();
         let mut state = locked(run);
@@ -669,19 +682,20 @@ impl Run {
 
     /// Every global criterion and test reviewed once for the verify command: a person asked
     /// for the opinion, so nothing but their existence gates it, and the reviews are given
-    /// back to be printed.
+    /// back to be printed with the ids no review names.
     // @lfy def/cli/main.lfy:main#main:main:a3182832b5dbbb14cd7eb5451929bf7d8a209809b74510a1887bf3cf542b0b30
-    pub(crate) fn verify_globally(run: &Mutex<Run>, root: &Path) -> Vec<Review> {
+    // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
+    pub(crate) fn verify_globally(run: &Mutex<Run>, root: &Path) -> ReviewReport {
         let (agent, command, units, request, requirements, maps) = {
             let held = locked(run);
             // No global criterion and no global test: no global review runs and no file is
             // written, here as in a compile.
             // @lfy def/cli/main.lfy:main#main:main:f033aae0b13c3e667e25d9d067a7b58b8f438e3b2854dcb127d56baca1010a38
             if held.program.criteria.is_empty() && held.program.tests.is_empty() {
-                return Vec::new();
+                return ReviewReport::default();
             }
             let Some(command) = held.verifier.clone() else {
-                return Vec::new();
+                return ReviewReport::default();
             };
             // The run is one stream of the verifier, with the global review request as its
             // input and the root as its directory.
@@ -699,7 +713,7 @@ impl Run {
         let runs = Runs::new(agent, locked(run).running_of(GLOBAL));
         let report = Run::ask_globally(run, &runs, &command, &where_, &units, &request, &maps);
         locked(run).write_global_reviews(root, &requirements, &report);
-        report.reviews
+        report
     }
 
     /// The verifier run for the global review, at most twice, and its report: the global
@@ -904,12 +918,14 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
     if globally && verifier.is_some() {
         // Nothing of the compile's own gating applies here: a person asked for the opinion.
         // @lfy def/cli/main.lfy:main#main:main:a3182832b5dbbb14cd7eb5451929bf7d8a209809b74510a1887bf3cf542b0b30
-        let reviews = Run::verify_globally(&run, root);
+        let report = Run::verify_globally(&run, root);
         // A global review carries nothing: every global criterion and test is reviewed once.
+        // Each id no review names is named as not reviewed and counts as unverifiable.
         // @lfy def/cli/main.lfy:main#main:main:a3182832b5dbbb14cd7eb5451929bf7d8a209809b74510a1887bf3cf542b0b30
-        print_reviews(&reviews, &[], 0, json, style.out);
+        // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
+        print_reviews(&report.reviews, &report.missing, 0, json, style.out);
         // @lfy def/cli/main.lfy:main#main:main:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4
-        if counts_of(&reviews).1 > 0 {
+        if counts_of(&report.reviews).1 > 0 {
             locked(&run).worsen(ExitCode::Problems);
         }
     }
@@ -1067,8 +1083,8 @@ pub(crate) fn print_reviews(reviews: &[Review], unanswered: &[String], carried: 
         // Each id no review names is named as not reviewed, on one line under the counts
         // line, and counts as unverifiable above.
         // @lfy def/cli/main.lfy:main#main:main:10291079d3776f97261b8bb95179bc83292d62986fd02c692185455aed885b5f
-        for id in unanswered {
-            println!("{INDENT}{}", paint(&not_reviewed(id), Tone::Warning, on));
+        if !unanswered.is_empty() {
+            println!("{INDENT}{}", paint(&not_reviewed(unanswered), Tone::Warning, on));
         }
     }
 }

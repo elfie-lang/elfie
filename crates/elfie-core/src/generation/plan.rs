@@ -150,7 +150,7 @@ pub fn plan(
                 lowered: file_index,
                 // @lfy def/generation/main.lfy:plan
                 text: unit_text(model, program, file_index, &moved_out, &moved_in),
-                stem: stem_of(&file.path, &workspace.source_directory), // @lfy def/generation/main.lfy:plan
+                stem: stem_of(file), // @lfy def/generation/main.lfy:plan
                 dependencies: dependencies[item].iter().map(|&d| position[d]).collect(),
                 // @lfy def/generation/main.lfy:plan#plan:plan:84b9ddea7d9b6f73bdde004e1e9dee2c746f57ff862c8302fd0a3150a4df7817
                 outputs: source_maps

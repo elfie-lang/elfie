@@ -675,7 +675,7 @@ async fn exit_without_shutdown_is_one() {
 // @lfy def/lsp/main.lfy:serve#serve:serve:19386c9f8368f5aaddbde274c6c2dddb089872f7a9a314186a05cdd7a769b6e3
 // @lfy def/lsp/main.lfy:serve#serve:serve:2d7434ceacaf117b84a50944d6defac63a931122b09e46f84d1972331095c38d
 // @lfy def/lsp/main.lfy:serve#serve:serve:03938d8acea19d9cedc01076466a3b427d91282d72a892fe54dfdd76f1b12547
-// @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
+// @lfy def/lsp/main.lfy:serve#serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da
 #[tokio::test]
 async fn definition_and_rename_cross_files() {
     let root = fixture(&[
@@ -991,13 +991,13 @@ async fn watched_files_are_registered_and_the_disk_is_read_again() {
     assert_eq!(editor.exit(true).await, 0);
 }
 
-/// A document outside the root, and one under the root that is neither under the source
-/// directory nor used by a file in the program, each get one log message and nothing
+/// A document outside the root, and one under the root that is under none of the source
+/// directories and is not used by a file in the program, each get one log message and nothing
 /// else.
 // @lfy def/lsp/main.lfy:serve#serve:serve:2372d03fd136ee56b409774c63c22c3dada21e5054e41ed2bc6e1727f8ae9b65
-// @lfy def/lsp/main.lfy:serve#serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04
-// @lfy def/lsp/main.lfy:serve#serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b
-// @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
+// @lfy def/lsp/main.lfy:serve#serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738
+// @lfy def/lsp/main.lfy:serve#serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47
+// @lfy def/lsp/main.lfy:serve#serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da
 #[tokio::test]
 async fn a_document_the_program_does_not_hold_is_logged_and_gets_nothing() {
     let root = fixture(&[("def/a.lfy", "d A {}\n"), ("notes/loose.lfy", "d B {}\n")]);
@@ -1030,9 +1030,9 @@ async fn a_document_the_program_does_not_hold_is_logged_and_gets_nothing() {
     assert!(message.contains("it gets nothing"), "{message}");
 
     // Under the root but in no file of the program: one log message names the document
-    // and the source directory.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04
-    let source_directory = workspace::load(&editor.root).source_directory;
+    // and the source directories.
+    // @lfy def/lsp/main.lfy:serve#serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738
+    let source_directories = workspace::load(&editor.root).source_directories;
     let loose = editor.uri("notes/loose.lfy");
     editor
         .notify(
@@ -1040,15 +1040,19 @@ async fn a_document_the_program_does_not_hold_is_logged_and_gets_nothing() {
             json!({ "textDocument": { "uri": loose, "languageId": "elfie", "version": 1, "text": "d B {}\n" } }),
         )
         .await;
-    let message = editor.wait_for(logged("nor used by a file in the program")).await;
+    let message = editor.wait_for(logged("used by no file in the program")).await;
     let message = message["params"]["message"].as_str().unwrap().to_string();
     assert!(message.contains("notes/loose.lfy"), "{message}");
-    assert!(message.contains(&source_directory), "{message}");
+    assert!(message.contains("under none of"), "{message}");
+    assert!(!source_directories.is_empty());
+    for source_directory in &source_directories {
+        assert!(message.contains(source_directory.as_str()), "{message}");
+    }
     assert!(message.contains("it gets nothing"), "{message}");
 
     // It gets no diagnostics, and a request on it answers as if nothing were there.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b
-    // @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
+    // @lfy def/lsp/main.lfy:serve#serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47
+    // @lfy def/lsp/main.lfy:serve#serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da
     let hover = editor
         .request(
             "textDocument/hover",

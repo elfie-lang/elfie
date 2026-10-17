@@ -26,15 +26,50 @@ pub struct NativeDependency {
     pub version: Option<String>, // @lfy def/workspace/data.lfy:NativeDependency.version
 }
 
+/// An `elfie.json`, of the project or of a package, as the loader read it; every key is
+/// `None` when it is absent or unreadable.
+// Decision: a dependency is one string, a version, a path, or a git URL, so a manifest
+// stays short; only paths load for now.
+// @lfy def/workspace/data.lfy:Configuration
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Configuration {
+    /// The name it gives the project.
+    pub name: Option<String>, // @lfy def/workspace/data.lfy:Configuration.name
+    /// The version it gives the project.
+    pub version: Option<String>, // @lfy def/workspace/data.lfy:Configuration.version
+    /// Where its own Elfie source lives, relative to the directory holding the
+    /// `elfie.json`: one directory or several.
+    pub source: Option<ConfigurationSource>, // @lfy def/workspace/data.lfy:Configuration.source
+    /// Each dependency, keyed by the name a `Use` refers to it by, with a version, a path,
+    /// or a git URL.
+    pub dependencies: Option<BTreeMap<String, String>>, // @lfy def/workspace/data.lfy:Configuration.dependencies
+    /// Each exported file or directory, keyed by the path a `Use` names after the
+    /// package's name, with its path relative to the directory holding the `elfie.json`.
+    pub exports: Option<BTreeMap<String, String>>, // @lfy def/workspace/data.lfy:Configuration.exports
+}
+
+/// [`Configuration::source`]: `string | string[]`.
+// @lfy def/workspace/data.lfy:Configuration.source
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfigurationSource {
+    /// One directory.
+    One(String),
+    /// Several directories, in the order the `elfie.json` gives them.
+    Several(Vec<String>),
+}
+
 /// Elfie source loaded from outside the project.
 // @lfy def/workspace/data.lfy:Package
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Package {
-    /// The name a `Use` refers to it by.
+    /// The name a `Use` refers to it by: the key of the first dependency entry that gave
+    /// it.
     pub identifier: String, // @lfy def/workspace/data.lfy:Package.identifier
     /// Its directory, relative to [`Workspace::root`]; absolute for the package `elfie`
     /// when it is found outside the project.
     pub root: String, // @lfy def/workspace/data.lfy:Package.root
+    /// The `elfie.json` at [`Package::root`]; every key `None` when there is none.
+    pub configuration: Configuration, // @lfy def/workspace/data.lfy:Package.configuration
 }
 
 /// One `.lfy` file in the program, ready to bind.
@@ -50,6 +85,9 @@ pub struct File {
     /// The package it came from, as an index into [`Workspace::packages`]; `None` for the
     /// project's own source.
     pub package: Option<usize>, // @lfy def/workspace/data.lfy:File.package
+    /// The name it goes by in the program, unique among its files, without the `.lfy`
+    /// extension.
+    pub name: String, // @lfy def/workspace/data.lfy:File.name
     /// The `Source` this file extends, as an index into [`Model::sources`]: its `tree`,
     /// `uses`, and `origin` are read through [`Workspace::tree`], [`Workspace::uses`], and
     /// [`Workspace::origin`].
@@ -156,10 +194,13 @@ pub struct Workspace {
     // Decision: the definition types `root` as a string; it is kept as the `PathBuf` that
     // `load` received so every file path in the workspace can be joined to it directly.
     pub root: PathBuf, // @lfy def/workspace/data.lfy:Workspace.root
+    /// The `elfie.json` at [`Workspace::root`]; every key `None` when there is none.
+    pub configuration: Configuration, // @lfy def/workspace/data.lfy:Workspace.configuration
     /// The project's name.
     pub name: String, // @lfy def/workspace/data.lfy:Workspace.name
-    /// Where the project's own source lives, relative to [`Workspace::root`].
-    pub source_directory: String, // @lfy def/workspace/data.lfy:Workspace.sourceDirectory
+    /// Where the project's own source lives, each relative to [`Workspace::root`], in the
+    /// order `elfie.json` gives them.
+    pub source_directories: Vec<String>, // @lfy def/workspace/data.lfy:Workspace.sourceDirectories
     /// Every file in the program, in the order they were bound.
     pub files: Vec<File>, // @lfy def/workspace/data.lfy:Workspace.files
     /// The program.

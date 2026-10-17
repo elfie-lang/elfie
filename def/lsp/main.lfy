@@ -110,11 +110,11 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
       behavior = `The earlier publication is dropped and only the latest workspace is published`,
     })
     .add({
-      situation = `A document is outside the root, or is neither under [[Workspace.sourceDirectory]] nor used by a file in the program`,
+      situation = `A document is outside the root, or is neither under one of [[Workspace.sourceDirectories]] nor used by a file in the program`,
       behavior = `It gets no diagnostics`,
     })
     .add({
-      situation = `A document is outside the root, or is neither under [[Workspace.sourceDirectory]] nor used by a file in the program`,
+      situation = `A document is outside the root, or is neither under one of [[Workspace.sourceDirectories]] nor used by a file in the program`,
       behavior = `Every request on it answers as if nothing were there`,
     })
     .add({
@@ -124,9 +124,9 @@ fn serve(root?: string): `Serve one editor over standard input and output until 
     .add({
       situation = [
         `A document under the root is opened`,
-        `It is neither under [[Workspace.sourceDirectory]] nor used by a file in the program`,
+        `It is neither under one of [[Workspace.sourceDirectories]] nor used by a file in the program`,
       ],
-      behavior = `One log message names the document and [[Workspace.sourceDirectory]] and says it is neither under it nor used by a file in the program, and gets nothing`,
+      behavior = `One log message names the document and [[Workspace.sourceDirectories]] and says it is under none of them and used by no file in the program, and gets nothing`,
     });
 
   // Positions and paths

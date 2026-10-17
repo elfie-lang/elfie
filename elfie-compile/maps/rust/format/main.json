@@ -968,7 +968,8 @@
     "requirements": "b86e3e2f0d6bd90befea817c83c3ad9e37b54e77dc3da69576c43db3773b90ae",
     "signature": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
     "source": "def/format/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   },
   {
     "answered": [
@@ -1057,7 +1058,7 @@
         "end": 9,
         "entity": "lower",
         "file": "def/interpret/main.lfy",
-        "line": 295,
+        "line": 296,
         "outputLine": 9,
         "requirement": null
       },
@@ -1075,7 +1076,7 @@
         "end": 11,
         "entity": "bind",
         "file": "def/model/main.lfy",
-        "line": 44,
+        "line": 46,
         "outputLine": 11,
         "requirement": null
       },
@@ -1093,7 +1094,7 @@
         "end": 13,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 13,
         "requirement": null
       },
@@ -1102,7 +1103,7 @@
         "end": 14,
         "entity": "load",
         "file": "def/workspace/main.lfy",
-        "line": 16,
+        "line": 15,
         "outputLine": 14,
         "requirement": null
       }
@@ -1111,6 +1112,7 @@
     "requirements": "b86e3e2f0d6bd90befea817c83c3ad9e37b54e77dc3da69576c43db3773b90ae",
     "signature": "1ca7b7e83731402912d5f65f8185860ffbab9befb420c77452edd8c9b48cc7b5",
     "source": "def/format/main.lfy",
-    "target": "rust"
+    "target": "rust",
+    "text": ""
   }
 ]

@@ -156,14 +156,15 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
@@ -197,7 +198,7 @@
         "end": 9,
         "entity": "lower",
         "file": "def/interpret/main.lfy",
-        "line": 295,
+        "line": 296,
         "outputLine": 9,
         "requirement": null
       },
@@ -215,7 +216,7 @@
         "end": 11,
         "entity": "bind",
         "file": "def/model/main.lfy",
-        "line": 44,
+        "line": 46,
         "outputLine": 11,
         "requirement": null
       },
@@ -233,7 +234,7 @@
         "end": 13,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 13,
         "requirement": null
       },
@@ -242,7 +243,7 @@
         "end": 14,
         "entity": "load",
         "file": "def/workspace/main.lfy",
-        "line": 16,
+        "line": 15,
         "outputLine": 14,
         "requirement": null
       }
@@ -411,21 +412,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 40,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 1,
         "requirement": null
       },
@@ -434,7 +436,7 @@
         "end": 62,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 41,
         "requirement": null
       },
@@ -443,7 +445,7 @@
         "end": 78,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 63,
         "requirement": null
       },
@@ -452,7 +454,7 @@
         "end": 93,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 79,
         "requirement": null
       },
@@ -461,7 +463,7 @@
         "end": 114,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 94,
         "requirement": null
       },
@@ -470,7 +472,7 @@
         "end": 117,
         "entity": "CompletionContext",
         "file": "def/query/main.lfy",
-        "line": 447,
+        "line": 448,
         "outputLine": 115,
         "requirement": null
       },
@@ -479,7 +481,7 @@
         "end": 118,
         "entity": "CompletionContext.usePath",
         "file": "def/query/main.lfy",
-        "line": 448,
+        "line": 449,
         "outputLine": 118,
         "requirement": null
       },
@@ -488,7 +490,7 @@
         "end": 119,
         "entity": "CompletionContext.context",
         "file": "def/query/main.lfy",
-        "line": 449,
+        "line": 450,
         "outputLine": 119,
         "requirement": null
       },
@@ -497,7 +499,7 @@
         "end": 120,
         "entity": "CompletionContext.scope",
         "file": "def/query/main.lfy",
-        "line": 450,
+        "line": 451,
         "outputLine": 120,
         "requirement": null
       },
@@ -506,7 +508,7 @@
         "end": 121,
         "entity": "CompletionContext.parentScope",
         "file": "def/query/main.lfy",
-        "line": 451,
+        "line": 452,
         "outputLine": 121,
         "requirement": null
       },
@@ -515,7 +517,7 @@
         "end": 122,
         "entity": "CompletionContext.value",
         "file": "def/query/main.lfy",
-        "line": 452,
+        "line": 453,
         "outputLine": 122,
         "requirement": null
       },
@@ -524,7 +526,7 @@
         "end": 123,
         "entity": "CompletionContext.traitName",
         "file": "def/query/main.lfy",
-        "line": 453,
+        "line": 454,
         "outputLine": 123,
         "requirement": null
       },
@@ -533,7 +535,7 @@
         "end": 124,
         "entity": "CompletionContext.prose",
         "file": "def/query/main.lfy",
-        "line": 456,
+        "line": 457,
         "outputLine": 124,
         "requirement": null
       },
@@ -542,7 +544,7 @@
         "end": 125,
         "entity": "CompletionContext.typeName",
         "file": "def/query/main.lfy",
-        "line": 457,
+        "line": 458,
         "outputLine": 125,
         "requirement": null
       },
@@ -551,7 +553,7 @@
         "end": 126,
         "entity": "CompletionContext.statement",
         "file": "def/query/main.lfy",
-        "line": 460,
+        "line": 461,
         "outputLine": 126,
         "requirement": null
       },
@@ -560,7 +562,7 @@
         "end": 132,
         "entity": "CompletionContext.expression",
         "file": "def/query/main.lfy",
-        "line": 461,
+        "line": 462,
         "outputLine": 127,
         "requirement": null
       },
@@ -569,7 +571,7 @@
         "end": 149,
         "entity": "CompletionContext",
         "file": "def/query/main.lfy",
-        "line": 447,
+        "line": 448,
         "outputLine": 133,
         "requirement": null
       },
@@ -578,7 +580,7 @@
         "end": 221,
         "entity": "CompletionContext",
         "file": "def/query/main.lfy",
-        "line": 447,
+        "line": 448,
         "outputLine": 150,
         "requirement": null
       },
@@ -587,7 +589,7 @@
         "end": 257,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 222,
         "requirement": "completionsAt:completionsAt:beddcfda7878c84398489ed04b9100d3ca66a779785f71339a12a7aac4ff27d0"
       },
@@ -596,7 +598,7 @@
         "end": 298,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 258,
         "requirement": null
       },
@@ -605,7 +607,7 @@
         "end": 312,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 299,
         "requirement": "completionsAt:completionsAt:51adc1b9fc9e926d06595d76e546949f392045d3296b9a6bb7d093f6a3be644e"
       },
@@ -614,7 +616,7 @@
         "end": 318,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 313,
         "requirement": "completionsAt:completionsAt:7b07fa8a1db2032a1eb89bb408148c4ec84ba69ff8899993bea98d722bd80963"
       },
@@ -623,7 +625,7 @@
         "end": 327,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 319,
         "requirement": "completionsAt:completionsAt:8f8f5282e676ec6a8cb4fd951ff172f975a3732075c4f24ce7253b425558cdb1"
       },
@@ -632,7 +634,7 @@
         "end": 337,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 328,
         "requirement": "completionsAt:completionsAt:c8583c31ea5802803ab8c989f680381b5f19150f120c852fc637551bf5dea079"
       },
@@ -641,7 +643,7 @@
         "end": 338,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 338,
         "requirement": "completionsAt:completionsAt:b004a292d579f95ff0e64d5683c2c6d17367d72f08608a1525f516432a7045b6"
       },
@@ -650,7 +652,7 @@
         "end": 339,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 339,
         "requirement": "completionsAt:completionsAt:823bbfa9c16889c1e7b52d517feb017ab3e59d11cbe8577cbad6361e38d8d095"
       },
@@ -659,7 +661,7 @@
         "end": 360,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 340,
         "requirement": "completionsAt:completionsAt:1c542a5607a0f3e65d2dcd0ac6ce7bb52906094a0243e6ee2400137b80d8a462"
       },
@@ -668,7 +670,7 @@
         "end": 367,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 361,
         "requirement": null
       },
@@ -677,7 +679,7 @@
         "end": 385,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 368,
         "requirement": null
       },
@@ -686,7 +688,7 @@
         "end": 398,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 386,
         "requirement": null
       },
@@ -695,7 +697,7 @@
         "end": 409,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 399,
         "requirement": "completionsAt:completionsAt:e27a530ad71011bb541a5761da43e628b4d40ce9dd245a5e2f3708a75532b763"
       },
@@ -704,7 +706,7 @@
         "end": 427,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 410,
         "requirement": "completionsAt:completionsAt:c4fce9642c5615b339d7beba622badd73fc8bcf97e3c5688012f4db54d818b20"
       },
@@ -713,7 +715,7 @@
         "end": 464,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 428,
         "requirement": null
       },
@@ -722,7 +724,7 @@
         "end": 517,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 465,
         "requirement": "completionsAt:completionsAt:c090000e66157db31b578b3016839e6d86b5bf47a61c842e9482255a61175b4f"
       },
@@ -731,7 +733,7 @@
         "end": 551,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 518,
         "requirement": null
       },
@@ -740,7 +742,7 @@
         "end": 552,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 552,
         "requirement": "completionsAt:completionsAt:7065c2f898fbfc8f0764635d4eda8bad0129e35dff4dbf77f81b25c2138162e5"
       },
@@ -749,7 +751,7 @@
         "end": 672,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 553,
         "requirement": "completionsAt:completionsAt:00d112d094be9e9a2cef44f7a8962bbc76ca48587d3775070df6672096caab27"
       },
@@ -758,7 +760,7 @@
         "end": 681,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 673,
         "requirement": null
       },
@@ -767,7 +769,7 @@
         "end": 693,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 682,
         "requirement": null
       },
@@ -776,7 +778,7 @@
         "end": 712,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 694,
         "requirement": null
       },
@@ -785,7 +787,7 @@
         "end": 770,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 713,
         "requirement": null
       },
@@ -794,7 +796,7 @@
         "end": 783,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 771,
         "requirement": null
       },
@@ -803,7 +805,7 @@
         "end": 797,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 784,
         "requirement": null
       },
@@ -812,7 +814,7 @@
         "end": 818,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 798,
         "requirement": null
       },
@@ -821,7 +823,7 @@
         "end": 833,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 819,
         "requirement": null
       },
@@ -830,7 +832,7 @@
         "end": 874,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 834,
         "requirement": null
       },
@@ -839,7 +841,7 @@
         "end": 881,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 875,
         "requirement": null
       },
@@ -848,7 +850,7 @@
         "end": 900,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 882,
         "requirement": null
       },
@@ -857,7 +859,7 @@
         "end": 936,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 901,
         "requirement": "completionsAt:completionsAt:65d806ac198de35cad869a57d7414bb675ce6b60df93d9550604173e33fb584e"
       },
@@ -866,7 +868,7 @@
         "end": 937,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 937,
         "requirement": "completionsAt:completionsAt:7065c2f898fbfc8f0764635d4eda8bad0129e35dff4dbf77f81b25c2138162e5"
       },
@@ -875,7 +877,7 @@
         "end": 951,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 938,
         "requirement": "completionsAt:completionsAt:00d112d094be9e9a2cef44f7a8962bbc76ca48587d3775070df6672096caab27"
       },
@@ -884,7 +886,7 @@
         "end": 952,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 952,
         "requirement": "completionsAt:completionsAt:365a6fefcaac6ce90927cbfb94ec3099fda7365d3d87ab047cc45048069b9974"
       },
@@ -893,7 +895,7 @@
         "end": 980,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 953,
         "requirement": "completionsAt:completionsAt:a5a0eab57676095dddbb5dae2b670022049f0b904028643aa04539c7eccaf9a4"
       },
@@ -902,404 +904,404 @@
         "end": 986,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 981,
         "requirement": "completionsAt:completionsAt:176255d2b086cfe7231a0504fa626007c1b81596ae34941771af6ad8f8196d09"
       },
       {
         "column": null,
-        "end": 1008,
+        "end": 999,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 987,
         "requirement": "completionsAt:completionsAt:990efbecf19087309c0d26899b7a2489e562a4cb35262c755027dc912b462da2"
       },
       {
         "column": null,
-        "end": 1010,
+        "end": 1001,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1009,
+        "line": 468,
+        "outputLine": 1000,
         "requirement": "completionsAt:completionsAt:24de0b278e7cb59f3d9c83a6bb909c20a031057409da2357a4d77aeab5dd38b9"
       },
       {
         "column": null,
-        "end": 1012,
+        "end": 1003,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1011,
+        "line": 468,
+        "outputLine": 1002,
         "requirement": "completionsAt:completionsAt:de465a4a16bdf7b27a9f87a8544ae370b2a8d7ce5e534bbb2a0adf76eac4eae7"
       },
       {
         "column": null,
-        "end": 1031,
+        "end": 1022,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1013,
+        "line": 468,
+        "outputLine": 1004,
         "requirement": "completionsAt:completionsAt:fe4d1e99bec6f6b470424e0b309292cc7f1c240f79b4a916a2200d942a2fdc6b"
       },
       {
         "column": null,
-        "end": 1056,
+        "end": 1047,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1032,
+        "line": 468,
+        "outputLine": 1023,
         "requirement": "completionsAt:completionsAt:7b07fa8a1db2032a1eb89bb408148c4ec84ba69ff8899993bea98d722bd80963"
       },
       {
         "column": null,
-        "end": 1061,
+        "end": 1052,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1057,
+        "line": 468,
+        "outputLine": 1048,
         "requirement": "completionsAt:completionsAt:51adc1b9fc9e926d06595d76e546949f392045d3296b9a6bb7d093f6a3be644e"
       },
       {
         "column": null,
-        "end": 1071,
+        "end": 1062,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1062,
+        "line": 468,
+        "outputLine": 1053,
         "requirement": "completionsAt:completionsAt:8f8f5282e676ec6a8cb4fd951ff172f975a3732075c4f24ce7253b425558cdb1"
       },
       {
         "column": null,
-        "end": 1079,
+        "end": 1070,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1072,
+        "line": 468,
+        "outputLine": 1063,
         "requirement": "completionsAt:completionsAt:4b1007ad4453a4d4bdbe8d1b8b7da0ac7d83d63f02f9dd3d5ebe142646dc292c"
       },
       {
         "column": null,
-        "end": 1093,
+        "end": 1084,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1080,
+        "line": 468,
+        "outputLine": 1071,
         "requirement": "completionsAt:completionsAt:de465a4a16bdf7b27a9f87a8544ae370b2a8d7ce5e534bbb2a0adf76eac4eae7"
       },
       {
         "column": null,
-        "end": 1094,
+        "end": 1085,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1094,
+        "line": 468,
+        "outputLine": 1085,
         "requirement": "completionsAt:completionsAt:2f73553b7465a85e1646af3834d639129df6aad79e6f573cff6b452a45afd6fb"
       },
       {
         "column": null,
-        "end": 1119,
+        "end": 1110,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1095,
+        "line": 468,
+        "outputLine": 1086,
         "requirement": "completionsAt:completionsAt:f09a4184f25a1539b7642492c9797d7f1ecc3165143e3732feca85defb0f55fa"
       },
       {
         "column": null,
-        "end": 1120,
+        "end": 1111,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1120,
+        "line": 468,
+        "outputLine": 1111,
         "requirement": "completionsAt:completionsAt:365a6fefcaac6ce90927cbfb94ec3099fda7365d3d87ab047cc45048069b9974"
       },
       {
         "column": null,
-        "end": 1121,
+        "end": 1112,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1121,
+        "line": 468,
+        "outputLine": 1112,
         "requirement": "completionsAt:completionsAt:a5a0eab57676095dddbb5dae2b670022049f0b904028643aa04539c7eccaf9a4"
       },
       {
         "column": null,
-        "end": 1122,
+        "end": 1113,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1122,
+        "line": 468,
+        "outputLine": 1113,
         "requirement": "completionsAt:completionsAt:2f73553b7465a85e1646af3834d639129df6aad79e6f573cff6b452a45afd6fb"
       },
       {
         "column": null,
-        "end": 1156,
+        "end": 1147,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1123,
+        "line": 468,
+        "outputLine": 1114,
         "requirement": "completionsAt:completionsAt:2f6834a48ec282a9c8bcda7fecd60a3e350cd6c72ebc03a766a32d8b5b1493d1"
       },
       {
         "column": null,
-        "end": 1157,
+        "end": 1148,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1157,
+        "line": 468,
+        "outputLine": 1148,
         "requirement": "completionsAt:completionsAt:b004a292d579f95ff0e64d5683c2c6d17367d72f08608a1525f516432a7045b6"
       },
       {
         "column": null,
-        "end": 1183,
+        "end": 1174,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1158,
+        "line": 468,
+        "outputLine": 1149,
         "requirement": "completionsAt:completionsAt:b210279c8cc1507c5a57a7cf6f62fedb15356bd132b00cbf1612db89d6c6576c"
       },
       {
         "column": null,
-        "end": 1184,
+        "end": 1175,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1184,
+        "line": 468,
+        "outputLine": 1175,
         "requirement": "completionsAt:completionsAt:c090000e66157db31b578b3016839e6d86b5bf47a61c842e9482255a61175b4f"
       },
       {
         "column": null,
-        "end": 1185,
+        "end": 1176,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1185,
+        "line": 468,
+        "outputLine": 1176,
         "requirement": "completionsAt:completionsAt:c8583c31ea5802803ab8c989f680381b5f19150f120c852fc637551bf5dea079"
       },
       {
         "column": null,
-        "end": 1211,
+        "end": 1202,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1186,
+        "line": 468,
+        "outputLine": 1177,
         "requirement": "completionsAt:completionsAt:1c542a5607a0f3e65d2dcd0ac6ce7bb52906094a0243e6ee2400137b80d8a462"
       },
       {
         "column": null,
-        "end": 1219,
+        "end": 1210,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1212,
+        "line": 468,
+        "outputLine": 1203,
         "requirement": "completionsAt:completionsAt:c4fce9642c5615b339d7beba622badd73fc8bcf97e3c5688012f4db54d818b20"
       },
       {
         "column": null,
-        "end": 1226,
+        "end": 1217,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1220,
+        "line": 468,
+        "outputLine": 1211,
         "requirement": "completionsAt:completionsAt:823bbfa9c16889c1e7b52d517feb017ab3e59d11cbe8577cbad6361e38d8d095"
       },
       {
         "column": null,
-        "end": 1227,
+        "end": 1218,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1227,
+        "line": 468,
+        "outputLine": 1218,
         "requirement": "completionsAt:completionsAt:de465a4a16bdf7b27a9f87a8544ae370b2a8d7ce5e534bbb2a0adf76eac4eae7"
       },
       {
         "column": null,
-        "end": 1253,
+        "end": 1244,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1228,
+        "line": 468,
+        "outputLine": 1219,
         "requirement": "completionsAt:completionsAt:aff25f9ffa6cd60694c089eacd9189c8e497d435d15f84f960f975444ab2f98e"
       },
       {
         "column": null,
-        "end": 1254,
+        "end": 1245,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1254,
+        "line": 468,
+        "outputLine": 1245,
         "requirement": "completionsAt:completionsAt:176255d2b086cfe7231a0504fa626007c1b81596ae34941771af6ad8f8196d09"
       },
       {
         "column": null,
-        "end": 1255,
+        "end": 1246,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1255,
+        "line": 468,
+        "outputLine": 1246,
         "requirement": "completionsAt:completionsAt:990efbecf19087309c0d26899b7a2489e562a4cb35262c755027dc912b462da2"
       },
       {
         "column": null,
-        "end": 1292,
+        "end": 1288,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1256,
+        "line": 468,
+        "outputLine": 1247,
         "requirement": "completionsAt:completionsAt:24de0b278e7cb59f3d9c83a6bb909c20a031057409da2357a4d77aeab5dd38b9"
       },
       {
         "column": null,
-        "end": 1310,
+        "end": 1306,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1293,
+        "line": 468,
+        "outputLine": 1289,
         "requirement": "completionsAt:completionsAt:e27a530ad71011bb541a5761da43e628b4d40ce9dd245a5e2f3708a75532b763"
       },
       {
         "column": null,
-        "end": 1311,
+        "end": 1307,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1311,
+        "line": 468,
+        "outputLine": 1307,
         "requirement": "completionsAt:completionsAt:7065c2f898fbfc8f0764635d4eda8bad0129e35dff4dbf77f81b25c2138162e5"
       },
       {
         "column": null,
-        "end": 1312,
+        "end": 1308,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1312,
+        "line": 468,
+        "outputLine": 1308,
         "requirement": "completionsAt:completionsAt:00d112d094be9e9a2cef44f7a8962bbc76ca48587d3775070df6672096caab27"
+      },
+      {
+        "column": null,
+        "end": 1348,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 468,
+        "outputLine": 1309,
+        "requirement": "completionsAt:completionsAt:09043a1a0fcecf03463cebe94a13f4f932c3d36f9809b5daf05af88c39efbdab"
       },
       {
         "column": null,
         "end": 1349,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1313,
-        "requirement": "completionsAt:completionsAt:09043a1a0fcecf03463cebe94a13f4f932c3d36f9809b5daf05af88c39efbdab"
-      },
-      {
-        "column": null,
-        "end": 1350,
-        "entity": "completionsAt",
-        "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1350,
+        "line": 468,
+        "outputLine": 1349,
         "requirement": "completionsAt:completionsAt:fe4d1e99bec6f6b470424e0b309292cc7f1c240f79b4a916a2200d942a2fdc6b"
       },
       {
         "column": null,
-        "end": 1375,
+        "end": 1374,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1351,
+        "line": 468,
+        "outputLine": 1350,
         "requirement": "completionsAt:completionsAt:782b86b627c5d47fd0fbe2fb7ef040dfc62ee913b76ebd52fd91803fe128f64a"
+      },
+      {
+        "column": null,
+        "end": 1394,
+        "entity": "completionsAt",
+        "file": "def/query/main.lfy",
+        "line": 468,
+        "outputLine": 1375,
+        "requirement": "completionsAt:completionsAt:7b07fa8a1db2032a1eb89bb408148c4ec84ba69ff8899993bea98d722bd80963"
       },
       {
         "column": null,
         "end": 1395,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1376,
+        "line": 468,
+        "outputLine": 1395,
         "requirement": "completionsAt:completionsAt:7b07fa8a1db2032a1eb89bb408148c4ec84ba69ff8899993bea98d722bd80963"
       },
       {
         "column": null,
-        "end": 1396,
+        "end": 1437,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 1396,
-        "requirement": "completionsAt:completionsAt:7b07fa8a1db2032a1eb89bb408148c4ec84ba69ff8899993bea98d722bd80963"
+        "requirement": "completionsAt:completionsAt:6bf26a197be0446516e4af6746ce185df1d0c1ea7ef553ec3f0cb72cc6e58bff"
       },
       {
         "column": null,
-        "end": 1438,
+        "end": 1446,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1397,
-        "requirement": "completionsAt:completionsAt:6bf26a197be0446516e4af6746ce185df1d0c1ea7ef553ec3f0cb72cc6e58bff"
+        "line": 468,
+        "outputLine": 1438,
+        "requirement": "completionsAt:completionsAt:8f8f5282e676ec6a8cb4fd951ff172f975a3732075c4f24ce7253b425558cdb1"
       },
       {
         "column": null,
         "end": 1447,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1439,
-        "requirement": "completionsAt:completionsAt:8f8f5282e676ec6a8cb4fd951ff172f975a3732075c4f24ce7253b425558cdb1"
+        "line": 468,
+        "outputLine": 1447,
+        "requirement": "completionsAt:completionsAt:beddcfda7878c84398489ed04b9100d3ca66a779785f71339a12a7aac4ff27d0"
       },
       {
         "column": null,
-        "end": 1448,
+        "end": 1479,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 1448,
-        "requirement": "completionsAt:completionsAt:beddcfda7878c84398489ed04b9100d3ca66a779785f71339a12a7aac4ff27d0"
+        "requirement": "completionsAt:completionsAt:51adc1b9fc9e926d06595d76e546949f392045d3296b9a6bb7d093f6a3be644e"
       },
       {
         "column": null,
         "end": 1480,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1449,
-        "requirement": "completionsAt:completionsAt:51adc1b9fc9e926d06595d76e546949f392045d3296b9a6bb7d093f6a3be644e"
+        "line": 468,
+        "outputLine": 1480,
+        "requirement": "completionsAt:completionsAt:8f8f5282e676ec6a8cb4fd951ff172f975a3732075c4f24ce7253b425558cdb1"
       },
       {
         "column": null,
         "end": 1481,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 1481,
-        "requirement": "completionsAt:completionsAt:8f8f5282e676ec6a8cb4fd951ff172f975a3732075c4f24ce7253b425558cdb1"
+        "requirement": "completionsAt:completionsAt:f09a4184f25a1539b7642492c9797d7f1ecc3165143e3732feca85defb0f55fa"
       },
       {
         "column": null,
         "end": 1482,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 1482,
-        "requirement": "completionsAt:completionsAt:f09a4184f25a1539b7642492c9797d7f1ecc3165143e3732feca85defb0f55fa"
-      },
-      {
-        "column": null,
-        "end": 1483,
-        "entity": "completionsAt",
-        "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1483,
         "requirement": "completionsAt:completionsAt:4b1007ad4453a4d4bdbe8d1b8b7da0ac7d83d63f02f9dd3d5ebe142646dc292c"
       },
       {
         "column": null,
-        "end": 1524,
+        "end": 1523,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 1484,
+        "line": 468,
+        "outputLine": 1483,
         "requirement": "completionsAt:completionsAt:65d806ac198de35cad869a57d7414bb675ce6b60df93d9550604173e33fb584e"
       },
       {
         "column": null,
-        "end": 1552,
+        "end": 1551,
         "entity": "CompletionContext",
         "file": "def/query/main.lfy",
-        "line": 447,
-        "outputLine": 1525,
+        "line": 448,
+        "outputLine": 1524,
         "requirement": null
       }
     ],
@@ -1308,7 +1310,7 @@
     "signature": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
     "source": "def/query/main.lfy",
     "target": "rust",
-    "text": "ee7c515692c88d9c32fda20e2064dddf407458287daa1992f09318706f61ff16"
+    "text": "e7faa9860c18cd4af01f993fe3e072a1d67d6d8f0bf341876aa1ed65bc1b1345"
   },
   {
     "answered": [
@@ -1467,21 +1469,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 28,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 1,
         "requirement": null
       },
@@ -1490,7 +1493,7 @@
         "end": 41,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 29,
         "requirement": null
       },
@@ -1499,7 +1502,7 @@
         "end": 42,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 42,
         "requirement": "diagnosticsOf:diagnosticsOf:7b71c411410f4a67352e35d1dea692d221ca1b0c055125cdedeef1785b20a62c"
       },
@@ -1508,7 +1511,7 @@
         "end": 53,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 43,
         "requirement": "diagnosticsOf:diagnosticsOf:45788e4c5aba41f636eb55e7bb6787d58df3fb0d471d2ae00d710a2b8f6c3c46"
       },
@@ -1517,7 +1520,7 @@
         "end": 71,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 54,
         "requirement": "diagnosticsOf:diagnosticsOf:b3fbff74b696c426c78e1622473bf46991ed2ce09b13dde41d409769b81f49aa"
       },
@@ -1526,7 +1529,7 @@
         "end": 72,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 72,
         "requirement": "diagnosticsOf:diagnosticsOf:659c3e35343ca8a0c0f8b062549f92c4b7d902b040a6d5d79f2a6fb736e27351"
       },
@@ -1535,7 +1538,7 @@
         "end": 87,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 73,
         "requirement": "diagnosticsOf:diagnosticsOf:6df72f95158bd04dcd3388f6c70e24ba0281159a37885e0a68a081dd3198143d"
       },
@@ -1544,7 +1547,7 @@
         "end": 96,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 88,
         "requirement": "diagnosticsOf:diagnosticsOf:8eb39df1b8c7036fa72ba03e13399e89f19b99508ff87fe86125cb50f6c3c9fa"
       },
@@ -1553,7 +1556,7 @@
         "end": 120,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 97,
         "requirement": "diagnosticsOf:diagnosticsOf:bda5e055c75f47a4e289fbc70bae813935676e1b44427a57fa4c9bee23a0f7da"
       },
@@ -1562,7 +1565,7 @@
         "end": 147,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 121,
         "requirement": "diagnosticsOf:diagnosticsOf:215cb16ac34749dba8b39f3c4b0772c200e5c3bcd0f576c0a3c315cbf26dd26e"
       },
@@ -1571,7 +1574,7 @@
         "end": 213,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 148,
         "requirement": "diagnosticsOf:diagnosticsOf:8e851e2cb4180e8b1c677c4d71389d4e1b9374ee37f175153cb37d3aae9034bf"
       },
@@ -1580,7 +1583,7 @@
         "end": 214,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 214,
         "requirement": "diagnosticsOf:diagnosticsOf:b3fbff74b696c426c78e1622473bf46991ed2ce09b13dde41d409769b81f49aa"
       },
@@ -1589,7 +1592,7 @@
         "end": 227,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 215,
         "requirement": "diagnosticsOf:diagnosticsOf:9081d09fe7497f189e9f1595ce2f2ce9f21c0ab185845713df749c40ec6dbb36"
       },
@@ -1598,7 +1601,7 @@
         "end": 228,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 228,
         "requirement": "diagnosticsOf:diagnosticsOf:bda5e055c75f47a4e289fbc70bae813935676e1b44427a57fa4c9bee23a0f7da"
       },
@@ -1607,7 +1610,7 @@
         "end": 251,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 229,
         "requirement": "diagnosticsOf:diagnosticsOf:3591e88c1e517b788048aa32485e38f91b33246adf96ea3d290f78bd2d38ec39"
       },
@@ -1616,7 +1619,7 @@
         "end": 264,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 252,
         "requirement": "diagnosticsOf:diagnosticsOf:8eb39df1b8c7036fa72ba03e13399e89f19b99508ff87fe86125cb50f6c3c9fa"
       },
@@ -1625,7 +1628,7 @@
         "end": 265,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 265,
         "requirement": "diagnosticsOf:diagnosticsOf:7b71c411410f4a67352e35d1dea692d221ca1b0c055125cdedeef1785b20a62c"
       },
@@ -1634,7 +1637,7 @@
         "end": 266,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 266,
         "requirement": "diagnosticsOf:diagnosticsOf:45788e4c5aba41f636eb55e7bb6787d58df3fb0d471d2ae00d710a2b8f6c3c46"
       },
@@ -1643,7 +1646,7 @@
         "end": 288,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 267,
         "requirement": "diagnosticsOf:diagnosticsOf:b3fbff74b696c426c78e1622473bf46991ed2ce09b13dde41d409769b81f49aa"
       },
@@ -1652,7 +1655,7 @@
         "end": 299,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 289,
         "requirement": "diagnosticsOf:diagnosticsOf:7b71c411410f4a67352e35d1dea692d221ca1b0c055125cdedeef1785b20a62c"
       },
@@ -1661,7 +1664,7 @@
         "end": 300,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 300,
         "requirement": "diagnosticsOf:diagnosticsOf:6df72f95158bd04dcd3388f6c70e24ba0281159a37885e0a68a081dd3198143d"
       },
@@ -1670,7 +1673,7 @@
         "end": 301,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 301,
         "requirement": "diagnosticsOf:diagnosticsOf:659c3e35343ca8a0c0f8b062549f92c4b7d902b040a6d5d79f2a6fb736e27351"
       },
@@ -1679,7 +1682,7 @@
         "end": 336,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 302,
         "requirement": "diagnosticsOf:diagnosticsOf:215cb16ac34749dba8b39f3c4b0772c200e5c3bcd0f576c0a3c315cbf26dd26e"
       },
@@ -1688,7 +1691,7 @@
         "end": 337,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 337,
         "requirement": "diagnosticsOf:diagnosticsOf:8e851e2cb4180e8b1c677c4d71389d4e1b9374ee37f175153cb37d3aae9034bf"
       },
@@ -1697,7 +1700,7 @@
         "end": 366,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 338,
         "requirement": "diagnosticsOf:diagnosticsOf:c10084a238db0d56540c9f6a7e1725d83ae9ed7f46d1d34cc88f993bf0334416"
       },
@@ -1706,7 +1709,7 @@
         "end": 367,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 367,
         "requirement": "diagnosticsOf:diagnosticsOf:8e851e2cb4180e8b1c677c4d71389d4e1b9374ee37f175153cb37d3aae9034bf"
       },
@@ -1715,7 +1718,7 @@
         "end": 387,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
+        "line": 662,
         "outputLine": 368,
         "requirement": "diagnosticsOf:diagnosticsOf:e9581273e68e498bbc69cdcf24ce021a85a747e110aab176e0a5096d9315059c"
       }
@@ -1725,7 +1728,7 @@
     "signature": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
     "source": "def/query/main.lfy",
     "target": "rust",
-    "text": "8e7da0a3a63da0e9e7012f7a95560c7bdc40aed52f09c1d33a463c2ba8fb851f"
+    "text": "0077e308a24c14144aed62cc319f292e52495cbc88e80f7d8c35331fa50d4011"
   },
   {
     "answered": [
@@ -1884,21 +1887,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 9,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 1,
         "requirement": null
       },
@@ -1907,7 +1911,7 @@
         "end": 12,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 10,
         "requirement": null
       },
@@ -1916,7 +1920,7 @@
         "end": 31,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 13,
         "requirement": "find:find:61607cb709e91135898032720f10dea2e214fb817b1408e0acc03b32ee2921dd"
       },
@@ -1925,7 +1929,7 @@
         "end": 32,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 32,
         "requirement": "find:find:fd99a23c4e8cda13dfc67f691e8488956baceb9b6a936387d01097718dd9aeeb"
       },
@@ -1934,7 +1938,7 @@
         "end": 56,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 33,
         "requirement": "find:find:866c797d2ac82b36a267a29edec555c515e616851c8fbd949d9fb18c314fd0e2"
       },
@@ -1943,7 +1947,7 @@
         "end": 66,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 57,
         "requirement": null
       },
@@ -1952,7 +1956,7 @@
         "end": 70,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 67,
         "requirement": "sourceOf:sourceOf:44004ceec3f3da5b19d3201155581866ff4c72d679a91c01a53d7f261cfaca5b"
       },
@@ -1961,7 +1965,7 @@
         "end": 73,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 71,
         "requirement": "sourceOf:sourceOf:5e22bbec842c0245139e4ce2c5d6c95b1a30db2a6c8582182205d84b18bfa60d"
       },
@@ -1970,7 +1974,7 @@
         "end": 87,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 74,
         "requirement": "sourceOf:sourceOf:1231c1d038570bfc4ea96a2254b88772810a70da99d1226712806be3a3a548d9"
       },
@@ -1979,7 +1983,7 @@
         "end": 88,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 88,
         "requirement": "find:find:fd99a23c4e8cda13dfc67f691e8488956baceb9b6a936387d01097718dd9aeeb"
       },
@@ -1988,7 +1992,7 @@
         "end": 89,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 89,
         "requirement": "find:find:866c797d2ac82b36a267a29edec555c515e616851c8fbd949d9fb18c314fd0e2"
       },
@@ -1997,7 +2001,7 @@
         "end": 90,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 90,
         "requirement": "find:find:61607cb709e91135898032720f10dea2e214fb817b1408e0acc03b32ee2921dd"
       },
@@ -2006,7 +2010,7 @@
         "end": 91,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 91,
         "requirement": "find:find:1286ad770a1cf3a25e55448d3cdfe6b64efc8a2a5c597ae69414751ffe012c2d"
       },
@@ -2015,7 +2019,7 @@
         "end": 92,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 92,
         "requirement": "find:find:812007218e035a5d35f9aa08e87e3784cecdbcacf453e01eee76367ea460340a"
       },
@@ -2024,7 +2028,7 @@
         "end": 93,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 93,
         "requirement": "find:find:eb129c9826fc22f454f4cfe0e816a1f02fa2af14dd6f825cc1dc478e38b97cc8"
       },
@@ -2033,7 +2037,7 @@
         "end": 115,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 94,
         "requirement": "find:find:0f3b3a4e964c2e0613053c78947730591e34949b8b937b9d79ec23c70149d5f3"
       },
@@ -2042,7 +2046,7 @@
         "end": 116,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 116,
         "requirement": "sourceOf:sourceOf:1231c1d038570bfc4ea96a2254b88772810a70da99d1226712806be3a3a548d9"
       },
@@ -2051,7 +2055,7 @@
         "end": 117,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 117,
         "requirement": "sourceOf:sourceOf:44004ceec3f3da5b19d3201155581866ff4c72d679a91c01a53d7f261cfaca5b"
       },
@@ -2060,7 +2064,7 @@
         "end": 130,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
+        "line": 210,
         "outputLine": 118,
         "requirement": "sourceOf:sourceOf:5e22bbec842c0245139e4ce2c5d6c95b1a30db2a6c8582182205d84b18bfa60d"
       }
@@ -2229,21 +2233,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 10,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 1,
         "requirement": null
       },
@@ -2252,7 +2257,7 @@
         "end": 30,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 11,
         "requirement": "hoverOf:hoverOf:a7d65e3cb8822c1288b11d4be9d75dc74c04674819b25044dfd48fec1f1a86e3"
       },
@@ -2261,7 +2266,7 @@
         "end": 32,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 31,
         "requirement": "hoverOf:hoverOf:b395bb2363c1570038cd79a7ed40cf8d984560e819c03a901a14b43ecd099ebe"
       },
@@ -2270,7 +2275,7 @@
         "end": 49,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 33,
         "requirement": "hoverOf:hoverOf:c6d255ae1d2dd294f888b666d7c089499ee5684a23fb38dc9a0797725d6f0f3b"
       },
@@ -2279,7 +2284,7 @@
         "end": 78,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 50,
         "requirement": "hoverOf:hoverOf:b395bb2363c1570038cd79a7ed40cf8d984560e819c03a901a14b43ecd099ebe"
       },
@@ -2288,7 +2293,7 @@
         "end": 79,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 79,
         "requirement": "hoverOf:hoverOf:56038dc91ecf65d2bdfe79a9075ea17d361e3556abf2f01d835c0433eb98e148"
       },
@@ -2297,7 +2302,7 @@
         "end": 83,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 80,
         "requirement": "hoverOf:hoverOf:673a55a8b3f334c8adcc6e3e97b7ecca3391634769fcc6eb8e0ad53d9410173d"
       },
@@ -2306,7 +2311,7 @@
         "end": 107,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 84,
         "requirement": "hoverOf:hoverOf:9a90fed14cf9b11333b26fd62edb533825a9c1f138ff89d05b998ceb6f939143"
       },
@@ -2315,7 +2320,7 @@
         "end": 112,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 108,
         "requirement": null
       },
@@ -2324,7 +2329,7 @@
         "end": 113,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 113,
         "requirement": "hoverOf:hoverOf:e17c5067e38fa0a3958c2ef3e01e30d2690690a6415be9560637c938889a02e7"
       },
@@ -2333,7 +2338,7 @@
         "end": 128,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 114,
         "requirement": "hoverOf:hoverOf:8702d699e9d98e8b48b5e35e9f92a249f0779ab0592fc93e1c6033aa4ef467b4"
       },
@@ -2342,7 +2347,7 @@
         "end": 135,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 129,
         "requirement": "hoverOf:hoverOf:68443ea655344459d78515fc060fa700a4e3923b44ec5fcacaa2b2632269927b"
       },
@@ -2351,7 +2356,7 @@
         "end": 139,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 136,
         "requirement": "hoverOf:hoverOf:4a98847468c1084b02aa57083c43bdc60b9d9e7865c620f5be58c38401bf60a6"
       },
@@ -2360,7 +2365,7 @@
         "end": 140,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 140,
         "requirement": "hoverOf:hoverOf:b129f2741071e023568075a9414b9dd4815aabc5bccf81086fac8d19d877cad9"
       },
@@ -2369,7 +2374,7 @@
         "end": 141,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 141,
         "requirement": "hoverOf:hoverOf:82d2ed0d94372e34fc7af9c288c152a8c2e12fa57a24bd774665c903f95c074c"
       },
@@ -2378,7 +2383,7 @@
         "end": 146,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 142,
         "requirement": "hoverOf:hoverOf:8f5ab872cd3e21284ba6d3d9a3915ba9d3d37b663fc27ec21b270e938e750264"
       },
@@ -2387,7 +2392,7 @@
         "end": 147,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 147,
         "requirement": "hoverOf:hoverOf:dfdefece09ed47c4455f9a9339a661a18315a74bfb64bbdcb6a5ea78e063ca92"
       },
@@ -2396,7 +2401,7 @@
         "end": 154,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 148,
         "requirement": "hoverOf:hoverOf:4304745b8a5494523a7d4b59e6de617ed045803bcc0b42a6b87243e2b2ad5f64"
       },
@@ -2405,7 +2410,7 @@
         "end": 161,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 155,
         "requirement": "hoverOf:hoverOf:1d1e85c7ce3a70099ea62a09272e6712cbaa4302d4f684ea6effb157a8fa308b"
       },
@@ -2414,7 +2419,7 @@
         "end": 163,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 162,
         "requirement": null
       },
@@ -2423,7 +2428,7 @@
         "end": 166,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 164,
         "requirement": "hoverAt:hoverAt:6bdb2ad37511ee384dca32128cdffedcf3b25ed2de7c71a9df0f53486693c122"
       },
@@ -2432,7 +2437,7 @@
         "end": 175,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 167,
         "requirement": "hoverAt:hoverAt:70e660c693b1e26397c1dd93f63dd693d1ece7542346f60692580c4bebe602d3"
       },
@@ -2441,7 +2446,7 @@
         "end": 176,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 176,
         "requirement": "hoverAt:hoverAt:70e660c693b1e26397c1dd93f63dd693d1ece7542346f60692580c4bebe602d3"
       },
@@ -2450,7 +2455,7 @@
         "end": 177,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 177,
         "requirement": "hoverAt:hoverAt:6bdb2ad37511ee384dca32128cdffedcf3b25ed2de7c71a9df0f53486693c122"
       },
@@ -2459,7 +2464,7 @@
         "end": 178,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 178,
         "requirement": "hoverAt:hoverAt:6984b8eab7d425099b0d1954eacb86b6197332bbbd6525ce36c2f5139b828170"
       },
@@ -2468,7 +2473,7 @@
         "end": 179,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 179,
         "requirement": "hoverOf:hoverOf:bc58dcd08b279e454ea3f234d6633930816ba962b653ce118f411ca600d35815"
       },
@@ -2477,7 +2482,7 @@
         "end": 180,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 180,
         "requirement": "hoverOf:hoverOf:e17c5067e38fa0a3958c2ef3e01e30d2690690a6415be9560637c938889a02e7"
       },
@@ -2486,7 +2491,7 @@
         "end": 181,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 181,
         "requirement": "hoverOf:hoverOf:4a98847468c1084b02aa57083c43bdc60b9d9e7865c620f5be58c38401bf60a6"
       },
@@ -2495,7 +2500,7 @@
         "end": 182,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 182,
         "requirement": "hoverOf:hoverOf:b395bb2363c1570038cd79a7ed40cf8d984560e819c03a901a14b43ecd099ebe"
       },
@@ -2504,7 +2509,7 @@
         "end": 183,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 183,
         "requirement": "hoverOf:hoverOf:dfdefece09ed47c4455f9a9339a661a18315a74bfb64bbdcb6a5ea78e063ca92"
       },
@@ -2513,7 +2518,7 @@
         "end": 197,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 184,
         "requirement": "hoverOf:hoverOf:1d1e85c7ce3a70099ea62a09272e6712cbaa4302d4f684ea6effb157a8fa308b"
       },
@@ -2522,7 +2527,7 @@
         "end": 203,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 198,
         "requirement": "hoverOf:hoverOf:a7d65e3cb8822c1288b11d4be9d75dc74c04674819b25044dfd48fec1f1a86e3"
       },
@@ -2531,7 +2536,7 @@
         "end": 204,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 204,
         "requirement": "hoverAt:hoverAt:ec108f7d5cd886ee18c6ce6aac56ce50dab60fa374bf7af37fd04989b559a98d"
       },
@@ -2540,7 +2545,7 @@
         "end": 205,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 205,
         "requirement": "hoverOf:hoverOf:56038dc91ecf65d2bdfe79a9075ea17d361e3556abf2f01d835c0433eb98e148"
       },
@@ -2549,7 +2554,7 @@
         "end": 215,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 206,
         "requirement": "hoverOf:hoverOf:68443ea655344459d78515fc060fa700a4e3923b44ec5fcacaa2b2632269927b"
       },
@@ -2558,7 +2563,7 @@
         "end": 224,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 216,
         "requirement": "hoverOf:hoverOf:82d2ed0d94372e34fc7af9c288c152a8c2e12fa57a24bd774665c903f95c074c"
       },
@@ -2567,7 +2572,7 @@
         "end": 234,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 225,
         "requirement": "hoverOf:hoverOf:8f5ab872cd3e21284ba6d3d9a3915ba9d3d37b663fc27ec21b270e938e750264"
       },
@@ -2576,7 +2581,7 @@
         "end": 244,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 235,
         "requirement": "hoverOf:hoverOf:673a55a8b3f334c8adcc6e3e97b7ecca3391634769fcc6eb8e0ad53d9410173d"
       },
@@ -2585,7 +2590,7 @@
         "end": 249,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 245,
         "requirement": "hoverOf:hoverOf:9a90fed14cf9b11333b26fd62edb533825a9c1f138ff89d05b998ceb6f939143"
       },
@@ -2594,7 +2599,7 @@
         "end": 250,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 250,
         "requirement": "hoverOf:hoverOf:bc5317180748f756ff3ce1dc261bcaa95143513bb4264535b9448d06ee539dd5"
       },
@@ -2603,7 +2608,7 @@
         "end": 251,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 251,
         "requirement": "hoverOf:hoverOf:8702d699e9d98e8b48b5e35e9f92a249f0779ab0592fc93e1c6033aa4ef467b4"
       },
@@ -2612,7 +2617,7 @@
         "end": 252,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 252,
         "requirement": "hoverOf:hoverOf:4a98847468c1084b02aa57083c43bdc60b9d9e7865c620f5be58c38401bf60a6"
       },
@@ -2621,7 +2626,7 @@
         "end": 253,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 253,
         "requirement": "hoverOf:hoverOf:b129f2741071e023568075a9414b9dd4815aabc5bccf81086fac8d19d877cad9"
       },
@@ -2630,7 +2635,7 @@
         "end": 266,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 254,
         "requirement": "hoverOf:hoverOf:b395bb2363c1570038cd79a7ed40cf8d984560e819c03a901a14b43ecd099ebe"
       },
@@ -2639,7 +2644,7 @@
         "end": 319,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 267,
         "requirement": "hoverOf:hoverOf:a7d65e3cb8822c1288b11d4be9d75dc74c04674819b25044dfd48fec1f1a86e3"
       },
@@ -2648,7 +2653,7 @@
         "end": 347,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 320,
         "requirement": "hoverOf:hoverOf:b129f2741071e023568075a9414b9dd4815aabc5bccf81086fac8d19d877cad9"
       },
@@ -2657,7 +2662,7 @@
         "end": 372,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 348,
         "requirement": "hoverOf:hoverOf:b129f2741071e023568075a9414b9dd4815aabc5bccf81086fac8d19d877cad9"
       },
@@ -2666,7 +2671,7 @@
         "end": 383,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 373,
         "requirement": "hoverOf:hoverOf:b129f2741071e023568075a9414b9dd4815aabc5bccf81086fac8d19d877cad9"
       },
@@ -2675,7 +2680,7 @@
         "end": 384,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 384,
         "requirement": "hoverOf:hoverOf:dfdefece09ed47c4455f9a9339a661a18315a74bfb64bbdcb6a5ea78e063ca92"
       },
@@ -2684,7 +2689,7 @@
         "end": 385,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 385,
         "requirement": "hoverOf:hoverOf:4304745b8a5494523a7d4b59e6de617ed045803bcc0b42a6b87243e2b2ad5f64"
       },
@@ -2693,7 +2698,7 @@
         "end": 425,
         "entity": "hoverAt",
         "file": "def/query/main.lfy",
-        "line": 406,
+        "line": 407,
         "outputLine": 386,
         "requirement": "hoverAt:hoverAt:3ac47bdd611b3d3ce886a3bbc4f4ffc93ade4c2a78e8e071b192985bdbddfedb"
       }
@@ -2862,21 +2867,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 163,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 163,
         "requirement": "findSymbols:findSymbols:2cafa010009d2c7783a291a1e27d35e09d9ef1f73122866e4953772fad3a0b32"
       },
@@ -2885,7 +2891,7 @@
         "end": 198,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
+        "line": 788,
         "outputLine": 164,
         "requirement": "find:find:1286ad770a1cf3a25e55448d3cdfe6b64efc8a2a5c597ae69414751ffe012c2d"
       },
@@ -2894,7 +2900,7 @@
         "end": 231,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 199,
         "requirement": null
       },
@@ -2903,7 +2909,7 @@
         "end": 234,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 232,
         "requirement": "hoverOf:hoverOf:bc58dcd08b279e454ea3f234d6633930816ba962b653ce118f411ca600d35815"
       },
@@ -2912,7 +2918,7 @@
         "end": 278,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
+        "line": 344,
         "outputLine": 235,
         "requirement": "hoverOf:hoverOf:bc5317180748f756ff3ce1dc261bcaa95143513bb4264535b9448d06ee539dd5"
       },
@@ -2921,143 +2927,143 @@
         "end": 293,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 279,
         "requirement": null
       },
       {
         "column": null,
-        "end": 381,
+        "end": 378,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
+        "line": 468,
         "outputLine": 294,
         "requirement": null
       },
       {
         "column": null,
-        "end": 382,
+        "end": 379,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
-        "outputLine": 382,
+        "line": 29,
+        "outputLine": 379,
         "requirement": "symbolAt:symbolAt:562b82e9b9bff42506308fce309460fd485f976fa4cbcd14307d4e86255c5b7a"
       },
       {
         "column": null,
-        "end": 383,
+        "end": 380,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
-        "outputLine": 383,
+        "line": 96,
+        "outputLine": 380,
         "requirement": "definitionOf:definitionOf:e38e58f0b0d00cd0e0b9b3322d0044fe9860e3725299a137a672be2af4bd7846"
       },
       {
         "column": null,
-        "end": 384,
+        "end": 381,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
-        "outputLine": 384,
+        "line": 153,
+        "outputLine": 381,
         "requirement": "referencesTo:referencesTo:2c61bf4cf3dcd2797fdc448c45a78d5542297f5ccda29af95840a2b68b5f011a"
       },
       {
         "column": null,
-        "end": 385,
+        "end": 382,
         "entity": "sourceOf",
         "file": "def/query/main.lfy",
-        "line": 209,
-        "outputLine": 385,
+        "line": 210,
+        "outputLine": 382,
         "requirement": "sourceOf:sourceOf:1231c1d038570bfc4ea96a2254b88772810a70da99d1226712806be3a3a548d9"
       },
       {
         "column": null,
-        "end": 386,
+        "end": 383,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
-        "outputLine": 386,
+        "line": 344,
+        "outputLine": 383,
         "requirement": "hoverOf:hoverOf:bc58dcd08b279e454ea3f234d6633930816ba962b653ce118f411ca600d35815"
       },
       {
         "column": null,
-        "end": 387,
+        "end": 384,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
-        "outputLine": 387,
+        "line": 344,
+        "outputLine": 384,
         "requirement": "hoverOf:hoverOf:bc5317180748f756ff3ce1dc261bcaa95143513bb4264535b9448d06ee539dd5"
       },
       {
         "column": null,
-        "end": 388,
+        "end": 385,
         "entity": "hoverOf",
         "file": "def/query/main.lfy",
-        "line": 343,
-        "outputLine": 388,
+        "line": 344,
+        "outputLine": 385,
         "requirement": "hoverOf:hoverOf:1d1e85c7ce3a70099ea62a09272e6712cbaa4302d4f684ea6effb157a8fa308b"
       },
       {
         "column": null,
-        "end": 389,
+        "end": 386,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 389,
+        "line": 468,
+        "outputLine": 386,
         "requirement": "completionsAt:completionsAt:365a6fefcaac6ce90927cbfb94ec3099fda7365d3d87ab047cc45048069b9974"
       },
       {
         "column": null,
-        "end": 390,
+        "end": 387,
         "entity": "completionsAt",
         "file": "def/query/main.lfy",
-        "line": 467,
-        "outputLine": 390,
+        "line": 468,
+        "outputLine": 387,
         "requirement": "completionsAt:completionsAt:7065c2f898fbfc8f0764635d4eda8bad0129e35dff4dbf77f81b25c2138162e5"
       },
       {
         "column": null,
-        "end": 391,
+        "end": 388,
         "entity": "diagnosticsOf",
         "file": "def/query/main.lfy",
-        "line": 661,
-        "outputLine": 391,
+        "line": 662,
+        "outputLine": 388,
         "requirement": "diagnosticsOf:diagnosticsOf:215cb16ac34749dba8b39f3c4b0772c200e5c3bcd0f576c0a3c315cbf26dd26e"
       },
       {
         "column": null,
-        "end": 392,
+        "end": 389,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
-        "outputLine": 392,
+        "line": 733,
+        "outputLine": 389,
         "requirement": "outlineOf:outlineOf:75e0f581b2c1e2e67024c96113d0bb4d0de9485bba0f4d0bc52668334b0aca46"
       },
       {
         "column": null,
-        "end": 393,
+        "end": 390,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
-        "outputLine": 393,
+        "line": 733,
+        "outputLine": 390,
         "requirement": "outlineOf:outlineOf:3a7355b9e45ec3b575bc69fd4a7ce2bffafd0dcfd946c80bcf0c0783dc8c87be"
       },
       {
         "column": null,
-        "end": 394,
+        "end": 391,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
-        "outputLine": 394,
+        "line": 757,
+        "outputLine": 391,
         "requirement": "findSymbols:findSymbols:88e9675dd098a5864faa0fd7eadc96f57937a4b1389ee9fe2fde45430ea4af24"
       },
       {
         "column": null,
-        "end": 467,
+        "end": 464,
         "entity": "find",
         "file": "def/query/main.lfy",
-        "line": 787,
-        "outputLine": 395,
+        "line": 788,
+        "outputLine": 392,
         "requirement": "find:find:61607cb709e91135898032720f10dea2e214fb817b1408e0acc03b32ee2921dd"
       }
     ],
@@ -3066,7 +3072,7 @@
     "signature": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
     "source": "def/query/main.lfy",
     "target": "rust",
-    "text": "c11f2e1f0ebfccf9ed22fba8d0382df7367dfcfa42053c4341bb775296b465c6"
+    "text": "23f6b58d2cdbf683a4bb26672b3e115c0be55e1209988a40914a8f2b372708c2"
   },
   {
     "answered": [
@@ -3225,21 +3231,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 9,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 1,
         "requirement": null
       },
@@ -3248,7 +3255,7 @@
         "end": 20,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 10,
         "requirement": "outlineOf:outlineOf:3a7355b9e45ec3b575bc69fd4a7ce2bffafd0dcfd946c80bcf0c0783dc8c87be"
       },
@@ -3257,7 +3264,7 @@
         "end": 40,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 21,
         "requirement": null
       },
@@ -3266,7 +3273,7 @@
         "end": 66,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 41,
         "requirement": "outlineOf:outlineOf:68230cc39cefdc53159dd6a5a1e696ff3653b379ca0c7191c07a5db17ad9ab17"
       },
@@ -3275,7 +3282,7 @@
         "end": 98,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 67,
         "requirement": null
       },
@@ -3284,7 +3291,7 @@
         "end": 102,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 99,
         "requirement": null
       },
@@ -3293,7 +3300,7 @@
         "end": 106,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 103,
         "requirement": "outlineOf:outlineOf:267b17e8c1e5a951c9981534d31e87180bedced640f519c1fea34a6ebcb08ae2"
       },
@@ -3302,7 +3309,7 @@
         "end": 115,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 107,
         "requirement": "outlineOf:outlineOf:75e0f581b2c1e2e67024c96113d0bb4d0de9485bba0f4d0bc52668334b0aca46"
       },
@@ -3311,7 +3318,7 @@
         "end": 137,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 116,
         "requirement": "findSymbols:findSymbols:13178e674080b5c706e201a7d26af8467c11a9e94ea94412d33d692ae360d1b1"
       },
@@ -3320,7 +3327,7 @@
         "end": 146,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 138,
         "requirement": null
       },
@@ -3329,7 +3336,7 @@
         "end": 155,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 147,
         "requirement": "findSymbols:findSymbols:f133971178ba35e56f7538600c180d6f1e36300ecd60b6befa6d4bd852510f4f"
       },
@@ -3338,7 +3345,7 @@
         "end": 170,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 156,
         "requirement": "findSymbols:findSymbols:88e9675dd098a5864faa0fd7eadc96f57937a4b1389ee9fe2fde45430ea4af24"
       },
@@ -3347,7 +3354,7 @@
         "end": 171,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 171,
         "requirement": "outlineOf:outlineOf:75e0f581b2c1e2e67024c96113d0bb4d0de9485bba0f4d0bc52668334b0aca46"
       },
@@ -3356,7 +3363,7 @@
         "end": 172,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 172,
         "requirement": "outlineOf:outlineOf:68230cc39cefdc53159dd6a5a1e696ff3653b379ca0c7191c07a5db17ad9ab17"
       },
@@ -3365,7 +3372,7 @@
         "end": 173,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 173,
         "requirement": "outlineOf:outlineOf:3a7355b9e45ec3b575bc69fd4a7ce2bffafd0dcfd946c80bcf0c0783dc8c87be"
       },
@@ -3374,7 +3381,7 @@
         "end": 174,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 174,
         "requirement": "outlineOf:outlineOf:267b17e8c1e5a951c9981534d31e87180bedced640f519c1fea34a6ebcb08ae2"
       },
@@ -3383,7 +3390,7 @@
         "end": 221,
         "entity": "outlineOf",
         "file": "def/query/main.lfy",
-        "line": 732,
+        "line": 733,
         "outputLine": 175,
         "requirement": "outlineOf:outlineOf:944ffc79e500371c014c0fef2f5b06f6e9ecf9de004bd424c16115b4aed74b22"
       },
@@ -3392,7 +3399,7 @@
         "end": 222,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 222,
         "requirement": "findSymbols:findSymbols:88e9675dd098a5864faa0fd7eadc96f57937a4b1389ee9fe2fde45430ea4af24"
       },
@@ -3401,7 +3408,7 @@
         "end": 223,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 223,
         "requirement": "findSymbols:findSymbols:13178e674080b5c706e201a7d26af8467c11a9e94ea94412d33d692ae360d1b1"
       },
@@ -3410,7 +3417,7 @@
         "end": 224,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 224,
         "requirement": "findSymbols:findSymbols:f133971178ba35e56f7538600c180d6f1e36300ecd60b6befa6d4bd852510f4f"
       },
@@ -3419,7 +3426,7 @@
         "end": 225,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 225,
         "requirement": "findSymbols:findSymbols:2cafa010009d2c7783a291a1e27d35e09d9ef1f73122866e4953772fad3a0b32"
       },
@@ -3428,7 +3435,7 @@
         "end": 251,
         "entity": "findSymbols",
         "file": "def/query/main.lfy",
-        "line": 756,
+        "line": 757,
         "outputLine": 226,
         "requirement": "findSymbols:findSymbols:67dabcd7a9a6119aa73cbde0eccf8c476a2a39a83bb7d47123def283c00e102d"
       }
@@ -3438,7 +3445,7 @@
     "signature": "1dddf45abeb0cc158ad3c3cee307a5a619814dfdd66cb69d266a9aefe01acad0",
     "source": "def/query/main.lfy",
     "target": "rust",
-    "text": "30d426c1d679fea3be97e89ef5f7f9c232b5e7b0c6b9dee762dd9bc4b4e4ab1f"
+    "text": "cf63df3a92dd4ca21200873238faf5c5d07b053bfacfa26e59a29f9382d52cd0"
   },
   {
     "answered": [
@@ -3597,21 +3604,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 34,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 1,
         "requirement": null
       },
@@ -3620,7 +3628,7 @@
         "end": 43,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 35,
         "requirement": null
       },
@@ -3629,7 +3637,7 @@
         "end": 45,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 44,
         "requirement": "renameAt:renameAt:b3fa6dbc86d24eb00eade77e10fed4d36515e9a798f0fc3f0f04191c209583ee"
       },
@@ -3638,7 +3646,7 @@
         "end": 60,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 46,
         "requirement": "renameAt:renameAt:ae51c574616199669818286421fb3f813b8f790e1b9ee3b80b73b7cbdaa7b374"
       },
@@ -3647,7 +3655,7 @@
         "end": 82,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 61,
         "requirement": "renameAt:renameAt:6fd3328ce678d8db79053c7d449378d41a8ae2b47ff54a1b31b2f3a0d795b6d9"
       },
@@ -3656,7 +3664,7 @@
         "end": 83,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 83,
         "requirement": "renameAt:renameAt:823a0f85531d12e49b75f78010bbb1ed125a887bdcaee1b3a50f0d9137aed0b9"
       },
@@ -3665,7 +3673,7 @@
         "end": 102,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 84,
         "requirement": "renameAt:renameAt:4ab53655b20b4378af6810e32d9f6f84ae0ae4b2b6f07ee2a4e2a739ac8121c2"
       },
@@ -3674,7 +3682,7 @@
         "end": 124,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 103,
         "requirement": "renameAt:renameAt:1cfa6517d314d6b849e4b5f034888adf621fe9fa21decbb02ea19908d33804c6"
       },
@@ -3683,7 +3691,7 @@
         "end": 125,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 125,
         "requirement": "renameAt:renameAt:823a0f85531d12e49b75f78010bbb1ed125a887bdcaee1b3a50f0d9137aed0b9"
       },
@@ -3692,7 +3700,7 @@
         "end": 126,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 126,
         "requirement": "renameAt:renameAt:1cfa6517d314d6b849e4b5f034888adf621fe9fa21decbb02ea19908d33804c6"
       },
@@ -3701,7 +3709,7 @@
         "end": 161,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 127,
         "requirement": "renameAt:renameAt:b5d85561894c750665d6d3f99ffb0079ffdefdcd3c1a5f170ebe222eb7cc2623"
       },
@@ -3710,7 +3718,7 @@
         "end": 162,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 162,
         "requirement": "renameAt:renameAt:b3fa6dbc86d24eb00eade77e10fed4d36515e9a798f0fc3f0f04191c209583ee"
       },
@@ -3719,7 +3727,7 @@
         "end": 163,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 163,
         "requirement": "renameAt:renameAt:ae51c574616199669818286421fb3f813b8f790e1b9ee3b80b73b7cbdaa7b374"
       },
@@ -3728,7 +3736,7 @@
         "end": 164,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 164,
         "requirement": "renameAt:renameAt:6fd3328ce678d8db79053c7d449378d41a8ae2b47ff54a1b31b2f3a0d795b6d9"
       },
@@ -3737,7 +3745,7 @@
         "end": 186,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 165,
         "requirement": "renameAt:renameAt:38c28e52447e67ab5d7c6576c2e7a86c91dc2e0e62c4bf70a154374912a4a4c7"
       },
@@ -3746,7 +3754,7 @@
         "end": 187,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 187,
         "requirement": "renameAt:renameAt:4ab53655b20b4378af6810e32d9f6f84ae0ae4b2b6f07ee2a4e2a739ac8121c2"
       },
@@ -3755,7 +3763,7 @@
         "end": 228,
         "entity": "renameAt",
         "file": "def/query/main.lfy",
-        "line": 823,
+        "line": 824,
         "outputLine": 188,
         "requirement": "renameAt:renameAt:1cfa6517d314d6b849e4b5f034888adf621fe9fa21decbb02ea19908d33804c6"
       }
@@ -3924,21 +3932,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 12,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 1,
         "requirement": null
       },
@@ -3947,7 +3956,7 @@
         "end": 22,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 13,
         "requirement": null
       },
@@ -3956,7 +3965,7 @@
         "end": 40,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 23,
         "requirement": null
       },
@@ -3965,7 +3974,7 @@
         "end": 49,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 41,
         "requirement": "semanticTokensOf:semanticTokensOf:b5097f3e8a9bd502be04b8014dabcf1f1547271685407ae1e2223de4a7075b1e"
       },
@@ -3974,7 +3983,7 @@
         "end": 56,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 50,
         "requirement": "semanticTokensOf:semanticTokensOf:7553927202180ccb4a1480c855ff7bce209d8347bd717f503c9e26e48a4e853e"
       },
@@ -3983,7 +3992,7 @@
         "end": 61,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 57,
         "requirement": "semanticTokensOf:semanticTokensOf:a984da220516d1eb9f619741ae9b54ac88167c3170597684aa511c4a78237250"
       },
@@ -3992,7 +4001,7 @@
         "end": 63,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 62,
         "requirement": "semanticTokensOf:semanticTokensOf:4030ad0c418b90242ba53d2775af7f8d8c83378db270cb127458b34b20de5488"
       },
@@ -4001,7 +4010,7 @@
         "end": 65,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 64,
         "requirement": "semanticTokensOf:semanticTokensOf:5a6ddde0f77237867aec3554925d122dfb6dc9d6b04bb03baeadc32bbe06532b"
       },
@@ -4010,7 +4019,7 @@
         "end": 82,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 66,
         "requirement": "semanticTokensOf:semanticTokensOf:6ec488a19a8bed1c16f06d4a1611f4e4b0e65e6f2197c3f7fa8ea4c3380a02fe"
       },
@@ -4019,7 +4028,7 @@
         "end": 92,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 83,
         "requirement": "semanticTokensOf:semanticTokensOf:4e4adb43507288877e4db588fd52ac3ef62e096cc3a05cffa8b16348c956995c"
       },
@@ -4028,7 +4037,7 @@
         "end": 105,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 93,
         "requirement": "semanticTokensOf:semanticTokensOf:5eefc067fa28b96019e3711925aedc4c3768d4a6b2acb288419a23fd9c448d25"
       },
@@ -4037,7 +4046,7 @@
         "end": 122,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 106,
         "requirement": "semanticTokensOf:semanticTokensOf:929a8a48590d4dfcb4256bca6989606d777cf6d9ee2e49acd1a6bfa1f110c5c3"
       },
@@ -4046,7 +4055,7 @@
         "end": 140,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 123,
         "requirement": "semanticTokensOf:semanticTokensOf:257cf12f2043369c4f7b1756bac875bb567b96424f0241706a296272661fa75b"
       },
@@ -4055,7 +4064,7 @@
         "end": 143,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 141,
         "requirement": null
       },
@@ -4064,7 +4073,7 @@
         "end": 148,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 144,
         "requirement": "semanticTokensOf:semanticTokensOf:267b17e8c1e5a951c9981534d31e87180bedced640f519c1fea34a6ebcb08ae2"
       },
@@ -4073,7 +4082,7 @@
         "end": 153,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 149,
         "requirement": "semanticTokensOf:semanticTokensOf:3b27c9ca5a3e24fd29d4157ee2bfa19d5898698dad2b7c38af7e81e4ceb7a64d"
       },
@@ -4082,7 +4091,7 @@
         "end": 154,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 154,
         "requirement": "semanticTokensOf:semanticTokensOf:9ad5e72c68be0bdeeebbd17ad580e0a72eab72354e4da0434ddae56182063354"
       },
@@ -4091,7 +4100,7 @@
         "end": 166,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 155,
         "requirement": "semanticTokensOf:semanticTokensOf:851770c083f006b02cc5d2a02798a436922a8ff2ae64f24665c3254b61353fa8"
       },
@@ -4100,7 +4109,7 @@
         "end": 185,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 167,
         "requirement": "semanticTokensOf:semanticTokensOf:3d5de36e57170404015c3fd3283d61ce639c92d2761518d47c0cd218f5470c0d"
       },
@@ -4109,7 +4118,7 @@
         "end": 186,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 186,
         "requirement": "semanticTokensOf:semanticTokensOf:9ad5e72c68be0bdeeebbd17ad580e0a72eab72354e4da0434ddae56182063354"
       },
@@ -4118,7 +4127,7 @@
         "end": 187,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 187,
         "requirement": "semanticTokensOf:semanticTokensOf:851770c083f006b02cc5d2a02798a436922a8ff2ae64f24665c3254b61353fa8"
       },
@@ -4127,7 +4136,7 @@
         "end": 199,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 188,
         "requirement": "semanticTokensOf:semanticTokensOf:2c4baa798268254fe796a7177ce7e181039ce3f2c8da249d8d58acbd488e660e"
       },
@@ -4136,7 +4145,7 @@
         "end": 200,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 200,
         "requirement": "semanticTokensOf:semanticTokensOf:fd59af79b69b792d0a46a4e76d8ebfedb0de64782a023593d40b457931d966b0"
       },
@@ -4145,7 +4154,7 @@
         "end": 201,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 201,
         "requirement": "semanticTokensOf:semanticTokensOf:c4f711c354ffdeeec2e978fa878ed96e20f487f54db0f996c048c56ca0682c3b"
       },
@@ -4154,7 +4163,7 @@
         "end": 225,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 202,
         "requirement": "semanticTokensOf:semanticTokensOf:c597e906a0e9079e77628eb66872af16f638fc6b43ea00c501a100e1e353e39f"
       },
@@ -4163,7 +4172,7 @@
         "end": 235,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 226,
         "requirement": "semanticTokensOf:semanticTokensOf:bfc5baaec53553979f5f12c554d2060fa9a91a3e6446f3329a8e91d5db495c9c"
       },
@@ -4172,7 +4181,7 @@
         "end": 243,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 236,
         "requirement": "semanticTokensOf:semanticTokensOf:05cd36753531cfdfd96d75443056536cbe666c99424ac4ad3a90e22d205cd79b"
       },
@@ -4181,7 +4190,7 @@
         "end": 268,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 244,
         "requirement": "semanticTokensOf:semanticTokensOf:c35e767a966f9b0f4bd9befc33e6221d14d56bb8f00fb071a1c2ea1dc14f7673"
       },
@@ -4190,7 +4199,7 @@
         "end": 269,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 269,
         "requirement": "semanticTokensOf:semanticTokensOf:9ad5e72c68be0bdeeebbd17ad580e0a72eab72354e4da0434ddae56182063354"
       },
@@ -4199,7 +4208,7 @@
         "end": 270,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 270,
         "requirement": "semanticTokensOf:semanticTokensOf:851770c083f006b02cc5d2a02798a436922a8ff2ae64f24665c3254b61353fa8"
       },
@@ -4208,7 +4217,7 @@
         "end": 271,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 271,
         "requirement": "semanticTokensOf:semanticTokensOf:b5097f3e8a9bd502be04b8014dabcf1f1547271685407ae1e2223de4a7075b1e"
       },
@@ -4217,7 +4226,7 @@
         "end": 272,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 272,
         "requirement": "semanticTokensOf:semanticTokensOf:4030ad0c418b90242ba53d2775af7f8d8c83378db270cb127458b34b20de5488"
       },
@@ -4226,7 +4235,7 @@
         "end": 273,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 273,
         "requirement": "semanticTokensOf:semanticTokensOf:3d5de36e57170404015c3fd3283d61ce639c92d2761518d47c0cd218f5470c0d"
       },
@@ -4235,7 +4244,7 @@
         "end": 274,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 274,
         "requirement": "semanticTokensOf:semanticTokensOf:2c4baa798268254fe796a7177ce7e181039ce3f2c8da249d8d58acbd488e660e"
       },
@@ -4244,7 +4253,7 @@
         "end": 275,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 275,
         "requirement": "semanticTokensOf:semanticTokensOf:4e4adb43507288877e4db588fd52ac3ef62e096cc3a05cffa8b16348c956995c"
       },
@@ -4253,7 +4262,7 @@
         "end": 276,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 276,
         "requirement": "semanticTokensOf:semanticTokensOf:5eefc067fa28b96019e3711925aedc4c3768d4a6b2acb288419a23fd9c448d25"
       },
@@ -4262,7 +4271,7 @@
         "end": 277,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 277,
         "requirement": "semanticTokensOf:semanticTokensOf:c4f711c354ffdeeec2e978fa878ed96e20f487f54db0f996c048c56ca0682c3b"
       },
@@ -4271,7 +4280,7 @@
         "end": 278,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 278,
         "requirement": "semanticTokensOf:semanticTokensOf:257cf12f2043369c4f7b1756bac875bb567b96424f0241706a296272661fa75b"
       },
@@ -4280,7 +4289,7 @@
         "end": 312,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 279,
         "requirement": "semanticTokensOf:semanticTokensOf:430c48f672d369d5cc541511bf45e6b2aaa2f3456b98e7bc2156c2740dd20a2e"
       },
@@ -4289,7 +4298,7 @@
         "end": 321,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 313,
         "requirement": "semanticTokensOf:semanticTokensOf:3b27c9ca5a3e24fd29d4157ee2bfa19d5898698dad2b7c38af7e81e4ceb7a64d"
       },
@@ -4298,7 +4307,7 @@
         "end": 322,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 322,
         "requirement": "semanticTokensOf:semanticTokensOf:7553927202180ccb4a1480c855ff7bce209d8347bd717f503c9e26e48a4e853e"
       },
@@ -4307,7 +4316,7 @@
         "end": 323,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 323,
         "requirement": "semanticTokensOf:semanticTokensOf:bfc5baaec53553979f5f12c554d2060fa9a91a3e6446f3329a8e91d5db495c9c"
       },
@@ -4316,7 +4325,7 @@
         "end": 324,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 324,
         "requirement": "semanticTokensOf:semanticTokensOf:c35e767a966f9b0f4bd9befc33e6221d14d56bb8f00fb071a1c2ea1dc14f7673"
       },
@@ -4325,7 +4334,7 @@
         "end": 325,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 325,
         "requirement": "semanticTokensOf:semanticTokensOf:05cd36753531cfdfd96d75443056536cbe666c99424ac4ad3a90e22d205cd79b"
       },
@@ -4334,7 +4343,7 @@
         "end": 326,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 326,
         "requirement": "semanticTokensOf:semanticTokensOf:4e4adb43507288877e4db588fd52ac3ef62e096cc3a05cffa8b16348c956995c"
       },
@@ -4343,7 +4352,7 @@
         "end": 327,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 327,
         "requirement": "semanticTokensOf:semanticTokensOf:fd59af79b69b792d0a46a4e76d8ebfedb0de64782a023593d40b457931d966b0"
       },
@@ -4352,7 +4361,7 @@
         "end": 328,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 328,
         "requirement": "semanticTokensOf:semanticTokensOf:929a8a48590d4dfcb4256bca6989606d777cf6d9ee2e49acd1a6bfa1f110c5c3"
       },
@@ -4361,7 +4370,7 @@
         "end": 329,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 329,
         "requirement": "semanticTokensOf:semanticTokensOf:257cf12f2043369c4f7b1756bac875bb567b96424f0241706a296272661fa75b"
       },
@@ -4370,7 +4379,7 @@
         "end": 368,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 330,
         "requirement": "semanticTokensOf:semanticTokensOf:f7e95d099032dc39875a99af987f12943e4070f473b00cb0eb86f3899f2ecc39"
       },
@@ -4379,7 +4388,7 @@
         "end": 372,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 369,
         "requirement": "semanticTokensOf:semanticTokensOf:267b17e8c1e5a951c9981534d31e87180bedced640f519c1fea34a6ebcb08ae2"
       },
@@ -4388,7 +4397,7 @@
         "end": 373,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 373,
         "requirement": "semanticTokensOf:semanticTokensOf:b5097f3e8a9bd502be04b8014dabcf1f1547271685407ae1e2223de4a7075b1e"
       },
@@ -4397,7 +4406,7 @@
         "end": 374,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 374,
         "requirement": "semanticTokensOf:semanticTokensOf:851770c083f006b02cc5d2a02798a436922a8ff2ae64f24665c3254b61353fa8"
       },
@@ -4406,7 +4415,7 @@
         "end": 413,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 375,
         "requirement": "semanticTokensOf:semanticTokensOf:0175b9a1ad4d709d86c0dc488c03e3b10815b5b821fe6d42aaca5b37fcdd5d3c"
       },
@@ -4415,7 +4424,7 @@
         "end": 417,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 414,
         "requirement": "semanticTokensOf:semanticTokensOf:851770c083f006b02cc5d2a02798a436922a8ff2ae64f24665c3254b61353fa8"
       },
@@ -4424,7 +4433,7 @@
         "end": 418,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 418,
         "requirement": "semanticTokensOf:semanticTokensOf:851770c083f006b02cc5d2a02798a436922a8ff2ae64f24665c3254b61353fa8"
       },
@@ -4433,7 +4442,7 @@
         "end": 419,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 419,
         "requirement": "semanticTokensOf:semanticTokensOf:3d5de36e57170404015c3fd3283d61ce639c92d2761518d47c0cd218f5470c0d"
       },
@@ -4442,7 +4451,7 @@
         "end": 420,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 420,
         "requirement": "semanticTokensOf:semanticTokensOf:fd59af79b69b792d0a46a4e76d8ebfedb0de64782a023593d40b457931d966b0"
       },
@@ -4451,7 +4460,7 @@
         "end": 474,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 421,
         "requirement": "semanticTokensOf:semanticTokensOf:929a8a48590d4dfcb4256bca6989606d777cf6d9ee2e49acd1a6bfa1f110c5c3"
       },
@@ -4460,7 +4469,7 @@
         "end": 498,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 475,
         "requirement": "semanticTokensOf:semanticTokensOf:a984da220516d1eb9f619741ae9b54ac88167c3170597684aa511c4a78237250"
       },
@@ -4469,7 +4478,7 @@
         "end": 499,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 499,
         "requirement": "semanticTokensOf:semanticTokensOf:5a6ddde0f77237867aec3554925d122dfb6dc9d6b04bb03baeadc32bbe06532b"
       },
@@ -4478,7 +4487,7 @@
         "end": 500,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 500,
         "requirement": "semanticTokensOf:semanticTokensOf:6ec488a19a8bed1c16f06d4a1611f4e4b0e65e6f2197c3f7fa8ea4c3380a02fe"
       },
@@ -4487,7 +4496,7 @@
         "end": 549,
         "entity": "semanticTokensOf",
         "file": "def/query/main.lfy",
-        "line": 221,
+        "line": 222,
         "outputLine": 501,
         "requirement": "semanticTokensOf:semanticTokensOf:c597e906a0e9079e77628eb66872af16f638fc6b43ea00c501a100e1e353e39f"
       }
@@ -4656,21 +4665,22 @@
       "def/grammar/terminals/punctuation.lfy": "4d5f7836b0b7eb843a2fdbb38a81be9f3c66a2c127fc799d13f8d7336fce2fd9",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
-      "def/model/data.lfy": "2ddaf8c2114fc8e868c034638374f7eca73345c0a17d8f042f0831bccbf64f17",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
       "def/model/main.lfy": "8afb13f2415443e7c2f3e7a7fc7e09c61eee4ab6b759e4d2479ed603e69b164f",
+      "def/model/type.lfy": "cc8989365ee767355538990b750c5d1e8ef60d40b1632519939f880f479a3841",
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/query/data.lfy": "189d416f9503991c969cff0eba8fcf7cf9a7a62b3e2a2024d391ca2f42a3be42",
-      "def/workspace/data.lfy": "e32ce3980a2686e1f11d9134673d66d648b706934fddcf990d3bfa805af758b8"
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-11T13:11:52Z",
-    "hash": "b3d9115d48cb05b0d6ade4528f865a992b7795fad3cefd43d368374d222edc88",
+    "generated": "2026-10-17T19:01:42Z",
+    "hash": "1c75d98ea8c3896fc30564527a6b467c5e7f64038b200adc3e99483b161221dd",
     "markers": [
       {
         "column": null,
         "end": 42,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 1,
         "requirement": null
       },
@@ -4679,7 +4689,7 @@
         "end": 57,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 43,
         "requirement": null
       },
@@ -4688,7 +4698,7 @@
         "end": 60,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 58,
         "requirement": null
       },
@@ -4697,7 +4707,7 @@
         "end": 65,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 61,
         "requirement": "symbolAt:symbolAt:e17a6e8642233d650e5689114a64b1606e2e9339c72579bfeb326988cf814a67"
       },
@@ -4706,7 +4716,7 @@
         "end": 74,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 66,
         "requirement": "symbolAt:symbolAt:562b82e9b9bff42506308fce309460fd485f976fa4cbcd14307d4e86255c5b7a"
       },
@@ -4715,7 +4725,7 @@
         "end": 80,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 75,
         "requirement": "symbolAt:symbolAt:dbff44bf75c2725e356cc8d7779b5bb7fca8b96a864bccca93bbd041ae42089b"
       },
@@ -4724,7 +4734,7 @@
         "end": 85,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 81,
         "requirement": "symbolAt:symbolAt:78170c70506af39a6039bdbd84fe4c788c9351da0dce3aaa661428193f5d1898"
       },
@@ -4733,7 +4743,7 @@
         "end": 86,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 86,
         "requirement": "symbolAt:symbolAt:41ae04c14a30017ad0abb3f1d0bc7898f0866717f4ddc33d718def45735bd547"
       },
@@ -4742,7 +4752,7 @@
         "end": 92,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 87,
         "requirement": "symbolAt:symbolAt:aacbb994d4240562ec9a18e9bc945afb3ba36f42eb9271d196818dc04a8b921f"
       },
@@ -4751,7 +4761,7 @@
         "end": 109,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 93,
         "requirement": "symbolAt:symbolAt:53c3f76e6e388625c64768f5da7efb65e1d35ae56598a8719f63340432d2cb8f"
       },
@@ -4760,7 +4770,7 @@
         "end": 117,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 110,
         "requirement": null
       },
@@ -4769,7 +4779,7 @@
         "end": 127,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 118,
         "requirement": "definitionOf:definitionOf:e6e79e89eb5fadea6af0670f3df3a4bdaca711ae684b48103d8ba63af49f5424"
       },
@@ -4778,7 +4788,7 @@
         "end": 140,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 128,
         "requirement": "definitionOf:definitionOf:e38e58f0b0d00cd0e0b9b3322d0044fe9860e3725299a137a672be2af4bd7846"
       },
@@ -4787,7 +4797,7 @@
         "end": 146,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 141,
         "requirement": null
       },
@@ -4796,7 +4806,7 @@
         "end": 154,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 147,
         "requirement": "definitionOf:definitionOf:b8a357e2e09546439bffb53ccb10fe981d92ef6a0575a7833fa222b41605e5f4"
       },
@@ -4805,7 +4815,7 @@
         "end": 161,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 155,
         "requirement": "definitionOf:definitionOf:9c40717bde75a51a33de54915878526cf7d8e7dc76b73905b6e9ad477a8f3cd4"
       },
@@ -4814,7 +4824,7 @@
         "end": 162,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 162,
         "requirement": "referencesTo:referencesTo:4b4cb5cbd24fba6b7a4bf778a6cbde6cae871fe06a7dbd8de7d54dacd7f2a812"
       },
@@ -4823,7 +4833,7 @@
         "end": 188,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 163,
         "requirement": "referencesTo:referencesTo:0bee52b15172b8d5f4b423f6f46e68a0f8502383517282bb98b3038f2ce4311c"
       },
@@ -4832,7 +4842,7 @@
         "end": 197,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 189,
         "requirement": null
       },
@@ -4841,7 +4851,7 @@
         "end": 203,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 198,
         "requirement": "referencesTo:referencesTo:a76991681fd16dd670c4a0f8feca6a55b8576d4dea15b95158f8f338dd7c3f7c"
       },
@@ -4850,7 +4860,7 @@
         "end": 208,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 204,
         "requirement": "referencesTo:referencesTo:2c61bf4cf3dcd2797fdc448c45a78d5542297f5ccda29af95840a2b68b5f011a"
       },
@@ -4859,7 +4869,7 @@
         "end": 229,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 209,
         "requirement": "referencesTo:referencesTo:0ab0b8084ac90ec4aeffe6eaac88a0382e784b5ba6c6cbbbce73857664f7ab26"
       },
@@ -4868,7 +4878,7 @@
         "end": 258,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 230,
         "requirement": null
       },
@@ -4877,7 +4887,7 @@
         "end": 284,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 259,
         "requirement": null
       },
@@ -4886,7 +4896,7 @@
         "end": 316,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 285,
         "requirement": null
       },
@@ -4895,7 +4905,7 @@
         "end": 357,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 317,
         "requirement": null
       },
@@ -4904,7 +4914,7 @@
         "end": 358,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 358,
         "requirement": "symbolAt:symbolAt:562b82e9b9bff42506308fce309460fd485f976fa4cbcd14307d4e86255c5b7a"
       },
@@ -4913,7 +4923,7 @@
         "end": 359,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 359,
         "requirement": "symbolAt:symbolAt:dbff44bf75c2725e356cc8d7779b5bb7fca8b96a864bccca93bbd041ae42089b"
       },
@@ -4922,7 +4932,7 @@
         "end": 360,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 360,
         "requirement": "symbolAt:symbolAt:78170c70506af39a6039bdbd84fe4c788c9351da0dce3aaa661428193f5d1898"
       },
@@ -4931,7 +4941,7 @@
         "end": 361,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 361,
         "requirement": "symbolAt:symbolAt:53c3f76e6e388625c64768f5da7efb65e1d35ae56598a8719f63340432d2cb8f"
       },
@@ -4940,7 +4950,7 @@
         "end": 362,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 362,
         "requirement": "symbolAt:symbolAt:e17a6e8642233d650e5689114a64b1606e2e9339c72579bfeb326988cf814a67"
       },
@@ -4949,7 +4959,7 @@
         "end": 363,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 363,
         "requirement": "symbolAt:symbolAt:49299b3da7368ca5d187315c1871b87eaa56e549cd0d213bef1c20dd647a9f1f"
       },
@@ -4958,7 +4968,7 @@
         "end": 402,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 364,
         "requirement": "symbolAt:symbolAt:cce90b97f1e0ec33c1c384d68d67da790e0540d434d0d71fd61bff8c5326e014"
       },
@@ -4967,7 +4977,7 @@
         "end": 403,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 403,
         "requirement": "symbolAt:symbolAt:41ae04c14a30017ad0abb3f1d0bc7898f0866717f4ddc33d718def45735bd547"
       },
@@ -4976,7 +4986,7 @@
         "end": 429,
         "entity": "symbolAt",
         "file": "def/query/main.lfy",
-        "line": 28,
+        "line": 29,
         "outputLine": 404,
         "requirement": "symbolAt:symbolAt:aacbb994d4240562ec9a18e9bc945afb3ba36f42eb9271d196818dc04a8b921f"
       },
@@ -4985,7 +4995,7 @@
         "end": 430,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 430,
         "requirement": "definitionOf:definitionOf:b8a357e2e09546439bffb53ccb10fe981d92ef6a0575a7833fa222b41605e5f4"
       },
@@ -4994,7 +5004,7 @@
         "end": 431,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 431,
         "requirement": "definitionOf:definitionOf:e6e79e89eb5fadea6af0670f3df3a4bdaca711ae684b48103d8ba63af49f5424"
       },
@@ -5003,7 +5013,7 @@
         "end": 432,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 432,
         "requirement": "definitionOf:definitionOf:e38e58f0b0d00cd0e0b9b3322d0044fe9860e3725299a137a672be2af4bd7846"
       },
@@ -5012,7 +5022,7 @@
         "end": 433,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 433,
         "requirement": "definitionOf:definitionOf:9c40717bde75a51a33de54915878526cf7d8e7dc76b73905b6e9ad477a8f3cd4"
       },
@@ -5021,7 +5031,7 @@
         "end": 434,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 434,
         "requirement": "definitionOf:definitionOf:1acc1ae62556beb4a1a72c80817747fed9095c6ed395312fbabd21a70ef84587"
       },
@@ -5030,7 +5040,7 @@
         "end": 435,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 435,
         "requirement": "definitionOf:definitionOf:fc48bd9d077d476733e52532a4d1cdd62f70c9af747af748cb5831d6fb20ea0f"
       },
@@ -5039,7 +5049,7 @@
         "end": 477,
         "entity": "definitionOf",
         "file": "def/query/main.lfy",
-        "line": 95,
+        "line": 96,
         "outputLine": 436,
         "requirement": "definitionOf:definitionOf:dd454fd2bc1144afd8c3fc163f46ba49f7d40c4132d9c7d3fb46f28e28a9a512"
       },
@@ -5048,7 +5058,7 @@
         "end": 478,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 478,
         "requirement": "referencesTo:referencesTo:0ab0b8084ac90ec4aeffe6eaac88a0382e784b5ba6c6cbbbce73857664f7ab26"
       },
@@ -5057,7 +5067,7 @@
         "end": 479,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 479,
         "requirement": "referencesTo:referencesTo:2c61bf4cf3dcd2797fdc448c45a78d5542297f5ccda29af95840a2b68b5f011a"
       },
@@ -5066,7 +5076,7 @@
         "end": 480,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 480,
         "requirement": "referencesTo:referencesTo:4b4cb5cbd24fba6b7a4bf778a6cbde6cae871fe06a7dbd8de7d54dacd7f2a812"
       },
@@ -5075,7 +5085,7 @@
         "end": 481,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 481,
         "requirement": "referencesTo:referencesTo:a76991681fd16dd670c4a0f8feca6a55b8576d4dea15b95158f8f338dd7c3f7c"
       },
@@ -5084,7 +5094,7 @@
         "end": 508,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 482,
         "requirement": "referencesTo:referencesTo:cbe3d06fa6292bb59a461fcf4e5ab69c7f32270243475185c9b1c2c2c1fb247d"
       },
@@ -5093,7 +5103,7 @@
         "end": 527,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 509,
         "requirement": "referencesTo:referencesTo:0ab0b8084ac90ec4aeffe6eaac88a0382e784b5ba6c6cbbbce73857664f7ab26"
       },
@@ -5102,7 +5112,7 @@
         "end": 528,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 528,
         "requirement": "referencesTo:referencesTo:0bee52b15172b8d5f4b423f6f46e68a0f8502383517282bb98b3038f2ce4311c"
       },
@@ -5111,7 +5121,7 @@
         "end": 547,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 529,
         "requirement": "referencesTo:referencesTo:896acc1412de79bd1efaa7c2301577ac6e91597598207315cfa32f7d6255ed31"
       },
@@ -5120,7 +5130,7 @@
         "end": 563,
         "entity": "referencesTo",
         "file": "def/query/main.lfy",
-        "line": 152,
+        "line": 153,
         "outputLine": 548,
         "requirement": "referencesTo:referencesTo:136d2b4e3c707c64e8248b946aad777865a8c943fa97bf9d456692a28722f4f5"
       }

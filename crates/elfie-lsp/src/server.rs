@@ -158,7 +158,7 @@ impl Backend {
 
     /// Answers a request on a document. A document outside the root, or not in the
     /// program, answers as if nothing were there.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:e4e91df66ac54707cdfaacd7f541123303348db9bceebffe2552e80ba682c886
+    // @lfy def/lsp/main.lfy:serve#serve:serve:665d248480e23131af33d3302ca360af76f5969fa2b509691c5708e2e4a742da
     fn with_document<T>(
         &self,
         uri: &Url,
@@ -267,11 +267,11 @@ impl Backend {
                 None => session.documents.push(document),
             }
             session.workspace = workspace::change(&session.workspace, &path, Some(&text));
-            // @lfy def/lsp/main.lfy:serve#serve:serve:8082da87acbb214151888511ba102b8dd3bf0b4fa5f55c1244f3263f2db21f04
+            // @lfy def/lsp/main.lfy:serve#serve:serve:12e8b77a71fd33905b1e99773f5c572dd9412e25779a43d5d8c81a01bc33c738
             (opened && session.workspace.file(&path).is_none()).then(|| {
                 format!(
-                    "{path} is neither under {} nor used by a file in the program; it gets nothing",
-                    session.workspace.source_directory
+                    "{path} is under none of the source directories {} and used by no file in the program; it gets nothing",
+                    session.workspace.source_directories.join(", ")
                 )
             })
         });
@@ -864,7 +864,7 @@ fn watcher(pattern: &str) -> lsp::FileSystemWatcher {
 // path is absolute, it is no document of this root, and the criterion on a document
 // outside the root gives it nothing.
 // @lfy def/lsp/main.lfy:serve#serve:serve:f8f2931d14d2b2a4e1c3b72f0562d356d5e993d089a8899c3712bc042902d862
-// @lfy def/lsp/main.lfy:serve#serve:serve:cf26413f4c3bbcfd96486c84365ace322d8a1199ddcd33bf8f351b0c39d0614b
+// @lfy def/lsp/main.lfy:serve#serve:serve:204391a1b469a6c11eea3fb3f661b5e14a410c2340a7963424513539a0791f47
 fn program_files(workspace: &workspace::Workspace) -> Vec<String> {
     workspace
         .files

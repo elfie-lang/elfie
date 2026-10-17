@@ -16,7 +16,7 @@ use crate::model::{FileId, KnowledgeKind};
 /// leaves the program when there is no file at `path` on disk. A replacement stands until
 /// the same `path` is given again. The result is what [`load`] of the same root gives when
 /// every file replaced this way holds what it was replaced with. A `path` that is neither
-/// under the source directory, nor under a package root, nor resolved to by a `Use` in the
+/// under one of the source directories, nor under a package root, nor resolved to by a `Use` in the
 /// program, nor the source path a knowledge item of the program has gives back a workspace
 /// matching `workspace`.
 // @lfy def/workspace/main.lfy:change
@@ -33,7 +33,7 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
     // The library the workspace was loaded with is loaded again, so that a change gives
     // what `load` of the same root gave: where `elfie.json` names the library the entry
     // decides anyway, and where it does not, the directory this workspace found stands
-    // in for the one the environment gave.
+    // for the copy the compiler was built with.
     // @lfy def/workspace/main.lfy:change
     let library = workspace
         .packages
@@ -60,15 +60,19 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
 }
 
 /// Whether a change at `path` could reach the program: the path is a source file under
-/// the source directory or under the root of a package in the program, a `Use` in the
+/// one of the source directories or under the root of a package in the program, a `Use` in the
 /// program resolves to it, or it is the source path a knowledge item of the program has.
-// @lfy def/workspace/main.lfy:change#change:change:de5b3acdad47c893e71937c22eaf52cb7f7123a1fec3e281ded802b921c5dae5
+// @lfy def/workspace/main.lfy:change#change:change:015b076544c59f4f220ad0f374271f8dacad4e1c6547652db3ee068e71f97e13
 fn in_reach(workspace: &Workspace, path: &str) -> bool {
     // These are the four places the criterion names, and nothing besides them puts a
     // path in reach: a path that is in none of them leaves the result matching the
     // workspace it was given, replacements and all.
     let is_source = is_source(path);
-    (is_source && under(path, &workspace.source_directory))
+    (is_source
+        && workspace
+            .source_directories
+            .iter()
+            .any(|directory| under(path, &trim_directory(directory))))
         || (is_source
             && workspace
                 .packages

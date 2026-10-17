@@ -367,7 +367,7 @@ fn changed_vanished_and_new_files_are_reread_before_a_call() {
     assert_eq!(problems(&session, None).unwrap(), "no problems");
 
     // A `.lfy` file under the source directory that no earlier call saw is read in.
-    // @lfy def/mcp/main.lfy:serve#serve:serve:9a771a2886ce7deadeb6a39ae4524d1bded9ac7c87fc49266ce3da78c7e4fbcc
+    // @lfy def/mcp/main.lfy:serve#serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c
     fixture.write("def/b.lfy", "const w = missing;\n");
     session.refresh();
     assert!(session.workspace.file("def/b.lfy").is_some());
@@ -393,12 +393,29 @@ fn changed_vanished_and_new_files_are_reread_before_a_call() {
     assert_eq!(session.seen.get("def/a.lfy"), Some(&before));
 
     // @lfy def/mcp/main.lfy:serve#serve:serve:4c5aeb9423c7e9206e75798da9c197b91b439325adda5776e09a2061d144988a
-    fixture.write("elfie.json", r#"{ "name": "renamed", "source": "src", "lib": "lib" }"#);
+    fixture.write("elfie.json", r#"{ "name": "renamed", "source": "src", "dependencies": { "elfie": "./lib" } }"#);
     fixture.write("src/c.lfy", "const c = 1;\n");
     session.refresh();
     assert_eq!(session.workspace.name, "renamed");
     assert!(session.workspace.file("src/c.lfy").is_some());
     assert!(session.workspace.file("def/a.lfy").is_none());
+}
+
+// @lfy def/mcp/main.lfy:serve#serve:serve:000dfc10a663967f375731bea3f28fdece3eae3b1e8afe2b88d285adc7ca4d1c
+#[test]
+fn a_new_file_under_any_source_directory_is_read_before_a_call() {
+    let fixture = Fixture::new();
+    fixture.write("elfie.json", r#"{ "name": "x", "source": ["def", "src"], "dependencies": { "elfie": "./lib" } }"#);
+    fixture.write("def/a.lfy", "const a = 1;\n");
+    let mut session = fixture.session();
+    assert!(session.workspace.file("def/a.lfy").is_some());
+
+    fixture.write("src/b.lfy", "const b = 1;\n");
+    session.refresh();
+    assert!(session.workspace.file("src/b.lfy").is_some());
+    fixture.write("def/c.lfy", "const c = 1;\n");
+    session.refresh();
+    assert!(session.workspace.file("def/c.lfy").is_some());
 }
 
 /// Each session a host opens is given a number no earlier one had, is bound to what it

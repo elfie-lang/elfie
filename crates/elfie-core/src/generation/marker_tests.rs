@@ -220,9 +220,6 @@ fn timestamps_are_rfc3339_in_utc_to_the_second() {
 // @lfy def/generation/main.lfy:plan
 #[test]
 fn stems_and_paths() {
-    assert_eq!(stem_of("def/a.lfy", "def"), "a");
-    assert_eq!(stem_of("def/deep/inner.lfy", "def/"), "deep/inner");
-    assert_eq!(stem_of("a.lfy", "."), "a");
     assert!(under("src/a.rs", "src"));
     assert!(under("src/a.rs", ""));
     assert!(!under("srcx/a.rs", "src"));
@@ -231,27 +228,32 @@ fn stems_and_paths() {
         order_after_dependencies(&[vec![1], vec![2], vec![]]),
         [2, 1, 0]
     );
-    assert_eq!(order_after_dependencies(&[vec![1], vec![0]]), [1, 0]);
+    // @lfy def/generation/main.lfy:plan#plan:plan:c6bed32df9850fc2409ccc08a49904114e67a864cad86e4c61b6b0addd1d0dab
+    assert_eq!(order_after_dependencies(&[vec![1], vec![0]]), [0, 1]);
+    assert_eq!(order_after_dependencies(&[vec![2], vec![0], vec![1]]), [0, 1, 2]);
+    // A cycle comes after what any of its items depends on outside it.
+    assert_eq!(
+        order_after_dependencies(&[vec![1], vec![0, 2], vec![]]),
+        [2, 0, 1]
+    );
     // @lfy def/generation/main.lfy:plan
     assert_eq!(first_segment("a"), "");
     assert_eq!(first_segment("deep/inner"), "deep");
     assert_eq!(first_segment("deep/deeper/inner"), "deep");
 }
 
-/// A stem is the file's path from the source directory, `..` segments included, and
-/// never the whole path of a file that lies outside it.
-// @lfy def/generation/data.lfy:Unit#Unit:Unit:1fc2e33009d6c55647083813e41979cdcd5f51fe2a856a9f6815fb4aa2b68bd3
+/// A stem is the name the file goes by, whatever its path says.
+// @lfy def/generation/data.lfy:Unit#Unit:Unit:544d21ab36e8de59ea9fcf77ae7fa34947e690a8e2c4c41f740f290b2efeb354
 #[test]
-fn a_units_stem_is_its_path_relative_to_the_source_directory() {
-    assert_eq!(stem_of("def/a.lfy", "def"), "a");
-    assert_eq!(stem_of("def/deep/inner.lfy", "def"), "deep/inner");
-    assert_eq!(stem_of("other/x.lfy", "def"), "../other/x");
-    assert_eq!(stem_of("x.lfy", "def"), "../x");
-    assert_eq!(stem_of("src/a/x.lfy", "src/b"), "../a/x");
-    assert_eq!(stem_of("a.lfy", ""), "a");
-    // The same path as the source directory names the place itself.
-    assert_eq!(path_relative("def", "def").as_deref(), Some("."));
-    // Nothing relates an absolute path to a relative one.
-    assert_eq!(path_relative("/def/a.lfy", "def"), None);
-    assert_eq!(path_relative("/def/a.lfy", "/def").as_deref(), Some("a.lfy"));
+fn a_units_stem_is_the_name_of_its_file() {
+    let file = |path: &str, name: &str| File {
+        path: path.to_string(),
+        package: None,
+        name: name.to_string(),
+        source: 0,
+    };
+    assert_eq!(stem_of(&file("def/a.lfy", "a")), "a");
+    assert_eq!(stem_of(&file("def/deep/inner.lfy", "deep/inner")), "deep/inner");
+    assert_eq!(stem_of(&file("other/x.lfy", "x")), "x");
+    assert_eq!(stem_of(&file("vendor/rust/main.lfy", "rust/main")), "rust/main");
 }

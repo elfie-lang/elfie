@@ -85,7 +85,6 @@ trait uvProject(name: string, root: string) extends targetLayout: `An installabl
 }
 
 trait argparse extends targetFramework: `Command lines parsed with argparse from the standard library` {
-  .framework = "argparse";
   .provides = ["argument-parser"];
   .requires = ["python"];
   where (`An fn carries [[command]]`) -> `It is one subparser, or the parser itself when its name is empty, whose arguments are its parameters`;

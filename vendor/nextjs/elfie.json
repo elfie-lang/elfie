@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "http": "../http",
+    "platforms": "../platforms",
+    "react": "../react",
+    "typescript": "../typescript"
+  }
+}

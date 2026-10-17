@@ -1,5 +1,6 @@
 use "../interpret/data";
 use "../model/data";
+use "../model/type";
 use "../workspace/data";
 use "elfie/system/path";
 use "elfie/system/time" as Time;
@@ -174,7 +175,7 @@ d Unit: `The work the compiler does as one piece: one source file for one target
       behavior = `The local criteria and tests of a unit are those of each of [[Unit.entities]] and of its file's own entity`,
     })
     .add({
-      behavior = `[[Unit.stem]] is [[Path.relative]] of [[File.path]] to [[Workspace.sourceDirectory]], without the .lfy extension`,
+      behavior = `[[Unit.stem]] is the [[File.name]] of its file`,
     })
     // Dependencies
     .add({

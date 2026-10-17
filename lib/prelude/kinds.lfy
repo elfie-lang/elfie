@@ -6,6 +6,9 @@ use "./entity";
 
 d Data is builtin extends Entity: `A d declaration seen through its context layer` {}
 d Type is builtin extends Entity: `A type declaration seen through its context layer` {}
+d Array is builtin extends Entity: `A list type, a list seen with its item type, seen through its context layer` {
+  $itemType: `What the list holds` = Entity;
+}
 d Enum is builtin extends Entity: `An enum declaration seen through its context layer` {
   $members: `Its named values in declaration order` = Entity[];
 }

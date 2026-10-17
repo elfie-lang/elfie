@@ -523,7 +523,7 @@ pub(crate) fn collect_diagnostics(workspace: &Workspace, files: &[String]) -> Ve
     }
 }
 
-/// Each file given, or every .lfy file under the source directory, is replaced by the
+/// Each file given, or every .lfy file under each source directory, is replaced by the
 /// standard layout when that differs; --check only reports.
 // @lfy def/cli/main.lfy:main
 pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
@@ -531,13 +531,15 @@ pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
     let check_only = invocation.flag("check");
     let json = invocation.flag("json");
     let style = Paint::of(invocation);
-    // Every .lfy file under the source directory, recursively, or each file given.
-    // @lfy def/cli/main.lfy:main#main:main:7f65284af03cc165df66dc356aafafe89594cec6fb35dac3aa4584da5aa9f747
+    // Every .lfy file under each source directory, recursively, or each file given.
+    // @lfy def/cli/main.lfy:main#main:main:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
     // @lfy def/cli/main.lfy:main#main:main:3454380ed0ab0be90c65034578648d28e79c0ec647abe81aafa5f4149ea66d16
     let files: Vec<PathBuf> = if invocation.arguments.is_empty() {
         let workspace = workspace::load(root);
         let mut found = Vec::new();
-        walk(&root.join(&workspace.source_directory), &mut found);
+        for directory in &workspace.source_directories {
+            walk(&root.join(directory), &mut found);
+        }
         found.sort();
         found
     } else {
@@ -653,7 +655,7 @@ pub(crate) fn formatted_line(json: bool, file: &str, check_only: bool, on: bool)
 }
 
 /// Every `.lfy` file under a directory.
-// @lfy def/cli/main.lfy:main#main:main:7f65284af03cc165df66dc356aafafe89594cec6fb35dac3aa4584da5aa9f747
+// @lfy def/cli/main.lfy:main#main:main:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
 pub(crate) fn walk(directory: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(directory) else { return };
     for entry in entries.flatten() {

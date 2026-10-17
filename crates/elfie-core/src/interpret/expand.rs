@@ -57,11 +57,36 @@ pub fn expand(mut model: Model) -> Model {
             }
         }
         pending = deferred;
-        if !ran_something {
+        if ran_something {
+            continue;
+        }
+        // The rounds have stopped. A statement left whose name still does not resolve runs
+        // as far as it can, and the name is named when running it did not make it resolve;
+        // the rounds then resume, since running it may have added names.
+        // @lfy def/interpret/main.lfy:expand#expand:expand:8fd627207ea86becebc501f08576d358a6e4d446addee292cd0f1634bb4b9beb
+        let stuck = (0..pending.len()).find(|&index| {
+            let others: Vec<NodeRef> = pending
+                .iter()
+                .enumerate()
+                .filter(|&(other, _)| other != index)
+                .map(|(_, &node)| node)
+                .collect();
+            matches!(
+                interpreter.readiness(pending[index], &others),
+                Some(NotReady::Unresolved(_))
+            )
+        });
+        let Some(index) = stuck else {
             break;
+        };
+        let item = pending.remove(index);
+        interpreter.run_statement(item);
+        if let Some(at) = interpreter.unresolved_name(item) {
+            let text = interpreter.model.raw(at).trim().to_string();
+            interpreter.problem(at, format!("{text} does not resolve"));
         }
     }
-    // The rounds have stopped and these never ran.
+    // Every statement left is waiting on a trait.
     // @lfy def/interpret/main.lfy:expand
     for index in 0..pending.len() {
         let item = pending[index];
@@ -89,15 +114,8 @@ pub fn expand(mut model: Model) -> Model {
                     ),
                 );
             }
-            // A name it needs still does not resolve: it is named, and the statement runs
-            // as far as it can.
-            // @lfy def/interpret/main.lfy:expand
-            Some(NotReady::Unresolved(at)) => {
-                let text = interpreter.model.raw(at).trim().to_string();
-                interpreter.problem(at, format!("{text} does not resolve"));
-                interpreter.run_statement(item);
-            }
-            None => interpreter.run_statement(item),
+            // The loop above leaves no statement whose name does not resolve.
+            Some(NotReady::Unresolved(_)) | None => interpreter.run_statement(item),
         }
     }
     model
@@ -122,15 +140,79 @@ impl Interpreter<'_> {
                 return Some(NotReady::Waiting { at, applied });
             }
         }
-        // Names are resolved only as far as a statement needs them to run; the resolve pass
-        // resolves the rest.
-        // @lfy def/interpret/main.lfy:expand
+        self.unresolved_name(item).map(NotReady::Unresolved)
+    }
+
+    /// The first name a statement needs to run that does not resolve yet: a trait an `is`
+    /// or `extends` clause names, or a path through the scope layer that a `with` targets
+    /// or an `apply` is called on or with. Names are resolved only as far as a statement
+    /// needs them to run; the resolve pass resolves the rest.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:9f92ae8a6753e1a25414725ffb95c7356c3fb1021cf313cd36c68c65c0e8b6a4
+    pub(super) fn unresolved_name(&self, item: NodeRef) -> Option<NodeRef> {
         for at in self.model.descendants(item) {
             if self.model.is(at, E::TraitUse) && resolve_trait_use(self.model, at).is_none() {
-                return Some(NotReady::Unresolved(at));
+                return Some(at);
+            }
+            // A trait's own body runs once per application, against its receiver, so the
+            // paths inside it are not read here.
+            if self.model.ancestor(at, S::TraitDeclaration).is_some() {
+                continue;
+            }
+            let mut paths: Vec<NodeRef> = Vec::new();
+            if self.model.is(at, S::With) {
+                paths.extend(
+                    self.model
+                        .child_nodes(at)
+                        .into_iter()
+                        .find(|&child| !self.model.is(child, S::Block)),
+                );
+            }
+            if self.model.is(at, E::Call)
+                && compile_time_call(self.model, at) == Some(CompileCall::Apply)
+            {
+                paths.extend(self.model.left(at).and_then(|callee| self.model.left(callee)));
+                paths.extend(self.model.arguments(at).first().copied());
+            }
+            if let Some(path) = paths.into_iter().find(|&path| self.scope_path_unresolved(path)) {
+                return Some(path);
             }
         }
         None
+    }
+
+    /// Whether a path through the scope layer, such as `A$x`, starts at a declared name and
+    /// does not resolve yet, as when the member it reaches is added by a statement still to
+    /// run. A path that starts at a variable or a parameter only has its value when it runs.
+    // @lfy def/interpret/main.lfy:expand#expand:expand:0ebadc4acebce99f628486e58f24cf71f0da3ccd7eac9ea7d09c7b2bd0db2553
+    fn scope_path_unresolved(&self, path: NodeRef) -> bool {
+        let mut base = path;
+        let mut through_scope = false;
+        while self.model.is(base, E::Member) {
+            let Some((accessor, Some(_))) = self.model.accessor_and_name(base) else {
+                return false;
+            };
+            if !self.model.token_is(base.file, accessor, P::ScopeAccessor) {
+                return false;
+            }
+            let Some(left) = self.model.left(base) else {
+                return false;
+            };
+            through_scope = true;
+            base = left;
+        }
+        if !through_scope || !self.model.is(base, E::Name) {
+            return false;
+        }
+        let declared = resolve_name_node(self.model, base).is_some_and(|symbol| {
+            !matches!(
+                self.model.symbols[symbol].kind,
+                SymbolKind::Variable
+                    | SymbolKind::LoopVariable
+                    | SymbolKind::Parameter
+                    | SymbolKind::TypeParameter
+            )
+        });
+        declared && resolve_name_node(self.model, path).is_none()
     }
 
     /// Every read of what a trait was applied to inside a statement: where it is read, and

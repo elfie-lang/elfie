@@ -1,11 +1,13 @@
 use "./target";
 
+// Decision: the protocol an interface speaks is a criterion of its trait, not a member. A member
+// would be set by each layer of the interfaces slot, and two interfaces would set it to different
+// values, which binding refuses.
+
 /// The role of an interface: what a target offers the people and programs that use it. An
 /// interface package declares the traits an entity carries to join it, and a framework of the
 /// target realizes them; a target may have several interfaces.
 trait targetInterface extends target: `The role of an interface: a surface others call, such as a website, a REST API, or a command line` {
-  $protocol: `The protocol the surface speaks, as its specification names it; undefined for a plain command line` = string | undefined;
-
   where (`An fn is marked as exposed by a trait of the surface`) -> `It is one operation of the surface, named and described as that trait says`;
   where (`A call of an operation of the surface arrives`) and (`An argument does not match the operation's parameters`) -> [
     `The bad argument is reported`,
@@ -13,6 +15,6 @@ trait targetInterface extends target: `The role of an interface: a surface other
   ];
   where (`An operation fails`) -> `The failure is reported through the surface`;
   where (`An operation fails`) -> `The process does not end`;
-  where (`The surface has a channel`) and (`[[targetInterface.protocol]] is defined`) -> `Nothing but messages of [[targetInterface.protocol]] is written to the channel`;
+  where (`The surface has a channel`) and (`A criterion of the surface names the protocol it speaks`) -> `Nothing but messages of that protocol is written to the channel`;
   where (`The surface has a channel`) and (`The code logs`) -> `Logging goes to another channel`;
 }

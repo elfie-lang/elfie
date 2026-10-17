@@ -118,9 +118,9 @@ impl Fixture {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let fixture = Fixture { root };
-        // Every fixture holds a library of its own, which [`Fixture::load`] names as
-        // the environment would, so that a test never reads the copy of the library
-        // the compiler was built with. @lfy def/workspace/main.lfy:load
+        // Every fixture holds a library of its own, which [`Fixture::load`] puts in
+        // the place of the copy the compiler was built with, so that a test never reads
+        // that copy. @lfy def/workspace/main.lfy:load
         fixture.library(LIBRARY_ROOT);
         fixture
     }
@@ -160,7 +160,7 @@ impl Fixture {
     }
 
     /// The project, loaded with the library the fixture carries standing in for the
-    /// one the environment names.
+    /// copy the compiler was built with.
     // @lfy def/workspace/main.lfy:load
     pub(super) fn load(&self) -> Workspace {
         load_in(&self.root, BTreeMap::new(), Some(LIBRARY_ROOT.to_string()))
@@ -173,7 +173,7 @@ impl Drop for Fixture {
     }
 }
 
-/// A load with nothing in the environment, so that the library is the copy the
+/// A load with nothing standing in for the library, so that it is the copy the
 /// compiler was built with.
 // @lfy def/workspace/main.lfy:load
 pub(super) fn load_built_in(root: &Path) -> Workspace {

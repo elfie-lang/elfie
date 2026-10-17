@@ -3,6 +3,7 @@ use "../grammar/rules/file";
 use "../grammar/rules/statement";
 use "../grammar/traits";
 use "../model/data";
+use "../model/type";
 use "../parser/data";
 use "../workspace/data";
 use "./data";
@@ -357,7 +358,7 @@ fn lower(workspace: Workspace): `The program as generation sees it: runtime code
       ],
       behavior = [
         `That [[Use]] takes an alias, and [[LoweredFile.text]] spells the type through that alias`,
-        `The alias is an identifier that names nothing else the owner's file sees: the declaring file's path relative to [[Workspace.sourceDirectory]] without its extension, each character that cannot be in an identifier replaced by an underscore, followed by the smallest number that makes it unused when it is not unused already`,
+        `The alias is an identifier that names nothing else the owner's file sees: the declaring file's [[File.name]], each character that cannot be in an identifier replaced by an underscore, followed by the smallest number that makes it unused when it is not unused already`,
       ],
     });
 

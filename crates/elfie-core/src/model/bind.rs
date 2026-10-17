@@ -65,9 +65,9 @@ pub const SPREAD: &str = "spread";
 /// The data the prelude gives an entity for what it is; `Entity` covers every entity and
 /// the others only their own kind.
 // @lfy def/model/main.lfy:bind
-const KIND_DATA: [&str; 10] = [
+const KIND_DATA: [&str; 11] = [
     "Entity", "Trait", "Function", "Data", "Type", "Enum", "Member", "Parameter", "Variable",
-    "Module",
+    "Module", "Array",
 ];
 
 /// What the left side of a member access resolves to.
@@ -80,6 +80,15 @@ pub(crate) enum Target {
     /// A value of a base data: its members are that data's.
     // @lfy def/model/main.lfy:bind
     Base(EntityId),
+    /// An object whose keys the binder can read: they come before the members of
+    /// `Object`.
+    // @lfy def/model/main.lfy:bind
+    Object(Vec<String>),
+    /// The left side has a symbol, but nothing is known of what it holds: a name read on
+    /// it is found nowhere.
+    // @lfy def/model/main.lfy:bind
+    Untyped,
+    /// The left side has no symbol, or is a type parameter that extends nothing.
     Unknown,
 }
 
@@ -89,6 +98,15 @@ impl Target {
         match *self {
             Target::Entity(entity) | Target::Predicate(entity) => Some(entity),
             _ => None,
+        }
+    }
+
+    /// The target of a left side that has no symbol of its own, such as a call: nothing
+    /// known of it is no reason for a problem.
+    fn with_no_symbol(self) -> Target {
+        match self {
+            Target::Untyped => Target::Unknown,
+            target => target,
         }
     }
 }
@@ -418,9 +436,27 @@ impl Binder {
             EntityKind::Module | EntityKind::File => Some("Module"), // @lfy def/model/main.lfy:bind
             _ => None,
         };
+        // @lfy def/model/main.lfy:bind#bind:bind:04c22787733ff3defc0c5a6b52add93b83e7c0630dafc6c75ee0a897057f1463
+        // `List` seen with one type argument is also seen through `Array`, which gives it
+        // its item type.
+        let array = (self.is_list(entity) && self.model.type_arguments(entity).len() == 1)
+            .then(|| self.prelude_data("Array"))
+            .flatten();
         own.and_then(|name| self.prelude_data(name))
             .into_iter()
+            .chain(array)
             .chain(self.prelude_data("Entity")) // @lfy def/model/main.lfy:bind
+            .collect()
+    }
+
+    /// The kind data of `List` seen with one type argument where the model spells it as a
+    /// list type rather than as an entity, as it spells `List<T>` and `T[]` alike: `Array`,
+    /// then `Entity`.
+    // @lfy def/model/main.lfy:bind#bind:bind:04c22787733ff3defc0c5a6b52add93b83e7c0630dafc6c75ee0a897057f1463
+    pub(crate) fn list_kind_data(&self) -> Vec<EntityId> {
+        self.prelude_data("Array")
+            .into_iter()
+            .chain(self.prelude_data("Entity"))
             .collect()
     }
 
