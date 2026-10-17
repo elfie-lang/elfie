@@ -10,6 +10,8 @@ use "../prelude/builtin";
 // arguments, so one line serves both a whole run and a narrowed one, and a line that ignores TESTS
 // still runs every test. SCOPE narrows a build, test, or lint command to part of the outputs the
 // same way, so an agent can check its own part while another part is broken.
+// Decision: a test command allows stubs by reading ALLOW_STUBS, the same way, so a line that ignores
+// it still fails on a stub, which is the strict outcome.
 // Guidance order is defined on the Target of lib/target/main.lfy, which this file cannot use.
 
 enum Operation: `What a command is for` {
@@ -45,6 +47,11 @@ d Command is builtin: `A shell command for one operation` {
   where (`The line of a test command reads TESTS`) and (`TESTS is empty or unset`) -> `The line runs every test`;
   where (`The line of a test command reads TESTS`) and (`TESTS is not empty`) -> `The line runs only the tests its test runner selects with the words of TESTS as filters`;
   where (`The line of a test command reads TESTS`) -> `The words of TESTS reach the test runner as written, never expanded as file patterns`;
+  where (`A test command runs`) and (`Its caller allows stubs`) -> `ALLOW_STUBS is set to 1`;
+  where (`A test command runs`) and (`Its caller does not allow stubs`) -> `ALLOW_STUBS is empty`;
+  where (`The line of a test command reads ALLOW_STUBS`) and (`ALLOW_STUBS is empty or unset`) -> `The line succeeds only when every test it runs passes, as a line that does not read it does`;
+  where (`The line of a test command reads ALLOW_STUBS`) and (`ALLOW_STUBS is not empty`) -> `The line succeeds when the outputs build and every failing test it runs failed by reaching a stub, its failure message holding the stub marker of the target's language`;
+  where (`The line of a test command reads ALLOW_STUBS`) and (`ALLOW_STUBS is not empty`) -> `The line fails when the outputs do not build, when a test fails for any other reason, or when a test process ends before it reports its results`;
   where (`A build, test, or lint command runs`) and (`Its caller gave a scope`) -> `SCOPE is set to that scope`;
   where (`A build, test, or lint command runs`) and (`Its caller gave no scope`) -> `SCOPE is empty`;
   where (`The line of a build, test, or lint command reads SCOPE`) and (`SCOPE is empty or unset`) -> `The line runs on every output`;

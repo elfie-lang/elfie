@@ -4,6 +4,11 @@ use "./target";
 // Decision: a unit is rejected when an entity of it has no marker, so every entity built for the
 // target is named at least once in the outputs.
 // Decision: a marker names an entity, never a line, because a name survives edits that move lines.
+// Decision: an extending trait sets the stub line as a quoted string, never a template, because
+// only a template evaluates the braces in it, and the unit and reason are filled in when a stub is
+// written, not when the trait is read.
+// Decision: the stub line and marker may be undefined, for a language such as Elfie source whose
+// outputs have no body that runs; nothing in such a language is stubbed.
 
 /// The role of a language: what a target's code is written in. The extending trait says what each
 /// kind of declaration becomes and what each builtin of the standard library is bound to; this
@@ -12,6 +17,8 @@ trait targetLanguage extends target: `The role of a language: every kind of decl
   $language: `The language and edition, as its own tools name it` = string;
   $fileExtension: `The extension of a source file of the language, without the dot` = string;
   $markerComment: `How a line comment begins in the language` = string;
+  $stubLine: `The statement that replaces a body to stub it, in which \{{unit}} is filled in with the stem of the unit writing the stub and \{{reason}} with why; undefined when the language has none` = string | undefined;
+  $stubMarker: `The text every stub line holds and every stub prints when it is reached; undefined when the language has no stub line` = string | undefined;
 
   // Kinds
   where (`A d declaration is built`) -> [
@@ -41,6 +48,12 @@ trait targetLanguage extends target: `The role of a language: every kind of decl
   where (`An item of a unit's output is a test, or code written to satisfy one criterion`) -> `The entity's name in its marker is followed by a # and the id of that criterion or test`;
   where (`An entity of the unit has no marker in any output`) -> `The unit is rejected`;
   where (`A marker is written`) -> `It names an entity, never a line`;
+
+  // Stubs
+  where (`A body is replaced by [[targetLanguage.stubLine]]`) -> `The item keeps its signature`;
+  where (`A body is replaced by [[targetLanguage.stubLine]]`) -> `The target's build command still succeeds on the outputs`;
+  where (`Running code reaches a stub line`) -> `It fails with a message that holds [[targetLanguage.stubMarker]]`;
+  where (`[[targetLanguage.stubLine]] is undefined`) -> `No body in an output of the language is replaced by a stub`;
 
   // Quality
   where (`A unit's outputs are written`) -> `The target's build, test, and lint commands succeed on the outputs with no warnings`;

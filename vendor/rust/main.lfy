@@ -11,6 +11,8 @@ trait rust extends targetLanguage: `Rust 2024` {
   .language = "Rust 2024";
   .fileExtension = "rs";
   .markerComment = "//";
+  .stubLine = 'todo!("elfie stub: {{unit}}: {{reason}}")';
+  .stubMarker = "elfie stub:";
   .provides = ["rust"];
 
   // Kinds
@@ -25,6 +27,21 @@ trait rust extends targetLanguage: `Rust 2024` {
     .add({ behavior = `A fn declaration becomes a pub fn` })
     .add({ behavior = `The dependency an external declaration names is a crate` })
     .add({ behavior = `A test is a #[test] function` });
+
+  // Defaults
+  // A dependent that builds a struct with ..Default::default() still builds when a field is added
+  // whose type has a Default, so most data changes break no other unit's code. A struct expression
+  // that sets every field takes no ..Default::default(), because clippy's needless_update rejects
+  // it under -D warnings.
+  @acceptanceCriteria
+    .add({
+      situation = [`A d declaration becomes a struct`, `The type of every field implements Default`],
+      behavior = `The struct derives Default`,
+    })
+    .add({
+      situation = `Code builds a value of a struct that derives Default and is output by another unit`,
+      behavior = `The struct expression ends with ..Default::default() after the fields it sets, unless it sets every field`,
+    });
 
   // Standard library
   @acceptanceCriteria
@@ -84,10 +101,36 @@ trait cargo extends targetEcosystem: `Crates from crates.io, managed with Cargo`
   // libtest reads each word after -- as a substring of the test names to run, and runs every test
   // when there is none, so an empty or unset TESTS runs them all; set -f keeps the shell from
   // expanding a word as a file pattern. SCOPE names one package, passed as -p only when it is set.
+  // With ALLOW_STUBS set, the test line runs every test binary (--no-fail-fast) and reads libtest's
+  // report: each "test NAME ... FAILED" line, the "---- NAME stdout ----" section holding that
+  // test's panic message, one "test result:" line per binary, and cargo's "Running" and
+  // "Doc-tests" line per binary it starts. It succeeds when cargo test did, or when some test
+  // failed, every failed test's section holds elfie stub: (the rust trait's stub marker), and every
+  // binary started reported a result, so a build error or a crashed binary still fails it with
+  // cargo's exit code. Without ALLOW_STUBS the line is the plain cargo test it always was.
+  // Decision: the stub check is written inline in the test line, not as a script in this package,
+  // because a command runs in the target's output directory with only RUN_SCRIPT, NAME, VERSION,
+  // TESTS, SCOPE, and ALLOW_STUBS set, so no line can find a file of a package, which may live
+  // anywhere elfie.json points.
+  // Decision: the line uses only POSIX sh and awk, with no temporary file: cargo's exit code is
+  // passed to awk as the last line of the stream, and awk prints every other line as it comes.
   @commands
     .add({ operation = Operation.add, line = 'cargo add "$NAME${VERSION:+@$VERSION}"' })
     .add({ operation = Operation.build, line = 'cargo build ${SCOPE:+-p "$SCOPE"}' })
-    .add({ operation = Operation.test, line = 'set -f; cargo test ${SCOPE:+-p "$SCOPE"} -- $TESTS' })
+    .add({
+      operation = Operation.test,
+      line = 'set -f; if [ -z "$ALLOW_STUBS" ]; then cargo test ${SCOPE:+-p "$SCOPE"} -- $TESTS; else \
+{ cargo test --no-fail-fast --color never ${SCOPE:+-p "$SCOPE"} -- $TESTS 2>&1; echo "elfie-cargo-status $?"; } | awk \' \
+/^elfie-cargo-status [0-9]+$/ { status = $2; next } \
+{ print; fflush() } \
+/^ +(Running|Doc-tests) / { started++ } \
+/^test .* [.][.][.] FAILED$/ { failed[substr($0, 6, length($0) - 16)] = 1; nfailed++ } \
+/^failures:$/ || /^test result: / { section = "" } \
+/^---- .* stdout ----$/ { section = substr($0, 6, length($0) - 17) } \
+section != "" && index($0, "elfie stub:") { stubbed[section] = 1 } \
+/^test result: / { results++; for (name in failed) if (!(name in stubbed)) bad = 1; split("", failed); split("", stubbed) } \
+END { exit (status == 0 || (nfailed > 0 && !bad && results == started)) ? 0 : status }\'; fi',
+    })
     .add({ operation = Operation.lint, line = 'cargo clippy ${SCOPE:+-p "$SCOPE"} --all-targets -- -D warnings' })
     .add({ operation = Operation.format, line = "cargo fmt --check" });
 }
@@ -118,7 +161,10 @@ trait cargoCrate(name: string, root: string, source: string, binary: boolean) ex
 /// crates: each key is the first segment of a stem; its value the source directory, relative to the project root, that such units are written under
 /// fallback: the source directory for units whose first segment is no key of crates
 /// binaries: the keys of the crates whose root module is src/main.rs
-trait cargoWorkspace(crates: Object<string>, fallback: string, binaries: string[]) extends cratePerPrefix(crates, fallback),
+trait cargoWorkspace(crates: Object<string>, fallback: string, binaries: string[]) extends cratePerPrefix(
+    crates,
+    fallback,
+  ),
   modulePerFile("rs"): `Several member crates of one Cargo workspace, chosen by the first segment of each stem` {
   .requires = ["rust", "cargo"];
   @acceptanceCriteria

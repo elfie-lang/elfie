@@ -12,6 +12,8 @@ trait python extends targetLanguage: `Python 3, fully annotated` {
   .language = "Python 3";
   .fileExtension = "py";
   .markerComment = "#";
+  .stubLine = 'raise NotImplementedError("elfie stub: {{unit}}: {{reason}}")';
+  .stubMarker = "elfie stub:";
   .provides = ["python"];
   @acceptanceCriteria
     .add({
