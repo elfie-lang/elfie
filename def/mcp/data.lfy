@@ -58,14 +58,11 @@ enum Role: `What the agent of a hosted session is run as` {
 d Binding: `What one hosted session is bound to, fixed when the CLI opens it` {
   $role: `What its agent is run as` = Role;
   $unit: `The unit the run is for; undefined for the global review` = Unit | undefined;
-  $directory: `The absolute path of the directory the run is in: the copy of the root its change set is worked in when it runs in one, the root otherwise` = string;
+  $directory: `The absolute path of the directory the run is in: the unit's own copy when it is worked in a change set, the change set's copy for the global review or a kept unit verified on resuming, the root otherwise` = string;
   $plan: `The plan the compile or verify made` = Plan;
   $program: `The program the compile lowered and planned; its workspace is the one the session reads definitions from` = Program;
   $request: `The request given to a compiler run as its input; undefined for a verifier run` = Request | undefined;
-  // Decision: the output files are kept as they were before the unit's first run since it was last
-  // accepted, so how much of the fix cap its edits use is measured against the same text whichever
-  // attempt makes them, and a retry does not start its count again.
-  $before: `Every file of the output directory of the unit's target as it was in [[Binding.directory]] before the unit's first compiler run of this compile since it was last accepted in it, as acceptance is given it as the files before the run; undefined for a verifier run` = Output[] | undefined;
+  $before: `Every file of the output directory of the unit's target as it was in [[Binding.directory]] before the unit's first compiler run since its copy was made, so that a retry is measured against the same text, as acceptance is given it as the files before the run; undefined for a verifier run` = Output[] | undefined;
   $review: `The review request given to a verifier run as its input; undefined for a compiler run` = ReviewRequest | undefined;
   $sourceMaps: `The source maps that review request was made with; empty for a compiler run` = SourceMap[];
 }

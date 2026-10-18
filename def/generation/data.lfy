@@ -171,6 +171,7 @@ d Unit: `The work the compiler does as one piece: one source file for one target
   $dependencies: `The units of the same target its unit needs built first, each once` = Unit[];
   $outputs: `The outputs the last accepted generation produced, from the unit's map file; empty when none` = SourceMap[];
   $reason: `Why it is planned; undefined when it is up to date` = Reason | undefined;
+  $waitsFor: `The [[Unit.stem]] of each planned unit it starts after, in [[Plan.units]] order: each of [[Unit.dependencies]] that is planned and either has no [[Unit.outputs]] or has an interface whose hash differs from what the unit's outputs record for it` = string[];
   @acceptanceCriteria
     .add({
       behavior = `The local criteria and tests of a unit are those of each of [[Unit.entities]] and of its file's own entity`,
@@ -247,17 +248,20 @@ d ForeignEdit: `One edit an accepted run for one unit made inside one region of 
 ace const fixLines: `The most lines a fix may change in one region` = 10;
 ace const fixUnitLines: `The most lines the fixes of one run may change across the regions of one other unit` = 40;
 
-// Decision: a unit may edit every later unit of its target, not only those that depend on it,
-// because a unit can break a later unit's code through a shared output or a test as well as through
-// an interface, and plan order alone keeps every foreign edit ahead of the unit it touches. A reach
-// read from [[Plan.units]] alone never depends on which units are planned.
 d Reach: `Which other units' outputs a run for one unit may edit, and how much` {
-  $units: `Every unit of the same target that has outputs and comes later in [[Plan.units]], in [[Plan.units]] order; their outputs and regions are those of their [[Unit.outputs]]` = Unit[];
+  $units: `Empty when every unit of the same target that depends on the unit directly and has outputs records the hash of the unit's interface as it is now; otherwise every unit of the same target that has outputs and depends on the unit, directly or through other units, in [[Plan.units]] order; their outputs and regions are those of their [[Unit.outputs]]` = Unit[];
   $fixLines: `The most lines a fix may change in one region` = number;
   $fixUnitLines: `The most lines the fixes of one run may change across the regions of one unit of [[Reach.units]]` = number;
   @acceptanceCriteria
     .add({ behavior = `[[Reach.fixLines]] is {{fixLines}}` })
-    .add({ behavior = `[[Reach.fixUnitLines]] is {{fixUnitLines}}` });
+    .add({ behavior = `[[Reach.fixUnitLines]] is {{fixUnitLines}}` })
+    .add({
+      situation = `Every unit of the same target that depends on the unit directly and has outputs has outputs whose [[SourceMap.dependencies]] record, for the unit's source path, the SHA-256 of the unit's interface text as it is now, as [[SourceMap.signature]] takes it`,
+      behavior = `[[Reach.units]] is empty`,
+    })
+    .add({
+      behavior = `A reach is read from [[Plan.units]], their outputs, and the definitions, and never depends on which units are planned`,
+    });
 }
 
 d Interface: `What a dependent unit may rely on from another unit's output` {
@@ -488,7 +492,7 @@ d ReviewReport: `Everything a verifier found for one unit, or for the global rev
 d Plan: `Every unit of a workspace, which need generating, and the order they are compiled in` {
   $workspace: `The workspace planned` = Workspace;
   $program: `The workspace lowered, which units, requests, and reviews read` = Program;
-  $units: `Every unit of every target, each after its dependencies; the planned units are compiled one at a time in this order` = Unit[];
+  $units: `Every unit of every target, each after its dependencies; the planned units are compiled in this order, each starting once each unit of its [[Unit.waitsFor]] has merged into its change set, been skipped, or stopped` = Unit[];
   $moves: `Every move that resolved a cycle among files, in [[Plan.units]] order of [[Move.origin]], then in file order of the first of [[Move.entities]]` = Move[];
   $problems: `Every cycle among files that no move could resolve, and every entity that reaches one not built for its target, one [[Problem]] each` = Problem[];
 }

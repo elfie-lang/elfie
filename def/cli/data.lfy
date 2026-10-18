@@ -36,17 +36,21 @@ d Invocation: `One parsed command line` {
 enum Step: `What a compile is doing, as progress reports it` {
   planned = `the plan is made`,
   resuming = `a kept change set is taken up again, its units accepted with unchanged definitions kept as they were`,
+  relocated = `the markers of entities that moved to another file were rewritten to name it, with their source maps and review records`,
+  started = `a unit's copy is made and its run begins`,
   requesting = `a unit's request is being assembled`,
   rewording = `the markers of a unit's reworded criteria and tests were rewritten to their new ids`,
   building = `the target's build and test commands are running for a unit, in place of the compiler or as the gate after its acceptance`,
   compiling = `the compiler is running on a unit`,
   checking = `the outputs of a unit are being checked`,
-  accepted = `a unit was accepted and recorded in the change set`,
+  accepted = `a unit was accepted in its copy`,
   rejected = `a unit was rejected`,
-  touched = `an accepted unit fixed code inside the regions of a later unit, which is planned as touched`,
-  stubbed = `an accepted unit replaced code inside the regions of a later unit with stubs, and that unit is planned as touched`,
+  touched = `a merged unit fixed code inside the regions of a later unit, which is planned as touched`,
+  stubbed = `a merged unit replaced code inside the regions of a later unit with stubs, and that unit is planned as touched`,
   verifying = `the verifier is running on a unit that was accepted`,
   reviewed = `the verifier reviewed a unit, or every verdict on it was carried`,
+  merged = `a unit's work was merged into its change set, and the change set's build and tests passed after it`,
+  undone = `a unit's merge was undone, because the change set's build or tests failed after it or a unit merged since its copy was made changed a region it wrote, and it runs again in a new copy`,
   globalVerifying = `the verifier is running once on every global criterion and test`,
   globalReviewed = `the verifier reviewed the global criteria and tests`,
   finalGate = `the change set is being checked as a whole before the root takes it`,
@@ -60,17 +64,17 @@ enum Step: `What a compile is doing, as progress reports it` {
 
 d Progress: `One line of what a compile is doing, for a person or a script watching` {
   $step: `What is happening` = Step;
-  $unit: `The unit it concerns: for touched and stubbed, the unit edited; undefined for a step that concerns no one unit, such as planned, finalGate, merging, globalVerifying, globalReviewed, and finished` = string | undefined;
-  $done: `Units accepted so far` = number;
+  $unit: `The unit it concerns: for touched and stubbed, the unit edited; undefined for a step that concerns no one unit, such as planned, relocated, finalGate, merging, globalVerifying, globalReviewed, and finished` = string | undefined;
+  $done: `Units merged into their change set so far, in state [[UnitState.accepted]] or [[UnitState.reviewed]], units kept from a resumed change set included` = number;
   $total: `Units planned` = number;
   $elapsed: `Seconds since the compile began, as [[Time.elapsed]] from its start gives them` = number;
-  $message: `The detail: the reason a unit is planned, a problem, a question, the counts of the plan, for touched and stubbed the unit whose run made the edits and their notes, or for reviewed and globalReviewed the counts of satisfied, violated, and unverifiable reviews, in that order, then for reviewed the count of verdicts carried when there are any` = string;
+  $message: `The detail: the reason a unit is planned, a problem, a question, the counts of the plan, for touched and stubbed the unit whose run made the edits and their notes, for started how many units are running and the most that may, for merged the count of files written or removed, for undone why it was undone, for relocated the counts of entities, markers, and review records moved, or for reviewed and globalReviewed the counts of satisfied, violated, and unverifiable reviews, in that order, then for reviewed the count of verdicts carried when there are any` = string;
 }
 
 enum UnitState: `Where one unit of a change set stands` {
-  planned: `Not accepted in the change set yet` = `planned`,
-  accepted: `Accepted, with the gate after its acceptance passed, and not yet reviewed` = `accepted`,
-  reviewed: `Accepted, and its review found none of its criteria and tests violated` = `reviewed`,
+  planned: `Not merged into the change set yet, or planned again since` = `planned`,
+  accepted: `Accepted, with the gate after its acceptance passed, merged, and not yet reviewed` = `accepted`,
+  reviewed: `Accepted, with its review finding none of its criteria and tests violated, and merged` = `reviewed`,
   rejected: `Rejected after its retries, which stops the change set` = `rejected`,
 }
 
@@ -84,16 +88,20 @@ d ChangeSetUnit: `One unit of a change set and where it stands` {
   // because [[ChangeSet.foreignEdits]] is only ever appended to, so a count names the same edits
   // when the change set is read back by a later compile.
   $edits: `How many foreign edits [[ChangeSet.foreignEdits]] held when the unit was last accepted in the change set; 0 when it never was; kept while it is planned again` = number;
+  $merged: `The paths, relative to the copy, of the change set's own files the unit's last merge wrote or removed, in path order; empty while it never merged` = string[];
 }
 
 // Decision: a change set is kept on disk between compiles, so a compile that stops loses no unit
 // accepted under definitions that have not changed since.
-d ChangeSet: `Every planned unit of one compile for one target, worked in one copy of the root that the root takes only when the whole compile is done` {
+d ChangeSet: `Every planned unit of one compile for one target, each worked in a copy of its own and merged into one copy of the root that the root takes only when the whole compile is done` {
   $target: `The [[Target.identifier]] of the target` = string;
   $directory: `The absolute path of the copy of the root the change set is worked in` = string;
   $units: `One per planned unit, in [[Plan.units]] order, a unit planned because it was touched included` = ChangeSetUnit[];
-  $foreignEdits: `Every foreign edit an accepted unit of the change set made, in the order they were accepted` = ForeignEdit[];
+  $foreignEdits: `Every foreign edit a unit of the change set made, recorded when the unit was accepted in it, in the order their units were accepted` = ForeignEdit[];
   @acceptanceCriteria
+    .add({
+      behavior = `A unit is accepted in its change set when its merge into the change set's copy is done and the build and the test after it passed or did not run`,
+    })
     .add({
       behavior = `elfie-compile/cache/changes/<target>.json under the root, with <target> the [[ChangeSet.target]], holds [[Json.stringify]] of the target's kept change set`,
     })
@@ -111,7 +119,7 @@ d ChangeSet: `Every planned unit of one compile for one target, worked in one co
         `For every unit accepted or reviewed in it, [[ChangeSetUnit.hash]] and [[ChangeSetUnit.requirements]] are those the unit has now`,
         `Its [[ChangeSet.units]] name the units planned now, in the same order`,
       ],
-      behavior = `The compile resumes it: no unit accepted or reviewed in it runs again, and the first unit that is neither runs next`,
+      behavior = `The compile resumes it: no unit accepted or reviewed in it runs again, and every unit that is neither runs, starting as the compile schedules it`,
     })
     .add({
       situation = [
@@ -134,5 +142,12 @@ d ChangeSet: `Every planned unit of one compile for one target, worked in one co
     .add({ behavior = `Nothing is ever removed from [[ChangeSet.foreignEdits]] or reordered in it` })
     .add({
       behavior = `The foreign edits recorded since a unit was last accepted in its change set are those whose [[ForeignEdit.owner]] is the unit's [[ChangeSetUnit.stem]] among the items of [[ChangeSet.foreignEdits]] that follow its first n, where n is the unit's [[ChangeSetUnit.edits]]`,
+    })
+    .add({
+      behavior = `What a unit's last merge wrote is kept under elfie-compile/cache/changes/<target>/merged/<name> under the root, with <target> the [[ChangeSet.target]] and <name> the unit's request name: each path of its [[ChangeSetUnit.merged]] that the change set held just after that merge, at that path, as the change set held it then`,
+    })
+    .add({
+      situation = `A unit merges again`,
+      behavior = `What its earlier merge kept is replaced by what the new merge wrote`,
     });
 }

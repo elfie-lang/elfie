@@ -32,13 +32,13 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
 });
 
 // Guidance only this repository needs
-// Decision: units are compiled one at a time and the workspace must build after each, so a unit may
-// leave a stub in a later unit's code, which only that unit's own compile replaces; clippy and a
-// test that reaches a stub are held to at the end of a compile, when no stub is left.
+// Decision: the workspace must build after every unit, so a unit may leave a stub in a later unit's
+// code, which only that unit's own compile replaces; clippy and a test that reaches a stub are held
+// to at the end of a compile, when no stub is left.
 rust
   @acceptanceCriteria
   .add({
-    situation = `A unit's outputs are accepted, with other units of the compile still to come`,
+    situation = `A unit's outputs are merged into its change set, with other units of the compile still to come`,
     behavior = [
       `cargo build for the whole workspace passes`,
       `Every test cargo test runs for the whole workspace passes or fails only by reaching a stub`,

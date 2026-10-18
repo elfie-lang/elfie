@@ -18,9 +18,9 @@ use "elfie/target/layout";
 // does not own, which is itself an act of generation. A larger unit would not fit a request. The one
 // exception is a cycle among files, which no order of units can build: its entities move whole into
 // the unit of the lowest file of the cycle.
-// Decision: units are compiled one at a time, in plan order, and every request, review request, and
-// acceptance is about one unit. A request puts first what is the same for every unit of a target, so
-// the context several units once shared in one request is reused from a prompt cache instead.
+// Decision: every request, review request, and acceptance is about one unit. A request puts first
+// what is the same for every unit of a target, so the context several units once shared in one
+// request is reused from a prompt cache instead.
 
 fn interfaceOf(workspace: Workspace, unit: Unit): `What dependents of a unit may rely on, as one text whose hash tells whether it changed` => string {
   @acceptanceCriteria.add({
@@ -206,6 +206,16 @@ fn plan(
       behavior = `Only the unit holding that fn is planned`,
     });
 
+  // Waiting
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Unit.waitsFor]] of a unit holds the [[Unit.stem]] of each of its [[Unit.dependencies]] that has a [[Unit.reason]] and either has empty [[Unit.outputs]], or has an [[interfaceOf]] whose SHA-256 differs from what [[SourceMap.dependencies]] of the unit's outputs record for its source path, or for which they record nothing, in [[Plan.units]] order, each once`,
+    })
+    .add({ behavior = `[[Unit.waitsFor]] holds no unit that is not among [[Unit.dependencies]]` })
+    .add({
+      behavior = `[[Unit.waitsFor]] is decided from [[workspace]], [[sourceMaps]], [[requested]], [[violated]], and [[foreignEdits]] alone, before anything runs`,
+    });
+
   @test(
     {
       input = [
@@ -213,7 +223,7 @@ fn plan(
         [],
         [],
       ],
-      expect = Plan@like(`Two units, b before a, a depending on b, both with reason fresh`),
+      expect = Plan@like(`Two units, b before a, a depending on b and waiting for it, both with reason fresh`),
     },
     {
       input = [
@@ -322,6 +332,18 @@ fn plan(
         [ForeignEdit@like(`A fix by a in a region of out/b.ts, with owner b, recorded for another target`)],
       ],
       expect = Plan@like(`Neither unit with a reason`),
+    },
+    {
+      input = [
+        Workspace@like(
+          `One target rust that global's targets hold; def holds a.lfy using ./b and ./c, b.lfy, and c.lfy, with a member added to a data of b.lfy since their maps were recorded`,
+        ),
+        [SourceMap@like(`For a, b, and c, hashes and interface hashes of the files as they were before that edit`)],
+        [`c`],
+      ],
+      expect = Plan@like(
+        `b with reason changed, c with reason requested, and a with reason dependency, after both; a waits for b only, since c's interface hash is the one a's outputs record; b and c wait for nothing`,
+      ),
     },
   );
 }
@@ -786,7 +808,7 @@ fn request(
     {
       input = [
         Plan@like(
-          `Three units of target rust with output directory src, c, then b, then a, each with outputs, src/c.rs, src/b.rs, and src/a.rs; rust's language layer sets stubLine to todo!("elfie stub: \{{unit}}: \{{reason}}")`,
+          `Three units of target rust with output directory src, c, then b, then a, each with outputs, src/c.rs, src/b.rs, and src/a.rs, a using b and c, and a's outputs recording for b an interface hash other than the one b has now; rust's language layer sets stubLine to todo!("elfie stub: \{{unit}}: \{{reason}}")`,
         ),
         Unit@like(`b`),
         [Output@like(`src/b.rs`)],
@@ -1087,7 +1109,7 @@ fn accept(
         `It falls in another unit's region`,
         `The owner is not among [[Reach.units]] of [[Request.reach]] of [[request]]`,
       ],
-      behavior = `[[Verdict.problems]] holds one naming the path, the line, and the owner, and saying only the code of a later unit is edited`,
+      behavior = `[[Verdict.problems]] holds one naming the path, the line, and the owner, and saying only the code of a unit in its reach, one that depends on it, is edited`,
     })
     .add({
       situation = [
@@ -1302,7 +1324,7 @@ fn accept(
     {
       input = [
         Request@like(
-          `For the unit b of b.lfy, whose reach is empty because c, whose output is src/c.rs, comes before it`,
+          `For the unit b of b.lfy, whose reach is empty because c, whose output is src/c.rs, does not depend on it`,
         ),
         Unit@like(`that unit`),
         [Output@like(`src/b.rs with a marker b.lfy:B`)],
@@ -1970,9 +1992,6 @@ fn rename(unit: Unit, outputs: Output[], ids: Object<string>): `The output files
 // Decision: the verifier is told where the regions are and pulls their code through the agent
 // server, so a request stays small however large the unit's outputs are, and its protocol allows
 // no edits: a review says where and why, never how to fix.
-// Decision: a unit compiled in the copy of the root its change set is worked in is reviewed in that
-// copy, so the regions a verifier is pointed at, and the hashes its verdicts are recorded with, are
-// those of the outputs it is judging and never the root's older ones.
 // Decision: a criterion or test is reviewed again only when nothing says its verdict still holds:
 // it has no record, its last verdict was not satisfied, or the code of its entity changed since. A
 // change to code outside the entity's regions, such as a helper no marker names, does not count.

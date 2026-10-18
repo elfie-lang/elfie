@@ -29,13 +29,13 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
   @acceptanceCriteria
     .add({
       situation = [`An argument does not begin with a dash`, `No argument is --help, -h, or --version`],
-      behavior = `The first argument that does not begin with a dash and is not the value that --root, --tree, --target, or --color takes names the [[Command]]`,
+      behavior = `The first argument that does not begin with a dash and is not the value that --root, --tree, --target, --jobs, or --color takes names the [[Command]]`,
     })
     .add({
       situation = [
         `No argument that does not begin with a dash is given`,
         `No argument is --version`,
-        `--root, --tree, or --target is not the last argument`,
+        `--root, --tree, --target, or --jobs is not the last argument`,
       ],
       behavior = `The command is help`,
     })
@@ -78,6 +78,14 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `The option target gives that value`,
     })
     .add({
+      situation = `--jobs is followed by a value`,
+      behavior = `The option jobs gives that value`,
+    })
+    .add({
+      situation = `The option jobs gives a value that is not a whole number of at least 1, written in decimal digits`,
+      behavior = `Returns a usage message reading --jobs must be a whole number of at least 1`,
+    })
+    .add({
       situation = `--color is followed by auto, always, or never`,
       behavior = `The option color gives that value`,
     })
@@ -94,16 +102,16 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
       behavior = `Returns a usage message reading --color must be auto, always, or never`,
     })
     .add({
-      situation = `An option other than --root, --tree, --help, --version, --target, and --color is written --name, with no equals sign`,
+      situation = `An option other than --root, --tree, --help, --version, --target, --jobs, and --color is written --name, with no equals sign`,
       behavior = `The option gives true`,
     })
     .add({
-      situation = `An option other than --root, --tree, --help, --version, --target, and --color is written --name, with no equals sign`,
+      situation = `An option other than --root, --tree, --help, --version, --target, --jobs, and --color is written --name, with no equals sign`,
       behavior = `The argument after the option is not its value`,
     })
     .add({
       situation = `No argument is --help, -h, or --version`,
-      behavior = `Every argument that does not begin with a dash, other than the one naming the command and the value --root, --target, or --color takes, is positional`,
+      behavior = `Every argument that does not begin with a dash, other than the one naming the command and the value --root, --target, --jobs, or --color takes, is positional`,
     })
     .add({
       situation = `--help, -h, or --version is among the arguments`,
@@ -115,7 +123,7 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
     })
     .add({
       situation = [
-        `--root, --tree, or --target is the last argument, with no value after it`,
+        `--root, --tree, --target, or --jobs is the last argument, with no value after it`,
         `No argument is --help, -h, or --version`,
       ],
       behavior = `Returns a usage message naming the option`,
@@ -133,6 +141,14 @@ fn parse(arguments: string[]): `The invocation the arguments spell, or the usage
     { input = [[`--color`, `check`]], expect = Invocation@like(`check with the option color true`) },
     { input = [[`--json`, `check`]], expect = Invocation@like(`check with the option json true`) },
     { input = [[`--target`, `rust`, `compile`]], expect = Invocation@like(`compile with the option target rust`) },
+    {
+      input = [[`compile`, `--jobs`, `2`]],
+      expect = Invocation@like(`compile with the option jobs 2 and no positional arguments`),
+    },
+    {
+      input = [[`compile`, `--jobs=0`]],
+      expect = string@like(`A usage message reading --jobs must be a whole number of at least 1`),
+    },
   );
 }
 
@@ -210,7 +226,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `help`,
-      behavior = `Prints, under the heading options:, each global option with one line of description, --json, --root, --target, --no-verify, --continue, --strict, and --color among them`,
+      behavior = `Prints, under the heading options:, each global option with one line of description, --json, --root, --target, --jobs, --no-verify, --continue, --strict, and --color among them`,
     })
     .add({ situation = `help`, behavior = `Returns [[ExitCode.success]]` })
     .add({
@@ -554,8 +570,6 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // Progress
   // Decision: progress is a stream of one-line events rather than a redrawn screen, so it reads the
   // same in a terminal, in a log, and as JSON lines for a script.
-  // Decision: every line of a unit names the unit, since units run one at a time and a line names
-  // no group of them.
   @acceptanceCriteria
     .add({ situation = `compile`, behavior = `Every step of a compile prints one [[Progress]] line as it happens` })
     .add({ situation = `compile with --json`, behavior = `Each [[Progress]] is one result` })
@@ -622,7 +636,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile without --json`,
-        `The step is planned, requesting, resuming, rewording, building, compiling, checking, accepted, touched, stubbed, verifying, globalVerifying, finalGate, merging, or retrying`,
+        `The step is planned, requesting, resuming, relocated, started, rewording, building, compiling, checking, accepted, touched, stubbed, verifying, merged, undone, globalVerifying, finalGate, merging, or retrying`,
       ],
       behavior = `The message is plain`,
     })
@@ -661,7 +675,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile without --json`,
-        `A [[Progress]] line is the first line of a unit after the first unit, or is finalGate, globalVerifying, merging, or finished`,
+        `A [[Progress]] line is a started line after the first started line of the compile, or is relocated, finalGate, globalVerifying, merging, or finished`,
       ],
       behavior = `An empty line is printed and logged before it`,
     })
@@ -691,7 +705,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile without --json`, `Problems, a reason, or a question are printed`],
-      behavior = `They follow the [[Progress]] line they belong to, one problem or line of text per line, each indented four spaces`,
+      behavior = `They follow the [[Progress]] line they belong to, with no line of another unit between them, one problem or line of text per line, each indented four spaces`,
     })
     .add({
       situation = [`compile without --json`, `A problem is printed`],
@@ -736,21 +750,12 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     });
 
   // The change set
-  // Decision: a compile works every planned unit of a target in one copy of the root, the target's
-  // change set, and the root takes the change set only when the whole of it passed, so the root
-  // never holds a unit whose dependents were not compiled against it.
-  // Decision: units run one at a time, in [[Plan.units]] order, so the code a unit is compiled
-  // against, and so its request, never depends on which run finished first. There is no --jobs
-  // until units that share nothing can run in copies of their own.
   // Decision: a change set is kept in elfie-compile/cache when a compile stops, because losing it
   // costs only time, and the next compile resumes it, so a unit accepted under definitions that
   // have not changed is not compiled again.
   // Decision: only the target's outputs, maps, and review records are a change set's own files;
   // every other file of a resumed copy is taken from the root again, so a resumed change set reads
   // the definitions as they are now.
-  // Decision: a unit that stops without being accepted has its outputs put back as they were
-  // before its first run in the compile, so the copy still builds for the units that run after it
-  // with --continue, and a resumed change set never starts a unit from code no run had accepted.
   // Decision: a root that is not a git repository is copied whole, but for the directories every
   // output listing skips, because no ignore rule says which of its files belong to the project.
   // Decision: no git variable is added to the environment of the compiler, the verifier, or a
@@ -768,14 +773,150 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = `compile`,
       behavior = `A change set's own files are the files of its copy under its target's [[Target.outputDirectory]], outside every directory named target, .git, or node_modules, and the files of its copy under elfie-compile/maps/<target> and elfie-compile/reviews/<target>, with <target> the [[Target.identifier]]`,
     })
-    .add({ situation = `compile`, behavior = `Units run one at a time, in [[Plan.units]] order, whatever their target` })
+    // When a unit starts
     .add({
       situation = `compile`,
-      behavior = `A unit starts only once every planned unit before it in [[Plan.units]] is done, skipped, or stopped`,
+      behavior = `A unit planned in the compile's first plan starts once every unit of its [[Unit.waitsFor]], as that plan gives it, has merged, been skipped, or stopped in the change set`,
     })
     .add({
+      situation = `compile`,
+      behavior = `A unit planned during the compile, as touched, again for a foreign edit, or by the global review, starts once every planned unit before it in [[ChangeSet.units]] has merged, been skipped, or stopped`,
+    })
+    .add({
+      situation = [`compile`, `A kept change set is resumed`],
+      behavior = `A unit it keeps in state [[UnitState.accepted]] or [[UnitState.reviewed]] counts as merged`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `At most as many units run at once, across every target, as the option jobs gives, or 4 when --jobs is not given`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A unit runs from when it starts until it is done in its copy, or stops; a unit that is done and waits to merge does not count among the units running`,
+    })
+    .add({
+      situation = [`compile`, `More units are ready to start than may run`],
+      behavior = `The earliest of them in [[Plan.units]] starts first`,
+    })
+    .add({
+      situation = [`compile`, `A unit of a change set starts`],
+      behavior = `One started progress line for it says how many units are running once it started, the word of, how many may run at once, and the word running`,
+    })
+    // A unit's copy
+    .add({
       situation = [`compile`, `A unit of a change set runs`],
-      behavior = `Its directory is the change set's copy: its outputs are read and written there, and the compiler, the verifier, and the target's commands run for it there`,
+      behavior = `Its directory is a copy of its own, elfie-compile/cache/changes/<target>/units/<name> under the root, with <target> the [[Target.identifier]] and <name> the unit's request name: its outputs are read and written there, and the compiler, the verifier, and the target's commands run for it there`,
+    })
+    .add({
+      situation = [`compile`, `A unit's copy is made`],
+      behavior = [
+        `It holds every file a new copy of the change set would hold, but the change set's own files, which it holds as the change set's start holds them`,
+        `Then, for each unit it waits for, directly or through the [[Unit.waitsFor]] of those units, that merged since the change set's start was made, in [[Plan.units]] order, each path of that unit's [[ChangeSetUnit.merged]] is written in as that unit's last merge kept it, or removed when that merge kept nothing at that path`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The copy of a unit planned during the compile, or of a unit whose merge was undone, is made`,
+      ],
+      behavior = `It holds what a new copy of the change set would hold, with the change set's own files as the change set's copy holds them when the unit starts`,
+    })
+    .add({
+      situation = [`compile`, `A unit's copy is made`],
+      behavior = `What it holds depends on no order in which units started or finished`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `The units a unit's copy holds the merges of are those whose merges were written into it, and for a copy made as the change set's copy stands, every unit merged when it was made`,
+    })
+    .add({
+      situation = [`compile`, `A unit's copy is to be made`, `A directory is at its path`],
+      behavior = `That directory is removed first`,
+    })
+    .add({
+      situation = [`compile`, `A unit has merged or stopped, or the compile stops`],
+      behavior = `The unit's copy is removed once nothing more is read from it`,
+    })
+    // Merging into the change set
+    .add({
+      situation = [
+        `compile`,
+        `A unit of a change set is done in its copy: accepted, through its unit gate, and verified, or not to be verified`,
+      ],
+      behavior = `It merges into the change set once every planned unit before it in [[ChangeSet.units]] has merged, been skipped, or stopped`,
+    })
+    .add({
+      situation = [`compile`, `A unit merges`],
+      behavior = `Each file under the target's [[Target.outputDirectory]] that its copy holds otherwise than when the copy was made, or added or removed since, is written into, or removed from, the change set's copy: its outputs and the files of its foreign edits`,
+    })
+    .add({
+      situation = [`compile`, `A unit merges`],
+      behavior = [
+        `Its map file and its review record file are written into the change set's copy as its copy holds them, and are never three-way merged`,
+        `Then the maps of the unit, and of every unit with a marker of its own in a file the merge wrote, are [[Generation.rederive]] of the workspace with the change set's copy as its root, the unit, and the maps its map file there holds, and are recorded there by [[Generation.record]]`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A unit merges`,
+        `A file it writes was changed in the change set's copy since the unit's copy was made`,
+      ],
+      behavior = `The file written is the three-way merge of the change set's file and the unit's against what the unit's copy held when it was made, as [[Process.run]] of git merge-file gives it`,
+    })
+    .add({
+      situation = [`compile`, `A unit merged, and the build and the test after it passed or did not run`],
+      behavior = [
+        `It is accepted in the change set: its state becomes [[UnitState.reviewed]] when it was reviewed, and [[UnitState.accepted]] otherwise`,
+        `Its [[ChangeSetUnit.hash]] and [[ChangeSetUnit.requirements]] become those of its source maps`,
+        `Each of [[Verdict.foreignEdits]] of its last accepted verdict is appended to [[ChangeSet.foreignEdits]], in order`,
+        `Its [[ChangeSetUnit.edits]] becomes the count of [[ChangeSet.foreignEdits]] once they are appended`,
+        `Its [[ChangeSetUnit.merged]] lists the paths it wrote or removed, and what it wrote is kept, as [[ChangeSet]] says`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit's merge wrote or removed a file under the target's [[Target.outputDirectory]]`],
+      behavior = `The target's build, then its test with stubs allowed, run in the change set's copy as the unit gate runs them, each only once the one before it succeeded`,
+    })
+    .add({
+      situation = [`compile`, `A unit's merge wrote and removed no file under the target's [[Target.outputDirectory]]`],
+      behavior = `No command runs after it`,
+    })
+    .add({
+      situation = [`compile`, `A unit merged, and the build and the test after it passed or did not run`],
+      behavior = `One merged progress line for it counts the files its merge wrote or removed, and no building line is printed for the commands after a merge`,
+    })
+    // Undoing a merge
+    .add({
+      situation = [
+        `compile`,
+        `A unit is to merge`,
+        `A region of a marker of its own, or a region it made a foreign edit in, holds other lines in the change set's copy than its own copy held when it was made`,
+      ],
+      behavior = `Nothing of it is merged, and its merge counts as undone`,
+    })
+    .add({
+      situation = [`compile`, `A unit is to merge`, `The three-way merge of a file it writes has a conflict`],
+      behavior = `Nothing of it is merged, and its merge counts as undone`,
+    })
+    .add({
+      situation = [`compile`, `The build or the test after a unit's merge fails`],
+      behavior = `The merge is undone: every file it wrote or removed holds again what it held before the merge, and nothing of it is recorded in the change set`,
+    })
+    .add({
+      situation = [`compile`, `A unit's merge is undone`],
+      behavior = [
+        `One undone progress line for it says why: the operation and the exit code of the command that failed, the region another unit changed, or the file that did not merge`,
+        `The unit runs again from its start, as a planned unit, in a new copy of its own that holds what the change set's copy holds as it stands`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit runs again because its merge was undone`],
+      behavior = `The run counts toward none of its retries, and the counts that decide whether it runs once more or stops are of the runs since its new copy was made`,
+    })
+    .add({
+      situation = [`compile`, `A unit's merge is undone, and the merge of its run before was undone too`],
+      behavior = `The unit stops without being accepted, with the reason of the undone merge as its problem`,
     })
     .add({
       situation = [`compile`, `A target's change set is made new`],
@@ -838,7 +979,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `A unit kept in it is in state [[UnitState.accepted]]`,
         `A verifier is to review`,
       ],
-      behavior = `The unit is verified, as after its unit gate passed, before the next unit runs`,
+      behavior = `The unit is verified in the change set's copy, as after its unit gate passed, before any unit of the change set starts`,
     })
     .add({
       situation = [
@@ -902,11 +1043,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile`,
-        `A unit of a change set stops without being accepted: rejected after its retries, blocked, with a question, or failed a second time`,
+        `A unit of a change set stops without being accepted: rejected after its retries, blocked, with a question, failed a second time, or with its merge undone twice in a row`,
       ],
       behavior = [
-        `Every one of the change set's own files under the target's [[Target.outputDirectory]] is put back as it was before the unit's first run in the compile, and every such file added since is removed`,
-        `What those files held before they were put back is [[Files.write]] at their paths relative to the copy under elfie-requests/<name>.rejected under the root, with <name> the unit's request name`,
+        `Nothing of its copy is merged into the change set`,
+        `Every file under the target's [[Target.outputDirectory]] that its copy holds otherwise than when the copy was made, or added since, is [[Files.write]], as its copy holds it, at its path relative to the copy under elfie-requests/<name>.rejected under the root, with <name> the unit's request name`,
       ],
     })
     .add({
@@ -914,12 +1055,15 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `Its state is [[UnitState.rejected]]`,
     })
     .add({
-      situation = [`compile`, `A unit of a change set stops blocked, with a question, or failed a second time`],
+      situation = [
+        `compile`,
+        `A unit of a change set stops blocked, with a question, failed a second time, or with its merge undone twice in a row`,
+      ],
       behavior = `Its state stays [[UnitState.planned]]`,
     })
     .add({
       situation = [`compile without --continue`, `A unit stops without being accepted`],
-      behavior = `The compile stops: no unit of any target runs after it, and no final gate, global review, or merge runs`,
+      behavior = `The compile stops: no unit of any target starts or merges after it, and no final gate, global review, or merge into the root runs`,
     })
     .add({
       situation = [`compile with --continue`, `A unit stops without being accepted`],
@@ -927,7 +1071,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile with --continue`, `A unit stops without being accepted`],
-      behavior = `Every unit that depends on no unit that stopped still runs, in [[Plan.units]] order, as any unit does`,
+      behavior = `Every unit that depends on no unit that stopped still runs and merges, as any unit does`,
     })
     .add({
       situation = [`compile`, `A unit stopped without being accepted, or was skipped`],
@@ -991,7 +1135,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `A unit's maps or review records are recorded while it is worked in a change set`],
-      behavior = `[[Generation.record]], [[Generation.rederive]], and [[Generation.recordReviews]] are given the workspace with the copy as its [[Workspace.root]], so they write in the copy and never in the root`,
+      behavior = `[[Generation.record]], [[Generation.rederive]], and [[Generation.recordReviews]] are given the workspace with the unit's copy as its [[Workspace.root]], so they write in that copy and never in the root`,
     });
 
   // The environment of the compiler and the verifier
@@ -1046,7 +1190,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `The compiler or the verifier is run, by compile or by verify`,
-        `It is no resuming run, or the run of the same one of them on the unit before it was in another directory; no resuming run is a first run, the compiler's first run after a first run that skipped it as a reworded-only, dependency-only, or touched-fix unit's may, a run for the global review, a run of a unit the global review planned, a run once more after a failed run or an exit code of -1, or the verifier's run once more after a run that ended without every verdict`,
+        `It is no resuming run, or the run of the same one of them on the unit before it was in another directory; no resuming run is a first run, the compiler's first run after a first run that skipped it as a reworded-only, dependency-only, or touched-fix unit's may, a run for the global review, a run of a unit the global review planned, a run once more after a failed run or an exit code of -1, a run after an undone merge, or the verifier's run once more after a run that ended without every verdict`,
       ],
       behavior = `ELFIE_RESUME is not in its environment, even when the environment compile or verify was started in holds it`,
     });
@@ -1094,7 +1238,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     // that acceptance recorded are not recorded again.
     .add({
       situation = `compile runs the compiler on a unit`,
-      behavior = `The unit's files before its first run are every file of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively skipping every directory named target, .git, or node_modules, as [[Files.read]] reads it there just before the first run of the compiler on the unit since it was last accepted in the compile, or in the compile when it was not`,
+      behavior = `The unit's files before its first run are every file of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively skipping every directory named target, .git, or node_modules, as [[Files.read]] reads it there just before the first run of the compiler on the unit since its copy was made`,
     })
     .add({
       situation = `The verifier is run on a unit`,
@@ -1137,7 +1281,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `[[Generation.request]] is made for a unit of a change set`],
-      behavior = `It is given, as the unit's foreign edits, the foreign edits recorded since the unit was last accepted in the change set, as [[ChangeSet]] says, in their order`,
+      behavior = `It is given, as the unit's foreign edits, the foreign edits recorded since the unit was last accepted in the change set, as [[ChangeSet]] says, whose [[ForeignEdit.by]] is a unit its copy holds the merge of, in their order`,
     })
     .add({
       situation = [`compile`, `[[Generation.request]] is made for a unit of a change set`],
@@ -1198,7 +1342,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = [
         `[[Verdict.sourceMaps]] of the unit's verdict are recorded by [[Generation.record]] in the unit's directory`,
-        `The unit is done, in state [[UnitState.accepted]]`,
+        `The unit is done in its copy, to merge in state [[UnitState.accepted]]`,
       ],
     })
     .add({
@@ -1470,7 +1614,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `No verifier runs on the unit`,
         `[[Verdict.sourceMaps]] of its verdict are recorded by [[Generation.record]] in its directory`,
         `No review record file of the unit changes`,
-        `The unit is done, in state [[UnitState.reviewed]]`,
+        `The unit is done in its copy, to merge in state [[UnitState.reviewed]]`,
       ],
     })
     .add({
@@ -1532,7 +1676,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = [
         `[[Verdict.sourceMaps]] of its verdict are recorded by [[Generation.record]] in its directory`,
-        `The unit is done, in state [[UnitState.accepted]]`,
+        `The unit is done in its copy, to merge in state [[UnitState.accepted]]`,
       ],
     })
     .add({
@@ -1693,7 +1837,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `No verifier runs on the unit`,
         `One reviewed progress line is printed, counting no reviews and the verdicts of [[ReviewRequest.carried]] as carried`,
         `The source maps [[Generation.accept]] derived for the unit are recorded by [[Generation.record]] in its directory`,
-        `The unit is done, in state [[UnitState.reviewed]]`,
+        `The unit is done in its copy, to merge in state [[UnitState.reviewed]]`,
       ],
     })
     .add({
@@ -1738,7 +1882,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = [
         `The source maps [[Generation.accept]] derived for the unit are recorded by [[Generation.record]] in its directory`,
-        `The unit is done, in state [[UnitState.reviewed]]`,
+        `The unit is done in its copy, to merge in state [[UnitState.reviewed]]`,
       ],
     })
     .add({
@@ -2206,9 +2350,6 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   // Compile data
   // Decision: a missing folder under elfie-compile is created, so a project cloned without
   // elfie-compile/cache, or without elfie-compile at all, compiles.
-  // Decision: a kept change set is the one thing in elfie-compile/cache that changes a request,
-  // since a unit worked in it starts from the outputs earlier units of it wrote; losing it costs
-  // only the time to compile them again.
   @acceptanceCriteria
     .add({
       situation = `elfie-compile/cache under the root has been deleted`,
@@ -2334,12 +2475,12 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
           `compile`,
           `--root`,
           string@like(
-            `A git root with one target rust whose build and test command lines both exit 0 and whose test line exits 0 with ALLOW_STUBS set when only stubs fail, def holding b.lfy and a.lfy using ./b, both recorded and only a criterion of a fn of b.lfy edited since, which leaves b's interface as it was, a compiler whose run on b changes a function's signature and replaces the body of a's caller with a stub line naming b, and whose run on a writes the caller again, and a verifier that finds nothing violated`,
+            `A git root with one target rust whose build and test command lines both exit 0 and whose test line exits 0 with ALLOW_STUBS set when only stubs fail, def holding b.lfy and a.lfy using ./b, both recorded and a member added to a data of b.lfy since, which changes b's interface, a compiler whose run on b changes a function's signature and replaces the body of a's caller with a stub line naming b, and whose run on a writes the caller again, and a verifier that finds nothing violated`,
           ),
         ],
       ],
       expect = number@like(
-        `0, after b accepted and a stubbed line naming a, then a compiled with reason touched and its request listing b's stub, then a finalGate line with no problem, a merging line, and both units' outputs and maps in the root`,
+        `0, after b merged and a stubbed line naming a, then a, which waited for b, compiled with reason dependency and its request listing b's stub, then a finalGate line with no problem, a merging line, and both units' outputs and maps in the root`,
       ),
     },
     {

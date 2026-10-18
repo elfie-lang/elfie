@@ -3,8 +3,8 @@
 # standard input, with the Elfie agent server and permission to edit files, to build and test
 # through the server's command tools or cargo, and to run cargo add.
 # ELFIE_ROOT, ELFIE_UNIT, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set by the caller; the
-# working directory is the copy of the root the compile works its change set in, or the root when
-# run by hand. ELFIE_UNIT is the stem of the one unit the run is for, such as workspace/data.
+# working directory is the unit's own copy of the root, made for it in the compile's change set,
+# or the root when run by hand. ELFIE_UNIT is the stem of the one unit the run is for, such as workspace/data.
 # ELFIE_MCP_CONFIG names the config of the session the compile hosts for this run; without it, as
 # when run by hand, the agent server is the one .mcp.json starts.
 set -e

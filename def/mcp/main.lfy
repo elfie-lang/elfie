@@ -293,7 +293,7 @@ fn grammar(session: Session) is tool: `The grammar of Elfie: every terminal and 
 // units were touched by the units accepted before them; a plan made again from the files could not
 // give a unit the reason touched.
 /// target: the identifier of one target; every target when left out
-fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in the order they are compiled one at a time, and why each needs generating` => ToolResult {
+fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in the order they are compiled, and why each needs generating` => ToolResult {
   @acceptanceCriteria
     .add({
       situation = `[[Session.binding]] is undefined`,
@@ -583,9 +583,6 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
     });
 }
 
-// Decision: a run may edit every later unit of its target, which for an early unit is most of the
-// program, so elfie_reach lists every unit of the reach in one line each but only the regions the
-// run has edited, and gives every region of one unit when the caller names it.
 // Decision: the cap left is measured against the outputs as they were before the run, never
 // against the last call, so it says what acceptance will count, however many edits made it.
 /// unit: the stem of one unit of the reach, as this tool lists it, to list every region of its outputs; when left out, only the regions this run has edited are listed

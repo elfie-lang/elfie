@@ -3,8 +3,9 @@
 # global review: Claude Code, given the review request on standard input, with the Elfie agent
 # server and permission to read and to build and test, through the server's command tools or cargo,
 # never to edit or write. ELFIE_ROOT, ELFIE_UNIT, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set
-# by the caller; the working directory is the copy of the root the compile works its change set
-# in, or the root for elfie verify and when run by hand. ELFIE_UNIT is the stem of the one unit the
+# by the caller; the working directory is the unit's own copy of the root in the compile's change
+# set, the change set's copy for the global review, or the root for elfie verify and when run by
+# hand. ELFIE_UNIT is the stem of the one unit the
 # run reviews, such as workspace/data, or global for the global review, which is for no one unit.
 # ELFIE_MCP_CONFIG names the config of the session the compile hosts for this run, whose
 # elfie_report takes each verdict as it is judged; without it, as when run by hand, the agent server

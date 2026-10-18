@@ -141,16 +141,16 @@ fn duration(seconds: number): `A length of time, short enough to scan in a colum
 fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Tone {
   @acceptanceCriteria
     .add({
-      situation = `[[step]] is [[Step.accepted]], [[Step.reviewed]], or [[Step.globalReviewed]]`,
+      situation = `[[step]] is [[Step.accepted]], [[Step.reviewed]], [[Step.merged]], or [[Step.globalReviewed]]`,
       behavior = `Returns [[Tone.success]]`,
     })
     .add({ situation = `[[step]] is [[Step.rejected]] or [[Step.failed]]`, behavior = `Returns [[Tone.failure]]` })
     .add({
-      situation = `[[step]] is [[Step.touched]], [[Step.stubbed]], [[Step.retrying]], [[Step.blocked]], or [[Step.clarification]]`,
+      situation = `[[step]] is [[Step.touched]], [[Step.stubbed]], [[Step.retrying]], [[Step.undone]], [[Step.blocked]], or [[Step.clarification]]`,
       behavior = `Returns [[Tone.warning]]`,
     })
     .add({
-      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.rewording]], [[Step.building]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], [[Step.globalVerifying]], [[Step.finalGate]], or [[Step.merging]]`,
+      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.relocated]], [[Step.started]], [[Step.rewording]], [[Step.building]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], [[Step.globalVerifying]], [[Step.finalGate]], or [[Step.merging]]`,
       behavior = `Returns [[Tone.active]]`,
     })
     .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns [[Tone.subject]]` });
@@ -162,6 +162,8 @@ fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Ton
     { input = [Step.compiling], expect = Tone.active },
     { input = [Step.stubbed], expect = Tone.warning },
     { input = [Step.merging], expect = Tone.active },
+    { input = [Step.merged], expect = Tone.success },
+    { input = [Step.undone], expect = Tone.warning },
   );
 }
 
@@ -175,17 +177,17 @@ fn glyphOf(step: Step): `One character that marks a progress line's step` => str
       behavior = `Returns ·`,
     })
     .add({
-      situation = `[[step]] is [[Step.building]], [[Step.compiling]], [[Step.verifying]], [[Step.globalVerifying]], [[Step.finalGate]], or [[Step.merging]]`,
+      situation = `[[step]] is [[Step.started]], [[Step.building]], [[Step.compiling]], [[Step.verifying]], [[Step.globalVerifying]], [[Step.finalGate]], or [[Step.merging]]`,
       behavior = `Returns ▸`,
     })
     .add({
-      situation = `[[step]] is [[Step.accepted]], [[Step.reviewed]], or [[Step.globalReviewed]]`,
+      situation = `[[step]] is [[Step.accepted]], [[Step.reviewed]], [[Step.merged]], or [[Step.globalReviewed]]`,
       behavior = `Returns ✓`,
     })
     .add({ situation = `[[step]] is [[Step.rejected]] or [[Step.failed]]`, behavior = `Returns ✗` })
     .add({ situation = `[[step]] is [[Step.touched]]`, behavior = `Returns ✎` })
     .add({ situation = `[[step]] is [[Step.stubbed]]`, behavior = `Returns ○` })
-    .add({ situation = `[[step]] is [[Step.retrying]]`, behavior = `Returns ↻` })
+    .add({ situation = `[[step]] is [[Step.retrying]] or [[Step.undone]]`, behavior = `Returns ↻` })
     .add({ situation = `[[step]] is [[Step.blocked]]`, behavior = `Returns ■` })
     .add({ situation = `[[step]] is [[Step.clarification]]`, behavior = `Returns ?` });
 
@@ -195,6 +197,7 @@ fn glyphOf(step: Step): `One character that marks a progress line's step` => str
     { input = [Step.compiling], expect = `▸` },
     { input = [Step.stubbed], expect = `○` },
     { input = [Step.finalGate], expect = `▸` },
+    { input = [Step.undone], expect = `↻` },
   );
 }
 
