@@ -56,5 +56,10 @@ trait targetLanguage extends target: `The role of a language: every kind of decl
   where (`[[targetLanguage.stubLine]] is undefined`) -> `No body in an output of the language is replaced by a stub`;
 
   // Quality
-  where (`A unit's outputs are written`) -> `The target's build, test, and lint commands succeed on the outputs with no warnings`;
+  // A stub left in a later unit's code may fail a test that reaches it and leave the parameters of
+  // its body unused, so a test and a lint are held to that unit's code only once no stub is left.
+  where (`A unit's outputs are written`) -> `The target's build command succeeds on the outputs`;
+  where (`A unit's outputs are written`) -> `Every test the target's test command runs passes or fails only by reaching a stub`;
+  where (`A unit's outputs are written`) -> `The target's lint command reports no warning in the unit's own code`;
+  where (`A compile ends`) -> `The target's build, test, and lint commands succeed on the outputs with no warnings`;
 }

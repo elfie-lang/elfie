@@ -32,9 +32,22 @@ ace const rust: `The Elfie compiler, as a Cargo workspace of four crates` = targ
 });
 
 // Guidance only this repository needs
+// Decision: units are compiled one at a time and the workspace must build after each, so a unit may
+// leave a stub in a later unit's code, which only that unit's own compile replaces; clippy and a
+// test that reaches a stub are held to at the end of a compile, when no stub is left.
 rust
   @acceptanceCriteria
-  .add({ behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings` })
+  .add({
+    situation = `A unit's outputs are accepted, with other units of the compile still to come`,
+    behavior = [
+      `cargo build for the whole workspace passes`,
+      `Every test cargo test runs for the whole workspace passes or fails only by reaching a stub`,
+    ],
+  })
+  .add({
+    situation = `A compile ends`,
+    behavior = `cargo build, cargo test, and cargo clippy for the whole workspace pass without warnings`,
+  })
   .add({ behavior = `cargo check --target x86_64-pc-windows-msvc for the whole workspace passes without warnings` });
 
 // Module size

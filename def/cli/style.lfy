@@ -21,7 +21,7 @@ enum Tone: `What a piece of printed text means; its value is the ANSI SGR parame
   failure: `An error, a rejection, or a violation, in red` = `31`,
   warning: `Something a person must look at that is not an error, in yellow` = `33`,
   active: `Work under way or a name to act on, in cyan` = `36`,
-  subject: `What a line is about: a file, a batch, a unit, in bold` = `1`,
+  subject: `What a line is about: a file, a unit, a target, in bold` = `1`,
   muted: `Detail read only when wanted: counters, times, prefixes, dependencies, in dim` = `2`,
 }
 
@@ -146,11 +146,11 @@ fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Ton
     })
     .add({ situation = `[[step]] is [[Step.rejected]] or [[Step.failed]]`, behavior = `Returns [[Tone.failure]]` })
     .add({
-      situation = `[[step]] is [[Step.retrying]], [[Step.blocked]], or [[Step.clarification]]`,
+      situation = `[[step]] is [[Step.touched]], [[Step.stubbed]], [[Step.retrying]], [[Step.blocked]], or [[Step.clarification]]`,
       behavior = `Returns [[Tone.warning]]`,
     })
     .add({
-      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.rewording]], [[Step.building]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], or [[Step.globalVerifying]]`,
+      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.rewording]], [[Step.building]], [[Step.compiling]], [[Step.checking]], [[Step.verifying]], [[Step.globalVerifying]], [[Step.finalGate]], or [[Step.merging]]`,
       behavior = `Returns [[Tone.active]]`,
     })
     .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns [[Tone.subject]]` });
@@ -160,6 +160,8 @@ fn toneOf(step: Step): `The tone a progress line of a step is painted in` => Ton
     { input = [Step.rejected], expect = Tone.failure },
     { input = [Step.clarification], expect = Tone.warning },
     { input = [Step.compiling], expect = Tone.active },
+    { input = [Step.stubbed], expect = Tone.warning },
+    { input = [Step.merging], expect = Tone.active },
   );
 }
 
@@ -173,7 +175,7 @@ fn glyphOf(step: Step): `One character that marks a progress line's step` => str
       behavior = `Returns ·`,
     })
     .add({
-      situation = `[[step]] is [[Step.building]], [[Step.compiling]], [[Step.verifying]], or [[Step.globalVerifying]]`,
+      situation = `[[step]] is [[Step.building]], [[Step.compiling]], [[Step.verifying]], [[Step.globalVerifying]], [[Step.finalGate]], or [[Step.merging]]`,
       behavior = `Returns ▸`,
     })
     .add({
@@ -181,6 +183,8 @@ fn glyphOf(step: Step): `One character that marks a progress line's step` => str
       behavior = `Returns ✓`,
     })
     .add({ situation = `[[step]] is [[Step.rejected]] or [[Step.failed]]`, behavior = `Returns ✗` })
+    .add({ situation = `[[step]] is [[Step.touched]]`, behavior = `Returns ✎` })
+    .add({ situation = `[[step]] is [[Step.stubbed]]`, behavior = `Returns ○` })
     .add({ situation = `[[step]] is [[Step.retrying]]`, behavior = `Returns ↻` })
     .add({ situation = `[[step]] is [[Step.blocked]]`, behavior = `Returns ■` })
     .add({ situation = `[[step]] is [[Step.clarification]]`, behavior = `Returns ?` });
@@ -189,6 +193,8 @@ fn glyphOf(step: Step): `One character that marks a progress line's step` => str
     { input = [Step.accepted], expect = `✓` },
     { input = [Step.failed], expect = `✗` },
     { input = [Step.compiling], expect = `▸` },
+    { input = [Step.stubbed], expect = `○` },
+    { input = [Step.finalGate], expect = `▸` },
   );
 }
 
@@ -224,7 +230,7 @@ fn reasonTone(reason: Reason | undefined): `The tone a unit's reason, or up to d
     .add({ situation = `[[reason]] is [[Reason.requested]]`, behavior = `Returns [[Tone.active]]` })
     .add({ situation = `[[reason]] is [[Reason.fresh]]`, behavior = `Returns [[Tone.success]]` })
     .add({
-      situation = `[[reason]] is [[Reason.changed]], [[Reason.requirements]], or [[Reason.dependency]]`,
+      situation = `[[reason]] is [[Reason.changed]], [[Reason.requirements]], [[Reason.dependency]], or [[Reason.touched]]`,
       behavior = `Returns [[Tone.warning]]`,
     })
     .add({ situation = `[[reason]] is [[Reason.violated]]`, behavior = `Returns [[Tone.failure]]` })
@@ -232,6 +238,7 @@ fn reasonTone(reason: Reason | undefined): `The tone a unit's reason, or up to d
 
   @test(
     { input = [Reason.changed], expect = Tone.warning },
+    { input = [Reason.touched], expect = Tone.warning },
     { input = [Reason.violated], expect = Tone.failure },
     { input = [undefined], expect = Tone.muted },
   );

@@ -19,7 +19,7 @@ trait target: `A layer of a target: one thing the compiler is told about buildin
   where (`A capability a layer of a target requires is provided by no layer of that target`) -> `A problem at the target's const names the target and the capability`;
 
   // Guidance
-  where (`The compiler is handed a request for a batch of units of the target`) -> `It treats each criterion of the guidance as a rule of the target`;
+  where (`The compiler is handed a request for a unit of the target`) -> `It treats each criterion of the guidance as a rule of the target`;
   where (`Two criteria of the guidance conflict for the unit at hand, or one reads two ways for it`) -> `The compiler stops on that unit and quotes the criterion`;
   where (`A choice for the unit at hand is settled by no criterion, knowledge, or test, and only a person can make it`) -> `The compiler asks one question that names the choice`;
 
