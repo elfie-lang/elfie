@@ -4,7 +4,6 @@ use "../interpret/main" as Interpreter;
 use "../lexer/data";
 use "../model/data";
 use "../workspace/data";
-use "../workspace/main" as Loader;
 use "./data";
 use "elfie/system/file" as Files;
 use "elfie/system/json" as Json;
@@ -327,12 +326,10 @@ fn plan(
   );
 }
 
-/// previous: the text of the unit's definition file when its outputs were last accepted, as written and never lowered; undefined when not known
+/// previous: the unit's source at its last accepted generation, or its hash-matched source, recovered once for the compile; undefined when not known
 /// hosted: whether the compiler reading the request runs in a compiler session of the compile-hosted agent server, which offers elfie_task, elfie_dependency, elfie_mark, elfie_reach, elfie_touch, and elfie_submit
-/// hashMatched: whether previous is the unit's hash-matched source, as [[SourceMap]] defines one, because no revision is its source at its last accepted generation
 /// foreignEdits: the foreign edits the change set records since the unit was last accepted in it, in the order they were made; edits of other units among them are left out
-// Decision: the request is handed the source as written and lowers it itself, as [[changes]] does,
-// because lowered text holds no criteria, and the criteria are what a compiler most needs compared.
+/// relocations: the relocations of this compile, in the order they were made; those of other units among them are left out
 // Decision: the caller says whether the request is for a hosted compiler session, because only the
 // caller knows; a hosted compiler pulls an interface when it needs one, so its request names the
 // interfaces instead of quoting them, while a request read anywhere else quotes them whole. A
@@ -344,15 +341,17 @@ fn request(
   plan: Plan,
   unit: Unit,
   existing: Output[],
-  previous?: string,
+  previous?: Previous,
   hosted: boolean = false,
-  hashMatched: boolean = false,
   foreignEdits: ForeignEdit[] = [],
 ): `Everything the compiler is handed to produce the outputs of one unit` => Request {
   @acceptanceCriteria
     .add({ behavior = `[[Request.unit]] is [[unit]]` })
     .add({
-      behavior = `The file as it was is the file of [[unit]] in [[Interpreter.lower]] of [[Loader.change]] of [[Program.workspace]] of [[Plan.program]] with the [[File.path]] of [[unit]] and [[previous]]`,
+      behavior = [
+        `The file as it was is the [[LoweredFile]] of the unit's file in [[Previous.program]] of [[previous]]`,
+        `Nothing is lowered or bound`,
+      ],
     })
     .add({
       situation = `[[previous]] is given`,
@@ -367,25 +366,25 @@ fn request(
       behavior = `[[Request.answered]] is the ids of the local criteria and tests of the file as it was`,
     })
     .add({
-      situation = [`[[previous]] is given`, `[[hashMatched]] is false`],
-      behavior = `[[Request.removed]] is one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now and is the [[Rewording.replaces]] of none of [[Request.reworded]], in the order the file as it was gives them`,
+      situation = [`[[previous]] is given`, `[[Previous.hashMatched]] of [[previous]] is false`],
+      behavior = `[[Request.removed]] is one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now, is the [[Rewording.replaces]] of none of [[Request.reworded]], and is the id of no local criterion or test of an entity relocated out of the unit by one of [[Request.relocated]], in the order the file as it was gives them`,
     })
     .add({
-      situation = [`[[previous]] is given`, `[[hashMatched]] is false`],
+      situation = [`[[previous]] is given`, `[[Previous.hashMatched]] of [[previous]] is false`],
       behavior = `[[Request.reworded]] is [[reworded]] of [[Program.workspace]] of [[Plan.program]], [[unit]], and [[previous]]`,
     })
     .add({
-      situation = [`[[previous]] is given`, `[[hashMatched]] is true`],
+      situation = [`[[previous]] is given`, `[[Previous.hashMatched]] of [[previous]] is true`],
       behavior = [
         `[[Request.reworded]] is an empty list`,
-        `[[Request.removed]] is one [[RemovedRequirement]] for each id of [[Request.answered]] that is none of the unit's local criterion and test ids now, in id order, each with [[RemovedRequirement.place]] and [[RemovedRequirement.text]] empty`,
+        `[[Request.removed]] is one [[RemovedRequirement]] for each id of [[Request.answered]] that is none of the unit's local criterion and test ids now and is the id of no local criterion or test of an entity relocated out of the unit by one of [[Request.relocated]], in id order, each with [[RemovedRequirement.place]] and [[RemovedRequirement.text]] empty`,
       ],
     })
     .add({
       situation = [
         `[[unit]] has the reason requirements`,
         `[[previous]] is given`,
-        `[[hashMatched]] is false`,
+        `[[Previous.hashMatched]] of [[previous]] is false`,
         `[[Request.removed]] is an empty list`,
         `[[Request.reworded]] is a list that is not empty`,
         `The id of every local criterion and test of the unit is in [[Request.answered]], or is the [[Rewording.id]] of one of [[Request.reworded]]`,
@@ -395,7 +394,7 @@ fn request(
     })
     .add({ behavior = `[[Request.rewordedOnly]] is false wherever any of those does not hold` })
     .add({
-      behavior = `A [[RemovedRequirement]] has the id of its criterion or test, its place in the file as it was, and its text, all taken from the lowering of the file as it was`,
+      behavior = `A [[RemovedRequirement]] has the id of its criterion or test, its place in the file as it was, and its text, all taken from the file as it was in [[Previous.program]] of [[previous]]`,
     })
     .add({
       behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of [[unit]] to its text`,
@@ -410,12 +409,15 @@ fn request(
   // Knowledge
   @acceptanceCriteria
     .add({
+      behavior = `A knowledge item's source path is [[Knowledge.source]] joined, as [[Path.join]] joins, to the [[Package.root]] of the [[File.package]] of the file its contributor is declared in, or to [[Workspace.root]] when that file has no [[File.package]]`,
+    })
+    .add({
       situation = [`A knowledge item has the kind reference or example`, `Its quote is true`],
-      behavior = `[[Request.instructions]] quotes the [[Files.read]] text of the source path [[Loader.load]] gives it`,
+      behavior = `[[Request.instructions]] quotes the [[Files.read]] text of its source path`,
     })
     .add({
       situation = [`A knowledge item has the kind reference or example`, `Its quote is false or left out`],
-      behavior = `[[Request.instructions]] gives the source path [[Loader.load]] gives it and says to read it before writing anything it covers`,
+      behavior = `[[Request.instructions]] gives its source path and says to read it before writing anything it covers`,
     })
     .add({
       situation = `A knowledge item has the kind definition`,
@@ -748,7 +750,7 @@ fn request(
         ),
         Unit@like(`a`),
         [Output@like(`The existing output of a`)],
-        string@like(`a.lfy as it was: f with criteria c1 then c2`),
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, not hash-matched`),
       ],
       expect = Request@like(
         `A section for a that says its criteria differ and the code must do what each now says; c1's line unmarked, c3's line marked new, and c2 listed with its text as removed; nothing reworded, and rewordedOnly false`,
@@ -761,7 +763,7 @@ fn request(
         ),
         Unit@like(`a`),
         [Output@like(`The existing output of a`)],
-        string@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4`),
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4, not hash-matched`),
       ],
       expect = Request@like(
         `A section for a with c1's line unmarked, and c4's line marked reworded and followed by a line reading replaces, the id of c2, and the text of c2; nothing removed; reworded holds c4 replacing c2; rewordedOnly true`,
@@ -801,7 +803,6 @@ fn request(
         Unit@like(`a`),
         [Output@like(`src/a.rs`)],
         undefined,
-        false,
         false,
         [
           ForeignEdit@like(
@@ -1712,13 +1713,16 @@ fn regionsOf(workspace: Workspace, sourceMaps: SourceMap[], name: string, target
   );
 }
 
-// Decision: a change is found by binding the previous text through the loader and comparing entities,
-// never by diffing lines, so a reformatted or reordered file whose entities read the same gives none.
-/// previous: the text of the unit's file when its outputs were last accepted, as written and never lowered; undefined when they never were
-fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `What differs for each entity of a unit between its file as last accepted and as it is now` => Change[] {
+// Decision: a change is found by comparing entities, never by diffing lines, so a reformatted or
+// reordered file whose entities read the same gives none.
+/// previous: the unit's source at its last accepted generation, or its hash-matched source, as recovered for the unit; undefined when neither is known
+fn changes(workspace: Workspace, unit: Unit, previous: Previous | undefined): `What differs for each entity of a unit between its file as last accepted and as it is now` => Change[] {
   @acceptanceCriteria
     .add({
-      behavior = `The file as it was is bound as [[Loader.change]] of [[workspace]] with [[File.path]] of [[Unit.file]] and [[previous]]`,
+      behavior = [
+        `The file as it was is the unit's file as [[Program.workspace]] of [[Previous.program]] of [[previous]] declares it, and the entities it declared are read from that workspace's model`,
+        `Nothing is lowered or bound`,
+      ],
     })
     .add({
       behavior = `The entities the file declared then are compared with those [[Unit.file]] declares now, both those built for [[Unit.target]], whether or not they moved to another unit`,
@@ -1836,7 +1840,7 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
           `def holds a.lfy declaring a data A defined as a thing and a fn f taking x: string and y: number`,
         ),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: A defined as a value and f taking only x: string`),
+        Previous@like(`a.lfy as it was: A defined as a value and f taking only x: string`),
       ],
       expect = [
         Change@like(`A, definition, detail quoting a value and a thing`),
@@ -1847,7 +1851,7 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       input = [
         Workspace@like(`def holds a.lfy declaring a fn f with three criteria and a data B`),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: a data A, then f with two of those criteria, and B with one more member, old`),
+        Previous@like(`a.lfy as it was: a data A, then f with two of those criteria, and B with one more member, old`),
       ],
       expect = [
         Change@like(`A removed`),
@@ -1859,7 +1863,9 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       input = [
         Workspace@like(`def holds a.lfy declaring a data A and a fn f`),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: the same declarations with f before A, indented differently, and with a comment`),
+        Previous@like(
+          `a.lfy as it was: the same declarations with f before A, indented differently, and with a comment`,
+        ),
       ],
       expect = [],
     },
@@ -1867,7 +1873,7 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       input = [
         Workspace@like(`def holds a.lfy declaring a fn f with criteria c1 then c4`),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4`),
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4`),
       ],
       expect = [Change@like(`f, criteria, detail naming c2 removed and c4 added and calling them reworded`)],
     },
@@ -1875,35 +1881,35 @@ fn changes(workspace: Workspace, unit: Unit, previous: string | undefined): `Wha
       input = [
         Workspace@like(`def holds a.lfy declaring a fn f with criteria c0, then c1, then c5`),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c5`),
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c5`),
       ],
       expect = [Change@like(`f, criteria, detail naming c2 removed and c0 and c5 added, and calling no pair reworded`)],
     },
   );
 }
 
-/// previous: the text of the unit's file when its outputs were last accepted, as written and never lowered
-fn reworded(workspace: Workspace, unit: Unit, previous: string): `The local criteria and tests of a unit whose id changed since its outputs were accepted only because their text did, each paired with the id it replaces` => Rewording[] {
+/// previous: the unit's source at its last accepted generation, as recovered for the unit
+fn reworded(workspace: Workspace, unit: Unit, previous: Previous): `The local criteria and tests of a unit whose id changed since its outputs were accepted only because their text did, each paired with the id it replaces` => Rewording[] {
   @acceptanceCriteria
     .add({
       behavior = `Returns one [[Rewording]] for each pair of a removed and an added id that a change of [[changes]] of [[workspace]], [[unit]], and [[previous]] calls reworded, in the order of those changes`,
     })
     .add({ behavior = `[[Rewording.id]] is the added id, and [[Rewording.replaces]] the removed one` })
     .add({
-      behavior = `[[Rewording.text]] is what the removed one said, taken from the lowering of the file as it was, as a [[RemovedRequirement]] takes its text`,
+      behavior = `[[Rewording.text]] is what the removed one said, taken from the unit's file in [[Previous.program]] of [[previous]], as a [[RemovedRequirement]] takes its text`,
     })
     .add({
       situation = `The added id of a pair is not the id of a local criterion or test of [[unit]]`,
       behavior = `The pair gives no [[Rewording]]`,
     })
-    .add({ behavior = `Nothing is written` });
+    .add({ behavior = [`Nothing is written`, `Nothing is lowered or bound`] });
 
   @test(
     {
       input = [
         Workspace@like(`def holds a.lfy declaring a fn f with criteria c1 then c4, and a data B with tests t1 then t2`),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: f with criteria c1 then c2, and B with tests t3 then t2`),
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, and B with tests t3 then t2`),
       ],
       expect = [
         Rewording@like(`c4, replacing c2, with the text of c2`),
@@ -1914,7 +1920,7 @@ fn reworded(workspace: Workspace, unit: Unit, previous: string): `The local crit
       input = [
         Workspace@like(`def holds a.lfy declaring a fn f with criteria c3 then c1`),
         Unit@like(`The unit of a.lfy`),
-        string@like(`a.lfy as it was: f with criteria c1 then c2`),
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2`),
       ],
       expect = [],
     },

@@ -1015,7 +1015,8 @@ only when the whole compile is done.
   planned at its place with the reason it had there, even when the root's maps would not plan it.
   Without this, a compile of units requested by name could never resume: naming them again runs
   them again, and not naming them leaves them out of the plan, which differs from the kept order.
-  Found in the first compile with the new binary, which ran mcp/main twice for nothing.
+  Found in the first compile with the new binary, which ran mcp/main twice for nothing. Confirmed
+  by the user on 2026-10-18.
 - **A unit that stops without being accepted** has its outputs put back as they were before its
   first run in the compile, and what it wrote is saved under `elfie-requests/<name>.rejected`. The
   copy then still builds for the units after it, and a resumed change set never starts a unit from
@@ -1039,6 +1040,7 @@ only when the whole compile is done.
 - **Stub lines, not the marker.** The roadmap's gate looked for any line holding the stub marker.
   The first compile with the new binary failed there on the compiler's own tests and fixtures,
   which quote the marker inside strings; a stub line is a whole line, so a quoted one never matches.
+  Confirmed by the user on 2026-10-18.
 - **The global review** then runs once, in a copy, because what it judges is what the root is about
   to take; with several targets, in the last target's copy with the others' changes written in.
   Units it plans run again in the same compile, then the final gates, then the review once more.

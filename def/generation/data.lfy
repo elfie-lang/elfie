@@ -146,10 +146,10 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
       behavior = `Comparing a revision's local criterion and test ids, sorted, with [[SourceMap.answered]] gives the same answer as comparing their hash with [[SourceMap.requirements]]`,
     })
     .add({
-      behavior = `The source of a unit at its last accepted generation is the most recent revision of its file that its outputs were accepted from`,
+      behavior = `The source of a unit at its last accepted generation is its file as loaded when that is one its outputs were accepted from, and otherwise the most recent revision of its file that its outputs were accepted from`,
     })
     .add({
-      situation = `No revision of a unit's file is one its outputs were accepted from`,
+      situation = `Neither a unit's file as loaded nor any revision of it is one its outputs were accepted from`,
       behavior = `The source of the unit at its last accepted generation is not recoverable`,
     })
     // Decision: an old revision is lowered against the workspace as it is now, so a unit whose
@@ -283,6 +283,33 @@ d Rewording: `A local criterion or test whose id changed since a unit's outputs 
   $text: `What it said then, as [[RemovedRequirement.text]] spells what a removed one said` = string;
 }
 
+d Previous: `The source of a unit at its last accepted generation, or its hash-matched source, recovered once and lowered once` {
+  $text: `The unit's file as it was, as written and never lowered` = string;
+  $program: `The program lowered with the unit's file read as [[Previous.text]] and every other file as it is` = Program;
+  $hashMatched: `Whether it is only the unit's hash-matched source, as [[SourceMap]] defines one, because neither the unit's file as loaded nor any revision of it is its source at its last accepted generation` = boolean;
+}
+
+d Relocation: `The code of one entity moved from the outputs of the unit of the file that declared it to the unit of the file that declares it now, by rewriting the markers that name it` {
+  $target: `The [[Target.identifier]] of the target whose outputs hold the markers` = string;
+  $entity: `The name the markers spell: the identifier, or the owner's identifier, a dot, and a member's name` = string;
+  $origin: `The file the markers named, relative to [[Workspace.root]]; it no longer declares the entity` = string;
+  $into: `The file the markers name now, relative to [[Workspace.root]]: the one project file that declares the entity` = string;
+  $markers: `How many markers were rewritten` = number;
+}
+
+d UnitReviews: `The review records one unit's review record file is to hold` {
+  $target: `The [[Target.identifier]] of the unit's target` = string;
+  $stem: `The [[Unit.stem]] of the unit` = string;
+  $records: `Its records, sorted by [[ReviewRecord.id]]` = ReviewRecord[];
+}
+
+d Relocated: `What relocating the code of entities that moved to another file gives, for the caller to write` {
+  $relocations: `One per entity, file it left, and target, in [[Workspace.targets]] order, then in [[Workspace.files]] order of [[Relocation.into]], then in the order its first marker appears in the outputs, taken in path order` = Relocation[];
+  $outputs: `Each output file holding a rewritten marker, with its text once its markers are rewritten, in path order` = Output[];
+  $sourceMaps: `Every source map read, with the maps of each unit a relocation moved code out of or into replaced by its maps as they read once [[Relocated.outputs]] are written` = SourceMap[];
+  $reviews: `The review records of each unit a relocation moved review records out of or into, as they are to be recorded, in [[Plan.units]] order` = UnitReviews[];
+}
+
 d Request: `Everything the compiler is handed to produce the outputs of one unit` {
   $unit: `The unit` = Unit;
   $instructions: `The prompt: what to produce, where, the rules for producing it, and how to report the outcome` = string;
@@ -300,6 +327,7 @@ d Request: `Everything the compiler is handed to produce the outputs of one unit
   // last accepted run wrote.
   $foreignEdits: `Every edit another unit's run made inside the unit's regions since the unit was last accepted, in the order they were made; each has the unit as [[ForeignEdit.owner]]` = ForeignEdit[];
   $reach: `The later units whose outputs the run may edit, and the fix cap` = Reach;
+  $relocated: `Every relocation of this compile whose [[Relocation.into]] or [[Relocation.origin]] is the unit's file, for the unit's target, in the order they were made` = Relocation[];
   $interfaces: `One [[Interface]] per dependency of the unit, in dependency order, each once` = Interface[];
   $guidance: `The criteria of [[Target.declaration]], in the guidance order [[Targets.Target]] gives, with template values rendered from the layers' arguments` = Criterion[];
   $nativeDependencies: `What the generated code may require from the target's ecosystem: [[Target.nativeDependencies]]` = NativeDependency[];

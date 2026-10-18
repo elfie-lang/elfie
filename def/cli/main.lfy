@@ -1,6 +1,7 @@
 use "../format/main" as Formatter;
 use "../generation/data";
 use "../generation/main" as Generation;
+use "../generation/previous" as Recovery;
 use "../interpret/data";
 use "../lexer/main" as Lexer;
 use "../lsp/main" as Lsp;
@@ -1145,38 +1146,23 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     .add({
       situation = [
         `compile`,
-        `The root is a git repository`,
-        `The source of a unit at its last accepted generation is recoverable from it through [[Process.run]] of git`,
-      ],
-      behavior = `The previous text [[Generation.request]] is given for that unit is that source as git holds it, never lowered`,
-    })
-    .add({
-      situation = [`compile`, `The root is a git repository`],
-      behavior = `The source of a unit at its last accepted generation is the most recent revision of its file, as git holds it, that its outputs were accepted from as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
-    })
-    .add({
-      situation = [
-        `compile`,
-        `The root is a git repository`,
-        `A revision of a unit's file lowers to [[SourceMap.hash]] of its outputs but its local criterion and test ids do not hash to [[SourceMap.requirements]] of its outputs, as one that only reworded a criterion does`,
-      ],
-      behavior = `That revision is not the source of the unit at its last accepted generation`,
-    })
-    .add({
-      situation = [
-        `compile`,
-        `The root is a git repository`,
-        `The source of a unit at its last accepted generation is not recoverable`,
-        `Git holds the unit's hash-matched source, as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
+        `A planned unit has [[Unit.outputs]], not every one of which the compile's relocation made for a unit with no map of its own`,
       ],
       behavior = [
-        `The previous text [[Generation.request]] is given for that unit is the hash-matched source as git holds it, never lowered`,
-        `[[Generation.request]] is told that the previous text is the unit's hash-matched source`,
+        `The unit's previous source is [[Recovery.previousOf]] of the program the plan was made from, the unit, and its [[Unit.outputs]], called once for the unit in the compile, before anything else is done for it`,
+        `The rewording of its markers, every [[Generation.request]] made for it, [[Generation.reworded]], and the checks of the steps without the compiler and of a kept unit are given that same previous source, however many times the unit runs in the compile`,
       ],
     })
     .add({
-      situation = [`compile`, `[[Generation.request]] is given a unit's previous text`],
-      behavior = `It is told that text is the hash-matched source exactly when it is the unit's hash-matched source and not its source at its last accepted generation`,
+      situation = [
+        `compile`,
+        `A planned unit has no [[Unit.outputs]], or every map of its [[Unit.outputs]] was made by the compile's relocation for a unit with no map of its own`,
+      ],
+      behavior = `It has no previous source, and [[Recovery.previousOf]] is not called for it`,
+    })
+    .add({
+      situation = [`compile`, `[[Generation.request]] is made for a unit`],
+      behavior = `It is given the unit's previous source as previous, and [[Relocated.relocations]] of the compile's relocation as relocations`,
     })
     .add({
       situation = `[[Process.stream]] of the compiler for a unit returns its [[Process.Exit]]`,
@@ -1380,16 +1366,16 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = [
         `compile without --dry-run and without --accept`,
         `elfie.json names a compiler`,
-        `The source of a unit at its last accepted generation is recoverable through git`,
+        `The unit's previous source is defined, and [[Previous.hashMatched]] of it is false`,
       ],
-      behavior = `Before each call of [[Generation.request]] for the unit, each output that [[Generation.rename]] gives is [[Files.write]] at its path in the unit's directory, given the unit, the files of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, and the [[Rewording.replaces]] of each of [[Generation.reworded]] of the workspace, the unit, and that source, mapped to its [[Rewording.id]]`,
+      behavior = `Before each call of [[Generation.request]] for the unit, each output that [[Generation.rename]] gives is [[Files.write]] at its path in the unit's directory, given the unit, the files of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, and the [[Rewording.replaces]] of each of [[Generation.reworded]] of the workspace, the unit, and its previous source, mapped to its [[Rewording.id]]`,
     })
     .add({
       situation = [
         `compile with --accept`,
-        `The source of a planned unit at its last accepted generation is recoverable through git`,
+        `The previous source of a planned unit is defined, and [[Previous.hashMatched]] of it is false`,
       ],
-      behavior = `Before its outputs are checked, each output that [[Generation.rename]] gives is [[Files.write]] at its path in the root, given the unit, its outputs as they are checked, and the [[Rewording.replaces]] of each of [[Generation.reworded]] of the workspace, the unit, and that source, mapped to its [[Rewording.id]]`,
+      behavior = `Before its outputs are checked, each output that [[Generation.rename]] gives is [[Files.write]] at its path in the root, given the unit, its outputs as they are checked, and the [[Rewording.replaces]] of each of [[Generation.reworded]] of the workspace, the unit, and its previous source, mapped to its [[Rewording.id]]`,
     })
     .add({
       situation = [`compile`, `An output of a unit is written for its reworded criteria and tests`],
@@ -1404,7 +1390,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
         `[[Request.rewordedOnly]] of the request made for the unit's first run is true`,
         `[[Request.foreignEdits]] of that request is empty`,
         `Every output of the unit, read in its directory before any of its markers is rewritten, has its own region text hash to [[SourceMap.text]] of its map`,
-        `The previous text of the unit is its source at its last accepted generation, not only its hash-matched source`,
+        `The unit's previous source is defined, and [[Previous.hashMatched]] of it is false`,
       ],
       behavior = [
         `The compiler does not run for the unit's first run`,

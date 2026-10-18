@@ -1,5 +1,6 @@
 use "../generation/data";
 use "../generation/main" as Generation;
+use "../generation/previous" as Recovery;
 use "../grammar/main" as Grammar;
 use "../interpret/data";
 use "../model/data";
@@ -11,7 +12,6 @@ use "./data";
 use "./traits";
 use "elfie/system/file" as Files;
 use "elfie/system/path";
-use "elfie/system/process" as Process;
 
 // Decision: the agent server writes one thing only: the marker lines elfie_mark writes in the
 // regions of a compiler session's own unit, in its target's output files under its run's
@@ -1136,33 +1136,15 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
       behavior = `One line per [[Change]] of [[Generation.changes]] of the unit with that stem, reading [[Change.entity]], [[Change.kind]], and [[Change.detail]]`,
     })
     .add({
-      situation = [
-        `The root is a git repository`,
-        `The source of the unit at its last accepted generation is recoverable from it`,
-      ],
-      behavior = `The previous text passed to [[Generation.changes]] is that source as git holds it, recovered through [[Process.run]] of git and never lowered`,
+      behavior = `The previous source passed to [[Generation.changes]] is [[Recovery.previousOf]] of the program the plan was made from, the unit, and its [[Unit.outputs]]`,
     })
     .add({
-      situation = `The root is a git repository`,
-      behavior = `The source of the unit at its last accepted generation is the most recent revision of its file, as git holds it, that its outputs were accepted from as [[SourceMap]] defines one, its text lowered as [[Generation.changes]] binds a previous text`,
-    })
-    .add({
-      situation = [
-        `The root is a git repository`,
-        `The source of the unit at its last accepted generation is not recoverable`,
-        `Git holds the unit's hash-matched source, as [[SourceMap]] defines one`,
-      ],
-      behavior = [
-        `The previous text passed to [[Generation.changes]] is the hash-matched source as git holds it, never lowered`,
-        `The text first says the source the outputs were accepted from is not known, that the changes are against the latest revision with the same lowered code, and that their criterion and test changes may not be those since acceptance`,
-      ],
+      situation = `[[Previous.hashMatched]] of that previous source is true`,
+      behavior = `The text first says the source the outputs were accepted from is not known, that the changes are against the latest revision with the same lowered code, and that their criterion and test changes may not be those since acceptance`,
     })
     .add({ situation = `[[Unit.outputs]] of the unit is empty`, behavior = `The text says no previous output` })
     .add({
-      situation = [
-        `The unit has outputs`,
-        `Neither its source at its last accepted generation nor its hash-matched source can be recovered`,
-      ],
+      situation = [`The unit has outputs`, `[[Recovery.previousOf]] of the unit gives undefined`],
       behavior = `The text says so first, then lists every entity as added, as [[Generation.changes]] gives them with undefined`,
     })
     .add({

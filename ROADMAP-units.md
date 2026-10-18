@@ -151,7 +151,8 @@ named by the unit that made them.
     - With `--continue`, units that are not above it still run, to surface their problems, but they
       merge only with the rest.
 22. **Final gate**, before the root takes the change set:
-    1. No output line holds the stub marker.
+    1. No output line is a stub line, read as accept reads one: a whole line, so a test that quotes
+       the marker inside a string never matches.
     2. Build, test without `ALLOW_STUBS`, lint, and format check pass for the whole workspace.
     3. Every planned unit is accepted and reviewed, none violated.
     4. The global review passes.
@@ -184,11 +185,8 @@ named by the unit that made them.
 
 ## Phase 6: parallel units
 
-31. **Two units may run at once, in separate copies,** when no unit depends on both. Then neither
-    can touch what the other may touch.
-    - They are merged into the change set in plan order, so the result does not depend on which
-      finishes first.
-    - `--jobs` comes back with this meaning.
+Superseded by Phase 9: "no unit depends on both" allows no parallel pair in this repository,
+because `cli/main` depends on every other unit.
 
 ## Phase 7: records and cleanup
 
@@ -198,6 +196,146 @@ named by the unit that made them.
     - Update the README's description of a compile.
 33. **Remove dead parts:** the parallel-copy rules for batches, kept work per batch, and the batch
     identifiers in progress and in requests.
+
+## Rules for Phases 8 to 11 (2026-10-18)
+
+- **Express every change as acceptance criteria, tests, members, parameters, or other code-level
+  data.** Add no `// Decision:` comment to any `.lfy` file, and add nothing to `def/DECISIONS.md`.
+  Delete a `// Decision:` comment that a change makes false; move an existing one along with the
+  entity it sits on. Rationale goes in commit messages.
+- **Stage 1 is Phases 8 to 10,** compiled by today's binary. **Stage 2 is Phase 11,** compiled by
+  Stage 1's binary, because the split needs Phase 10's relocation already built.
+
+## Phase 8: request time
+
+Measured 2026-10-18: a request took 3–6.5 minutes because the accepted source was searched for by
+lowering the whole program once per git revision of the unit's file (about 3.9 s each), twice per
+request, and found nowhere when it was never committed.
+
+34. **One recovery of the previous source, shared.** `d Previous` in `generation/data`:
+    - `text`: the file as it was;
+    - `program`: the program lowered with the unit's file read as that text;
+    - `hashMatched`: whether it is only the hash-matched source.
+
+    `fn previousOf(program: Program, unit: Unit, sourceMaps: SourceMap[]) => Previous | undefined`
+    goes in a new `def/generation/previous.lfy`, which uses the loader, the interpreter, and git.
+    The recovery criteria now duplicated in `cli/main` (about lines 1145–1180) and in `mcp/main`'s
+    `changes` tool (about lines 1140–1160) move into it, and those two places call it.
+35. **The working tree first.** When the unit's file as loaded lowers to `SourceMap.hash` of the
+    unit's outputs and its local ids hash to `SourceMap.requirements`, it is the source at the last
+    accepted generation. `Previous.program` is then the `program` given, and git is not run.
+    - Otherwise each git revision is lowered at most once, newest first, as today.
+36. **Recovered once per unit per compile.** The compile calls `previousOf` once for a unit and
+    hands the same `Previous` to the rewording, to `request`, to `reworded`, and to the checks of a
+    kept unit.
+37. **The previous file lowered once.** `request`, `changes`, and `reworded` take a `Previous`
+    instead of previous text and read the file as it was from `Previous.program`. They lower and
+    bind nothing. `request` loses its `hashMatched` parameter, which `Previous.hashMatched` replaces.
+38. **No loader in `generation/main`.**
+    - Its only uses were `Loader.change`, which item 37 removes, and two knowledge criteria that
+      name "the source path `Loader.load` gives". Restate those from data: the `Package.root` of the
+      package of the file its contributor is declared in, or `Workspace.root` for the project's own
+      files, joined with `Knowledge.source`.
+    - Remove `use "../workspace/main"` from `generation/main`.
+39. **`change` reuses what is already parsed** (`def/workspace/main.lfy`).
+    - Every file other than `path` keeps the `File.tree` it has in the workspace given, and only
+      `path` is read from disk.
+    - The criterion "the result is what `load` of the same root gives" holds when every other file
+      holds what it held when that workspace was loaded.
+
+## Phase 9: start a unit as soon as what it waits for is merged
+
+40. **`Unit.waitsFor`** (`generation/data`, set by `plan`) lists the stems of the planned units it
+    starts after, in `Plan.units` order. A planned unit is listed when it is one of the unit's
+    `Unit.dependencies` and either:
+    - it has no recorded outputs; or
+    - the SHA-256 of its `interfaceOf` now differs from what the unit's outputs record in
+      `SourceMap.dependencies`.
+
+    This is decided from definitions alone, before anything runs.
+41. **Reach is only the units that depend on it.** `Reach.units` is every unit of the same target
+    with outputs that depends on the unit, directly or through other units. Delete the
+    Decision comment above `d Reach` that says otherwise.
+    - A unit whose `interfaceOf` hash is what every one of its dependents' outputs record makes no
+      foreign edit; `accept` rejects one.
+42. **Scheduling** (`def/cli/main.lfy`): replace "Units run one at a time" and "A unit starts only
+    once every planned unit before it is done".
+    - **When a unit starts:** once every unit in its `waitsFor` is merged, skipped, or stopped. At
+      most `--jobs` units run at once (default 4, at least 1), and among the units ready to start,
+      the earliest in `Plan.units` starts first.
+    - **Its copy:** a copy of the change set's base with the merged outputs, maps, and review
+      records of every unit it waits for, directly or through those, written in. Nothing else is
+      in it, so the copy does not depend on timing.
+    - **Merging:** a unit that finishes merges into the change set once every planned unit before it
+      in `Plan.units` has merged, been skipped, or stopped. It writes its own outputs, maps, review
+      records, and foreign edits.
+    - **After each merge,** the change set runs the target's build, and its test with stubs
+      allowed. If either fails, or if a region the unit wrote was changed by a unit merged after its
+      copy was made, the merge is undone and the unit runs again in a new copy of the change set as
+      it stands. That run does not count toward its retries; a second such run in a row stops it.
+    - **Kept as they are:** the final gate, all-at-once merge into the root, `--continue`, and
+      resuming.
+    - Reword the progress line rules (`Step`, `Progress`) that assume one unit at a time.
+    - `--jobs` comes back with this meaning.
+
+## Phase 10: relocating code when an entity moves to another file
+
+43. **Before planning, in `compile` and `verify`,** a step that needs no compiler relocates code.
+    For each marker in a target's outputs whose `Marker.file` is a project file that no longer
+    declares the marker's entity (or that member's owner):
+    - The marker is rewritten to name the other file when exactly one other project file declares
+      an entity of that name, of the same kind, built for the same target. Ids are unchanged; they
+      hold no path.
+    - The source maps of both units are re-derived with `rederive`.
+    - The review records of the relocated entities' ids move from the old unit's record file to the
+      new unit's, so their verdicts carry.
+    - With no file, or more than one, declaring it, nothing is rewritten and the unit stays as
+      today.
+
+    Put the function in generation (next to `rederive` and `rename`) and call it from `cli/main`.
+44. **The request says so.** The new unit's request lists the entities that were relocated into it
+    and the file each came from, and says their code is kept as it is (`Request.relocated` in
+    `generation/data`, rendered like "entities moved into"). The old unit's request lists them as
+    moved out.
+
+## Phase 11: split the largest units
+
+Compiled by Stage 1's binary, so Phase 10 moves the code instead of regenerating it.
+
+45. **`def/generation/main.lfy`** keeps `interfaceOf` and `plan`. The other functions move, using
+    the grouping already drafted in `~/elfie/def/generation`:
+    - `maps.lfy`: `sourceMapsOf`, `record`, `regionsOf`.
+    - `request.lfy`: `request`.
+    - `changes.lfy`: `changes`, `reworded`.
+    - `accept.lfy`: `accept`, `rederive`, `rename`, and the relocation step.
+    - `outcome.lfy`: `outcomeOf`.
+    - `review.lfy`: `review`, `globalReview`, `reviewsOf`, `recordReviews`.
+    - `findings.lfy`: `reviewOf`.
+    - `previous.lfy`: from Phase 8.
+
+    Unlike `~/elfie`, **record types stay in `generation/data`.** Moving them next to their
+    functions would make `cli/data`, `mcp/data`, and `cli/style`, which use them, depend on
+    behaviour units and climb the chain. Each `ace const` moves with the function that reads it.
+    Every `[[...]]` reference in other files is updated to the entity's new module, and every
+    `use` is narrowed to what the file reads.
+46. **`def/mcp/main.lfy`** keeps `serve` and `host`. Its tools move by family:
+    - `mcp/read.lfy`: the tools that read the program and outputs, which need query and the maps;
+    - `mcp/compiling.lfy`: the tools that carry `compilerTool`, plus `report` and `reportMany`;
+    - `mcp/commands.lfy`: the tools that carry `commandTool`.
+
+    Rewrite criteria that say "every fn of this file that carries [[tool]]" to name the tool files,
+    or the trait's applications, so the tool set is unchanged.
+47. **`def/cli/main.lfy`:** split `main` by command into functions in separate files, and have
+    `main` dispatch to them. Keep each command's criteria and tests with its function, and keep
+    `parse` and dispatch in `cli/main`.
+    - `cli/inspect.lfy`: `check`, `format`, `tree`, `tokens`, which need only the loader,
+      formatter, lexer, parser, and query;
+    - `cli/compile.lfy`: `compile` and `verify`, which need generation and the agent server's host;
+    - `cli/main.lfy`: `help`, `version`, `init`, `lsp`, `mcp`, and everything shared, such as
+      color, progress, environment, and agent sessions, unless it belongs to one command only.
+48. **Confirm the depth.** Afterwards `elfie compile --dry-run` and the dependency levels show the
+    split. `generation/main` no longer depends on `workspace/main`, and no new unit sits above
+    `cli/main`.
 
 ## Compiling the shift
 
@@ -232,3 +370,6 @@ Against the 2026-10-17 compile:
   whose definitions changed, and every unit after it, runs again.
 - **Commits:** one local commit on `agentic-main` after each phase passes its checks. Nothing is
   pushed.
+- **Confirmed 2026-10-18,** from the first compiles with the new binary: the final gate looks for
+  stub lines the way accept reads them, not for any line holding the marker; and a unit a kept
+  change set accepted stays planned, so a compile of units requested by name can resume.

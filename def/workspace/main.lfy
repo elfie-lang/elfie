@@ -512,7 +512,14 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
       behavior = `The file at [[path]] leaves the program`,
     })
     .add({
+      situation = `Every file other than the one at [[path]] holds what it held when [[workspace]] was loaded`,
       behavior = `The result is what [[load]] of the same root gives when every file replaced this way holds what it was replaced with`,
+    })
+    .add({
+      behavior = [
+        `Every file of the result other than the one at [[path]] has the [[Source.tree]] it has in [[workspace]]`,
+        `No file [[workspace]] holds is read from disk again, but the one at [[path]] when [[text]] is undefined`,
+      ],
     })
     .add({ behavior = `A replacement stands until the same [[path]] is given again` })
     // Decision: the re-bind set is every file a change can reach, and only those files can come out
@@ -567,6 +574,18 @@ fn change(workspace: Workspace, path: string, text: string | undefined): `A work
         string@like(`A file declaring one trait`),
       ],
       expect = Workspace@like(`The same files, symbols, and problems as the workspace given`),
+    },
+    {
+      input = [
+        Workspace@like(
+          `A project whose def holds main.lfy and other.lfy, loaded before other.lfy was edited on disk to declare one more data`,
+        ),
+        `def/main.lfy`,
+        string@like(`main.lfy with a comment added`),
+      ],
+      expect = Workspace@like(
+        `other.lfy with the tree and symbols it was loaded with, without the data added on disk since`,
+      ),
     },
   );
 }

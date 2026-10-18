@@ -1,0 +1,126 @@
+use "../interpret/data";
+use "../interpret/main" as Interpreter;
+use "../workspace/data";
+use "../workspace/main" as Loader;
+use "./data";
+use "elfie/system/file" as Files;
+use "elfie/system/process" as Process;
+
+/// program: the program the unit was planned from, as [[Plan.program]] holds it
+/// sourceMaps: the source maps recorded for the unit, such as its [[Unit.outputs]]
+fn previousOf(program: Program, unit: Unit, sourceMaps: SourceMap[]): `The source of a unit at its last accepted generation, or else its hash-matched source, with the program lowered from it` => Previous | undefined {
+  // Comparing
+  @acceptanceCriteria
+    .add({ situation = `[[sourceMaps]] is empty`, behavior = [`Returns undefined`, `Git is not run`] })
+    .add({
+      behavior = `A text is compared with [[SourceMap.hash]] and [[SourceMap.requirements]] of the first of [[sourceMaps]]`,
+    })
+    .add({
+      behavior = `The lowered text of the unit's file as [[program]] holds it is [[Unit.text]] of [[unit]]`,
+    })
+    .add({
+      behavior = `The lowered text of a revision is [[LoweredFile.text]] of the unit's file in the program the revision is lowered in, without the code of the entities [[unit]] moved out and with that of the entities it moved in, as [[Unit.text]] is made`,
+    })
+    .add({
+      behavior = `A text's ids are the local criterion and test ids of the unit's file in the program it is lowered in, taken as [[SourceMap.requirements]] takes them`,
+    })
+    .add({
+      behavior = `A text is the source at the last accepted generation when its lowered text hashes to [[SourceMap.hash]] and its ids hash to [[SourceMap.requirements]], as [[SourceMap]] defines one`,
+    });
+
+  // The working tree first
+  @acceptanceCriteria
+    .add({
+      situation = `The unit's file as [[program]] holds it is the source at the last accepted generation`,
+      behavior = [
+        `Returns a [[Previous]] whose [[Previous.text]] is [[Files.read]] of the unit's [[File.path]] under [[Workspace.root]] of [[Program.workspace]] of [[program]]`,
+        `[[Previous.program]] is [[program]]`,
+        `[[Previous.hashMatched]] is false`,
+        `Git is not run and nothing is lowered`,
+      ],
+    });
+
+  // Git
+  @acceptanceCriteria
+    .add({
+      behavior = `The revisions of the unit's file are those [[Process.run]] of git log --format=%H -- and the unit's [[File.path]] lists, run in [[Workspace.root]], newest first, and a revision's text is what git show of the revision, a colon, and that path prints`,
+    })
+    .add({
+      behavior = `A revision's text is lowered as [[Interpreter.lower]] of [[Loader.change]] of [[Program.workspace]] of [[program]] with the unit's [[File.path]] and that text`,
+    })
+    .add({ behavior = `Each revision is lowered at most once, newest first` })
+    .add({
+      situation = [
+        `The unit's file as [[program]] holds it is not the source at the last accepted generation`,
+        `A revision's text is the source at the last accepted generation`,
+      ],
+      behavior = [
+        `Returns a [[Previous]] for the newest such revision: its text, the program its text was lowered in, and [[Previous.hashMatched]] false`,
+        `No revision older than it is lowered`,
+      ],
+    })
+    .add({
+      situation = [
+        `Neither the unit's file as [[program]] holds it nor any revision is the source at the last accepted generation`,
+        `The lowered text of a revision hashes to [[SourceMap.hash]]`,
+      ],
+      behavior = `Returns a [[Previous]] for the newest such revision: its text, the program its text was lowered in, and [[Previous.hashMatched]] true, since it is the unit's hash-matched source`,
+    })
+    .add({
+      situation = [
+        `The unit's file as [[program]] holds it is not the source at the last accepted generation`,
+        `No revision is the source at the last accepted generation, and none lowers to [[SourceMap.hash]]`,
+      ],
+      behavior = `Returns undefined`,
+    })
+    .add({
+      situation = `The root is not a git repository, or git log fails`,
+      behavior = `No revision is compared`,
+    })
+    .add({ situation = `git show fails for a revision`, behavior = `That revision is skipped` })
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `No compiler, verifier, or command of the target is run` });
+
+  @test(
+    {
+      input = [
+        Program@like(
+          `A program whose def/a.lfy lowers to the hash its one map records and whose ids hash to what it records`,
+        ),
+        Unit@like(`The unit of def/a.lfy`),
+        [SourceMap@like(`That map`)],
+      ],
+      expect = Previous@like(`The text of def/a.lfy on disk, the program given, not hash-matched, and git not run`),
+    },
+    {
+      input = [
+        Program@like(
+          `A git root's program whose def/a.lfy was edited since its outputs were accepted from the newest revision of it, which is the source at the last accepted generation`,
+        ),
+        Unit@like(`The unit of def/a.lfy`),
+        [SourceMap@like(`The map recorded when that revision was accepted`)],
+      ],
+      expect = Previous@like(
+        `The text of the newest revision, the program lowered from it, not hash-matched, and no older revision lowered`,
+      ),
+    },
+    {
+      input = [
+        Program@like(
+          `A git root's program whose def/a.lfy only had a criterion reworded since its outputs were accepted, the source they were accepted from never committed`,
+        ),
+        Unit@like(`The unit of def/a.lfy`),
+        [SourceMap@like(`The map recorded at that acceptance`)],
+      ],
+      expect = Previous@like(`The newest revision whose lowered text hashes to the map's, hash-matched`),
+    },
+    {
+      input = [
+        Program@like(`A program whose def/a.lfy was edited, in a root that is not a git repository`),
+        Unit@like(`The unit of def/a.lfy`),
+        [SourceMap@like(`The map recorded before the edit`)],
+      ],
+      expect = undefined,
+    },
+  );
+}
