@@ -13,6 +13,7 @@ enum Reason: `Why a unit needs generating` {
   dependency = `the interface of a unit it depends on differs from the one its output was generated against`,
   violated = `a global criterion or test its output answers for was reviewed as violated`,
   requested = `the caller asked for it regardless`,
+  touched = `another unit edited its outputs during this compile`,
 }
 
 d Marker: `One place where generated code says where it came from` {
@@ -207,24 +208,56 @@ d Move: `Entities of one file compiled in another file's unit, because the files
   $cause: `The member, parameter, or output of an entity of [[Move.into]] whose type reaches the first of [[Move.entities]], spelled as the owner's identifier, a dot, and the member's or parameter's name, or the owner's identifier alone for an output` = string;
 }
 
-ace const batchUnits: `The most units one batch holds` = 6;
-ace const batchCharacters: `What the sources of a batch of more than one unit stay under, in characters` = 60000;
+enum ForeignEditKind: `What a foreign edit did to the region it is in` {
+  stub = `it only removed lines of the region and added the target's stub line, naming the unit that made it, in their place`,
+  fix = `anything else, within the fix cap of [[Reach]]`,
+}
 
-// Decision: units are batched so shared context is sent once.
-d Batch: `Planned units compiled together in one request` {
-  $units: `In plan order; every dependency of a unit is in this batch or an earlier one` = Unit[];
-  $identifier: `The batch's name in requests and progress` = string;
+// Decision: a foreign edit names its units by [[Unit.stem]], not by [[Unit]], because it is kept on
+// disk in a change set and read back by a later compile, and a stem names one unit within its
+// target.
+d ForeignEdit: `One edit an accepted run for one unit made inside one region of another unit's output` {
+  $by: `The [[Unit.stem]] of the unit whose run made it` = string;
+  $owner: `The [[Unit.stem]] of the unit whose region it is in; always one of [[Reach.units]] of [[ForeignEdit.by]]` = string;
+  $path: `The output file it is in, relative to [[Workspace.root]]` = string;
+  $kind: `Whether it is a stub or a fix` = ForeignEditKind;
+  $region: `The marker that begins the region, as the owner's outputs held it before the edit; the edit leaves it as it was` = Marker;
+  $before: `The lines of the region before the edit, in order, each without its line break` = string[];
+  $after: `The lines of the region after the edit, in order, each without its line break` = string[];
+  $note: `Why it was made: for a stub, the reason its stub line gives; for a fix, the note the run gave through elfie_touch for [[ForeignEdit.owner]]` = string;
   @acceptanceCriteria
-    .add({ behavior = `A batch holds at most {{batchUnits}} units` })
     .add({
-      situation = `A batch holds more than one unit`,
-      behavior = `The sources of its units together are under {{batchCharacters}} characters`,
+      situation = `An accepted run for one unit edited a region of another unit`,
+      behavior = `Exactly one [[ForeignEdit]] with that unit as [[ForeignEdit.by]] is recorded for that region and that run`,
     })
-    .add({ situation = `A batch holds one unit`, behavior = `[[Batch.identifier]] is the unit's stem` })
     .add({
-      situation = `A batch holds more than one unit`,
-      behavior = `[[Batch.identifier]] is the first unit's stem, then a plus sign and the count of the others`,
+      situation = `[[ForeignEdit.kind]] is stub`,
+      behavior = `Every line of [[ForeignEdit.after]] is a line of [[ForeignEdit.before]] or a stub line naming [[ForeignEdit.by]]`,
+    })
+    // Decision: a rewritten line counts once, not as one line removed and one added, so the cap
+    // measures how much code changed rather than how a diff spells it.
+    .add({
+      behavior = `The lines a foreign edit changes are the larger of two counts: the lines a line diff of [[ForeignEdit.before]] and [[ForeignEdit.after]] removes, and the lines it adds`,
     });
+}
+
+// Decision: the fix cap is two numbers kept here, once, so they can be tuned from measurements
+// without touching what reads them; [[Reach]] carries them so a request and the agent server state
+// the same cap.
+ace const fixLines: `The most lines a fix may change in one region` = 10;
+ace const fixUnitLines: `The most lines the fixes of one run may change across the regions of one other unit` = 40;
+
+// Decision: a unit may edit every later unit of its target, not only those that depend on it,
+// because a unit can break a later unit's code through a shared output or a test as well as through
+// an interface, and plan order alone keeps every foreign edit ahead of the unit it touches. A reach
+// read from [[Plan.units]] alone never depends on which units are planned.
+d Reach: `Which other units' outputs a run for one unit may edit, and how much` {
+  $units: `Every unit of the same target that has outputs and comes later in [[Plan.units]], in [[Plan.units]] order; their outputs and regions are those of their [[Unit.outputs]]` = Unit[];
+  $fixLines: `The most lines a fix may change in one region` = number;
+  $fixUnitLines: `The most lines the fixes of one run may change across the regions of one unit of [[Reach.units]]` = number;
+  @acceptanceCriteria
+    .add({ behavior = `[[Reach.fixLines]] is {{fixLines}}` })
+    .add({ behavior = `[[Reach.fixUnitLines]] is {{fixUnitLines}}` });
 }
 
 d Interface: `What a dependent unit may rely on from another unit's output` {
@@ -250,36 +283,31 @@ d Rewording: `A local criterion or test whose id changed since a unit's outputs 
   $text: `What it said then, as [[RemovedRequirement.text]] spells what a removed one said` = string;
 }
 
-d Request: `Everything the compiler is handed to produce the outputs of one batch` {
-  $batch: `The batch` = Batch;
+d Request: `Everything the compiler is handed to produce the outputs of one unit` {
+  $unit: `The unit` = Unit;
   $instructions: `The prompt: what to produce, where, the rules for producing it, and how to report the outcome` = string;
-  $sources: `[[Unit.text]] of each unit, by [[File.path]]` = Object<string>;
-  $requirements: `The local criteria and tests of each unit, by [[File.path]], each with its id` = Object<
-    (LoweredCriterion | LoweredTest)[],
-  >;
+  $source: `[[Unit.text]] of the unit` = string;
+  $requirements: `The local criteria and tests of the unit, each with its id` = (LoweredCriterion | LoweredTest)[];
   $globals: `Every global criterion and test of [[Plan.program]], each once with its id` = (LoweredCriterion | LoweredTest)[];
-  $previous: `The lowered text each unit's existing outputs were generated from, by [[File.path]]; absent where unknown` = Object<
-    string,
-  >;
-  $answered: `The ids of the local criteria and tests each unit's existing outputs were generated against, by [[File.path]]; absent where unknown` = Object<
-    string[],
-  >;
-  $removed: `The local criteria and tests each unit's existing outputs were generated against that the unit no longer has and that no criterion or test now rewords, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
-    RemovedRequirement[],
-  >;
-  $reworded: `The local criteria and tests of each unit that reword one its existing outputs were generated against, by [[File.path]]; absent where the source they were generated from is unknown` = Object<
-    Rewording[],
-  >;
-  $rewordedOnly: `The [[File.path]] of each unit of the batch whose existing outputs differ from what it asks for now only in the ids of reworded criteria and tests, in batch order` = string[];
-  $existing: `The current text of each existing output of the batch, by path` = Object<string>;
-  $interfaces: `One [[Interface]] per dependency outside the batch, in dependency order, each once` = Interface[];
+  $previous: `The lowered text the unit's existing outputs were generated from; undefined where unknown` = string | undefined;
+  $answered: `The ids of the local criteria and tests the unit's existing outputs were generated against; undefined where unknown` = string[] | undefined;
+  $removed: `The local criteria and tests the unit's existing outputs were generated against that the unit no longer has and that no criterion or test now rewords; undefined where the source they were generated from is unknown` = RemovedRequirement[] | undefined;
+  $reworded: `The local criteria and tests of the unit that reword one its existing outputs were generated against; undefined where the source they were generated from is unknown` = Rewording[] | undefined;
+  $rewordedOnly: `Whether the unit's existing outputs differ from what it asks for now only in the ids of reworded criteria and tests` = boolean;
+  $existing: `The current text of each existing output of the unit, by path` = Object<string>;
+  // Decision: the foreign edits are listed in the request, named by the unit that made them, so the
+  // code an earlier run wrote into this unit's outputs is never taken for code this unit's own
+  // last accepted run wrote.
+  $foreignEdits: `Every edit another unit's run made inside the unit's regions since the unit was last accepted, in the order they were made; each has the unit as [[ForeignEdit.owner]]` = ForeignEdit[];
+  $reach: `The later units whose outputs the run may edit, and the fix cap` = Reach;
+  $interfaces: `One [[Interface]] per dependency of the unit, in dependency order, each once` = Interface[];
   $guidance: `The criteria of [[Target.declaration]], in the guidance order [[Targets.Target]] gives, with template values rendered from the layers' arguments` = Criterion[];
   $nativeDependencies: `What the generated code may require from the target's ecosystem: [[Target.nativeDependencies]]` = NativeDependency[];
-  $knowledge: `What the compiler is given to read: [[Target.knowledge]], then the knowledge of each entity of the batch's units, then of each entity of [[Request.interfaces]], each item once` = Knowledge[];
+  $knowledge: `What the compiler is given to read: [[Target.knowledge]], then the knowledge of each entity of the unit, then of each entity of [[Request.interfaces]], each item once` = Knowledge[];
   $commands: `The commands the compiler runs instead of knowing the tools: [[Target.commands]]` = Command[];
   @acceptanceCriteria
     .add({
-      behavior = `[[Request.requirements]] maps each unit's [[File.path]] to every [[LoweredNode.criteria]] and [[LoweredNode.tests]] of [[Unit.entities]], then [[LoweredFile.criteria]] and [[LoweredFile.tests]] of the file`,
+      behavior = `[[Request.requirements]] is every [[LoweredNode.criteria]] and [[LoweredNode.tests]] of [[Unit.entities]] of the unit, then [[LoweredFile.criteria]] and [[LoweredFile.tests]] of its file`,
     })
     .add({ behavior = `[[Request.globals]] is [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]` })
     .add({
@@ -288,17 +316,20 @@ d Request: `Everything the compiler is handed to produce the outputs of one batc
     .add({
       situation = `A trait is reached again, with equal arguments, among the layers and the traits they extend`,
       behavior = `It contributes to [[Request.guidance]] once, at its first place`,
+    })
+    .add({
+      behavior = `What a request holds never depends on which other units are planned with the unit`,
     });
 }
 
-d ReviewRequest: `Everything a verifier is handed to check outputs against what was asked: the local criteria and tests of one batch that need review, or every global one once` {
-  $batch: `The batch; undefined for the review of global criteria and tests` = Batch | undefined;
+d ReviewRequest: `Everything a verifier is handed to check outputs against what was asked: the local criteria and tests of one unit that need review, or every global one once` {
+  $unit: `The unit; undefined for the review of global criteria and tests` = Unit | undefined;
   $instructions: `The prompt: every criterion and test under review with its id and place, where the regions answering for each are, and how to report` = string;
   $asked: `The id of every criterion and test [[ReviewRequest.instructions]] lists, in the order listed` = string[];
-  $hashes: `For every local criterion and test of the batch's units, by id, the hash of the regions of the entity it belongs to, as the review computed it; empty for the review of global criteria and tests` = Object<
+  $hashes: `For every local criterion and test of the unit, by id, the hash of the regions of the entity it belongs to, as the review computed it; empty for the review of global criteria and tests` = Object<
     string,
   >;
-  $carried: `The record of every local criterion and test of the batch's units that is not listed, kept from its last review; empty for the review of global criteria and tests` = ReviewRecord[];
+  $carried: `The record of every local criterion and test of the unit that is not listed, kept from its last review; empty for the review of global criteria and tests` = ReviewRecord[];
   @acceptanceCriteria
     .add({
       behavior = `A criterion's or test's place is the file of its origin relative to [[Workspace.root]], a colon, and the line its origin begins on`,
@@ -340,7 +371,7 @@ d Output: `One file the compiler produced` {
 }
 
 enum OutcomeKind: `How one run of the compiler ended` {
-  accepted = `every unit of the batch was accepted`,
+  accepted = `the unit was accepted`,
   rejected = `an output failed acceptance`,
   blocked = `the compiler reported it could not proceed`,
   clarification = `the compiler asked a question only a person can answer`,
@@ -361,10 +392,10 @@ d Submission: `The outcome a compiler submitted through the agent server` {
   $message: `The reason for blocked or the question for clarify; for done, a note that is no part of the outcome, and may be empty` = string;
 }
 
-d Outcome: `What one run of the compiler came to, read mechanically from its submission or its report, and the verdicts` {
+d Outcome: `What one run of the compiler came to, read mechanically from its submission or its report, and the verdict` {
   $kind: `How it ended` = OutcomeKind;
   $message: `The compiler's reason or question, or the first problem; empty when accepted` = string;
-  $verdicts: `One [[Verdict]] per unit of the batch, in batch order; empty when the compiler never got that far` = Verdict[];
+  $verdict: `The [[Verdict]] on the unit; undefined when the compiler never got that far` = Verdict | undefined;
 }
 
 d Verdict: `Whether outputs are accepted for one unit` {
@@ -372,6 +403,7 @@ d Verdict: `Whether outputs are accepted for one unit` {
   $problems: `What failed and why, one per failure; empty when accepted` = string[];
   $sourceMaps: `One per accepted output; empty when rejected` = SourceMap[];
   $outputs: `Each accepted output with its markers normalized to the name form, for the caller to write back; empty when rejected` = Output[];
+  $foreignEdits: `Every edit the outputs make inside a region of another unit, one per region, in the order of their paths and then of their lines; empty when rejected` = ForeignEdit[];
 }
 
 enum ChangeKind: `What differs for one entity between a unit's file as last accepted and as it is now` {
@@ -418,18 +450,17 @@ d Review: `A verifier's finding for one criterion or test` {
     });
 }
 
-d ReviewReport: `Everything a verifier found for one batch, read mechanically from its report` {
+d ReviewReport: `Everything a verifier found for one unit, or for the global review, read mechanically from its report` {
   $reviews: `Each review submitted through the agent server, in the order recorded, then each read from the report, in report order; one per id` = Review[];
   $problems: `Each review line that was not read as a [[Review]], then the line reading the report did not end when there was no end line` = string[];
   $unplaced: `Each review line that was not read as a [[Review]] though its status is violated, as written; each is in [[ReviewReport.problems]] too` = string[];
   $missing: `Each id the review was asked about that no review in [[ReviewReport.reviews]] names, in the order it was asked` = string[];
 }
 
-d Plan: `Every unit of a workspace, which need generating, and how they are batched` {
+d Plan: `Every unit of a workspace, which need generating, and the order they are compiled in` {
   $workspace: `The workspace planned` = Workspace;
   $program: `The workspace lowered, which units, requests, and reviews read` = Program;
-  $units: `Every unit of every target, each after its dependencies` = Unit[];
+  $units: `Every unit of every target, each after its dependencies; the planned units are compiled one at a time in this order` = Unit[];
   $moves: `Every move that resolved a cycle among files, in [[Plan.units]] order of [[Move.origin]], then in file order of the first of [[Move.entities]]` = Move[];
   $problems: `Every cycle among files that no move could resolve, and every entity that reaches one not built for its target, one [[Problem]] each` = Problem[];
-  $batches: `The planned units grouped for compilation, each batch after the batches holding its dependencies` = Batch[];
 }

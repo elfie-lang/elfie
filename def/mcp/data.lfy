@@ -37,27 +37,35 @@ d Session: `One agent's connection` {
   $binding: `What a hosted session is bound to; undefined for a session over standard input and output` = Binding | undefined;
   $reviews: `Every review elfie_report or elfie_reportMany recorded in the session, one per id, in the order recorded` = Review[];
   $submission: `The outcome elfie_submit last recorded in the session; undefined until one is` = Submission | undefined;
+  $touches: `The note elfie_touch last recorded in the session for each unit it was given, by [[Unit.stem]]; empty until one is` = Object<
+    string,
+  >;
 }
 
 d SessionRecord: `What a hosted session recorded, as [[Host.close]] hands it back` {
   $reviews: `[[Session.reviews]] of the session` = Review[];
   $submission: `[[Session.submission]] of the session` = Submission | undefined;
+  $touches: `[[Session.touches]] of the session` = Object<string>;
 }
 
 enum Role: `What the agent of a hosted session is run as` {
-  compiler = `the compiler of one batch`,
-  verifier = `the verifier of one batch, or of the global review`,
+  compiler = `the compiler of one unit`,
+  verifier = `the verifier of one unit, or of the global review`,
 }
 
 // Decision: a hosted session answers for one run of one agent and nothing else, so what it is bound
 // to is fixed when the CLI opens it and no call can change it.
 d Binding: `What one hosted session is bound to, fixed when the CLI opens it` {
   $role: `What its agent is run as` = Role;
-  $batch: `The batch the run is for; undefined for the global review` = Batch | undefined;
-  $directory: `The absolute path of the directory the run is in: the batch's copy when it runs in one, the root otherwise` = string;
+  $unit: `The unit the run is for; undefined for the global review` = Unit | undefined;
+  $directory: `The absolute path of the directory the run is in: the copy of the root its change set is worked in when it runs in one, the root otherwise` = string;
   $plan: `The plan the compile or verify made` = Plan;
   $program: `The program the compile lowered and planned; its workspace is the one the session reads definitions from` = Program;
   $request: `The request given to a compiler run as its input; undefined for a verifier run` = Request | undefined;
+  // Decision: the output files are kept as they were before the unit's first run since it was last
+  // accepted, so how much of the fix cap its edits use is measured against the same text whichever
+  // attempt makes them, and a retry does not start its count again.
+  $before: `Every file of the output directory of the unit's target as it was in [[Binding.directory]] before the unit's first compiler run of this compile since it was last accepted in it, as acceptance is given it as the files before the run; undefined for a verifier run` = Output[] | undefined;
   $review: `The review request given to a verifier run as its input; undefined for a compiler run` = ReviewRequest | undefined;
   $sourceMaps: `The source maps that review request was made with; empty for a compiler run` = SourceMap[];
 }
