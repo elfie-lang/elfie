@@ -1,9 +1,10 @@
 //! Compiled from `def/generation/data.lfy`: the data of generation.
 //!
 //! A [`Unit`] is one source file for one target, with any entities a [`Move`] brought into
-//! it; a [`Batch`] is the units compiled together in one request; a [`Plan`] is every unit
-//! of a workspace, the moves that resolved cycles among files, and how they are
-//! batched; a [`Request`] is everything the compiler is handed for one batch; a
+//! it; a [`Plan`] is every unit of a workspace, the moves that resolved cycles among files,
+//! and the order the planned units are compiled in; a [`Request`] is everything the
+//! compiler is handed for one unit, with the [`Reach`] of later units' outputs its run may
+//! edit and every [`ForeignEdit`] other runs made in its own; a
 //! [`Verdict`] is whether one unit's [`Output`]s are accepted, and the [`SourceMap`]s they
 //! earn; an [`Outcome`] is what one run of the compiler came to, read from the
 //! [`Submission`] it made or from its report; a [`Change`] is one
@@ -42,6 +43,8 @@ pub enum Reason {
     /// Its criteria or tests differ from those its output was generated against, while its
     /// lowered code does not, so what its code must do may differ.
     Requirements, // @lfy def/generation/data.lfy:Reason.requirements
+    /// Another unit edited its outputs during this compile.
+    Touched, // @lfy def/generation/data.lfy:Reason.touched
     /// A global criterion or test its output answers for was reviewed as violated.
     Violated, // @lfy def/generation/data.lfy:Reason.violated
 }
@@ -62,6 +65,7 @@ impl Reason {
                 "a global criterion or test its output answers for was reviewed as violated"
             }
             Reason::Requested => "the caller asked for it regardless",
+            Reason::Touched => "another unit edited its outputs during this compile",
         }
     }
 
@@ -74,6 +78,7 @@ impl Reason {
             Reason::Dependency => "dependency",
             Reason::Violated => "violated",
             Reason::Requested => "requested",
+            Reason::Touched => "touched",
         }
     }
 }
@@ -414,15 +419,209 @@ pub struct Move {
     pub cause: String, // @lfy def/generation/data.lfy:Move.cause
 }
 
-/// Planned units compiled together in one request.
-// @lfy def/generation/data.lfy:Batch
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Batch {
-    /// In plan order; every dependency of a unit is in this batch or an earlier one, as
-    /// indices into [`Plan::units`].
-    pub units: Vec<usize>, // @lfy def/generation/data.lfy:Batch.units
-    /// The batch's name in requests and progress.
-    pub identifier: String, // @lfy def/generation/data.lfy:Batch.identifier
+/// What a foreign edit did to the region it is in.
+// @lfy def/generation/data.lfy:ForeignEditKind
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ForeignEditKind {
+    /// It only removed lines of the region and added the target's stub line, naming the unit
+    /// that made it, in their place.
+    Stub, // @lfy def/generation/data.lfy:ForeignEditKind.stub
+    /// Anything else, within the fix cap of [`Reach`].
+    Fix, // @lfy def/generation/data.lfy:ForeignEditKind.fix
+}
+
+impl ForeignEditKind {
+    /// The value of the enum member.
+    pub fn value(self) -> &'static str {
+        match self {
+            ForeignEditKind::Stub => {
+                "it only removed lines of the region and added the target's stub line, naming the unit that made it, in their place"
+            }
+            ForeignEditKind::Fix => "anything else, within the fix cap of [[Reach]]",
+        }
+    }
+
+    /// The member's name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ForeignEditKind::Stub => "stub",
+            ForeignEditKind::Fix => "fix",
+        }
+    }
+
+    /// The member of this name; `None` when it is no member's name.
+    pub fn from_name(name: &str) -> Option<ForeignEditKind> {
+        match name {
+            "stub" => Some(ForeignEditKind::Stub),
+            "fix" => Some(ForeignEditKind::Fix),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ForeignEditKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// One edit an accepted run for one unit made inside one region of another unit's output.
+// Decision: a foreign edit names its units by `Unit::stem`, not by an index into
+// `Plan::units`, because it is kept on disk in a change set and read back by a later
+// compile, and a stem names one unit within its target.
+// @lfy def/generation/data.lfy:ForeignEdit
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ForeignEdit {
+    /// The [`Unit::stem`] of the unit whose run made it.
+    pub by: String, // @lfy def/generation/data.lfy:ForeignEdit.by
+    /// The [`Unit::stem`] of the unit whose region it is in; always one of [`Reach::units`]
+    /// of [`ForeignEdit::by`].
+    pub owner: String, // @lfy def/generation/data.lfy:ForeignEdit.owner
+    /// The output file it is in, relative to the workspace root.
+    pub path: String, // @lfy def/generation/data.lfy:ForeignEdit.path
+    /// Whether it is a stub or a fix.
+    pub kind: ForeignEditKind, // @lfy def/generation/data.lfy:ForeignEdit.kind
+    /// The marker that begins the region, as the owner's outputs held it before the edit;
+    /// the edit leaves it as it was.
+    pub region: Marker, // @lfy def/generation/data.lfy:ForeignEdit.region
+    /// The lines of the region before the edit, in order, each without its line break.
+    pub before: Vec<String>, // @lfy def/generation/data.lfy:ForeignEdit.before
+    /// The lines of the region after the edit, in order, each without its line break.
+    pub after: Vec<String>, // @lfy def/generation/data.lfy:ForeignEdit.after
+    /// Why it was made: for a stub, the reason its stub line gives; for a fix, the note the
+    /// run gave through `elfie_touch` for [`ForeignEdit::owner`].
+    pub note: String, // @lfy def/generation/data.lfy:ForeignEdit.note
+}
+
+impl ForeignEdit {
+    /// The lines the edit changes: the larger of the lines a line diff of
+    /// [`ForeignEdit::before`] and [`ForeignEdit::after`] removes and the lines it adds.
+    pub fn changed_lines(&self) -> usize {
+        changed_lines(&self.before, &self.after)
+    }
+
+    /// Whether the edit is a stub by [`ForeignEdit::by`]: every line of
+    /// [`ForeignEdit::after`] is a line of [`ForeignEdit::before`] or a stub line naming it,
+    /// as `stub_line`, the target language's stub line, spells one.
+    pub fn is_stub(&self, stub_line: &str) -> bool {
+        is_stub_edit(&self.before, &self.after, &self.by, stub_line)
+    }
+}
+
+/// The lines a line diff of `before` and `after` changes: the larger of the lines it removes
+/// and the lines it adds, the diff keeping a longest common subsequence of the two.
+// @lfy def/generation/data.lfy:ForeignEdit#ForeignEdit:ForeignEdit:9f4bf64d1380c6e4b6c272a55bacefc244e5567e4a656b78cc11b4f90cfb8a93
+pub fn changed_lines(before: &[String], after: &[String]) -> usize {
+    let mut row = vec![0usize; after.len() + 1];
+    for old in before {
+        let mut diagonal = 0;
+        for (column, new) in after.iter().enumerate() {
+            let above = row[column + 1];
+            row[column + 1] = if old == new {
+                diagonal + 1
+            } else {
+                above.max(row[column])
+            };
+            diagonal = above;
+        }
+    }
+    let common = row[after.len()];
+    (before.len() - common).max(after.len() - common)
+}
+
+/// The reason a stub line naming `unit` gives, when `line` is one: `stub_line` with
+/// `{{unit}}` filled in with `unit` and anything in place of `{{reason}}`, with any white
+/// space around it; `None` when `line` is no such stub line.
+pub fn stub_reason(line: &str, unit: &str, stub_line: &str) -> Option<String> {
+    let template = stub_line.trim().replace("{{unit}}", unit);
+    let line = line.trim();
+    match template.split_once("{{reason}}") {
+        Some((head, tail)) => {
+            let rest = line.strip_prefix(head)?;
+            let reason = rest.strip_suffix(tail)?;
+            Some(reason.to_string())
+        }
+        None => (line == template).then(String::new),
+    }
+}
+
+/// Whether every line of `after` is a line of `before` or a stub line naming `unit`, and
+/// at least one is a stub line.
+// @lfy def/generation/data.lfy:ForeignEdit#ForeignEdit:ForeignEdit:24fcd7d322f7ad58780c8f5cc628542707536eb6113f5cd82e55ded738222475
+pub fn is_stub_edit(before: &[String], after: &[String], unit: &str, stub_line: &str) -> bool {
+    let mut stubbed = false;
+    for line in after {
+        if stub_reason(line, unit, stub_line).is_some() {
+            stubbed = true;
+        } else if !before.iter().any(|old| old == line) {
+            return false;
+        }
+    }
+    stubbed
+}
+
+/// The most lines a fix may change in one region.
+// @lfy def/generation/data.lfy:Reach#Reach:Reach:c90883b427df6042bb5e2b86ae95d5236aa29a83b45b38d8e4ccb6edea1528d2
+pub const FIX_LINES: usize = 10;
+
+/// The most lines the fixes of one run may change across the regions of one other unit.
+// @lfy def/generation/data.lfy:Reach#Reach:Reach:f753230f130da5275f26d9b3c385903babe45c15cf1b85e36c6df1e6a739d620
+pub const FIX_UNIT_LINES: usize = 40;
+
+/// Which other units' outputs a run for one unit may edit, and how much.
+// Decision: the fix cap is two numbers kept here, once, so they can be tuned from
+// measurements without touching what reads them; a reach carries them so a request and the
+// agent server state the same cap.
+// Decision: a unit may edit every later unit of its target, not only those that depend on
+// it, because a unit can break a later unit's code through a shared output or a test as well
+// as through an interface, and plan order alone keeps every foreign edit ahead of the unit
+// it touches. A reach read from `Plan::units` alone never depends on which units are planned.
+// @lfy def/generation/data.lfy:Reach
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reach {
+    /// Every unit of the same target that has outputs and comes later in [`Plan::units`], in
+    /// [`Plan::units`] order, as indices into it; their outputs and regions are those of their
+    /// [`Unit::outputs`].
+    pub units: Vec<usize>, // @lfy def/generation/data.lfy:Reach.units
+    /// The most lines a fix may change in one region.
+    pub fix_lines: usize, // @lfy def/generation/data.lfy:Reach.fixLines
+    /// The most lines the fixes of one run may change across the regions of one unit of
+    /// [`Reach::units`].
+    pub fix_unit_lines: usize, // @lfy def/generation/data.lfy:Reach.fixUnitLines
+}
+
+impl Reach {
+    /// The reach of these units, with the fix cap [`FIX_LINES`] and [`FIX_UNIT_LINES`].
+    // @lfy def/generation/data.lfy:Reach
+    pub fn new(units: Vec<usize>) -> Reach {
+        Reach {
+            units,
+            fix_lines: FIX_LINES,
+            fix_unit_lines: FIX_UNIT_LINES,
+        }
+    }
+
+    /// The reach of the unit at `index` of `plan`: every unit of its target that has outputs
+    /// and comes later in [`Plan::units`].
+    // @lfy def/generation/data.lfy:Reach.units
+    pub fn of(plan: &Plan, index: usize) -> Reach {
+        let target = plan.units[index].target;
+        Reach::new(
+            plan.units
+                .iter()
+                .enumerate()
+                .skip(index + 1)
+                .filter(|(_, unit)| unit.target == target && !unit.outputs.is_empty())
+                .map(|(later, _)| later)
+                .collect(),
+        )
+    }
+}
+
+impl Default for Reach {
+    fn default() -> Reach {
+        Reach::new(Vec::new())
+    }
 }
 
 /// What a dependent unit may rely on from another unit's output.
@@ -494,41 +693,45 @@ impl Requirement {
     }
 }
 
-/// Everything the compiler is handed to produce the outputs of one batch.
+/// Everything the compiler is handed to produce the outputs of one unit.
 // @lfy def/generation/data.lfy:Request
 #[derive(Debug, Clone, PartialEq)]
 pub struct Request {
-    /// The batch.
-    pub batch: Batch, // @lfy def/generation/data.lfy:Request.batch
+    /// The unit, as an index into [`Plan::units`].
+    pub unit: usize, // @lfy def/generation/data.lfy:Request.unit
     /// The prompt: what to produce, where, the rules for producing it, and how to report
     /// the outcome.
     pub instructions: String, // @lfy def/generation/data.lfy:Request.instructions
-    /// [`Unit::text`] of each unit, by the file's path.
-    pub sources: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.sources
-    /// The local criteria and tests of each unit, by the file's path, each with its id.
-    pub requirements: BTreeMap<String, Vec<Requirement>>, // @lfy def/generation/data.lfy:Request.requirements
+    /// [`Unit::text`] of the unit.
+    pub source: String, // @lfy def/generation/data.lfy:Request.source
+    /// The local criteria and tests of the unit, each with its id.
+    pub requirements: Vec<Requirement>, // @lfy def/generation/data.lfy:Request.requirements
     /// Every global criterion and test of the program, each once with its id.
     pub globals: Vec<Requirement>, // @lfy def/generation/data.lfy:Request.globals
-    /// The lowered text each unit's existing outputs were generated from, by the file's
-    /// path; absent where unknown.
-    pub previous: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.previous
-    /// The ids of the local criteria and tests each unit's existing outputs were generated
-    /// against, by the file's path; absent where unknown.
-    pub answered: BTreeMap<String, Vec<String>>, // @lfy def/generation/data.lfy:Request.answered
-    /// The local criteria and tests each unit's existing outputs were generated against that
-    /// the unit no longer has and that no criterion or test now rewords, by the file's path;
-    /// absent where the source they were generated from is unknown.
-    pub removed: BTreeMap<String, Vec<RemovedRequirement>>, // @lfy def/generation/data.lfy:Request.removed
-    /// The local criteria and tests of each unit that reword one its existing outputs were
-    /// generated against, by the file's path; absent where the source they were generated
-    /// from is unknown.
-    pub reworded: BTreeMap<String, Vec<Rewording>>, // @lfy def/generation/data.lfy:Request.reworded
-    /// The path of each unit of the batch whose existing outputs differ from what it asks for
-    /// now only in the ids of reworded criteria and tests, in batch order.
-    pub reworded_only: Vec<String>, // @lfy def/generation/data.lfy:Request.rewordedOnly
-    /// The current text of each existing output of the batch, by path.
+    /// The lowered text the unit's existing outputs were generated from; `None` where
+    /// unknown.
+    pub previous: Option<String>, // @lfy def/generation/data.lfy:Request.previous
+    /// The ids of the local criteria and tests the unit's existing outputs were generated
+    /// against; `None` where unknown.
+    pub answered: Option<Vec<String>>, // @lfy def/generation/data.lfy:Request.answered
+    /// The local criteria and tests the unit's existing outputs were generated against that
+    /// the unit no longer has and that no criterion or test now rewords; `None` where the
+    /// source they were generated from is unknown.
+    pub removed: Option<Vec<RemovedRequirement>>, // @lfy def/generation/data.lfy:Request.removed
+    /// The local criteria and tests of the unit that reword one its existing outputs were
+    /// generated against; `None` where the source they were generated from is unknown.
+    pub reworded: Option<Vec<Rewording>>, // @lfy def/generation/data.lfy:Request.reworded
+    /// Whether the unit's existing outputs differ from what it asks for now only in the ids
+    /// of reworded criteria and tests.
+    pub reworded_only: bool, // @lfy def/generation/data.lfy:Request.rewordedOnly
+    /// The current text of each existing output of the unit, by path.
     pub existing: BTreeMap<String, String>, // @lfy def/generation/data.lfy:Request.existing
-    /// One interface per dependency outside the batch, in dependency order, each once.
+    /// Every edit another unit's run made inside the unit's regions since the unit was last
+    /// accepted, in the order they were made; each has the unit as [`ForeignEdit::owner`].
+    pub foreign_edits: Vec<ForeignEdit>, // @lfy def/generation/data.lfy:Request.foreignEdits
+    /// The later units whose outputs the run may edit, and the fix cap.
+    pub reach: Reach, // @lfy def/generation/data.lfy:Request.reach
+    /// One interface per dependency of the unit, in dependency order, each once.
     pub interfaces: Vec<Interface>, // @lfy def/generation/data.lfy:Request.interfaces
     /// The criteria of the target's declaration, in the guidance order, with template
     /// values rendered from the layers' arguments.
@@ -537,7 +740,7 @@ pub struct Request {
     /// dependencies.
     pub native_dependencies: Vec<NativeDependency>, // @lfy def/generation/data.lfy:Request.nativeDependencies
     /// What the compiler is given to read: the target's knowledge, then the knowledge of
-    /// each entity of the batch's units, then of each entity of [`Request::interfaces`],
+    /// each entity of the unit, then of each entity of [`Request::interfaces`],
     /// each item once.
     pub knowledge: Vec<Knowledge>, // @lfy def/generation/data.lfy:Request.knowledge
     /// The commands the compiler runs instead of knowing the tools: the target's commands.
@@ -545,23 +748,24 @@ pub struct Request {
 }
 
 /// Everything a verifier is handed to check outputs against what was asked: the local
-/// criteria and tests of one batch that need review, or every global one once.
+/// criteria and tests of one unit that need review, or every global one once.
 // @lfy def/generation/data.lfy:ReviewRequest
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ReviewRequest {
-    /// The batch; `None` for the review of global criteria and tests.
-    pub batch: Option<Batch>, // @lfy def/generation/data.lfy:ReviewRequest.batch
+    /// The unit, as an index into [`Plan::units`]; `None` for the review of global criteria
+    /// and tests.
+    pub unit: Option<usize>, // @lfy def/generation/data.lfy:ReviewRequest.unit
     /// The prompt: every criterion and test under review with its id and place, where the
     /// regions answering for each are, and how to report.
     pub instructions: String, // @lfy def/generation/data.lfy:ReviewRequest.instructions
     /// The id of every criterion and test [`ReviewRequest::instructions`] lists, in the
     /// order listed.
     pub asked: Vec<String>, // @lfy def/generation/data.lfy:ReviewRequest.asked
-    /// For every local criterion and test of the batch's units, by id, the hash of the
+    /// For every local criterion and test of the unit, by id, the hash of the
     /// regions of the entity it belongs to, as the review computed it; empty for the review
     /// of global criteria and tests.
     pub hashes: BTreeMap<String, String>, // @lfy def/generation/data.lfy:ReviewRequest.hashes
-    /// The record of every local criterion and test of the batch's units that is not
+    /// The record of every local criterion and test of the unit that is not
     /// listed, kept from its last review; empty for the review of global criteria and
     /// tests.
     pub carried: Vec<ReviewRecord>, // @lfy def/generation/data.lfy:ReviewRequest.carried
@@ -635,7 +839,7 @@ pub struct Output {
 // @lfy def/generation/data.lfy:OutcomeKind
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OutcomeKind {
-    /// Every unit of the batch was accepted.
+    /// The unit was accepted.
     Accepted, // @lfy def/generation/data.lfy:OutcomeKind.accepted
     /// An output failed acceptance.
     Rejected, // @lfy def/generation/data.lfy:OutcomeKind.rejected
@@ -651,7 +855,7 @@ impl OutcomeKind {
     /// The value of the enum member.
     pub fn value(self) -> &'static str {
         match self {
-            OutcomeKind::Accepted => "every unit of the batch was accepted",
+            OutcomeKind::Accepted => "the unit was accepted",
             OutcomeKind::Rejected => "an output failed acceptance",
             OutcomeKind::Blocked => "the compiler reported it could not proceed",
             OutcomeKind::Clarification => "the compiler asked a question only a person can answer",
@@ -742,7 +946,7 @@ pub struct Submission {
 }
 
 /// What one run of the compiler came to, read mechanically from its submission or its
-/// report, and the verdicts.
+/// report, and the verdict.
 // @lfy def/generation/data.lfy:Outcome
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -750,9 +954,8 @@ pub struct Outcome {
     pub kind: OutcomeKind, // @lfy def/generation/data.lfy:Outcome.kind
     /// The compiler's reason or question, or the first problem; empty when accepted.
     pub message: String, // @lfy def/generation/data.lfy:Outcome.message
-    /// One verdict per unit of the batch, in batch order; empty when the compiler never got
-    /// that far.
-    pub verdicts: Vec<Verdict>, // @lfy def/generation/data.lfy:Outcome.verdicts
+    /// The verdict on the unit; `None` when the compiler never got that far.
+    pub verdict: Option<Verdict>, // @lfy def/generation/data.lfy:Outcome.verdict
 }
 
 /// Whether outputs are accepted for one unit.
@@ -768,6 +971,9 @@ pub struct Verdict {
     /// Each accepted output with its markers normalized to the name form, for the caller to
     /// write back; empty when rejected.
     pub outputs: Vec<Output>, // @lfy def/generation/data.lfy:Verdict.outputs
+    /// Every edit the outputs make inside a region of another unit, one per region, in the
+    /// order of their paths and then of their lines; empty when rejected.
+    pub foreign_edits: Vec<ForeignEdit>, // @lfy def/generation/data.lfy:Verdict.foreignEdits
 }
 
 /// What differs for one entity between a unit's file as last accepted and as it is now.
@@ -1000,7 +1206,8 @@ impl Review {
     }
 }
 
-/// Everything a verifier found for one batch, read mechanically from its report.
+/// Everything a verifier found for one unit, or for the global review, read mechanically
+/// from its report.
 // @lfy def/generation/data.lfy:ReviewReport
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ReviewReport {
@@ -1018,7 +1225,7 @@ pub struct ReviewReport {
     pub missing: Vec<String>, // @lfy def/generation/data.lfy:ReviewReport.missing
 }
 
-/// Every unit of a workspace, which need generating, and how they are batched.
+/// Every unit of a workspace, which need generating, and the order they are compiled in.
 // @lfy def/generation/data.lfy:Plan
 // Decision: the definition gives the plan its workspace and the program lowered from it; a
 // plan here owns neither (the workspace holds the whole model, and the program holds the
@@ -1027,7 +1234,8 @@ pub struct ReviewReport {
 // `Program::files`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Plan {
-    /// Every unit of every target, each after its dependencies.
+    /// Every unit of every target, each after its dependencies; the planned units are
+    /// compiled one at a time in this order.
     pub units: Vec<Unit>, // @lfy def/generation/data.lfy:Plan.units
     /// Every move that resolved a cycle among files, in plan order of the origin unit, then
     /// in file order of the first of the entities moved.
@@ -1035,9 +1243,6 @@ pub struct Plan {
     /// Every cycle among files that no move could resolve, and every entity that reaches one
     /// not built for its target, one problem each.
     pub problems: Vec<Problem>, // @lfy def/generation/data.lfy:Plan.problems
-    /// The planned units grouped for compilation, each batch after the batches holding its
-    /// dependencies.
-    pub batches: Vec<Batch>, // @lfy def/generation/data.lfy:Plan.batches
 }
 
 impl Plan {
@@ -1380,5 +1585,92 @@ mod tests {
         // @lfy def/generation/data.lfy:SourceMap.text
         assert_eq!(map.text, "");
         assert!(map.dependencies.is_empty());
+    }
+
+    // @lfy def/generation/data.lfy:ForeignEdit
+    fn lines(text: &[&str]) -> Vec<String> {
+        text.iter().map(|line| line.to_string()).collect()
+    }
+
+    // @lfy def/generation/data.lfy:ForeignEdit#ForeignEdit:ForeignEdit:9f4bf64d1380c6e4b6c272a55bacefc244e5567e4a656b78cc11b4f90cfb8a93
+    #[test]
+    fn foreign_edit_counts_the_larger_of_removed_and_added_lines() {
+        let before = lines(&["a", "b", "c", "d"]);
+        // One line changed is one removed and one added.
+        assert_eq!(changed_lines(&before, &lines(&["a", "x", "c", "d"])), 1);
+        // Two removed and one added count two.
+        assert_eq!(changed_lines(&before, &lines(&["a", "x", "d"])), 2);
+        // Three added and none removed count three.
+        assert_eq!(
+            changed_lines(&before, &lines(&["a", "b", "x", "y", "z", "c", "d"])),
+            3
+        );
+        // A moved line is one removed and one added.
+        assert_eq!(changed_lines(&before, &lines(&["b", "c", "d", "a"])), 1);
+        assert_eq!(changed_lines(&before, &before), 0);
+        let edit = ForeignEdit {
+            by: "b".to_string(),
+            owner: "a".to_string(),
+            path: "src/a.rs".to_string(),
+            kind: ForeignEditKind::Fix,
+            region: Marker {
+                output_line: 1,
+                file: "def/a.lfy".to_string(),
+                entity: Some("f".to_string()),
+                line: 1,
+                column: None,
+                requirement: None,
+                end: 4,
+            },
+            before,
+            after: lines(&["a", "x", "d"]),
+            note: "a fix".to_string(),
+        };
+        assert_eq!(edit.changed_lines(), 2);
+    }
+
+    // @lfy def/generation/data.lfy:ForeignEdit#ForeignEdit:ForeignEdit:24fcd7d322f7ad58780c8f5cc628542707536eb6113f5cd82e55ded738222475
+    #[test]
+    fn foreign_edit_stub_keeps_only_lines_of_before_and_stub_lines_naming_its_unit() {
+        let stub = r#"unimplemented!("elfie stub: {{unit}}: {{reason}}")"#;
+        let before = lines(&["fn f() {", "    body();", "}"]);
+        let stubbed = lines(&[
+            "fn f() {",
+            r#"    unimplemented!("elfie stub: b: a field moved")"#,
+            "}",
+        ]);
+        assert!(is_stub_edit(&before, &stubbed, "b", stub));
+        assert_eq!(
+            stub_reason(&stubbed[1], "b", stub).as_deref(),
+            Some("a field moved")
+        );
+        // A stub line naming another unit is not a stub by this one.
+        assert!(!is_stub_edit(&before, &stubbed, "c", stub));
+        // A line neither of before nor a stub line makes the edit a fix.
+        let fixed = lines(&["fn f() {", "    other();", "}"]);
+        assert!(!is_stub_edit(&before, &fixed, "b", stub));
+        let mixed = lines(&[
+            "fn f() {",
+            r#"    unimplemented!("elfie stub: b: why")"#,
+            "    other();",
+            "}",
+        ]);
+        assert!(!is_stub_edit(&before, &mixed, "b", stub));
+        // Removing lines without a stub line is no stub.
+        assert!(!is_stub_edit(&before, &lines(&["fn f() {", "}"]), "b", stub));
+    }
+
+    // @lfy def/generation/data.lfy:Reach#Reach:Reach:c90883b427df6042bb5e2b86ae95d5236aa29a83b45b38d8e4ccb6edea1528d2
+    #[test]
+    fn reach_fix_lines_is_ten() {
+        assert_eq!(Reach::new(Vec::new()).fix_lines, 10);
+        assert_eq!(Reach::default().fix_lines, 10);
+    }
+
+    // @lfy def/generation/data.lfy:Reach#Reach:Reach:f753230f130da5275f26d9b3c385903babe45c15cf1b85e36c6df1e6a739d620
+    #[test]
+    fn reach_fix_unit_lines_is_forty() {
+        assert_eq!(Reach::new(Vec::new()).fix_unit_lines, 40);
+        assert_eq!(Reach::default().fix_unit_lines, 40);
     }
 }

@@ -4,12 +4,14 @@
 //! A unit is one source file for one target: outputs and source maps are per file, a
 //! declaration's scope is its file, and a smaller unit would make the compiler merge
 //! into a file it does not own, which is itself an act of generation. A larger unit
-//! would not fit a request, but several units can share one: that is a [`Batch`]. The one
-//! exception is a cycle among files, which no order of units can build: its entities move
-//! whole into the unit of the lowest file of the cycle, as a [`Move`] records.
+//! would not fit a request. The one exception is a cycle among files, which no order of
+//! units can build: its entities move whole into the unit of the lowest file of the cycle,
+//! as a [`Move`] records. Units are compiled one at a time, in plan order, and every
+//! request, review request, and acceptance is about one unit; a request puts first what is
+//! the same for every unit of a target, so that context is reused from a prompt cache.
 //! [`interface_of`] is the text whose hash tells a dependent whether anything it may rely
-//! on changed; [`plan`] finds every unit of a workspace, which need generating, and how
-//! they are batched; [`request`] gathers everything the compiler is handed for one batch,
+//! on changed; [`plan`] finds every unit of a workspace, which need generating, and the
+//! order they are compiled in; [`request`] gathers everything the compiler is handed for one unit,
 //! with every criterion and test already resolved so that a compiler with no access to
 //! the model can still work; [`outcome_of`] reads how a run ended, from the [`Submission`]
 //! the compiler made or from its report; [`accept`] checks
@@ -18,7 +20,7 @@
 //! differs for each entity of a unit since its outputs were accepted, [`reworded`] which of
 //! its criteria and tests took a new id only because their text changed and [`rename`]
 //! moves the markers of those ids, [`review`] what an
-//! independent verifier is handed for one batch, [`global_review`] what it is handed for
+//! independent verifier is handed for one unit, [`global_review`] what it is handed for
 //! every global criterion and test, and [`review_of`] what it found. [`source_maps_of`]
 //! reads the source maps a workspace recorded and [`record`] writes those of one accepted
 //! unit; [`reviews_of`] reads the verdicts one unit's criteria and tests were last given
@@ -56,12 +58,6 @@ use crate::workspace::{File, NativeDependency, Target, Workspace};
 const EXTENSION: &str = ".lfy";
 /// What a marker starts with, after the comment opener of the target's language.
 const MARKER_PREFIX: &str = "@lfy ";
-/// How many units one batch may hold.
-// @lfy def/generation/main.lfy:plan
-const BATCH_UNITS: usize = 6;
-/// How many characters of source one batch may hold.
-// @lfy def/generation/main.lfy:plan
-const BATCH_CHARACTERS: usize = 60_000;
 
 // ---------------------------------------------------------------------------------------
 // the submodules of this unit
@@ -654,16 +650,6 @@ fn stem_of(file: &File) -> String {
     file.name.clone()
 }
 
-/// The first segment of a stem: the directory the unit sits in, and the empty string for
-/// a unit directly under the source directory.
-// @lfy def/generation/main.lfy:plan
-fn first_segment(stem: &str) -> &str {
-    match stem.split_once('/') {
-        Some((first, _)) => first,
-        None => "",
-    }
-}
-
 // ---------------------------------------------------------------------------------------
 // markers and the regions they begin
 // ---------------------------------------------------------------------------------------
@@ -732,7 +718,7 @@ fn own_region_text(
 /// space before it taken off, every line that is then empty left out, and each line followed
 /// by a line break.
 // @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:09446c0cd62e3661c21774df9093f0d0bcabcf6e89e04299d1c69e8ff57564e5
-// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
 fn push_region(lines: &[&str], marker: &Marker, marker_comment: &str, out: &mut String) {
     let last = marker.end.min(lines.len());
     let first = marker.output_line.saturating_sub(1).min(last);
@@ -752,7 +738,7 @@ fn push_region(lines: &[&str], marker: &Marker, marker_comment: &str, out: &mut 
 ///
 /// The opener is looked for before each marker rather than at the start of the line, so a
 /// comment that is prose stays and a marker trailing code takes only itself away.
-// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
 fn without_marker_comment<'l>(line: &'l str, marker_comment: &str) -> &'l str {
     if marker_comment.is_empty() {
         return line;
@@ -1332,6 +1318,27 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 // paths
 // ---------------------------------------------------------------------------------------
 
+/// Whether a unit is the owner of a foreign edit: the edit names its stem as the owner and
+/// lies under its target's output directory, so an edit recorded for another target, whose
+/// stems may agree, is not its.
+// @lfy def/generation/main.lfy:plan#plan:plan:f94bebcadb345989b89582a2716579351dbfc0c4b56c770f7661f54fe2e65be3
+// @lfy def/generation/main.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
+fn owns(unit: &Unit, target: &Target, edit: &ForeignEdit) -> bool {
+    edit.owner == unit.stem && under(&edit.path, &target.output_directory)
+}
+
+/// The stub line of a target: the value the setters of its declaration give the member
+/// `stubLine` of `targetLanguage`, read as [`Target::marker_comment`] is read from
+/// `markerComment`; `None` when no setter gives it one, and then no line is a stub line.
+// @lfy def/generation/main.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
+// @lfy def/generation/main.lfy:accept#accept:accept:ec9bf2b28c1f3b0e6144d76c6bcf7912791a9eb3f8d41f1c5f2ef658d041f34a
+fn stub_line_of(model: &Model, target: &Target) -> Option<String> {
+    model.entities[target.declaration]
+        .value("stubLine")
+        .and_then(model::Value::as_str)
+        .map(str::to_string)
+}
+
 /// Whether a directory is the root itself.
 fn is_root(directory: &str) -> bool {
     directory.is_empty() || directory == "."
@@ -1556,6 +1563,7 @@ trait target: `What every layer of a target is` {
 }
 trait targetLanguage extends target: `What its code is written in` {
   $fileExtension: `The extension of its files` = string;
+  $stubLine: `The statement that replaces a body to stub it` = string | undefined;
 }
 trait targetRuntime extends target: `What runs its code` { }
 trait targetPlatform extends target: `Where it runs` { }
@@ -1597,6 +1605,24 @@ trait cargo extends targetEcosystem: `Crates from crates.io` {
   .ecosystem = \"cargo\";
 }
 ";
+
+/// The same roles with a stub line set on the language.
+#[cfg(test)]
+const STUBBED_ROLES: &str = "\
+trait lang extends targetLanguage: `Rust` {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+  .stubLine = 'todo!(\"elfie stub: {{unit}}: {{reason}}\")';
+}
+trait flat extends targetLayout: `One file per unit` { }
+trait cargo extends targetEcosystem: `Crates from crates.io` {
+  .ecosystem = \"cargo\";
+}
+";
+
+/// The stub line the stubbed roles set, as the target spells it.
+#[cfg(test)]
+const STUB_LINE: &str = "todo!(\"elfie stub: {{unit}}: {{reason}}\")";
 
 /// The `ace const` holding the target `rust`, added to `global` so that every entity
 /// of every project file is built for it.
@@ -1656,7 +1682,7 @@ fn plan_of(
     requested: &[String],
     violated: &[String],
 ) -> Plan {
-    let (lowered, plan) = plan(program.workspace.clone(), maps, requested, violated);
+    let (lowered, plan) = plan(program.workspace.clone(), maps, requested, violated, &[]);
     assert_eq!(
         lowered.files.iter().map(|file| &file.text).collect::<Vec<_>>(),
         program.files.iter().map(|file| &file.text).collect::<Vec<_>>()

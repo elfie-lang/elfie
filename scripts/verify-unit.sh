@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# The verifier command `elfie compile` and `elfie verify` run once per batch: Claude Code, given
-# the review request on standard input, with the Elfie agent server and permission to read and to
-# build and test, through the server's command tools or cargo, never to edit or write. ELFIE_ROOT,
-# ELFIE_BATCH, ELFIE_UNITS, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set by the caller; the
-# root is the working directory. ELFIE_MCP_CONFIG names the config of the session the compile hosts
-# for this run, whose elfie_report takes each verdict as it is judged; without it, as when run by
-# hand, the agent server is the one .mcp.json starts, which has no elfie_report, and the verdicts
-# are read from standard output instead.
+# The verifier command `elfie compile` and `elfie verify` run once per unit, and once for the
+# global review: Claude Code, given the review request on standard input, with the Elfie agent
+# server and permission to read and to build and test, through the server's command tools or cargo,
+# never to edit or write. ELFIE_ROOT, ELFIE_UNIT, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set
+# by the caller; the working directory is the copy of the root the compile works its change set
+# in, or the root for elfie verify and when run by hand. ELFIE_UNIT is the stem of the one unit the
+# run reviews, such as workspace/data, or global for the global review, which is for no one unit.
+# ELFIE_MCP_CONFIG names the config of the session the compile hosts for this run, whose
+# elfie_report takes each verdict as it is judged; without it, as when run by hand, the agent server
+# is the one .mcp.json starts, which has no elfie_report, and the verdicts are read from standard
+# output instead.
 set -e
 # The agent server's tools are loaded up front rather than deferred behind a tool search, and no
 # other MCP server is started, so the elfie tools are the first thing the agent sees to reach for.
@@ -18,8 +21,9 @@ export CLAUDE_CODE_MCP_PREWAIT_SERVERS_MS=30000
 # A command tool may wait in its directory's queue and then run a build or a test for up to 30
 # minutes before the server stops it, so a tool call is given 40 minutes rather than the default.
 export MCP_TOOL_TIMEOUT=2400000
-# Without elfie_report the whole report must fit in the final response, and a large batch has
-# hundreds of criteria, so the response may be longer than the default limit allows.
+# Without elfie_report the whole report must fit in the final response, and a large unit, or the
+# global review, has hundreds of criteria, so the response may be longer than the default limit
+# allows.
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 # Definitions are read only through the agent server, which answers for an entity, a name, or a
 # file at once; reading or searching def/ and lib/ by hand is denied. Generated code stays open to
@@ -58,7 +62,14 @@ model=()
 if [ -n "${ELFIE_VERIFIER_MODEL:-}" ]; then
   model=(--model "$ELFIE_VERIFIER_MODEL")
 fi
-echo "verifying batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
+# ELFIE_UNIT is global for the global review; unset or empty, as when run by hand, it is shown as a
+# question mark.
+if [ "${ELFIE_UNIT:-}" = global ]; then
+  reviewing="the global review"
+else
+  reviewing="unit ${ELFIE_UNIT:-?}"
+fi
+echo "verifying $reviewing with Claude Code" >&2
 exec claude -p \
   "${session[@]}" "${model[@]}" \
   --permission-mode default \

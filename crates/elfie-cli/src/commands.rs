@@ -44,7 +44,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 command = Some(Command::Tree);
             } else if i + 1 == arguments.len() && forced.is_none() {
                 // The last argument with nothing after it to take: the option is named back.
-                // @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
+                // @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
                 return Err("--tree needs a file".to_string());
             }
             i += 1;
@@ -66,7 +66,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 }
                 // The last argument with no directory after it to take: the option is named
                 // back, unless --help, -h, or --version has already named the command.
-                // @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
+                // @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
                 None if forced.is_none() => return Err("--root needs a directory".to_string()),
                 None => i += 1,
             }
@@ -84,12 +84,6 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 // @lfy def/cli/main.lfy:parse#parse:parse:5f6a4cec2476302e1f65b3f63fd1793dbdea9475e1d5856222fcb8f1396bc841
                 if name == COLOR && ColorChoice::lookup(value).is_none() {
                     return Err(COLOR_USAGE.to_string());
-                }
-                // --jobs=value gives the text too, and a value that is no whole number of at
-                // least 1 is a usage error.
-                // @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
-                if name == JOBS && !names_a_count(value) {
-                    return Err(JOBS_USAGE.to_string());
                 }
                 options.insert(name.to_string(), Some(value.to_string()));
             } else if name == COLOR {
@@ -111,35 +105,40 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 i += 1;
                 continue;
             } else if OPTIONS_WITH_VALUES.contains(&name) {
-                // --target and --jobs are the options besides --root that take a following
-                // value, and the option of that name gives it.
-                // @lfy def/cli/main.lfy:parse#parse:parse:252d8235d06b32c568f2bf1a13157b65c1788281bf471f3abe705c298312086c
+                // --target is the option besides --root that takes a following value, and the
+                // option target gives it.
+                // @lfy def/cli/main.lfy:parse#parse:parse:d430b5e6a7470398614d725eafdc05b807ff1820689bae58a91114f9b344c530
                 if let Some(value) = arguments.get(i + 1) {
-                    // @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
-                    if name == JOBS && !names_a_count(value) {
-                        return Err(JOBS_USAGE.to_string());
-                    }
                     options.insert(name.to_string(), Some(value.clone()));
                     i += 1;
                 } else if forced.is_none() {
                     // The last argument with nothing after it to take: the option is named
                     // back, unless --help, -h, or --version has already named the command.
-                    // @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
+                    // @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
                     return Err(format!("--{name} needs a value"));
                 }
             } else {
                 // Every other option written with no equals sign is a flag and gives true,
                 // never taking the next argument, so --json check still names the check
                 // command.
-                // @lfy def/cli/main.lfy:parse#parse:parse:233533aea4b9472e5d4e1d27500a3950212b9616536f3b46cf00ef040f59af88
-                // @lfy def/cli/main.lfy:parse#parse:parse:2e73a4f8b63da86790f160a37ed9aa761be453dad91436a10b475b11625c450b
+                // @lfy def/cli/main.lfy:parse#parse:parse:3b63870b5bd8c3d705b3fe36f7d8df1123db22b57fa590663e84f4f4a1e59008
+                // @lfy def/cli/main.lfy:parse#parse:parse:dcb7c2a03e1a5126afb2f4ffe2edf196cc6deae05a25ee2cecbf8b4666b2c8f8
                 options.insert(name.to_string(), None);
             }
             i += 1;
             continue;
         }
+        // Any other argument beginning with a single dash is neither an option, nor the
+        // command, nor positional, so the first argument without a dash still names the
+        // command and one holding none spells help.
+        // @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
+        // @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
+        if argument.starts_with('-') {
+            i += 1;
+            continue;
+        }
         // The first argument that does not begin with a dash names the command.
-        // @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
+        // @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
         if command.is_none() && forced.is_none() {
             match Command::lookup(argument) {
                 Some(found) => command = Some(found),
@@ -147,9 +146,9 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 None => return Err(format!("{argument} is not a command")),
             }
         } else {
-            // Every other one, the value --root, --target, --jobs, or --color took aside, is
+            // Every other one, the value --root, --target, or --color took aside, is
             // positional.
-            // @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
+            // @lfy def/cli/main.lfy:parse#parse:parse:dd2b0b0390de36e5311e96979f200953effcf502ba2cd611c18f6bf2ac6c6545
             positional.push(argument.clone());
         }
         i += 1;
@@ -162,7 +161,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
     }
     // Nothing that does not begin with a dash names a command, no --version is given, and no
     // option that takes a value was the last argument: the command is help.
-    // @lfy def/cli/main.lfy:parse#parse:parse:5f3d8a6fb3ccffa0749573417617024cf2ac816e469eea41263c10278b25db02
+    // @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
     Ok(Invocation {
         command: command.unwrap_or(Command::Help),
         root: find_root(root.as_deref()),
@@ -175,17 +174,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
 /// besides --root that takes a following value unconditionally, and --color takes one only
 /// when it names a [`ColorChoice`].
 // @lfy def/cli/main.lfy:parse
-pub(crate) const OPTIONS_WITH_VALUES: [&str; 2] = ["target", "jobs"];
-
-/// What a --jobs value that is no whole number of at least 1 is answered with.
-// @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
-pub(crate) const JOBS_USAGE: &str = "--jobs must be a whole number of at least 1";
-
-/// Whether text names a whole number of at least 1: what --jobs takes.
-// @lfy def/cli/main.lfy:parse#parse:parse:1c1c05d13f47e70159eab3d4e74654eaa380270fc0a4188a73838e3b7cb66082
-pub(crate) fn names_a_count(value: &str) -> bool {
-    value.parse::<usize>().is_ok_and(|count| count >= 1)
-}
+pub(crate) const OPTIONS_WITH_VALUES: [&str; 1] = ["target"];
 
 /// What a --color value that is no [`ColorChoice`] is answered with.
 // @lfy def/cli/main.lfy:parse
@@ -196,8 +185,9 @@ pub(crate) const COLOR_USAGE: &str = "--color must be auto, always, or never";
 // @lfy def/cli/main.lfy:parse
 pub(crate) fn find_root(given: Option<&str>) -> String {
     // The directory --root named is the root, made absolute against the current directory
-    // when it is relative: a batch's copy lives under the root and its compiler runs inside
-    // that copy, so a relative root would name one place from the CLI and another from there.
+    // when it is relative: a change set's copy lives under the root and its compiler runs
+    // inside that copy, so a relative root would name one place from the CLI and another from
+    // there.
     // @lfy def/cli/main.lfy:parse#parse:parse:3645fdc7e4fa098477e08321e6ca15068b540b9c205c6dd4dddb5f68dba4d549
     if let Some(given) = given {
         let given = Path::new(given);
@@ -224,7 +214,7 @@ pub(crate) fn find_root(given: Option<&str>) -> String {
 }
 
 /// Prints every command, verify among them, with one line of description and the global
-/// options, --no-verify, --strict, --jobs, and --color among them.
+/// options, --no-verify, --continue, --strict, and --color among them.
 // @lfy def/cli/main.lfy:main#main:main:6f0073ceecb972e98aae5b1618d058d12e3264a00f6faa1982ea18e0ca49ac39
 pub(crate) fn help(invocation: &Invocation) -> ExitCode {
     print!("{}", help_text(Paint::of(invocation).out));
@@ -365,7 +355,7 @@ pub(crate) fn check(invocation: &Invocation) -> ExitCode {
         // and with the violated units of the last global review as its violated units.
         // @lfy def/cli/main.lfy:main#main:main:97a1afc5885c67e733bbc5a12d4919a97a3bf22bfdf6cd2fc8066dec4da9c2fc
         let maps = generation::source_maps_of(&workspace, None);
-        let (program, plan) = planned(root, &maps, &[], false, &violated_ids(root));
+        let (program, plan) = planned(root, &maps, &[], false, &violated_ids(root), &[]);
         // A cycle among files that no move could resolve is an error of stage generation at
         // its node and counts among the problems.
         // @lfy def/cli/main.lfy:main#main:main:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a

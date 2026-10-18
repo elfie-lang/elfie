@@ -1106,7 +1106,7 @@ mod tests {
         assert_eq!(values("/** a /** b **/"), vec!["/**", " a ", "/", "** b ", "**/"]);
     }
 
-    // @lfy def/lexer/main.lfy:lex#lex:lex:9605e2ff963ac9c9caf7f6a748be63b943d6195c5516b4f58b567e7dd045376b
+    // @lfy def/lexer/main.lfy:lex#lex:lex:5b87bb021c1a03e47d1041e01848583c815a4e612ff482b1df2fb5093bb02908
     #[test]
     fn the_lexer_matches_against_the_terminal_document_only() {
         let document = terminals();

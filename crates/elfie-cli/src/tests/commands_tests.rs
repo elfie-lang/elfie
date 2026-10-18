@@ -13,8 +13,8 @@ fn a_usage_error_returns_the_usage_code() {
 }
 
 /// Help prints every command of [`Command`], verify among them, with one line of
-/// description and the global options, --no-verify, --strict, --jobs, and --color among
-/// them, and version prints the version; both return success.
+/// description and the global options, --json, --root, --target, --no-verify, --continue,
+/// --strict, and --color among them, and version prints the version; both return success.
 // @lfy def/cli/main.lfy:main#main:main:6f0073ceecb972e98aae5b1618d058d12e3264a00f6faa1982ea18e0ca49ac39
 #[test]
 fn help_and_version_return_success() {
@@ -25,10 +25,15 @@ fn help_and_version_return_success() {
         assert!(text.contains(command.description()), "{text}");
     }
     assert!(text.contains(Command::Verify.value()), "{text}");
-    // @lfy def/cli/main.lfy:main#main:main:6f0073ceecb972e98aae5b1618d058d12e3264a00f6faa1982ea18e0ca49ac39
-    for option in ["--root", "--json", "--no-verify", "--strict", "--jobs", "--color", "--help, -h", "--version"] {
+    // @lfy def/cli/main.lfy:main#main:main:0728ce2f53b2f4a9f3d567eeed29c11a42c55afb46303c1aa95b1d650d43fa97
+    for option in
+        ["--root", "--json", "--target", "--no-verify", "--continue", "--strict", "--color", "--help, -h", "--version"]
+    {
         assert!(text.contains(option), "{option} is missing from {text}");
     }
+    // --jobs is no option any more: units run one at a time.
+    // @lfy def/cli/main.lfy:main#main:main:0728ce2f53b2f4a9f3d567eeed29c11a42c55afb46303c1aa95b1d650d43fa97
+    assert!(!text.contains("--jobs"), "{text}");
     // Every description starts in the same column, painted or not.
     // @lfy def/cli/main.lfy:main
     let painted = help_text(true);
@@ -171,7 +176,7 @@ fn check_says_once_that_the_program_declares_no_target() {
 fn print_stale_names_the_target_the_unit_and_the_reason() {
     let fixture = Fixture::new();
     one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     assert_eq!(plan.units.len(), 1);
     assert_eq!(plan.units[0].reason, Some(Reason::Fresh));
     print_stale(&program.workspace, &plan.units[0], Reason::Fresh, false, false);
@@ -204,8 +209,10 @@ fn check_strict_fails_on_a_stale_unit() {
 fn format_check_prints_the_file_and_leaves_it_alone() {
     let fixture = Fixture::new();
     fixture.write("def/a.lfy", "const   x=1;\n");
-    // @lfy def/cli/main.lfy:main
-    assert_eq!(fixture.run(&["format", "--check"]), ExitCode::Problems.code());
+    // @lfy def/cli/main.lfy:main#main:main:3fbe8b3c0216de28ee03acabf6f8094637f58313fd15ab4b1a7ed940933d4151
+    let (code, out, _) = fixture.printed(&["format", "--check", "--color=never"]);
+    assert_eq!(code, ExitCode::Problems.code());
+    assert!(out.lines().any(|line| line.trim() == "def/a.lfy"), "{out}");
     assert_eq!(fixture.read("def/a.lfy"), "const   x=1;\n");
     // Without --check the file is replaced by the standard layout.
     // @lfy def/cli/main.lfy:main

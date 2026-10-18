@@ -242,8 +242,15 @@ fn requirement_text(program: &Program, id: &str) -> Option<String> {
 /// Where one line of generated code came from: the definition file, the entity, and its
 /// line.
 // @lfy def/mcp/main.lfy:source#source:source:7095bd8049d91a01f9b2a650bf5e71d17bb706c9f4e6a470e004c2dd9881494e
-pub fn source(session: &Session, file: &str, line: usize) -> Result<String, String> {
+pub fn source(session: &Session, file: &str, line: f64) -> Result<String, String> {
     let workspace = &session.workspace;
+    // A number that is no whole line of at least 1 is before every first marker, so no
+    // source map covers it.
+    // @lfy def/mcp/main.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
+    if line.fract() != 0.0 || line < 1.0 {
+        return Ok(format!("no source map covers {file}:{line}"));
+    }
+    let line = line as usize;
     for map in source_maps_of(session, None) {
         if map.output != file {
             continue;
@@ -292,10 +299,10 @@ pub(crate) const SEARCHED_LINES: usize = 200;
 
 /// The files a search reads: every output file of every target it searches, each once, in
 /// the order of their paths.
-// @lfy def/mcp/main.lfy:search#search:search:ad139fbdabb5d3b024a7e78d751dcf2f3b3868f73d92f6746f13ae3b0356182e
+// @lfy def/mcp/main.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
 fn searched_files(session: &Session) -> Vec<String> {
     let workspace = &session.workspace;
-    // @lfy def/mcp/main.lfy:search#search:search:ad139fbdabb5d3b024a7e78d751dcf2f3b3868f73d92f6746f13ae3b0356182e
+    // @lfy def/mcp/main.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
     let targets = session_targets(workspace, session.binding.as_ref());
     let mut found: Vec<String> = targets
         .iter()

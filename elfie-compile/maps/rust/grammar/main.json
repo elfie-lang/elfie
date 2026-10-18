@@ -5,8 +5,8 @@
       "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-09T01:01:06Z",
-    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
+    "generated": "2026-10-17T20:07:43Z",
+    "hash": "2bd6492d1758eec3660f02c4de3e5d91cf9bbd65b68550105543331764312eff",
     "markers": [
       {
         "column": null,
@@ -293,7 +293,7 @@
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "70a1dc102b81d7f4357b6b0fa46fd3b3b342b3a42b471e4651d756ba223fc125"
   },
   {
     "answered": [],
@@ -301,8 +301,8 @@
       "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-09T01:01:06Z",
-    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
+    "generated": "2026-10-17T20:07:43Z",
+    "hash": "2bd6492d1758eec3660f02c4de3e5d91cf9bbd65b68550105543331764312eff",
     "markers": [
       {
         "column": null,
@@ -423,7 +423,7 @@
       },
       {
         "column": null,
-        "end": 230,
+        "end": 237,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
@@ -432,110 +432,74 @@
       },
       {
         "column": null,
-        "end": 232,
+        "end": 298,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
         "line": 7,
-        "outputLine": 231,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 233,
-        "entity": "terminalDocument",
-        "file": "def/grammar/main.lfy",
-        "line": 7,
-        "outputLine": 233,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 237,
-        "entity": "terminalDocument",
-        "file": "def/grammar/main.lfy",
-        "line": 7,
-        "outputLine": 234,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 239,
-        "entity": "grammarDocument",
-        "file": "def/grammar/main.lfy",
-        "line": 15,
         "outputLine": 238,
         "requirement": null
       },
       {
         "column": null,
-        "end": 240,
+        "end": 398,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
-        "outputLine": 240,
+        "outputLine": 299,
         "requirement": null
       },
       {
         "column": null,
-        "end": 245,
+        "end": 408,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
-        "outputLine": 241,
+        "outputLine": 399,
         "requirement": null
       },
       {
         "column": null,
-        "end": 255,
+        "end": 452,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
-        "outputLine": 246,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 299,
-        "entity": "grammarDocument",
-        "file": "def/grammar/main.lfy",
-        "line": 15,
-        "outputLine": 256,
+        "outputLine": 409,
         "requirement": "global:def/grammar/main.lfy:afbfe42cdc8454da6102f966fb6e895d078bebe73b3c95796edf1fb22f5f5b5c"
       },
       {
         "column": null,
-        "end": 321,
+        "end": 474,
         "entity": "terminalDocument",
         "file": "def/grammar/main.lfy",
         "line": 7,
-        "outputLine": 300,
+        "outputLine": 453,
         "requirement": null
       },
       {
         "column": null,
-        "end": 332,
+        "end": 491,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
-        "outputLine": 322,
+        "outputLine": 475,
         "requirement": null
       },
       {
         "column": null,
-        "end": 338,
+        "end": 497,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
-        "outputLine": 333,
+        "outputLine": 492,
         "requirement": null
       },
       {
         "column": null,
-        "end": 365,
+        "end": 524,
         "entity": "grammarDocument",
         "file": "def/grammar/main.lfy",
         "line": 15,
-        "outputLine": 339,
+        "outputLine": 498,
         "requirement": "global:def/grammar/main.lfy:efd1981bf1275d82e99ce8975d9008db6dfe0706b3d371324a263990718e239e"
       }
     ],
@@ -544,7 +508,7 @@
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "ede1afd863999ec2c463e358ba9ffe499b3ee0ac069978e72a72fc08f58fa95f"
   },
   {
     "answered": [],
@@ -552,8 +516,8 @@
       "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-09T01:01:06Z",
-    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
+    "generated": "2026-10-17T20:07:43Z",
+    "hash": "2bd6492d1758eec3660f02c4de3e5d91cf9bbd65b68550105543331764312eff",
     "markers": [
       {
         "column": null,
@@ -588,7 +552,7 @@
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "0725e817de364a63131a19f23a872264356fc60adee6f671fab7e08b3b493128"
   },
   {
     "answered": [],
@@ -596,8 +560,8 @@
       "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-09T01:01:06Z",
-    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
+    "generated": "2026-10-17T20:07:43Z",
+    "hash": "2bd6492d1758eec3660f02c4de3e5d91cf9bbd65b68550105543331764312eff",
     "markers": [
       {
         "column": null,
@@ -659,7 +623,7 @@
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "de54c51258a9dbd61c937751c8dd6e4dafec2818e3b0704ed5d8a550bee29a6e"
   },
   {
     "answered": [],
@@ -667,8 +631,8 @@
       "def/grammar/terminals/literal.lfy": "4627903de330da12c548b84eec4e6fc0575773653a0771c34f72c318b63a593c",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213"
     },
-    "generated": "2026-10-09T01:01:06Z",
-    "hash": "ad22ddd98249e3048b9bd59a9739f89942b1d1d904484121cf7d3743149ebca9",
+    "generated": "2026-10-17T20:07:43Z",
+    "hash": "2bd6492d1758eec3660f02c4de3e5d91cf9bbd65b68550105543331764312eff",
     "markers": [
       {
         "column": null,
@@ -684,7 +648,7 @@
         "end": 7,
         "entity": "plan",
         "file": "def/generation/main.lfy",
-        "line": 32,
+        "line": 38,
         "outputLine": 7,
         "requirement": null
       },
@@ -757,6 +721,6 @@
     "signature": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
     "source": "def/grammar/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "e397d522d5a09556e1e457b6f7ddb96d83df9d84f812341dd370c7099572d0a0"
   }
 ]

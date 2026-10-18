@@ -95,7 +95,20 @@ fn the_tools_are_listed_with_their_arguments() {
     // @lfy def/mcp/main.lfy:test#test:tool:3095733c477eec37202566f8813793d01f848b595701cdd835ffc630ba78f768
     // @lfy def/mcp/main.lfy:lint#lint:tool:f0044ba556ab8e00066360dce81c2a584d6ad207e30d0233e25d4294fde9e8a5
     // @lfy def/mcp/main.lfy:format#format:tool:fad2173ad6add7bf6e4a61983e9685caf2ffe4dfb3b1a4887c920667e347acee
-    for withheld in ["elfie_task", "elfie_dependency", "elfie_mark", "elfie_submit", "elfie_build", "elfie_test", "elfie_lint", "elfie_format"] {
+    // @lfy def/mcp/main.lfy:reach#reach:tool:faaa38b77c25cd822a66ebe6d91212142f18b490b4ca2097242485bfd37a3437
+    // @lfy def/mcp/main.lfy:touch#touch:tool:0953bf28021ac288a8c246b0a2488bbba9357be8c1477cff0f9155da3164508f
+    for withheld in [
+        "elfie_task",
+        "elfie_dependency",
+        "elfie_reach",
+        "elfie_touch",
+        "elfie_mark",
+        "elfie_submit",
+        "elfie_build",
+        "elfie_test",
+        "elfie_lint",
+        "elfie_format",
+    ] {
         assert!(!listed.iter().any(|tool| tool.name == withheld), "{withheld}");
     }
 }
@@ -104,14 +117,14 @@ fn the_tools_are_listed_with_their_arguments() {
 /// required arguments its parameters give it, so each of them is one tool.
 // @lfy def/mcp/main.lfy:task#task:tool:b4176adea23f8e6c58f4d041e7a85447286076984bd05464e92528b60fda6d8b
 // @lfy def/mcp/main.lfy:task#task:tool:46ad78939d73914a576d0dce0904cae992474f9eeb184c717a5a0c324091d4d5
-// @lfy def/mcp/main.lfy:task#task:tool:3f09d52a0b71d1b830863b88454d30b98bb821b36e428efed32d7e6169482a3c
+// @lfy def/mcp/main.lfy:task#task:tool:18b0c73855584e9caf73515d1acf890c0655ed42c042d108a8914180338ce2b3
 // @lfy def/mcp/main.lfy:task#task:tool:6ddac2bcba95be32011edabc6d0abbc63da57cd4a0182a8c86f882a8482706e7
 // @lfy def/mcp/main.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
 // @lfy def/mcp/main.lfy:task#task:tool:b2e2fadd9a1cd573a4b55e2e77fbd573ec3a9f6184ccd88beca5e743b871e9cd
 // @lfy def/mcp/main.lfy:task#task:tool:b361de400635b42112cf8a02205ed19f3875a7f7f9835b646817814b39f0233d
 // @lfy def/mcp/main.lfy:dependency#dependency:tool:4fd4dbdb36a4d1d4e8a9589471a29d8337372b850160162b8a14f940ad74bbc6
 // @lfy def/mcp/main.lfy:dependency#dependency:tool:7b7fe0f695f34ca950fbd8f4bc3aa16eb90bc78d78ed5a87812fe95b03c71eb5
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:62ccf07aff23acf72a7e091f19b6d110da5bb4dc6f969dcadd130d72ab9ccf3f
+// @lfy def/mcp/main.lfy:dependency#dependency:tool:6cb58ea6b9b30b6f2aba6bd276fdc3a0e104710c2733f9df000387e646050f34
 // @lfy def/mcp/main.lfy:dependency#dependency:tool:01c082cb2c776a72049a0c164c556b408ada68b6c8d3e961aed6be20476ba114
 // @lfy def/mcp/main.lfy:dependency#dependency:tool:feb08658fc3d60e206035d80439de4021e443fe53d2226e6e8ad43298da9f5b7
 // @lfy def/mcp/main.lfy:dependency#dependency:tool:4894a15426436158e1d439a6ad82b49784af28fc4c896d683eb4bcfe455480a0
@@ -142,7 +155,7 @@ fn the_tools_are_listed_with_their_arguments() {
 // @lfy def/mcp/main.lfy:build#build:tool:d7aadcec979a675c909a3493228563ee20b979feaf86ec325edc207f6683b4f5
 // @lfy def/mcp/main.lfy:test#test:tool:5386b37f95ca729944462379291817c9470858369f6cfb9387b834f8767c2b51
 // @lfy def/mcp/main.lfy:test#test:tool:a038afc81a5b6f64a780e0144c3ac1be7ce831938025338a3c18193929918aba
-// @lfy def/mcp/main.lfy:test#test:tool:b781017493ee33fccd6be22cef4cb4b2338a130da8607db5c8a6899222f40fd1
+// @lfy def/mcp/main.lfy:test#test:tool:2762b11ba85ed708418f9df9c62fc0b7f1cf6561920586cf0b39f730acb05fa8
 // @lfy def/mcp/main.lfy:test#test:tool:4930fab7d3d2c47253afb07544bc3ab8fcd4c5deb1e42ce3f9f8b2dcc6175c30
 // @lfy def/mcp/main.lfy:test#test:tool:cbeb0da9f28bfbd6a6d084bb140fca7c043af3a7fee4c0c506d08562fcb13392
 // @lfy def/mcp/main.lfy:test#test:tool:91cfa553c86897863866df4f70a520da5ab64eb9facaea1c00b2c552ee52e2da
@@ -173,10 +186,23 @@ fn every_tool_is_listed_as_its_fn_declares_it() {
     };
     let task = of("elfie_task");
     assert!(task.description.as_deref().is_some_and(|text| text.starts_with("What this compiler run must do")));
-    // The one parameter of `task` that is not the session is optional, so its argument
-    // is not required.
+    // The one parameter of `task` is the session, so it has no argument.
     assert_eq!(task.input_schema["required"], serde_json::json!([]));
-    assert_eq!(task.input_schema["properties"]["unit"]["type"], "string");
+    assert_eq!(task.input_schema["properties"], serde_json::json!({}));
+    // `reach` takes an optional unit, and `touch` needs both a unit and a note.
+    // @lfy def/mcp/main.lfy:reach#reach:tool:1e225d7ed7e538bb99a23803976c607a8fb5b5c2f2f590ec4b06f35d41697b9c
+    // @lfy def/mcp/main.lfy:reach#reach:tool:c88a7beb004c86a4f071d6b34d0c5f3d7912b0665b861ae6b5c12672faa877b7
+    // @lfy def/mcp/main.lfy:reach#reach:tool:0be8d749d8b083dc788a187d2a6411bd4e5cfd6e62a4371e69faffd3064ddae3
+    let reached = of("elfie_reach");
+    assert_eq!(reached.input_schema["required"], serde_json::json!([]));
+    assert_eq!(reached.input_schema["properties"]["unit"]["type"], "string");
+    assert!(reached.description.as_deref().is_some_and(|text| text.starts_with("The later units whose code")));
+    // @lfy def/mcp/main.lfy:touch#touch:tool:4da83db2b1e129fa631e9e83c60e0103445ac7000e8c574aae3c464bf2eca7ae
+    // @lfy def/mcp/main.lfy:touch#touch:tool:75d192739bfcff082aa5ae79c7958de50175542afac2af2f3f957082f35312e3
+    // @lfy def/mcp/main.lfy:touch#touch:tool:a0970db31ba3316fc4048021908a1353da824324e5a915be3be50a3018474644
+    let touched = of("elfie_touch");
+    assert_eq!(touched.input_schema["required"], serde_json::json!(["unit", "note"]));
+    assert!(touched.description.as_deref().is_some_and(|text| text.starts_with("Say why this compiler run edited")));
     let dependency = of("elfie_dependency");
     assert_eq!(dependency.input_schema["required"], serde_json::json!(["name"]));
     assert!(
@@ -223,6 +249,8 @@ fn every_tool_is_listed_as_its_fn_declares_it() {
         }
         assert!(tool.description.as_deref().is_some_and(|text| text.starts_with("Run the target's")), "{name}");
     }
+    // `allowStubs` has a default, so it is not required, and it is a boolean.
+    assert_eq!(of("elfie_test").input_schema["properties"]["allowStubs"]["type"], "boolean");
 }
 
 /// The whole server, driven over streams: a root whose `def` holds `a.lfy` reading
@@ -429,16 +457,41 @@ fn a_new_file_under_any_source_directory_is_read_before_a_call() {
 // @lfy def/mcp/main.lfy:host#host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1
 // @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
 // @lfy def/mcp/main.lfy:host#host:host:91b44b23c29eaf7242b190da7fe5ab5f3642df5ec77212e680331af6b76e01b1
-// @lfy def/mcp/main.lfy:host#host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713
-// @lfy def/mcp/main.lfy:host#host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6
+/// The instructions name only the tools a session is offered: a verifier offered command
+/// tools but not `elfie_mark` is told what a command tool writes and nothing of
+/// `elfie_mark`, and a compiler offered both is told of each.
+// @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
+#[test]
+fn the_instructions_name_only_the_tools_the_session_is_offered() {
+    let fixture = compiled_project();
+    let verifier = binding_of(&fixture, Role::Verifier, Some("b"));
+    let offered: Vec<String> = ["elfie_review", "elfie_build", "elfie_test"].map(String::from).to_vec();
+    let text = crate::serving::instructions(&offered, Some(&verifier));
+    assert!(text.contains("verifier"), "{text}");
+    assert!(text.contains("elfie_build, elfie_test change files"), "{text}");
+    assert!(text.contains("a command tool runs the target's own command"), "{text}");
+    assert!(!text.contains("elfie_mark"), "{text}");
+    let compiler = binding_of(&fixture, Role::Compiler, Some("b"));
+    let offered: Vec<String> = ["elfie_mark", "elfie_build"].map(String::from).to_vec();
+    let text = crate::serving::instructions(&offered, Some(&compiler));
+    assert!(text.contains("elfie_mark writes a marker line"), "{text}");
+    assert!(text.contains("a command tool runs"), "{text}");
+    // A session offered no tool that changes a file says so, and names none.
+    let offered: Vec<String> = vec!["elfie_review".to_string()];
+    let text = crate::serving::instructions(&offered, Some(&verifier));
+    assert!(text.contains("None of them changes a file") && !text.contains("elfie_mark"), "{text}");
+}
+
+// @lfy def/mcp/main.lfy:host#host:host:4f93ffa04b2302091d6bf6a54426365f36cc3334f4bd6b70ee65cb46e2094fcc
+// @lfy def/mcp/main.lfy:host#host:host:e8ca1d3750be663de7ec7128c57f5baf58e5c50b353149eced597e09b4a82e27
 #[test]
 fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
     let fixture = compiled_project();
     let hosting = hosting_of("http://127.0.0.1:7/");
     // @lfy def/mcp/main.lfy:host#host:host:465078bd14c4c2971c8ae047a59db580f64b30e5fa762af2e656c4accbede7ba
-    let first = hosting.open(binding_of(&fixture, Role::Compiler, Some("b+1")));
+    let first = hosting.open(binding_of(&fixture, Role::Compiler, Some("b")));
     assert_eq!(first, "http://127.0.0.1:7/sessions/1");
-    let second = hosting.open(binding_of(&fixture, Role::Verifier, Some("b+1")));
+    let second = hosting.open(binding_of(&fixture, Role::Verifier, Some("b")));
     assert_eq!(second, "http://127.0.0.1:7/sessions/2");
 
     let compiling = hosting.session("/sessions/1").expect("the first session");
@@ -489,7 +542,7 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
         let binding = session.binding.as_ref().expect("a binding");
         // @lfy def/mcp/main.lfy:host#host:host:238a67527a5f81bdc05abb6515eacc7b86b9ead269c56d3b3654d34d47184b50
         assert_eq!(binding.role, Role::Compiler);
-        assert_eq!(binding.batch.as_ref().map(|batch| batch.identifier.as_str()), Some("b+1"));
+        assert_eq!(binding.unit.map(|unit| binding.plan.units[unit].stem.as_str()), Some("b"));
         // @lfy def/mcp/main.lfy:host#host:host:b01f7a894faf3752cba01a91aaed7228df1bb1b93d87ea2c648f034427bcc3fd
         assert_eq!(session.workspace.root, fixture.root);
         assert_eq!(session.workspace.files.len(), binding.program.workspace.files.len());
@@ -500,6 +553,8 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
         assert!(session.reviews.lock().unwrap().is_empty());
         // @lfy def/mcp/main.lfy:host#host:host:5e5526603ec0ccf1f819bfc584b556e779b3a2a8f9d0f46fdc9b92ad91bb9dc5
         assert!(session.submission.lock().unwrap().is_none());
+        // @lfy def/mcp/main.lfy:host#host:host:df3e7b35d68aedd025cb565e98984626a24220aa3db2d1a6d7c603776dbb6286
+        assert!(session.touched().is_empty());
     }
     // A call naming a tool the session is not offered is an error saying so, and the fn
     // is not reached: nothing is checked and no plan is made.
@@ -520,7 +575,7 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
 
     // A compiler's session records what `elfie_submit` submitted, and closing it gives
     // that back with its reviews and leaves it no longer open.
-    // @lfy def/mcp/main.lfy:host#host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713
+    // @lfy def/mcp/main.lfy:host#host:host:4f93ffa04b2302091d6bf6a54426365f36cc3334f4bd6b70ee65cb46e2094fcc
     let submitted = compiling
         .call(&calling(
             "elfie_submit",
@@ -530,17 +585,17 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
     let (failed, text) = answered(&submitted);
     assert!(!failed, "{text}");
     let record = hosting.close(&first);
-    assert!(record.reviews.is_empty());
+    assert!(record.reviews.is_empty() && record.touches.is_empty());
     assert_eq!(
         record.submission.as_ref().map(|one| (one.outcome, one.message.as_str())),
         Some((SubmittedOutcome::Done, "all four written"))
     );
     assert!(hosting.session("/sessions/1").is_none());
     // A URL that is no open session's gives a record holding nothing.
-    // @lfy def/mcp/main.lfy:host#host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6
+    // @lfy def/mcp/main.lfy:host#host:host:e8ca1d3750be663de7ec7128c57f5baf58e5c50b353149eced597e09b4a82e27
     for url in [first.as_str(), "http://127.0.0.1:7/sessions/9", "http://elsewhere/sessions/2"] {
         let record = hosting.close(url);
-        assert!(record.reviews.is_empty() && record.submission.is_none(), "{url}");
+        assert!(record.reviews.is_empty() && record.submission.is_none() && record.touches.is_empty(), "{url}");
     }
     assert!(hosting.session("/sessions/2").is_some());
 }
@@ -588,7 +643,7 @@ fn http(url: &str, token: Option<&str>, body: &str) -> (u16, String) {
 // @lfy def/mcp/main.lfy:host#host:host:246a5aacda8ffe241aedd0b00fec70b3f76a7c6220141f54731dcb8097f58852
 // @lfy def/mcp/main.lfy:host#host:host:b20b250482898ccb1326689317f112cb544e9941949596a5c823ce56f4d692b9
 // @lfy def/mcp/main.lfy:host#host:host:f876706edb4133d6c7e2e9d4f43bf7b7cc00c92572911e227d0c789a95636e5d
-// @lfy def/mcp/main.lfy:host#host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79
+// @lfy def/mcp/main.lfy:host#host:host:168ea38e3b02711e2ccfff82e53bfb6a59a077f85b227f166ad5fb4bc3bd41a4
 // @lfy def/mcp/main.lfy:host#host:host:e07851ea0cedfcd8e3d913fa15d72b1c389e0d5f87edfc1f52b7841decccbd1e
 #[test]
 fn the_host_speaks_the_protocol_over_http_behind_its_token() {
@@ -616,7 +671,7 @@ fn the_host_speaks_the_protocol_over_http_behind_its_token() {
     assert_ne!(other.url, host.url);
     (other.stop)();
 
-    let url = (host.open)(binding_of(&fixture, Role::Compiler, Some("b+1")));
+    let url = (host.open)(binding_of(&fixture, Role::Compiler, Some("b")));
     // No token: 401, and nothing of the protocol is answered, so no tool ran.
     // @lfy def/mcp/main.lfy:host#host:host:b20b250482898ccb1326689317f112cb544e9941949596a5c823ce56f4d692b9
     let (status, body) = http(&url, None, LISTING);
@@ -631,7 +686,7 @@ fn the_host_speaks_the_protocol_over_http_behind_its_token() {
     // The session's URL, under no MCP session id at all: the protocol is spoken, and
     // the listing is the session's.
     // @lfy def/mcp/main.lfy:host#host:host:d17c6dc3479336c65543a2c99389c29582860e9358d65bd4e36a3d9c355e7825
-    // @lfy def/mcp/main.lfy:host#host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79
+    // @lfy def/mcp/main.lfy:host#host:host:168ea38e3b02711e2ccfff82e53bfb6a59a077f85b227f166ad5fb4bc3bd41a4
     let (status, body) = http(&url, Some(&host.token), LISTING);
     assert_eq!(status, 200, "{body}");
     let listed: Value =
@@ -700,7 +755,7 @@ fn the_source_maps_of_a_review_stand_in_for_the_recorded_ones() {
 /// In a compiler's session the map of one of its own units is read from the markers its
 /// output holds now, while every other member of it is the recorded map's, so the unit
 /// still plans, changes, and requests as the compile planned it.
-// @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
+// @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
 #[test]
 fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
     let fixture = Fixture::new();
@@ -724,8 +779,7 @@ fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
     // The output as it is now: a line was added before the marker, so its region begins
     // one line later than the recorded map says.
     fixture.write("out/b.rs", &format!("// A note.\n{accepted}"));
-    // The unit is up to date, so the plan batches nothing; a compiler run of it is bound
-    // to a batch of its own.
+    // The unit is up to date; a compiler run of it is bound to it all the same.
     let planned = plan_of(&fixture.session());
     let of_b = (0..planned.plan.units.len())
         .find(|&unit| planned.plan.units[unit].stem == "b")
@@ -734,21 +788,22 @@ fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
         &fixture,
         Binding {
             role: Role::Compiler,
-            batch: Some(Batch { units: vec![of_b], identifier: "b".to_string() }),
+            unit: Some(of_b),
             directory: fixture.root.clone(),
             plan: planned.plan.clone(),
             program: planned.program.clone(),
             request: None,
+            before: None,
             review: None,
             source_maps: Vec::new(),
         },
     );
     let live = of_output(source_maps_of(&session, None));
-    // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
+    // @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
     assert_eq!(live.markers.first().map(|marker| marker.output_line), Some(2));
     assert_ne!(live.markers, recorded.markers);
     // Nothing else differs: with the recorded markers put back, the two maps are one.
-    // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
+    // @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
     let carried = SourceMap { markers: recorded.markers.clone(), ..live };
     assert_eq!(carried, recorded);
 }
@@ -756,26 +811,26 @@ fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
 /// In a compiler's session a unit whose map file holds no map still has one map per
 /// output file holding a marker of its own, read from the file as it is now, with every
 /// other member of each empty, since nothing was ever recorded to carry over.
-// @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+// @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
 #[test]
 fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
     let fixture = compiled_project();
     // Nothing has been accepted, so neither unit has a map; the output of `b` is written
     // and the output of `a` is not.
     fixture.write("out/b.rs", "// A note.\n// @lfy def/b.lfy:B\npub struct B;\n");
-    let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b+1")));
+    let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b")));
     let maps = source_maps_of(&session, None);
-    // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
     let read: Vec<&SourceMap> = maps.iter().filter(|map| map.source == "def/b.lfy").collect();
     let [map] = read[..] else { panic!("one map of def/b.lfy, not {read:?}") };
     assert_eq!((map.target.as_str(), map.output.as_str()), ("rust", "out/b.rs"));
     // The markers are the ones the file holds now, read as acceptance reads them.
-    // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
     assert_eq!(map.markers.len(), 1);
     assert_eq!(map.markers[0].output_line, 2);
     assert_eq!(map.markers[0].entity.as_deref(), Some("B"));
     // Every other member is empty.
-    // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
     let empty = SourceMap {
         markers: map.markers.clone(),
         target: map.target.clone(),
@@ -791,80 +846,96 @@ fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
     };
     assert_eq!(map, &empty);
     // No file holds a marker of `a`, so it has no map at all.
-    // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
     assert!(!maps.iter().any(|map| map.source == "def/a.lfy"), "{maps:?}");
 }
 
-/// A hosted session acts on its own batch and on no other: a request, a check, a
-/// change, or a review for another is an error naming the batch it acts on, or the
-/// global review when it is bound to none.
-// @lfy def/mcp/main.lfy:request#request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0
-// @lfy def/mcp/main.lfy:check#check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30
-// @lfy def/mcp/main.lfy:changes#changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1
-// @lfy def/mcp/main.lfy:review#review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea
+/// In a compiler's session a unit of the reach whose output reads other than before the
+/// run is an edited unit, so its map is read from the markers its output holds now; a unit
+/// of the reach the run left alone is read as recorded.
+// @lfy def/mcp/main.lfy:host#host:host:b13df361f68d03163d9154bd53097634706a3976e5dd60ef743bad1f5f7d8f22
+// @lfy def/mcp/main.lfy:host#host:host:d3337eaab7af4245ed2aea215d9b2a7a3dc070180f650d25a2cd723e3eba308b
 #[test]
-fn a_hosted_session_acts_only_on_its_own_batch() {
+fn a_reached_unit_the_run_edited_is_read_from_its_outputs() {
+    let (fixture, session) = reached_project();
+    let first_of = |maps: &[SourceMap], output: &str| {
+        maps.iter()
+            .find(|map| map.output == output)
+            .and_then(|map| map.markers.first())
+            .map(|marker| marker.output_line)
+    };
+    // Nothing is edited yet, so `b` and `c` are read as recorded.
+    assert_eq!(edited_units(&session).len(), 1);
+    // A line put before the first region of `b` moves its regions down by one.
+    fixture.write("out/b.rs", &format!("// A note.\n{REACHED_B}"));
+    let edited = edited_units(&session);
+    let binding = session.binding.as_ref().expect("a binding");
+    let stems: Vec<&str> = edited.iter().map(|&unit| binding.plan.units[unit].stem.as_str()).collect();
+    assert_eq!(stems, ["a", "b"]);
+    let maps = source_maps_of(&session, None);
+    assert_eq!(first_of(&maps, "out/b.rs"), Some(2), "{maps:?}");
+    assert_eq!(first_of(&maps, "out/c.rs"), Some(1), "{maps:?}");
+    assert_eq!(maps.iter().filter(|map| map.source == "def/b.lfy").count(), 1, "{maps:?}");
+}
+
+/// A hosted session acts on its own unit and on no other: a request, a check, a change,
+/// or a review for another is an error naming the unit it acts on, or the global review
+/// when it is bound to none.
+// @lfy def/mcp/main.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
+// @lfy def/mcp/main.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
+// @lfy def/mcp/main.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+// @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+#[test]
+fn a_hosted_session_acts_only_on_its_own_unit() {
     let fixture = compiled_project();
-    let plain = fixture.session();
-    let planned = plan_of(&plain);
-    // The fixture batches both units as `b+1`; a binding to a batch of its own holding
-    // only `a` leaves the unit `b` and the batch `b+1` outside it.
-    let of_a = (0..planned.plan.units.len())
-        .find(|&unit| planned.plan.units[unit].stem == "a")
-        .expect("the unit a");
-    let mut binding = binding_of(&fixture, Role::Compiler, Some("b+1"));
-    binding.batch = Some(Batch {
-        units: vec![of_a],
-        identifier: "a".to_string(),
-    });
-    let session = bound(&fixture, binding);
-    // @lfy def/mcp/main.lfy:request#request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0
-    let error = request(&session, "b+1", None).unwrap_err();
-    assert!(error.contains("acts only on its own batch, a"), "{error}");
-    // @lfy def/mcp/main.lfy:check#check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30
+    let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("a")));
+    // @lfy def/mcp/main.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
+    let error = request(&session, "b", None).unwrap_err();
+    assert!(error.contains("acts only on its own unit, a"), "{error}");
+    // @lfy def/mcp/main.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
     let error = check(&session, "b", None).unwrap_err();
-    assert!(error.contains("acts only on its own batch, a"), "{error}");
-    // @lfy def/mcp/main.lfy:changes#changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1
+    assert!(error.contains("acts only on its own unit, a"), "{error}");
+    // @lfy def/mcp/main.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
     let error = changes(&session, "b", None).unwrap_err();
-    assert!(error.contains("acts only on its own batch, a"), "{error}");
-    // @lfy def/mcp/main.lfy:review#review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea
-    let error = review(&session, "b+1", None).unwrap_err();
-    assert!(error.contains("acts only on its own batch, a"), "{error}");
+    assert!(error.contains("acts only on its own unit, a"), "{error}");
+    // @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+    let error = review(&session, "b", None).unwrap_err();
+    assert!(error.contains("acts only on its own unit, a"), "{error}");
     // Its own unit is answered for as ever: the guard lets it through and the verdict
     // of `accept` is what comes back.
     // @lfy def/mcp/main.lfy:check#check:check:2a16ea176547468dbe87eb74de7c195dc58e16c26122fc69de5f2ff15dd469f1
     let error = check(&session, "a", None).unwrap_err();
     assert!(error.starts_with("rejected a:"), "{error}");
 
-    // A session bound to the global review acts on no batch at all.
-    // @lfy def/mcp/main.lfy:review#review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea
+    // A session bound to the global review acts on no unit at all.
+    // @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
     let session = bound(&fixture, binding_of(&fixture, Role::Verifier, None));
-    let error = review(&session, "b+1", None).unwrap_err();
+    let error = review(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on the global review"), "{error}");
-    let error = request(&session, "b+1", None).unwrap_err();
+    let error = request(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on the global review"), "{error}");
     let error = changes(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on the global review"), "{error}");
 }
 
 /// A verifier is given the review request it was run with, never one made again from
-/// the outputs as they are now; a compiler of the same batch has the request made for
-/// the batch.
-// @lfy def/mcp/main.lfy:review#review:review:da108e476bfaee29f25ace2bffd41fea2a2d7605e41824c4b25757bf8287f9b1
+/// the outputs as they are now; a compiler of the same unit has the request made for the
+/// unit.
+// @lfy def/mcp/main.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
 #[test]
 fn a_verifier_is_given_the_review_request_it_was_run_with() {
     /// What the review request the verifier was run with reads.
-    const GIVEN: &str = "# Reviewing the batch `b`\n\nthe request this verifier was run with\n";
+    const GIVEN: &str = "# Reviewing the unit `b`\n\nthe request this verifier was run with\n";
     let fixture = project_with_requirements();
     let mut binding = binding_of(&fixture, Role::Verifier, Some("b"));
     let mut given = binding.review.clone().expect("a verifier's review");
     given.instructions = GIVEN.to_string();
     binding.review = Some(given);
     let session = bound(&fixture, binding);
-    // @lfy def/mcp/main.lfy:review#review:review:da108e476bfaee29f25ace2bffd41fea2a2d7605e41824c4b25757bf8287f9b1
+    // @lfy def/mcp/main.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
     assert_eq!(review(&session, "b", None).unwrap(), GIVEN);
-    // A compiler's session has the request made for the batch instead.
-    // @lfy def/mcp/main.lfy:review#review:review:f58d35f9aea99f8ea42d7e215a8e84d42b2b414afa745217d99622b1a66e5c0d
+    // A compiler's session has the request made for the unit instead.
+    // @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
     let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b")));
     let instructions = review(&session, "b", None).unwrap();
     assert_ne!(instructions, GIVEN);

@@ -4,45 +4,43 @@
 use super::*;
 use crate::planning::{Recovered, move_line, previous_source, unit_of_stem};
 
-// The text lists the problems, then the moves, then the units, then the batches; this
-// project has neither a problem nor a move, so it begins at the units.
-// @lfy def/mcp/main.lfy:units#units:units:3dfafdff61f6c1061f2fe64e135a6885c4554344d56b669fcd2f9dceddc9bb98
+// The text lists the problems, then the moves, then the units; this project has neither a
+// problem nor a move, so it is the units alone.
+// @lfy def/mcp/main.lfy:units#units:units:920638da45d13abf0859774d9b78a3a3087c59fed19e9fe90e97b355194204b6
 // @lfy def/mcp/main.lfy:units#units:units:c7fcb0ca869f9f4555904c7d48858c0314cebdf85dc76b32442da4fcb97e9021
-// @lfy def/mcp/main.lfy:units#units:units:92120a7e31d7970c4faf3dd986b56767f95eeeb9e0470fd818c092f986d3e0d3
 #[test]
-fn units_lists_every_unit_and_batch_or_one_targets() {
+fn units_lists_every_unit_or_one_targets() {
     let fixture = compiled_project();
     let session = fixture.session();
     assert_eq!(problems(&session, None).unwrap(), "no problems");
-    let listed = "rust b fresh []\nrust a fresh [b]\n\nbatch b+1 [b, a]";
+    let listed = "rust b fresh []\nrust a fresh [b]";
     assert_eq!(units(&session, None).unwrap(), listed);
-    // @lfy def/mcp/main.lfy:units#units:units:05a79e1b79428d09f369fcfe7a098f9648d1dbfb976d11d8d457dd8945737272
+    // @lfy def/mcp/main.lfy:units#units:units:9ef7e980a808516fa1e3bd6a7a7746a57128c4ef775e20c6b6ebf41db491c432
     assert_eq!(units(&session, Some("rust")).unwrap(), listed);
     // @lfy def/mcp/main.lfy:units#units:units:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
     let error = units(&session, Some("go")).unwrap_err();
     assert!(error.contains("go is not a target") && error.contains("rust"), "{error}");
 }
 
-// @lfy def/mcp/main.lfy:request#request:request:92537a4ab2aac8027576852406e446fcb12c7b5b87c96095a386c6d7dac101ed
+// @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
 #[test]
-fn request_gives_the_instructions_of_one_batch() {
+fn request_gives_the_instructions_of_one_unit() {
     let fixture = compiled_project();
     let session = fixture.session();
-    // A batch is named by its identifier or by the stem of one of its units.
-    let instructions = request(&session, "b+1", None).unwrap();
+    // A unit is named by its stem, and by its target too when one is given.
+    let instructions = request(&session, "a", None).unwrap();
     assert!(instructions.contains("An A"), "{instructions}");
     assert!(instructions.contains("def/a.lfy"), "{instructions}");
-    assert!(instructions.contains("def/b.lfy"), "{instructions}");
-    assert_eq!(request(&session, "a", None).unwrap(), instructions);
     assert_eq!(request(&session, "a", Some("rust")).unwrap(), instructions);
-    // @lfy def/mcp/main.lfy:request#request:request:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c
+    assert_ne!(request(&session, "b", None).unwrap(), instructions);
+    // @lfy def/mcp/main.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
     let error = request(&session, "c", None).unwrap_err();
-    assert!(error.contains("no batch has the identifier c"), "{error}");
+    assert!(error.contains("no unit has the stem c"), "{error}");
     let error = request(&session, "a", Some("go")).unwrap_err();
     assert!(error.contains("go is not a target"), "{error}");
 }
 
-// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+// @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
 #[test]
 fn check_reads_the_outputs_from_disk_and_writes_nothing() {
     let fixture = compiled_project();
@@ -64,7 +62,7 @@ fn check_reads_the_outputs_from_disk_and_writes_nothing() {
 /// A region another unit moved out of a shared output into a file of its own is still
 /// found, because the check reads every other file of the output directory where it reads
 /// the outputs, and so sees that unit's region where it went.
-// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+// @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
 #[test]
 fn check_reads_every_other_file_of_the_output_directory() {
     let fixture = compiled_project();
@@ -77,7 +75,7 @@ fn check_reads_every_other_file_of_the_output_directory() {
     record_unit(&fixture, "b");
     // `b` has since moved its region into a file of its own, which carries no marker of
     // `a` and so is none of the outputs the check judges.
-    // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+    // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
     fixture.write("out/shared.rs", "// @lfy def/a.lfy:A\npub struct A;\n");
     fixture.write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B;\n");
     let session = fixture.session();
@@ -87,10 +85,36 @@ fn check_reads_every_other_file_of_the_output_directory() {
     // With that file gone, the region of `b` is nowhere, and the shared output holds
     // fewer of its regions than what was recorded for it, so the unit is rejected: it is
     // the other file that answered for it.
-    // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+    // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
     fs::remove_file(fixture.root.join("out/b.rs")).unwrap();
     let error = check(&session, "a", None).unwrap_err();
     assert!(error.starts_with("rejected a:") && error.contains("out/shared.rs"), "{error}");
+}
+
+/// A compiler's check of its own unit is made against the request it was given, the files
+/// before its run, and the notes it recorded, so the edits it made to a later unit's code
+/// are judged and listed after its outputs; without a note for a fixed unit it is rejected.
+// @lfy def/mcp/main.lfy:check#check:check:3475f72c3ad61b4c4f2156a3726b40e635a69204d88169984cdadd42fdcc2cf1
+// @lfy def/mcp/main.lfy:check#check:check:45672f7351ea405dd7ffc891b1f97edf8bc53b0c6318964ac46234940a594410
+#[test]
+fn check_of_a_compiler_run_judges_its_edits_to_later_units() {
+    let (fixture, session) = reached_project();
+    edit_reached(&fixture);
+    // The fix in `b` has no note yet.
+    let error = check(&session, "a", None).unwrap_err();
+    assert!(error.contains("gave no note"), "{error}");
+    touch(&session, "b", "a renamed G.one to G.uno").unwrap();
+    // @lfy def/mcp/main.lfy:check#check:check:3fbbf8a1ad1e7e731818a436899a0f61e7d0c7505c0f22229556e2a35f6568c1
+    let text = check(&session, "a", None).unwrap();
+    assert!(text.starts_with("accepted a for rust: 1 output\n  out/a.rs\n"), "{text}");
+    assert!(text.contains("\nfix in b out/b.rs:1 3 lines\n"), "{text}");
+    assert!(text.contains("\nstub in b out/b.rs:7 1 lines\n"), "{text}");
+    // A session bound to no run is given no files before a run, so the same edits are
+    // nothing it judges.
+    // @lfy def/mcp/main.lfy:check#check:check:78908963fd2ee7bcbad8fac4938f354a4ad423f802bdec1e1f80b478611f8f74
+    // @lfy def/mcp/main.lfy:check#check:check:99ef27a8e37ec8ae852a1fbed7fb641118f4d212b8dc0298bd44088933fa5488
+    let text = check(&fixture.session(), "a", None).unwrap();
+    assert!(!text.contains("fix in"), "{text}");
 }
 
 // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
@@ -280,38 +304,6 @@ fn changes_says_so_when_nothing_differs() {
     assert!(generation::changes(&planned.program, &planned.plan.units[index], Some(&text)).is_empty());
 }
 
-/// A name that is the identifier of one batch and the stem of a unit of another means
-/// the batch whose identifier it is. The plan of the fixture batches `b` and `a` as
-/// `b+1`; a second batch whose identifier is `b` makes the name `b` mean both, and the
-/// one whose identifier it is wins.
-// @lfy def/mcp/main.lfy:request#request:request:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99
-#[test]
-fn a_batch_identifier_is_meant_before_a_unit_stem() {
-    let fixture = compiled_project();
-    let session = fixture.session();
-    let planned = plan_of(&session);
-    let workspace = planned.workspace();
-    let mut plan = planned.plan.clone();
-    let of_b = (0..plan.units.len()).find(|&unit| plan.units[unit].stem == "b").unwrap();
-    let of_a = (0..plan.units.len()).find(|&unit| plan.units[unit].stem == "a").unwrap();
-    // `b+1` holds the unit whose stem is `b`; the batch added here has `b` as its
-    // identifier and does not hold that unit.
-    assert_eq!(plan.batches[0].identifier, "b+1");
-    assert!(plan.batches[0].units.contains(&of_b));
-    plan.batches.push(Batch {
-        units: vec![of_a],
-        identifier: "b".to_string(),
-    });
-    // @lfy def/mcp/main.lfy:request#request:request:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99
-    let index = resolve_batch(workspace, &plan, "b", None).unwrap();
-    assert_eq!(plan.batches[index].identifier, "b");
-    assert_eq!(plan.batches[index].units, [of_a]);
-    // A stem that is no batch's identifier still names the batch holding that unit.
-    // @lfy def/mcp/main.lfy:review#review:review:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99
-    let index = resolve_batch(workspace, &planned.plan, "a", None).unwrap();
-    assert_eq!(planned.plan.batches[index].identifier, "b+1");
-}
-
 /// A project for a target that one entity is built for and the entity it reaches is
 /// not: the plan has a problem, so there is no request, while a review request is given
 /// as for any plan and does not mention it.
@@ -343,7 +335,7 @@ fn a_plan_with_problems_has_no_request_but_still_has_a_review() {
     assert!(first.contains(": generation error: "), "{listed}");
     assert!(first.starts_with("def/"), "{listed}");
     // The problems come before the units.
-    // @lfy def/mcp/main.lfy:units#units:units:3dfafdff61f6c1061f2fe64e135a6885c4554344d56b669fcd2f9dceddc9bb98
+    // @lfy def/mcp/main.lfy:units#units:units:920638da45d13abf0859774d9b78a3a3087c59fed19e9fe90e97b355194204b6
     let problem_at = listed.lines().position(|line| line.contains(": generation error: ")).unwrap();
     let unit_at = listed.lines().position(|line| line.starts_with("rust ")).unwrap();
     assert!(problem_at < unit_at, "{listed}");
@@ -354,9 +346,8 @@ fn a_plan_with_problems_has_no_request_but_still_has_a_review() {
     assert!(error.contains(": generation error: "), "{error}");
     // The review request is given as for any plan, and does not mention the problems.
     // @lfy def/mcp/main.lfy:review#review:review:5c61bb2a8fa4f5d02a3219d0c4a1f8d385dbad4a9caf2a52fa73d59c10014617
-    let batch = planned.plan.batches.first().map(|batch| batch.identifier.clone()).unwrap_or_else(|| panic!("{listed}"));
-    let instructions = review(&session, &batch, None).unwrap();
-    assert!(instructions.contains("Reviewing the batch"), "{instructions}");
+    let instructions = review(&session, "b", Some("rust")).unwrap();
+    assert!(instructions.contains("Reviewing the unit"), "{instructions}");
     assert!(!instructions.contains("generation error"), "{instructions}");
 }
 
@@ -390,7 +381,7 @@ fn a_move_is_one_line_naming_what_moved_and_why() {
 /// A unit whose output answers for a violated review of the last [`GlobalReview`] is
 /// planned with the reason `violated`; without that review the plan is made with no
 /// violated unit at all.
-// @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+// @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
 #[test]
 fn units_plans_a_violated_unit_again() {
     let fixture = project_with_requirements();
@@ -403,13 +394,13 @@ fn units_plans_a_violated_unit_again() {
 
     // There is no last global review, so the plan is made with no violated unit and the
     // recorded unit is up to date.
-    // @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
     let session = fixture.session();
     assert_eq!(units(&session, None).unwrap(), "rust b up to date []");
 
     // A review that is satisfied names no violated unit either. The file is written as
     // the command line writes it: a global review stringified.
-    // @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
     let review_file = |status: &str| {
         let last = GlobalReview {
             requirements: "0".repeat(64),
@@ -434,8 +425,8 @@ fn units_plans_a_violated_unit_again() {
 
     // The review is violated and a marker of the unit's output answers for its id, so
     // the unit is planned again.
-    // @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
     fixture.write("elfie-requests/global.reviews.json", &review_file("violated"));
     let session = fixture.session();
-    assert_eq!(units(&session, None).unwrap(), "rust b violated []\n\nbatch b [b]");
+    assert_eq!(units(&session, None).unwrap(), "rust b violated []");
 }

@@ -34,7 +34,7 @@ fn ran(text: &str) -> Value {
 /// `elfie_build` runs the target's build command in the run's directory and answers with
 /// the JSON of one run: its target, its operation, its line, whether it exited with 0,
 /// its code, what it wrote, and how many lines that leaves out.
-// @lfy def/mcp/main.lfy:build#build:build:a40f0109a27a2913a7b107821c016cbb3504324aca8cc70407cadc1922e6a6c1
+// @lfy def/mcp/main.lfy:build#build:build:cdf9c3c86a1fe606a631a001eb03e184eb38aa22635bbd147ffb9c962ed295d5
 #[test]
 fn build_runs_the_targets_build_command_and_says_how_it_ended() {
     let fixture = project_with_commands(
@@ -69,14 +69,14 @@ fn build_runs_the_targets_build_command_and_says_how_it_ended() {
     // @lfy def/mcp/main.lfy:build#build:commandTool:1f6aa9de92f8ca8b182ac8744b6bb86bfe4ef0e4fbe7aa6089dd3115896b773a
     let error = build(&session, None, Some("go")).unwrap_err();
     assert!(error.contains("go is not a target") && error.contains("rust"), "{error}");
-    // The session's batch has one target, so naming it is allowed and naming another is
+    // The session's unit has one target, so naming it is allowed and naming another is
     // not; this workspace has only `rust`, so the error above covers the second.
     // @lfy def/mcp/main.lfy:build#build:commandTool:8ffd4f1c8964d044d3a2ad994cc592a42773205e5ab265fbba1c238e40c7390c
-    // @lfy def/mcp/main.lfy:build#build:commandTool:c21f972796c2663341ed914a6967afaa5dc6c0c14d8be6175383fa74deb6c3ed
+    // @lfy def/mcp/main.lfy:build#build:commandTool:dd69dd60edc37a9e66b24de9f8fcdeb8cbe86944d11c3b6047dcd05fe8e8c442
     let named = ran(&build(&session, None, Some("rust")).unwrap());
     assert_eq!(named["target"], "rust");
     // With no binding at all the only target of the workspace is the one.
-    // @lfy def/mcp/main.lfy:build#build:commandTool:e3805c0183b778c19e58e0e6579a16be881fa3c9595b5ff020f4ac5a70215cba
+    // @lfy def/mcp/main.lfy:build#build:commandTool:3afd64b040778d28cf00218d59ef25293e4891a2edb10ea0e5b765f3321f7c85
     let loose = fixture.session();
     let only = ran(&build(&loose, None, None).unwrap());
     assert_eq!(only["target"], "rust");
@@ -84,8 +84,8 @@ fn build_runs_the_targets_build_command_and_says_how_it_ended() {
 
 /// `elfie_test` gives the test command the words that narrow which tests run, as `TESTS`,
 /// and the empty text when it is left out; `SCOPE` is set the same way.
-// @lfy def/mcp/main.lfy:test#test:test:3291847d6fc7e59e082b4c2e6004a110ccc8fa7a156885612c7dff255f1ce056
-// @lfy def/mcp/main.lfy:test#test:test:63cf7e8acbb800f9c7db948b8a480bd276884fb67ebc15e8da98f73210501a8d
+// @lfy def/mcp/main.lfy:test#test:test:88e4049c194be4a5e25c007f182a5dc5b87c5c3c344dcf6e101766888653dea9
+// @lfy def/mcp/main.lfy:test#test:test:10df90472b4c8eda107cfe8640548e69895000106be853750ef9e10d539bce1e
 #[test]
 fn test_narrows_which_tests_run_by_a_filter_and_a_scope() {
     let fixture = project_with_commands(
@@ -93,11 +93,11 @@ fn test_narrows_which_tests_run_by_a_filter_and_a_scope() {
     );
     let session = compiling(&fixture, &[]);
     // @lfy def/mcp/main.lfy:test#test:test:c8bf810d04779ce26830e5c43f290fd753346658b3b40ff992ab1cdedef32174
-    let run = ran(&test(&session, Some("parse lex"), None, None).unwrap());
+    let run = ran(&test(&session, Some("parse lex"), None, None, false).unwrap());
     assert_eq!(run["succeeded"], serde_json::json!(true));
     assert_eq!(run["output"], "[parse lex]\n");
     // @lfy def/mcp/main.lfy:test#test:test:c7fb9e74d7bb66ee2c63c58681b14d00dc8236468fec85e845bd8aed14276ae6
-    let run = ran(&test(&session, None, None, None).unwrap());
+    let run = ran(&test(&session, None, None, None, false).unwrap());
     assert_eq!(run["output"], "[]\n");
     // `SCOPE` is the scope, or the empty text when it is left out.
     // @lfy def/mcp/main.lfy:lint#lint:lint:caecccd1cd176ce8fc2634b1001e015b48012d66788d863fb994735ca793fab5
@@ -107,6 +107,27 @@ fn test_narrows_which_tests_run_by_a_filter_and_a_scope() {
     assert_eq!(run["output"], "[elfie-core]\n");
     let run = ran(&lint(&session, None, None).unwrap());
     assert_eq!(run["output"], "[]\n");
+}
+
+/// `elfie_test` sets `ALLOW_STUBS` to 1 when the caller asks for stubs to be allowed, and
+/// to the empty text when it does not.
+// @lfy def/mcp/main.lfy:test#test:test:be3a6e782a4bd1cabce9ac8286b647e61b06390c366369a426b89e2af12baf94
+#[test]
+fn test_allows_stubs_only_when_asked() {
+    let fixture = project_with_commands("\n    .add({ operation = Operation.test, line = 'echo \"[$ALLOW_STUBS]\"' })");
+    let session = compiling(&fixture, &[]);
+    // @lfy def/mcp/main.lfy:test#test:test:4c1e4df81b056422995d5add58b4a2ab7b8a969ed259ed1ff3b611fc46a0b931
+    let run = ran(&test(&session, None, None, None, true).unwrap());
+    assert_eq!(run["output"], "[1]\n");
+    // @lfy def/mcp/main.lfy:test#test:test:4e7c2e749ecf5d032bf66649d6e5d9daf1357b47d90e6139ef1383be59c6791f
+    let run = ran(&test(&session, None, None, None, false).unwrap());
+    assert_eq!(run["output"], "[]\n");
+    // A call that leaves it out gets the strict outcome; one that gives it reaches the fn
+    // with it.
+    let result = call(&session, "elfie_test", serde_json::json!({}));
+    assert_eq!(ran(&result.text)["output"], "[]\n");
+    let result = call(&session, "elfie_test", serde_json::json!({ "allowStubs": true }));
+    assert_eq!(ran(&result.text)["output"], "[1]\n");
 }
 
 /// A command runs in the target's output directory under the run's directory, with

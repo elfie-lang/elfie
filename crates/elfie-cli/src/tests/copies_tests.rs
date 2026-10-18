@@ -1,215 +1,222 @@
 // @lfy def/cli/main.lfy:main
-//! Tests of a batch's own copy of the root: what it holds, how its files are merged back,
-//! what a batch takes from the batch before it, and the build and test that stand in for the
-//! compiler.
+//! Tests of a change set's copy of the root: what it and its base hold, which of its files
+//! are its own, what a resumed copy takes from the root, how the root takes every change set
+//! at once, and compiles that work through change sets from beginning to end.
 
 use super::*;
-use crate::copies::{Kept, KeptFile, Mirror, Where, mode_of, set_mode};
-use crate::schedule::take_kept;
-
-/// Kept work taken into a copy that holds what it was based on: a file it changed takes its
-/// kept text, and a file it removed is removed, both counted as taken.
-// @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
-#[test]
-fn kept_work_takes_its_changes_and_its_removals() {
-    let fixture = Fixture::new();
-    one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
-    let invocation = parse_arguments(&args(&["compile", "--color=never"])).unwrap();
-    let log = fixture.root.join("kept.log");
-    let reporter = Reporter::new(false, Paint::of(&invocation), 1, vec![log]);
-    let run = Mutex::new(Run::new(program, plan, Vec::new(), reporter, &invocation));
-    let batch = locked(&run).plan.batches[0].clone();
-    let copy = fixture.root.join("copy");
-    fixture.write("copy/changed.txt", "one\n").write("copy/gone.txt", "old\n");
-    let where_ = Where::Copy(Mirror { directory: copy.clone(), base: BTreeMap::new() });
-    let file = |path: &str, base: &str, text: Option<&str>| KeptFile {
-        path: path.to_string(),
-        base: Some(base.to_string()),
-        text: text.map(str::to_string),
-    };
-    let kept = Kept {
-        target: "rust".to_string(),
-        units: Vec::new(),
-        problems: Vec::new(),
-        files: vec![file("changed.txt", "one\n", Some("two\n")), file("gone.txt", "old\n", None)],
-    };
-    // @lfy def/cli/main.lfy:main#main:main:2183852c8ad5bdd852a88254141b828b8d85bc17d90e0d186b2e0d755802e072
-    assert!(take_kept(&run, &batch, &where_, Some(&kept)).is_some());
-    assert_eq!(fs::read_to_string(copy.join("changed.txt")).unwrap(), "two\n");
-    assert!(!copy.join("gone.txt").exists(), "a kept removal is taken");
-    assert!(fixture.read("kept.log").contains("2 files taken, 0 left"), "{}", fixture.read("kept.log"));
-}
+use crate::copies::{base_of, changes_of, copy_of, make_copy, merge_all, mode_of, own_files, set_mode, sync_copy};
 
 /// Whether a file may be run; false everywhere on a platform with no such mode, so that
 /// comparing two files still holds there.
-// @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
+// @lfy def/cli/main.lfy:main#main:main:8b9a6852b850dca4a74c1925af07379b2968a5bef89b107388fd48072d032118
 fn executable(path: &Path) -> bool {
     mode_of(path).is_some_and(|mode| mode & 0o111 != 0)
 }
 
-/// Every file git lists in the root is copied byte for byte, and every file of the copy
-/// that differs from the base is merged back: replaced where the root still holds what
-/// the base holds, and three-way merged where another batch changed it.
-// @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
-// @lfy def/cli/main.lfy:main#main:main:c76294da9586f053f15fc0f1023d6594cfd3d0d6be957baa3e1460d2dc5558ac
-// @lfy def/cli/main.lfy:main#main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff
-#[test]
-fn a_copy_of_the_root_merges_back_into_it() {
-    let fixture = Fixture::new();
-    fixture
+/// The one target of a fixture, as the workspace declares it.
+fn the_target(fixture: &Fixture) -> Target {
+    workspace::load(&fixture.root).targets.into_iter().next().expect("the fixture declares a target")
+}
+
+/// A project with one target and a file of every kind a copy treats apart: an output, the
+/// target's map and review record files, a file of the project, a script, and files under
+/// the cache, the CLI's own folder, and a build directory.
+// @lfy def/cli/main.lfy:main#main:main:f49e520eb6aa39ddc79bfc4e49e3543abb0374d3e5f23e3668a8a68de4bc2616
+fn a_project_to_copy(fixture: &Fixture) -> &Fixture {
+    one_target(fixture)
+        .write("def/a.lfy", "d A: `An A` {}\n")
         .write("kept.txt", "one\n")
-        .write("gone.txt", "away\n")
-        .write("shared.txt", "a\nb\nc\n")
         .write("run.sh", "one\n")
-        // A directory a walk of the copy would skip, holding a file that belongs to the
-        // project, so that a merge reading it as removed shows here.
-        // @lfy def/cli/main.lfy:main#main:main:83b890265a80eabfeb07845b755aca4a5a8ce09a8e540c54a21997798a0c554a
-        .write("lib/target/rust.lfy", "kept\n")
-        .write("elfie-requests/compile.log", "noise\n");
-    // The compiler is often a script, which the copy must leave runnable.
-    // @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
+        .write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A {}\n")
+        .write("out/target/debug.rs", "built\n")
+        .write("elfie-compile/maps/rust/a.json", "[]\n")
+        .write("elfie-compile/reviews/rust/a.json", "[]\n")
+        .write("elfie-compile/cache/junk.txt", "cache\n")
+        .write("elfie-requests/compile.log", "noise\n")
+}
+
+/// A new change set's copy holds every file of the root outside the cache, the CLI's own
+/// folder, and every directory named target, .git, or node_modules, byte for byte and keeping
+/// whether it is executable; a directory at its path is removed first; and its base holds
+/// every one of its own files as the copy held it.
+// @lfy def/cli/main.lfy:main#main:main:7209ec1dd07cd609c4d0c6340e068b2f8abc452938bf80a2546b4339a185641e
+// @lfy def/cli/main.lfy:main#main:main:c40cbc04ab7381898fa0276bff3403d5869070d1ce78a5380f696993bf5a34dd
+// @lfy def/cli/main.lfy:main#main:main:8b9a6852b850dca4a74c1925af07379b2968a5bef89b107388fd48072d032118
+// @lfy def/cli/main.lfy:main#main:main:13ac3d0d600577ad94fbbc002962bb3f615a9df8b9c329232562285f53032386
+// @lfy def/cli/main.lfy:main#main:main:f49e520eb6aa39ddc79bfc4e49e3543abb0374d3e5f23e3668a8a68de4bc2616
+// @lfy def/cli/main.lfy:main#main:main:46046c83c1cfa40ed79495fde1ef0777d6db2402a03b330c3064d14c34546303
+#[test]
+fn a_new_copy_holds_the_root_and_its_base_holds_its_own_files() {
+    let fixture = Fixture::new();
+    a_project_to_copy(&fixture);
     set_mode(&fixture.root.join("run.sh"), Some(0o755));
-    if !a_repository(&fixture) {
-        return;
-    }
-    // @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
-    let mirror = Mirror::take(&fixture.root, "x/y").expect("a copy of the root");
-    // Every file git lists is there byte for byte, under a name a file may have.
-    // @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
-    assert_eq!(fs::read_to_string(mirror.directory.join("kept.txt")).unwrap(), "one\n");
-    assert!(mirror.directory.ends_with("x-y"), "{:?}", mirror.directory);
-    // Nothing under elfie-requests is copied.
-    // @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
-    assert!(!mirror.directory.join("elfie-requests/compile.log").exists());
-    // The copy keeps whether a file is executable.
-    // @lfy def/cli/main.lfy:main#main:main:e7f50bd110682bf5ae12f4862ac9abb6bada51f494230119208bc5d4d992f7e6
-    assert_eq!(executable(&mirror.directory.join("run.sh")), executable(&fixture.root.join("run.sh")));
-    // The copy holds a .git file reading gitdir: and the absolute path of the root's git
-    // directory, so git run in it reads the root's history.
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    let pointed = fs::read_to_string(mirror.directory.join(".git")).expect("a .git file");
-    let at = git_directory(&fixture.root).expect("the root's git directory");
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    assert_eq!(pointed, format!("gitdir: {}\n", at.to_string_lossy()));
-    assert!(at.is_absolute(), "{at:?}");
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    assert_eq!(git_directory(&mirror.directory), Some(at), "git in the copy reads the root");
-    // The batch changes one file, adds one, and removes one.
-    fs::write(mirror.directory.join("kept.txt"), "two\n").unwrap();
-    fs::write(mirror.directory.join("added.txt"), "new\n").unwrap();
-    fs::write(mirror.directory.join("shared.txt"), "a\nb\nC\n").unwrap();
-    fs::write(mirror.directory.join("run.sh"), "two\n").unwrap();
-    set_mode(&mirror.directory.join("run.sh"), Some(0o755));
-    fs::remove_file(mirror.directory.join("gone.txt")).unwrap();
-    // Another batch changed shared.txt in the root meanwhile, elsewhere in the file.
-    fixture.write("shared.txt", "A\nb\nc\n");
-    let merged = mirror.merge(&fixture.root).expect("every file merges");
-    // The root still held what the base holds: it is replaced by the copy's, or removed.
-    // @lfy def/cli/main.lfy:main#main:main:c76294da9586f053f15fc0f1023d6594cfd3d0d6be957baa3e1460d2dc5558ac
-    assert_eq!(fixture.read("kept.txt"), "two\n");
-    assert_eq!(fixture.read("added.txt"), "new\n");
-    assert!(!fixture.root.join("gone.txt").exists());
-    // What is merged keeps whether the copy's file is executable.
-    // @lfy def/cli/main.lfy:main#main:main:c76294da9586f053f15fc0f1023d6594cfd3d0d6be957baa3e1460d2dc5558ac
-    assert_eq!(fixture.read("run.sh"), "two\n");
-    assert_eq!(executable(&fixture.root.join("run.sh")), executable(&mirror.directory.join("run.sh")));
-    // Another batch changed it: it is the three-way merge against the base.
-    // @lfy def/cli/main.lfy:main#main:main:e76ccc6bcfb76d780d95857a4f601ad9cd1c2146c9ae08ef0ec4bc83de1934ff
-    assert_eq!(fixture.read("shared.txt"), "A\nb\nC\n");
-    for path in ["added.txt", "gone.txt", "kept.txt", "shared.txt"] {
-        assert!(merged.contains(&path.to_string()), "{path} is not in {merged:?}");
-    }
-    // A file the batch left alone is left alone, wherever it sits: nothing is taken as
-    // removed because of the name of the directory holding it.
-    // @lfy def/cli/main.lfy:main#main:main:83b890265a80eabfeb07845b755aca4a5a8ce09a8e540c54a21997798a0c554a
-    assert_eq!(fixture.read("lib/target/rust.lfy"), "kept\n");
-    // @lfy def/cli/main.lfy:main#main:main:83b890265a80eabfeb07845b755aca4a5a8ce09a8e540c54a21997798a0c554a
-    assert!(!merged.contains(&"lib/target/rust.lfy".to_string()), "{merged:?}");
-    // The copy's own .git file is the copy's: it never reaches the root.
-    // @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-    assert!(!merged.contains(&".git".to_string()), "{merged:?}");
-    assert!(fixture.root.join(".git").is_dir(), "the root's own repository stands");
-    // The copy goes once its work has reached the root.
-    // @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-    mirror.remove();
-    assert!(!mirror.directory.exists());
-}
-
-/// A file that cannot be merged without a conflict merges nothing of the batch.
-// @lfy def/cli/main.lfy:main#main:main:778beafa50331ee0e4592814d25234b9b53a467f199785957330b905729b79ac
-#[test]
-fn a_file_that_cannot_be_merged_merges_nothing_of_the_batch() {
-    let fixture = Fixture::new();
-    fixture.write("shared.txt", "a\n").write("other.txt", "one\n");
-    if !a_repository(&fixture) {
-        return;
-    }
-    let mirror = Mirror::take(&fixture.root, "x").expect("a copy of the root");
-    fs::write(mirror.directory.join("shared.txt"), "mine\n").unwrap();
-    fs::write(mirror.directory.join("other.txt"), "two\n").unwrap();
-    // Another batch changed the same line of the same file.
-    fixture.write("shared.txt", "theirs\n");
-    // @lfy def/cli/main.lfy:main#main:main:778beafa50331ee0e4592814d25234b9b53a467f199785957330b905729b79ac
-    assert_eq!(mirror.merge(&fixture.root).unwrap_err(), "shared.txt");
-    // Nothing of the batch is merged, the file that did merge cleanly included.
-    // @lfy def/cli/main.lfy:main#main:main:778beafa50331ee0e4592814d25234b9b53a467f199785957330b905729b79ac
-    assert_eq!(fixture.read("other.txt"), "one\n");
-    assert_eq!(fixture.read("shared.txt"), "theirs\n");
-}
-
-/// A batch running in a copy of the root runs the compiler and the verifier there, with
-/// git reading the root's history and nothing of git in their environment, and its work
-/// reaches the root once it is done.
-// @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-// @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-#[test]
-fn a_batch_running_in_a_copy_merges_its_outputs_into_the_root() {
-    let fixture = Fixture::new();
-    a_compiler_and_a_verifier(&fixture, SATISFIED);
-    // The compiler writes its output, the git variables of its environment, and where git
-    // run in the copy says the repository is. A repository of its own, made elsewhere,
-    // answers for itself: nothing of the copy's reaches it.
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    fixture.write(
-        "compiler.sh",
-        "#!/bin/sh\ncat > /dev/null\nown=\"$ELFIE_ROOT/../own\"\nprintf '%s\\n' \"$GIT_DIR\" \"$GIT_WORK_TREE\" \"$ELFIE_ROOT\" > \"$ELFIE_ROOT/where.txt\"\ngit rev-parse --absolute-git-dir >> \"$ELFIE_ROOT/where.txt\"\nmkdir -p \"$own\"\ngit init -q \"$own\"\n(cd \"$own\" && git rev-parse --absolute-git-dir) >> \"$ELFIE_ROOT/where.txt\"\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho 'ELFIE: DONE'\n",
+    // A directory left at the copy's path and at the base's is removed first.
+    // @lfy def/cli/main.lfy:main#main:main:c40cbc04ab7381898fa0276bff3403d5869070d1ce78a5380f696993bf5a34dd
+    fixture.write("elfie-compile/cache/changes/rust/copy/stale.txt", "old\n");
+    fixture.write("elfie-compile/cache/changes/rust/base/stale.txt", "old\n");
+    let target = the_target(&fixture);
+    let copy = make_copy(&fixture.root, &target).expect("a copy");
+    // @lfy def/cli/main.lfy:main#main:main:46046c83c1cfa40ed79495fde1ef0777d6db2402a03b330c3064d14c34546303
+    assert!(copy.is_absolute());
+    assert!(copy.ends_with("elfie-compile/cache/changes/rust/copy"), "{copy:?}");
+    assert!(!copy.join("stale.txt").exists());
+    assert!(!base_of(&fixture.root, "rust").join("stale.txt").exists());
+    // @lfy def/cli/main.lfy:main#main:main:7209ec1dd07cd609c4d0c6340e068b2f8abc452938bf80a2546b4339a185641e
+    assert_eq!(fs::read_to_string(copy.join("kept.txt")).unwrap(), "one\n");
+    assert_eq!(fs::read_to_string(copy.join("out/a.rs")).unwrap(), fixture.read("out/a.rs"));
+    assert!(copy.join("elfie-compile/maps/rust/a.json").is_file());
+    assert!(!copy.join("elfie-compile/cache/junk.txt").exists());
+    assert!(!copy.join("elfie-requests/compile.log").exists());
+    assert!(!copy.join("out/target/debug.rs").exists());
+    // @lfy def/cli/main.lfy:main#main:main:8b9a6852b850dca4a74c1925af07379b2968a5bef89b107388fd48072d032118
+    assert_eq!(executable(&copy.join("run.sh")), executable(&fixture.root.join("run.sh")));
+    // Its own files are its output directory's, outside a directory named target, and its
+    // target's map and review record files.
+    // @lfy def/cli/main.lfy:main#main:main:f49e520eb6aa39ddc79bfc4e49e3543abb0374d3e5f23e3668a8a68de4bc2616
+    assert_eq!(
+        own_files(&copy, &target),
+        vec!["elfie-compile/maps/rust/a.json", "elfie-compile/reviews/rust/a.json", "out/a.rs"]
     );
+    // @lfy def/cli/main.lfy:main#main:main:13ac3d0d600577ad94fbbc002962bb3f615a9df8b9c329232562285f53032386
+    let base = base_of(&fixture.root, "rust");
+    assert_eq!(own_files(&base, &target), own_files(&copy, &target));
+    assert!(!base.join("kept.txt").exists());
+}
+
+/// In a root that is a git repository the copy holds what git tracks or would track, and a
+/// `.git` file pointing git run in it at the root's git directory.
+// @lfy def/cli/main.lfy:main#main:main:670dca2fbcb84c029ce58dc80e12e107f388904bf0cf79378ec5b4136e8b6097
+// @lfy def/cli/main.lfy:main#main:main:8a305990c26ec5a21e609fca17bc010a769c49511853e849d7b5b29db5b1b906
+#[test]
+fn a_copy_of_a_repository_holds_what_git_lists_and_reads_its_history() {
+    let fixture = Fixture::new();
+    a_project_to_copy(&fixture).write(".gitignore", "ignored.txt\n").write("ignored.txt", "x\n");
     if !a_repository(&fixture) {
         return;
     }
-    // @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-    assert_eq!(fixture.run(&["compile", "--jobs", "2"]), ExitCode::Success.code());
-    // Everything the batch wrote in its copy reached the root.
-    // @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-    assert!(fixture.read("out/a.rs").contains("pub struct A"), "the output is in the root");
-    // No git variable is in the environment; ELFIE_ROOT is the copy; git run in the copy
-    // reads the root's git directory; and a repository the compiler made of its own is
-    // its own.
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    let text = fixture.read("where.txt");
-    let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(lines[0], "", "{text}");
-    assert_eq!(lines[1], "", "{text}");
-    assert!(lines[2].contains("elfie-compile/cache/batches/a"), "{text}");
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    assert_eq!(lines[3], git_directory(&fixture.root).unwrap().to_string_lossy(), "{text}");
-    // @lfy def/cli/main.lfy:main#main:main:12899ead30416b53072d96627b1e63022facd0087666a2a48961725a3a6d7fb1
-    assert!(lines[4].ends_with("/own/.git"), "{text}");
-    // The source maps are recorded in the root and the copy is removed.
-    // @lfy def/cli/main.lfy:main#main:main:6718d622dc82408e32f09610d9066ffc91c81bfa1311cacf0fa3f5d65888f09a
-    assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("out/a.rs"));
-    assert!(!fixture.root.join("elfie-compile/cache/batches/a").exists(), "the copy is gone");
+    let copy = make_copy(&fixture.root, &the_target(&fixture)).expect("a copy");
+    // @lfy def/cli/main.lfy:main#main:main:670dca2fbcb84c029ce58dc80e12e107f388904bf0cf79378ec5b4136e8b6097
+    assert!(copy.join("kept.txt").is_file());
+    assert!(!copy.join("ignored.txt").exists(), "a file git ignores was copied");
+    assert!(!copy.join("elfie-requests/compile.log").exists());
+    // @lfy def/cli/main.lfy:main#main:main:8a305990c26ec5a21e609fca17bc010a769c49511853e849d7b5b29db5b1b906
+    let at = git_directory(&fixture.root).expect("the root's git directory");
+    assert_eq!(fs::read_to_string(copy.join(".git")).unwrap(), format!("gitdir: {}\n", at.to_string_lossy()));
+    assert_eq!(git_directory(&copy), Some(at), "git in the copy reads the root");
 }
 
-// ---- what stands in for the compiler -------------------------------------------
+/// What the root takes of a change set is each of its own files that differs from its base,
+/// was added, or was removed; a file the root changed since is the three-way merge of both,
+/// and nothing of the root changes when a file cannot be merged without a conflict.
+// @lfy def/cli/main.lfy:main#main:main:7faf028d9e62dd4a82a75683cb6aef188e05dc77f9dbd53210dd7cba92ba7277
+// @lfy def/cli/main.lfy:main#main:main:c76294da9586f053f15fc0f1023d6594cfd3d0d6be957baa3e1460d2dc5558ac
+// @lfy def/cli/main.lfy:main#main:main:eade10ea32d1fd58426767f451ba8db4ba721952a1d1d8f7f61428fa7c1b7eb0
+// @lfy def/cli/main.lfy:main#main:main:09d98aeb33f1262c0723d2f55d871762843d90677cc202153ba4a0ad4792759d
+// @lfy def/cli/main.lfy:main#main:main:f62308cbdc193558b2d780fd52bf6661146cd7a2e58d88bb29026d348fb53412
+// @lfy def/cli/main.lfy:main#main:main:7ea6410a8673a0a0b1c2459596d167fac7037f12858c4c99845e67852a0efb8b
+#[test]
+fn the_root_takes_what_a_change_set_changed_and_nothing_on_a_conflict() {
+    let fixture = Fixture::new();
+    a_project_to_copy(&fixture)
+        .write("out/shared.rs", "a\nb\nc\n")
+        .write("out/gone.rs", "away\n")
+        .write("out/both.rs", "one\n");
+    let target = the_target(&fixture);
+    let copy = make_copy(&fixture.root, &target).expect("a copy");
+    fs::write(copy.join("out/a.rs"), "// @lfy def/a.lfy:A\npub struct A(u8);\n").unwrap();
+    fs::write(copy.join("out/added.rs"), "new\n").unwrap();
+    fs::write(copy.join("out/shared.rs"), "a\nb\nC\n").unwrap();
+    fs::remove_file(copy.join("out/gone.rs")).unwrap();
+    // A file of the project that is none of its own is never taken.
+    fs::write(copy.join("kept.txt"), "changed in the copy\n").unwrap();
+    // The root changed shared.rs elsewhere in the file since the base was taken.
+    fixture.write("out/shared.rs", "A\nb\nc\n");
+    let changes = changes_of(&fixture.root, &copy, &target);
+    // @lfy def/cli/main.lfy:main#main:main:7faf028d9e62dd4a82a75683cb6aef188e05dc77f9dbd53210dd7cba92ba7277
+    let paths: Vec<&str> = changes.keys().map(String::as_str).collect();
+    assert_eq!(paths, vec!["out/a.rs", "out/added.rs", "out/gone.rs", "out/shared.rs"]);
+    // @lfy def/cli/main.lfy:main#main:main:f62308cbdc193558b2d780fd52bf6661146cd7a2e58d88bb29026d348fb53412
+    merge_all(&[changes], &fixture.root).expect("every file merges");
+    // @lfy def/cli/main.lfy:main#main:main:c76294da9586f053f15fc0f1023d6594cfd3d0d6be957baa3e1460d2dc5558ac
+    assert!(fixture.read("out/a.rs").contains("A(u8)"));
+    assert_eq!(fixture.read("out/added.rs"), "new\n");
+    assert!(!fixture.root.join("out/gone.rs").exists());
+    // @lfy def/cli/main.lfy:main#main:main:eade10ea32d1fd58426767f451ba8db4ba721952a1d1d8f7f61428fa7c1b7eb0
+    assert_eq!(fixture.read("out/shared.rs"), "A\nb\nC\n");
+    assert_eq!(fixture.read("kept.txt"), "one\n");
+    // Both sides changed the same line: nothing of the root changes.
+    // @lfy def/cli/main.lfy:main#main:main:7ea6410a8673a0a0b1c2459596d167fac7037f12858c4c99845e67852a0efb8b
+    let again = Fixture::new();
+    a_project_to_copy(&again).write("out/both.rs", "one\n");
+    let target = the_target(&again);
+    let copy = make_copy(&again.root, &target).expect("a copy");
+    fs::write(copy.join("out/both.rs"), "mine\n").unwrap();
+    fs::write(copy.join("out/a.rs"), "// @lfy def/a.lfy:A\npub struct A(u16);\n").unwrap();
+    again.write("out/both.rs", "theirs\n");
+    let changes = changes_of(&again.root, &copy, &target);
+    assert_eq!(merge_all(&[changes], &again.root).unwrap_err(), "out/both.rs");
+    assert_eq!(again.read("out/both.rs"), "theirs\n");
+    assert!(!again.read("out/a.rs").contains("u16"), "a file of the root changed");
+}
 
-/// The roles of a target carrying one command line per operation named.
-// @lfy def/cli/main.lfy:main#main:main:d39e66910a4061a95e4837b4d3f7e909ac681b4efc8559b6c018006a3d93cf19
+/// In a git root a file the change set added is taken only when git would track it.
+// @lfy def/cli/main.lfy:main#main:main:76e8b3b4bed342c6f79c5f24800d5a700d7eccaad184dc55edcd275cd5a9e32d
+#[test]
+fn a_file_git_ignores_is_not_taken() {
+    let fixture = Fixture::new();
+    a_project_to_copy(&fixture).write(".gitignore", "out/ignored.rs\n");
+    if !a_repository(&fixture) {
+        return;
+    }
+    let target = the_target(&fixture);
+    let copy = make_copy(&fixture.root, &target).expect("a copy");
+    fs::write(copy.join("out/ignored.rs"), "x\n").unwrap();
+    fs::write(copy.join("out/tracked.rs"), "y\n").unwrap();
+    let changes = changes_of(&fixture.root, &copy, &target);
+    // @lfy def/cli/main.lfy:main#main:main:76e8b3b4bed342c6f79c5f24800d5a700d7eccaad184dc55edcd275cd5a9e32d
+    assert!(changes.contains_key("out/tracked.rs"), "{:?}", changes.keys());
+    assert!(!changes.contains_key("out/ignored.rs"), "{:?}", changes.keys());
+}
+
+/// A resumed copy takes from the root every file that is none of its own, drops every such
+/// file the root no longer has, keeps its own files as they are, and removes nothing under a
+/// directory named target, .git, or node_modules.
+// @lfy def/cli/main.lfy:main#main:main:489059c8a497ac06d146f6905d881772dce1f6e60f48adf6f5bd5b6ca509bdc2
+#[test]
+fn a_resumed_copy_is_brought_up_to_the_root() {
+    let fixture = Fixture::new();
+    a_project_to_copy(&fixture).write("def/b.lfy", "d B {}\n");
+    let target = the_target(&fixture);
+    let copy = make_copy(&fixture.root, &target).expect("a copy");
+    fs::write(copy.join("out/a.rs"), "// @lfy def/a.lfy:A\npub struct A(u8);\n").unwrap();
+    // What a build left in the copy, which no new copy would hold.
+    for built in ["target/debug/a", "out/node_modules/x/index.js"] {
+        fs::create_dir_all(copy.join(built).parent().unwrap()).unwrap();
+        fs::write(copy.join(built), "built\n").unwrap();
+    }
+    // The root moves on: a definition edited, one removed, one added.
+    fixture.write("def/a.lfy", "d A: `An A, edited` {}\n").write("def/c.lfy", "d C {}\n");
+    fs::remove_file(fixture.root.join("def/b.lfy")).unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:489059c8a497ac06d146f6905d881772dce1f6e60f48adf6f5bd5b6ca509bdc2
+    sync_copy(&fixture.root, &copy, &target).unwrap();
+    assert_eq!(fs::read_to_string(copy.join("def/a.lfy")).unwrap(), "d A: `An A, edited` {}\n");
+    assert!(copy.join("def/c.lfy").is_file());
+    assert!(!copy.join("def/b.lfy").exists());
+    assert!(fs::read_to_string(copy.join("out/a.rs")).unwrap().contains("A(u8)"), "its own file was replaced");
+    assert!(copy.join("target/debug/a").is_file(), "a file under target was removed");
+    assert!(copy.join("out/node_modules/x/index.js").is_file(), "a file under node_modules was removed");
+}
+
+// ---- compiles that work through change sets ------------------------------------------
+
+/// The roles of a target carrying one command line per operation named, and the stub line
+/// and stub marker the language gives.
+// @lfy def/cli/main.lfy:main#main:main:2122ce59b6ca33af5e18c265f0334204d7ceb9807440dcaae456e418da206c9d
 fn roles_with(commands: &str) -> String {
     format!(
         "trait lang extends targetLanguage: `Rust` {{\n  .fileExtension = \"rs\";\n  \
-         .markerComment = \"//\";\n}}\n\
+         .markerComment = \"//\";\n  .stubLine = 'todo!(\"elfie stub: {{{{unit}}}}: {{{{reason}}}}\")';\n  \
+         .stubMarker = \"elfie stub:\";\n}}\n\
          trait flat extends targetLayout: `One file per unit` {{ }}\n\
          trait cargo extends targetEcosystem: `Crates from crates.io` {{\n  \
          .ecosystem = \"cargo\";\n  @commands{commands};\n}}\n"
@@ -217,32 +224,27 @@ fn roles_with(commands: &str) -> String {
 }
 
 /// A build command line and a test command line that both exit 0.
-// @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
+// @lfy def/cli/main.lfy:main#main:main:f82d76ff8e23e283093211b99bd7fa4f7edfa0a9f9151cf64b7864379ceec690
 const PASSES: &str = "\n    .add({ operation = Operation.build, line = \"true\" })\
                       \n    .add({ operation = Operation.test, line = \"true\" })";
 
-/// A compiler writing the output of `def/b.lfy` and of `def/a.lfy`, the same way every
-/// run, and noting that it ran.
-// @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
-const TWO_OUTPUTS: &str = "#!/bin/sh\ncat > /dev/null\n\
-                           echo \"$ELFIE_BATCH\" >> \"$ELFIE_ROOT/ran.txt\"\n\
-                           mkdir -p \"$ELFIE_ROOT/out\"\n\
-                           printf '// @lfy def/b.lfy:B\\npub struct B {}\\n' > \"$ELFIE_ROOT/out/b.rs\"\n\
-                           printf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\n\
-                           echo 'ELFIE: DONE'\n";
-
 /// A command that notes that it ran and then fails, so that a run of it shows.
-// @lfy def/cli/main.lfy:main#main:main:c9e9379aee6642c4c6fd644592fb507b9275e32d2a6daa8928f697b3e30a5b06
-const RAN_AND_FAILED: &str =
-    "#!/bin/sh\ncat > /dev/null\necho ran >> \"$ELFIE_ROOT/ran.txt\"\nexit 1\n";
+// @lfy def/cli/main.lfy:main#main:main:166f8e18960857f1947c51e52ef31c65f43c90ee02cf96a66d0306bae7adb34f
+const RAN_AND_FAILED: &str = "#!/bin/sh\ncat > /dev/null\necho ran >> '<notes>/ran.txt'\nexit 1\n";
+
+/// A verifier that finds nothing violated: it answers satisfied for every id the review
+/// request it reads names.
+// @lfy def/cli/main.lfy:main#main:main:a9a35de62ed7e8af9e763d1d17f62b520074b0ff62f6d127c8a757f06b3d2654
+const CONTENT: &str = "#!/bin/sh\necho \"$ELFIE_UNIT\" >> '<notes>/verified.txt'\nfor id in $(grep -o '[A-Za-z_]*:[A-Za-z_]*:[0-9a-f]\\{64\\}' | sort -u); do\n  printf '{\"id\":\"%s\",\"status\":\"satisfied\",\"evidence\":\"out\",\"note\":\"fine\"}\\n' \"$id\"\ndone\necho 'ELFIE: REVIEWED'\n";
+
 /// The hash a unit's map file records for one dependency of it.
-// @lfy def/cli/main.lfy:main#main:main:4fb6763553d728eaca1fb8dff4b3ab5c3a0025db630a10cf64ccb8405b8f2e67
+// @lfy def/cli/main.lfy:main#main:main:42e098db25f729f653afa31b4ff6a56916d8ce4d4d18049d458c6d86ed140e13
 fn dependency_hash(fixture: &Fixture, path: &str, source: &str) -> String {
     maps_of(fixture, path)[0]["dependencies"][source].as_str().unwrap_or_default().to_string()
 }
 
 /// The signature one unit's recorded maps give its interface now.
-// @lfy def/cli/main.lfy:main#main:main:4fb6763553d728eaca1fb8dff4b3ab5c3a0025db630a10cf64ccb8405b8f2e67
+// @lfy def/cli/main.lfy:main#main:main:42e098db25f729f653afa31b4ff6a56916d8ce4d4d18049d458c6d86ed140e13
 fn signature_of(fixture: &Fixture, source: &str) -> String {
     let maps = generation::source_maps_of(&workspace::load(&fixture.root), None);
     maps.iter()
@@ -252,255 +254,265 @@ fn signature_of(fixture: &Fixture, source: &str) -> String {
 }
 
 /// The log of a compile forgotten, so that the next one reads on its own.
-// @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
 fn forget_log(fixture: &Fixture) {
     let _ = fs::remove_file(fixture.root.join("elfie-requests/compile.log"));
 }
 
-/// A batch whose every unit has the reason dependency has the target's build and test
-/// commands run in place of the compiler: both succeed, every unit is accepted on them,
-/// no verifier runs, the maps record the dependency's interface hash as it is now, and no
-/// review record file changes.
-// @lfy def/cli/main.lfy:main#main:main:4fb6763553d728eaca1fb8dff4b3ab5c3a0025db630a10cf64ccb8405b8f2e67
+/// A git root with two units both recorded and one of them edited since: the edited one
+/// alone is compiled, in a copy under `elfie-compile/cache/changes/rust`, its map file is
+/// rewritten in the root once the root takes the change set, the other's is left byte for
+/// byte as it was, and no change set is left.
+// @lfy def/cli/main.lfy:main#main:main:bfa4334a09d69c17d9bd245a5e8c4333d4d86982e7c9326fc4389d63f029f41e
+// @lfy def/cli/main.lfy:main#main:main:620fa0faf525e60e5d31d15d5f9c42d2193013818b1cf267a45bff765761c588
 #[test]
-fn a_dependency_only_batch_is_accepted_on_its_build_and_test() {
+fn a_compile_of_one_unit_works_in_a_copy_and_leaves_every_other_map_file_alone() {
+    let fixture = Fixture::new();
+    a_compiler_and_a_verifier(&fixture, SATISFIED);
+    if !a_repository(&fixture) {
+        return;
+    }
+    fixture.write("def/b.lfy", "d B {}\n");
+    fixture.write(
+        "compiler.sh",
+        &format!("{}echo \"$ELFIE_ROOT\" >> '{}/where.txt'\n", per_unit_compiler(&fixture), fixture.path()),
+    );
+    assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
+    let (was_a, was_b) = (fixture.read("elfie-compile/maps/rust/a.json"), fixture.read("elfie-compile/maps/rust/b.json"));
+    fixture.write("def/a.lfy", "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list once` });\n}\n");
+    write_verifier(&fixture, SATISFIED);
+    fixture.write("attempts.txt", "").write("where.txt", "");
+    // @lfy def/cli/main.lfy:main#main:main:bfa4334a09d69c17d9bd245a5e8c4333d4d86982e7c9326fc4389d63f029f41e
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    assert_eq!(fixture.read("attempts.txt"), "a\n");
+    assert!(fixture.read("where.txt").trim().ends_with("elfie-compile/cache/changes/rust/copy"), "{}", fixture.read("where.txt"));
+    // @lfy def/cli/main.lfy:main#main:main:620fa0faf525e60e5d31d15d5f9c42d2193013818b1cf267a45bff765761c588
+    assert_ne!(fixture.read("elfie-compile/maps/rust/a.json"), was_a, "a.json was not rewritten");
+    assert_eq!(fixture.read("elfie-compile/maps/rust/b.json"), was_b, "b.json changed");
+    assert!(!fixture.root.join("elfie-compile/cache/changes/rust.json").exists(), "a change set is left");
+    assert!(!fixture.root.join("elfie-compile/cache/changes/rust").exists(), "a copy or a base is left");
+}
+
+/// A git root whose unit has the reason dependency has the unit gate run in place of the
+/// compiler: it passes, the unit is accepted on it with no compiler and no verifier run, the
+/// change set passes its final gate and the root takes it, the maps record the dependency's
+/// interface hash as it is now, and no review record file changes.
+// @lfy def/cli/main.lfy:main#main:main:42e098db25f729f653afa31b4ff6a56916d8ce4d4d18049d458c6d86ed140e13
+// @lfy def/cli/main.lfy:main#main:main:f82d76ff8e23e283093211b99bd7fa4f7edfa0a9f9151cf64b7864379ceec690
+// @lfy def/cli/main.lfy:main#main:main:1535e1a49cabe0f48836a4331c9b37e4b542f78aa3bfec5c56622eebf9cd3707
+// @lfy def/cli/main.lfy:main#main:main:166f8e18960857f1947c51e52ef31c65f43c90ee02cf96a66d0306bae7adb34f
+#[test]
+fn a_dependency_only_unit_is_accepted_on_its_unit_gate() {
     let fixture = Fixture::new();
     library(&fixture)
         .write("def/roles.lfy", &roles_with(PASSES))
         .write("def/targets.lfy", TARGETS)
         .write("def/b.lfy", "d B: `A B` {}\n")
-        .write(
-            "def/a.lfy",
-            "use \"./b\";\n\nd A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list` });\n}\n",
-        )
-        .write("compiler.sh", TWO_OUTPUTS);
+        .write("def/a.lfy", "use \"./b\";\n\nd A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list` });\n}\n")
+        .write("compiler.sh", &per_unit_compiler(&fixture));
+    if !a_repository(&fixture) {
+        return;
+    }
     write_verifier(&fixture, SATISFIED);
     fixture.write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
-    // Both units are recorded first, with a's review record beside them.
-    // @lfy def/cli/main.lfy:main#main:main:4fb6763553d728eaca1fb8dff4b3ab5c3a0025db630a10cf64ccb8405b8f2e67
-    assert_eq!(fixture.run(&["compile", "--jobs", "1"]), ExitCode::Success.code());
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
     let records = fixture.read("elfie-compile/reviews/rust/a.json");
     let signature = signature_of(&fixture, "def/b.lfy");
-    // The hash a's map file records for b is made stale, so that a alone is planned and
-    // its only reason is the dependency.
-    // @lfy def/cli/main.lfy:main#main:main:4fb6763553d728eaca1fb8dff4b3ab5c3a0025db630a10cf64ccb8405b8f2e67
     let mut maps = maps_of(&fixture, "elfie-compile/maps/rust/a.json");
     maps[0]["dependencies"]["def/b.lfy"] = serde_json::Value::String("0".repeat(64));
     fixture.write("elfie-compile/maps/rust/a.json", &format!("{maps}\n"));
-    assert_ne!(dependency_hash(&fixture, "elfie-compile/maps/rust/a.json", "def/b.lfy"), signature);
-    // A compiler and a verifier that would each fail the test if they ran.
-    // @lfy def/cli/main.lfy:main#main:main:c9e9379aee6642c4c6fd644592fb507b9275e32d2a6daa8928f697b3e30a5b06
-    fixture.write("compiler.sh", RAN_AND_FAILED).write("verifier.sh", RAN_AND_FAILED);
+    fixture.write("compiler.sh", &noted(&fixture, RAN_AND_FAILED)).write("verifier.sh", &noted(&fixture, RAN_AND_FAILED));
     forget_log(&fixture);
-    let _ = fs::remove_file(fixture.root.join("ran.txt"));
-    // @lfy def/cli/main.lfy:main#main:main:4fb6763553d728eaca1fb8dff4b3ab5c3a0025db630a10cf64ccb8405b8f2e67
-    assert_eq!(fixture.run(&["compile", "--jobs", "1"]), ExitCode::Success.code());
-    // Neither the compiler nor the verifier ran.
-    // @lfy def/cli/main.lfy:main#main:main:c9e9379aee6642c4c6fd644592fb507b9275e32d2a6daa8928f697b3e30a5b06
-    // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
+    // @lfy def/cli/main.lfy:main#main:main:42e098db25f729f653afa31b4ff6a56916d8ce4d4d18049d458c6d86ed140e13
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
     assert!(!fixture.root.join("ran.txt").exists(), "the compiler or the verifier ran");
-    // A building line for a, and then an accepted line.
-    // @lfy def/cli/main.lfy:main#main:main:93eadeb6d21ac51de7347a9d6ec988a27d7b6f29d9c16646f22351ad0b537a45
     let log = fixture.read("elfie-requests/compile.log");
-    assert!(log.contains("\u{25b8} building"), "{log}");
-    assert!(log.lines().any(|line| line.contains("\u{2713} accepted")), "{log}");
-    // The maps record b's interface hash as it is now.
-    // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
+    // @lfy def/cli/main.lfy:main#main:main:25b8417f9f55800eec5857dab9bbcf5fbbed7096f0f48ce932ccb4e0ea51ac39
+    assert!(log.lines().any(|line| line.contains("▸ building") && line.contains("the unit gate passed")), "{log}");
+    assert!(log.lines().any(|line| line.contains("✓ accepted") && line.contains("  a  ")), "{log}");
+    assert!(log.contains("▸ finalGate") && log.contains("▸ merging"), "{log}");
+    // @lfy def/cli/main.lfy:main#main:main:166f8e18960857f1947c51e52ef31c65f43c90ee02cf96a66d0306bae7adb34f
     assert_eq!(dependency_hash(&fixture, "elfie-compile/maps/rust/a.json", "def/b.lfy"), signature);
-    // No review record file of the batch's units changes.
-    // @lfy def/cli/main.lfy:main#main:main:b82042daa1550092c2eeae599eba3e1056e1c9987779953b6b11500318102df7
     assert_eq!(fixture.read("elfie-compile/reviews/rust/a.json"), records);
 }
 
-/// The id of the first criterion of the definition file whose path ends in the suffix.
-// @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-fn criterion_in(fixture: &Fixture, suffix: &str) -> String {
-    let (program, _) = plan_with(&fixture.root, &[], &[], &[]);
-    let mut found = Vec::new();
-    for lowered in &program.files {
-        if program.workspace.files[lowered.file].path.ends_with(suffix) {
-            ids_of(&lowered.root, &mut found);
-        }
-    }
-    found.first().cloned().unwrap_or_else(|| panic!("{suffix} has no criterion"))
-}
-
-/// A project of two units in two directories, so that they are two batches: `def/b/one`,
-/// which carries one criterion, and `def/a/one`, which uses it and carries none.
-// @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-fn two_batches<'f>(fixture: &'f Fixture, note: &str) -> &'f Fixture {
-    library(fixture)
-        .write("def/roles.lfy", &roles_with(PASSES))
+/// A git root whose test command passes with stubs allowed when only stubs fail: a unit
+/// whose run stubs the caller in a later unit's region records the stub, a stubbed line
+/// names the later unit, which joins the change set as touched and is compiled with the stub
+/// in its request; the final gate finds no stub, and the root takes both.
+// @lfy def/cli/main.lfy:main#main:main:aa190a37afd8a9b1d68e7838aaa5ccd333a995de1ba999a46a92c57acfb961f5
+// @lfy def/cli/main.lfy:main#main:main:186f5bf02a1197f42b15d46a728b008732f742e22b0a3360bbff586dc9f0dcab
+// @lfy def/cli/main.lfy:main#main:main:eeb6eb51ce2fa61105a263d0328d2874ebfc0bc3ced175501ee78c99422ed3ec
+// @lfy def/cli/main.lfy:main#main:main:8214a980d0dc5f7d2ad165f456c7096d6e4ef89966519c6a783ecc99a04969fd
+// @lfy def/cli/main.lfy:main#main:main:f210a94b1b3335dbbbe49bccc300d317f4cdb0a7e7281664426db68726bc71f6
+// @lfy def/cli/main.lfy:main#main:main:ba814337ca5699de23cfbe6d5488f298a354e81440cab6936bf45c6ccc9f2411
+#[test]
+fn a_stub_in_a_later_unit_plans_it_as_touched() {
+    let fixture = Fixture::new();
+    let tests = "\n    .add({ operation = Operation.build, line = \"true\" })\
+                 \n    .add({ operation = Operation.test, line = \"[ -n \\\"$ALLOW_STUBS\\\" ] || ! grep -rq 'elfie stub' .\" })";
+    library(&fixture)
+        .write("def/roles.lfy", &roles_with(tests))
         .write("def/targets.lfy", TARGETS)
-        .write(
-            "def/b/one.lfy",
-            &format!(
-                "d B: `A B {note}` {{\n  @acceptanceCriteria\n    .add({{ behavior = `Holds a number` }});\n}}\n"
-            ),
-        )
-        .write("def/a/one.lfy", &format!("use \"../b/one\";\n\nd A: `An A {note}` {{}}\n"))
-}
-
-/// A compiler that writes each unit's output, notes that it ran for that unit, and, for
-/// `def/a/one`, keeps what its directory held of the output of `def/b/one` when it
-/// started. The body it writes for B is its first on its first run for that unit and its
-/// second after that, so a run once more rewrites one function.
-///
-/// Its run for `def/a/one` also notes, in `events.txt` under the fixture's root, that it
-/// ran, and keeps what the root itself held of the output of `def/b/one` then.
-// @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-// @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-fn compiler_of_two(fixture: &Fixture, first: &str, again: &str) -> String {
-    let root = fixture.path();
-    format!(
-        "#!/bin/sh\ncat > /dev/null\nmkdir -p \"$ELFIE_ROOT/out/a\" \"$ELFIE_ROOT/out/b\"\n\
-         case \"$ELFIE_UNITS\" in\n\
-         *b/one*)\n\
-         echo ran >> \"$ELFIE_ROOT/ran-b.txt\"\n\
-         if [ \"$(wc -l < \"$ELFIE_ROOT/ran-b.txt\")\" -gt 1 ]; then body='{again}'; else body='{first}'; fi\n\
-         printf '// @lfy def/b/one.lfy:B\\n%s\\n' \"$body\" > \"$ELFIE_ROOT/out/b/one.rs\"\n\
-         ;;\n\
-         *a/one*)\n\
-         echo ran >> \"$ELFIE_ROOT/ran-a.txt\"\n\
-         cp \"$ELFIE_ROOT/out/b/one.rs\" \"$ELFIE_ROOT/seen-b.txt\" || echo missing > \"$ELFIE_ROOT/seen-b.txt\"\n\
-         echo 'compile a' >> '{root}/events.txt'\n\
-         cp '{root}/out/b/one.rs' '{root}/root-b.txt' || echo missing > '{root}/root-b.txt'\n\
-         printf '// @lfy def/a/one.lfy:A\\npub struct A {{}}\\n' > \"$ELFIE_ROOT/out/a/one.rs\"\n\
-         ;;\n\
-         esac\n\
-         echo 'ELFIE: DONE'\n"
-    )
-}
-
-/// A verifier that takes long enough for the batch after it to start, notes that it ran,
-/// and answers for the one criterion: violated on its first run when `first` says so, and
-/// satisfied after that. It notes in `events.txt` under the fixture's root when each review
-/// begins and when it ends.
-// @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-// @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-fn slow_verifier(fixture: &Fixture, id: &str, first: &str) -> String {
-    let root = fixture.path();
-    format!(
-        "#!/bin/sh\ncat > /dev/null\necho \"$ELFIE_BATCH\" >> \"$ELFIE_ROOT/verified.txt\"\n\
-         echo \"review $ELFIE_BATCH begins\" >> '{root}/events.txt'\nsleep 2\n\
-         echo \"review $ELFIE_BATCH ends\" >> '{root}/events.txt'\n\
-         if [ \"$(wc -l < \"$ELFIE_ROOT/verified.txt\")\" -gt 1 ]; then status=satisfied; else status={first}; fi\n\
-         printf '{{\"id\":\"{id}\",\"status\":\"%s\",\"evidence\":\"out/b/one.rs:1-2\",\"note\":\"looked at\"}}\\n' \"$status\"\n\
-         echo 'ELFIE: REVIEWED'\n"
-    )
-}
-
-/// Both units recorded by one compile that asks no verifier, so that the compile under
-/// test plans both of them for what changed since.
-// @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-fn recorded_twice(fixture: &Fixture, first: &str, again: &str) {
-    fixture
-        .write("compiler.sh", &compiler_of_two(fixture, first, again))
-        .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
-    assert_eq!(fixture.run(&["compile", "--jobs", "1", "--no-verify"]), ExitCode::Success.code());
-}
-
-/// With --jobs 2 in a git repository, the batch of `a` starts in a copy holding what the
-/// batch of `b` accepted, before b's review has ended; b is merged into the root first,
-/// a is merged after it with no build or test run, and both maps are recorded.
-// @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-#[test]
-fn a_batch_starts_against_what_the_batch_before_it_accepted() {
-    let fixture = Fixture::new();
-    two_batches(&fixture, "then");
+        .write("def/b.lfy", "d B: `A B` {\n  @acceptanceCriteria\n    .add({ behavior = `Holds a number` });\n}\n")
+        .write("def/a.lfy", "use \"./b\";\n\nd A: `An A` {}\n")
+        .write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B {}\n")
+        .write("out/a.rs", "// @lfy def/a.lfy:A\npub fn a() -> u8 {\n    b(1)\n}\n");
     if !a_repository(&fixture) {
         return;
     }
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    recorded_twice(&fixture, "pub struct B {}", "pub struct B {}");
-    // Both are edited since they were recorded, so both are planned.
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    two_batches(&fixture, "now");
-    let id = criterion_in(&fixture, "b/one.lfy");
+    // Both recorded as they are.
+    assert_eq!(fixture.run(&["compile", "--accept"]), ExitCode::Success.code());
+    // Only the criterion of b is edited since, which leaves its interface as it was.
+    fixture.write("def/b.lfy", "d B: `A B` {\n  @acceptanceCriteria\n    .add({ behavior = `Holds a whole number` });\n}\n");
+    let compiler = noted(
+        &fixture,
+        "#!/bin/sh\ncat >> '<notes>/requests.txt'\necho \"$ELFIE_UNIT\" >> '<notes>/attempts.txt'\ncase \"$ELFIE_UNIT\" in\n\
+         b)\nprintf '// @lfy def/b.lfy:B\\npub struct B(u8);\\n' > \"$ELFIE_ROOT/out/b.rs\"\n\
+         printf '// @lfy def/a.lfy:A\\npub fn a() -> u8 {\\n    todo!(\"elfie stub: b: B takes a number now\")\\n}\\n' > \"$ELFIE_ROOT/out/a.rs\"\n;;\n\
+         a)\nprintf '// @lfy def/a.lfy:A\\npub fn a() -> u8 {\\n    B(1).0\\n}\\n' > \"$ELFIE_ROOT/out/a.rs\"\n;;\nesac\necho 'ELFIE: DONE'\n",
+    );
     fixture
-        .write("compiler.sh", &compiler_of_two(&fixture, "pub struct B(u8);", "pub struct B(u8);"))
-        .write("verifier.sh", &slow_verifier(&fixture, &id, "satisfied"))
+        .write("compiler.sh", &compiler)
+        .write("verifier.sh", &noted(&fixture, CONTENT))
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
-    let _ = fs::remove_file(fixture.root.join("ran-a.txt"));
-    let _ = fs::remove_file(fixture.root.join("ran-b.txt"));
-    let _ = fs::remove_file(fixture.root.join("events.txt"));
     forget_log(&fixture);
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    assert_eq!(fixture.run(&["compile", "--jobs", "2"]), ExitCode::Success.code());
+    // @lfy def/cli/main.lfy:main#main:main:aa190a37afd8a9b1d68e7838aaa5ccd333a995de1ba999a46a92c57acfb961f5
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
     let log = fixture.read("elfie-requests/compile.log");
-    assert!(log.contains("2 units planned, 2 batches"), "{log}");
-    // a's compiler ran after b's review began and before it ended.
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    let events = fixture.read("events.txt");
-    let order: Vec<&str> = events.lines().collect();
-    assert_eq!(order, vec!["review b/one begins", "compile a", "review b/one ends"], "{events}");
-    // The copy of a held what b had accepted, while the root did not hold it yet: it came
-    // from b's accepted changes, not from b's merge.
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    assert!(fixture.read("seen-b.txt").contains("pub struct B(u8);"), "{}", fixture.read("seen-b.txt"));
-    assert!(!fixture.read("root-b.txt").contains("pub struct B(u8);"), "{}", fixture.read("root-b.txt"));
-    // b is merged into the root, and its maps recorded, before a.
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    let accepted = |stem: &str| {
-        log.lines()
-            .position(|line| line.contains("\u{2713} accepted") && line.contains(stem))
-            .unwrap_or_else(|| panic!("no accepted line for {stem} in {log}"))
+    // A stubbed line names a, after b was accepted.
+    // @lfy def/cli/main.lfy:main#main:main:186f5bf02a1197f42b15d46a728b008732f742e22b0a3360bbff586dc9f0dcab
+    let stubbed = log.lines().position(|line| line.contains("○ stubbed") && line.contains("  a  ")).unwrap_or_else(|| panic!("{log}"));
+    let accepted = log.lines().position(|line| line.contains("✓ accepted") && line.contains("  b  ")).unwrap_or_else(|| panic!("{log}"));
+    assert!(accepted < stubbed, "{log}");
+    // a was compiled with reason touched, its request listing b's stub.
+    // @lfy def/cli/main.lfy:main#main:main:8214a980d0dc5f7d2ad165f456c7096d6e4ef89966519c6a783ecc99a04969fd
+    assert_eq!(fixture.read("attempts.txt"), "b\na\n");
+    assert!(log.lines().any(|line| line.contains("· requesting") && line.contains("  a  ") && line.ends_with("touched")), "{log}");
+    assert!(fixture.read("requests.txt").contains("B takes a number now"), "{}", fixture.read("requests.txt"));
+    // The final gate found no stub, and the root took both units.
+    // @lfy def/cli/main.lfy:main#main:main:f1b10f02356ca91bbce69918d73b71540bc544c39e28653ce88393191e8e8ffe
+    assert!(log.contains("▸ finalGate") && log.contains("▸ merging"), "{log}");
+    assert!(fixture.read("out/a.rs").contains("B(1).0"));
+    assert!(fixture.read("out/b.rs").contains("B(u8)"));
+    assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("out/a.rs"));
+}
+
+/// A compile stopped when a later unit's compiler was blocked keeps its change set; the
+/// next compile resumes it, keeping the unit already reviewed and running the blocked one
+/// again, then passes the final gate and merges.
+// @lfy def/cli/main.lfy:main#main:main:39f5668011c9acefd792153ca4130581b4795e9d45b0fffb0e36c7124a35d180
+// @lfy def/cli/main.lfy:main#main:main:54faac0351075e5f797a3b89b57d4af904f0f8a00cf097ab716767e08566ab00
+// @lfy def/cli/main.lfy:main#main:main:85a283dc1f225f02956fbed8a23688bb8b6f297fdc8bea08fed48d08fd0de9b5
+// @lfy def/cli/main.lfy:main#main:main:4fb67ab23f1c2255a1177088bce0458b4c7fc72eee0b9f60cc2c47cdc0e85480
+#[test]
+fn a_kept_change_set_is_resumed() {
+    let fixture = Fixture::new();
+    one_target(&fixture)
+        .write("def/b.lfy", "d B: `A B` {\n  @acceptanceCriteria\n    .add({ behavior = `Holds a number` });\n}\n")
+        .write("def/a.lfy", "use \"./b\";\n\nd A: `An A` {}\n");
+    let compiler = noted(
+        &fixture,
+        "#!/bin/sh\ncat > /dev/null\necho \"$ELFIE_UNIT\" >> '<notes>/attempts.txt'\nmkdir -p \"$ELFIE_ROOT/out\"\ncase \"$ELFIE_UNIT\" in\n\
+         b)\nprintf '// @lfy def/b.lfy:B\\npub struct B {}\\n' > \"$ELFIE_ROOT/out/b.rs\"\n;;\n\
+         a)\nif [ ! -f '<notes>/blocked.txt' ]; then echo once > '<notes>/blocked.txt'; echo 'ELFIE: BLOCKED: not yet'; exit 0; fi\n\
+         printf '// @lfy def/a.lfy:A\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\n;;\nesac\necho 'ELFIE: DONE'\n",
+    );
+    fixture
+        .write("compiler.sh", &compiler)
+        .write("verifier.sh", &noted(&fixture, CONTENT))
+        .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
+    // b is accepted and reviewed, then a's compiler is blocked: the compile stops, and the
+    // root takes nothing.
+    // @lfy def/cli/main.lfy:main#main:main:85a283dc1f225f02956fbed8a23688bb8b6f297fdc8bea08fed48d08fd0de9b5
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+    assert!(!fixture.root.join("out/b.rs").exists(), "the root took a change set");
+    let kept = ChangeSet::load(&fixture.root, "rust").expect("the change set is kept");
+    let state = |stem: &str| kept.units.iter().find(|unit| unit.stem == stem).map(|unit| unit.state);
+    assert_eq!(state("b"), Some(UnitState::Reviewed));
+    assert_eq!(state("a"), Some(UnitState::Planned));
+    forget_log(&fixture);
+    // @lfy def/cli/main.lfy:main#main:main:39f5668011c9acefd792153ca4130581b4795e9d45b0fffb0e36c7124a35d180
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    let log = fixture.read("elfie-requests/compile.log");
+    // One resuming line counts the unit kept and the unit that runs again.
+    // @lfy def/cli/main.lfy:main#main:main:54faac0351075e5f797a3b89b57d4af904f0f8a00cf097ab716767e08566ab00
+    assert!(log.lines().any(|line| line.contains("· resuming") && line.ends_with("rust: 1 units kept, 1 run again")), "{log}");
+    // No compiler ran on b again.
+    assert_eq!(fixture.read("attempts.txt"), "b\na\na\n");
+    assert!(log.contains("▸ finalGate") && log.contains("▸ merging"), "{log}");
+    // Both count as accepted, the one kept from the resumed change set included.
+    // @lfy def/cli/main.lfy:main#main:main:4fb67ab23f1c2255a1177088bce0458b4c7fc72eee0b9f60cc2c47cdc0e85480
+    assert!(log.contains("2 accepted, 0 rejected, 0 blocked, 0 failed"), "{log}");
+    assert!(fixture.read("out/a.rs").contains("pub struct A"));
+    assert!(fixture.read("out/b.rs").contains("pub struct B"));
+}
+
+/// A git root whose lint command fails printing a warning at a line of another unit's
+/// output: the unit's own gate passes, since no line of the lint's output names one of its
+/// own lines, but the final gate fails naming the lint, its exit code, and the warning's
+/// line; the root is unchanged and the change set is kept with the unit reviewed.
+// @lfy def/cli/main.lfy:main#main:main:a681a0e7b0078130a0e833cc0cb82a8d09d63a79140fe4dd827e4c490a9021e1
+// @lfy def/cli/main.lfy:main#main:main:26c73a135ccf59fa42bd380a4eb712ba0f4ccb70d5082c9a3838abe729e4a29f
+// @lfy def/cli/main.lfy:main#main:main:5d082ae0ac17d428f19ee0894765ffab9b0227cf846ca57511c6451d474a7ff0
+// @lfy def/cli/main.lfy:main#main:main:3d56bbbdda35f1bdb3f31f4a0bcb7a611efd511b697c7deed056bda76554bac2
+#[test]
+fn a_lint_warning_in_another_units_lines_fails_the_final_gate() {
+    let fixture = Fixture::new();
+    let commands = "\n    .add({ operation = Operation.build, line = \"true\" })\
+                    \n    .add({ operation = Operation.test, line = \"true\" })\
+                    \n    .add({ operation = Operation.lint, line = \"echo 'warning: unused at out/b.rs:2:5'; exit 1\" })";
+    library(&fixture)
+        .write("def/roles.lfy", &roles_with(commands))
+        .write("def/targets.lfy", TARGETS)
+        .write("def/a.lfy", "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list` });\n}\n")
+        .write("def/b.lfy", "d B: `A B` {}\n")
+        .write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A {}\n")
+        .write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B {}\n");
+    if !a_repository(&fixture) {
+        return;
+    }
+    assert_eq!(fixture.run(&["compile", "--accept"]), ExitCode::Success.code());
+    let recorded = fixture.read("elfie-compile/maps/rust/a.json");
+    fixture.write("def/a.lfy", "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list once` });\n}\n");
+    fixture
+        .write("compiler.sh", &noted(&fixture, A_COMPILER))
+        .write("verifier.sh", &noted(&fixture, CONTENT))
+        .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
+    forget_log(&fixture);
+    // @lfy def/cli/main.lfy:main#main:main:a681a0e7b0078130a0e833cc0cb82a8d09d63a79140fe4dd827e4c490a9021e1
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+    let log = fixture.read("elfie-requests/compile.log");
+    // @lfy def/cli/main.lfy:main#main:main:26c73a135ccf59fa42bd380a4eb712ba0f4ccb70d5082c9a3838abe729e4a29f
+    assert!(log.lines().any(|line| line.contains("▸ building") && line.contains("the unit gate passed")), "{log}");
+    // @lfy def/cli/main.lfy:main#main:main:5d082ae0ac17d428f19ee0894765ffab9b0227cf846ca57511c6451d474a7ff0
+    assert!(log.contains("    - the lint command exited with 1"), "{log}");
+    assert!(log.contains("      warning: unused at out/b.rs:2:5"), "{log}");
+    // @lfy def/cli/main.lfy:main#main:main:3d56bbbdda35f1bdb3f31f4a0bcb7a611efd511b697c7deed056bda76554bac2
+    assert!(!log.contains("▸ merging"), "{log}");
+    assert_eq!(fixture.read("elfie-compile/maps/rust/a.json"), recorded, "the root changed");
+    let kept = ChangeSet::load(&fixture.root, "rust").expect("the change set is kept");
+    assert_eq!(kept.units.iter().find(|unit| unit.stem == "a").map(|unit| unit.state), Some(UnitState::Reviewed));
+}
+
+/// A copy and a base of a change set of no planned target, kept from an earlier compile,
+/// are removed.
+// @lfy def/cli/main.lfy:main#main:main:b42383729e83012724e5ae4eb03736c20f286e73e36e0bfb45b2affcd6832907
+#[test]
+fn a_kept_change_set_of_no_planned_target_is_removed() {
+    let fixture = Fixture::new();
+    a_compiler_and_a_verifier(&fixture, SATISFIED);
+    assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
+    let copy = copy_of(&fixture.root, "rust");
+    fs::create_dir_all(&copy).unwrap();
+    let kept = ChangeSet {
+        target: "rust".to_string(),
+        directory: copy.to_string_lossy().into_owned(),
+        units: Vec::new(),
+        foreign_edits: Vec::new(),
     };
-    assert!(accepted("b/one") < accepted("a/one"), "{log}");
-    // Nothing of b's merge differed from what a took, so no build or test ran.
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    assert!(!log.contains("\u{25b8} building"), "{log}");
-    // Both are merged into the root and both maps are recorded.
-    // @lfy def/cli/main.lfy:main#main:main:b7262d48ed581a2a6d6d97961b2b16702098182ee1ba781ed507551af8dc1cff
-    assert!(fixture.read("out/b/one.rs").contains("pub struct B(u8);"));
-    assert!(fixture.read("out/a/one.rs").contains("pub struct A"));
-    assert!(fixture.read("elfie-compile/maps/rust/b/one.json").contains("out/b/one.rs"));
-    assert!(fixture.read("elfie-compile/maps/rust/a/one.json").contains("out/a/one.rs"));
-}
-
-/// A batch whose copy took what another batch accepted, where that batch then ran once
-/// more and reached the root with other work: the files its merge wrote are taken into
-/// the copy, the target's build and test commands run there, and the batch is merged once
-/// they pass, its compiler having run once.
-// @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-#[test]
-fn a_copy_takes_what_the_batch_before_it_merged_and_is_built_again() {
-    let fixture = Fixture::new();
-    two_batches(&fixture, "then");
-    if !a_repository(&fixture) {
-        return;
-    }
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    recorded_twice(&fixture, "pub struct B {}", "pub struct B {}");
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    two_batches(&fixture, "now");
-    let id = criterion_in(&fixture, "b/one.lfy");
-    // The compiler's run once more on b rewrites the body of one function, and the
-    // verifier's first review of b finds the criterion violated.
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    fixture
-        .write("compiler.sh", &compiler_of_two(&fixture, "pub struct B(u8);", "pub struct B(u16);"))
-        .write("verifier.sh", &slow_verifier(&fixture, &id, "violated"))
-        .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh"), ("verifier", "sh verifier.sh")]));
-    let _ = fs::remove_file(fixture.root.join("ran-a.txt"));
-    let _ = fs::remove_file(fixture.root.join("ran-b.txt"));
-    forget_log(&fixture);
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    assert_eq!(fixture.run(&["compile", "--jobs", "2"]), ExitCode::Success.code());
-    let log = fixture.read("elfie-requests/compile.log");
-    // a's batch started against b's first accepted output.
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    assert!(fixture.read("seen-b.txt").contains("pub struct B(u8);"), "{}", fixture.read("seen-b.txt"));
-    // b ran once more and what it merged is the body it wrote then.
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    assert_eq!(lines_of(&fixture, "ran-b.txt"), 2, "{log}");
-    assert!(fixture.read("out/b/one.rs").contains("pub struct B(u16);"));
-    // A building line for a, since the files b merged differ from what a took.
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    assert!(log.contains("\u{25b8} building"), "{log}");
-    // a is merged after the build and the test pass, with its compiler run once.
-    // @lfy def/cli/main.lfy:main#main:main:e803dbdf5ac818e716c02ce96a601f0a57ca23b3acd29c5b6698afe1148ce2f5
-    assert_eq!(lines_of(&fixture, "ran-a.txt"), 1, "{log}");
-    assert!(fixture.read("out/a/one.rs").contains("pub struct A"));
-    assert!(fixture.read("elfie-compile/maps/rust/a/one.json").contains("out/a/one.rs"));
+    kept.save(&fixture.root).unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:b42383729e83012724e5ae4eb03736c20f286e73e36e0bfb45b2affcd6832907
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    assert!(ChangeSet::load(&fixture.root, "rust").is_none());
+    assert!(!copy.exists());
 }

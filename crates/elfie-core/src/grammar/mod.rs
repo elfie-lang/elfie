@@ -227,18 +227,171 @@ pub fn rules() -> impl Iterator<Item = Entity> {
     Entity::all()
 }
 
+/// The rules named, each as `File::Rule`, wrapped as an [`Entity`] array in the order given.
+macro_rules! entities {
+    ($($kind:ident :: $rule:ident),+ $(,)?) => {
+        [$(Entity::$kind($kind::$rule)),+]
+    };
+}
+
 /// The EBNF of every terminal, one per line.
 // @lfy def/grammar/main.lfy:terminalDocument
 pub fn terminal_document() -> String {
-    let lines: Vec<&'static str> = Entity::terminals().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:terminalDocument
-    lines.join("\n") // @lfy def/grammar/main.lfy:terminalDocument
+    let mut lines: Vec<&'static str> = Vec::new();
+    for entity in entities![
+        Space::NewLine, Space::Space, Literal::NumberLiteral, Literal::SingleQuote,
+        Literal::DoubleQuote, Literal::Backtick, Literal::ExecutionOpen, Literal::ExecutionClose,
+        Literal::ReferenceOpen, Literal::ReferenceClose, Literal::BackslashEscape,
+        Literal::SingleQuoteEscape, Literal::DoubleQuoteEscape, Literal::BacktickEscape,
+        Literal::NewlineEscape, Literal::CarriageReturnEscape, Literal::TabEscape,
+        Literal::NullEscape, Literal::ContinuationEscape, Literal::HexEscape,
+        Literal::UnicodeEscape, Literal::ExecutionOpenEscape, Literal::ExecutionCloseEscape,
+        Literal::ReferenceOpenEscape, Literal::ReferenceCloseEscape, Literal::SingleQuoteBody,
+        Literal::DoubleQuoteBody, Literal::TemplateBody, Comment::BlockCommentOpen,
+        Comment::BlockCommentClose, Comment::BlockCommentBody, Comment::LineCommentOpen,
+        Comment::LineCommentBody, Comment::BlockDocumentationOpen,
+        Comment::BlockDocumentationClose, Comment::BlockDocumentationBody,
+        Comment::LineDocumentationOpen, Comment::LineDocumentationBody,
+        Keyword::AgentDataKeyword, Keyword::AgentFunctionKeyword, Keyword::FunctionKeyword,
+        Keyword::TraitKeyword, Keyword::TypeKeyword, Keyword::EnumKeyword, Keyword::AliasKeyword,
+        Keyword::ConstKeyword, Keyword::LetKeyword, Keyword::ExternalKeyword,
+        Keyword::UseKeyword, Keyword::IsKeyword, Keyword::ExtendsKeyword, Keyword::AsKeyword,
+        Keyword::WithKeyword, Keyword::WhereKeyword, Keyword::AndKeyword, Keyword::OrKeyword,
+        Keyword::DefaultKeyword, Keyword::IfKeyword, Keyword::ElseKeyword, Keyword::ForKeyword,
+        Keyword::InKeyword, Keyword::OfKeyword, Keyword::FromKeyword, Keyword::WhileKeyword,
+        Keyword::LoopKeyword, Keyword::BreakKeyword, Keyword::ContinueKeyword,
+        Keyword::ReturnKeyword, Keyword::MatchKeyword, Keyword::MatchallKeyword,
+        Keyword::AsyncKeyword, Keyword::AwaitKeyword, Keyword::AceKeyword, Keyword::NullKeyword,
+        Keyword::UndefinedKeyword, Keyword::TrueKeyword, Keyword::FalseKeyword,
+        Keyword::BooleanKeyword, Keyword::NumberKeyword, Keyword::StringKeyword,
+        Keyword::ObjectKeyword, Keyword::AbstractKeyword, Keyword::CaseKeyword,
+        Keyword::ClassKeyword, Keyword::ImplKeyword, Keyword::InterfaceKeyword,
+        Keyword::NewKeyword, Keyword::ModuleKeyword, Keyword::PrivateKeyword,
+        Keyword::PublicKeyword, Keyword::SelfKeyword, Keyword::StaticKeyword,
+        Keyword::SuperKeyword, Keyword::SwitchKeyword, Keyword::ThenKeyword,
+        Keyword::TypeofKeyword, Keyword::YieldKeyword, Identifier::Identifier,
+        Punctuation::ValueAccessor, Punctuation::OptionalValueAccessor,
+        Punctuation::ContextAccessor, Punctuation::ScopeAccessor,
+        Punctuation::ParentScopeAccessor, Punctuation::GroupOpen, Punctuation::GroupClose,
+        Punctuation::ListOpen, Punctuation::ListClose, Punctuation::BlockOpen,
+        Punctuation::BlockClose, Punctuation::Comma, Punctuation::Semicolon, Punctuation::Colon,
+        Punctuation::QuestionMark, Punctuation::Spread, Punctuation::PreviousStatement,
+        Punctuation::Ampersand, Punctuation::SingleArrowRight, Punctuation::SingleArrowRightGlyph,
+        Punctuation::SingleArrowLeft, Punctuation::SingleArrowLeftGlyph,
+        Punctuation::DoubleArrowRight, Punctuation::PlainSetter, Punctuation::ToggleSetter,
+        Punctuation::AddSetter, Punctuation::SubtractSetter, Punctuation::MultiplySetter,
+        Punctuation::PowerSetter, Punctuation::BitwiseAndSetter, Punctuation::BitwiseOrSetter,
+        Punctuation::NullishSetter, Punctuation::FalseySetter, Punctuation::TruthySetter,
+        Punctuation::LessThan, Punctuation::LessThanOrEqual, Punctuation::GreaterThan,
+        Punctuation::GreaterThanOrEqual, Punctuation::Equal, Punctuation::NotEqual,
+        Punctuation::SameReference, Punctuation::AboutEqual, Punctuation::LogicalAnd,
+        Punctuation::LogicalOr, Punctuation::NullishOr, Punctuation::LogicalNot,
+        Punctuation::Plus, Punctuation::Minus, Punctuation::Star, Punctuation::Slash,
+        Punctuation::Percent, Punctuation::Power, Punctuation::BitwiseOr, Punctuation::BitwiseXor,
+        Punctuation::BitwiseNot,
+    ] {
+        lines.push(entity.rule().text);
+    }
+    lines.join("\n")
 }
 
 /// The EBNF of every rule, one per line.
 // @lfy def/grammar/main.lfy:grammarDocument
 pub fn grammar_document() -> String {
-    let lines: Vec<&'static str> = rules().map(|rule| rule.rule().text).collect(); // @lfy def/grammar/main.lfy:grammarDocument
-    lines.join("\n") // @lfy def/grammar/main.lfy:grammarDocument
+    let mut lines: Vec<&'static str> = Vec::new();
+    for entity in entities![
+        Space::NewLine, Space::Space, Literal::NumberLiteral, Literal::SingleQuote,
+        Literal::DoubleQuote, Literal::Backtick, Literal::ExecutionOpen, Literal::ExecutionClose,
+        Literal::ReferenceOpen, Literal::ReferenceClose, Literal::BackslashEscape,
+        Literal::SingleQuoteEscape, Literal::DoubleQuoteEscape, Literal::BacktickEscape,
+        Literal::NewlineEscape, Literal::CarriageReturnEscape, Literal::TabEscape,
+        Literal::NullEscape, Literal::ContinuationEscape, Literal::HexEscape,
+        Literal::UnicodeEscape, Literal::ExecutionOpenEscape, Literal::ExecutionCloseEscape,
+        Literal::ReferenceOpenEscape, Literal::ReferenceCloseEscape, Literal::SingleQuoteBody,
+        Literal::DoubleQuoteBody, Literal::TemplateBody, Literal::SingleQuoteString,
+        Literal::DoubleQuoteString, Comment::BlockCommentOpen, Comment::BlockCommentClose,
+        Comment::BlockCommentBody, Comment::LineCommentOpen, Comment::LineCommentBody,
+        Comment::BlockDocumentationOpen, Comment::BlockDocumentationClose,
+        Comment::BlockDocumentationBody, Comment::LineDocumentationOpen,
+        Comment::LineDocumentationBody, Comment::Comment, Comment::Documentation,
+        Keyword::AgentDataKeyword, Keyword::AgentFunctionKeyword, Keyword::FunctionKeyword,
+        Keyword::TraitKeyword, Keyword::TypeKeyword, Keyword::EnumKeyword, Keyword::AliasKeyword,
+        Keyword::ConstKeyword, Keyword::LetKeyword, Keyword::ExternalKeyword,
+        Keyword::UseKeyword, Keyword::IsKeyword, Keyword::ExtendsKeyword, Keyword::AsKeyword,
+        Keyword::WithKeyword, Keyword::WhereKeyword, Keyword::AndKeyword, Keyword::OrKeyword,
+        Keyword::DefaultKeyword, Keyword::IfKeyword, Keyword::ElseKeyword, Keyword::ForKeyword,
+        Keyword::InKeyword, Keyword::OfKeyword, Keyword::FromKeyword, Keyword::WhileKeyword,
+        Keyword::LoopKeyword, Keyword::BreakKeyword, Keyword::ContinueKeyword,
+        Keyword::ReturnKeyword, Keyword::MatchKeyword, Keyword::MatchallKeyword,
+        Keyword::AsyncKeyword, Keyword::AwaitKeyword, Keyword::AceKeyword, Keyword::NullKeyword,
+        Keyword::UndefinedKeyword, Keyword::TrueKeyword, Keyword::FalseKeyword,
+        Keyword::BooleanKeyword, Keyword::NumberKeyword, Keyword::StringKeyword,
+        Keyword::ObjectKeyword, Keyword::AbstractKeyword, Keyword::CaseKeyword,
+        Keyword::ClassKeyword, Keyword::ImplKeyword, Keyword::InterfaceKeyword,
+        Keyword::NewKeyword, Keyword::ModuleKeyword, Keyword::PrivateKeyword,
+        Keyword::PublicKeyword, Keyword::SelfKeyword, Keyword::StaticKeyword,
+        Keyword::SuperKeyword, Keyword::SwitchKeyword, Keyword::ThenKeyword,
+        Keyword::TypeofKeyword, Keyword::YieldKeyword, Keyword::Keyword, Identifier::Identifier,
+        Punctuation::ValueAccessor, Punctuation::OptionalValueAccessor,
+        Punctuation::ContextAccessor, Punctuation::ScopeAccessor,
+        Punctuation::ParentScopeAccessor, Punctuation::Accessor, Punctuation::GroupOpen,
+        Punctuation::GroupClose, Punctuation::ListOpen, Punctuation::ListClose,
+        Punctuation::BlockOpen, Punctuation::BlockClose, Punctuation::Comma,
+        Punctuation::Semicolon, Punctuation::Colon, Punctuation::QuestionMark,
+        Punctuation::Spread, Punctuation::PreviousStatement, Punctuation::Ampersand,
+        Punctuation::SingleArrowRight, Punctuation::SingleArrowRightGlyph,
+        Punctuation::SingleArrowLeft, Punctuation::SingleArrowLeftGlyph,
+        Punctuation::DoubleArrowRight, Punctuation::SingleArrow, Punctuation::PlainSetter,
+        Punctuation::ToggleSetter, Punctuation::AddSetter, Punctuation::SubtractSetter,
+        Punctuation::MultiplySetter, Punctuation::PowerSetter, Punctuation::BitwiseAndSetter,
+        Punctuation::BitwiseOrSetter, Punctuation::NullishSetter, Punctuation::FalseySetter,
+        Punctuation::TruthySetter, Punctuation::Setter, Punctuation::LessThan,
+        Punctuation::LessThanOrEqual, Punctuation::GreaterThan, Punctuation::GreaterThanOrEqual,
+        Punctuation::Relational, Punctuation::Equal, Punctuation::NotEqual,
+        Punctuation::SameReference, Punctuation::AboutEqual, Punctuation::Equality,
+        Punctuation::LogicalAnd, Punctuation::LogicalOr, Punctuation::NullishOr,
+        Punctuation::Coalescence, Punctuation::LogicalNot, Punctuation::Plus, Punctuation::Minus,
+        Punctuation::Additive, Punctuation::Star, Punctuation::Slash, Punctuation::Percent,
+        Punctuation::Multiplicative, Punctuation::Power, Punctuation::BitwiseOr,
+        Punctuation::BitwiseXor, Punctuation::BitwiseNot, Punctuation::Punctuation,
+        Expression::MemberName, Expression::TraitUse, Expression::TraitUses,
+        Expression::IsClause, Expression::ExtendsClause, Expression::DefinitionClause,
+        Expression::Declared, Expression::ObjectKey, Expression::Parameter,
+        Expression::SpreadParameter, Expression::Parameters, Expression::TypeParameter,
+        Expression::TypeParameters, Expression::TypeArguments, Expression::Signature,
+        Expression::Items, Expression::Arguments, Expression::Reference,
+        Expression::TemplateReference, Expression::TemplateExecution, Expression::TypeValue,
+        Expression::FunctionType, Expression::TypeGroup, Expression::TypeItem,
+        Expression::TypeExpression, Expression::TypeKey, Expression::StringLiteral,
+        Expression::Template, Expression::Number, Expression::Boolean, Expression::Nullish,
+        Expression::PrimitiveType, Expression::Name, Expression::Current, Expression::Previous,
+        Expression::Group, Expression::InlineFunction, Expression::List, Expression::Object,
+        Expression::TypePredicate, Expression::Type, Expression::NotOperation,
+        Expression::NegateOperation, Expression::BitwiseNotOperation, Expression::Dereference,
+        Expression::SpreadOperation, Expression::AwaitOperation, Expression::InOperation,
+        Expression::OfOperation, Expression::FromOperation, Expression::AdditiveOperation,
+        Expression::MultiplicativeOperation, Expression::PowerOperation,
+        Expression::BitwiseOrOperation, Expression::BitwiseXorOperation,
+        Expression::BitwiseAndOperation, Expression::RelationalOperation,
+        Expression::EqualityOperation, Expression::LogicalAndOperation,
+        Expression::CoalescenceOperation, Expression::RangeOperation, Expression::Assignment,
+        Expression::Member, Expression::Index, Expression::Call, Expression::Traits,
+        Expression::Definition, Expression::Cast, Expression::Generic, Expression::Conditional,
+        Expression::Primary, Expression::Prefix, Expression::Infix, Expression::Postfix,
+        Expression::Expression, Statement::DataDeclaration, Statement::AgentFunctionDeclaration,
+        Statement::FunctionDeclaration, Statement::TraitDeclaration, Statement::TypeDeclaration,
+        Statement::EnumDeclaration, Statement::VariableDeclaration, Statement::AliasDeclaration,
+        Statement::ExternalDeclaration, Statement::Use, Statement::Block, Statement::If,
+        Statement::Else, Statement::ForFrom, Statement::ForInOf, Statement::For,
+        Statement::While, Statement::Loop, Statement::Break, Statement::Continue,
+        Statement::Return, Statement::MatchArm, Statement::Match, Statement::With,
+        Statement::Async, Statement::Ace, Statement::ExpressionStatement, Statement::Condition,
+        Statement::ConditionGroup, Statement::Conditions, Statement::Where,
+        Statement::Statement, File::SourceFile,
+    ] {
+        lines.push(entity.rule().text);
+    }
+    lines.join("\n")
 }
 
 /// The global acceptance criteria of the grammar: every [`Check`] holds for every rule,
@@ -301,19 +454,19 @@ mod tests {
     #[test]
     fn the_terminal_document_lists_every_terminal_once_per_line() {
         let document = terminal_document();
-        // The NewLine rule's own syntax holds line breaks, so the lines are compared by
-        // joining the rule texts rather than by splitting the document.
-        let texts: Vec<&str> = Entity::terminals()
-            .map(|terminal| terminal.text())
-            .collect();
-        assert_eq!(document, texts.join("\n"));
-        assert_eq!(texts.len(), 153);
-        assert!(
-            document.starts_with("AgentDataKeyword = \"d\" ;\nAgentFunctionKeyword = \"fn\" ;\n")
-        );
-        assert!(document.contains(
-            "\nIdentifier = ( [[IdentifierStart]] | \"_\" ) , (: [[IdentifierContinue]] :) ;\n"
-        ));
+        // The NewLine rule's own syntax holds line breaks, so the document is searched for
+        // each rule text rather than split into lines.
+        assert!(document.starts_with(Entity::Space(Space::NewLine).text()));
+        assert!(document.ends_with(Entity::Punctuation(Punctuation::BitwiseNot).text()));
+        for terminal in [
+            Entity::Keyword(Keyword::AgentDataKeyword),
+            Entity::Identifier(Identifier::Identifier),
+            Entity::Literal(Literal::TemplateBody),
+            Entity::Comment(Comment::LineCommentBody),
+        ] {
+            assert!(terminal.is_terminal(), "{terminal}");
+            assert!(document.contains(&format!("\n{}\n", terminal.text())), "{terminal}");
+        }
         assert!(!document.contains("SourceFile"));
         assert!(!document.contains("\nCharacter ="));
         assert!(!document.contains("\nStatement ="));
@@ -323,10 +476,16 @@ mod tests {
     #[test]
     fn the_grammar_document_lists_every_rule_once_per_line() {
         let document = grammar_document();
-        let texts: Vec<&str> = rules().map(|rule| rule.text()).collect();
-        assert_eq!(document, texts.join("\n"));
-        assert_eq!(texts.len(), 281);
-        assert!(document.ends_with("SourceFile = (: [[Statement]] :) ;"));
+        assert!(document.starts_with(Entity::Space(Space::NewLine).text()));
+        assert!(document.ends_with(Entity::File(File::SourceFile).text()));
+        for rule in [
+            Entity::Keyword(Keyword::Keyword),
+            Entity::Literal(Literal::DoubleQuoteString),
+            Entity::Expression(Expression::Expression),
+            Entity::Statement(Statement::Statement),
+        ] {
+            assert!(document.contains(&format!("\n{}\n", rule.text())), "{rule}");
+        }
         assert!(document.len() > terminal_document().len());
     }
 

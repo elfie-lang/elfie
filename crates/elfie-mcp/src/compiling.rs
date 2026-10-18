@@ -10,7 +10,7 @@ use super::*;
 
 /// What one compiler run is: the binding of its hosted session, and the request the compile
 /// handed it.
-// @lfy def/mcp/main.lfy:task#task:compilerTool:1e78463366ba8fbbfbec5fc142e181f67f7b2aead81f243e58972718f0a441a8
+// @lfy def/mcp/main.lfy:task#task:compilerTool:53be6121fea61b9a15629426fe7a361a2087f814c2a67975b1a428e724574063
 struct Run<'s> {
     /// What the hosted session is bound to.
     binding: &'s Binding,
@@ -27,39 +27,69 @@ struct Run<'s> {
 fn own_request<'s>(session: &'s Session, tool: &str) -> Result<Run<'s>, String> {
     match &session.binding {
         Some(binding) => match &binding.request {
-            // The batch and the units acted on are the request's own, and the outputs are
-            // read and written under the binding's directory, which is the root the hosted
-            // session's workspace was read at.
-            // @lfy def/mcp/main.lfy:task#task:compilerTool:1e78463366ba8fbbfbec5fc142e181f67f7b2aead81f243e58972718f0a441a8
+            // The unit acted on is the request's own, which is the binding's, and the outputs
+            // are read and written under the binding's directory, which is the root the
+            // hosted session's workspace was read at.
+            // @lfy def/mcp/main.lfy:task#task:compilerTool:53be6121fea61b9a15629426fe7a361a2087f814c2a67975b1a428e724574063
             // @lfy def/mcp/main.lfy:task#task:compilerTool:a0f3f916620f9e289b39745855f3979f0a0db1a4ff2e30369ec791cd1d94087a
-            // @lfy def/mcp/main.lfy:dependency#dependency:compilerTool:0044266dd6cf0877762ead31dc8ae4567556e4f98fae42343fc4f7d1616d887c
+            // @lfy def/mcp/main.lfy:dependency#dependency:compilerTool:63c65ebb9e7de8e28dac04559c0480b93d42d1c8370c324dbc1f22d866a7d47e
             // @lfy def/mcp/main.lfy:dependency#dependency:compilerTool:0c15908a4dcfda7bb04d0631866acd9f199cf990a0bd8a108b4e4d2744608e3a
-            // @lfy def/mcp/main.lfy:mark#mark:compilerTool:a8577d54d63dba15d279a393a495d3cc11ecc51430e5ccdd9709b2c5dcb1d764
+            // @lfy def/mcp/main.lfy:mark#mark:compilerTool:6f13a0aeb39746c3ebd7715af8dbde62ed2f84c5447cafb7ea41a17e8f34a300
             // @lfy def/mcp/main.lfy:mark#mark:compilerTool:85e5595e052eeca50b56f9cebdba26de23ab6e384826458c5f80bff35a6a3579
-            // @lfy def/mcp/main.lfy:submit#submit:compilerTool:60628d931d17c35840a5661d90ba57e6f4365679924ab922f3dc16beb99f6278
+            // @lfy def/mcp/main.lfy:submit#submit:compilerTool:3b08f414dd244d49aaa1070d8e2a00ad42aac05ce340b2985b4829003e3cd0b7
             // @lfy def/mcp/main.lfy:submit#submit:compilerTool:fe5e191c412762eabc28bb250d5cdf400a97c9315325f022cff7b603d32ee079
+            // @lfy def/mcp/main.lfy:reach#reach:compilerTool:e426f50710b23656e0aae598866def61ff7b6d8dcc0b2e6bf5d51c4ec2f76e6b
+            // @lfy def/mcp/main.lfy:reach#reach:compilerTool:855fc01908f5e5df0d3cd77409a0c67eb73c60d0195f78608fecaf116ec59f78
+            // @lfy def/mcp/main.lfy:touch#touch:compilerTool:e337d28709e9933b4c945f2487adb8f71f55f705eea530ddb0d15348006f71fc
+            // @lfy def/mcp/main.lfy:touch#touch:compilerTool:ec9c9ad5e2855f806725f1c0f7a77436d443e8997b9f9edee0b84a7515ad8b7a
             Some(request) => Ok(Run { binding, request }),
             // @lfy def/mcp/main.lfy:dependency#dependency:compilerTool:94e97e4b9416897e8f7296ad1449f08bf7cb435fe9a76fc4125ba6de8559c49e
+            // @lfy def/mcp/main.lfy:reach#reach:compilerTool:d77749f2f1a06bb69e87b5854ab4977a8efe3f853f774535bdca2b43444d57ae
+            // @lfy def/mcp/main.lfy:touch#touch:compilerTool:cd6effeac8a136d2283bffd5d7a472f65a0f39326e6548f4a64585634acc8d52
             None => Err(format!("{tool} acts only in a session bound to a compiler run")),
         },
         // @lfy def/mcp/main.lfy:mark#mark:compilerTool:56146f12eb0eb11e3ccbcf6b89b563f1173e5c188a183687178892cdd6aefb62
         // @lfy def/mcp/main.lfy:submit#submit:compilerTool:ee05d8be309e4a7aab71c6ed469b76e49a958abace52e8b6407087bf66c21140
+        // @lfy def/mcp/main.lfy:reach#reach:compilerTool:d77749f2f1a06bb69e87b5854ab4977a8efe3f853f774535bdca2b43444d57ae
+        // @lfy def/mcp/main.lfy:touch#touch:compilerTool:cd6effeac8a136d2283bffd5d7a472f65a0f39326e6548f4a64585634acc8d52
         None => Err(format!("{tool} acts only in a session bound to a compiler run")),
     }
 }
 
-/// The units of a batch, as indices into the plan, leaving out any the plan does not hold.
-// @lfy def/mcp/main.lfy:task#task:task:d056015a5c0120d12f5e1daaebd2c2f0c96947c0bbff29ed4ebdeb57af2bcbe2
-fn batch_units(plan: &Plan, batch: &Batch) -> Vec<usize> {
-    batch.units.iter().copied().filter(|&index| plan.units.get(index).is_some()).collect()
-}
+impl Run<'_> {
+    /// The unit the run is for: the request's own, as an index into the binding's plan.
+    // @lfy def/mcp/main.lfy:task#task:task:face0ae4233969eecd82ba1353a87659c587a519110a0bf39f5a40ab416dbaf8
+    fn index(&self) -> usize {
+        self.request.unit
+    }
 
-/// The stems of the units of a batch, joined.
-// @lfy def/mcp/main.lfy:task#task:task:20cff63e998498e4042833f30de9a63a11338bcbcc0b15f2191ddcf2f7def4ab
-fn batch_stems(plan: &Plan, batch: &Batch) -> String {
-    let stems: Vec<&str> =
-        batch_units(plan, batch).into_iter().map(|index| plan.units[index].stem.as_str()).collect();
-    stems.join(", ")
+    /// The unit the run is for, as the binding's plan holds it.
+    fn unit(&self) -> &Unit {
+        &self.binding.plan.units[self.request.unit]
+    }
+
+    /// The units of the run's reach, as indices into the binding's plan, leaving out any the
+    /// plan does not hold.
+    fn reach(&self) -> Vec<usize> {
+        self.request
+            .reach
+            .units
+            .iter()
+            .copied()
+            .filter(|&index| self.binding.plan.units.get(index).is_some())
+            .collect()
+    }
+
+    /// The stems of the units of the run's reach, joined, or the words saying this run may
+    /// edit no other unit's code when there are none.
+    fn reach_stems(&self) -> String {
+        let stems: Vec<&str> = self.reach().into_iter().map(|index| self.binding.plan.units[index].stem.as_str()).collect();
+        if stems.is_empty() {
+            "this run may edit no other unit's code".to_string()
+        } else {
+            format!("the units this run may edit are: {}", stems.join(", "))
+        }
+    }
 }
 
 /// A name with any leading definition file path and colon set aside: the path, when one was
@@ -89,7 +119,7 @@ fn identifier_and_member(rest: &str) -> (&str, Option<&str>) {
 /// members each of them declares as `owner.member`. The owner's own line comes after its
 /// members', as acceptance builds the same table.
 // @lfy def/mcp/main.lfy:task#task:task:0ba2a96c6162e5b2088f0d0af27dcf6dcd7a99b009bf3be3772ffa13ffa864f4
-// @lfy def/mcp/main.lfy:mark#mark:mark:1fe93b7a289817e552344c2be562a1942c5871b156c0bb103e88f3c5c41e4116
+// @lfy def/mcp/main.lfy:mark#mark:mark:6e80b14bc0e6dc4b5716fc1c83947bb7088955e72a8f1b87f0f7f1014f4f2d48
 fn named_in_file(model: &Model, source: FileId, extra: &[EntityId]) -> Vec<(String, EntityId)> {
     let mut declarations: Vec<EntityId> = Vec::new();
     if let Some(&scope) = model.file_scopes.get(source) {
@@ -187,185 +217,183 @@ fn requirement_parts(model: &Model, requirement: &Requirement) -> Asked {
 
 /// The rewording of one criterion or test of a unit, when its id rewords one the unit's
 /// existing outputs were generated against.
-// @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
-fn rewording_of<'r>(request: &'r Request, path: &str, id: &str) -> Option<&'r Rewording> {
-    request.reworded.get(path)?.iter().find(|rewording| rewording.id == id)
+// @lfy def/mcp/main.lfy:task#task:task:d1e2bd77856838efb047c8fe5d6d27e38d190808ff140a2daf64c7cf550985f3
+fn rewording_of<'r>(request: &'r Request, id: &str) -> Option<&'r generation::Rewording> {
+    request.reworded.as_ref()?.iter().find(|rewording| rewording.id == id)
 }
 
 /// What a criterion or test of a unit is marked as: `reworded` when its id rewords one the
 /// unit's existing outputs were generated against, `kept` when those outputs were generated
 /// against it, `new` when they were generated against a known set that does not hold it or
 /// there are no outputs yet, and `unknown` when what they answered is not recorded.
-// @lfy def/mcp/main.lfy:task#task:task:00479e8dc9cc7003d7a8fc71ee72b37424f99ac82adaf9497bd8a64df5cd83a2
-// @lfy def/mcp/main.lfy:task#task:task:aa3aedc17d31c8c2288f74ab8d995d37aabd29e988ed6623b3ab368c90880080
-// @lfy def/mcp/main.lfy:task#task:task:3fd2e90fbb5affd82dc46bf4e87ba7bcb8ba2f4df7047de83fea316774ee4d01
-fn mark_of(request: &Request, path: &str, has_outputs: bool, id: &str) -> &'static str {
+// @lfy def/mcp/main.lfy:task#task:task:f95499d17f549c43fa265f803f32119fa037bdad61a8ab6c7b710d1e19b92633
+// @lfy def/mcp/main.lfy:task#task:task:97cb756cb2bee31d44637d2616d0097c1d221f7a5830d8b36a4adbec194b8bef
+// @lfy def/mcp/main.lfy:task#task:task:e0ded60c07e56e8103c76b2a3e974f550ae276fc0206c0412f1a834c66cf0151
+fn mark_of(request: &Request, has_outputs: bool, id: &str) -> &'static str {
     // A criterion that kept its place and changed its words took a new id, which the compile
     // has already moved its markers to, so it is marked apart from what is really new.
-    // @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
-    if rewording_of(request, path, id).is_some() {
+    // @lfy def/mcp/main.lfy:task#task:task:d1e2bd77856838efb047c8fe5d6d27e38d190808ff140a2daf64c7cf550985f3
+    if rewording_of(request, id).is_some() {
         return "reworded";
     }
-    match request.answered.get(path) {
-        // @lfy def/mcp/main.lfy:task#task:task:00479e8dc9cc7003d7a8fc71ee72b37424f99ac82adaf9497bd8a64df5cd83a2
+    match &request.answered {
+        // @lfy def/mcp/main.lfy:task#task:task:f95499d17f549c43fa265f803f32119fa037bdad61a8ab6c7b710d1e19b92633
         Some(answered) if answered.iter().any(|known| known == id) => "kept",
-        // @lfy def/mcp/main.lfy:task#task:task:aa3aedc17d31c8c2288f74ab8d995d37aabd29e988ed6623b3ab368c90880080
+        // @lfy def/mcp/main.lfy:task#task:task:97cb756cb2bee31d44637d2616d0097c1d221f7a5830d8b36a4adbec194b8bef
         Some(_) => "new",
         None if !has_outputs => "new",
-        // @lfy def/mcp/main.lfy:task#task:task:3fd2e90fbb5affd82dc46bf4e87ba7bcb8ba2f4df7047de83fea316774ee4d01
+        // @lfy def/mcp/main.lfy:task#task:task:e0ded60c07e56e8103c76b2a3e974f550ae276fc0206c0412f1a834c66cf0151
         None => "unknown",
     }
 }
 
-/// What this compiler run must do, for each unit of its batch or for the one named.
+/// One edit another unit made inside a region of the run's unit, as a line: its kind, the
+/// word by, the unit that made it, the word in, its path, a colon, the line its region
+/// begins on, the entity the region is of, an em dash, and its note.
+// @lfy def/mcp/main.lfy:task#task:task:e32fa38ec00ece223578e5d30201345f1f5e6104141d5c4635206132b68cfd99
+fn foreign_edit_line(edit: &ForeignEdit) -> String {
+    let entity = edit.region.entity.clone().unwrap_or_else(|| marker_text(&edit.region));
+    format!(
+        "{} by {} in {}:{} {entity} — {}",
+        edit.kind.as_str(),
+        edit.by,
+        edit.path,
+        edit.region.output_line,
+        edit.note
+    )
+}
+
+/// What this compiler run must do: its unit's outputs and reason, the edits other units made
+/// to them, and every criterion and test it answers for.
 // @lfy def/mcp/main.lfy:task#task:task:03c0e861c4bbd25a35c249a398a25887a28c2cef4fe08f743b831393be179644
-pub fn task(session: &Session, unit: Option<&str>) -> Result<String, String> {
+pub fn task(session: &Session) -> Result<String, String> {
     let run = own_request(session, "elfie_task")?;
-    let (binding, request) = (run.binding, run.request);
+    let request = run.request;
     // Everything below is read from the request and from the program the compile lowered;
     // no definition file and no output is read.
     // @lfy def/mcp/main.lfy:task#task:task:03c0e861c4bbd25a35c249a398a25887a28c2cef4fe08f743b831393be179644
-    let plan = &binding.plan;
-    let program = &binding.program;
-    let workspace = &program.workspace;
+    let workspace = &run.binding.program.workspace;
     let model = &workspace.model;
-    let batch = &request.batch;
-    // @lfy def/mcp/main.lfy:task#task:task:d056015a5c0120d12f5e1daaebd2c2f0c96947c0bbff29ed4ebdeb57af2bcbe2
-    let indexes: Vec<usize> = match unit {
-        Some(stem) => {
-            let found: Vec<usize> = batch_units(plan, batch)
-                .into_iter()
-                .filter(|&index| plan.units[index].stem == stem)
-                .collect();
-            if found.is_empty() {
-                // @lfy def/mcp/main.lfy:task#task:task:20cff63e998498e4042833f30de9a63a11338bcbcc0b15f2191ddcf2f7def4ab
-                return Err(format!(
-                    "no unit of this batch has the stem {stem}; the units of {} are: {}",
-                    batch.identifier,
-                    batch_stems(plan, batch)
-                ));
-            }
-            found
-        }
-        None => batch_units(plan, batch),
-    };
+    // @lfy def/mcp/main.lfy:task#task:task:face0ae4233969eecd82ba1353a87659c587a519110a0bf39f5a40ab416dbaf8
+    let of_unit = run.unit();
+    let has_outputs = !of_unit.outputs.is_empty();
+    let file = &workspace.files[of_unit.file];
+    let target = &workspace.targets[of_unit.target];
     let mut lines: Vec<String> = Vec::new();
     let (mut fresh, mut rephrased, mut kept, mut unknown, mut removed) =
         (0usize, 0usize, 0usize, 0usize, 0usize);
-    for index in indexes {
-        let of_unit = &plan.units[index];
-        let file = &workspace.files[of_unit.file];
-        let target = &workspace.targets[of_unit.target];
-        let reason = of_unit.reason.map_or_else(|| "up to date".to_string(), |reason| reason.as_str().to_string());
-        // @lfy def/mcp/main.lfy:task#task:task:260c99a22d5afd2cb5bfe5e5341310aff3e4b5c20a62493303d03bc95d6f4767
-        lines.push(format!("unit {} {} {reason}", of_unit.stem, file.path));
-        if of_unit.outputs.is_empty() {
-            // @lfy def/mcp/main.lfy:task#task:task:3701f0af0023dfc1eadd1dee395415c17f3523d19c39a1d6d8f30a8aff532e9e
-            lines.push(format!(
-                "no output yet; its outputs go under {} at the paths the guidance spells from the stem {}",
-                target.output_directory, of_unit.stem
-            ));
-        } else {
-            // @lfy def/mcp/main.lfy:task#task:task:93d986fe4163c82020f47668d2a385e3662ee162cec7a9332137b5df9c98b068
-            let outputs: Vec<&str> = of_unit.outputs.iter().map(|map| map.output.as_str()).collect();
-            lines.push(format!("outputs {}", outputs.join(", ")));
-        }
-        let named = named_in_unit(model, workspace, of_unit);
-        let own = workspace.files[of_unit.file].source;
-        let requirements: &[Requirement] =
-            request.requirements.get(&file.path).map(Vec::as_slice).unwrap_or(&[]);
-        let mut headed: Vec<EntityId> = Vec::new();
-        let mut answered: Vec<EntityId> = Vec::new();
-        // @lfy def/mcp/main.lfy:task#task:task:e6bdc2cd8bf73910039781fad6be14d73994cd9495ecfb29415132f0e0b7926d
-        for requirement in requirements {
-            let Asked { id, entity, place, text } = requirement_parts(model, requirement);
-            if let Some(entity) = entity {
-                if !answered.contains(&entity) {
-                    answered.push(entity);
-                }
-                // @lfy def/mcp/main.lfy:task#task:task:0ba2a96c6162e5b2088f0d0af27dcf6dcd7a99b009bf3be3772ffa13ffa864f4
-                if !headed.contains(&entity) {
-                    headed.push(entity);
-                    let is_own_file = model.file_entities.get(own) == Some(&entity);
-                    let name = if is_own_file {
-                        file.path.clone()
-                    } else {
-                        named
-                            .iter()
-                            .find(|&&(_, candidate)| candidate == entity)
-                            .map(|(name, _)| name.clone())
-                            .unwrap_or_else(|| identifier_of(model, entity))
-                    };
-                    // An entity moved into the unit is declared in another file, which the
-                    // line names so that a marker for it spells that file.
-                    // @lfy def/mcp/main.lfy:task#task:task:a151226a2f7853ca59f5d23754f07954956c81793b8a0b4e771b88a500617003
-                    match model.entities[entity].file.filter(|&source| source != own) {
-                        Some(source) => {
-                            lines.push(format!("{name} declared in {}", model.sources[source].path));
-                        }
-                        None => lines.push(name),
+    let reason = of_unit.reason.map_or_else(|| "up to date".to_string(), |reason| reason.as_str().to_string());
+    // @lfy def/mcp/main.lfy:task#task:task:539f478257e58ce337bd56a59d32f6e3ac9e5dd1412f40177b504248b1030c39
+    lines.push(format!("{} {} {reason}", of_unit.stem, file.path));
+    if has_outputs {
+        // @lfy def/mcp/main.lfy:task#task:task:950a71006d7f807babb9b09d7bc8cd3a42063f1ab0717e6b1b5006fe2031c452
+        let outputs: Vec<&str> = of_unit.outputs.iter().map(|map| map.output.as_str()).collect();
+        lines.push(format!("outputs {}", outputs.join(", ")));
+    } else {
+        // @lfy def/mcp/main.lfy:task#task:task:78f9e281986eff5db14a8f174b25fcbdd7a5c3c6d5c7357556c01dab5a977a04
+        lines.push(format!(
+            "no output yet; its outputs go under {} at the paths the guidance spells from the stem {}",
+            target.output_directory, of_unit.stem
+        ));
+    }
+    // @lfy def/mcp/main.lfy:task#task:task:05f4f2c0332db22eae294592d3b5235d10a9000d76d813ad235ab8a7a8c7706a
+    // @lfy def/mcp/main.lfy:task#task:task:da9bc488fcbc7fe8be5448756d504a8b352588cfa6f0f6a3e1b93a460bd3df6b
+    if !request.foreign_edits.is_empty() {
+        lines.push("other units edited its outputs since it was last accepted:".to_string());
+        lines.extend(request.foreign_edits.iter().map(foreign_edit_line));
+    }
+    let named = named_in_unit(model, workspace, of_unit);
+    let own = workspace.files[of_unit.file].source;
+    let mut headed: Vec<EntityId> = Vec::new();
+    let mut answered: Vec<EntityId> = Vec::new();
+    // @lfy def/mcp/main.lfy:task#task:task:42e538670c9d8018e287823eb07140bbb98c23acc8baeac8e3bcfb12b705b1e4
+    for requirement in &request.requirements {
+        let Asked { id, entity, place, text } = requirement_parts(model, requirement);
+        if let Some(entity) = entity {
+            if !answered.contains(&entity) {
+                answered.push(entity);
+            }
+            // @lfy def/mcp/main.lfy:task#task:task:0ba2a96c6162e5b2088f0d0af27dcf6dcd7a99b009bf3be3772ffa13ffa864f4
+            if !headed.contains(&entity) {
+                headed.push(entity);
+                let is_own_file = model.file_entities.get(own) == Some(&entity);
+                let name = if is_own_file {
+                    file.path.clone()
+                } else {
+                    named
+                        .iter()
+                        .find(|&&(_, candidate)| candidate == entity)
+                        .map(|(name, _)| name.clone())
+                        .unwrap_or_else(|| identifier_of(model, entity))
+                };
+                // An entity moved into the unit is declared in another file, which the line
+                // names so that a marker for it spells that file.
+                // @lfy def/mcp/main.lfy:task#task:task:a151226a2f7853ca59f5d23754f07954956c81793b8a0b4e771b88a500617003
+                match model.entities[entity].file.filter(|&source| source != own) {
+                    Some(source) => {
+                        lines.push(format!("{name} declared in {}", model.sources[source].path));
                     }
+                    None => lines.push(name),
                 }
             }
-            let marked = mark_of(request, &file.path, !of_unit.outputs.is_empty(), &id);
-            match marked {
-                "kept" => kept += 1,
-                "unknown" => unknown += 1,
-                "reworded" => rephrased += 1,
-                _ => fresh += 1,
-            }
-            // @lfy def/mcp/main.lfy:task#task:task:bc0cfc213f87dda7b8e1106191bb902bdb5a2b08b2472742020be295a621309b
-            lines.push(format!("{marked} {id} {place} — {text}"));
-            // What a reworded one replaces, on the line after it.
-            // @lfy def/mcp/main.lfy:task#task:task:8aab948f1ff4b43702f1158f16a22c2a5c3be0d41ed51e5ff90073af5c03d692
-            if let Some(rewording) = rewording_of(request, &file.path, &id) {
-                lines.push(format!("replaces {} — {}", rewording.replaces, rewording.text));
-            }
         }
-        // Every entity of the unit must carry a marker, so those with nothing to answer for
-        // are named: no criterion and no test of the unit is for them.
+        let marked = mark_of(request, has_outputs, &id);
+        match marked {
+            "kept" => kept += 1,
+            "unknown" => unknown += 1,
+            "reworded" => rephrased += 1,
+            _ => fresh += 1,
+        }
+        // @lfy def/mcp/main.lfy:task#task:task:bc0cfc213f87dda7b8e1106191bb902bdb5a2b08b2472742020be295a621309b
+        lines.push(format!("{marked} {id} {place} — {text}"));
+        // What a reworded one replaces, on the line after it.
+        // @lfy def/mcp/main.lfy:task#task:task:d1e2bd77856838efb047c8fe5d6d27e38d190808ff140a2daf64c7cf550985f3
+        if let Some(rewording) = rewording_of(request, &id) {
+            lines.push(format!("replaces {} — {}", rewording.replaces, rewording.text));
+        }
+    }
+    // Every entity of the unit must carry a marker, so those with nothing to answer for are
+    // named: no criterion and no test of the unit is for them.
+    // @lfy def/mcp/main.lfy:task#task:task:f9fb73337a13788bc2c97891ea0b6725150d8f585b1ea3c8102578a43fdc42d6
+    let without: Vec<String> = of_unit
+        .entities
+        .iter()
+        .filter(|entity| !answered.contains(entity))
+        .map(|&entity| identifier_of(model, entity))
+        .collect();
+    if without.is_empty() {
+        // @lfy def/mcp/main.lfy:task#task:task:8cda0fab4d2e20c30f36514faa7a119d7713f6defa2830d8a2284e0161739f87
+        lines.push("no entity of the unit lacks a criterion or test".to_string());
+    } else {
         // @lfy def/mcp/main.lfy:task#task:task:f9fb73337a13788bc2c97891ea0b6725150d8f585b1ea3c8102578a43fdc42d6
-        let without: Vec<String> = of_unit
-            .entities
-            .iter()
-            .filter(|entity| !answered.contains(entity))
-            .map(|&entity| identifier_of(model, entity))
-            .collect();
-        if without.is_empty() {
-            // @lfy def/mcp/main.lfy:task#task:task:8cda0fab4d2e20c30f36514faa7a119d7713f6defa2830d8a2284e0161739f87
-            lines.push("no entity of the unit lacks a criterion or test".to_string());
-        } else {
-            // @lfy def/mcp/main.lfy:task#task:task:f9fb73337a13788bc2c97891ea0b6725150d8f585b1ea3c8102578a43fdc42d6
-            lines.push(format!(
-                "no criterion or test is for {}; each still needs a marker",
-                without.join(", ")
-            ));
-        }
-        match request.removed.get(&file.path) {
-            // @lfy def/mcp/main.lfy:task#task:task:0e1730d59363044ef74bcf4673aef8eae5aecf93a017aa90bc7f8d9d457f6afd
-            Some(gone) if !gone.is_empty() => {
-                lines.push("these were removed since its outputs were accepted".to_string());
-                for one in gone {
-                    removed += 1;
-                    // A removed criterion or test the request could not quote carries no
-                    // text, and no place either, since the revision that held it is not the
-                    // one its place would be read from; the line says so rather than
-                    // quoting nothing.
-                    // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
-                    if one.text.is_empty() {
-                        lines.push(format!("removed {} — its text is not known", one.id));
-                        continue;
-                    }
-                    // @lfy def/mcp/main.lfy:task#task:task:0e1730d59363044ef74bcf4673aef8eae5aecf93a017aa90bc7f8d9d457f6afd
-                    lines.push(format!("removed {} {} — {}", one.id, one.place, one.text));
+        lines.push(format!(
+            "no criterion or test is for {}; each still needs a marker",
+            without.join(", ")
+        ));
+    }
+    match &request.removed {
+        // @lfy def/mcp/main.lfy:task#task:task:359c526bf1661585212774516260b538e4f0ab4701c7e10f200e62855c18a363
+        Some(gone) if !gone.is_empty() => {
+            lines.push("these were removed since its outputs were accepted".to_string());
+            for one in gone {
+                removed += 1;
+                // A removed criterion or test the request could not quote carries no text,
+                // and no place either, since the revision that held it is not the one its
+                // place would be read from; the line says so rather than quoting nothing.
+                // @lfy def/mcp/main.lfy:task#task:task:66f11c93795ee4ea2822907afd33f054e3589b0287b19b0b618c695e86e32fbb
+                if one.text.is_empty() {
+                    lines.push(format!("removed {} — its text is not known", one.id));
+                    continue;
                 }
+                // @lfy def/mcp/main.lfy:task#task:task:359c526bf1661585212774516260b538e4f0ab4701c7e10f200e62855c18a363
+                lines.push(format!("removed {} {} — {}", one.id, one.place, one.text));
             }
-            // @lfy def/mcp/main.lfy:task#task:task:c6544cb71fb79033882e38ad1d044989c8fa3a6dc97e274b3d4054fbb9b65bda
-            None if !of_unit.outputs.is_empty() => {
-                lines.push("which criteria and tests were removed is not known".to_string());
-            }
-            _ => {}
         }
+        // @lfy def/mcp/main.lfy:task#task:task:04aaa75f3b9f5d57d80f8170d92ad9358d6aab1ed98260a76078d0741d5aae54
+        None if has_outputs => {
+            lines.push("which criteria and tests were removed is not known".to_string());
+        }
+        _ => {}
     }
     // @lfy def/mcp/main.lfy:task#task:task:ca1abaa819942eb8c6c130e520f1c36ee16815c41b54d388cca6a9b8ad14a76c
     lines.push(format!(
@@ -447,13 +475,251 @@ pub fn dependency(session: &Session, name: &str) -> Result<String, String> {
         sections.push(out);
     }
     if sections.is_empty() {
-        // @lfy def/mcp/main.lfy:dependency#dependency:dependency:57ea76cedd14a64116b4e927fb4f9f13577e2df3fe6caa9fd1c92a2dd6d88d06
+        // @lfy def/mcp/main.lfy:dependency#dependency:dependency:3d365d972122d9a5c77e7362aa0dec8a6f2e7fcc839899f595b9d15614a1d730
         return Err(format!(
-            "no dependency outside the batch declares {name}; elfie_entity reads an entity of the batch itself, or of any file"
+            "no dependency of the unit declares {name}; elfie_entity reads an entity of the unit itself, or of any file"
         ));
     }
     // @lfy def/mcp/main.lfy:dependency#dependency:dependency:52155c3bef2ef807556011be184c10507617e56c46ebfded60f2e934d1a72699
     Ok(sections.join("\n\n---\n\n"))
+}
+
+// ---- the later units a compiler run may edit ----------------------------------------
+
+// Decision: a run may edit every later unit of its target, which for an early unit is most of
+// the program, so elfie_reach lists every unit of the reach in one line each but only the
+// regions the run has edited, and gives every region of one unit when the caller names it.
+// Decision: the cap left is measured against the outputs as they were before the run, never
+// against the last call, so it says what acceptance will count, however many edits made it.
+
+/// The stub line of a target: the value the setters of its declaration give the member
+/// `stubLine` of `targetLanguage`; `None` when none gives it one, and then no edit is a stub.
+fn stub_line_of(model: &Model, target: &Target) -> Option<String> {
+    model.entities[target.declaration]
+        .value("stubLine")
+        .and_then(model::Value::as_str)
+        .map(str::to_string)
+}
+
+/// The lines of one region of a text, the marker's own line first, each without its line
+/// break.
+fn region_lines(lines: &[&str], marker: &Marker) -> Vec<String> {
+    let last = marker.end.min(lines.len());
+    let first = marker.output_line.saturating_sub(1).min(last);
+    lines[first..last].iter().map(|line| line.to_string()).collect()
+}
+
+/// One region of an output of a unit of a run's reach, and what the run has done to it.
+struct ReachRegion {
+    /// The output file it is in, relative to the root.
+    output: String,
+    /// The marker that begins it.
+    marker: Marker,
+    /// Whether the run edited it, and how: `None` when it reads as it did before the run.
+    kind: Option<ForeignEditKind>,
+    /// The lines the run's edit changes in it, as a foreign edit counts them.
+    changed: usize,
+}
+
+/// Every region of the unit at an index of the run's plan: the marker of each of its own
+/// regions its output files hold when the call arrives, read as [`generation::rederive`]
+/// reads them, in output then line order, each with what the run has done to it.
+///
+/// A region is edited when its lines differ from those of the region with the same marker —
+/// the same spelling, the same place among the markers spelled alike — in the file of the
+/// binding's `before` at its path, or when that file has no such region. Its kind is stub when
+/// it only keeps lines it had and adds stub lines naming the run's unit, and fix otherwise.
+// @lfy def/mcp/main.lfy:reach#reach:reach:56fe7454b45669756bcc6a2df3906336b5a2c923de6eb5ef025f3e9d03b3cb73
+fn reach_regions(session: &Session, run: &Run<'_>, index: usize) -> Vec<ReachRegion> {
+    let binding = run.binding;
+    let program = program_at_root(session, binding);
+    let workspace = &program.workspace;
+    let unit = &binding.plan.units[index];
+    let claimed = sources_of(workspace, unit);
+    let stub_line = workspace.targets.get(unit.target).and_then(|target| stub_line_of(&workspace.model, target));
+    let before: &[Output] = binding.before.as_deref().unwrap_or(&[]);
+    let mut found: Vec<ReachRegion> = Vec::new();
+    for map in generation::rederive(&program, &binding.plan, index, &unit.outputs) {
+        let now = text_now(session, &map.output).unwrap_or_default();
+        let now_lines: Vec<&str> = now.lines().collect();
+        let was = text_in(before, &map.output);
+        let was_lines: Vec<&str> = was.map(|text| text.lines().collect()).unwrap_or_default();
+        let was_markers: Vec<Marker> = was.map(generation::parse_markers).unwrap_or_default();
+        let mut own: Vec<&Marker> = map.markers.iter().filter(|marker| claimed.contains(&marker.file)).collect();
+        own.sort_by_key(|marker| marker.output_line);
+        for marker in own {
+            let spelled = marker_text(marker);
+            let place = map
+                .markers
+                .iter()
+                .filter(|other| other.output_line < marker.output_line && marker_text(other) == spelled)
+                .count();
+            let after = region_lines(&now_lines, marker);
+            // @lfy def/mcp/main.lfy:reach#reach:reach:6a3be6fd6b463b81cecca24ba4e9380ba6d077e674b64d3ae8e9769bccf78a3e
+            let prior: Option<Vec<String>> = was_markers
+                .iter()
+                .filter(|other| marker_text(other) == spelled)
+                .nth(place)
+                .map(|other| region_lines(&was_lines, other));
+            let (kind, changed) = match prior {
+                Some(prior) if prior == after => (None, 0),
+                prior => {
+                    let prior = prior.unwrap_or_default();
+                    // @lfy def/mcp/main.lfy:reach#reach:reach:ab06b81d85917c4b689e3f2d880551c159433da1a74db73a25d2260e2d773939
+                    let stubbed = stub_line
+                        .as_deref()
+                        .is_some_and(|stub_line| generation::is_stub_edit(&prior, &after, &run.unit().stem, stub_line));
+                    let kind = if stubbed { ForeignEditKind::Stub } else { ForeignEditKind::Fix };
+                    (Some(kind), generation::changed_lines(&prior, &after))
+                }
+            };
+            found.push(ReachRegion {
+                output: map.output.clone(),
+                marker: marker.clone(),
+                kind,
+                changed,
+            });
+        }
+    }
+    found
+}
+
+/// How a count stands against a cap: what is left of it, or by how much the count exceeds it.
+fn left_of(count: usize, cap: usize) -> String {
+    if count > cap {
+        format!("{} over", count - cap)
+    } else {
+        format!("{} left", cap - count)
+    }
+}
+
+/// One region as a line: indented by two spaces, its output path, a colon, the lines it
+/// spans, its entity and the requirement its marker names, then what the run did to it.
+// @lfy def/mcp/main.lfy:reach#reach:reach:19b0c5cf0f5bb533a9f328f2c04a6d3044b1b3e0443c0c4a1ca3ae6ea8144e0a
+fn reach_region_line(region: &ReachRegion, fix_lines: usize) -> String {
+    let marker = &region.marker;
+    let mut line = format!(
+        "  {}:{}-{} {}",
+        region.output,
+        marker.output_line,
+        marker.end,
+        marker.entity.clone().unwrap_or_else(|| marker_text(marker))
+    );
+    if let Some(requirement) = &marker.requirement {
+        line.push_str(&format!(" {requirement}"));
+    }
+    match region.kind {
+        // @lfy def/mcp/main.lfy:reach#reach:reach:8e1fa030cbe98f1b5ead1cabbe92371b6dd678d06b86a6c15f37a1c89aa05248
+        Some(ForeignEditKind::Stub) => line.push_str(" stub"),
+        // @lfy def/mcp/main.lfy:reach#reach:reach:2352621fb062f56052c07817412ee289e45facefad7c707279cec577ce229177
+        Some(ForeignEditKind::Fix) => line.push_str(&format!(
+            " fix {} of {fix_lines}, {}",
+            region.changed,
+            left_of(region.changed, fix_lines)
+        )),
+        // @lfy def/mcp/main.lfy:reach#reach:reach:cbeeb6ddf0c9f41ed85f615e25b724bd99960f1a53cee611897aa4b688c885ca
+        None => line.push_str(" unedited"),
+    }
+    line
+}
+
+/// The later units whose code this compiler run may edit, the regions of their outputs, and
+/// what is left of the fix cap for each region and each unit, given the outputs on disk now.
+///
+/// Nothing is written, and no definition file is read.
+// @lfy def/mcp/main.lfy:reach#reach:reach:ad6d0d87c88b3fa751fa9563db0ec0c99a3c4dcf96ae2e79f22fdd322e736908
+// @lfy def/mcp/main.lfy:reach#reach:reach:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+pub fn reach(session: &Session, unit: Option<&str>) -> Result<String, String> {
+    let run = own_request(session, "elfie_reach")?;
+    let cap = &run.request.reach;
+    let units = run.reach();
+    let plan = &run.binding.plan;
+    let workspace = &run.binding.program.workspace;
+    let touches = session.touched();
+    let (chosen, every_region): (Vec<usize>, bool) = match unit {
+        Some(stem) => match units.iter().find(|&&index| plan.units[index].stem == stem) {
+            Some(&index) => (vec![index], true),
+            // @lfy def/mcp/main.lfy:reach#reach:reach:612c79a0bd570cca3b15daca7e28a4d15edd71b75289ef0817a9d8e1bcea025a
+            None => return Err(format!("{stem} is no unit of this run's reach; {}", run.reach_stems())),
+        },
+        None => (units.clone(), false),
+    };
+    if units.is_empty() {
+        // @lfy def/mcp/main.lfy:reach#reach:reach:ddc6993419dd1198ca5bbbfbd9ca03ed5cf8dd47101df0b07e9f9d64ad5668c2
+        return Ok(
+            "this run may edit no other unit's code, so every line it changes is in its own regions or in a shared output"
+                .to_string(),
+        );
+    }
+    // @lfy def/mcp/main.lfy:reach#reach:reach:88bcc79197d799f1c8d800606697b6c0f5cbc7e8119c081ab62717e33251d9a8
+    let mut lines: Vec<String> = vec![format!(
+        "a fix may change {} lines in one region and the fixes {} lines in one unit; a bigger edit must be a stub, and every unit with a fix needs a note through elfie_touch",
+        cap.fix_lines, cap.fix_unit_lines
+    )];
+    // @lfy def/mcp/main.lfy:reach#reach:reach:236119a1c13c154015a99008f37e6978614d44b922e615904a7e44ec0a907c30
+    // @lfy def/mcp/main.lfy:reach#reach:reach:1037292809b87ea03318bf0710ef237ebc0505c0c531acddcf63039f7c21370e
+    for index in chosen {
+        let of_unit = &plan.units[index];
+        let regions = reach_regions(session, &run, index);
+        let fixed: Vec<&ReachRegion> =
+            regions.iter().filter(|region| region.kind == Some(ForeignEditKind::Fix)).collect();
+        let changed: usize = fixed.iter().map(|region| region.changed).sum();
+        // @lfy def/mcp/main.lfy:reach#reach:reach:c13bcc7c5ac7bce345fd001c67d733bf56d5c4ba20a0f0a17f12693cbdcbf4cd
+        let mut line = format!(
+            "{} {} {changed} of {}, {}",
+            of_unit.stem,
+            workspace.files[of_unit.file].path,
+            cap.fix_unit_lines,
+            left_of(changed, cap.fix_unit_lines)
+        );
+        match touches.get(&of_unit.stem) {
+            // @lfy def/mcp/main.lfy:reach#reach:reach:ab3be2e89dbc4fa27deac091973926fcda512b1fc063a631f089cfac2ddad105
+            Some(note) => line.push_str(&format!("; note: {note}")),
+            // @lfy def/mcp/main.lfy:reach#reach:reach:dbdf60fafa6bd921c7b019f16bdfdfae6d7b219467ff6679f2dfad86f1b649d3
+            None if !fixed.is_empty() => line.push_str("; needs a note through elfie_touch"),
+            None => {}
+        }
+        lines.push(line);
+        for region in regions.iter().filter(|region| every_region || region.kind.is_some()) {
+            lines.push(reach_region_line(region, cap.fix_lines));
+        }
+    }
+    Ok(lines.join("\n"))
+}
+
+/// Say why this compiler run edited the code of a later unit: the note is kept in the session
+/// for that unit, in place of any it was given earlier, until the CLI closes the session.
+///
+/// Nothing is written.
+// @lfy def/mcp/main.lfy:touch#touch:touch:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+pub fn touch(session: &Session, unit: &str, note: &str) -> Result<String, String> {
+    let run = own_request(session, "elfie_touch")?;
+    let plan = &run.binding.plan;
+    // @lfy def/mcp/main.lfy:touch#touch:touch:3ad8f735544ed9fff63d14702b492f2d67c0766b719e25fd3fbb8be1723c2b20
+    if !run.reach().iter().any(|&index| plan.units[index].stem == unit) {
+        return Err(format!(
+            "{unit} is no unit of this run's reach, so no note is recorded; {}",
+            run.reach_stems()
+        ));
+    }
+    // @lfy def/mcp/main.lfy:touch#touch:touch:504b1a8b9cf3534b61ea07b959247e1f7b3e2aa08e0ea6413dca004e3b20ba39
+    if note.trim().is_empty() {
+        return Err("a note says why the unit's code was edited; nothing is recorded".to_string());
+    }
+    // @lfy def/mcp/main.lfy:touch#touch:touch:d47f9dd713936933b35c0217763a11963a0f0a3c340f0ba8d9c47440cb84fd70
+    if note.contains(['\n', '\r']) {
+        return Err("a note is one line; nothing is recorded".to_string());
+    }
+    // @lfy def/mcp/main.lfy:touch#touch:touch:89f37d52cf86059d5d6deb84d257f9f2eb6205714c76d832c2e94f430133e27b
+    session
+        .touches
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(unit.to_string(), note.to_string());
+    // @lfy def/mcp/main.lfy:touch#touch:touch:375335b7467058d45a48410b8ae739752a4dfef36ba775f028524a965bc45dfb
+    Ok(format!(
+        "recorded the note for {unit}; it is the note of every fix this run makes in the code of {unit}, and a later call of elfie_touch for {unit} replaces it"
+    ))
 }
 
 // ---- the markers of a compiler run --------------------------------------------------
@@ -462,51 +728,50 @@ pub fn dependency(session: &Session, name: &str) -> Result<String, String> {
 // matter, so the server writes a marker's id from one it has checked, and moves every marker
 // of a reworded criterion to its new id in one call.
 
-/// The source paths a marker of one of this batch's regions may name: the file of each unit
-/// of the batch, and the file of each entity moved into one.
-// @lfy def/mcp/main.lfy:mark#mark:mark:aac83695fcc88a2c0a4688d77974f2d0a6805ebf6b2d752b2141ff71a8a745a2
-fn own_sources(run: &Run<'_>) -> Vec<String> {
-    let binding = run.binding;
-    let workspace = &binding.program.workspace;
+/// The source paths a marker of one of a unit's regions may name: the unit's file, and the
+/// file of each entity moved into it.
+// @lfy def/mcp/main.lfy:mark#mark:mark:50f18df59546947552b52843db51a0eab9607fe330a79b7c11e98da7f2cbc7fa
+fn sources_of(workspace: &Workspace, unit: &Unit) -> Vec<String> {
     let model = &workspace.model;
-    let mut found: Vec<String> = Vec::new();
-    for index in batch_units(&binding.plan, &run.request.batch) {
-        let of_unit = &binding.plan.units[index];
-        let mut paths = vec![workspace.files[of_unit.file].path.clone()];
-        for &entity in &of_unit.entities {
-            if let Some(source) = model.entities[entity].file {
-                paths.push(model.sources[source].path.clone());
-            }
-        }
-        for path in paths {
-            if !found.contains(&path) {
-                found.push(path);
-            }
+    let mut found: Vec<String> = vec![workspace.files[unit.file].path.clone()];
+    for &entity in &unit.entities {
+        if let Some(source) = model.entities[entity].file
+            && !found.contains(&model.sources[source].path)
+        {
+            found.push(model.sources[source].path.clone());
         }
     }
     found
 }
 
-/// The target of the batch of a compiler run, read off the session's workspace so that its
-/// output directory is read under the binding's directory; `None` when the batch is empty.
-// @lfy def/mcp/main.lfy:mark#mark:mark:20e94fd8b37ced24d2351848435ef39376d3fc15eeb5d4e64ccffd5f95cb4053
-fn batch_own_target<'w>(workspace: &'w Workspace, run: &Run<'_>) -> Option<&'w Target> {
-    let index = *run.request.batch.units.first()?;
-    let of_unit = run.binding.plan.units.get(index)?;
-    workspace.targets.get(of_unit.target)
+/// The source paths a marker of one of the run's own regions may name.
+// @lfy def/mcp/main.lfy:mark#mark:mark:50f18df59546947552b52843db51a0eab9607fe330a79b7c11e98da7f2cbc7fa
+fn own_sources(run: &Run<'_>) -> Vec<String> {
+    sources_of(&run.binding.program.workspace, run.unit())
 }
 
-/// One criterion or test of the batch's units, with the unit it belongs to, by id.
-// @lfy def/mcp/main.lfy:mark#mark:mark:165048edf3b25a24ddb15a6916231fdc341c3ce643d5b2d74c220ae0c65ab193
-fn requirement_unit(run: &Run<'_>, id: &str) -> Option<usize> {
-    let binding = run.binding;
-    let workspace = &binding.program.workspace;
-    batch_units(&binding.plan, &run.request.batch).into_iter().find(|&index| {
-        let path = &workspace.files[binding.plan.units[index].file].path;
-        run.request
-            .requirements
-            .get(path)
-            .is_some_and(|requirements| requirements.iter().any(|one| one.id() == id))
+/// The target of the unit of a compiler run, read off the session's workspace so that its
+/// output directory is read under the binding's directory.
+// @lfy def/mcp/main.lfy:mark#mark:mark:52dcea5ba1304502d225b631249c459cecf128b5f17ded9a63a98e62ef6c62bf
+fn own_target<'w>(workspace: &'w Workspace, run: &Run<'_>) -> Option<&'w Target> {
+    workspace.targets.get(run.unit().target)
+}
+
+/// Whether one id is that of a local criterion or test of the run's unit.
+// @lfy def/mcp/main.lfy:mark#mark:mark:5bbb75b2e68dfacdf922b33253428ff59e3f168016b98840f11769f1c56a3553
+fn is_local_requirement(request: &Request, id: &str) -> bool {
+    request.requirements.iter().any(|one| one.id() == id)
+}
+
+/// Whether one id is that of a local criterion or test of the run's unit for one entity.
+// @lfy def/mcp/main.lfy:mark#mark:mark:dd3ef6b416a23f341639e29ff2f36569d059617f0c4d6c5404dea75abb9f0ef2
+fn is_requirement_of(request: &Request, id: &str, entity: EntityId) -> bool {
+    request.requirements.iter().any(|one| {
+        let of = match one {
+            Requirement::Criterion(criterion) => criterion.entity,
+            Requirement::Test(test) => test.entity,
+        };
+        one.id() == id && of == Some(entity)
     })
 }
 
@@ -519,8 +784,8 @@ fn is_global_requirement(request: &Request, id: &str) -> bool {
 /// Rewrite to a new id every marker of this run's outputs that names an old one.
 ///
 /// Which markers those are is [`generation::rename`]'s to decide, and it decides it as
-/// acceptance does: only the markers naming the file of the unit the new id belongs to, or
-/// of a file declaring an entity moved into it, so another unit's markers are never touched.
+/// acceptance does: only the markers naming the unit's file, or a file declaring an entity
+/// moved into it, so another unit's markers are never touched.
 /// The outputs it returns are the ones whose markers it rewrote, and only those are written.
 // @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
 fn rename_markers(
@@ -532,15 +797,16 @@ fn rename_markers(
 ) -> Result<String, String> {
     let workspace = &session.workspace;
     let binding = run.binding;
-    // @lfy def/mcp/main.lfy:mark#mark:mark:165048edf3b25a24ddb15a6916231fdc341c3ce643d5b2d74c220ae0c65ab193
-    let Some(index) = requirement_unit(run, id) else {
+    // @lfy def/mcp/main.lfy:mark#mark:mark:5bbb75b2e68dfacdf922b33253428ff59e3f168016b98840f11769f1c56a3553
+    if !is_local_requirement(run.request, id) {
         return Err(format!(
-            "{id} is no criterion or test of the units of the batch {}; elfie_task lists them",
-            run.request.batch.identifier
+            "{id} is no criterion or test of the unit {}; elfie_task lists them",
+            run.unit().stem
         ));
-    };
-    // The output files of the batch's target as they are when the call arrives.
-    // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
+    }
+    let index = run.index();
+    // The output files of the unit's target as they are when the call arrives.
+    // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
     let mut read: Vec<Output> = Vec::new();
     for output in output_files(workspace, target) {
         let path = workspace.root.join(&output);
@@ -548,11 +814,11 @@ fn rename_markers(
         read.push(Output { path: output, text });
     }
     let ids = BTreeMap::from([(replaces.to_string(), id.to_string())]);
-    // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
+    // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
     let renamed = generation::rename(workspace, &binding.plan, index, &read, &ids);
     let mut rewritten: Vec<String> = Vec::new();
     for output in &renamed {
-        // @lfy def/mcp/main.lfy:mark#mark:mark:9cbf7b9aff22e535179edfb2494ceb9e2aa081cb354077d9a0d66e38056c48d6
+        // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
         let path = workspace.root.join(&output.path);
         fs::write(&path, &output.text)
             .map_err(|error| format!("{} cannot be written: {error}", output.path))?;
@@ -576,9 +842,9 @@ fn rename_markers(
         }
     }
     if rewritten.is_empty() {
-        // @lfy def/mcp/main.lfy:mark#mark:mark:675bf462c93e343e85219da2087f1672279fc0bc713a21b5d0f5550e274a6a40
+        // @lfy def/mcp/main.lfy:mark#mark:mark:95861eab55aed3f41b6a4bdab75d4e18ff5a4716d3a6751ca86c64341f33e296
         return Err(format!(
-            "no marker of the output files of the target {} naming {} names {replaces}",
+            "no marker of the output files of the unit's target {} naming {} names {replaces}",
             target.identifier,
             workspace.files[binding.plan.units[index].file].path
         ));
@@ -592,56 +858,52 @@ fn rename_markers(
     Ok(text)
 }
 
-/// The entity one name picks out of the batch's units, with the unit it belongs to and the
+/// The entity one name picks out of the run's unit, with the name it is named by and the
 /// path of the file that declares it.
-// @lfy def/mcp/main.lfy:mark#mark:mark:1fe93b7a289817e552344c2be562a1942c5871b156c0bb103e88f3c5c41e4116
-fn entity_named(run: &Run<'_>, entity: &str) -> Result<(usize, String, String), String> {
-    let (binding, request) = (run.binding, run.request);
-    let workspace = &binding.program.workspace;
+// @lfy def/mcp/main.lfy:mark#mark:mark:6e80b14bc0e6dc4b5716fc1c83947bb7088955e72a8f1b87f0f7f1014f4f2d48
+fn entity_named(run: &Run<'_>, entity: &str) -> Result<(String, String, EntityId), String> {
+    let workspace = &run.binding.program.workspace;
     let model = &workspace.model;
     // @lfy def/mcp/main.lfy:mark#mark:mark:ea0e414361181918c63cd2a060bf3bdae8d34bdc0cc992fa89cac7fc18138b2f
     let (in_file, rest) = without_path(entity);
     let (identifier, member) = identifier_and_member(rest);
-    let mut found: Vec<(usize, String, String)> = Vec::new();
-    for index in batch_units(&binding.plan, &request.batch) {
-        for &candidate in &binding.plan.units[index].entities {
-            if model.entities[candidate].identifier.as_deref() != Some(identifier) {
-                continue;
-            }
-            let Some(source) = model.entities[candidate].file else { continue };
-            let path = model.sources[source].path.clone();
-            if in_file.is_some_and(|named| named != path) {
-                continue;
-            }
-            // @lfy def/mcp/main.lfy:mark#mark:mark:1fe93b7a289817e552344c2be562a1942c5871b156c0bb103e88f3c5c41e4116
-            if let Some(member) = member
-                && !model
-                    .members(candidate)
-                    .into_iter()
-                    .any(|symbol| model.symbols[symbol].name == member)
+    let mut found: Vec<(String, String, EntityId)> = Vec::new();
+    for &candidate in &run.unit().entities {
+        if model.entities[candidate].identifier.as_deref() != Some(identifier) {
+            continue;
+        }
+        let Some(source) = model.entities[candidate].file else { continue };
+        let path = model.sources[source].path.clone();
+        if in_file.is_some_and(|named| named != path) {
+            continue;
+        }
+        // @lfy def/mcp/main.lfy:mark#mark:mark:6e80b14bc0e6dc4b5716fc1c83947bb7088955e72a8f1b87f0f7f1014f4f2d48
+        let named = match member {
+            Some(member) => match model
+                .members(candidate)
+                .into_iter()
+                .find(|&symbol| model.symbols[symbol].name == member)
             {
-                continue;
-            }
-            let name = match member {
-                Some(member) => format!("{identifier}.{member}"),
-                None => identifier.to_string(),
-            };
-            if !found.iter().any(|(_, _, spelled)| spelled == &path) {
-                found.push((index, name, path));
-            }
+                Some(symbol) => model.symbols[symbol].entity,
+                None => continue,
+            },
+            None => candidate,
+        };
+        let name = match member {
+            Some(member) => format!("{identifier}.{member}"),
+            None => identifier.to_string(),
+        };
+        if !found.iter().any(|(_, spelled, _)| spelled == &path) {
+            found.push((name, path, named));
         }
     }
     match found.len() {
-        // @lfy def/mcp/main.lfy:mark#mark:mark:64c1518801f24801feb6b601cbda298cc2a1a97c81889b15a61fe32d5a3ded45
-        0 => Err(format!(
-            "no unit of the batch {} declares {entity}; its units are: {}",
-            request.batch.identifier,
-            batch_stems(&binding.plan, &request.batch)
-        )),
+        // @lfy def/mcp/main.lfy:mark#mark:mark:af478fe84c65f8f3a8750f1acb30f2dbc8adcb4173e9a28f06be3b4389f86287
+        0 => Err(format!("the unit {} does not declare {entity}", run.unit().stem)),
         1 => Ok(found.remove(0)),
         // @lfy def/mcp/main.lfy:mark#mark:mark:a38062a1fcda5efa808baa27f8d58d69ab0670d6640e713cece4075635abc240
         _ => {
-            let files: Vec<&str> = found.iter().map(|(_, _, path)| path.as_str()).collect();
+            let files: Vec<&str> = found.iter().map(|(_, path, _)| path.as_str()).collect();
             Err(format!(
                 "{entity} names entities of more than one file ({}); a file path and a colon before the name chooses one",
                 files.join(", ")
@@ -658,15 +920,16 @@ fn insert_marker(
     target: &Target,
     id: Option<&str>,
     file: &str,
-    line: usize,
+    line: f64,
     entity: &str,
 ) -> Result<String, String> {
     let workspace = &session.workspace;
     let binding = run.binding;
-    // @lfy def/mcp/main.lfy:mark#mark:mark:62c0bc17d8c1d1e37e6821582cd6b59f05e0204a3f3edd6f1e33e9d2597fc2db
+    let asked = line;
+    // @lfy def/mcp/main.lfy:mark#mark:mark:096f3a8e4c7a62fc8b97a432770445c9c9061225f9849d6125699bff1233aa64
     if !output_files(workspace, target).iter().any(|known| known == file) {
         return Err(format!(
-            "{file} is not an output file of the target {}; write the output first, then insert a marker into it",
+            "{file} is not an output file of the unit's target {}; write the output first, then insert a marker into it",
             target.identifier
         ));
     }
@@ -674,12 +937,17 @@ fn insert_marker(
     let text = fs::read_to_string(&path).map_err(|error| format!("{file} cannot be read: {error}"))?;
     let count = text.lines().count();
     // @lfy def/mcp/main.lfy:mark#mark:mark:a86c8a8dd444a7e09d183e1c131c3e4e0e74fdc0a4a752698290645da729a4b0
-    if line < 1 || line > count + 1 {
-        return Err(format!("{file} has {count} lines, so line must be between 1 and {}", count + 1));
+    // A line that is no whole number is no line of the file either.
+    if asked.fract() != 0.0 || asked < 1.0 || asked > (count + 1) as f64 {
+        return Err(format!(
+            "{file} has {count} lines, so line must be a whole number between 1 and {}, not {asked}",
+            count + 1
+        ));
     }
+    let line = asked as usize;
     // The last marker before the line says whose region the line falls in; a region of
     // another unit is never written into.
-    // @lfy def/mcp/main.lfy:mark#mark:mark:aac83695fcc88a2c0a4688d77974f2d0a6805ebf6b2d752b2141ff71a8a745a2
+    // @lfy def/mcp/main.lfy:mark#mark:mark:50f18df59546947552b52843db51a0eab9607fe330a79b7c11e98da7f2cbc7fa
     let markers = markers_of(&text);
     let allowed = own_sources(run);
     if let Some(before) = markers.iter().rev().find(|marker| marker.output_line < line)
@@ -690,30 +958,23 @@ fn insert_marker(
             .units
             .iter()
             .find(|of_unit| workspace.files[of_unit.file].path == before.file)
-            .map(|of_unit| format!(" the unit {}", of_unit.stem))
+            .map(|of_unit| format!(", the file of the unit {}", of_unit.stem))
             .unwrap_or_default();
         return Err(format!(
-            "line {line} of {file} falls in a region of {}, which belongs to{}",
-            before.file,
-            if owner.is_empty() { " no unit of this batch".to_string() } else { owner }
+            "line {line} of {file} falls in a region of another unit: its marker names {}{owner}",
+            before.file
         ));
     }
-    let (index, name, declaring) = entity_named(run, entity)?;
+    let (name, declaring, named) = entity_named(run, entity)?;
     // @lfy def/mcp/main.lfy:mark#mark:mark:dd3ef6b416a23f341639e29ff2f36569d059617f0c4d6c5404dea75abb9f0ef2
-    if let Some(id) = id {
-        let of_unit = &binding.plan.units[index];
-        let source = &binding.program.workspace.files[of_unit.file].path;
-        let local = run
-            .request
-            .requirements
-            .get(source)
-            .is_some_and(|requirements| requirements.iter().any(|one| one.id() == id));
-        if !local && !is_global_requirement(run.request, id) {
-            return Err(format!(
-                "{id} is no criterion or test of the unit {} and no global one; elfie_task lists them",
-                of_unit.stem
-            ));
-        }
+    if let Some(id) = id
+        && !is_requirement_of(run.request, id, named)
+        && !is_global_requirement(run.request, id)
+    {
+        return Err(format!(
+            "{id} is no criterion or test of {name} in the unit {} and no global one; elfie_task lists them",
+            run.unit().stem
+        ));
     }
     let mut pieces: Vec<String> = text.split_inclusive('\n').map(str::to_string).collect();
     // The line break is the one the file's first line ends with, and a line feed when it has
@@ -753,21 +1014,21 @@ fn insert_marker(
 /// Write a marker line into one of this compiler run's outputs, or rewrite to a new id every
 /// marker of its outputs that names an old one, so that no id is typed by hand.
 ///
-/// Nothing but an output file of the batch's target is written: no source map and no review
+/// Nothing but an output file of the unit's target is written: no source map and no review
 /// record, which the CLI writes, and no file outside that target's output directory.
-// @lfy def/mcp/main.lfy:mark#mark:mark:a7dcf7eb424415c0fcc0ed5a98c1d56456a130be8cb8f194d3f21ec67c1606df
+// @lfy def/mcp/main.lfy:mark#mark:mark:af3f47a174d2ca2377099af56a6a2784a84ff3e0f957c1bfffcab64de732a8a2
 // @lfy def/mcp/main.lfy:mark#mark:mark:fcfecab8991108e6f27911bb4b6d77cfffcf93ddbb785581af7a1021cbe3b53c
 pub fn mark(
     session: &Session,
     id: Option<&str>,
     replaces: Option<&str>,
     file: Option<&str>,
-    line: Option<usize>,
+    line: Option<f64>,
     entity: Option<&str>,
 ) -> Result<String, String> {
     let run = own_request(session, "elfie_mark")?;
-    let Some(target) = batch_own_target(&session.workspace, &run) else {
-        return Err(format!("the batch {} holds no unit", run.request.batch.identifier));
+    let Some(target) = own_target(&session.workspace, &run) else {
+        return Err(format!("the unit {} has no target", run.unit().stem));
     };
     // The arguments a call gives say what it wants: `replaces` asks for a rename, and `file`,
     // `line`, and `entity` ask for an insertion.

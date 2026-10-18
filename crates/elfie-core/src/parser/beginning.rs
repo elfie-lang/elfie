@@ -10,9 +10,25 @@ use std::sync::OnceLock;
 use crate::grammar::ebnf::{self, Expr};
 use crate::grammar::rules::expression::{PREFIXES, PRIMARIES};
 use crate::grammar::rules::statement::STATEMENTS;
-use crate::grammar::{Category, Entity, GrammarRule, rules};
+use crate::grammar::{Category, Entity, GrammarRule};
 
 use super::traits;
+
+/// The rules the parser parses against, in load order: those the grammar document lists,
+/// and no rule only the lexer reads.
+// @lfy def/parser/main.lfy:parse#parse:parse:a4ac60d09a1546ef181be1f3bab47649a9d6f33d7be4f3a08dc9784bc6c2ef52
+pub(crate) fn rules() -> impl Iterator<Item = Entity> {
+    static LISTED: OnceLock<Vec<Entity>> = OnceLock::new();
+    LISTED
+        .get_or_init(|| {
+            let document = format!("\n{}\n", super::grammar());
+            crate::grammar::rules()
+                .filter(|rule| document.contains(&format!("\n{}\n", rule.text())))
+                .collect()
+        })
+        .iter()
+        .copied()
+}
 
 /// What the parser knows about the grammar before any token is read.
 pub(crate) struct Tables {

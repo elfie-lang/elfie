@@ -130,7 +130,7 @@
         "end": 7,
         "entity": "plan",
         "file": "def/generation/main.lfy",
-        "line": 32,
+        "line": 38,
         "outputLine": 7,
         "requirement": null
       },
@@ -3689,7 +3689,7 @@
         "end": 392,
         "entity": "Command.operation",
         "file": "def/model/data.lfy",
-        "line": 26,
+        "line": 28,
         "outputLine": 364,
         "requirement": null
       },
@@ -3707,7 +3707,7 @@
         "end": 399,
         "entity": "Command.operation",
         "file": "def/model/data.lfy",
-        "line": 26,
+        "line": 28,
         "outputLine": 397,
         "requirement": null
       },
@@ -3716,7 +3716,7 @@
         "end": 401,
         "entity": "Command.line",
         "file": "def/model/data.lfy",
-        "line": 27,
+        "line": 29,
         "outputLine": 400,
         "requirement": null
       },

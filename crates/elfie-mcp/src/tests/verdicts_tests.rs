@@ -4,37 +4,34 @@
 use super::*;
 use crate::verdicts::asked_of;
 
-// @lfy def/mcp/main.lfy:review#review:review:f58d35f9aea99f8ea42d7e215a8e84d42b2b414afa745217d99622b1a66e5c0d
+// @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
 #[test]
-fn review_gives_the_review_request_of_one_batch() {
+fn review_gives_the_review_request_of_one_unit() {
     let fixture = project_with_requirements();
     let session = fixture.session();
-    // The request is made with no review record, so every criterion of the batch is
-    // asked about however an earlier review found it.
-    // @lfy def/mcp/main.lfy:review#review:review:f58d35f9aea99f8ea42d7e215a8e84d42b2b414afa745217d99622b1a66e5c0d
+    // The request is made with no review record, so every criterion of the unit is asked
+    // about however an earlier review found it.
+    // @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
     let instructions = review(&session, "b", None).unwrap();
-    assert!(instructions.contains("Reviewing the batch"), "{instructions}");
+    assert!(instructions.contains("Reviewing the unit"), "{instructions}");
     assert!(instructions.contains("It answers"), "{instructions}");
     assert_eq!(review(&session, "b", Some("rust")).unwrap(), instructions);
-    // No batch has that identifier or holds a unit with that stem, or the target is
-    // ambiguous.
-    // @lfy def/mcp/main.lfy:review#review:review:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c
+    // No unit has that stem, or the target is not one.
+    // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
     let error = review(&session, "c", None).unwrap_err();
-    assert!(error.contains("no batch has the identifier c"), "{error}");
+    assert!(error.contains("no unit has the stem c"), "{error}");
     let error = review(&session, "b", Some("go")).unwrap_err();
     assert!(error.contains("go is not a target"), "{error}");
-    // A batch whose units carry no criterion and no test needs no review; the batch is
-    // still named by its identifier or by the stem of one of its units.
+    // A unit that carries no criterion and no test still has a review request.
     let bare = compiled_project();
     let session = bare.session();
-    let instructions = review(&session, "b+1", None).unwrap();
-    assert!(instructions.contains("Reviewing the batch"), "{instructions}");
-    assert_eq!(review(&session, "a", None).unwrap(), instructions);
+    let instructions = review(&session, "a", None).unwrap();
+    assert!(instructions.contains("Reviewing the unit"), "{instructions}");
 }
 
 /// A project whose one fn carries two local criteria, each beginning on a line of its
 /// own so that each is named by its place as well as by its id, and one global
-/// criterion, which a review of the batch never asks about.
+/// criterion, which a review of the unit never asks about.
 fn project_with_two_criteria() -> Fixture {
     let fixture = Fixture::new();
     fixture.with_rust_target().write(

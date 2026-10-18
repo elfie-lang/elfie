@@ -4,7 +4,7 @@
 
 use super::*;
 
-/// What a fn of this module carries besides `tool`: `compilerTool`, which acts on the batch
+/// What a fn of this module carries besides `tool`: `compilerTool`, which acts on the unit
 /// and the request of a compiler run, `commandTool`, which runs the target's command for one
 /// operation, or neither.
 // @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
@@ -24,7 +24,9 @@ enum Carried {
 // @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
 fn carried(name: &str) -> Carried {
     match name {
-        "elfie_task" | "elfie_dependency" | "elfie_mark" | "elfie_submit" => Carried::Compiler,
+        "elfie_task" | "elfie_dependency" | "elfie_reach" | "elfie_touch" | "elfie_mark" | "elfie_submit" => {
+            Carried::Compiler
+        }
         "elfie_build" => Carried::Command(Operation::Build),
         "elfie_test" => Carried::Command(Operation::Test),
         "elfie_lint" => Carried::Command(Operation::Lint),
@@ -38,7 +40,7 @@ fn carried(name: &str) -> Carried {
 /// A session over standard input and output is offered every fn of this module that carries
 /// `tool` alone but `report` and `reportMany`, which submit the verdicts on the criteria of
 /// a review it is not running: it has no binding, so no run's directory to run a command in
-/// and no batch whose request to read. A compiler's hosted session is offered those, those
+/// and no unit whose request to read. A compiler's hosted session is offered those, those
 /// two apart, together with the fns that carry `compilerTool`; a verifier's is offered both
 /// of them and every fn carrying `tool` alone but `check`, which answers whether a unit's
 /// outputs would be accepted. Both are offered a fn carrying `commandTool` when a target of
@@ -85,7 +87,7 @@ fn changes_files(name: &str) -> bool {
 /// tool, so none of its tools writes a file, and the line says so outright.
 // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
 // @lfy def/mcp/main.lfy:host#host:host:eeef9359197b88bf6fc69027d5771f23a22ac670ed51c8455dd7ddc9ce90c2b6
-fn instructions(offered: &[String], binding: Option<&Binding>) -> String {
+pub(crate) fn instructions(offered: &[String], binding: Option<&Binding>) -> String {
     let mut text = format!("The Elfie agent server. Its tools in this session are {}.", offered.join(", "));
     let Some(binding) = binding else {
         // @lfy def/mcp/main.lfy:serve#serve:serve:3cd568fc43a27e041f94444e0bd774ad591038e833bc93d99d8667e3342f190f
@@ -107,12 +109,19 @@ fn instructions(offered: &[String], binding: Option<&Binding>) -> String {
         text.push_str(" None of them changes a file.");
         return text;
     }
+    // Each kind of writing tool is explained only when the session is offered one of that kind.
+    let mut how: Vec<&str> = Vec::new();
+    if writing.contains(&"elfie_mark") {
+        how.push("elfie_mark writes a marker line into one of this run's outputs");
+    }
+    if writing.iter().any(|name| *name != "elfie_mark") {
+        how.push("a command tool runs the target's own command, which writes what that command always writes");
+    }
     let _ = write!(
         text,
-        " Of them, {} change files: elfie_mark writes a marker line into one of this run's outputs, \
-         and a command tool runs the target's own command, which writes what that command always \
-         writes. Every other tool here changes nothing.",
-        writing.join(", ")
+        " Of them, {} change files: {}. Every other tool here changes nothing.",
+        writing.join(", "),
+        how.join(", and ")
     );
     text
 }
@@ -228,6 +237,8 @@ impl Served {
     // @lfy def/mcp/main.lfy:report#report:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     // @lfy def/mcp/main.lfy:task#task:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     // @lfy def/mcp/main.lfy:dependency#dependency:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/main.lfy:reach#reach:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/main.lfy:touch#touch:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     // @lfy def/mcp/main.lfy:mark#mark:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     // @lfy def/mcp/main.lfy:submit#submit:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     // @lfy def/mcp/main.lfy:search#search:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
@@ -430,7 +441,7 @@ pub(crate) struct Hosting {
 
 impl Hosting {
     /// The session open at a path, when one is.
-    // @lfy def/mcp/main.lfy:host#host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79
+    // @lfy def/mcp/main.lfy:host#host:host:168ea38e3b02711e2ccfff82e53bfb6a59a077f85b227f166ad5fb4bc3bd41a4
     pub(crate) fn session(&self, path: &str) -> Option<Arc<Served>> {
         self.sessions
             .lock()
@@ -467,6 +478,8 @@ impl Hosting {
             reviews: Mutex::new(Vec::new()),
             // @lfy def/mcp/main.lfy:host#host:host:5e5526603ec0ccf1f819bfc584b556e779b3a2a8f9d0f46fdc9b92ad91bb9dc5
             submission: Mutex::new(None),
+            // @lfy def/mcp/main.lfy:host#host:host:df3e7b35d68aedd025cb565e98984626a24220aa3db2d1a6d7c603776dbb6286
+            touches: Mutex::new(BTreeMap::new()),
         };
         let served = Arc::new(Served {
             session: Mutex::new(session),
@@ -509,12 +522,12 @@ impl Hosting {
     }
 
     /// The session at a URL ended, and what it recorded; a URL that is no open session's
-    /// ends nothing and gives a record holding no review and no submission.
-    // @lfy def/mcp/main.lfy:host#host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713
-    // @lfy def/mcp/main.lfy:host#host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6
+    /// ends nothing and gives a record holding no review, no submission, and no touch.
+    // @lfy def/mcp/main.lfy:host#host:host:4f93ffa04b2302091d6bf6a54426365f36cc3334f4bd6b70ee65cb46e2094fcc
+    // @lfy def/mcp/main.lfy:host#host:host:e8ca1d3750be663de7ec7128c57f5baf58e5c50b353149eced597e09b4a82e27
     pub(crate) fn close(&self, url: &str) -> SessionRecord {
         let Some(path) = self.path_of(url) else {
-            // @lfy def/mcp/main.lfy:host#host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6
+            // @lfy def/mcp/main.lfy:host#host:host:e8ca1d3750be663de7ec7128c57f5baf58e5c50b353149eced597e09b4a82e27
             return SessionRecord::default();
         };
         let removed = self
@@ -523,7 +536,7 @@ impl Hosting {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .remove(&path);
         let Some(served) = removed else {
-            // @lfy def/mcp/main.lfy:host#host:host:8eae0f57be7e371560c08488ce9a3c25a5eb3254d63aa6f4fcd5f317786e93b6
+            // @lfy def/mcp/main.lfy:host#host:host:e8ca1d3750be663de7ec7128c57f5baf58e5c50b353149eced597e09b4a82e27
             return SessionRecord::default();
         };
         served
@@ -542,7 +555,7 @@ impl Hosting {
 // @lfy def/mcp/main.lfy:host#host:host:d17c6dc3479336c65543a2c99389c29582860e9358d65bd4e36a3d9c355e7825
 // @lfy def/mcp/main.lfy:host#host:host:b20b250482898ccb1326689317f112cb544e9941949596a5c823ce56f4d692b9
 // @lfy def/mcp/main.lfy:host#host:host:f876706edb4133d6c7e2e9d4f43bf7b7cc00c92572911e227d0c789a95636e5d
-// @lfy def/mcp/main.lfy:host#host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79
+// @lfy def/mcp/main.lfy:host#host:host:168ea38e3b02711e2ccfff82e53bfb6a59a077f85b227f166ad5fb4bc3bd41a4
 async fn hosted(
     axum::extract::State(hosting): axum::extract::State<Arc<Hosting>>,
     request: axum::extract::Request,
@@ -568,7 +581,7 @@ async fn hosted(
         move || Ok(Server { served: served.clone() }),
         Arc::new(NeverSessionManager::default()),
         StreamableHttpServerConfig::default()
-            // @lfy def/mcp/main.lfy:host#host:host:c0519927a29b45c6d3ed0bf600d8dd929353a41c1678e7be62c950db70763d79
+            // @lfy def/mcp/main.lfy:host#host:host:168ea38e3b02711e2ccfff82e53bfb6a59a077f85b227f166ad5fb4bc3bd41a4
             .with_legacy_session_mode(false)
             .with_json_response(true),
     );

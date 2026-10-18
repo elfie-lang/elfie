@@ -16,7 +16,7 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, Batch, Plan, Request, Review, ReviewRequest, ReviewStatus, SourceMap, Submission,
+    self, Output, Plan, Request, Review, ReviewRequest, ReviewStatus, SourceMap, Submission,
 };
 use elfie_core::interpret::Program;
 use elfie_core::workspace::Workspace;
@@ -166,6 +166,11 @@ pub struct Session {
     // Decision: it is kept behind a lock of its own for the reason the reviews are: a tool
     // fn is reached with the session and not with a session it may change.
     pub submission: Mutex<Option<Submission>>, // @lfy def/mcp/data.lfy:Session.submission
+    /// The note `elfie_touch` last recorded in the session for each unit it was given, by
+    /// [`Unit::stem`](elfie_core::generation::Unit::stem); empty until one is.
+    // Decision: it is kept behind a lock of its own for the reason the reviews are: a tool
+    // fn is reached with the session and not with a session it may change.
+    pub touches: Mutex<BTreeMap<String, String>>, // @lfy def/mcp/data.lfy:Session.touches
 }
 
 /// What a hosted session recorded, as [`Host::close`] hands it back.
@@ -176,15 +181,17 @@ pub struct SessionRecord {
     pub reviews: Vec<Review>, // @lfy def/mcp/data.lfy:SessionRecord.reviews
     /// [`Session::submission`] of the session.
     pub submission: Option<Submission>, // @lfy def/mcp/data.lfy:SessionRecord.submission
+    /// [`Session::touches`] of the session.
+    pub touches: BTreeMap<String, String>, // @lfy def/mcp/data.lfy:SessionRecord.touches
 }
 
 /// What the agent of a hosted session is run as.
 // @lfy def/mcp/data.lfy:Role
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
-    /// The compiler of one batch.
+    /// The compiler of one unit.
     Compiler, // @lfy def/mcp/data.lfy:Role.compiler
-    /// The verifier of one batch, or of the global review.
+    /// The verifier of one unit, or of the global review.
     Verifier, // @lfy def/mcp/data.lfy:Role.verifier
 }
 
@@ -193,8 +200,8 @@ impl Role {
     // @lfy def/mcp/data.lfy:Role
     pub fn value(self) -> &'static str {
         match self {
-            Role::Compiler => "the compiler of one batch",
-            Role::Verifier => "the verifier of one batch, or of the global review",
+            Role::Compiler => "the compiler of one unit",
+            Role::Verifier => "the verifier of one unit, or of the global review",
         }
     }
 }
@@ -207,10 +214,13 @@ impl Role {
 pub struct Binding {
     /// What its agent is run as.
     pub role: Role, // @lfy def/mcp/data.lfy:Binding.role
-    /// The batch the run is for; `None` for the global review.
-    pub batch: Option<Batch>, // @lfy def/mcp/data.lfy:Binding.batch
-    /// The absolute path of the directory the run is in: the batch's copy when it runs in
-    /// one, the root otherwise.
+    /// The unit the run is for, as an index into [`Binding::plan`]'s units; `None` for the
+    /// global review.
+    // Decision: a unit is named by its index into the plan it belongs to, as
+    // `Request::unit` names one, so the binding's unit is the request's.
+    pub unit: Option<usize>, // @lfy def/mcp/data.lfy:Binding.unit
+    /// The absolute path of the directory the run is in: the copy of the root its change set
+    /// is worked in when it runs in one, the root otherwise.
     // Decision: the definition types `directory` as a string; it is kept as the `PathBuf`
     // the session's workspace root is read as, so every path of the workspace joins to it
     // directly, as `Workspace::root` is kept.
@@ -222,6 +232,11 @@ pub struct Binding {
     pub program: Program, // @lfy def/mcp/data.lfy:Binding.program
     /// The request given to a compiler run as its input; `None` for a verifier run.
     pub request: Option<Request>, // @lfy def/mcp/data.lfy:Binding.request
+    /// Every file of the output directory of the unit's target as it was in
+    /// [`Binding::directory`] before the unit's first compiler run of this compile since it
+    /// was last accepted in it, as acceptance is given it as the files before the run; `None`
+    /// for a verifier run.
+    pub before: Option<Vec<Output>>, // @lfy def/mcp/data.lfy:Binding.before
     /// The review request given to a verifier run as its input; `None` for a compiler run.
     pub review: Option<ReviewRequest>, // @lfy def/mcp/data.lfy:Binding.review
     /// The source maps that review request was made with; empty for a compiler run.

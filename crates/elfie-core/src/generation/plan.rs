@@ -1,9 +1,9 @@
 // @lfy def/generation/main.lfy:plan
-//! Every unit of a workspace, which need generating, and how they are batched.
+//! Every unit of a workspace, which need generating, and the order they are compiled in.
 
 use super::*;
 
-/// Every unit of a workspace, which need generating, and how they are batched.
+/// Every unit of a workspace, which need generating, and the order they are compiled in.
 ///
 /// An entity is built for each target among its own targets; where it has none, for each
 /// target among the targets of the anonymous entity of its file, and where that has none
@@ -16,8 +16,10 @@ use super::*;
 /// output reaches an entity of a project file that is not built for the unit's target
 /// leaves one problem at that member, parameter, or output.
 /// Units come in target order then file order, each after its dependencies. A unit's
-/// reason is the first of: requested, violated, fresh, changed, requirements, dependency;
-/// `None` when it is up to date. Callers pass [`source_maps_of`] the workspace, which
+/// reason is the first of: requested, violated, fresh, changed, requirements, dependency,
+/// touched; `None` when it is up to date. The order of the units is decided before any
+/// reason is, so it is the same whatever `source_maps`, `requested`, `violated`, and
+/// `foreign_edits` hold. Callers pass [`source_maps_of`] the workspace, which
 /// leaves out maps whose output no longer exists.
 ///
 /// The plan is given with the program it was planned from: [`crate::interpret::lower`] of
@@ -32,6 +34,7 @@ pub fn plan(
     source_maps: &[SourceMap],
     requested: &[String],
     violated: &[String],
+    foreign_edits: &[ForeignEdit],
 ) -> (Program, Plan) {
     // The plan's program is the workspace lowered: runtime code only, with every
     // compile-time result in place.
@@ -116,8 +119,9 @@ pub fn plan(
             &mut problems,
         );
 
-        // Order: each unit after its dependencies, otherwise in file order.
-        // @lfy def/generation/main.lfy:plan
+        // Order: each unit after its dependencies, otherwise in file order. Only the
+        // definitions decide it, never the source maps or a reason.
+        // @lfy def/generation/main.lfy:plan#plan:plan:410bf31f8c0d725b8ece10ec2971d7ece90ebbb36e52b27239c92aad8fccd388
         let order = order_after_dependencies(&dependencies);
         let base = units.len();
         let mut position = vec![0; local.len()];
@@ -181,10 +185,17 @@ pub fn plan(
         .map(|unit| interface_signature(workspace, unit))
         .collect();
     for index in 0..units.len() {
-        units[index].reason = reason_of(program, &units, &signatures, index, requested, violated);
+        units[index].reason = reason_of(
+            program,
+            &units,
+            &signatures,
+            index,
+            requested,
+            violated,
+            foreign_edits,
+        );
     }
 
-    let batches = batches_of(&units);
     // @lfy def/generation/main.lfy:plan
     (
         lowered,
@@ -192,7 +203,6 @@ pub fn plan(
             units,
             moves,
             problems,
-            batches,
         },
     )
 }
@@ -679,7 +689,7 @@ fn walk_uses(
 }
 
 /// Why a unit is planned: the first of requested, violated, fresh, changed, requirements,
-/// dependency that holds.
+/// dependency, touched that holds.
 ///
 /// A difference in the program's global criteria or tests plans no unit of its own: the
 /// global review is run instead, and a unit whose output answers for a global criterion or
@@ -693,6 +703,7 @@ fn reason_of(
     index: usize,
     requested: &[String],
     violated: &[String],
+    foreign_edits: &[ForeignEdit],
 ) -> Option<Reason> {
     let workspace = &program.workspace;
     let unit = &units[index];
@@ -741,94 +752,15 @@ fn reason_of(
         // @lfy def/generation/main.lfy:plan#plan:plan:772d227fa53dc6d543215df30f2905bc04c628366f07dcbff492bb5ce7333638
         return Some(Reason::Dependency);
     }
-    // @lfy def/generation/main.lfy:plan#plan:plan:40f45c8240354c40ed6f2a0ef91f2c24787a209455f9f1a93d9e45ae9c1b5dd7
+    // A unit whose outputs another unit edited is not stale by any hash, so only the foreign
+    // edits the change set kept tell.
+    // @lfy def/generation/main.lfy:plan#plan:plan:2509d9d52ddbf7657ff618c1eb08aa0cb603a75670d161a3dc574000ec460b5c
+    let target = &workspace.targets[unit.target];
+    if foreign_edits.iter().any(|edit| owns(unit, target, edit)) {
+        return Some(Reason::Touched);
+    }
+    // @lfy def/generation/main.lfy:plan#plan:plan:7a17629eb3328ce3cf525013ad345faa5489677d183c8f7cbad514605bd1cb76
     None
-}
-
-/// The planned units partitioned into batches, in plan order.
-///
-/// A unit joins the open batch when both share the first segment of their stem — the
-/// directory the unit sits in, empty for a unit directly under the source directory —
-/// the batch holds fewer than six units, and the sources of the batch and the unit
-/// together are under 60,000 characters; otherwise it opens a new batch. A unit whose
-/// reason is dependency and whose only planned dependencies are in the open batch joins
-/// that batch even across directories, since it is compiled against what the batch
-/// produces. Because the units are visited in plan order, and every unit comes after its
-/// dependencies, every batch comes after the batches holding the dependencies of its
-/// units.
-// @lfy def/generation/main.lfy:plan#plan:plan:88eb512d83f4888e4edcac53d09e9ed1d190eb09ce99803fb65ec6e80776586c
-fn batches_of(units: &[Unit]) -> Vec<Batch> {
-    // Decision: the criteria give one guidance and one set of native dependencies per
-    // request, so a batch holds units of one target; two targets never share a batch even
-    // when their stems agree.
-    let mut batches: Vec<Batch> = Vec::new();
-    let mut open_characters = 0usize;
-    for (index, unit) in units.iter().enumerate() {
-        if unit.reason.is_none() {
-            continue; // @lfy def/generation/main.lfy:plan
-        }
-        // The source a request carries is the unit's lowered text, so that is what is
-        // measured.
-        let characters = unit.text.chars().count();
-        let joins = batches.last().is_some_and(|open| {
-            let first = &units[open.units[0]];
-            // Decision: the exception waives the directory, not the size of a batch; a
-            // batch that is already full opens a new one whatever the reason.
-            // @lfy def/generation/main.lfy:plan#plan:plan:83ae85d53a06f4a097fb8db49ddcb5211746d5285060c427ab68e0f4d46b4b30
-            let dependent = unit.reason == Some(Reason::Dependency)
-                // Every planned dependency of the unit is in the open batch, and there is at
-                // least one: a unit with no planned dependency waives nothing.
-                && unit
-                    .dependencies
-                    .iter()
-                    .all(|&d| units[d].reason.is_none() || open.units.contains(&d))
-                && unit
-                    .dependencies
-                    .iter()
-                    .any(|&d| units[d].reason.is_some() && open.units.contains(&d));
-            // @lfy def/generation/main.lfy:plan#plan:plan:139ff97944391c8eb7f3b810897377a8bd64ea54d0fe64b6c29a7043348a5379
-            first.target == unit.target
-                // @lfy def/generation/main.lfy:plan#plan:plan:f5945b26c42abf21599b311c49e8448eb81d2fad73e72ff70a5affec2d2f63c7
-                && (first_segment(&first.stem) == first_segment(&unit.stem) || dependent)
-                // @lfy def/generation/main.lfy:plan#plan:plan:46d51e256ac0ed89b3413a7e235770719a0f216b2b18d7b133e7e05e6d930718
-                && open.units.len() < BATCH_UNITS
-                // @lfy def/generation/main.lfy:plan#plan:plan:8b23e12f7a1211640db7cdf6e25859876cd4e9df01a21c0766522b1249acc498
-                && open_characters + characters < BATCH_CHARACTERS
-        });
-        match batches.last_mut() {
-            Some(open) if joins => {
-                open.units.push(index);
-                open_characters += characters;
-            }
-            // With no batch open, or with the open one refusing the unit, the unit opens a
-            // new batch of its own.
-            // @lfy def/generation/main.lfy:plan#plan:plan:018965380af8e7bb6f00c88630feb1dbcd8a2af6c98cfbe47cdbb5c5c5714805
-            // @lfy def/generation/main.lfy:plan#plan:plan:b7a4d3d09495c60318a05c9c39c728fffd85508badbf8aa414d70dbe6b2aef66
-            _ => {
-                batches.push(Batch {
-                    units: vec![index],
-                    identifier: String::new(),
-                });
-                open_characters = characters;
-            }
-        }
-    }
-    // @lfy def/generation/main.lfy:plan
-    for batch in &mut batches {
-        batch.identifier = identifier_of(units, &batch.units);
-    }
-    batches
-}
-
-/// `Batch.identifier`: the first unit's stem, then a plus sign and the count of the
-/// others when there are any.
-// @lfy def/generation/main.lfy:plan
-fn identifier_of(units: &[Unit], batch: &[usize]) -> String {
-    match batch.split_first() {
-        Some((&first, [])) => units[first].stem.clone(),
-        Some((&first, rest)) => format!("{}+{}", units[first].stem, rest.len()),
-        None => String::new(),
-    }
 }
 
 /// `Unit.text`: the text of the unit's lowered file without the code of the entities moved

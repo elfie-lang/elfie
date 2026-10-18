@@ -3,19 +3,21 @@
 
 use super::*;
 
-/// Everything a verifier is handed to check the outputs of one batch against every
+/// Everything a verifier is handed to check the outputs of one unit against every
 /// criterion and test whose verdict is not carried.
 ///
-/// The instructions name the batch and the target, then, unit by unit, every entity with a
-/// criterion or test under review: its name, its definition, where each of its regions is,
+/// The instructions name the unit's stem and the target, then every entity of the unit with
+/// a criterion or test under review: its name, its definition, where each of its regions is,
 /// and each of those criteria and tests on one line with its id and its place — the file of
 /// its origin relative to the workspace root, a colon, and the line its origin begins on —
-/// then, for that unit, the criteria and tests of its own file, and last the verifier
-/// protocol. No line of any output is quoted: a region is named, and the verifier pulls its
+/// then the criteria and tests of the unit's own file, and last the verifier protocol. No line of any output is quoted: a region is named, and the verifier pulls its
 /// code through the agent server. Only local criteria and tests are reviewed here; a global
 /// one is reviewed once, by [`global_review`].
 ///
-/// `records` is what the batch's units were last reviewed as, as [`reviews_of`] gives them.
+/// `records` is what the unit was last reviewed as, as [`reviews_of`] gives them. A foreign
+/// edit changes the text of the owner's region, so the hash of that entity no longer matches
+/// its records and its criteria are listed again, while those of the entities no edit
+/// touched are carried.
 /// A criterion or test is listed when nothing says its verdict still holds: it has no
 /// record, its last verdict was not satisfied, or the regions of its entity hash to
 /// something other than what it was judged against. One whose entity generated no region,
@@ -23,12 +25,12 @@ use super::*;
 /// of its own whose sameness could stand for the verdict. With nothing left to list, the
 /// instructions say so and hold no protocol.
 ///
-/// `directory` is the directory the batch's outputs were written in, which the regions a
+/// `directory` is the directory the unit's outputs were written in, which the regions a
 /// hash is taken over are read from, and `None` means the workspace root.
 // Decision: the verifier is told where the regions are and pulls their code through the
-// agent server, so a request stays small however large the batch's outputs are, and its
+// agent server, so a request stays small however large the unit's outputs are, and its
 // protocol allows no edits: a review says where and why, never how to fix.
-// Decision: a batch compiled in a copy of the root is reviewed in that copy, so the regions
+// Decision: a unit compiled in the copy of the root its change set is worked in is reviewed in that copy, so the regions
 // a verifier is pointed at, and the hashes its verdicts are recorded with, are those of the
 // outputs it is judging and never the root's older ones.
 // Decision: a criterion or test is reviewed again only when nothing says its verdict still
@@ -39,14 +41,15 @@ use super::*;
 // the other criteria of the entity to review again. A reworded criterion is reviewed all the
 // same: its new text may ask for something else, so no verdict on the id it replaces stands
 // for it.
-// Decision: the definition passes the plan and the batch; a plan here does not own its
-// workspace or the program lowered from it, so the program is an extra first parameter.
-// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+// Decision: the definition passes the plan and the unit; a plan here does not own its
+// workspace or the program lowered from it, so the program is an extra first parameter, and
+// the unit is named by its index in `Plan::units`, as `ReviewRequest::unit` names it.
+// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 // @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
 pub fn review(
     program: &Program,
     plan: &Plan,
-    batch: &Batch,
+    unit: usize,
     source_maps: &[SourceMap],
     directory: Option<&Path>,
     records: &[ReviewRecord],
@@ -55,31 +58,25 @@ pub fn review(
     let model = &workspace.model;
     // @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
     let directory = directory.unwrap_or(workspace.root.as_path());
-    let of_target = batch
-        .units
-        .first()
-        .map(|&index| &workspace.targets[plan.units[index].target]);
-    let target = of_target
-        .map(|target| target.identifier.as_str())
-        .unwrap_or_default();
+    let index = unit;
+    let unit = &plan.units[index];
+    let of_target = &workspace.targets[unit.target];
+    let target = of_target.identifier.as_str();
     // How a line comment of the target's language begins, which is where a marker comment
     // begins and so where the part of a line no hash is taken over begins.
-    let marker_comment = of_target
-        .map(|target| target.marker_comment.as_str())
-        .unwrap_or_default();
+    let marker_comment = of_target.marker_comment.as_str();
 
-    // Unit by unit, entity by entity: the regions of the entity, the hash they come to, and
-    // which of its criteria and tests that hash leaves to review.
+    // Entity by entity: the regions of the entity, the hash they come to, and which of its
+    // criteria and tests that hash leaves to review.
     let mut asked: Vec<String> = Vec::new();
     let mut hashes: BTreeMap<String, String> = BTreeMap::new();
     let mut carried: Vec<ReviewRecord> = Vec::new();
-    let mut sections = String::new();
-    for &index in &batch.units {
-        let unit = &plan.units[index];
-        let mut body = String::new();
+    let mut body = String::new();
+    {
+        // @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
         for &entity in &unit.entities {
             let regions = entity_regions(workspace, source_maps, entity, target);
-            // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+            // @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
             let hash = source_hash(&regions_text(directory, marker_comment, &regions));
             let requirements = reviewed_requirements(program, unit.lowered, entity);
             let listed = listed_requirements(
@@ -90,7 +87,7 @@ pub fn review(
                 &mut hashes,
                 &mut carried,
             );
-            // @lfy def/generation/main.lfy:review#review:review:bb873e216e23bb2a7659d3b1888588387a1f7980df4fac536938ec32d6d42b8d
+            // @lfy def/generation/main.lfy:review#review:review:8067f4b70be69f26ef14e51b27d063565e561dc22f54a024158105cad82cc9c5
             if listed.is_empty() {
                 continue;
             }
@@ -127,45 +124,41 @@ pub fn review(
             asked.extend(ids_of(&criteria));
             asked.extend(ids_of(&tests));
         }
-        if !body.is_empty() {
-            let _ = writeln!(
-                sections,
-                "### `{}` (stem `{}`)\n",
-                workspace.files[unit.file].path, unit.stem
-            );
-            sections.push_str(&body);
-        }
     }
 
-    // A heading naming the batch and the target, then what is under review, then the
+    // A heading naming the unit and the target, then what is under review, then the
     // protocol; with nothing under review, the heading and one line saying so.
     let mut out = String::new();
     let _ = writeln!(
         out,
-        "# Reviewing the batch `{}` for the target `{}`\n",
-        batch.identifier, target
+        "# Reviewing the unit `{}` for the target `{}`\n",
+        unit.stem, target
     );
     if asked.is_empty() {
-        // @lfy def/generation/main.lfy:review#review:review:5133eddf9b981ba9bac41113779c58b491cedfbc67e2e3742ac236b381a254dc
+        // @lfy def/generation/main.lfy:review#review:review:0d8c71e5e6a2fc7df9307c06e3d90e10a1982484663081fdffc8b2b46c7f029b
         out.push_str(
-            "Nothing in the batch needs review: every criterion and test of its units was \
-             found satisfied against the code it still stands on.\n",
+            "Nothing in the unit needs review: every criterion and test of it was found \
+             satisfied against the code it still stands on.\n",
         );
     } else {
         // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
         out.push_str(
-            "Every criterion and test below is local to one entity of this batch. A global \
+            "Every criterion and test below is local to one entity of this unit. A global \
              one is reviewed once, on its own, across every output of the program.\n\n",
         );
-        out.push_str("## What was asked\n\n");
-        out.push_str(&sections);
+        let _ = writeln!(
+            out,
+            "## What was asked of `{}`\n",
+            workspace.files[unit.file].path
+        );
+        out.push_str(&body);
         // The verifier protocol.
         out.push_str(PROTOCOL);
     }
 
-    // @lfy def/generation/main.lfy:review#review:review:197b2d0e6f7458d538f3cc8d8568be98a60636ca07026cd2eeb1d5933910f156
+    // @lfy def/generation/main.lfy:review#review:review:88af78276d6f8df3f4a8999ca87628c8de2e6a194a2718d39aa64e803f157c0d
     ReviewRequest {
-        batch: Some(batch.clone()),
+        unit: Some(index),
         instructions: out,
         asked,
         hashes,
@@ -174,14 +167,14 @@ pub fn review(
 }
 
 /// Every region one entity of a unit generated: each marker [`regions_of`] finds for its
-/// name among the source maps of the batch's target whose file is the file that declares the
+/// name among the source maps of the unit's target whose file is the file that declares the
 /// entity, in output order and then in output line order.
 ///
 /// Only what the file declaring the entity generated, so an entity of another file with the
 /// same name brings none of its code, while an entity moved into the unit brings its own,
 /// which its declaring file marks.
-// @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
-// @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
+// @lfy def/generation/main.lfy:review#review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1
+// @lfy def/generation/main.lfy:review#review:review:5923148a7793fded1531a97ff6a9c369389688e0a1ca8f50ed586a04dcee3b46
 fn entity_regions<'m>(
     workspace: &Workspace,
     source_maps: &'m [SourceMap],
@@ -218,7 +211,7 @@ fn entity_regions<'m>(
 ///
 /// `directory` is the directory the outputs were written in, which each region is read from,
 /// and `marker_comment` is how a line comment of the target's language begins.
-// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
 // @lfy def/generation/main.lfy:review#review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903
 fn regions_text(
     directory: &Path,
@@ -246,8 +239,8 @@ fn regions_text(
 /// A record is matched by its id alone, so a criterion that rewords another is never carried
 /// on the verdict the id it replaces earned, however little the code of its entity moved:
 /// the new text may ask for something the code does not do.
-// @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
-// @lfy def/generation/main.lfy:review#review:review:32e025cd22c3a749bbc3afba52f86cb9b26ac41d0f4a822a6e5e00639e557312
+// @lfy def/generation/main.lfy:review#review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033
+// @lfy def/generation/main.lfy:review#review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d
 // @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
 // @lfy def/generation/main.lfy:review#review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2
 fn listed_requirements<'r>(
@@ -326,7 +319,7 @@ fn requirements_within(node: &LoweredNode, out: &mut Vec<Requirement>) {
 /// One entity of a unit for a verifier: its name, its definition, where each of its regions
 /// is, and then each criterion and each test under review on one line prefixed by its id and
 /// its place.
-// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 fn write_review_entity(
     out: &mut String,
     model: &Model,
@@ -352,7 +345,7 @@ fn write_review_entity(
 
 /// Each criterion or test under review on one line: its id, its place, an em dash, and its
 /// text.
-// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 fn write_reviewed(out: &mut String, model: &Model, heading: &str, requirements: &[&Requirement]) {
     let _ = writeln!(out, "{heading}:");
     if requirements.is_empty() {
@@ -395,7 +388,7 @@ fn write_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
 ///
 /// The regions come in output order and then in output line order, so a region adjacent to
 /// the one before it is always the one it can be joined to.
-// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 fn write_joined_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
     if regions.is_empty() {
         out.push_str("No region of any output was generated for it.\n\n");
@@ -431,7 +424,7 @@ fn write_joined_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
 /// whose marker answers for its id is; one that no marker of any output names is listed with
 /// a line saying no unit answered for it, so the verifier finds it unverifiable, never
 /// violated. No line of any output is quoted, and nothing is carried: a global criterion is
-/// asked about every time the review runs. The caller runs it once after every batch of a
+/// asked about every time the review runs. The caller runs it once after every unit of a
 /// compile, and whenever the program's global criteria or tests changed; a review it finds
 /// violated gives the stems of the units whose markers answered for it, for the `violated`
 /// argument of [`plan`].
@@ -511,8 +504,8 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
     out.push_str(PROTOCOL);
 
     ReviewRequest {
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:de84b01e368319ebde8eb693c9242574f7b87c6cdedc5229f53fbdf2a3cdd11d
-        batch: None,
+        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:c913846c41638a67bec9c31d691948d7a0a285ed211c13711ab1bfbb7a47c67b
+        unit: None,
         instructions: out,
         asked,
         // A global criterion stands on the whole program rather than on the regions of one

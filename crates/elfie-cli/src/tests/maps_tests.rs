@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::commands::{created_line, error_position, formatted_line, print_move, rule_name, token_lines, tree_lines};
-use crate::compiling::{batch_line, legacy_targets, move_legacy_maps, move_text, unit_line};
+use crate::compiling::{legacy_targets, move_legacy_maps, move_text, unit_line};
 use crate::running::{lowered_of, own_region_text, previous_source};
 
 /// With --json tree and tokens print their results as JSON lines instead of text, one
@@ -100,26 +100,34 @@ fn json_prints_one_object_per_result() {
     assert_ne!(formatted_line(true, "def/a.lfy", false, false), formatted_line(true, "def/a.lfy", true, false));
 }
 
-/// Compile with --dry-run prints one unit with reason fresh and one batch holding it,
-/// generates nothing, and returns success.
-// @lfy def/cli/main.lfy:main#main:main:13ac07944d31f4503a5b719ea69b91838998614508f9fc1675e8dfd9d60a0e84
+/// Compile with --dry-run prints one unit with reason fresh, generates nothing, and returns
+/// success.
+// @lfy def/cli/main.lfy:main#main:main:912f2f02b88d2250a172ef32fe2f2af76dda7ba7b33b0af20e6d0d7935bae51e
+// @lfy def/cli/main.lfy:main#main:main:1158ef5598e98842590c9c237df6cac12c9a46afcab7fb2c9828e80e76f88f9b
+// @lfy def/cli/main.lfy:main#main:main:84bb3a6e0235d5d36cc865a418d3f617e6b697d65fd85324d85cc995e44a3e89
+// @lfy def/cli/main.lfy:main#main:main:2e8045c1f86a83462e1d79b1bdf98da4979fc1d0edf4301ad3cf8b989dc12004
 #[test]
-fn dry_run_prints_the_units_then_the_batches() {
+fn dry_run_prints_the_units() {
     let fixture = Fixture::new();
     one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     assert!(program.workspace.problems.is_empty(), "{:?}", program.workspace.problems);
     assert_eq!(plan.units.len(), 1);
     // The words and their order stay as they are, so a script splitting a line on spaces
-    // reads the same fields. @lfy def/cli/main.lfy:main
+    // reads the same fields.
+    // @lfy def/cli/main.lfy:main#main:main:84bb3a6e0235d5d36cc865a418d3f617e6b697d65fd85324d85cc995e44a3e89
     assert_eq!(unit_line(&program.workspace, &plan, 0, false), "rust a fresh []");
     assert_eq!(width(&unit_line(&program.workspace, &plan, 0, true)), width("rust a fresh []"));
-    // @lfy def/cli/main.lfy:main
-    assert_eq!(plan.batches.len(), 1);
-    assert_eq!(batch_line(&plan, &plan.batches[0], false), "batch a [a]");
-    assert_eq!(width(&batch_line(&plan, &plan.batches[0], true)), width("batch a [a]"));
-    assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Success.code());
+    // @lfy def/cli/main.lfy:main#main:main:912f2f02b88d2250a172ef32fe2f2af76dda7ba7b33b0af20e6d0d7935bae51e
+    let (code, out, _) = fixture.printed(&["compile", "--dry-run", "--color=never"]);
+    assert_eq!(code, ExitCode::Success.code());
+    // What the test harness of the child writes aside, the one line of the plan.
+    let lines: Vec<&str> = out.lines().filter(|line| line.starts_with("rust ")).collect();
+    assert_eq!(lines, vec!["rust a fresh []"], "{out}");
+    assert!(!out.contains("batch"), "{out}");
+    // @lfy def/cli/main.lfy:main#main:main:2e8045c1f86a83462e1d79b1bdf98da4979fc1d0edf4301ad3cf8b989dc12004
     assert!(!fixture.root.join("out").exists(), "nothing is generated");
+    assert!(!fixture.root.join("elfie-compile/cache").exists(), "a change set was made");
     // --target limits the plan to one target. @lfy def/cli/main.lfy:main
     assert_eq!(fixture.run(&["compile", "--dry-run", "--target", "rust"]), ExitCode::Success.code());
     // A --target naming no target of the program is a usage message naming the targets
@@ -158,7 +166,7 @@ fn a_move(fixture: &Fixture) -> &Fixture {
 fn a_move_is_printed_before_the_units_and_counts_as_no_problem() {
     let fixture = Fixture::new();
     a_move(&fixture);
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     assert!(program.workspace.problems.is_empty(), "{:?}", program.workspace.problems);
     assert_eq!(plan.problems, [], "no cycle is left unresolved");
     assert_eq!(plan.moves.len(), 1, "{:?}", plan.moves);
@@ -184,13 +192,26 @@ fn a_move_is_printed_before_the_units_and_counts_as_no_problem() {
     assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Success.code());
     assert_eq!(fixture.run(&["compile", "--dry-run", "--json"]), ExitCode::Success.code());
     assert!(!fixture.root.join("out").exists(), "nothing is generated");
+    // A compile with --json and without --dry-run prints each move as one result too.
+    // @lfy def/cli/main.lfy:main#main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849
+    // @lfy def/cli/main.lfy:main#main:main:506eab00d30b7bdabeedfaa49835ffb31dd39d992da62dd3f70f8d67b08034d2
+    let (_, out, _) = fixture.printed(&["compile", "--json"]);
+    let moves: Vec<serde_json::Value> = out
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|value| value.get("move").is_some())
+        .collect();
+    assert_eq!(moves.len(), 1, "{out}");
+    assert_eq!(moves[0]["move"], "a");
+    assert_eq!(moves[0]["into"], "b");
+    assert_eq!(moves[0]["cause"], "B.c");
 }
 
 /// The local criteria and tests of a unit are those of every entity it compiles, an
 /// entity moved into it from another file included: its declaration is in the file it
 /// came from, so its criteria and tests are taken from there rather than left out of the
 /// unit's review records.
-// @lfy def/cli/main.lfy:main#main:main:9643453ae724b2467947a6cedaf76f572a32cc0ce4c9e739f85fb2cdff7f7b67
+// @lfy def/cli/main.lfy:main#main:main:ba814337ca5699de23cfbe6d5488f298a354e81440cab6936bf45c6ccc9f2411
 #[test]
 fn the_criteria_of_an_entity_moved_into_a_unit_are_asked_about() {
     let fixture = Fixture::new();
@@ -201,7 +222,7 @@ fn the_criteria_of_an_entity_moved_into_a_unit_are_asked_about() {
             "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n  @acceptanceCriteria\n    .add({ behavior = `Holds a string` });\n}\n",
         )
         .write("def/c.lfy", "use \"./a\";\nuse \"./b\";\n\ntrait holder {\n  $c = C;\n}\nholder.apply(B);\n");
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     assert!(program.workspace.problems.is_empty(), "{:?}", program.workspace.problems);
     assert_eq!(plan.problems, [], "no cycle is left unresolved");
     assert_eq!(plan.moves.len(), 1, "{:?}", plan.moves);
@@ -212,10 +233,10 @@ fn the_criteria_of_an_entity_moved_into_a_unit_are_asked_about() {
     assert_eq!(plan.units[moved.into].stem, "b");
     // The criterion of the moved entity is among the unit's own, since its review records
     // are what carries the verdict on it, and the ids are sorted.
-    // @lfy def/cli/main.lfy:main#main:main:9643453ae724b2467947a6cedaf76f572a32cc0ce4c9e739f85fb2cdff7f7b67
+    // @lfy def/cli/main.lfy:main#main:main:ba814337ca5699de23cfbe6d5488f298a354e81440cab6936bf45c6ccc9f2411
     let ids = requirement_ids_of(&program, &plan.units[moved.into]);
     assert!(ids.iter().any(|id| id.starts_with("C:C:")), "{ids:?}");
-    // @lfy def/cli/main.lfy:main#main:main:9643453ae724b2467947a6cedaf76f572a32cc0ce4c9e739f85fb2cdff7f7b67
+    // @lfy def/cli/main.lfy:main#main:main:ba814337ca5699de23cfbe6d5488f298a354e81440cab6936bf45c6ccc9f2411
     let mut sorted = ids.clone();
     sorted.sort();
     assert_eq!(ids, sorted, "the ids of a unit are sorted");
@@ -237,7 +258,7 @@ fn a_cycle_no_move_resolves_is_an_error_and_generates_nothing() {
             "def/t.lfy",
             "use \"./a\";\nuse \"./b\";\n\ntrait toB {\n  $b = B;\n}\n\ntrait toA {\n  $a = A;\n}\ntoB.apply(A);\ntoA.apply(B);\n",
         );
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     // The program itself binds cleanly, so the code is problems for the cycle alone.
     // @lfy def/cli/main.lfy:main
     let diagnostics = query::diagnostics_of(&program.workspace, None);
@@ -288,7 +309,7 @@ fn maps_that_could_not_be_recorded_leave_the_file_in_place() {
     let fixture = Fixture::new();
     a_compiler_and_a_verifier(&fixture, SATISFIED);
     fixture.write("def/b.lfy", "d B {}\n");
-    fixture.write("compiler.sh", PER_UNIT_COMPILER);
+    fixture.write("compiler.sh", &per_unit_compiler(&fixture));
     assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
     // The project as an earlier version left it: every map of the target in one
     // source-map.json under its output directory and no folder of map files.
@@ -305,26 +326,25 @@ fn maps_that_could_not_be_recorded_leave_the_file_in_place() {
     // @lfy def/cli/main.lfy:main#main:main:b9ad771de6ec1ee6e2812d5335aef919fe9cd8228cb6b2fea9731de46c6dd24e
     fixture.write("elfie-compile/maps/rust", "not a folder\n");
     let legacy = legacy_targets(&workspace::load(&fixture.root), None);
-    assert_eq!(legacy, vec!["out".to_string()]);
-    let (program, plan) = planned(&fixture.root, &[], &[], false, &BTreeSet::new());
-    move_legacy_maps(&program.workspace, &plan, &legacy);
+    assert_eq!(legacy, vec!["rust".to_string()]);
+    let (program, plan) = planned(&fixture.root, &[], &[], false, &BTreeSet::new(), &[]);
+    move_legacy_maps(&program.workspace, &plan, "rust");
     // The file is left in place rather than removed, holding the maps it held.
     // @lfy def/cli/main.lfy:main#main:main:b9ad771de6ec1ee6e2812d5335aef919fe9cd8228cb6b2fea9731de46c6dd24e
     assert!(fixture.root.join("out/source-map.json").is_file(), "the file was removed");
     assert_eq!(fixture.read("out/source-map.json"), text, "the maps it holds were lost");
     // With the folder writable again, every unit's maps are recorded and the file goes.
-    // @lfy def/cli/main.lfy:main#main:main:67eaaa8a1841a575fb7441eb3ad67ea695d923595769380ebe74e710e6251abf
+    // @lfy def/cli/main.lfy:main#main:main:30dce5371d68cdf57a7b116ac1662b6d703eb911921adaf9cfa704489687fe08
     fs::remove_file(fixture.root.join("elfie-compile/maps/rust")).unwrap();
-    let legacy = legacy_targets(&workspace::load(&fixture.root), None);
-    let (program, plan) = planned(&fixture.root, &[], &[], false, &BTreeSet::new());
-    move_legacy_maps(&program.workspace, &plan, &legacy);
+    let (program, plan) = planned(&fixture.root, &[], &[], false, &BTreeSet::new(), &[]);
+    move_legacy_maps(&program.workspace, &plan, "rust");
     assert!(folder.join("a.json").is_file(), "a's maps were not recorded");
     assert!(folder.join("b.json").is_file(), "b's maps were not recorded");
     assert!(!fixture.root.join("out/source-map.json").exists(), "the file stayed");
 }
 
-/// A map file belonging to no unit of the plan is removed before any batch runs.
-// @lfy def/cli/main.lfy:main
+/// A map file belonging to no unit of the plan is removed before any unit runs.
+// @lfy def/cli/main.lfy:main#main:main:4347f7c42165acde976e4f4fd1045901a022a7affb1faca571f70c981be6c9a4
 #[test]
 fn a_map_file_of_no_unit_is_removed() {
     let fixture = Fixture::new();
@@ -340,45 +360,18 @@ fn a_map_file_of_no_unit_is_removed() {
     // @lfy def/cli/main.lfy:main
     assert_eq!(fixture.read("elfie-compile/maps/rust/a.json"), stale);
 }
-/// Two units both recorded, one of them edited since: the edited one alone is compiled, its
-/// map file is rewritten, and the other's is left byte for byte as it was.
-// @lfy def/cli/main.lfy:main#main:main:a64dbb7ffadb4cffc5916067dd80d88bf16cb8db4d6aadf2d4406ffe3d0553e4
-#[test]
-fn a_compile_of_one_unit_leaves_every_other_map_file_alone() {
-    let fixture = Fixture::new();
-    a_compiler_and_a_verifier(&fixture, SATISFIED);
-    fixture.write("def/b.lfy", "d B {}\n");
-    fixture.write("compiler.sh", PER_UNIT_COMPILER);
-    // Both units recorded in elfie-compile/maps/rust. @lfy def/cli/main.lfy:main
-    assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
-    let (was_a, was_b) =
-        (fixture.read("elfie-compile/maps/rust/a.json"), fixture.read("elfie-compile/maps/rust/b.json"));
-    // a.lfy edited since, so a alone is planned. @lfy def/cli/main.lfy:main
-    fixture.write("def/a.lfy", "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list once` });\n}\n");
-    write_verifier(&fixture, SATISFIED);
-    fixture.write("attempts.txt", "");
-    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
-    // Only a's batch was run. @lfy def/cli/main.lfy:main
-    assert_eq!(fixture.read("attempts.txt"), "a\n");
-    // @lfy def/cli/main.lfy:main
-    assert_ne!(fixture.read("elfie-compile/maps/rust/a.json"), was_a, "a.json was not rewritten");
-    // @lfy def/cli/main.lfy:main
-    assert_eq!(fixture.read("elfie-compile/maps/rust/b.json"), was_b, "b.json changed");
-}
-
 /// Every map recorded and elfie-compile/cache deleted: every unit is still up to date, since
-/// nothing under the cache is ever the only record of anything.
+/// nothing under the cache is ever the only record of anything but a kept change set.
 // @lfy def/cli/main.lfy:main#main:main:340adcae1ad95cbe8bc4b606664bc8d048b41ab12e13403411e12ae1c743c7c8
-// @lfy def/cli/main.lfy:main#main:main:bc914a1f1aeef4f635de558b0f64bd7174c6f9cab74213ce228b002ba9b8dd46
+// @lfy def/cli/main.lfy:main#main:main:ce142a9ba3b804ff57be3fcdcb014e73336642491908017d455d8ff42740abee
 #[test]
 fn a_deleted_cache_gives_the_same_plan() {
     let fixture = Fixture::new();
     a_compiler_and_a_verifier(&fixture, SATISFIED);
     assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
-    // @lfy def/cli/main.lfy:main
     let _ = fs::remove_dir_all(fixture.root.join("elfie-compile/cache"));
     let maps = generation::source_maps_of(&workspace::load(&fixture.root), None);
-    let (program, plan) = plan_with(&fixture.root, &maps, &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &maps, &[], &[], &[]);
     assert_eq!(plan.units.len(), 1);
     // @lfy def/cli/main.lfy:main
     assert_eq!(unit_line(&program.workspace, &plan, 0, false), "rust a up to date []");
@@ -417,7 +410,7 @@ fn the_previous_source_is_the_revision_git_still_holds() {
     // @lfy def/cli/main.lfy:main
     let maps = generation::source_maps_of(&workspace, None);
     drop(workspace);
-    let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new());
+    let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new(), &[]);
     let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
     assert_eq!(generation::source_hash(&lowered), unit.outputs[0].hash);
     // And by the ids of its criteria and tests, which the map holds beside the hash: a
@@ -427,19 +420,18 @@ fn the_previous_source_is_the_revision_git_still_holds() {
     // What comes back is that revision as git holds it, never lowered, and it is the
     // source at the last accepted generation rather than only the hash-matched one.
     // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-    // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
+    // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
     let found = previous_source(&program.workspace, unit).unwrap();
     assert!(!found.hash_matched);
     let previous = found.text;
     assert_eq!(previous, raw);
-    // Which the request lowers itself, once, to set beside the unit's own lowered text;
-    // nothing is hash-matched, so the request is given no path among them.
-    // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-    // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
-    let handed = BTreeMap::from([("def/a.lfy".to_string(), previous)]);
-    let request = generation::request(&program, &plan, &plan.batches[0], &[], &handed, true, &[]);
-    assert_eq!(request.previous["def/a.lfy"], lowered);
-    assert!(request.sources["def/a.lfy"].contains("d A"), "{:?}", request.sources);
+    // Which the request lowers itself, once, to set beside the unit's own lowered text; it is
+    // told the text is no hash-matched source.
+    // @lfy def/cli/main.lfy:main#main:main:83b85032f8cc7c8aef44ec14a0271ad64c1bafc4a130b693740a019f27be094d
+    let index = plan.units.iter().position(|unit| unit.stem == "a").unwrap();
+    let request = generation::request(&program, &plan, index, &[], Some(&previous), true, false, &[]);
+    assert_eq!(request.previous.as_deref(), Some(lowered.as_str()));
+    assert!(request.source.contains("d A"), "{}", request.source);
 }
 
 /// A revision that lowers to the hash a unit's map holds but answers for other ids is the
@@ -447,9 +439,9 @@ fn the_previous_source_is_the_revision_git_still_holds() {
 /// comes back marked as such, and a unit whose previous text is only that is never one
 /// whose markers are the whole of the work.
 // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-// @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
-// @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
-// @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
+// @lfy def/cli/main.lfy:main#main:main:758fa1871b09f337b51e44d8a8f6104962caf305712f1929d105dc578aa66787
+// @lfy def/cli/main.lfy:main#main:main:2c9713a6d34075ba2ffe7490ad3a4f06a37c84997bec06ae56d74bec93a1522f
+// @lfy def/cli/main.lfy:main#main:main:5f08ae8ce4c83f4e1b7cc28af35e05f37af1782031238c3c21ed4a69cae58b08
 #[test]
 fn a_revision_that_only_reworded_a_criterion_is_the_hash_matched_source() {
     let fixture = Fixture::new();
@@ -474,37 +466,36 @@ fn a_revision_that_only_reworded_a_criterion_is_the_hash_matched_source() {
     let workspace = workspace::load(&fixture.root);
     let maps = generation::source_maps_of(&workspace, None);
     drop(workspace);
-    let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new());
+    let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new(), &[]);
     let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
     // The committed revision lowers to the map's hash and answers for other ids, so it is
     // the hash-matched source and not the source at the last accepted generation.
     // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-    // @lfy def/cli/main.lfy:main#main:main:f39bd9ab2495264b9736277dccebe0c77551b0d471884faae0d41398da0096fa
+    // @lfy def/cli/main.lfy:main#main:main:758fa1871b09f337b51e44d8a8f6104962caf305712f1929d105dc578aa66787
     let found = previous_source(&program.workspace, unit).unwrap();
     assert!(found.hash_matched);
     assert_eq!(found.text, committed);
     // Given that path among the hash-matched, the request names no unit whose markers are
     // the whole of the work.
-    // @lfy def/cli/main.lfy:main#main:main:44d118a88d1e7a297fd7918629fa1c6c140077672079734436b5b02679cb1207
-    // @lfy def/cli/main.lfy:main#main:main:413b71fcbd78964e80ed9718e6ab5d99b92285cc9fd61235e6a0a45a22467c55
-    let handed = BTreeMap::from([("def/a.lfy".to_string(), found.text)]);
-    let hash_matched = vec!["def/a.lfy".to_string()];
-    let request =
-        generation::request(&program, &plan, &plan.batches[0], &[], &handed, true, &hash_matched);
-    assert!(request.reworded_only.is_empty(), "{:?}", request.reworded_only);
+    // @lfy def/cli/main.lfy:main#main:main:2c9713a6d34075ba2ffe7490ad3a4f06a37c84997bec06ae56d74bec93a1522f
+    // @lfy def/cli/main.lfy:main#main:main:5f08ae8ce4c83f4e1b7cc28af35e05f37af1782031238c3c21ed4a69cae58b08
+    let index = plan.units.iter().position(|unit| unit.stem == "a").unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:f84461b876d5880346ff361b357e737563b84ff7463a37600f754210b77dc91f
+    let request = generation::request(&program, &plan, index, &[], Some(&found.text), true, true, &[]);
+    assert!(!request.reworded_only);
 }
 
 /// The own region text of an output is the lines of the regions this unit's own markers
 /// begin, without the marker comments, and nothing another unit wrote in the same file.
-// @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+// @lfy def/cli/main.lfy:main#main:main:8ff734425428618669a4f137ee0c85c9936237068dab48c69ebdcab1c20cfc15
 #[test]
 fn the_own_region_text_of_a_shared_output_leaves_another_unit_out() {
     let fixture = Fixture::new();
     one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n").write("def/b.lfy", "d B: `A B` {}\n");
-    let (program, plan) = plan_with(&fixture.root, &[], &[], &[]);
+    let (program, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     let index = plan.units.iter().position(|unit| unit.stem == "a").unwrap();
     let text = "// @lfy def/a.lfy:A\npub struct A {}\n// @lfy def/b.lfy:B\npub struct B {}\n";
-    // @lfy def/cli/main.lfy:main#main:main:fbfbb673e8a8caec004774ec10f9f8eaab81df8006f5fd3efe0403deae5390ea
+    // @lfy def/cli/main.lfy:main#main:main:8ff734425428618669a4f137ee0c85c9936237068dab48c69ebdcab1c20cfc15
     let own = own_region_text(&program.workspace, &plan, index, text);
     assert_eq!(own, "pub struct A {}\n");
 }
@@ -513,50 +504,55 @@ fn the_own_region_text_of_a_shared_output_leaves_another_unit_out() {
 /// whose compiler writes both their regions into one shared output: the run for `b/one`
 /// writes its own region alone, and the run for `a/one` writes its own above it, so what
 /// `b/one` was accepted with is no longer where its own accept saw it.
-// @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+// @lfy def/cli/main.lfy:main#main:main:73b5383aed1ca86a8561196285ac24e93f2aa3b1cf5665ccb3c44c99c8bcfb1f
 fn a_shared_output(fixture: &Fixture) -> &Fixture {
-    let compiler = "#!/bin/sh\ncat > /dev/null\nmkdir -p \"$ELFIE_ROOT/out\"\n\
-         case \"$ELFIE_UNITS\" in\n\
-         *b/one*)\n\
-         echo ran >> \"$ELFIE_ROOT/ran-b.txt\"\n\
+    let compiler = noted(
+        fixture,
+        "#!/bin/sh\ncat > /dev/null\nmkdir -p \"$ELFIE_ROOT/out\"\n\
+         case \"$ELFIE_UNIT\" in\n\
+         b/one)\n\
+         echo ran >> '<notes>/ran-b.txt'\n\
          printf '// @lfy def/b/one.lfy:B\\npub struct B {}\\n' > \"$ELFIE_ROOT/out/shared.rs\"\n\
          ;;\n\
-         *a/one*)\n\
-         echo ran >> \"$ELFIE_ROOT/ran-a.txt\"\n\
+         a/one)\n\
+         echo ran >> '<notes>/ran-a.txt'\n\
          printf '// @lfy def/a/one.lfy:A\\npub struct A {}\\n// @lfy def/b/one.lfy:B\\npub struct B {}\\n' \
          > \"$ELFIE_ROOT/out/shared.rs\"\n\
          ;;\n\
          esac\n\
-         echo 'ELFIE: DONE'\n";
+         echo 'ELFIE: DONE'\n",
+    );
     library(fixture)
         .write("def/roles.lfy", ROLES)
         .write("def/targets.lfy", TARGETS)
         .write("def/b/one.lfy", "d B: `A B` {}\n")
         .write("def/a/one.lfy", "use \"../b/one\";\n\nd A: `An A` {}\n")
-        .write("compiler.sh", compiler)
+        .write("compiler.sh", &compiler)
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]))
 }
 
-/// A unit that shares an output with a batch is one of its co-owners: once the batch's
-/// source maps are recorded, the co-owner's are re-derived from the file as it is now and
-/// recorded for it, so its regions are where the batch's write left them; no compiler runs
-/// for the co-owner and nothing but its map file is written for it.
-// @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
-// @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
-// @lfy def/cli/main.lfy:main#main:main:14b01e32487ce04075ecbde039b065c7ad9311e9e5e8cb3e8c5117b41e849f61
+/// A unit that shares an output with a unit before it is one of that unit's co-owners: once
+/// a unit's source maps are recorded in its directory, the co-owner's are re-derived there
+/// from the file as it is now and recorded for it, so its regions are where the unit's write
+/// left them; no compiler runs for the co-owner and nothing but its map file is written for
+/// it.
+// @lfy def/cli/main.lfy:main#main:main:73b5383aed1ca86a8561196285ac24e93f2aa3b1cf5665ccb3c44c99c8bcfb1f
+// @lfy def/cli/main.lfy:main#main:main:8940bcdd4260c6e311e87a27ce3497056d6d8956860d16464a361158ed9f48da
+// @lfy def/cli/main.lfy:main#main:main:4f7cae6922d2fbb74f58a9c1f34d8e9565a2d72660e593819347a125257e342d
+// @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
 #[test]
 fn a_co_owner_of_a_shared_output_has_its_maps_re_derived() {
     let fixture = Fixture::new();
     a_shared_output(&fixture);
-    // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
-    assert_eq!(fixture.run(&["compile", "--jobs", "1", "--no-verify"]), ExitCode::Success.code());
+    // @lfy def/cli/main.lfy:main#main:main:8940bcdd4260c6e311e87a27ce3497056d6d8956860d16464a361158ed9f48da
+    assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
     // The run for a/one put its own region above the one b/one was accepted with.
-    // @lfy def/cli/main.lfy:main#main:main:7fe3a9efd4f314763aa0579759cefcffe953e3223a30cc3aa3e139a03b7497cf
+    // @lfy def/cli/main.lfy:main#main:main:73b5383aed1ca86a8561196285ac24e93f2aa3b1cf5665ccb3c44c99c8bcfb1f
     let shared = fixture.read("out/shared.rs");
     assert!(shared.starts_with("// @lfy def/a/one.lfy:A"), "{shared}");
     // b/one's map file names the marker where the file holds it now, the third line, and
     // not the first, where its own accept saw it.
-    // @lfy def/cli/main.lfy:main#main:main:d6db27f2a0e3fd12b8c822bb2aabe61df5e5fa5cd3bb142095a0b7111b814dd1
+    // @lfy def/cli/main.lfy:main#main:main:8940bcdd4260c6e311e87a27ce3497056d6d8956860d16464a361158ed9f48da
     let maps = maps_of(&fixture, "elfie-compile/maps/rust/b/one.json");
     assert_eq!(maps[0]["output"], "out/shared.rs", "{maps}");
     let its = maps[0]["markers"]
@@ -567,6 +563,6 @@ fn a_co_owner_of_a_shared_output_has_its_maps_re_derived() {
         .unwrap_or_else(|| panic!("{maps}"));
     assert_eq!(its["outputLine"], 3, "{maps}");
     // No compiler ran for the co-owner beyond its own batch's one run.
-    // @lfy def/cli/main.lfy:main#main:main:14b01e32487ce04075ecbde039b065c7ad9311e9e5e8cb3e8c5117b41e849f61
+    // @lfy def/cli/main.lfy:main#main:main:4f7cae6922d2fbb74f58a9c1f34d8e9565a2d72660e593819347a125257e342d
     assert_eq!(fixture.read("ran-b.txt").lines().count(), 1);
 }

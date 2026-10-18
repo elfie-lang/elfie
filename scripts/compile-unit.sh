@@ -2,10 +2,11 @@
 # The compiler command `elfie compile` runs once per unit: Claude Code, given the request on
 # standard input, with the Elfie agent server and permission to edit files, to build and test
 # through the server's command tools or cargo, and to run cargo add.
-# ELFIE_ROOT, ELFIE_BATCH, ELFIE_UNITS, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set by the
-# caller; the root is the working directory. ELFIE_MCP_CONFIG names the config of the session the
-# compile hosts for this run; without it, as when run by hand, the agent server is the one
-# .mcp.json starts.
+# ELFIE_ROOT, ELFIE_UNIT, ELFIE_MCP_CONFIG, and ELFIE_COMMAND_TOOLS are set by the caller; the
+# working directory is the copy of the root the compile works its change set in, or the root when
+# run by hand. ELFIE_UNIT is the stem of the one unit the run is for, such as workspace/data.
+# ELFIE_MCP_CONFIG names the config of the session the compile hosts for this run; without it, as
+# when run by hand, the agent server is the one .mcp.json starts.
 set -e
 # The agent server's tools are loaded up front rather than deferred behind a tool search, and no
 # other MCP server is started, so the elfie tools are the first thing the agent sees to reach for.
@@ -56,7 +57,7 @@ model=()
 if [ -n "${ELFIE_COMPILER_MODEL:-}" ]; then
   model=(--model "$ELFIE_COMPILER_MODEL")
 fi
-echo "compiling batch ${ELFIE_BATCH:-?} (${ELFIE_UNITS:-?}) with Claude Code" >&2
+echo "compiling unit ${ELFIE_UNIT:-?} with Claude Code" >&2
 exec claude -p \
   "${session[@]}" "${model[@]}" \
   --permission-mode acceptEdits \

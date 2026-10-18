@@ -1,42 +1,41 @@
 // @lfy def/mcp/main.lfy:review
-//! What a review asks and what it is answered: the review request for one batch, the one
+//! What a review asks and what it is answered: the review request for one unit, the one
 //! for every global criterion and test, and the verdicts a verifier submits.
 
 use super::*;
 
-/// The full review request for one batch: every criterion and test with where the regions
+/// The full review request for one unit: every criterion and test with where the regions
 /// generated for its entities are, and how to report.
 ///
 /// The problems of the plan are not mentioned: a review reads the outputs that exist
 /// against what was asked of them, which a plan that could not be made whole does not
 /// change.
 // @lfy def/mcp/main.lfy:review#review:review:5c61bb2a8fa4f5d02a3219d0c4a1f8d385dbad4a9caf2a52fa73d59c10014617
-pub fn review(session: &Session, batch: &str, target: Option<&str>) -> Result<String, String> {
+pub fn review(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
     let planned = plan_of(session);
     let plan = &planned.plan;
-    // The batch whose identifier the name is is meant before any batch holding a unit with
-    // it as a stem; an error says which when neither names one, or the target is ambiguous.
-    // @lfy def/mcp/main.lfy:review#review:review:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99
-    // @lfy def/mcp/main.lfy:review#review:review:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c
-    let index = resolve_batch(planned.workspace(), plan, batch, target)?;
-    // @lfy def/mcp/main.lfy:review#review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea
-    own_batch(session, &plan.batches[index].identifier)?;
+    // An error says which when no unit of the target has the stem, or the target is
+    // ambiguous.
+    // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+    let index = resolve_unit(planned.workspace(), plan, unit, target)?;
+    // @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+    own_unit(session, plan, index)?;
     // A verifier is given the review request it was run with, so what it is asked about is
     // what the compile asked it, never a request made again from the outputs as they are
-    // now; every other session has the request made for the batch.
-    // @lfy def/mcp/main.lfy:review#review:review:da108e476bfaee29f25ace2bffd41fea2a2d7605e41824c4b25757bf8287f9b1
+    // now; every other session has the request made for the unit.
+    // @lfy def/mcp/main.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
     if let Some(binding) = &session.binding
         && binding.role == Role::Verifier
         && let Some(given) = &binding.review
     {
         return Ok(given.instructions.clone());
     }
-    // @lfy def/mcp/main.lfy:review#review:review:f58d35f9aea99f8ea42d7e215a8e84d42b2b414afa745217d99622b1a66e5c0d
+    // @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
     Ok(
         generation::review(
             &planned.program,
             plan,
-            &plan.batches[index],
+            index,
             &planned.maps,
             None,
             &[],

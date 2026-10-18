@@ -34,12 +34,12 @@ trait tool: `Exposed to agents as one tool of the server` {
 // Decision: the tools of a compiler session act on the request the compiler was given, which only a
 // hosted session's [[Binding]] holds, so what they share is stated once here, and which entry points
 // offer them is stated by those entry points as for any tool.
-trait compilerTool: `Acts on the batch and the request of the compiler run a hosted session is bound to` {
+trait compilerTool: `Acts on the unit and the request of the compiler run a hosted session is bound to` {
   where (`A call of elfie_{{@identifier}} arrives`) and (`{{@identifier}} is offered to the session`) and (`[[Session.binding]] is undefined, or its [[Binding.request]] is undefined`) -> [
     `The result is an error saying elfie_{{@identifier}} acts only in a session bound to a compiler run`,
     `Nothing is read or written`,
   ];
-  where (`A call of elfie_{{@identifier}} arrives`) -> `The batch it acts on is [[Request.batch]] of [[Binding.request]], and the units it acts on are units of that batch`;
+  where (`A call of elfie_{{@identifier}} arrives`) -> `The unit it acts on is [[Request.unit]] of [[Binding.request]], which is [[Binding.unit]]`;
   where (`A call of elfie_{{@identifier}} reads or writes an output`) -> `The output is read or written under [[Binding.directory]], as it is when the call arrives`;
 }
 
@@ -58,18 +58,18 @@ trait compilerTool: `Acts on the batch and the request of the compiler run a hos
 trait commandTool(operation: Operation): `Runs the target's command for one operation in the directory of the session's run` {
   // The target
   where (`A call of elfie_{{@identifier}} gives a target`) -> `The target is the one of [[Workspace.targets]] whose [[Target.identifier]] is that target`;
-  where (`A call of elfie_{{@identifier}} gives no target`) and (`[[Binding.batch]] is set`) -> `The target is the [[Unit.target]] of the units of [[Binding.batch]]`;
-  where (`A call of elfie_{{@identifier}} gives no target`) and (`[[Binding.batch]] is undefined`) and (`[[Workspace.targets]] holds one target`) -> `The target is that one`;
+  where (`A call of elfie_{{@identifier}} gives no target`) and (`[[Binding.unit]] is set`) -> `The target is the [[Unit.target]] of [[Binding.unit]]`;
+  where (`A call of elfie_{{@identifier}} gives no target`) and (`[[Binding.unit]] is undefined`) and (`[[Workspace.targets]] holds one target`) -> `The target is that one`;
   where (`A call of elfie_{{@identifier}} gives a target that is not the [[Target.identifier]] of any of [[Workspace.targets]]`) -> [
     `The result is an error naming the known targets`,
     `No command runs`,
   ];
-  where (`A call of elfie_{{@identifier}} gives no target`) and (`[[Binding.batch]] is undefined`) and (`[[Workspace.targets]] holds several targets`) -> [
+  where (`A call of elfie_{{@identifier}} gives no target`) and (`[[Binding.unit]] is undefined`) and (`[[Workspace.targets]] holds several targets`) -> [
     `The result is an error naming the known targets`,
     `No command runs`,
   ];
-  where (`A call of elfie_{{@identifier}} gives a target`) and (`That target is the [[Target.identifier]] of one of [[Workspace.targets]]`) and (`[[Binding.batch]] is set`) and (`That target is not the [[Unit.target]] of the units of [[Binding.batch]]`) -> [
-    `The result is an error saying the session acts only on its own batch, naming the batch's target`,
+  where (`A call of elfie_{{@identifier}} gives a target`) and (`That target is the [[Target.identifier]] of one of [[Workspace.targets]]`) and (`[[Binding.unit]] is set`) and (`That target is not the [[Unit.target]] of [[Binding.unit]]`) -> [
+    `The result is an error saying the session acts only on its own unit, naming the unit's target`,
     `No command runs`,
   ];
   where (`A call of elfie_{{@identifier}} has a target`) and (`[[Target.commands]] of the target holds no command for the operation ({{operation}}) whose [[Command.line]] is defined`) -> [

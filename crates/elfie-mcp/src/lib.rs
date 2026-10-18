@@ -20,8 +20,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use elfie_core::generation::{
-    self, Batch, Marker, Move, Output, Plan, Request, Requirement, Review, ReviewStatus, Rewording,
-    SourceMap, Submission, SubmittedOutcome, Unit,
+    self, ForeignEdit, ForeignEditKind, Marker, Move, Output, Plan, Request, Requirement, Review,
+    ReviewStatus, SourceMap, Submission, SubmittedOutcome, Unit,
 };
 use elfie_core::interpret::{self, LoweredCriterion, LoweredNode, LoweredTest, Program};
 use elfie_core::model::{self, Criterion, EntityId, FileId, Model, NodeRef, Operation, Problem, SymbolKind};
@@ -62,7 +62,7 @@ mod serving;
 mod verdicts;
 
 pub use commands::{build, format_check, lint, test};
-pub use compiling::{dependency, mark, submit, task};
+pub use compiling::{dependency, mark, reach, submit, task, touch};
 pub use planning::{changes, check, request, units};
 pub use reading::{entity, find, grammar, outline, problems, references};
 pub use regions::{output, search, source};
@@ -142,7 +142,14 @@ impl Session {
             binding: None,
             reviews: Mutex::new(Vec::new()),
             submission: Mutex::new(None),
+            touches: Mutex::new(BTreeMap::new()),
         }
+    }
+
+    /// Every note `elfie_touch` has recorded in the session, by the stem of the unit it is
+    /// for.
+    pub fn touched(&self) -> BTreeMap<String, String> {
+        self.touches.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
     }
 
     /// Every review `elfie_report` or `elfie_reportMany` has recorded in the session, in the
@@ -152,8 +159,9 @@ impl Session {
     }
 
     /// What the session recorded: the reviews `elfie_report` and `elfie_reportMany` kept, in
-    /// the order recorded, and the outcome `elfie_submit` last kept.
-    // @lfy def/mcp/main.lfy:host#host:host:64c0df55947a7e7a600bb0796c4715f740afcfda41cdd6f86b4cb408c4705713
+    /// the order recorded, the outcome `elfie_submit` last kept, and the notes `elfie_touch`
+    /// kept.
+    // @lfy def/mcp/main.lfy:host#host:host:4f93ffa04b2302091d6bf6a54426365f36cc3334f4bd6b70ee65cb46e2094fcc
     pub fn record(&self) -> SessionRecord {
         SessionRecord {
             reviews: self.recorded(),
@@ -162,6 +170,7 @@ impl Session {
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .clone(),
+            touches: self.touched(),
         }
     }
 
@@ -231,34 +240,27 @@ fn lowered_test_text(test: &LoweredTest) -> String {
     format!("Input `{}` gives `{}`", test.input_text.trim(), test.expect_text.trim())
 }
 
-/// The identifier of the target a batch's units are of; a batch holds units of one target.
-fn batch_target<'w>(workspace: &'w Workspace, plan: &Plan, batch: &Batch) -> &'w str {
-    match batch.units.first() {
-        Some(&unit) => workspace.targets[plan.units[unit].target].identifier.as_str(),
-        None => "",
-    }
+/// The unit a binding is for, as the binding's plan holds it; `None` for the global review.
+fn bound_unit(binding: &Binding) -> Option<&Unit> {
+    binding.unit.and_then(|index| binding.plan.units.get(index))
 }
 
-/// The targets of a session: the target of the units of the binding's batch when it has one,
-/// and every target of the workspace when it has none.
-// @lfy def/mcp/main.lfy:host#host:host:f5d226a776398720183cca8da8ecac0ec6273fcfb6503d5533239adec7e2322b
+/// The target of the unit a binding is for, read off a workspace whose targets are those
+/// the binding's plan indexes into; `None` when the binding is for no unit.
+fn bound_target<'w>(workspace: &'w Workspace, binding: &Binding) -> Option<&'w Target> {
+    bound_unit(binding).and_then(|unit| workspace.targets.get(unit.target))
+}
+
+/// The targets of a session: the target of the binding's unit when it has one, and every
+/// target of the workspace when it has none.
+// @lfy def/mcp/main.lfy:host#host:host:86c5b27a118a8e42708f657a3bd5003aadccf71738e30fbd257b324a3dc7eff1
+// @lfy def/mcp/main.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
 fn session_targets<'w>(workspace: &'w Workspace, binding: Option<&Binding>) -> Vec<&'w Target> {
-    // @lfy def/mcp/main.lfy:host#host:host:f5d226a776398720183cca8da8ecac0ec6273fcfb6503d5533239adec7e2322b
     if let Some(binding) = binding
-        && let Some(batch) = &binding.batch
+        && binding.unit.is_some()
     {
-        let mut found: Vec<&Target> = Vec::new();
-        for &unit in &batch.units {
-            if let Some(unit) = binding.plan.units.get(unit)
-                && let Some(target) = workspace.targets.get(unit.target)
-                && !found.iter().any(|known| known.identifier == target.identifier)
-            {
-                found.push(target);
-            }
-        }
-        return found;
+        return bound_target(workspace, binding).into_iter().collect();
     }
-    // @lfy def/mcp/main.lfy:host#host:host:f5d226a776398720183cca8da8ecac0ec6273fcfb6503d5533239adec7e2322b
     workspace.targets.iter().collect()
 }
 
@@ -305,7 +307,7 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
 /// The first are the unit's outputs, which acceptance judges and records a map for; the rest
 /// are read for the markers they hold and nothing else, so a region of another unit that
 /// moved out of an output of this one is still found where it went.
-// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+// @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
 fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> (Vec<Output>, Vec<Output>) {
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
@@ -324,7 +326,7 @@ fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> (Vec<Output>, 
         if generation::parse_markers(&output.text).iter().any(|marker| &marker.file == file) {
             found.push(output);
         } else {
-            // @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
+            // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
             elsewhere.push(output);
         }
     }
@@ -353,7 +355,7 @@ fn check_target(workspace: &Workspace, target: Option<&str>) -> Result<(), Strin
 // Decision: `generation::plan` takes the workspace and gives back the program lowered from
 // it beside the plan, and every later call reads that program rather than the workspace, so
 // the three travel together.
-// @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+// @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
 struct Planned {
     /// The workspace lowered, which every request and review reads.
     program: Program,
@@ -377,7 +379,7 @@ impl Planned {
 /// The root of a hosted session's workspace is its binding's directory, so these are the
 /// files under that directory and the paths are relative to it.
 // @lfy def/mcp/main.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
-// @lfy def/mcp/main.lfy:mark#mark:mark:20e94fd8b37ced24d2351848435ef39376d3fc15eeb5d4e64ccffd5f95cb4053
+// @lfy def/mcp/main.lfy:mark#mark:mark:52dcea5ba1304502d225b631249c459cecf128b5f17ded9a63a98e62ef6c62bf
 // @lfy def/mcp/main.lfy:search#search:search:c17cae68f2b3424b9e51c005c2ca4bc5521e610abeb02c841daa9b067c1fa147
 fn output_files(workspace: &Workspace, target: &Target) -> Vec<String> {
     let mut paths = Vec::new();
@@ -398,8 +400,8 @@ fn output_files(workspace: &Workspace, target: &Target) -> Vec<String> {
 /// workspace the binding's plan indexes into, every path of it joining to the directory the
 /// run is in.
 ///
-/// A run in a batch's own copy reads the outputs there rather than in the root the compile
-/// was lowered from, so the session's workspace stands in for the program's where the two
+/// A run in the copy of the root its change set is worked in reads the outputs there rather
+/// than in the root the compile was lowered from, so the session's workspace stands in for the program's where the two
 /// roots differ, and the program is read as it is where they do not, which is every run
 /// outside a copy.
 fn program_at_root<'a>(session: &'a Session, binding: &'a Binding) -> Cow<'a, Program> {
@@ -411,7 +413,43 @@ fn program_at_root<'a>(session: &'a Session, binding: &'a Binding) -> Cow<'a, Pr
     Cow::Owned(program)
 }
 
-/// The source maps of the units of a compiler session's batch, read from the markers their
+/// The text of an output file under a session's root as it is when the call arrives; `None`
+/// when there is no file there.
+fn text_now(session: &Session, path: &str) -> Option<String> {
+    fs::read_to_string(session.workspace.root.join(path)).ok()
+}
+
+/// The text a file had in a list of files, by its path; `None` when the list holds no file
+/// at that path.
+fn text_in<'f>(files: &'f [Output], path: &str) -> Option<&'f str> {
+    files.iter().find(|file| file.path == path).map(|file| file.text.as_str())
+}
+
+/// The edited units of a session bound to a compiler run, as indices into its binding's plan:
+/// the binding's own unit, then each unit of its request's reach one of whose output files
+/// reads, when the call arrives, other than the file of the binding's `before` at its path.
+///
+/// A session bound to no compiler run has none.
+// @lfy def/mcp/main.lfy:host#host:host:b13df361f68d03163d9154bd53097634706a3976e5dd60ef743bad1f5f7d8f22
+fn edited_units(session: &Session) -> Vec<usize> {
+    let Some(binding) = &session.binding else { return Vec::new() };
+    if binding.role != Role::Compiler {
+        return Vec::new();
+    }
+    let mut edited: Vec<usize> = binding.unit.into_iter().collect();
+    let Some(request) = &binding.request else { return edited };
+    let before: &[Output] = binding.before.as_deref().unwrap_or(&[]);
+    for &index in &request.reach.units {
+        let Some(unit) = binding.plan.units.get(index) else { continue };
+        let differs = unit.outputs.iter().any(|map| text_now(session, &map.output).as_deref() != text_in(before, &map.output));
+        if differs && !edited.contains(&index) {
+            edited.push(index);
+        }
+    }
+    edited
+}
+
+/// The source maps of the edited units of a compiler session, read from the markers their
 /// target's output files hold now rather than from where the last acceptance recorded them.
 ///
 /// A compiler has just written and edited those files, so it must see its regions where they
@@ -430,15 +468,14 @@ fn program_at_root<'a>(session: &'a Session, binding: &'a Binding) -> Cow<'a, Pr
 /// `recorded` is what the unit's map file holds: the maps read for it that these stand in
 /// for, as the session read them, so that a target whose maps are still recorded under its
 /// output directory is read there as everywhere else.
-// @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
-// @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
-fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMap]) -> Vec<SourceMap> {
+// @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
+// @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
+fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMap], edited: &[usize]) -> Vec<SourceMap> {
     let Some(binding) = &session.binding else { return Vec::new() };
-    let Some(batch) = &binding.batch else { return Vec::new() };
     let workspace = &session.workspace;
     let program = program_at_root(session, binding);
     let mut found: Vec<SourceMap> = Vec::new();
-    for &index in &batch.units {
+    for &index in edited {
         let Some(unit) = binding.plan.units.get(index) else { continue };
         let Some(of_target) = workspace.targets.get(unit.target) else { continue };
         if target.is_some_and(|target| of_target.identifier != target) {
@@ -450,12 +487,12 @@ fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMa
             .filter(|map| map.target == of_target.identifier && map.source == file.path)
             .cloned()
             .collect();
-        // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
+        // @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
         if !held.is_empty() {
             found.extend(generation::rederive(&program, &binding.plan, index, &held));
             continue;
         }
-        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
         let empty = SourceMap {
             target: of_target.identifier.clone(),
             output: String::new(),
@@ -471,7 +508,7 @@ fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMa
         };
         // An output file is one whose extension is among the target's, as every other walk
         // of an output directory reads one.
-        // @lfy def/mcp/main.lfy:host#host:host:8b0ee6f07bbcc53017d5574c5bc37d7cbf2fa810500d3cf286603559d1e4ecd5
+        // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
         let of_output = |map: &SourceMap| {
             Path::new(&map.output)
                 .extension()
@@ -494,34 +531,33 @@ fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMa
 /// A verifier judges the outputs its review was made against, so where the binding carries
 /// a map for a target and a source, every map read for that pair is left out and the
 /// binding's maps are read in their place; a map the binding carries that replaces none is
-/// read after the rest. A compiler reads its own units' regions from the files it has just
-/// written, so every map recorded for one of its batch's sources is left out and
+/// read after the rest. A compiler reads the regions of its edited units from the files it
+/// has just written, so every map recorded for the source of one of them is left out and
 /// [`own_source_maps`] is read in their place. With no binding, what the last acceptance
 /// recorded under the session's root is all that is read.
 // @lfy def/mcp/main.lfy:output#output:output:18bbd05acd9d7ef32f170d4713899aaf2e4c19f93da25c7feae2938e50414fc1
 // @lfy def/mcp/main.lfy:host#host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e
-// @lfy def/mcp/main.lfy:host#host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba
+// @lfy def/mcp/main.lfy:host#host:host:d3337eaab7af4245ed2aea215d9b2a7a3dc070180f650d25a2cd723e3eba308b
 // @lfy def/mcp/main.lfy:host#host:host:232c0725ae5219330822ed9664cc87be38c4591303cbc3dead664044e09b75eb
 fn source_maps_of(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
     let mut read = generation::source_maps_of(&session.workspace, target);
-    // A compiler session's own units are read from the markers their outputs hold now.
-    // @lfy def/mcp/main.lfy:host#host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba
+    // A compiler session's edited units are read from the markers their outputs hold now.
+    // @lfy def/mcp/main.lfy:host#host:host:d3337eaab7af4245ed2aea215d9b2a7a3dc070180f650d25a2cd723e3eba308b
     if let Some(binding) = &session.binding
         && binding.role == Role::Compiler
-        && let Some(batch) = &binding.batch
     {
-        let own: Vec<String> = batch
-            .units
+        let edited = edited_units(session);
+        let own: Vec<String> = edited
             .iter()
             .filter_map(|&index| binding.plan.units.get(index))
             .filter_map(|unit| session.workspace.files.get(unit.file))
             .map(|file| file.path.clone())
             .collect();
-        // @lfy def/mcp/main.lfy:host#host:host:1d7d3545dd3f2db19683b885c877989d8409d11cfdadaa4e2c381a4b9ef084ba
+        // @lfy def/mcp/main.lfy:host#host:host:d3337eaab7af4245ed2aea215d9b2a7a3dc070180f650d25a2cd723e3eba308b
         let left_out: Vec<SourceMap> = read.iter().filter(|map| own.contains(&map.source)).cloned().collect();
         read.retain(|map| !own.contains(&map.source));
-        // @lfy def/mcp/main.lfy:host#host:host:7a6f6d82c62937a6200fb29971d7e37887f517b297d8c5a98583a469dfa4b7aa
-        read.extend(own_source_maps(session, target, &left_out));
+        // @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
+        read.extend(own_source_maps(session, target, &left_out, &edited));
     }
     let given: &[SourceMap] = match &session.binding {
         Some(binding) => &binding.source_maps,
@@ -569,67 +605,68 @@ fn source_maps_of(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
 // planning, so the plan is made once with no violated unit and again only when the last
 // global review names one; a project with none, which is every project until a global
 // review finds one, is planned once.
-// @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+// @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
 fn plan_of(session: &Session) -> Planned {
     let workspace = &session.workspace;
-    let maps = source_maps_of(session, None); // @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
-    let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &[]);
-    // @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
+    let maps = source_maps_of(session, None); // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
+    let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &[], &[]);
+    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
     let stems = GlobalReview::read(&workspace.root).map(|last| last.violated_stems(&plan)).unwrap_or_default();
     if stems.is_empty() {
         return Planned { program, plan, maps };
     }
-    // @lfy def/mcp/main.lfy:units#units:units:e35cb874630f014bcf475b9b10f74413ed36fe8b669e6a8194fd1ca57d8cf251
-    let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &stems);
+    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
+    let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &stems, &[]);
     Planned { program, plan, maps }
 }
 
-/// Nothing when a session may be asked about a batch, and an error naming the one batch it
-/// acts on — or the global review, when it is bound to no batch — when it may not.
-// @lfy def/mcp/main.lfy:request#request:request:f7ef0e526d107bc01f393317930dc6691e83904a9ec731aef3e304884867cfe0
-// @lfy def/mcp/main.lfy:review#review:review:0dcb77dad8ef4db5102c1bd7eeaec630f239dc244db5eee8132f8c57d77677ea
-fn own_batch(session: &Session, identifier: &str) -> Result<(), String> {
+/// The plan `elfie_units` shows: the binding's plan in a hosted session, since only the
+/// compile knows which units the units accepted before them touched, and [`plan_of`] the
+/// session otherwise.
+// Decision: a hosted session's plan is read with the program the compile lowered, at the
+// session's root, and the source maps the session reads now, so every tool that is given a
+// plan indexes into the units the binding names.
+// @lfy def/mcp/main.lfy:units#units:units:be4f6c886ef6e1db9b9b5072b338544e713652abd61a55caba16263e8386d4c4
+fn shown_plan(session: &Session) -> Planned {
+    match &session.binding {
+        Some(binding) => Planned {
+            program: program_at_root(session, binding).into_owned(),
+            plan: binding.plan.clone(),
+            maps: source_maps_of(session, None),
+        },
+        None => plan_of(session),
+    }
+}
+
+/// Nothing when a session may be asked about the unit at an index of a plan, and an error
+/// naming the one unit it acts on — or the global review, when it is bound to no unit — when
+/// it may not. Units are told apart by their stem and their target, so a plan made again
+/// from the same workspace names the binding's unit as the binding's plan does.
+// @lfy def/mcp/main.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
+// @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+// @lfy def/mcp/main.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
+// @lfy def/mcp/main.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+fn own_unit(session: &Session, plan: &Plan, index: usize) -> Result<(), String> {
     let Some(binding) = &session.binding else {
         return Ok(());
     };
-    match &binding.batch {
-        Some(batch) if batch.identifier == identifier => Ok(()),
-        Some(batch) => Err(format!(
-            "this session acts only on its own batch, {}; it was asked about {identifier}",
-            batch.identifier
+    let asked = &plan.units[index];
+    match bound_unit(binding) {
+        Some(own) if own.stem == asked.stem && own.target == asked.target => Ok(()),
+        Some(own) => Err(format!(
+            "this session acts only on its own unit, {}; it was asked about the unit {}",
+            own.stem, asked.stem
         )),
         None => Err(format!(
-            "this session acts only on the global review; it was asked about the batch {identifier}"
+            "this session acts only on the global review; it was asked about the unit {}",
+            asked.stem
         )),
     }
 }
 
-/// Nothing when a session may be asked about a unit with a stem, and an error naming the one
-/// batch it acts on — or the global review — when it may not.
-// @lfy def/mcp/main.lfy:check#check:check:9c073d6b09e272ea0d5a712167c00378477b35e103dad16445f0d53b88d7bc30
-// @lfy def/mcp/main.lfy:changes#changes:changes:e97791dbc253b4037be4b5a6a54aa430027a02f99710070c689449608a3affe1
-fn own_unit(session: &Session, stem: &str) -> Result<(), String> {
-    let Some(binding) = &session.binding else {
-        return Ok(());
-    };
-    match &binding.batch {
-        Some(batch)
-            if batch
-                .units
-                .iter()
-                .filter_map(|&unit| binding.plan.units.get(unit))
-                .any(|unit| unit.stem == stem) =>
-        {
-            Ok(())
-        }
-        Some(batch) => Err(format!(
-            "this session acts only on its own batch, {}; it was asked about the unit {stem}",
-            batch.identifier
-        )),
-        None => Err(format!(
-            "this session acts only on the global review; it was asked about the unit {stem}"
-        )),
-    }
+/// Whether the unit at an index of a plan is the one a session's binding is for.
+fn is_bound_unit(session: &Session, plan: &Plan, index: usize) -> bool {
+    session.binding.is_some() && own_unit(session, plan, index).is_ok()
 }
 
 /// The unit with a stem, in the target given or the only target it is in; an error
@@ -644,11 +681,15 @@ fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&
         })
         .collect();
     match matches.as_slice() {
+        // @lfy def/mcp/main.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+        // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
         [] => Err(match target {
             Some(target) => format!("no unit of the target {target} has the stem {stem}; elfie_units lists them"),
             None => format!("no unit has the stem {stem}; elfie_units lists them"),
         }),
         [index] => Ok(*index),
+        // @lfy def/mcp/main.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+        // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
         many => {
             let targets: Vec<&str> = many.iter().map(|&index| workspace.targets[plan.units[index].target].identifier.as_str()).collect();
             Err(format!("the unit {stem} is in more than one target ({}); name one with target", targets.join(", ")))
@@ -656,59 +697,13 @@ fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&
     }
 }
 
-/// The batch with an identifier, or the one holding a unit with a stem, in the target
-/// given or the only target it is in; an error saying which when no batch has that
-/// identifier or holds a unit with that stem, or the target is ambiguous.
-///
-/// A name that is the identifier of one batch and the stem of a unit of another means the
-/// batch whose identifier it is: the identifiers are tried first and the stems only when
-/// no batch is named by its identifier.
-// @lfy def/mcp/main.lfy:request#request:request:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99
-fn resolve_batch(workspace: &Workspace, plan: &Plan, name: &str, target: Option<&str>) -> Result<usize, String> {
-    check_target(workspace, target)?;
-    let of_target = |batch: &Batch| target.is_none_or(|target| batch_target(workspace, plan, batch) == target);
-    // @lfy def/mcp/main.lfy:request#request:request:a7e16dee761e4f416f1040c2c3f90c5e87e1352241e235f0eea4146033eccc99
-    let mut matches: Vec<usize> = (0..plan.batches.len())
-        .filter(|&index| plan.batches[index].identifier == name && of_target(&plan.batches[index]))
-        .collect();
-    if matches.is_empty() {
-        matches = (0..plan.batches.len())
-            .filter(|&index| {
-                let batch = &plan.batches[index];
-                batch.units.iter().any(|&unit| plan.units[unit].stem == name) && of_target(batch)
-            })
-            .collect();
-    }
-    match matches.as_slice() {
-        // @lfy def/mcp/main.lfy:request#request:request:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c
-        [] => Err(match target {
-            Some(target) => format!(
-                "no batch of the target {target} has the identifier {name} or holds a unit with the stem {name}; elfie_units lists them"
-            ),
-            None => format!(
-                "no batch has the identifier {name} or holds a unit with the stem {name}; elfie_units lists them"
-            ),
-        }),
-        [index] => Ok(*index),
-        // @lfy def/mcp/main.lfy:request#request:request:ca0a25d6a947aa41d3cbf9399a371f681224987d6109d85e16a0b7f8a85db14c
-        many => {
-            let targets: Vec<&str> = many
-                .iter()
-                .map(|&index| batch_target(workspace, plan, &plan.batches[index]))
-                .collect();
-            Err(format!("the batch {name} is in more than one target ({}); name one with target", targets.join(", ")))
-        }
-    }
-}
-
-/// The request for a batch, with the existing outputs of its units read from disk and no
-/// previous source.
-// @lfy def/mcp/main.lfy:request#request:request:92537a4ab2aac8027576852406e446fcb12c7b5b87c96095a386c6d7dac101ed
-fn request_for(program: &Program, plan: &Plan, batch: &Batch) -> Request {
-    let existing: Vec<Output> = batch
-        .units
+/// The request for a unit, with its existing outputs read from disk, no previous source, no
+/// foreign edits, and made for no hosted compiler.
+// @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
+fn request_for(program: &Program, plan: &Plan, unit: usize) -> Request {
+    let existing: Vec<Output> = plan.units[unit]
+        .outputs
         .iter()
-        .flat_map(|&unit| plan.units[unit].outputs.iter())
         .filter_map(|map| {
             fs::read_to_string(program.workspace.root.join(&map.output))
                 .ok()
@@ -716,29 +711,10 @@ fn request_for(program: &Program, plan: &Plan, batch: &Batch) -> Request {
         })
         .collect();
     // The request is made here rather than handed to the session, so it is no hosted
-    // compiler's request and quotes the interfaces of its dependencies whole. No unit is
-    // given a previous source, so none of them is given a hash-matched one either.
-    // @lfy def/mcp/main.lfy:request#request:request:92537a4ab2aac8027576852406e446fcb12c7b5b87c96095a386c6d7dac101ed
-    generation::request(program, plan, batch, &existing, &BTreeMap::new(), false, &[])
-}
-
-/// The request of the batch that holds a unit.
-// Decision: a unit that is up to date is in no batch, because only planned units are
-// batched; it is requested as a batch of its own, which is the request its batch would
-// be, so a check of an up-to-date unit answers rather than failing.
-// @lfy def/mcp/main.lfy:check#check:check:860750a195c0ff4eb9ed95b87939e831cae5a22fecd5d7efe17858c8f124ff9d
-fn request_of_unit(program: &Program, plan: &Plan, unit: usize) -> Request {
-    match plan.batches.iter().find(|batch| batch.units.contains(&unit)) {
-        Some(batch) => request_for(program, plan, batch),
-        None => request_for(
-            program,
-            plan,
-            &Batch {
-                units: vec![unit],
-                identifier: plan.units[unit].stem.clone(),
-            },
-        ),
-    }
+    // compiler's request and quotes the interfaces of its dependencies whole. The unit is
+    // given no previous source, so no hash-matched one either, and no foreign edit.
+    // @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
+    generation::request(program, plan, unit, &existing, None, false, false, &[])
 }
 
 /// One marker spelled as a marker line spells it after `@lfy` and a space.
@@ -868,6 +844,7 @@ trait target: `What every layer of a target is` {
 }
 trait targetLanguage extends target: `What its code is written in` {
   $fileExtension: `The extension of its files` = string;
+  $stubLine: `The statement that replaces a body to stub it` = string | undefined;
 }
 trait targetRuntime extends target: `What runs its code` { }
 trait targetPlatform extends target: `Where it runs` { }
@@ -899,6 +876,18 @@ function targetOf(target: Target): `Gives a record written in braces its type` -
 trait lang extends targetLanguage: `Rust` {
   .fileExtension = \"rs\";
   .markerComment = \"//\";
+}
+trait flat extends targetLayout: `One file per unit` { }
+trait cargo extends targetEcosystem: `Crates from crates.io` {
+  .ecosystem = \"cargo\";
+}
+";
+    /// The same roles with a stub line set on the language.
+    const STUBBED_ROLES: &str = "\
+trait lang extends targetLanguage: `Rust` {
+  .fileExtension = \"rs\";
+  .markerComment = \"//\";
+  .stubLine = 'todo!(\"elfie stub: {{unit}}: {{reason}}\")';
 }
 trait flat extends targetLayout: `One file per unit` { }
 trait cargo extends targetEcosystem: `Crates from crates.io` {
@@ -1031,7 +1020,7 @@ global@targets.add(rust);
     /// The name of every tool a compiler's hosted session is offered when its target has no
     /// command: every fn carrying `tool` and not `commandTool` but `report` and
     /// `reportMany`.
-    const COMPILER_TOOLS: [&str; 19] = [
+    const COMPILER_TOOLS: [&str; 21] = [
         "elfie_problems",
         "elfie_find",
         "elfie_entity",
@@ -1043,6 +1032,8 @@ global@targets.add(rust);
         "elfie_task",
         "elfie_dependency",
         "elfie_check",
+        "elfie_reach",
+        "elfie_touch",
         "elfie_mark",
         "elfie_submit",
         "elfie_output",
@@ -1076,7 +1067,7 @@ global@targets.add(rust);
     ];
 
     /// The name of every fn of this module that carries `tool`, in declaration order.
-    const EVERY_TOOL: [&str; 25] = [
+    const EVERY_TOOL: [&str; 27] = [
         "elfie_problems",
         "elfie_find",
         "elfie_entity",
@@ -1088,6 +1079,8 @@ global@targets.add(rust);
         "elfie_task",
         "elfie_dependency",
         "elfie_check",
+        "elfie_reach",
+        "elfie_touch",
         "elfie_mark",
         "elfie_submit",
         "elfie_output",
@@ -1181,11 +1174,84 @@ global@targets.add(rust);
         let planned = plan_of(&session);
         let (workspace, plan) = (planned.workspace(), &planned.plan);
         let index = resolve_unit(workspace, plan, stem, None).unwrap();
-        let request = request_of_unit(&planned.program, plan, index);
+        let request = request_for(&planned.program, plan, index);
         let (outputs, elsewhere) = outputs_of(workspace, plan, index);
-        let verdict = generation::accept(&planned.program, plan, &request, index, &outputs, &[], &elsewhere);
+        let verdict = generation::accept(
+            &planned.program,
+            plan,
+            &request,
+            index,
+            &outputs,
+            &[],
+            &elsewhere,
+            None,
+            &BTreeMap::new(),
+        );
         assert!(verdict.accepted, "{:?}", verdict.problems);
         generation::write_source_maps(&fixture.root.join("out/source-map.json"), &verdict.source_maps).unwrap();
+    }
+
+    /// Units with stems accepted against the outputs on disk, with the source maps of all of
+    /// them recorded together in the target's output directory.
+    fn record_units(fixture: &Fixture, stems: &[&str]) {
+        let session = fixture.session();
+        let planned = plan_of(&session);
+        let (workspace, plan) = (planned.workspace(), &planned.plan);
+        let mut maps: Vec<SourceMap> = Vec::new();
+        for stem in stems {
+            let index = resolve_unit(workspace, plan, stem, None).unwrap();
+            let request = request_for(&planned.program, plan, index);
+            let (outputs, elsewhere) = outputs_of(workspace, plan, index);
+            let verdict = generation::accept(
+                &planned.program,
+                plan,
+                &request,
+                index,
+                &outputs,
+                &[],
+                &elsewhere,
+                None,
+                &BTreeMap::new(),
+            );
+            assert!(verdict.accepted, "{stem}: {:?}", verdict.problems);
+            maps.extend(verdict.source_maps);
+        }
+        generation::write_source_maps(&fixture.root.join("out/source-map.json"), &maps).unwrap();
+    }
+
+    /// The output of `b` in [`reached_project`] as it was accepted: the region of `G` on
+    /// lines 1 to 6, and that of `H` on lines 7 to 10.
+    const REACHED_B: &str = "// @lfy def/b.lfy:G\npub struct G {\n    pub one: u8,\n    pub two: u8,\n    pub three: u8,\n}\n// @lfy def/b.lfy:H\npub fn h() -> u8 {\n    1\n}\n";
+
+    /// A project of three accepted units `a`, `b`, and `c`, for a target whose language sets
+    /// a stub line, and a session bound to a compiler run of `a`, whose reach is `b` and `c`.
+    fn reached_project() -> (Fixture, Session) {
+        let fixture = Fixture::new();
+        fixture
+            .with_rust_target()
+            .write("def/roles.lfy", STUBBED_ROLES)
+            .write("def/a.lfy", "d A: `An A` { }\n")
+            .write("def/b.lfy", "d G: `A G` { }\nd H: `An H` { }\n")
+            .write("def/c.lfy", "d C: `A C` { }\n")
+            .write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A;\n")
+            .write("out/b.rs", REACHED_B)
+            .write("out/c.rs", "// @lfy def/c.lfy:C\npub struct C;\n");
+        record_units(&fixture, &["a", "b", "c"]);
+        let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("a")));
+        (fixture, session)
+    }
+
+    /// The edits the run of `a` in [`reached_project`] makes to the output of `b`: a fix of
+    /// three lines in the region of `G`, and a stub of the body of `H`.
+    fn edit_reached(fixture: &Fixture) {
+        fixture.write(
+            "out/b.rs",
+            &REACHED_B
+                .replace("one", "uno")
+                .replace("two", "dos")
+                .replace("three", "tres")
+                .replace("    1\n", "    todo!(\"elfie stub: a: later\")\n"),
+        );
     }
 
     /// A project whose unit `b` has an accepted output, with the source maps recorded in
@@ -1219,54 +1285,64 @@ global@targets.add(rust);
         fixture
     }
 
-    /// A binding for a role, bound to the batch of a fixture with an identifier or, with
-    /// none named, to the global review. A verifier's binding carries the review request
-    /// that verifier would have been run with.
-    fn binding_of(fixture: &Fixture, role: Role, batch: Option<&str>) -> Binding {
+    /// Every file of the output directory of the target of the unit at an index of a plan,
+    /// as it is on disk now: what a compile gives a binding as the files before the run.
+    fn files_now(workspace: &Workspace, plan: &Plan, index: usize) -> Vec<Output> {
+        let (mut found, elsewhere) = outputs_of(workspace, plan, index);
+        found.extend(elsewhere);
+        found.sort_by(|one, other| one.path.cmp(&other.path));
+        found
+    }
+
+    /// A binding for a role, bound to the unit of a fixture with a stem or, with none
+    /// named, to the global review. A verifier's binding carries the review request that
+    /// verifier would have been run with; a compiler's the request and the files before the
+    /// run.
+    fn binding_of(fixture: &Fixture, role: Role, unit: Option<&str>) -> Binding {
         let session = fixture.session();
         let planned = plan_of(&session);
-        let named = batch.map(|name| {
-            planned
-                .plan
-                .batches
-                .iter()
-                .find(|one| one.identifier == name)
-                .cloned()
-                .unwrap_or_else(|| panic!("a batch named {name}"))
+        let named = unit.map(|stem| {
+            resolve_unit(planned.workspace(), &planned.plan, stem, None).unwrap_or_else(|_| panic!("a unit named {stem}"))
         });
-        let review = match (role, &named) {
-            (Role::Verifier, Some(batch)) => Some(generation::review(
+        let review = match (role, named) {
+            (Role::Verifier, Some(index)) => Some(generation::review(
                 &planned.program,
                 &planned.plan,
-                batch,
+                index,
                 &planned.maps,
                 None,
                 &[],
             )),
             _ => None,
         };
-        // A compiler run is given the request the compile made for its batch, as the CLI
+        // A compiler run is given the request the compile made for its unit, as the CLI
         // gives it one.
-        // @lfy def/mcp/main.lfy:request#request:request:af5eea7b402d3ed59ce0541ca71250ff92ea2e142a768f4b98af9e9bc4f348c9
-        let request = match (role, &named) {
-            (Role::Compiler, Some(batch)) => Some(generation::request(
+        // @lfy def/mcp/main.lfy:request#request:request:2f93fec1bd3f115335d968e64f7a1aefff036a5ba850d09ae602a280cc9d52ad
+        let request = match (role, named) {
+            (Role::Compiler, Some(index)) => Some(generation::request(
                 &planned.program,
                 &planned.plan,
-                batch,
+                index,
                 &[],
-                &BTreeMap::new(),
+                None,
                 true,
+                false,
                 &[],
             )),
             _ => None,
         };
+        let before = match (role, named) {
+            (Role::Compiler, Some(index)) => Some(files_now(planned.workspace(), &planned.plan, index)),
+            _ => None,
+        };
         Binding {
             role,
-            batch: named,
+            unit: named,
             directory: fixture.root.clone(),
             plan: planned.plan.clone(),
             program: planned.program.clone(),
             request,
+            before,
             review,
             source_maps: Vec::new(),
         }
@@ -1282,6 +1358,7 @@ global@targets.add(rust);
             binding: Some(binding),
             reviews: Mutex::new(Vec::new()),
             submission: Mutex::new(None),
+            touches: Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -1318,10 +1395,10 @@ global@targets.add(rust);
         )
     }
 
-    /// A session bound to a compiler run of the only batch of a fixture, with the source
-    /// each unit's outputs were generated from where one is given, so that the request it is
-    /// handed knows which criteria and tests were removed.
-    // @lfy def/mcp/main.lfy:task#task:compilerTool:1e78463366ba8fbbfbec5fc142e181f67f7b2aead81f243e58972718f0a441a8
+    /// A session bound to a compiler run of the first planned unit of a fixture, with the
+    /// source its outputs were generated from where one is given for its file, so that the
+    /// request it is handed knows which criteria and tests were removed.
+    // @lfy def/mcp/main.lfy:task#task:compilerTool:53be6121fea61b9a15629426fe7a361a2087f814c2a67975b1a428e724574063
     fn compiling(fixture: &Fixture, previous: &[(&str, &str)]) -> Session {
         compiling_with(fixture, previous, &[])
     }
@@ -1329,36 +1406,94 @@ global@targets.add(rust);
     /// The same, with the paths of the units whose previous source is only their
     /// hash-matched one, which the request reads nothing of as a rewording and whose
     /// removed criteria and tests it can quote neither the place nor the text of.
-    // @lfy def/mcp/main.lfy:task#task:task:de5f7c473194374bfa34413eb23292d2536ef397d3077ff1897532c68ab7052d
+    // @lfy def/mcp/main.lfy:task#task:task:66f11c93795ee4ea2822907afd33f054e3589b0287b19b0b618c695e86e32fbb
     fn compiling_with(fixture: &Fixture, previous: &[(&str, &str)], hash_matched: &[&str]) -> Session {
+        compiling_edited(fixture, previous, hash_matched, &[])
+    }
+
+    /// The same, with the foreign edits the request is handed.
+    fn compiling_edited(
+        fixture: &Fixture,
+        previous: &[(&str, &str)],
+        hash_matched: &[&str],
+        foreign_edits: &[ForeignEdit],
+    ) -> Session {
         let session = fixture.session();
         let planned = plan_of(&session);
-        let batch = planned.plan.batches.first().cloned().expect("one batch");
-        let was: BTreeMap<String, String> = previous
+        let index = (0..planned.plan.units.len())
+            .find(|&index| planned.plan.units[index].reason.is_some())
+            .expect("one planned unit");
+        let path = planned.workspace().files[planned.plan.units[index].file].path.clone();
+        let was = previous.iter().find(|(of, _)| *of == path).map(|(_, text)| *text);
+        let existing: Vec<Output> = planned.plan.units[index]
+            .outputs
             .iter()
-            .map(|(path, text)| ((*path).to_string(), (*text).to_string()))
-            .collect();
-        let existing: Vec<Output> = batch
-            .units
-            .iter()
-            .flat_map(|&unit| planned.plan.units[unit].outputs.iter())
             .filter_map(|map| {
                 fs::read_to_string(fixture.root.join(&map.output))
                     .ok()
                     .map(|text| Output { path: map.output.clone(), text })
             })
             .collect();
-        let named: Vec<String> = hash_matched.iter().map(|path| (*path).to_string()).collect();
-        let request = generation::request(&planned.program, &planned.plan, &batch, &existing, &was, true, &named);
+        let request = generation::request(
+            &planned.program,
+            &planned.plan,
+            index,
+            &existing,
+            was,
+            true,
+            hash_matched.contains(&path.as_str()),
+            foreign_edits,
+        );
+        let before = files_now(planned.workspace(), &planned.plan, index);
         bound(
             fixture,
             Binding {
                 role: Role::Compiler,
-                batch: Some(batch),
+                unit: Some(index),
                 directory: fixture.root.clone(),
                 plan: planned.plan.clone(),
                 program: planned.program.clone(),
                 request: Some(request),
+                before: Some(before),
+                review: None,
+                source_maps: Vec::new(),
+            },
+        )
+    }
+
+    /// A session bound to a compiler run of one accepted unit that another unit's edits made
+    /// planned as touched, handed those edits, with its source unchanged since acceptance.
+    // @lfy def/mcp/main.lfy:task#task:task:149f88e6e3ce26a293b2ea7885c0696d5b8207e28d7993f0486dbe0339826da9
+    fn compiling_touched(fixture: &Fixture, stem: &str, foreign_edits: &[ForeignEdit]) -> Session {
+        let session = fixture.session();
+        let planned = plan_of(&session);
+        let mut plan = planned.plan.clone();
+        let index = resolve_unit(planned.workspace(), &plan, stem, None).unwrap();
+        plan.units[index].reason = Some(generation::Reason::Touched);
+        let path = planned.workspace().files[plan.units[index].file].path.clone();
+        let was = fs::read_to_string(fixture.root.join(&path)).unwrap();
+        let existing: Vec<Output> = plan.units[index]
+            .outputs
+            .iter()
+            .filter_map(|map| {
+                fs::read_to_string(fixture.root.join(&map.output))
+                    .ok()
+                    .map(|text| Output { path: map.output.clone(), text })
+            })
+            .collect();
+        let request =
+            generation::request(&planned.program, &plan, index, &existing, Some(&was), true, false, foreign_edits);
+        let before = files_now(planned.workspace(), &plan, index);
+        bound(
+            fixture,
+            Binding {
+                role: Role::Compiler,
+                unit: Some(index),
+                directory: fixture.root.clone(),
+                plan,
+                program: planned.program.clone(),
+                request: Some(request),
+                before: Some(before),
                 review: None,
                 source_maps: Vec::new(),
             },

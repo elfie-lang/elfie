@@ -4,8 +4,8 @@
 use super::*;
 
 /// `def/a.lfy` declaring `A` with two criteria and one test, with `src/a.rs` generated
-/// for it, and the plan and the batch of its one unit.
-fn a_to_review() -> (Fixture, Program, Plan, Batch) {
+/// for it, and the plan and the index of its one unit.
+fn a_to_review() -> (Fixture, Program, Plan, usize) {
     let fixture = Fixture::with_rust_target();
     fixture.write(
         "def/a.lfy",
@@ -16,11 +16,7 @@ fn a_to_review() -> (Fixture, Program, Plan, Batch) {
     assert_bound(&program.workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let (index, _) = unit_of(&program.workspace, &plan, "def/a.lfy");
-    let batch = Batch {
-        units: vec![index],
-        identifier: "a".to_string(),
-    };
-    (fixture, program, plan, batch)
+    (fixture, program, plan, index)
 }
 
 /// The text of the whole of that project's one output, which the hash of every criterion
@@ -51,25 +47,25 @@ fn a_requirement_ids(program: &Program, plan: &Plan) -> (Vec<String>, Vec<String
     requirement_ids(&program.files[unit.lowered], unit.entities[0])
 }
 
-// @lfy def/generation/main.lfy:review#review:review:d24fcd3eb666702ff962f94907d5ca24dc866b3b9eccb1d1480ef5b90c8a1243
+// @lfy def/generation/main.lfy:review#review:review:1539ee32577f98ca87dae778fb98bd55c8110cc7b0a02be6306d516ef9a4f321
 #[test]
 fn a_review_request_lists_every_criterion_with_its_place_and_names_every_region() {
-    let (_fixture, program, plan, batch) = a_to_review();
+    let (_fixture, program, plan, under_review) = a_to_review();
     let maps = a_source_map();
-    let request = review(&program, &plan, &batch, &maps, None, &[]);
-    // @lfy def/generation/main.lfy:review#review:review:197b2d0e6f7458d538f3cc8d8568be98a60636ca07026cd2eeb1d5933910f156
-    assert_eq!(request.batch, Some(batch.clone()));
+    let request = review(&program, &plan, under_review, &maps, None, &[]);
+    // @lfy def/generation/main.lfy:review#review:review:88af78276d6f8df3f4a8999ca87628c8de2e6a194a2718d39aa64e803f157c0d
+    assert_eq!(request.unit, Some(under_review));
     let text = &request.instructions;
-    // The heading names the batch and the target.
+    // The heading names the unit's stem and the target.
     // @lfy def/generation/main.lfy:review
     assert!(
-        text.contains("# Reviewing the batch `a` for the target `rust`"),
+        text.contains("# Reviewing the unit `a` for the target `rust`"),
         "{text}"
     );
     assert!(text.contains("#### `A` (data: DataDeclaration)"), "{text}");
     assert!(text.contains("Definition: An a"), "{text}");
     // The region is named and none of its lines is written.
-    // @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
+    // @lfy def/generation/main.lfy:review#review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1
     // @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
     assert!(text.contains("`src/a.rs:1-4`"), "{text}");
     for line in A_REGION.lines() {
@@ -97,14 +93,14 @@ fn a_review_request_lists_every_criterion_with_its_place_and_names_every_region(
     assert!(text.contains("A global one is reviewed once"), "{text}");
     // Every criterion and every test is asked about, in the order they are listed, and
     // nothing is carried without a record to carry.
-    // @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
+    // @lfy def/generation/main.lfy:review#review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033
     assert_eq!(
         request.asked,
         [criteria[0].clone(), criteria[1].clone(), tests[0].clone()]
     );
     assert!(request.carried.is_empty(), "{:?}", request.carried);
     // Each of them is hashed over the lines of the region of the entity it belongs to.
-    // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+    // @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
     let region = source_hash(A_REGION);
     for id in &request.asked {
         assert_eq!(request.hashes[id], region, "{id}");
@@ -144,10 +140,10 @@ fn a_review_request_lists_every_criterion_with_its_place_and_names_every_region(
 /// Two regions of one entity that meet — the second beginning on the line after the end
 /// of the first, in the same output — are given as one range, while a gap between two of
 /// them, and a region of another output, keep them apart.
-// @lfy def/generation/main.lfy:review#review:review:b999cb65ba87abe04347ef342c28070a2ffdbbee95641f03c9de5cea314a33ea
+// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 #[test]
 fn two_regions_that_meet_in_one_output_are_given_as_one_range() {
-    let (_fixture, program, plan, batch) = a_to_review();
+    let (_fixture, program, plan, under_review) = a_to_review();
     let map = |output: &str, markers: Vec<Marker>| SourceMap {
         output: output.to_string(),
         markers,
@@ -164,7 +160,7 @@ fn two_regions_that_meet_in_one_output_are_given_as_one_range() {
         ),
         map("src/b.rs", vec![entity_marker(8, "A", 1, 9)]),
     ];
-    let text = review(&program, &plan, &batch, &maps, None, &[]).instructions;
+    let text = review(&program, &plan, under_review, &maps, None, &[]).instructions;
     assert!(text.contains("`src/a.rs:1-4`"), "{text}");
     assert!(!text.contains("`src/a.rs:1-2`"), "{text}");
     assert!(!text.contains("`src/a.rs:3-4`"), "{text}");
@@ -177,10 +173,10 @@ fn two_regions_that_meet_in_one_output_are_given_as_one_range() {
 /// A criterion whose record says it was satisfied against the code the entity's regions
 /// still hash to is carried rather than listed; one whose record says anything else is
 /// listed again.
-// @lfy def/generation/main.lfy:review#review:review:b7aa1df4bc363d68c066212b46c69d99c6ef6a81f69611ea4272b154315f24c0
+// @lfy def/generation/main.lfy:review#review:review:331030ac2ff8059882ba1d6d951e96c529a0aff56edda0112a546d30912cd9a6
 #[test]
 fn a_criterion_satisfied_against_the_code_as_it_stands_is_carried() {
-    let (_fixture, program, plan, batch) = a_to_review();
+    let (_fixture, program, plan, under_review) = a_to_review();
     let maps = a_source_map();
     let (criteria, tests) = a_requirement_ids(&program, &plan);
     let hash = source_hash(A_REGION);
@@ -196,28 +192,81 @@ fn a_criterion_satisfied_against_the_code_as_it_stands_is_carried() {
             hash: hash.clone(),
         },
     ];
-    let request = review(&program, &plan, &batch, &maps, None, &records);
+    let request = review(&program, &plan, under_review, &maps, None, &records);
     // The satisfied one is carried with its record, and only the other two are asked.
-    // @lfy def/generation/main.lfy:review#review:review:32e025cd22c3a749bbc3afba52f86cb9b26ac41d0f4a822a6e5e00639e557312
+    // @lfy def/generation/main.lfy:review#review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d
     assert_eq!(request.asked, [criteria[1].clone(), tests[0].clone()]);
     assert_eq!(request.carried, [records[0].clone()]);
     let text = &request.instructions;
     assert!(!text.contains(&criteria[0]), "{text}");
     assert!(text.contains(&criteria[1]), "{text}");
     // Every criterion and test of the unit is hashed, carried or not.
-    // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+    // @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
     assert_eq!(request.hashes.len(), 3, "{:?}", request.hashes);
     assert_eq!(request.hashes[&criteria[0]], hash);
+}
+
+/// A touched unit reviewed with its records in the copy its change set is worked in: the
+/// entity whose region another unit's fix changed is listed again, and the one no edit
+/// touched is carried.
+// @lfy def/generation/main.lfy:review#review:review:67ee9ec99448901eb17cdb7b76de2ade931d541db70a75b4279e12a40b128279
+#[test]
+fn a_touched_unit_is_reviewed_on_the_entity_the_fix_changed_alone() {
+    let fixture = Fixture::with_rust_target();
+    fixture.write(
+        "def/a.lfy",
+        "d A: `An a` {\n  @acceptanceCriteria.add({ behavior = `A holds` });\n}\n\n\
+         d C: `A c` {\n  @acceptanceCriteria.add({ behavior = `C holds` });\n}\n",
+    );
+    let program = fixture.program();
+    assert_bound(&program.workspace);
+    let plan = plan_of(&program, &[], &[], &[]);
+    let (index, unit) = unit_of(&program.workspace, &plan, "def/a.lfy");
+    assert_eq!(names(&program.workspace, &unit.entities), ["A", "C"]);
+    let ids: Vec<String> = unit
+        .requirements(&program)
+        .iter()
+        .map(|requirement| requirement.id().to_string())
+        .collect();
+    // The copy of the root holds src/a.rs as the fix left it; the root holds nothing.
+    let copy = fixture.root.join("copy");
+    fs::create_dir_all(copy.join("src")).unwrap();
+    fs::write(
+        copy.join("src/a.rs"),
+        "// @lfy def/a.lfy:A\nfixed one\nfixed two\n// @lfy def/a.lfy:C\nthree\nfour\n",
+    )
+    .unwrap();
+    let maps = vec![SourceMap {
+        markers: vec![entity_marker(1, "A", 1, 3), entity_marker(4, "C", 5, 6)],
+        ..a_source_map().remove(0)
+    }];
+    let records = vec![
+        ReviewRecord {
+            id: ids[0].clone(),
+            status: ReviewStatus::Satisfied,
+            hash: source_hash("one\ntwo\n"),
+        },
+        ReviewRecord {
+            id: ids[1].clone(),
+            status: ReviewStatus::Satisfied,
+            hash: source_hash("three\nfour\n"),
+        },
+    ];
+    let request = review(&program, &plan, index, &maps, Some(&copy), &records);
+    // @lfy def/generation/main.lfy:review#review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033
+    assert_eq!(request.asked, [ids[0].clone()]);
+    // @lfy def/generation/main.lfy:review#review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d
+    assert_eq!(request.carried, [records[1].clone()]);
 }
 
 /// A marker comment is no part of the hash of a region, and the white space before it
 /// goes with it, so a line that holds nothing else adds nothing: moving a reworded
 /// criterion's markers to its new id leaves every hash of the entity as it was. The code
 /// a marker trails, and a comment that is prose, are code and are hashed.
-// @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
 #[test]
 fn a_marker_comment_is_no_part_of_the_hash_of_a_region() {
-    let (fixture, program, plan, batch) = a_to_review();
+    let (fixture, program, plan, under_review) = a_to_review();
     let (criteria, _) = a_requirement_ids(&program, &plan);
     let maps = vec![SourceMap {
         markers: vec![entity_marker(1, "A", 1, 6)],
@@ -227,7 +276,7 @@ fn a_marker_comment_is_no_part_of_the_hash_of_a_region() {
         "src/a.rs",
         "  // @lfy def/a.lfy:A\nalpha\nbeta // @lfy def/a.lfy:A.x\n// a comment\ngamma\ndelta\n",
     );
-    let request = review(&program, &plan, &batch, &maps, None, &[]);
+    let request = review(&program, &plan, under_review, &maps, None, &[]);
     let code = source_hash("alpha\nbeta\n// a comment\ngamma\ndelta\n");
     assert_eq!(request.hashes[&criteria[0]], code);
     // The same code with a criterion's id spelled on one of those markers hashes to the
@@ -240,14 +289,14 @@ fn a_marker_comment_is_no_part_of_the_hash_of_a_region() {
             criteria[0]
         ),
     );
-    let moved = review(&program, &plan, &batch, &maps, None, &[]);
+    let moved = review(&program, &plan, under_review, &maps, None, &[]);
     assert_eq!(moved.hashes[&criteria[0]], code);
     // A line of code that changed does change it.
     fixture.write(
         "src/a.rs",
         "  // @lfy def/a.lfy:A\nalpha\nbeta // @lfy def/a.lfy:A.x\n// a comment\ngamma\nepsilon\n",
     );
-    let other = review(&program, &plan, &batch, &maps, None, &[]);
+    let other = review(&program, &plan, under_review, &maps, None, &[]);
     assert_ne!(other.hashes[&criteria[0]], code);
 }
 
@@ -257,7 +306,7 @@ fn a_marker_comment_is_no_part_of_the_hash_of_a_region() {
 // @lfy def/generation/main.lfy:review#review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2
 #[test]
 fn a_record_of_the_id_a_criterion_replaced_carries_nothing() {
-    let (_fixture, program, plan, batch) = a_to_review();
+    let (_fixture, program, plan, under_review) = a_to_review();
     let maps = a_source_map();
     let (criteria, tests) = a_requirement_ids(&program, &plan);
     // The id the second criterion would have replaced, judged against the very code the
@@ -267,7 +316,7 @@ fn a_record_of_the_id_a_criterion_replaced_carries_nothing() {
         status: ReviewStatus::Satisfied,
         hash: source_hash(A_REGION),
     }];
-    let request = review(&program, &plan, &batch, &maps, None, &records);
+    let request = review(&program, &plan, under_review, &maps, None, &records);
     assert_eq!(
         request.asked,
         [criteria[0].clone(), criteria[1].clone(), tests[0].clone()]
@@ -277,10 +326,10 @@ fn a_record_of_the_id_a_criterion_replaced_carries_nothing() {
 
 /// A record made against code the entity's regions no longer hash to carries nothing:
 /// the criterion is listed again.
-// @lfy def/generation/main.lfy:review#review:review:cb4d48355ae14509cede19b75e670e8b67e1a03aff85516a3ad84b640cfc14ba
+// @lfy def/generation/main.lfy:review#review:review:29af26a8687b4c42aeccb91116bd72d08a3b1df9e18ea8413bdae5a61d114869
 #[test]
 fn a_record_of_code_that_changed_carries_nothing() {
-    let (_fixture, program, plan, batch) = a_to_review();
+    let (_fixture, program, plan, under_review) = a_to_review();
     let maps = a_source_map();
     let (criteria, tests) = a_requirement_ids(&program, &plan);
     let records = vec![ReviewRecord {
@@ -288,8 +337,8 @@ fn a_record_of_code_that_changed_carries_nothing() {
         status: ReviewStatus::Satisfied,
         hash: source_hash("alpha\nbeta\ngamma\nepsilon\n"),
     }];
-    let request = review(&program, &plan, &batch, &maps, None, &records);
-    // @lfy def/generation/main.lfy:review#review:review:5ff1db3eab7473b565a623216b6a86f264541a52a33fc4c939e828c7f537c783
+    let request = review(&program, &plan, under_review, &maps, None, &records);
+    // @lfy def/generation/main.lfy:review#review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033
     assert_eq!(
         request.asked,
         [criteria[0].clone(), criteria[1].clone(), tests[0].clone()]
@@ -297,12 +346,12 @@ fn a_record_of_code_that_changed_carries_nothing() {
     assert!(request.carried.is_empty(), "{:?}", request.carried);
 }
 
-/// With every criterion and test of the batch carried, the instructions are the heading
+/// With every criterion and test of the unit carried, the instructions are the heading
 /// and one line saying nothing needs review, and no protocol.
-// @lfy def/generation/main.lfy:review#review:review:e0ecb428c24270ba6896549746ba51b216cbdf61967b6e9436de9b2b716b455c
+// @lfy def/generation/main.lfy:review#review:review:93d9b5acfbd7c0036df3f84c0e174e83857f5908e82506f9a878403fa4ed4b52
 #[test]
-fn a_batch_whose_every_verdict_is_carried_needs_no_review() {
-    let (_fixture, program, plan, batch) = a_to_review();
+fn a_unit_whose_every_verdict_is_carried_needs_no_review() {
+    let (_fixture, program, plan, under_review) = a_to_review();
     let maps = a_source_map();
     let (criteria, tests) = a_requirement_ids(&program, &plan);
     let hash = source_hash(A_REGION);
@@ -315,17 +364,17 @@ fn a_batch_whose_every_verdict_is_carried_needs_no_review() {
             hash: hash.clone(),
         })
         .collect();
-    let request = review(&program, &plan, &batch, &maps, None, &records);
-    // @lfy def/generation/main.lfy:review#review:review:5133eddf9b981ba9bac41113779c58b491cedfbc67e2e3742ac236b381a254dc
+    let request = review(&program, &plan, under_review, &maps, None, &records);
+    // @lfy def/generation/main.lfy:review#review:review:0d8c71e5e6a2fc7df9307c06e3d90e10a1982484663081fdffc8b2b46c7f029b
     assert!(request.asked.is_empty(), "{:?}", request.asked);
     assert_eq!(request.carried.len(), 3, "{:?}", request.carried);
     let text = &request.instructions;
     assert!(
-        text.contains("# Reviewing the batch `a` for the target `rust`"),
+        text.contains("# Reviewing the unit `a` for the target `rust`"),
         "{text}"
     );
-    assert!(text.contains("Nothing in the batch needs review"), "{text}");
-    // @lfy def/generation/main.lfy:review#review:review:bb873e216e23bb2a7659d3b1888588387a1f7980df4fac536938ec32d6d42b8d
+    assert!(text.contains("Nothing in the unit needs review"), "{text}");
+    // @lfy def/generation/main.lfy:review#review:review:8067f4b70be69f26ef14e51b27d063565e561dc22f54a024158105cad82cc9c5
     assert!(!text.contains("#### `A`"), "{text}");
     assert!(!text.contains("src/a.rs"), "{text}");
     assert!(!text.contains("ELFIE: REVIEWED"), "{text}");
@@ -333,7 +382,7 @@ fn a_batch_whose_every_verdict_is_carried_needs_no_review() {
 
 /// A review excerpts only what the unit's own file generated, and a region a marker of
 /// a second source map names again is repeated as its path and lines alone.
-// @lfy def/generation/main.lfy:review#review:review:e67f26bdccf8eaa77ebbfe85b9da0b83bf73bff7b2cad901af69d8b4797ad76e
+// @lfy def/generation/main.lfy:review#review:review:5923148a7793fded1531a97ff6a9c369389688e0a1ca8f50ed586a04dcee3b46
 #[test]
 fn a_review_holds_the_regions_of_its_own_file_alone() {
     let fixture = Fixture::with_rust_target();
@@ -349,10 +398,7 @@ fn a_review_holds_the_regions_of_its_own_file_alone() {
     assert_bound(&workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
-    let batch = Batch {
-        units: vec![index],
-        identifier: "a".to_string(),
-    };
+    let under_review = index;
     let map = |output: &str, source: &str, markers: Vec<Marker>| SourceMap {
         target: "rust".to_string(),
         output: output.to_string(),
@@ -386,13 +432,13 @@ fn a_review_holds_the_regions_of_its_own_file_alone() {
         ),
         map("src/b.rs", "def/b.lfy", vec![marker("def/b.lfy", 2)]),
     ];
-    let request = review(&program, &plan, &batch, &maps, None, &[]);
+    let request = review(&program, &plan, under_review, &maps, None, &[]);
     let text = &request.instructions;
     // `def/b.lfy` declares an `A` of its own, and none of its regions comes.
     assert!(!text.contains("src/b.rs"), "{text}");
     // The region of the unit's own file is named, once per map that records it, and the
     // hash is taken over its lines each time it is named.
-    // @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
+    // @lfy def/generation/main.lfy:review#review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1
     assert_eq!(text.matches("`src/a.rs:1-4`").count(), 2, "{text}");
     let whole = "one\ntwo\nthree\nfour\n";
     let id = request.asked.first().expect("one criterion");
@@ -401,7 +447,7 @@ fn a_review_holds_the_regions_of_its_own_file_alone() {
 
 /// An entity moved into a unit is marked with the file that declares it, not with the
 /// unit's own file, so its regions are the ones that file's markers name.
-// @lfy def/generation/main.lfy:review#review:review:0f43e9772c4aad39520e42801704e6fe6e9115829e267701e251b74908849820
+// @lfy def/generation/main.lfy:review#review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1
 #[test]
 fn a_review_holds_the_regions_of_an_entity_moved_into_the_unit() {
     let fixture = Fixture::with_rust_target();
@@ -427,10 +473,7 @@ fn a_review_holds_the_regions_of_an_entity_moved_into_the_unit() {
     let (index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
     // `C` moved into the unit of `def/b.lfy` from `def/a.lfy`.
     assert_eq!(names(&workspace, &unit.entities), ["B", "C"]);
-    let batch = Batch {
-        units: vec![index],
-        identifier: "b".to_string(),
-    };
+    let under_review = index;
     let marker = |file: &str, entity: &str, line: usize, end: usize| Marker {
         output_line: line,
         file: file.to_string(),
@@ -456,7 +499,7 @@ fn a_review_holds_the_regions_of_an_entity_moved_into_the_unit() {
             marker("def/a.lfy", "C", 3, 4),
         ],
     }];
-    let request = review(&program, &plan, &batch, &maps, None, &[]);
+    let request = review(&program, &plan, under_review, &maps, None, &[]);
     let text = &request.instructions;
     // Each entity is given the region its own declaring file marks, and nothing else.
     assert!(text.contains("`src/b.rs:1-2`"), "{text}");
@@ -466,7 +509,7 @@ fn a_review_holds_the_regions_of_an_entity_moved_into_the_unit() {
         "{text}"
     );
     // Each entity's criteria are hashed over its own region alone.
-    // @lfy def/generation/main.lfy:review#review:review:e0bf60aeb1708754dc00bf7d49700c16b8706fbcf483a13b9f830882be426100
+    // @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
     assert_eq!(request.asked.len(), 2, "{:?}", request.asked);
     let hashes: Vec<&String> = request
         .asked
@@ -502,11 +545,8 @@ fn a_review_holds_the_criteria_of_an_entity_moved_into_the_unit() {
     let (index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
     // `C` moved into the unit of `def/b.lfy` from `def/a.lfy`.
     assert_eq!(names(&workspace, &unit.entities), ["B", "C"]);
-    let batch = Batch {
-        units: vec![index],
-        identifier: "b".to_string(),
-    };
-    let text = review(&program, &plan, &batch, &[], None, &[]).instructions;
+    let under_review = index;
+    let text = review(&program, &plan, under_review, &[], None, &[]).instructions;
     let at = text
         .find("#### `C`")
         .unwrap_or_else(|| panic!("C's section: {text}"));
@@ -519,10 +559,10 @@ fn a_review_holds_the_criteria_of_an_entity_moved_into_the_unit() {
     assert!(section.contains("C holds x"), "{section}");
 }
 
-/// With no source map for the batch the verifier is given the same instructions with no
+/// With no source map for the unit the verifier is given the same instructions with no
 /// region, so it can only find the criteria unverifiable, and nothing is carried for an
 /// entity that generated none.
-// @lfy def/generation/main.lfy:review#review:review:27423e2750e221d170626aa6fcc294a7f735f5f6f23b78873b0ff4d956969feb
+// @lfy def/generation/main.lfy:review#review:review:600dffcb18a0b3cdd40367085bb183f86996d54d6c7762da18b59bd751034596
 #[test]
 fn a_review_request_without_a_source_map_holds_no_region() {
     let fixture = a_with_a_member_and_a_fn();
@@ -531,14 +571,11 @@ fn a_review_request_without_a_source_map_holds_no_region() {
     assert_bound(&workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
-    let batch = Batch {
-        units: vec![index],
-        identifier: "a".to_string(),
-    };
+    let under_review = index;
     // A record that would carry the criterion if its entity had a region carries
     // nothing, since there is no code whose sameness could stand for the verdict.
     // @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
-    let asked = review(&program, &plan, &batch, &[], None, &[]).asked;
+    let asked = review(&program, &plan, under_review, &[], None, &[]).asked;
     let records: Vec<ReviewRecord> = asked
         .iter()
         .map(|id| ReviewRecord {
@@ -547,7 +584,7 @@ fn a_review_request_without_a_source_map_holds_no_region() {
             hash: source_hash(""),
         })
         .collect();
-    let request = review(&program, &plan, &batch, &[], None, &records);
+    let request = review(&program, &plan, under_review, &[], None, &records);
     assert_eq!(request.asked, asked);
     assert!(request.carried.is_empty(), "{:?}", request.carried);
     let text = &request.instructions;
@@ -574,13 +611,10 @@ fn a_region_whose_output_cannot_be_read_adds_no_text_to_a_hash() {
     assert_bound(&workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let (index, _) = unit_of(&workspace, &plan, "def/a.lfy");
-    let batch = Batch {
-        units: vec![index],
-        identifier: "a".to_string(),
-    };
+    let under_review = index;
     // Neither `src/a.rs` nor `src/tests.rs` was written, so neither can be read.
     let maps = two_source_maps();
-    let request = review(&program, &plan, &batch, &maps, None, &[]);
+    let request = review(&program, &plan, under_review, &maps, None, &[]);
     let text = &request.instructions;
     assert!(text.contains("`src/a.rs:20-40`"), "{text}");
     assert!(text.contains("`src/tests.rs:1-11`"), "{text}");
@@ -594,7 +628,7 @@ fn a_region_whose_output_cannot_be_read_adds_no_text_to_a_hash() {
 
 /// One global criterion, whose id two outputs name in a marker: it is given once with
 /// its id and its place, then where each of its two regions is, then the protocol.
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:5e1c902e7ffa61797f046c11f8967257a21d3e532b41ab323a10168ce9b2902f
+// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:10afbcf8a7a4d4bfbeb07d0648e6b03f2e305d1a6fd788b1784131a3ea739333
 #[test]
 fn the_global_review_gives_each_global_criterion_once_with_every_region() {
     let fixture = Fixture::with_rust_target();
@@ -632,8 +666,8 @@ fn the_global_review_gives_each_global_criterion_once_with_every_region() {
     };
     let maps = vec![answering("src/a.rs"), answering("src/b.rs")];
     let request = global_review(&program, &maps);
-    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:de84b01e368319ebde8eb693c9242574f7b87c6cdedc5229f53fbdf2a3cdd11d
-    assert_eq!(request.batch, None);
+    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:c913846c41638a67bec9c31d691948d7a0a285ed211c13711ab1bfbb7a47c67b
+    assert_eq!(request.unit, None);
     let text = &request.instructions;
     // @lfy def/generation/main.lfy:globalReview
     assert!(text.contains("# The global review"), "{text}");
@@ -680,7 +714,7 @@ fn the_global_review_gives_each_global_criterion_once_with_every_region() {
 
 /// A global criterion no marker of any output names is listed with a line saying no
 /// unit answered for it, so the verifier finds it unverifiable, never violated.
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:cf70900c69dc27826a7088df39eabf087281927bfee67200cb82f105ccf30db3
+// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:8222ea4a6a9a6f89cc5638b9fd971cd4b2276b001299e8c08a68f0fd51a32ccc
 #[test]
 fn a_global_criterion_no_marker_names_says_no_unit_answered_for_it() {
     let fixture = Fixture::with_rust_target();
@@ -692,7 +726,7 @@ fn a_global_criterion_no_marker_names_says_no_unit_answered_for_it() {
     assert_bound(&program.workspace);
     let request = global_review(&program, &[]);
     let text = &request.instructions;
-    assert_eq!(request.batch, None);
+    assert_eq!(request.unit, None);
     // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2
     assert!(
         text.contains("No unit answered for it, so it cannot be checked against any region."),

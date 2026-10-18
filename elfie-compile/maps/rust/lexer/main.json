@@ -1,6 +1,37 @@
 [
   {
-    "answered": [],
+    "answered": [
+      "lex:lex:015747e825e42ce69407c6e5289e45ef5a111f82dc8bc8fd0dec45f55786e40a",
+      "lex:lex:0c179742c1ae096575971cf29f9596ba3da76eedf30fcbad1c19dd50c4ee0980",
+      "lex:lex:10684fce6b28dcd2b3a14ea0901456423c8bd7eb5a85dc0c2b28526d8bd438cf",
+      "lex:lex:17d7117b296e91576aded6aa38378d5018ad738ecf5f0ead9b23b2e82a4e0233",
+      "lex:lex:18f6c9df7322a74ec16b4864e5e95cfb309ad7e8ec97ff75e2b6afa27dea4e24",
+      "lex:lex:1ead9942fd53c95b2b1c71274c35a3e025ff5f461becaba43405f95cf75f1b5c",
+      "lex:lex:413502655066dc7af90a6ab7d8fd822bbf4f98798a65ff8665754f95ff155ef8",
+      "lex:lex:46fca6c8156b28104c359868042425a2d8c3b4cfe2c561ceedb77767a0ae8962",
+      "lex:lex:548ada476c75f16baed3abd68708b901268a463fdddcaa50c4f7a0b62eb5142c",
+      "lex:lex:5b87bb021c1a03e47d1041e01848583c815a4e612ff482b1df2fb5093bb02908",
+      "lex:lex:6701c7667b12ea5d6bee360e5df095d113aed71bc729ede8b195a053ed58b60b",
+      "lex:lex:705fd2030916df6ab5067c9613d82364d9c18da6e324ec538415ec798828383c",
+      "lex:lex:73a7a4972a85e8de228731064674ba62d23fc532c2c7fc64b823ebde817d129e",
+      "lex:lex:7b9f6253aa23103ccfefec7e416516c2ab9ec93261faf9a4d353cf5811c2328b",
+      "lex:lex:8417070f62f82d1e18d839ed4c019edcdbaa3cb606742e99f2c209da497ddb6a",
+      "lex:lex:891c6b11eadc6cbd3a1b5d861c861e61db82c9401edf65174e86ae127db25f95",
+      "lex:lex:893b54f62abaf4b2b38de8b0456315205a0488651632fad8b13e9e28b143f889",
+      "lex:lex:8fdeb1cd8ac49dea15d154c8a0cca000a0c04f1f1b01d8261559241ca4b28524",
+      "lex:lex:92421842c4920a003ecb9e3d7bfbb92f5b2dc4b9b221e83ebbdf2898e563f1b6",
+      "lex:lex:96ecba469c366db6836b75fe8cb5220c8897d4e2575c25a50318c44bc20d4044",
+      "lex:lex:96f3ebf394d27ee519580d17930046716c6bb98571c66276b16a2f1700506748",
+      "lex:lex:a1033d1d6478ddf6a9273749960180b1c1cf6be09e5612334b6fbe9911fe8d01",
+      "lex:lex:a16b8f611824800aa3e94ae3679cdc0780785c23bffe3d4a42d881d83af149f8",
+      "lex:lex:b9f9675f76955f9159dda31fad7d768cb5c80e56d5eac562d9bdeec8a9ff8f9a",
+      "lex:lex:ba0e7334dc58b81bf802ad9450c071bbbc8f7c906810e26656c14d8f3fc6e357",
+      "lex:lex:cfc52b20fca76e7bb188b9953a5502be8861f166a41e638d6e92c760063e5c8b",
+      "lex:lex:e15077d337136a12a2767335f039724d1cf712f07322052d869e4cb691abb2d1",
+      "lex:lex:e49f5f6a58f5fb306b0a46405f983db1638c4962e9f7cb4b5d1a583da7192a06",
+      "lex:lex:e91ece4e60aef2c042d0d2d9931fb0371765cbb312233c53cfb72436fa714e7d",
+      "lex:lex:fb91d444d42a1275b607e9356599415e9e6f1270854c82b72ee80f4910387d6c"
+    ],
     "dependencies": {
       "def/grammar/main.lfy": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
       "def/grammar/terminals/comment.lfy": "6b9224b89045bf7f7a7ef1bafa923b3625a5140f5fd78ecd2ea66d8489bf12cc",
@@ -14,7 +45,7 @@
       "def/lexer/modes.lfy": "6a44f1b9136cf1a9cbdd1a4bc25d32b910b2929dd83c33976bf0cbd0fb9efc20",
       "def/lexer/traits.lfy": "5a98ea33baef722495f9cc438cea11bf51a287d85a55d748fd0aa22c75545526"
     },
-    "generated": "2026-10-07T06:25:04Z",
+    "generated": "2026-10-17T20:13:35Z",
     "hash": "0b41fb71bb48cd2f0416d02e1104102f3c4341c8e45b6b162e9d76116ada6f3e",
     "markers": [
       {
@@ -109,14 +140,45 @@
       }
     ],
     "output": "crates/elfie-core/src/grammar/ebnf.rs",
-    "requirements": "0edec7d503d400b4721c7a1b3676d5c9555525f94c83ac5591f1d385b22af499",
+    "requirements": "e4ad65c0d7e71003e4b29c9ef8bafd54b9b0fcb2569bc0cd6c3f08864408b170",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "14174e21515f541bfedf18adc1f6544479347854905cf82be196b701e06d7ff3"
   },
   {
-    "answered": [],
+    "answered": [
+      "lex:lex:015747e825e42ce69407c6e5289e45ef5a111f82dc8bc8fd0dec45f55786e40a",
+      "lex:lex:0c179742c1ae096575971cf29f9596ba3da76eedf30fcbad1c19dd50c4ee0980",
+      "lex:lex:10684fce6b28dcd2b3a14ea0901456423c8bd7eb5a85dc0c2b28526d8bd438cf",
+      "lex:lex:17d7117b296e91576aded6aa38378d5018ad738ecf5f0ead9b23b2e82a4e0233",
+      "lex:lex:18f6c9df7322a74ec16b4864e5e95cfb309ad7e8ec97ff75e2b6afa27dea4e24",
+      "lex:lex:1ead9942fd53c95b2b1c71274c35a3e025ff5f461becaba43405f95cf75f1b5c",
+      "lex:lex:413502655066dc7af90a6ab7d8fd822bbf4f98798a65ff8665754f95ff155ef8",
+      "lex:lex:46fca6c8156b28104c359868042425a2d8c3b4cfe2c561ceedb77767a0ae8962",
+      "lex:lex:548ada476c75f16baed3abd68708b901268a463fdddcaa50c4f7a0b62eb5142c",
+      "lex:lex:5b87bb021c1a03e47d1041e01848583c815a4e612ff482b1df2fb5093bb02908",
+      "lex:lex:6701c7667b12ea5d6bee360e5df095d113aed71bc729ede8b195a053ed58b60b",
+      "lex:lex:705fd2030916df6ab5067c9613d82364d9c18da6e324ec538415ec798828383c",
+      "lex:lex:73a7a4972a85e8de228731064674ba62d23fc532c2c7fc64b823ebde817d129e",
+      "lex:lex:7b9f6253aa23103ccfefec7e416516c2ab9ec93261faf9a4d353cf5811c2328b",
+      "lex:lex:8417070f62f82d1e18d839ed4c019edcdbaa3cb606742e99f2c209da497ddb6a",
+      "lex:lex:891c6b11eadc6cbd3a1b5d861c861e61db82c9401edf65174e86ae127db25f95",
+      "lex:lex:893b54f62abaf4b2b38de8b0456315205a0488651632fad8b13e9e28b143f889",
+      "lex:lex:8fdeb1cd8ac49dea15d154c8a0cca000a0c04f1f1b01d8261559241ca4b28524",
+      "lex:lex:92421842c4920a003ecb9e3d7bfbb92f5b2dc4b9b221e83ebbdf2898e563f1b6",
+      "lex:lex:96ecba469c366db6836b75fe8cb5220c8897d4e2575c25a50318c44bc20d4044",
+      "lex:lex:96f3ebf394d27ee519580d17930046716c6bb98571c66276b16a2f1700506748",
+      "lex:lex:a1033d1d6478ddf6a9273749960180b1c1cf6be09e5612334b6fbe9911fe8d01",
+      "lex:lex:a16b8f611824800aa3e94ae3679cdc0780785c23bffe3d4a42d881d83af149f8",
+      "lex:lex:b9f9675f76955f9159dda31fad7d768cb5c80e56d5eac562d9bdeec8a9ff8f9a",
+      "lex:lex:ba0e7334dc58b81bf802ad9450c071bbbc8f7c906810e26656c14d8f3fc6e357",
+      "lex:lex:cfc52b20fca76e7bb188b9953a5502be8861f166a41e638d6e92c760063e5c8b",
+      "lex:lex:e15077d337136a12a2767335f039724d1cf712f07322052d869e4cb691abb2d1",
+      "lex:lex:e49f5f6a58f5fb306b0a46405f983db1638c4962e9f7cb4b5d1a583da7192a06",
+      "lex:lex:e91ece4e60aef2c042d0d2d9931fb0371765cbb312233c53cfb72436fa714e7d",
+      "lex:lex:fb91d444d42a1275b607e9356599415e9e6f1270854c82b72ee80f4910387d6c"
+    ],
     "dependencies": {
       "def/grammar/main.lfy": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
       "def/grammar/terminals/comment.lfy": "6b9224b89045bf7f7a7ef1bafa923b3625a5140f5fd78ecd2ea66d8489bf12cc",
@@ -130,7 +192,7 @@
       "def/lexer/modes.lfy": "6a44f1b9136cf1a9cbdd1a4bc25d32b910b2929dd83c33976bf0cbd0fb9efc20",
       "def/lexer/traits.lfy": "5a98ea33baef722495f9cc438cea11bf51a287d85a55d748fd0aa22c75545526"
     },
-    "generated": "2026-10-07T06:25:04Z",
+    "generated": "2026-10-17T20:13:35Z",
     "hash": "0b41fb71bb48cd2f0416d02e1104102f3c4341c8e45b6b162e9d76116ada6f3e",
     "markers": [
       {
@@ -671,7 +733,7 @@
         "file": "def/lexer/main.lfy",
         "line": 13,
         "outputLine": 1109,
-        "requirement": "lex:lex:9605e2ff963ac9c9caf7f6a748be63b943d6195c5516b4f58b567e7dd045376b"
+        "requirement": "lex:lex:5b87bb021c1a03e47d1041e01848583c815a4e612ff482b1df2fb5093bb02908"
       },
       {
         "column": null,
@@ -720,14 +782,45 @@
       }
     ],
     "output": "crates/elfie-core/src/lexer/mod.rs",
-    "requirements": "0edec7d503d400b4721c7a1b3676d5c9555525f94c83ac5591f1d385b22af499",
+    "requirements": "e4ad65c0d7e71003e4b29c9ef8bafd54b9b0fcb2569bc0cd6c3f08864408b170",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "3139b28dd22daa2518b37d0dc74750783d3d8f2060c1569676f08e3a560c218e"
   },
   {
-    "answered": [],
+    "answered": [
+      "lex:lex:015747e825e42ce69407c6e5289e45ef5a111f82dc8bc8fd0dec45f55786e40a",
+      "lex:lex:0c179742c1ae096575971cf29f9596ba3da76eedf30fcbad1c19dd50c4ee0980",
+      "lex:lex:10684fce6b28dcd2b3a14ea0901456423c8bd7eb5a85dc0c2b28526d8bd438cf",
+      "lex:lex:17d7117b296e91576aded6aa38378d5018ad738ecf5f0ead9b23b2e82a4e0233",
+      "lex:lex:18f6c9df7322a74ec16b4864e5e95cfb309ad7e8ec97ff75e2b6afa27dea4e24",
+      "lex:lex:1ead9942fd53c95b2b1c71274c35a3e025ff5f461becaba43405f95cf75f1b5c",
+      "lex:lex:413502655066dc7af90a6ab7d8fd822bbf4f98798a65ff8665754f95ff155ef8",
+      "lex:lex:46fca6c8156b28104c359868042425a2d8c3b4cfe2c561ceedb77767a0ae8962",
+      "lex:lex:548ada476c75f16baed3abd68708b901268a463fdddcaa50c4f7a0b62eb5142c",
+      "lex:lex:5b87bb021c1a03e47d1041e01848583c815a4e612ff482b1df2fb5093bb02908",
+      "lex:lex:6701c7667b12ea5d6bee360e5df095d113aed71bc729ede8b195a053ed58b60b",
+      "lex:lex:705fd2030916df6ab5067c9613d82364d9c18da6e324ec538415ec798828383c",
+      "lex:lex:73a7a4972a85e8de228731064674ba62d23fc532c2c7fc64b823ebde817d129e",
+      "lex:lex:7b9f6253aa23103ccfefec7e416516c2ab9ec93261faf9a4d353cf5811c2328b",
+      "lex:lex:8417070f62f82d1e18d839ed4c019edcdbaa3cb606742e99f2c209da497ddb6a",
+      "lex:lex:891c6b11eadc6cbd3a1b5d861c861e61db82c9401edf65174e86ae127db25f95",
+      "lex:lex:893b54f62abaf4b2b38de8b0456315205a0488651632fad8b13e9e28b143f889",
+      "lex:lex:8fdeb1cd8ac49dea15d154c8a0cca000a0c04f1f1b01d8261559241ca4b28524",
+      "lex:lex:92421842c4920a003ecb9e3d7bfbb92f5b2dc4b9b221e83ebbdf2898e563f1b6",
+      "lex:lex:96ecba469c366db6836b75fe8cb5220c8897d4e2575c25a50318c44bc20d4044",
+      "lex:lex:96f3ebf394d27ee519580d17930046716c6bb98571c66276b16a2f1700506748",
+      "lex:lex:a1033d1d6478ddf6a9273749960180b1c1cf6be09e5612334b6fbe9911fe8d01",
+      "lex:lex:a16b8f611824800aa3e94ae3679cdc0780785c23bffe3d4a42d881d83af149f8",
+      "lex:lex:b9f9675f76955f9159dda31fad7d768cb5c80e56d5eac562d9bdeec8a9ff8f9a",
+      "lex:lex:ba0e7334dc58b81bf802ad9450c071bbbc8f7c906810e26656c14d8f3fc6e357",
+      "lex:lex:cfc52b20fca76e7bb188b9953a5502be8861f166a41e638d6e92c760063e5c8b",
+      "lex:lex:e15077d337136a12a2767335f039724d1cf712f07322052d869e4cb691abb2d1",
+      "lex:lex:e49f5f6a58f5fb306b0a46405f983db1638c4962e9f7cb4b5d1a583da7192a06",
+      "lex:lex:e91ece4e60aef2c042d0d2d9931fb0371765cbb312233c53cfb72436fa714e7d",
+      "lex:lex:fb91d444d42a1275b607e9356599415e9e6f1270854c82b72ee80f4910387d6c"
+    ],
     "dependencies": {
       "def/grammar/main.lfy": "77f54564c70de9902dd2a474545b5a4c2f680cf74372ad20a8f6bf22ef4f9ba6",
       "def/grammar/terminals/comment.lfy": "6b9224b89045bf7f7a7ef1bafa923b3625a5140f5fd78ecd2ea66d8489bf12cc",
@@ -741,7 +834,7 @@
       "def/lexer/modes.lfy": "6a44f1b9136cf1a9cbdd1a4bc25d32b910b2929dd83c33976bf0cbd0fb9efc20",
       "def/lexer/traits.lfy": "5a98ea33baef722495f9cc438cea11bf51a287d85a55d748fd0aa22c75545526"
     },
-    "generated": "2026-10-07T06:25:04Z",
+    "generated": "2026-10-17T20:13:35Z",
     "hash": "0b41fb71bb48cd2f0416d02e1104102f3c4341c8e45b6b162e9d76116ada6f3e",
     "markers": [
       {
@@ -758,7 +851,7 @@
         "end": 7,
         "entity": "plan",
         "file": "def/generation/main.lfy",
-        "line": 32,
+        "line": 38,
         "outputLine": 7,
         "requirement": null
       },
@@ -827,10 +920,10 @@
       }
     ],
     "output": "crates/elfie-core/src/lib.rs",
-    "requirements": "0edec7d503d400b4721c7a1b3676d5c9555525f94c83ac5591f1d385b22af499",
+    "requirements": "e4ad65c0d7e71003e4b29c9ef8bafd54b9b0fcb2569bc0cd6c3f08864408b170",
     "signature": "36be69572b441005fe22933222026e1187040e23bb7d4903014b9a4fde401d23",
     "source": "def/lexer/main.lfy",
     "target": "rust",
-    "text": ""
+    "text": "f5ab4f4d6a5c00c5385deb483365c80aaed2b2d7f6c2160a725174f6245f20a3"
   }
 ]

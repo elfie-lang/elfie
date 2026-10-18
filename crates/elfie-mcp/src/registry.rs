@@ -176,10 +176,10 @@ pub fn tools() -> Vec<Registered> {
         // @lfy def/mcp/main.lfy:units#units:tool:2ac75ac99fe508b7a8c4a2d27aca12fd9d96cccf9950c3f94cce20f1da99655b
         // @lfy def/mcp/main.lfy:units#units:tool:11b09db1a7752a1e56b444520139ac0f584b54714e72d5b267322c54277ecfb4
         // @lfy def/mcp/main.lfy:units#units:tool:9d5a244e3de0666f68b9af569acc4864151e7fd8a5d48f7cfcc6bcabad9e2670
-        // @lfy def/mcp/main.lfy:units#units:tool:cfeac83cd614fdfc6ff23cb436a54783c7d0e1652aa3199bc3686cf6826f60e0
+        // @lfy def/mcp/main.lfy:units#units:tool:594ff2692d18f9b5f8195747d1179a5a9f5d9d17533c0c96b439f6786d814d46
         Registered::new(
             "units",
-            "The units the compiler would produce, in order, why each needs generating, and how they are batched",
+            "The units the compiler would produce, in the order they are compiled one at a time, and why each needs generating",
             // @lfy def/mcp/main.lfy:units#units:tool:9e4e0920c3a77f7c24ca79866264ca5ea4507712f18a471af4347d4632455852
             vec![
                 // @lfy def/mcp/main.lfy:units#units:tool:4f77f81c4f6b8f1b069afb12ae98bb421ef8b1aeafd78e6382ba0c3bc37144a9
@@ -201,18 +201,18 @@ pub fn tools() -> Vec<Registered> {
         // @lfy def/mcp/main.lfy:request#request:tool:beadebf1d4caa2b6158bcb4afe387ffbf1fdaa65b6ebb342c852e52d52b2b658
         // @lfy def/mcp/main.lfy:request#request:tool:3d666a1c238113290ac9bc99eba6f8b431a32dfbb44f42d7b63e635a6a487ba0
         // @lfy def/mcp/main.lfy:request#request:tool:30eeb76061a9ac9849a230ebdd0d367531f04ba72967baee676deb1bfa0b711a
-        // @lfy def/mcp/main.lfy:request#request:tool:0a9e15bec9a45024fd3d99828e92e41ae9b90f757fd2e0b9727195f40f5086ec
+        // @lfy def/mcp/main.lfy:request#request:tool:779a0f4249d6f95d5f1ab566cbbd6a918eebe344c981514e7c2ea87f0a639e4f
         Registered::new(
             "request",
-            "The full request for one batch: what to produce, where, every criterion to satisfy, and how to report",
+            "The full request for one unit: what to produce, where, every criterion to satisfy, the edits other units made to its outputs, the later units it may edit, and how to report",
             // @lfy def/mcp/main.lfy:request#request:tool:79078aaecc3eb0b5da33d600e95bbc7dcde986688c474910707530f5666a030c
             vec![
                 // @lfy def/mcp/main.lfy:request#request:tool:a87c03b34486d18a1c17ceb833c722c4dd3842a6a421881c70f322337e0e0481
                 // @lfy def/mcp/main.lfy:request#request:tool:5f1390725bc367714b87749e253f03091c3893e803feaaa995bfd7aaefa84e7a
                 // @lfy def/mcp/main.lfy:request#request:tool:3960bc68d750e3fc1407e6c8d636ec1b5b2b1066b7a1e809a5ffeec14a2b3011
-                ToolArgument::new("batch", "the identifier of a batch, as elfie_units lists it, or the stem of one of its units", "string", true),
+                ToolArgument::new("unit", "the stem of a unit, as elfie_units lists it", "string", true),
                 // @lfy def/mcp/main.lfy:request#request:tool:f30b7bfcc6ed637477e5d9c6dde218d0f7b7274a7eb40565013244416b0fa956
-                ToolArgument::new("target", "the identifier of the batch's target; the only target when left out", "string", false),
+                ToolArgument::new("target", "the identifier of the unit's target; the only target when left out", "string", false),
             ],
             // @lfy def/mcp/main.lfy:request#request:tool:d360786cef01769989e63abe1e561a739a3abcc849ac2c13a4aec96f220addff
             // @lfy def/mcp/main.lfy:request#request:tool:e5bdf55db701cf680b09a00655b7f1d5a6a54182089d06b9ae4d6c4a439e676d
@@ -222,28 +222,23 @@ pub fn tools() -> Vec<Registered> {
             // @lfy def/mcp/main.lfy:request#request:tool:f1c8ff30fb778df56f920993cac9f434ca7d05174e08a4529c76ef50f0f34122
             // @lfy def/mcp/main.lfy:request#request:tool:806f418c79eeea1378264a7f704dd7542b5fafffc84e9d62cd6694870e3f424c
             // @lfy def/mcp/main.lfy:request#request:tool:b0e0cfd7d7f475f1bd8b173c972e686a43cabef5a4a9cc18b77eab7a994d2b5b
-            |session, arguments| request(session, arguments.string("batch")?, arguments.optional("target")),
+            |session, arguments| request(session, arguments.string("unit")?, arguments.optional("target")),
         ),
         // @lfy def/mcp/main.lfy:task#task:tool:b4176adea23f8e6c58f4d041e7a85447286076984bd05464e92528b60fda6d8b
         // @lfy def/mcp/main.lfy:task#task:tool:b4a5feee0df4f25397442a14ddc5789cddaecd15441de63010655c2768703e25
         // @lfy def/mcp/main.lfy:task#task:tool:46ad78939d73914a576d0dce0904cae992474f9eeb184c717a5a0c324091d4d5
-        // @lfy def/mcp/main.lfy:task#task:tool:3f09d52a0b71d1b830863b88454d30b98bb821b36e428efed32d7e6169482a3c
+        // @lfy def/mcp/main.lfy:task#task:tool:18b0c73855584e9caf73515d1acf890c0655ed42c042d108a8914180338ce2b3
         Registered::new(
             "task",
-            "What this compiler run must do: for each unit of its batch, the outputs and the reason, every criterion and test to answer for with its id, place, and text, each marked new, reworded, kept, or unknown, and those removed since the outputs were accepted",
+            "What this compiler run must do: its unit's outputs and reason, the edits other units made to them, every criterion and test to answer for with its id, place, and text, each marked new, reworded, kept, or unknown, and those removed since the outputs were accepted",
+            // Its one parameter is the session, so it holds no argument, and nothing further
+            // is asked of an argument's name, type, description, or whether it is needed.
             // @lfy def/mcp/main.lfy:task#task:tool:6ddac2bcba95be32011edabc6d0abbc63da57cd4a0182a8c86f882a8482706e7
-            vec![
-                // @lfy def/mcp/main.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
-                // @lfy def/mcp/main.lfy:task#task:tool:b2e2fadd9a1cd573a4b55e2e77fbd573ec3a9f6184ccd88beca5e743b871e9cd
-                // @lfy def/mcp/main.lfy:task#task:tool:efcc6222428846670162553eed20dfde5c5603101a6a03e991a434832f04894b
-                // @lfy def/mcp/main.lfy:task#task:tool:b361de400635b42112cf8a02205ed19f3875a7f7f9835b646817814b39f0233d
-                ToolArgument::new(
-                    "unit",
-                    "the stem of one unit of the batch, as elfie_units lists it; every unit of the batch when left out",
-                    "string",
-                    false,
-                ),
-            ],
+            // @lfy def/mcp/main.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
+            // @lfy def/mcp/main.lfy:task#task:tool:b2e2fadd9a1cd573a4b55e2e77fbd573ec3a9f6184ccd88beca5e743b871e9cd
+            // @lfy def/mcp/main.lfy:task#task:tool:efcc6222428846670162553eed20dfde5c5603101a6a03e991a434832f04894b
+            // @lfy def/mcp/main.lfy:task#task:tool:b361de400635b42112cf8a02205ed19f3875a7f7f9835b646817814b39f0233d
+            vec![],
             // @lfy def/mcp/main.lfy:task#task:tool:6906aa388a4da929b046d4c96d4a070b0963d06bccb58ae5b990c00788627817
             // @lfy def/mcp/main.lfy:task#task:tool:b5c70f578c9857ac3ed4a51529ca0521467c10eab0b4ab4cf28cc3781d492359
             // @lfy def/mcp/main.lfy:task#task:tool:fd081eb82b1124fbd1ca009325b4978d8b342b69049fb32f4cacb808670051a7
@@ -252,15 +247,15 @@ pub fn tools() -> Vec<Registered> {
             // @lfy def/mcp/main.lfy:task#task:tool:58f60da4f6fb7b5f0f9d9ded72cb43dc5df3fb5021ebd4dfcc459110960d3243
             // @lfy def/mcp/main.lfy:task#task:tool:4edb5fa4433e757f9e3a630b34a68b8a9e99be901d69ac1d91725b52b9682e49
             // @lfy def/mcp/main.lfy:task#task:tool:3824695bea06c924cb4eba5253dac7d204a002a30490259b15481ca71f9c4933
-            |session, arguments| task(session, arguments.optional("unit")),
+            |session, _| task(session),
         ),
         // @lfy def/mcp/main.lfy:dependency#dependency:tool:4fd4dbdb36a4d1d4e8a9589471a29d8337372b850160162b8a14f940ad74bbc6
         // @lfy def/mcp/main.lfy:dependency#dependency:tool:c19bc9c85c771a6a121e931a3d90f5e925e08c8d87bdaf800db6922b0e2876ff
         // @lfy def/mcp/main.lfy:dependency#dependency:tool:7b7fe0f695f34ca950fbd8f4bc3aa16eb90bc78d78ed5a87812fe95b03c71eb5
-        // @lfy def/mcp/main.lfy:dependency#dependency:tool:62ccf07aff23acf72a7e091f19b6d110da5bb4dc6f969dcadd130d72ab9ccf3f
+        // @lfy def/mcp/main.lfy:dependency#dependency:tool:6cb58ea6b9b30b6f2aba6bd276fdc3a0e104710c2733f9df000387e646050f34
         Registered::new(
             "dependency",
-            "What one entity of a dependency of this compiler run's batch offers its dependents: the dependency's unit and outputs, and the entity's kind, definition, type, parameters, output, and members",
+            "What one entity of a dependency of this compiler run's unit offers its dependents: the dependency's unit and outputs, and the entity's kind, definition, type, parameters, output, and members",
             // @lfy def/mcp/main.lfy:dependency#dependency:tool:01c082cb2c776a72049a0c164c556b408ada68b6c8d3e961aed6be20476ba114
             vec![
                 // @lfy def/mcp/main.lfy:dependency#dependency:tool:feb08658fc3d60e206035d80439de4021e443fe53d2226e6e8ad43298da9f5b7
@@ -269,7 +264,7 @@ pub fn tools() -> Vec<Registered> {
                 // @lfy def/mcp/main.lfy:dependency#dependency:tool:81c9fb533af066d41280087dd8b620bc5dd294bb4ca35adb668ec0c9d36c003a
                 ToolArgument::new(
                     "name",
-                    "the identifier of an entity of a dependency outside the batch, as the request's interfaces part names it, or an owner's identifier, a dot, and a member's name; a dependency's file path and a colon before it limits the search to that dependency",
+                    "the identifier of an entity of a dependency of the unit, as the request's interfaces part names it, or an owner's identifier, a dot, and a member's name; a dependency's file path and a colon before it limits the search to that dependency",
                     "string",
                     true,
                 ),
@@ -309,6 +304,67 @@ pub fn tools() -> Vec<Registered> {
             // @lfy def/mcp/main.lfy:check#check:tool:2feecd005d1f5b032cc009fa850348ac4256213d1b2ce6bd9bfff1963661d055
             // @lfy def/mcp/main.lfy:check#check:tool:d01144c9d33cf8a9ac5454fa795448019dc9005930ef3c1f9e38f1bb5e2ef5da
             |session, arguments| check(session, arguments.string("unit")?, arguments.optional("target")),
+        ),
+        // @lfy def/mcp/main.lfy:reach#reach:tool:1e225d7ed7e538bb99a23803976c607a8fb5b5c2f2f590ec4b06f35d41697b9c
+        // @lfy def/mcp/main.lfy:reach#reach:tool:faaa38b77c25cd822a66ebe6d91212142f18b490b4ca2097242485bfd37a3437
+        // @lfy def/mcp/main.lfy:reach#reach:tool:c88a7beb004c86a4f071d6b34d0c5f3d7912b0665b861ae6b5c12672faa877b7
+        // @lfy def/mcp/main.lfy:reach#reach:tool:2e8fc71c8da38feba6bff1f4f03c9f549b9f90679c751e836d38594e287fa47a
+        Registered::new(
+            "reach",
+            "The later units whose code this compiler run may edit, the regions of their outputs, and what is left of the fix cap for each region and each unit, given the outputs on disk now",
+            // @lfy def/mcp/main.lfy:reach#reach:tool:11bb30218cb5fdaca02fd7bfbf8a818e31feb7fa0b019e93a7b4cb2cf9f27dcb
+            vec![
+                // @lfy def/mcp/main.lfy:reach#reach:tool:2c161c5ba7dd6373f653dd48a6665ef2ce0c2fab2ec62d0e8ac6fdea4a7c9eee
+                // @lfy def/mcp/main.lfy:reach#reach:tool:387bcefdfef41b4b41da6c261feaee0ff6ca9b5b171ad6ae78ac06456558a569
+                // @lfy def/mcp/main.lfy:reach#reach:tool:3a316b181773ec5166e0204d4db9a4b35b6e70aa0c9c8e5fc7a00ad550ab2495
+                // @lfy def/mcp/main.lfy:reach#reach:tool:0be8d749d8b083dc788a187d2a6411bd4e5cfd6e62a4371e69faffd3064ddae3
+                ToolArgument::new(
+                    "unit",
+                    "the stem of one unit of the reach, as this tool lists it, to list every region of its outputs; when left out, only the regions this run has edited are listed",
+                    "string",
+                    false,
+                ),
+            ],
+            // @lfy def/mcp/main.lfy:reach#reach:tool:cf669edadd4a632bcc7c2176dffee7e46a2a03d8239895d42c37a23511322b3b
+            // @lfy def/mcp/main.lfy:reach#reach:tool:9542455787b60f32b85812fc59506f3a7c0ad77a15ba386b2cf5402ad6274222
+            // @lfy def/mcp/main.lfy:reach#reach:tool:060d86828005f1f0abb8bae05e593348e0323a9f250c68540d5d0f0f9e9ad936
+            // @lfy def/mcp/main.lfy:reach#reach:tool:a4f64372d4709087e996bb86f12b4ad75e815f3e1faac2a4f456c147054501f7
+            // @lfy def/mcp/main.lfy:reach#reach:tool:efc8ae8fec0b77a9f37462b4b357aa384d2804bca39e4765581568a53706a841
+            // @lfy def/mcp/main.lfy:reach#reach:tool:8e83995ffaa772bb7ede232b07285df6517aa38b607032e09f3f8820e722c254
+            // @lfy def/mcp/main.lfy:reach#reach:tool:0c890c185e09e1671362d8c1d0c845add38859d2e771a04dce86c973e9f94b44
+            // @lfy def/mcp/main.lfy:reach#reach:tool:88f208d93a8676710a80c74e023c08abaf01b226dd6b5fc6d7bd0a86e4eb3fe8
+            |session, arguments| reach(session, arguments.optional("unit")),
+        ),
+        // @lfy def/mcp/main.lfy:touch#touch:tool:4da83db2b1e129fa631e9e83c60e0103445ac7000e8c574aae3c464bf2eca7ae
+        // @lfy def/mcp/main.lfy:touch#touch:tool:0953bf28021ac288a8c246b0a2488bbba9357be8c1477cff0f9155da3164508f
+        // @lfy def/mcp/main.lfy:touch#touch:tool:75d192739bfcff082aa5ae79c7958de50175542afac2af2f3f957082f35312e3
+        // @lfy def/mcp/main.lfy:touch#touch:tool:929c51527ead304832de6ace9648ad9abf7fe01cc36bcde2b44dee920a36bf9b
+        Registered::new(
+            "touch",
+            "Say why this compiler run edited the code of a later unit; every unit whose code the run fixes needs a note",
+            // @lfy def/mcp/main.lfy:touch#touch:tool:cc3c84452d493bcd511b8dae121940bf52488fe22fd138b237df550d03be2803
+            vec![
+                // @lfy def/mcp/main.lfy:touch#touch:tool:776fa92cd68713d3f7c57c3bfd278e5e3568c143ceb52276b2acbf0ffe2cd9c6
+                // @lfy def/mcp/main.lfy:touch#touch:tool:2d9d1a704468bd451112c4cfaade9a8da60c7d3114360580e3e9544020a2d389
+                // @lfy def/mcp/main.lfy:touch#touch:tool:a0970db31ba3316fc4048021908a1353da824324e5a915be3be50a3018474644
+                // @lfy def/mcp/main.lfy:touch#touch:tool:8fc3eaaa7c49a72888adcf36143f40522f91d1a89018d230d011b9399aa5343f
+                ToolArgument::new("unit", "the stem of a unit of this run's reach, as elfie_reach lists it", "string", true),
+                ToolArgument::new(
+                    "note",
+                    "why this run edited that unit's code, in one line, such as what it renamed that the code used",
+                    "string",
+                    true,
+                ),
+            ],
+            // @lfy def/mcp/main.lfy:touch#touch:tool:d2d3dd3581a48e716395f2ef9512fc725cb3e1ab34d1536c1602fe2034705fb2
+            // @lfy def/mcp/main.lfy:touch#touch:tool:8b9651d592d213bcab33ed064cc82ea04ad50730d956a1b77e72f822cfd02061
+            // @lfy def/mcp/main.lfy:touch#touch:tool:92f681e36b786f07826c5718a8a57635e6d36695333808aefd66a3979e5ae720
+            // @lfy def/mcp/main.lfy:touch#touch:tool:5b70de758ad4d0887721314fb8e9df3831b9cff383c2b290bee1b73f701c8b59
+            // @lfy def/mcp/main.lfy:touch#touch:tool:84cac8c5630ff84707a281ab90e515a1ad0c417457659abf90ab9006a065e874
+            // @lfy def/mcp/main.lfy:touch#touch:tool:b6c963576656e5be18b17a54279b541a201c3fc7d3a075f1872d5fe5f9609a7b
+            // @lfy def/mcp/main.lfy:touch#touch:tool:fe44165a9fad17b614b346e86649a07f649639c176d1dee0e58b9e9c8d527f43
+            // @lfy def/mcp/main.lfy:touch#touch:tool:7228b831d1f57147133e8d78e134e7315aebe577a5caf03df2c692ba688ee09d
+            |session, arguments| touch(session, arguments.string("unit")?, arguments.string("note")?),
         ),
         // @lfy def/mcp/main.lfy:mark#mark:tool:0f8e6f40a5d6de867cde8b1be5b3fc853845b786664671c550f9dad09eb01911
         // @lfy def/mcp/main.lfy:mark#mark:tool:d0022315029fb169381cd2230a938407632d7d0dd0131fbc83073feec1ae22af
@@ -363,7 +419,7 @@ pub fn tools() -> Vec<Registered> {
                     arguments.optional("id"),
                     arguments.optional("replaces"),
                     arguments.optional("file"),
-                    arguments.optional("line").map(|line| counted(line, "line")).transpose()?,
+                    arguments.optional("line").map(|line| numeric(line, "line")).transpose()?,
                     arguments.optional("entity"),
                 )
             },
@@ -502,7 +558,7 @@ pub fn tools() -> Vec<Registered> {
             // @lfy def/mcp/main.lfy:source#source:tool:f64e48f070058897b4b82d2d2649c81b9155f184931f4b71a81c2bb9163b850a
             // @lfy def/mcp/main.lfy:source#source:tool:36b64abf8443d64fac524ad81fcaa9c9e1ece561cdf7b0a6ff1e66dba001fac3
             // @lfy def/mcp/main.lfy:source#source:tool:933096756b3b232e53313f802792772462a7923e6772c081a67cd7f54440b7e4
-            |session, arguments| source(session, arguments.string("file")?, counted(arguments.string("line")?, "line")?),
+            |session, arguments| source(session, arguments.string("file")?, numeric(arguments.string("line")?, "line")?),
         ),
         // @lfy def/mcp/main.lfy:changes#changes:tool:ec6bca8a3cbc36434de614909a53653a3b0f25e84dfad4d7c7318de2bb35879e
         // @lfy def/mcp/main.lfy:changes#changes:tool:0f166abc4aab53e3c0ebb7ea52e8dc8852f3d4d8d10729c84048c79f3b95c964
@@ -538,18 +594,18 @@ pub fn tools() -> Vec<Registered> {
         // @lfy def/mcp/main.lfy:review#review:tool:cae93d1e0915b7e3244718911a45cd0e8a145cb441856eec83c09a11547ff0a6
         // @lfy def/mcp/main.lfy:review#review:tool:70891d9a91ae04731a72b80d2f6c86b173925fc777f95ee77561af6d5b77ef37
         // @lfy def/mcp/main.lfy:review#review:tool:90f43a9d7a341c4448c88bdb65846b1958c620269b4928c1820b8bdd36a04645
-        // @lfy def/mcp/main.lfy:review#review:tool:851e5fb699313c73590128b97abe97d419edd52546bce09e0341b62db2d5f897
+        // @lfy def/mcp/main.lfy:review#review:tool:0547cd795e9c7adad3ab04c85d39ee2a7ac5fa01ecebb3c3a215ef45614fc7b6
         Registered::new(
             "review",
-            "The full review request for one batch: every criterion and test with where the regions generated for its entities are, and how to report",
+            "The full review request for one unit: every criterion and test with where the regions generated for its entities are, and how to report",
             // @lfy def/mcp/main.lfy:review#review:tool:4db83e86e12ebe1d2b0275a0875d451913e2e33a2985e19be1239eeb55afcf55
             vec![
                 // @lfy def/mcp/main.lfy:review#review:tool:176e2dae9d3fa2eeb0d9e1f4cb3f69e21eddf6a4ee54eeec769831da57d33106
                 // @lfy def/mcp/main.lfy:review#review:tool:f12b54937440941b301f9813502fcf02c0f5c15985fa86f3c18d3be8971e926c
                 // @lfy def/mcp/main.lfy:review#review:tool:26448cfe30979765e8825f454475ab554f07d764985e474795c7f379bcb790b8
-                ToolArgument::new("batch", "the identifier of a batch, as elfie_units lists it, or the stem of one of its units", "string", true),
+                ToolArgument::new("unit", "the stem of a unit, as elfie_units lists it", "string", true),
                 // @lfy def/mcp/main.lfy:review#review:tool:c9eb9c029bfc76ba91183426864af318ca0ba9c40d66aa878456a1365ec79882
-                ToolArgument::new("target", "the identifier of the batch's target; the only target when left out", "string", false),
+                ToolArgument::new("target", "the identifier of the unit's target; the only target when left out", "string", false),
             ],
             // @lfy def/mcp/main.lfy:review#review:tool:a214aeda7f2dcdb8d57836782e9f7950b99a0cbffd7ded1e4d02512863333bce
             // @lfy def/mcp/main.lfy:review#review:tool:c5cc7af933cc365db492e83cc2677c5381c9cc7293ef97f115d12d762c1b2584
@@ -559,7 +615,7 @@ pub fn tools() -> Vec<Registered> {
             // @lfy def/mcp/main.lfy:review#review:tool:3d16d076268d4bb0d06e54067ea264107a204761e51fedb45c43d4da6266e867
             // @lfy def/mcp/main.lfy:review#review:tool:783352704aa244702e71b187abc170d3a55eb7ee3b01dddbdffd6b21219355e8
             // @lfy def/mcp/main.lfy:review#review:tool:5c26dbd79645c2274940ae02bf61ebc5954a4c194e657a89b203f1976fb73dce
-            |session, arguments| review(session, arguments.string("batch")?, arguments.optional("target")),
+            |session, arguments| review(session, arguments.string("unit")?, arguments.optional("target")),
         ),
         // @lfy def/mcp/main.lfy:globalReview#globalReview:tool:63522dbcfabc1cddee57ee188e7c75c7a4c6576f807ce8a0a4dd4ffe69250ca7
         // @lfy def/mcp/main.lfy:globalReview#globalReview:tool:d895cc0bf43e7d708d5eba5fe5af8ca74d3565a1d0ebba4ffd5d274cb025ebeb
@@ -700,10 +756,10 @@ pub fn tools() -> Vec<Registered> {
         // @lfy def/mcp/main.lfy:test#test:tool:5386b37f95ca729944462379291817c9470858369f6cfb9387b834f8767c2b51
         // @lfy def/mcp/main.lfy:test#test:tool:3095733c477eec37202566f8813793d01f848b595701cdd835ffc630ba78f768
         // @lfy def/mcp/main.lfy:test#test:tool:a038afc81a5b6f64a780e0144c3ac1be7ce831938025338a3c18193929918aba
-        // @lfy def/mcp/main.lfy:test#test:tool:b781017493ee33fccd6be22cef4cb4b2338a130da8607db5c8a6899222f40fd1
+        // @lfy def/mcp/main.lfy:test#test:tool:2762b11ba85ed708418f9df9c62fc0b7f1cf6561920586cf0b39f730acb05fa8
         Registered::new(
             "test",
-            "Run the target's test command in this run's directory, narrowed by a filter and a scope when they are given, and say whether it passed, with its exit code and the end of its output",
+            "Run the target's test command in this run's directory, narrowed by a filter and a scope when they are given, allowing tests that fail only at a stub when asked, and say whether it passed, with its exit code and the end of its output",
             // @lfy def/mcp/main.lfy:test#test:tool:4930fab7d3d2c47253afb07544bc3ab8fcd4c5deb1e42ce3f9f8b2dcc6175c30
             vec![
                 // @lfy def/mcp/main.lfy:test#test:tool:cbeb0da9f28bfbd6a6d084bb140fca7c043af3a7fee4c0c506d08562fcb13392
@@ -718,6 +774,13 @@ pub fn tools() -> Vec<Registered> {
                 ),
                 ToolArgument::new("scope", SCOPE_ARGUMENT, "string", false),
                 ToolArgument::new("target", TARGET_ARGUMENT, "string", false),
+                // `allowStubs` has a default, so it is not listed as required.
+                ToolArgument::new(
+                    "allowStubs",
+                    "whether a test that fails only by reaching a stub counts as passing, given to the command as ALLOW_STUBS; false when left out",
+                    "boolean",
+                    false,
+                ),
             ],
             // @lfy def/mcp/main.lfy:test#test:tool:c3ee2fa9249263228e75266d415288016fb367dd3e42ea7111abb95b2753f842
             // @lfy def/mcp/main.lfy:test#test:tool:21a65a75a3ed0d3332a816d5fc81762a4aaafa8216d19d4536b1c82ba9fb2ac9
@@ -733,6 +796,7 @@ pub fn tools() -> Vec<Registered> {
                     arguments.optional("filter"),
                     arguments.optional("scope"),
                     arguments.optional("target"),
+                    truth(arguments.optional("allowStubs"), false),
                 )
             },
         ),
@@ -801,7 +865,7 @@ const SCOPE_ARGUMENT: &str = "the part of the outputs to run on, as the target's
 // @lfy def/mcp/main.lfy:test#test:tool:91cfa553c86897863866df4f70a520da5ab64eb9facaea1c00b2c552ee52e2da
 // @lfy def/mcp/main.lfy:lint#lint:tool:8415b8b106d669fec27102fd04507c3d814b919d8bcf79f8e7d2650f5fb4faee
 // @lfy def/mcp/main.lfy:format#format:tool:c7c05422e084fd79bb583a5aa90b70d947898019100fe9d2bd60b4fe23a540f2
-const TARGET_ARGUMENT: &str = "the identifier of the target; the target of the session's batch, or the only target, when left out";
+const TARGET_ARGUMENT: &str = "the identifier of the target; the target of the session's unit, or the only target, when left out";
 
 /// A boolean argument read back from the text it was spelled as, with what its parameter
 /// defaults to when a call leaves it out.
@@ -821,4 +885,11 @@ fn counted(text: &str, name: &str) -> Result<usize, String> {
         return Err(format!("the argument {name} must be a whole number, counting from 1"));
     }
     Ok(value as usize)
+}
+
+/// A number argument read back from the text it was spelled as, whatever number it is, so
+/// that the fn it is given to says what is wrong with a number it cannot use.
+// @lfy def/mcp/main.lfy:mark
+fn numeric(text: &str, name: &str) -> Result<f64, String> {
+    text.parse().map_err(|_| format!("the argument {name} must be a number"))
 }

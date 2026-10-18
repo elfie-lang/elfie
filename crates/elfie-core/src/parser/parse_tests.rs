@@ -411,14 +411,26 @@ fn an_alternation_list_root_holds_the_item_and_the_leftovers() {
     assert!(!tree.errors[0].expected.contains(&"Plus"));
 }
 
-// @lfy def/parser/main.lfy:parse#parse:parse:b25f4ff45c8f1a8f81e5a9ac7e2e632b5fbd46d2027d7b1e83e7c661f5300a17
+// @lfy def/parser/main.lfy:parse#parse:parse:a4ac60d09a1546ef181be1f3bab47649a9d6f33d7be4f3a08dc9784bc6c2ef52
 #[test]
 fn the_parser_parses_against_the_grammar_document_only() {
     let document = grammar();
     assert_eq!(document, crate::grammar::grammar_document());
-    for rule in crate::grammar::rules() {
-        assert!(document.contains(rule.text()), "{rule}");
+    let listed: Vec<Entity> = beginning::rules().collect();
+    // The parser's rules are the document's rules, each once: every one is a whole entry of
+    // the document, and together they fill it.
+    let wrapped = format!("\n{document}\n");
+    for rule in &listed {
+        assert!(wrapped.contains(&format!("\n{}\n", rule.text())), "{rule}");
     }
+    let unique: std::collections::HashSet<&Entity> = listed.iter().collect();
+    assert_eq!(unique.len(), listed.len());
+    let filled: usize = listed.iter().map(|rule| rule.text().len() + 1).sum();
+    assert_eq!(filled, document.len() + 1);
+    // A character class only the lexer reads is no rule the parser knows.
+    let character = Entity::Literal(Literal::Character);
+    assert!(!listed.contains(&character));
+    assert!(beginning::tables().first(character).is_empty());
     // @lfy def/parser/main.lfy:parse
     // Categories and bindings come from the rules: the tables set none of them.
     let tables = beginning::tables();

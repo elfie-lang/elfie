@@ -308,28 +308,25 @@ pub(crate) fn kept_output(lines: &[String], stopped: bool) -> (String, usize) {
 }
 
 /// The target one command tool call runs for: the one it names, the target of the session's
-/// batch, or the only target of the workspace.
+/// unit, or the only target of the workspace.
 // @lfy def/mcp/main.lfy:build#build:commandTool:8ffd4f1c8964d044d3a2ad994cc592a42773205e5ab265fbba1c238e40c7390c
-// @lfy def/mcp/main.lfy:build#build:commandTool:c21f972796c2663341ed914a6967afaa5dc6c0c14d8be6175383fa74deb6c3ed
-// @lfy def/mcp/main.lfy:build#build:commandTool:e3805c0183b778c19e58e0e6579a16be881fa3c9595b5ff020f4ac5a70215cba
+// @lfy def/mcp/main.lfy:build#build:commandTool:dd69dd60edc37a9e66b24de9f8fcdeb8cbe86944d11c3b6047dcd05fe8e8c442
+// @lfy def/mcp/main.lfy:build#build:commandTool:3afd64b040778d28cf00218d59ef25293e4891a2edb10ea0e5b765f3321f7c85
 // @lfy def/mcp/main.lfy:test#test:commandTool:97d5a1312ee06fbe77300ae7c3ff0cf0af8ad0c311a6c611aa68fd8dd2197c28
-// @lfy def/mcp/main.lfy:test#test:commandTool:aa5521ff3e38064799700843c6061daeefbbdc2d8b5e6b48a6f0a8faaafa2715
-// @lfy def/mcp/main.lfy:test#test:commandTool:6aec0f3e99d25e6c4389be9d948c0c0c38fe5bced0fe17f7717b9ba2cef6285e
+// @lfy def/mcp/main.lfy:test#test:commandTool:da96c14202bd6a1c37b3b5da2092e558740ab72ffc3ce384529d540b3b18ace2
+// @lfy def/mcp/main.lfy:test#test:commandTool:ae604a230b68ca0401753e3b89cb91e13ace8e37730e8054189452d5be3361ce
 // @lfy def/mcp/main.lfy:lint#lint:commandTool:ffbdf33de2469869254a1bf05492bbc865db0dfbfbcf43c1e671c9887c5570d7
-// @lfy def/mcp/main.lfy:lint#lint:commandTool:e91ad0846a3c0c777006bcdf1f40ae6a179e1a658044b4c17b6f6d3a8f077f14
-// @lfy def/mcp/main.lfy:lint#lint:commandTool:d18e32d682bdbd5b0e1b52c44502c73935fb119538674429ce081b3443fb3ecd
+// @lfy def/mcp/main.lfy:lint#lint:commandTool:adc4271a39e262a1a24179b1131d11ccf703fdcb8c0db9bc56252a5b130edde2
+// @lfy def/mcp/main.lfy:lint#lint:commandTool:68591416f6a93fd18ae5ce6d826e430e23bd727cf6ad115a52afbbd90e61ba85
 // @lfy def/mcp/main.lfy:format#format:commandTool:9bf67e413eeeba868ece3fee8e14cb7eb5b7c31cf135e37f9a546cc5ea19bdfb
-// @lfy def/mcp/main.lfy:format#format:commandTool:f5203bdc3e4001878911f4a29dc48c15802584bafd3fca37fd7a1c1c0939fef8
-// @lfy def/mcp/main.lfy:format#format:commandTool:5a47bf0b2df9f3577fd4df46ba42f66a69be217b3e4551b35db11b5d765ea5af
+// @lfy def/mcp/main.lfy:format#format:commandTool:993b28e0c8178820d2f877798aa964aff01c87d4283fe70f899d9822a77693d8
+// @lfy def/mcp/main.lfy:format#format:commandTool:6f9d193592d784617147d341e4c29bd1e0b1615d76d8771785c3bf6b8b8ba594
 fn command_target<'w>(
     workspace: &'w Workspace,
     binding: Option<&Binding>,
     target: Option<&str>,
 ) -> Result<&'w Target, String> {
-    let own: Option<&Target> = binding
-        .filter(|binding| binding.batch.is_some())
-        .map(|binding| session_targets(workspace, Some(binding)))
-        .and_then(|targets| targets.first().copied());
+    let own: Option<&Target> = binding.and_then(|binding| bound_target(workspace, binding));
     match target {
         // @lfy def/mcp/main.lfy:build#build:commandTool:8ffd4f1c8964d044d3a2ad994cc592a42773205e5ab265fbba1c238e40c7390c
         Some(named) => {
@@ -340,30 +337,30 @@ fn command_target<'w>(
                 // @lfy def/mcp/main.lfy:format#format:commandTool:14c995f5b52b0b846e864af1eca37984adfdb800a11e8f871accd853273aec8a
                 return Err(format!("{named} is not a target; the targets are: {}", known_targets(workspace)));
             };
-            // @lfy def/mcp/main.lfy:build#build:commandTool:08ba5d263a364d377e0723c19fb633e9a30b76f64808daade4b50853607b05b3
-            // @lfy def/mcp/main.lfy:test#test:commandTool:0c0559ca22d532a752da696a356628c24841fed67d840d879c3978ca6963c083
-            // @lfy def/mcp/main.lfy:lint#lint:commandTool:eaea8d053be8130144b47484848cf310cfcfdfcf7b1ddd7c157703d7b81c6594
-            // @lfy def/mcp/main.lfy:format#format:commandTool:c5ba8e321898943a2ea8ff001ad5e8982379e4db519f1bf779a9fec569c6d5fc
+            // @lfy def/mcp/main.lfy:build#build:commandTool:b9e52fca1d06ac3260101f433dbab78a2b8d9d3832d2046a7e1a3fc37c41731e
+            // @lfy def/mcp/main.lfy:test#test:commandTool:8a671cb976fb21e391a6d991c2ded8bb2bac3761a18c43ddc2cb7bf181db6a4d
+            // @lfy def/mcp/main.lfy:lint#lint:commandTool:850792e2c874d253962c1737a9b938eb1a72cb24eb7620f107a71e981392e05b
+            // @lfy def/mcp/main.lfy:format#format:commandTool:f77b7a5961ee374f0faabaacfe7cb5164a450643167b56147922f109e5328ebe
             if let Some(own) = own
                 && own.identifier != found.identifier
             {
                 return Err(format!(
-                    "this session acts only on its own batch, whose target is {}; it was asked about {named}",
+                    "this session acts only on its own unit, whose target is {}; it was asked about {named}",
                     own.identifier
                 ));
             }
             Ok(found)
         }
-        // @lfy def/mcp/main.lfy:build#build:commandTool:c21f972796c2663341ed914a6967afaa5dc6c0c14d8be6175383fa74deb6c3ed
+        // @lfy def/mcp/main.lfy:build#build:commandTool:dd69dd60edc37a9e66b24de9f8fcdeb8cbe86944d11c3b6047dcd05fe8e8c442
         None => match own {
             Some(own) => Ok(own),
-            // @lfy def/mcp/main.lfy:build#build:commandTool:e3805c0183b778c19e58e0e6579a16be881fa3c9595b5ff020f4ac5a70215cba
+            // @lfy def/mcp/main.lfy:build#build:commandTool:3afd64b040778d28cf00218d59ef25293e4891a2edb10ea0e5b765f3321f7c85
             None => match workspace.targets.as_slice() {
                 [one] => Ok(one),
-                // @lfy def/mcp/main.lfy:build#build:commandTool:810411b30bd83781afdd188ef533b950e9275e621df179dd6067d0ac813fd5bc
-                // @lfy def/mcp/main.lfy:test#test:commandTool:60a49be5aa1173056f510de843ef341a91124c5a2cf6551b89842dbea64d54b7
-                // @lfy def/mcp/main.lfy:lint#lint:commandTool:de2031ae9fd1eaef06991febdb3b3084983787f7ccebc9878c487a056a3244eb
-                // @lfy def/mcp/main.lfy:format#format:commandTool:62c1b90ed20ccf37dccd4788e9e1f8d5b7990bce260fb9e7cc7f33b62040959f
+                // @lfy def/mcp/main.lfy:build#build:commandTool:e3c4dd074336753bdd25210aa43c508eb3d33afb51bc5ea8c031635c31d47530
+                // @lfy def/mcp/main.lfy:test#test:commandTool:30ce3c448b2b09fcbade15a38ad77d2dd77ef036abafd17d446720c89e0897fc
+                // @lfy def/mcp/main.lfy:lint#lint:commandTool:f0b3b00cfabfbd4819c01dad0b7fef63e1c3f6cd45a054ee55d26538a35aad53
+                // @lfy def/mcp/main.lfy:format#format:commandTool:183678a2c352e26ab0b3230a1822f420277afb3bc83e198a2a42b27ee3bb7fea
                 _ => Err(format!("name the target; the targets are: {}", known_targets(workspace))),
             },
         },
@@ -460,7 +457,9 @@ pub fn build(session: &Session, scope: Option<&str>, target: Option<&str>) -> Re
 }
 
 /// Run the target's test command in this run's directory, narrowed by a filter and a scope
-/// when they are given.
+/// when they are given, allowing tests that fail only at a stub when asked.
+// Decision: a test run allows stubs only when the caller asks, so a run that says nothing gets
+// the strict outcome, as the final gate does.
 // @lfy def/mcp/main.lfy:test#test:test:c8bf810d04779ce26830e5c43f290fd753346658b3b40ff992ab1cdedef32174
 // @lfy def/mcp/main.lfy:test#test:test:c7fb9e74d7bb66ee2c63c58681b14d00dc8236468fec85e845bd8aed14276ae6
 pub fn test(
@@ -468,6 +467,7 @@ pub fn test(
     filter: Option<&str>,
     scope: Option<&str>,
     target: Option<&str>,
+    allow_stubs: bool,
 ) -> Result<String, String> {
     // @lfy def/mcp/main.lfy:test#test:test:c8bf810d04779ce26830e5c43f290fd753346658b3b40ff992ab1cdedef32174
     // @lfy def/mcp/main.lfy:test#test:test:c7fb9e74d7bb66ee2c63c58681b14d00dc8236468fec85e845bd8aed14276ae6
@@ -479,6 +479,9 @@ pub fn test(
         &[
             ("TESTS", filter.unwrap_or_default().to_string()),
             ("SCOPE", scope.unwrap_or_default().to_string()),
+            // @lfy def/mcp/main.lfy:test#test:test:4c1e4df81b056422995d5add58b4a2ab7b8a969ed259ed1ff3b611fc46a0b931
+            // @lfy def/mcp/main.lfy:test#test:test:4e7c2e749ecf5d032bf66649d6e5d9daf1357b47d90e6139ef1383be59c6791f
+            ("ALLOW_STUBS", if allow_stubs { "1" } else { "" }.to_string()),
         ],
     )
 }

@@ -2150,7 +2150,7 @@
         "file": "def/lexer/main.lfy",
         "line": 13,
         "outputLine": 1109,
-        "requirement": "lex:lex:9605e2ff963ac9c9caf7f6a748be63b943d6195c5516b4f58b567e7dd045376b"
+        "requirement": "lex:lex:5b87bb021c1a03e47d1041e01848583c815a4e612ff482b1df2fb5093bb02908"
       },
       {
         "column": null,

@@ -236,10 +236,6 @@ fn stems_and_paths() {
         order_after_dependencies(&[vec![1], vec![0, 2], vec![]]),
         [2, 0, 1]
     );
-    // @lfy def/generation/main.lfy:plan
-    assert_eq!(first_segment("a"), "");
-    assert_eq!(first_segment("deep/inner"), "deep");
-    assert_eq!(first_segment("deep/deeper/inner"), "deep");
 }
 
 /// A stem is the name the file goes by, whatever its path says.

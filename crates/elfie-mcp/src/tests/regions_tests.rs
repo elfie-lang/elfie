@@ -147,15 +147,23 @@ fn source_names_the_definition_a_line_came_from() {
     let session = fixture.session();
     // The line ends with the entity the marker names.
     // @lfy def/mcp/main.lfy:source#source:source:b4c0ce9250c99f427b67858ad3e1b065b76f259ad3bf94c84085ee1551d51ab1
-    assert_eq!(source(&session, "out/b.rs", 1).unwrap(), "def/b.lfy:1 B");
-    assert_eq!(source(&session, "out/b.rs", 2).unwrap(), "def/b.lfy:1 B");
+    assert_eq!(source(&session, "out/b.rs", 1.0).unwrap(), "def/b.lfy:1 B");
+    assert_eq!(source(&session, "out/b.rs", 2.0).unwrap(), "def/b.lfy:1 B");
     // No source map has the file as its output.
     // @lfy def/mcp/main.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
-    let text = source(&session, "out/a.rs", 1).unwrap();
+    let text = source(&session, "out/a.rs", 1.0).unwrap();
     assert_eq!(text, "no source map covers out/a.rs:1");
     // A line past the region of every marker.
     // @lfy def/mcp/main.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
-    assert_eq!(source(&session, "out/b.rs", 9).unwrap(), "no source map covers out/b.rs:9");
+    assert_eq!(source(&session, "out/b.rs", 9.0).unwrap(), "no source map covers out/b.rs:9");
+    // A number that is no line of at least 1 still reaches the fn, which says no source
+    // map covers it.
+    // @lfy def/mcp/main.lfy:source#source:tool:e0b14b4706f8dae10a85f002eb93be09aa1f890a3140dca03046fdc0ed52915a
+    for line in [serde_json::json!(0), serde_json::json!(2.5)] {
+        let result = call(&session, "elfie_source", serde_json::json!({ "file": "out/b.rs", "line": line }));
+        assert!(!result.is_error, "{}", result.text);
+        assert!(result.text.starts_with("no source map covers out/b.rs:"), "{}", result.text);
+    }
     // A number argument reaches the fn as a number, and what the fn returns is the
     // call's result.
     // @lfy def/mcp/main.lfy:source#source:tool:e0b14b4706f8dae10a85f002eb93be09aa1f890a3140dca03046fdc0ed52915a
@@ -188,7 +196,7 @@ fn source_names_the_requirement_a_region_answers_for() {
     // @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
     let session = fixture.session();
     assert_eq!(
-        source(&session, "out/b.rs", 2).unwrap(),
+        source(&session, "out/b.rs", 2.0).unwrap(),
         format!("def/b.lfy:1 b\n{local}\nIt answers")
     );
 }
@@ -209,7 +217,7 @@ fn source_reads_a_global_requirement_from_the_lowered_program() {
     let session = fixture.session();
     // @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
     assert_eq!(
-        source(&session, "out/b.rs", 1).unwrap(),
+        source(&session, "out/b.rs", 1.0).unwrap(),
         format!("def/b.lfy:1 b\n{global}\nNothing is written outside the output directory")
     );
 }
