@@ -42,4 +42,10 @@ The scope layer will feel familiar in the abstract as a programming concept, but
 
 In the scope layer, you can access and modify the scope of a function, variable, or object dynamically based on your needs. Most often this will be helpful with `trait`'s. A `trait` allows you to create reusable components or pieces of logic that can be shared across the system. For example, with the code `trait hasName { $name = string; }`, you can define a reusable trait that adds a `name` variable to the current scope.
 
+### Compiling
+
+When you run `elfie compile`, Elfie works out which units (one source file for one target) need generating and compiles them one at a time, bottom up, so every unit is written against code that already works. Each unit's agent gets a request built only from that unit's definitions, the interfaces it depends on, and its current outputs, and its work is checked mechanically and then reviewed against its criteria before the next unit starts. The code has to build after every single unit. If a change would break a unit that comes later, the agent either makes a small fix in that unit's code or replaces the broken body with a stub, and that unit gets picked up again later in the same run, where a fix is checked and a stub is written properly.
+
+All of this happens in a copy of your project (the change set) rather than in place. If a compile stops partway, the change set is kept, and the next compile picks up where it left off for any unit whose definitions haven't changed. Only once every unit is done does a final gate check that no stub is left and that the whole project builds, passes its tests and lint, and passes review. Then, and only then, your project takes the whole change set at once.
+
 [1]: https://elfie.dev

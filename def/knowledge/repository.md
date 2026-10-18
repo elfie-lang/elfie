@@ -49,19 +49,22 @@
   reorders, or rewrites another unit's marked regions, and it leaves the `pub mod` lines of other
   units in place.
 
-## A change that breaks a dependent's output
+## A change that breaks a later unit's code
 
-- Batches run in dependency order, so a unit that adds, removes, or renames a member of a data,
-  or changes behavior a dependent's fixtures rely on, is compiled before the units that construct
-  or read it. Their outputs then fail to build until their own batches regenerate them later in the
-  same compile.
-- Such a unit writes the output its definition asks for anyway; it does not stop as blocked. The
-  whole-workspace build, test, and lint gate holds once every planned unit is compiled, not after
-  each batch.
-- It checks its own work by patching the broken sites in other units' outputs temporarily, with
-  plain `cp` snapshots in the scratchpad, running the build and its own tests, then restoring every
-  snapshot so that only its own outputs are changed. It names, in its report, each build error that
-  remains and the unit that owns it.
+- Units are compiled one at a time in plan order, so a unit that adds, removes, or renames a member
+  of a data, or changes behavior a later unit's code or fixtures rely on, is compiled before the
+  units that construct or read it. It writes the output its definition asks for anyway; it does not
+  stop as blocked.
+- The whole workspace must build, and every test pass or fail only by reaching a stub, before the
+  unit is accepted. So the unit repairs each site it breaks in a later unit's code itself, inside
+  that unit's regions: a fix within the cap `elfie_reach` reports, with a note through
+  `elfie_touch` for each unit it fixes, or a stub when the change is bigger. Those units are
+  compiled later in the same compile, planned as touched.
+- A struct expression of a struct that derives `Default` and ends with `..Default::default()`
+  needs no edit when a field whose type has a `Default` is added, so most added fields break
+  nothing.
+- A broken site is never patched temporarily and restored: what the unit leaves in a later unit's
+  code is what is accepted and recorded.
 
 ## Tests that load the repository
 

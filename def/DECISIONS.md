@@ -289,12 +289,13 @@ unwritten pieces (cli, format, generation, lsp, mcp) were formatted with `elfie 
   differs, so a change inside a body regenerates one unit. Timestamps are no longer consulted.
 - **Batches.** Planned units are grouped by plan order and first stem segment, at most six units
   or 60,000 characters of source per batch, with a dependency-only unit joining the batch that
-  produces what it depends on. One request per batch sends guidance and interfaces once.
+  produces what it depends on. One request per batch sends guidance and interfaces once
+  (superseded 2026-10-17, below).
 - **Outcomes.** The compiler ends its report with `ELFIE: DONE`, `ELFIE: BLOCKED: <why>`, or
   `ELFIE: CLARIFY: <question>`; `outcomeOf` reads that line and the verdicts. Rejected batches are
   retried once with the problems; blocked and clarification stop the compile and leave a file
   under `elfie-requests/` for the person; failures retry once. `--continue` lets independent
-  batches proceed past a stopped one.
+  batches proceed past a stopped one (its meaning superseded 2026-10-17, below).
 - **Progress** is one line per step (planned, requesting, compiling, checking, accepted, ...) with
   done/total and elapsed seconds, as JSON with `--json`, with the compiler's own output streamed
   under the batch name and everything appended to `elfie-requests/compile.log`.
@@ -534,8 +535,9 @@ LSP/MCP protocols are deliberately not part of this round.
   is the exception: `elfie init` adds `/elfie-compile/cache/` to `.gitignore`, and nothing may
   rely on it. Deleting it changes no plan or verdict, only time; the one request it can change
   is that of a batch that would have started from the work its last rejected run kept there (see
-  "Mechanical steps and scheduling" below). Anything that is the only record of something
-  belongs outside `cache/`. This repository ignores it too.
+  "Mechanical steps and scheduling" below; superseded 2026-10-17, below, where the cache holds a
+  kept change set). Anything that is the only record of something belongs outside `cache/`. This
+  repository ignores it too.
 - **Reading and recording are `Generation.sourceMapsOf` and `Generation.record`**, shared by the
   CLI (`check`, `compile`, `verify`) and every agent server tool that reads maps, replacing the
   reading rule each of them spelled out on its own.
@@ -618,7 +620,9 @@ was chosen.
   the batch's first run has no compiler. Its rewritten outputs go straight to `accept` and then to
   review. This requires two more things. First, every output must still be the text that was
   accepted: `SourceMap.text`, a new SHA-256 of the output as accepted, is compared before the
-  markers are rewritten. Second, the batch must have taken no kept work.
+  markers are rewritten. Second, the batch must have taken no kept work. (Batches and kept work
+  superseded 2026-10-17, below: the path is taken per unit, and never by a unit whose request
+  lists a foreign edit.)
   - A rejection by `accept` sends the batch to the compiler as its first run, and the rejection
     counts toward no retry.
   - A violated review makes the batch's run once more the compiler's first run, with the problems.
@@ -657,15 +661,16 @@ was chosen.
     straight to the compiler.
 - **Mixed batches go to the compiler.** Both mechanical paths apply only when every unit of the
   batch qualifies. A dependency-only unit in a batch with its changed dependency cannot be
-  checked by building before that dependency is regenerated.
+  checked by building before that dependency is regenerated (superseded 2026-10-17, below).
 - **Issue:** `plan` puts a dependency-only unit into the open batch that holds its planned
   dependencies, so the commonest dependency-only unit (one in the same directory as what changed)
   never forms a batch of its own, and so never takes this path. Planning dependency-only units
   into batches of their own would let it apply. Now that dependents start on structural
   acceptance (below), the cost is one more request when the build fails. This was left for a
-  decision.
+  decision. (Closed 2026-10-17, below: with no batches, every dependency-only unit is judged on
+  its own.)
 
-## Review off the critical path (phase 5, item 14)
+## Review off the critical path (phase 5, item 14; superseded 2026-10-17, below)
 
 - **In copies only.** With `--jobs` above 1 in a git repository, a batch may start once every
   batch it depends on, directly or transitively, either has its files merged into the root, or
@@ -710,7 +715,7 @@ was chosen.
 - `--jobs` now counts batches running the compiler, the verifier, or a target command, not
   batches in flight, so a batch that waits to merge holds no slot.
 
-## Keeping rejected work (phase 5, item 15)
+## Keeping rejected work (phase 5, item 15; superseded 2026-10-17, below)
 
 - When a batch run in a copy stops rejected (a second rejected outcome, or a second review with
   a violation), `compile` writes its kept work to `elfie-compile/cache/kept/<batch>.json`. The
@@ -747,7 +752,8 @@ was chosen.
 
 - Three steps were added: `resuming` (a copy takes kept work), `rewording` (a unit's markers were
   rewritten, with counts), and `building` (build and test in place of the compiler, or before a
-  merge). The first two are drawn like `requesting` and `building` like `compiling`.
+  merge). The first two are drawn like `requesting` and `building` like `compiling`. (The
+  meanings of `resuming` and `building` superseded 2026-10-17, below.)
 
 # Knowledge, experiments, and output layout (2026-10-10, ROADMAP phase 6 and knowledge)
 
@@ -871,3 +877,186 @@ was chosen.
   argument, and `ListEntity` says its item type is that argument. A list-typed const reads it
   through its type; a bare `List` has none. `FnEntity` and `Entity` no longer restate the
   prelude's `parameters`, `identifier`, and `definition`.
+
+# Unit compiles that always build (2026-10-17, ROADMAP-units phases 1 to 5)
+
+The compile of 2026-10-17 showed what batches cost. `workspace/data`'s new required fields broke
+struct literals in units compiled later, so it could not pass a gate that asked the whole workspace
+to build after every batch. `interpret/main` was rejected twice for code in `workspace/load.rs` that
+only a later batch could regenerate. `workspace/main` was reviewed clean and then discarded,
+because units it depended on were rejected. And a unit's request depended on which other units
+happened to be stale with it. Batches, per-batch copies, and kept work per batch are gone: a
+compile runs one unit at a time, bottom up, the code builds after every unit, and the root moves
+only when the whole compile is done.
+
+## Guarantees
+
+- **G1 Order.** Units run one at a time, in `Plan.units` order, which comes from the plan alone.
+- **G2 Requests.** A unit's request is built from its definitions, the interfaces of its
+  dependencies, the target, and the current text of its outputs, with every edit another unit made
+  to those outputs listed. It never depends on which other units are planned. This holds for the
+  definitions, not the code: a touched unit's request carries code an earlier run wrote, as
+  `Request.existing` always did, now named by the unit that wrote it.
+- **G3 Always builds.** After every accepted unit, the target's build passes for the whole
+  workspace.
+- **G4 Always tests.** After every accepted unit, every test passes or fails only by reaching a
+  stub.
+- **G5 Bounded reach.** A unit edits another unit's outputs only inside that unit's regions, only
+  for a unit later in plan order, and only as a stub or as a capped fix.
+- **G6 Finishes.** Every stub sits in a later unit's code, and a unit holding a stub in its own
+  regions is never accepted, so a bottom-up compile ends.
+- **G7 Root.** The root takes every unit of the compile at once, and only when no stub is left, the
+  whole build, test, lint, and format check pass, every planned unit is accepted and reviewed, and
+  the global review passes.
+
+## Stubs and fixes
+
+- **A target says how to stub.** `targetLanguage` gains `stubLine`, the statement that replaces a
+  body, whose `{{unit}}` (the stem of the unit writing it) and `{{reason}}` are filled in when it
+  is written, and `stubMarker`, the text every stub line holds and every reached stub prints.
+  Rust's is `todo!("elfie stub: {{unit}}: {{reason}}")` with the marker `elfie stub:`; Python and
+  TypeScript set their own. The line is a quoted string, not a template, so its braces survive
+  until a stub is written. Both may be undefined, for a language whose outputs have no body that
+  runs, and then nothing is stubbed, only fixed.
+- **Stubs and fixes are the only foreign edits.** A foreign edit is an edit inside a region of
+  another unit's output (`ForeignEdit`: `by`, `owner`, `path`, `kind`, the region's marker, its
+  lines before and after, and `note`). `accept` classifies every changed line outside the unit's
+  own regions:
+  - in a shared output (`lib.rs`, `mod.rs` lines), as before;
+  - in another unit's region, rejected unless that unit is in the run's reach and the region's
+    markers are unchanged; then a **stub** when the diff only removes lines and adds stub lines
+    naming this unit, and a **fix** otherwise;
+  - in no unit's region and not a shared output, rejected, as before.
+- **Fixes are capped; stubs are not.** `fixLines` is 10 changed lines per region and
+  `fixUnitLines` is 40 per touched unit. Anything bigger must be a stub. They are two `ace const`s
+  in `generation/data`, so they can be tuned from measurements, and `Reach` carries them so the
+  request and the agent server state the same cap. A rewritten line counts once: the count is the
+  larger of the lines a line diff removes and the lines it adds. Every unit a run fixes needs a
+  note through `elfie_touch`, or the run is rejected; a stub's note is the reason its line gives.
+- **The reach is every later unit of the target that has outputs**, not only the units that depend
+  on this one, because a unit can break a later unit's code through a shared output or a test as
+  well as through an interface. It is read from `Plan.units` alone, never from reasons.
+- **The cap is measured against the files as they were before the unit's first run** since it was
+  last accepted (`Binding.before`), so a retry does not start its count again.
+- **A stub line left in the unit's own regions rejects it** (G6). A stub the final gate finds is a
+  defect to report, not a unit to run again.
+
+## The touched reason
+
+- **`Reason.touched`:** another unit edited its outputs during this compile. `plan` is handed the
+  foreign edits the change set records since each owner was last accepted, and plans the owner as
+  `touched` unless it already has a reason. A touched unit is always later than the unit that
+  touched it, since a reach holds only later units and the order never depends on what is planned.
+- **The request lists the edits** (`Request.foreignEdits`), each with the unit that made it, its
+  kind, path, marker, note, and lines before and after, so code another run wrote into the unit's
+  outputs is never taken for its own. Each stub line is to be replaced by code that does what the
+  unit's criteria and tests ask.
+- **A foreign edit changes the owner's region hash**, so its earlier verdicts on that entity no
+  longer count.
+- **The touched-fix path needs no compiler.** When a unit's only reason is `touched` and all its
+  foreign edits are fixes, its outputs go to `accept` as they are, the unit gate runs, and the
+  verifier judges only the entities whose regions were fixed. When both pass it is accepted, as
+  the dependency-only path accepts on build and test; otherwise the compiler runs as its first
+  run, with the problems, and the failure counts toward no retry. A stub always goes to the
+  compiler, because a stub is code that must be written again.
+- The reworded-only and dependency-only paths stay, per unit, and are never taken by a unit whose
+  request lists a foreign edit.
+
+## Requests, the unit gate, and the agent server
+
+- **`Request` is for one unit.** `unit` replaces `batch`, the maps keyed by path collapse to the one
+  unit, and `foreignEdits` and `reach` are new. `ReviewRequest`, `Binding`, and `compilerTool`
+  name one unit; `Outcome.verdicts` is a single `verdict`, and a `Verdict` lists the foreign edits
+  it made. `Batch`, `batchUnits`, `batchCharacters`, and `Plan.batches` are gone: `Plan.units` is
+  the schedule.
+- **What is the same for every unit of a target comes first** in the instructions (role, guidance,
+  native dependencies, the target's knowledge, commands, globals, rules, stubs, tools, report),
+  then the interfaces, the unit, its foreign edits, its outputs, and its reach. A prompt cache can
+  reuse that prefix, which recovers the shared context batches existed for.
+- **The unit gate** follows `accept`: the whole workspace builds, its tests pass with
+  `ALLOW_STUBS`, and lint passes on the unit's own lines. Lint counts only those because a stub
+  leaves the replaced body's parameters unused, and clippy's `-D warnings` would otherwise fail
+  every unit after the one that stubbed. Then the verifier judges the unit, with earlier verdicts
+  carried. A failed gate is a rejected outcome, and retry counts stay per unit.
+- **`ALLOW_STUBS`.** A test command gets `1` when its caller allows stubs and the empty string
+  otherwise. With it set, a line succeeds when the outputs build and every failing test failed by
+  reaching a stub; a line that ignores it stays strict. Cargo's check is written inline in the test
+  line, in POSIX `sh` and `awk` over libtest's report, not as a script in `vendor/rust` as
+  ROADMAP-units item 6 proposed, because a command runs in the target's output directory and
+  cannot find a package's files. `elfie_test` gains `allowStubs`.
+- **`def/targets.lfy`'s gate is two criteria:** after every unit the workspace builds and every
+  test passes or fails only at a stub; at the end of a compile `cargo build`, `test`, and `clippy`
+  pass without warnings. `targetLanguage`'s quality criteria split the same way.
+- **The tools take a unit.** `elfie_units` lists units and reasons, with no batches;
+  `elfie_request` and `elfie_review` take a unit; `elfie_task` loses its unit argument.
+  `elfie_reach` gives the later units this run may edit, the regions it has edited (or every
+  region of one unit it names), and what is left of each cap. `elfie_touch(unit, note)` records why the run edited a unit
+  (`Session.touches`, handed back in `SessionRecord`). The scripts read `ELFIE_UNIT` in place of
+  `ELFIE_BATCH` and `ELFIE_UNITS`.
+
+## The change set
+
+- **One copy per target per compile.** Every planned unit of a target is worked in the target's
+  change set (`ChangeSet` in `cli/data`): its units in plan order, each with its state, reason,
+  and hashes, and every foreign edit recorded, appended to and never reordered. The copy is
+  `elfie-compile/cache/changes/<target>/copy`, its base sits beside it, and the record is
+  `changes/<target>.json`. Maps and review records are written in the copy; nothing in the root
+  changes but through the merge.
+- **Kept and resumed.** A compile that stops keeps the change set and its copy. The next compile
+  resumes it while every accepted or reviewed unit's `Unit.text` hash and requirements hash are
+  unchanged and the planned units are the same, in the same order. The first unit whose
+  definitions changed, or where the order first differs, runs again with every unit after it; the
+  units before it keep their state. When no unit would keep its state, the change set is made new.
+  Only outputs, maps, and review records are a change set's own files; every other file is taken
+  from the root again, so a resumed change set reads the definitions as they are now, but nothing
+  under a build directory (`target`, `.git`, `node_modules`) is removed, so a resume does not
+  rebuild from scratch. Losing it costs only time, which is why it lives under `cache/`.
+- **A kept unit stays planned.** A unit a kept change set accepted, with unchanged definitions, is
+  planned at its place with the reason it had there, even when the root's maps would not plan it.
+  Without this, a compile of units requested by name could never resume: naming them again runs
+  them again, and not naming them leaves them out of the plan, which differs from the kept order.
+  Found in the first compile with the new binary, which ran mcp/main twice for nothing.
+- **A unit that stops without being accepted** has its outputs put back as they were before its
+  first run in the compile, and what it wrote is saved under `elfie-requests/<name>.rejected`. The
+  copy then still builds for the units after it, and a resumed change set never starts a unit from
+  code no run accepted. A unit rejected after its retries stops the change set, and nothing merges.
+- **`--continue` stays, with a new meaning:** units that depend on a stopped unit are skipped,
+  units that do not still run in plan order to surface their problems, and none of them merges
+  without the rest.
+- **`--jobs` is removed** until units that share nothing can run in copies of their own
+  (ROADMAP-units phase 6), when it comes back with that meaning. Running one unit at a time is
+  what makes the order, and so every request, deterministic.
+- `compile --dry-run` and `compile --accept` make, resume, and remove no change set, and work in
+  the root.
+
+## The final gate and the merge
+
+- **The final gate** runs on each change set before the root takes anything: no output line is a
+  stub line, read as accept reads one (a whole trimmed line that is the stub line with any unit and
+  reason); the build, the test without `ALLOW_STUBS`, the lint, and the format check pass
+  in the copy; and every planned unit is accepted and reviewed, none violated. With `--no-verify`
+  or no verifier, every unit must be accepted, none is reviewed, and no global review runs.
+- **Stub lines, not the marker.** The roadmap's gate looked for any line holding the stub marker.
+  The first compile with the new binary failed there on the compiler's own tests and fixtures,
+  which quote the marker inside strings; a stub line is a whole line, so a quoted one never matches.
+- **The global review** then runs once, in a copy, because what it judges is what the root is about
+  to take; with several targets, in the last target's copy with the others' changes written in.
+  Units it plans run again in the same compile, then the final gates, then the review once more.
+- **The merge is all at once.** The root takes every change set of the compile together: each file
+  a change set changed, added (when git would track it), or removed. A root file unchanged since
+  the base becomes the copy's; one changed since is merged three ways with `git merge-file`. No
+  root file changes until every file merges without a conflict, and a conflict changes nothing and
+  keeps every change set. Then each change set's record, copy, and base are removed.
+- **Progress** loses the batch: every line names its unit, and `touched`, `stubbed`, `finalGate`,
+  and `merging` are new steps. `resuming` now means a kept change set is taken up again, and
+  `building` is the build and test run in place of a compiler or as the unit gate.
+
+## Rust: `..Default::default()`
+
+- **Adopted as guidance of the `rust` layer** in `vendor/rust`, so every Rust project gets it. A
+  struct whose field types all implement `Default` derives it. Code that builds a value of a struct
+  another unit outputs ends the expression with `..Default::default()` after the fields it sets,
+  unless it sets every field, which clippy's `needless_update` rejects under `-D warnings`.
+- A new field whose type has a `Default` then breaks no dependent, so most data changes need no
+  foreign edit at all. It does not help a field whose type has no `Default`, or a field removed or
+  renamed; those take a fix or a stub.
