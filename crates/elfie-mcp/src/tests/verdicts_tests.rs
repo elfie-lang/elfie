@@ -1,23 +1,23 @@
-// @lfy def/mcp/main.lfy:review
+// @lfy def/mcp/read.lfy:review
 //! Tests of `review`, `global_review`, `report`, and `report_many`.
 
 use super::*;
 use crate::verdicts::asked_of;
 
-// @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
+// @lfy def/mcp/read.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
 #[test]
 fn review_gives_the_review_request_of_one_unit() {
     let fixture = project_with_requirements();
     let session = fixture.session();
     // The request is made with no review record, so every criterion of the unit is asked
     // about however an earlier review found it.
-    // @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
+    // @lfy def/mcp/read.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
     let instructions = review(&session, "b", None).unwrap();
     assert!(instructions.contains("Reviewing the unit"), "{instructions}");
     assert!(instructions.contains("It answers"), "{instructions}");
     assert_eq!(review(&session, "b", Some("rust")).unwrap(), instructions);
     // No unit has that stem, or the target is not one.
-    // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+    // @lfy def/mcp/read.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
     let error = review(&session, "c", None).unwrap_err();
     assert!(error.contains("no unit has the stem c"), "{error}");
     let error = review(&session, "b", Some("go")).unwrap_err();
@@ -61,9 +61,9 @@ fn place_of_requirement(session: &Session, id: &str) -> (String, usize) {
 /// its status, evidence, and note; the text says so and counts what is still missing. A
 /// status naming none of the three, an id naming no criterion, and an id the review did
 /// not ask about each record nothing.
-// @lfy def/mcp/main.lfy:report#report:report:34ee53fe216df9928c40072f557778f5a2188225c7e5884099686da22499f026
-// @lfy def/mcp/main.lfy:report#report:report:00107440d32bd506e9119bd632f7552b025f2dfc4f0e24ebaf0fd98a73fb2141
-// @lfy def/mcp/main.lfy:report#report:report:1899e3f7c1c027232563ba6f23f541c4c864d9ac2021cf429ec4439cce298785
+// @lfy def/mcp/compiling.lfy:report#report:report:34ee53fe216df9928c40072f557778f5a2188225c7e5884099686da22499f026
+// @lfy def/mcp/compiling.lfy:report#report:report:00107440d32bd506e9119bd632f7552b025f2dfc4f0e24ebaf0fd98a73fb2141
+// @lfy def/mcp/compiling.lfy:report#report:report:1899e3f7c1c027232563ba6f23f541c4c864d9ac2021cf429ec4439cce298785
 #[test]
 fn report_records_one_verdict_and_counts_what_is_still_missing() {
     let fixture = project_with_two_criteria();
@@ -76,8 +76,8 @@ fn report_records_one_verdict_and_counts_what_is_still_missing() {
 
     // Reported by its place rather than by its id: the criterion that place names is
     // recorded, with the status, the evidence, and the note given.
-    // @lfy def/mcp/main.lfy:report#report:report:c4f952f8a704dc18d7317affedd3055f6c9333c486f27c39f10c6ef31af12b5d
-    // @lfy def/mcp/main.lfy:report#report:report:82b739ccf95aa1e1faa11800427ce14cadd3fdeef5e2c7904cc9999d70958a3a
+    // @lfy def/mcp/compiling.lfy:report#report:report:c4f952f8a704dc18d7317affedd3055f6c9333c486f27c39f10c6ef31af12b5d
+    // @lfy def/mcp/compiling.lfy:report#report:report:82b739ccf95aa1e1faa11800427ce14cadd3fdeef5e2c7904cc9999d70958a3a
     let (file, line) = place_of_requirement(&session, &second);
     let text = report(
         &session,
@@ -89,9 +89,9 @@ fn report_records_one_verdict_and_counts_what_is_still_missing() {
         "returns undefined instead of an empty list",
     )
     .unwrap();
-    // @lfy def/mcp/main.lfy:report#report:report:cb0ab5dd13a5f32de066f7ec167f81ff4853716054b8ebe9eae3c72af49a0c4b
+    // @lfy def/mcp/compiling.lfy:report#report:report:cb0ab5dd13a5f32de066f7ec167f81ff4853716054b8ebe9eae3c72af49a0c4b
     assert_eq!(text.lines().next(), Some(format!("recorded {second} at {file}:{line}").as_str()));
-    // @lfy def/mcp/main.lfy:report#report:report:33d92b578b9d5f560fea04be01b80b698d6cef193437113b87d6767239dba56f
+    // @lfy def/mcp/compiling.lfy:report#report:report:33d92b578b9d5f560fea04be01b80b698d6cef193437113b87d6767239dba56f
     assert!(text.contains(&format!("1 still missing: {first}")), "{text}");
     let recorded = session.recorded();
     assert_eq!(recorded.len(), 1);
@@ -100,21 +100,21 @@ fn report_records_one_verdict_and_counts_what_is_still_missing() {
     assert_eq!(recorded[0].evidence, "out/a.rs:12-18");
     assert_eq!(recorded[0].note, "returns undefined instead of an empty list");
     // Nothing is written: the verdict is kept in the session alone.
-    // @lfy def/mcp/main.lfy:report#report:report:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+    // @lfy def/mcp/compiling.lfy:report#report:report:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
     assert!(!fixture.root.join("elfie-requests").exists());
 
     // An id that names no criterion or test of the review records nothing.
-    // @lfy def/mcp/main.lfy:report#report:report:3d3b34634644a0a77e7ee4995575b04f369d10d6495cab7ed34e712d6c0df7d7
+    // @lfy def/mcp/compiling.lfy:report#report:report:3d3b34634644a0a77e7ee4995575b04f369d10d6495cab7ed34e712d6c0df7d7
     let error = report(&session, Some("A:A:77aa"), None, None, "satisfied", "", "ok").unwrap_err();
     assert!(error.contains("A:A:77aa") && error.contains("no criterion or test"), "{error}");
     assert_eq!(session.recorded().len(), 1);
     // A status naming none of the three records nothing and names the three.
-    // @lfy def/mcp/main.lfy:report#report:report:f95e4040e1b2d8658bf53cbe5eaf320a0628d57aafdf090791dea862afeb67fd
+    // @lfy def/mcp/compiling.lfy:report#report:report:f95e4040e1b2d8658bf53cbe5eaf320a0628d57aafdf090791dea862afeb67fd
     let error = report(&session, Some(&first), None, None, "maybe", "", "unsure").unwrap_err();
     assert!(error.contains("satisfied") && error.contains("violated") && error.contains("unverifiable"), "{error}");
     assert_eq!(session.recorded().len(), 1);
     // A criterion of the program the review did not ask about records nothing either.
-    // @lfy def/mcp/main.lfy:report#report:report:eecbccd9ec901434b61790fd663bb5081ca97c913c2328df04808e7f3755d06a
+    // @lfy def/mcp/compiling.lfy:report#report:report:eecbccd9ec901434b61790fd663bb5081ca97c913c2328df04808e7f3755d06a
     let global = requirement_id(&fixture, "Nothing is written outside the output directory");
     let error = report(&session, Some(&global), None, None, "satisfied", "", "ok").unwrap_err();
     assert!(error.contains("was not asked about in this review"), "{error}");
@@ -122,13 +122,13 @@ fn report_records_one_verdict_and_counts_what_is_still_missing() {
 
     // Every id asked about has a verdict: the text says so and how the final message
     // ends.
-    // @lfy def/mcp/main.lfy:report#report:report:979112dd7ac1a472af0b4b0b3b534d9bf9f6464235b53bb1523bcb7fab70370c
+    // @lfy def/mcp/compiling.lfy:report#report:report:979112dd7ac1a472af0b4b0b3b534d9bf9f6464235b53bb1523bcb7fab70370c
     let text = report(&session, Some(&first), None, None, "satisfied", "", "it answers").unwrap();
     assert!(text.contains("every criterion and test asked about has a verdict"), "{text}");
     assert!(text.contains(generation::REVIEWED), "{text}");
     assert_eq!(session.recorded().len(), 2);
     // A second verdict on one criterion stands, and the earlier one is removed.
-    // @lfy def/mcp/main.lfy:report#report:report:bfa37d307a244c3332ac692e347ce5f2a534f0f2a1f839c0cab30318da4f37cc
+    // @lfy def/mcp/compiling.lfy:report#report:report:bfa37d307a244c3332ac692e347ce5f2a534f0f2a1f839c0cab30318da4f37cc
     let text = report(&session, Some(&first), None, None, "UNVERIFIABLE", "", "no region answers").unwrap();
     assert!(text.starts_with(&format!("recorded {first} ")), "{text}");
     let recorded = session.recorded();
@@ -142,8 +142,8 @@ fn report_records_one_verdict_and_counts_what_is_still_missing() {
 /// is no JSON object is an error of its own that never keeps a later line from being
 /// handled. The text holds one line for each line handled, in the order written, and then
 /// what is still missing.
-// @lfy def/mcp/main.lfy:reportMany#reportMany:reportMany:b0b09eb45dab5103137288326fe35b1eb10effb35bd4940585aeb5ee3ff559ff
-// @lfy def/mcp/main.lfy:reportMany#reportMany:reportMany:058b0e578727415727d2873acf14d412ffdc57e2b6544717a2d9d0c1a1ba17fa
+// @lfy def/mcp/compiling.lfy:reportMany#reportMany:reportMany:b0b09eb45dab5103137288326fe35b1eb10effb35bd4940585aeb5ee3ff559ff
+// @lfy def/mcp/compiling.lfy:reportMany#reportMany:reportMany:058b0e578727415727d2873acf14d412ffdc57e2b6544717a2d9d0c1a1ba17fa
 #[test]
 fn report_many_records_the_verdicts_of_its_lines_one_by_one() {
     let fixture = project_with_two_criteria();
@@ -204,7 +204,7 @@ fn report_many_records_the_verdicts_of_its_lines_one_by_one() {
     assert_eq!(session.recorded().len(), 2);
 }
 
-// @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:05a9407f78fc40f7476f94234604403011dfe484f0c8de801976da5a789f16ed
+// @lfy def/mcp/read.lfy:globalReview#globalReview:globalReview:05a9407f78fc40f7476f94234604403011dfe484f0c8de801976da5a789f16ed
 #[test]
 fn global_review_gives_the_review_request_of_every_global_requirement() {
     let fixture = project_with_requirements();
@@ -215,7 +215,7 @@ fn global_review_gives_the_review_request_of_every_global_requirement() {
     assert!(instructions.contains("Nothing is written outside the output directory"), "{instructions}");
 
     // No global criterion or test exists.
-    // @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:f656c023948494da8d316780c15c2c1b96e1512caafb62d843dc6295be0d89be
+    // @lfy def/mcp/read.lfy:globalReview#globalReview:globalReview:f656c023948494da8d316780c15c2c1b96e1512caafb62d843dc6295be0d89be
     let bare = compiled_project();
     let session = bare.session();
     assert_eq!(global_review(&session).unwrap(), "no global criterion or test exists in the program");

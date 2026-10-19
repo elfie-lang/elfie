@@ -107,7 +107,7 @@ fn init_creates_the_manifest_once() {
 }
 
 /// Check prints the binder error of the one file and the code is problems.
-// @lfy def/cli/main.lfy:check#check:check:da6a5b1d68e4621756b7ee0a10d3d012188a0d9ce83c6c6307d1cf4709be83f3
+// @lfy def/cli/inspect.lfy:check#check:check:da6a5b1d68e4621756b7ee0a10d3d012188a0d9ce83c6c6307d1cf4709be83f3
 #[test]
 fn check_reports_the_binder_error_of_a_file() {
     let fixture = Fixture::new();
@@ -151,28 +151,28 @@ fn check_prints_stale_units_as_warnings() {
 /// A program declaring no target says so once, as information of stage generation at
 /// elfie.json: it is neither a problem nor a stale unit, so the code is success even
 /// with --strict.
-// @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+// @lfy def/cli/inspect.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
 #[test]
 fn check_says_once_that_the_program_declares_no_target() {
     let fixture = Fixture::new();
     library(&fixture).write("def/a.lfy", "const x = 1;\n");
     // Nothing adds a target to global, so there is none to build for.
-    // @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+    // @lfy def/cli/inspect.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
     let workspace = workspace::load(&fixture.root);
     assert!(workspace.targets.is_empty(), "{:?}", workspace.targets.len());
     // The line is information, which is neither a problem nor a stale unit.
-    // @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+    // @lfy def/cli/inspect.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
     let manifest = fixture.root.join("elfie.json").display().to_string();
     print_no_target(&manifest, false, false);
     print_no_target(&manifest, false, true);
     print_no_target(&manifest, true, false);
     assert_eq!(severity_tone(Severity::Information), Tone::Active);
-    // @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+    // @lfy def/cli/inspect.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
     assert_eq!(fixture.run(&["check"]), ExitCode::Success.code());
     assert_eq!(fixture.run(&["check", "--strict"]), ExitCode::Success.code());
     assert_eq!(fixture.run(&["check", "--json"]), ExitCode::Success.code());
     // A program that does declare one says nothing of the kind.
-    // @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+    // @lfy def/cli/inspect.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
     one_target(&fixture);
     assert!(!workspace::load(&fixture.root).targets.is_empty());
 }
@@ -212,12 +212,12 @@ fn check_strict_fails_on_a_stale_unit() {
 
 /// Format with --check writes nothing, prints the file that would change, and the code
 /// is problems.
-// @lfy def/cli/main.lfy:format#format:format:924e56377a8d2761871d8ceabb66f4d0adef21a9172d18330fd4b2971852cd9d
+// @lfy def/cli/inspect.lfy:format#format:format:924e56377a8d2761871d8ceabb66f4d0adef21a9172d18330fd4b2971852cd9d
 #[test]
 fn format_check_prints_the_file_and_leaves_it_alone() {
     let fixture = Fixture::new();
     fixture.write("def/a.lfy", "const   x=1;\n");
-    // @lfy def/cli/main.lfy:format#format:format:924e56377a8d2761871d8ceabb66f4d0adef21a9172d18330fd4b2971852cd9d
+    // @lfy def/cli/inspect.lfy:format#format:format:924e56377a8d2761871d8ceabb66f4d0adef21a9172d18330fd4b2971852cd9d
     let (code, out, _) = fixture.printed(&["format", "--check", "--color=never"]);
     assert_eq!(code, ExitCode::Problems.code());
     assert!(out.lines().any(|line| line.trim() == "def/a.lfy"), "{out}");
@@ -231,7 +231,7 @@ fn format_check_prints_the_file_and_leaves_it_alone() {
 }
 
 /// With no files given, format takes every .lfy file under each source directory.
-// @lfy def/cli/main.lfy:format#format:format:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
+// @lfy def/cli/inspect.lfy:format#format:format:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
 #[test]
 fn format_takes_the_files_of_every_source_directory() {
     let fixture = Fixture::new();
@@ -273,7 +273,7 @@ fn tree_and_tokens_take_one_file() {
 /// Tree prints one node or token per line indented by depth, a node as its rule and its
 /// token range, and a token as its value, the characters with escapes applied, never the
 /// raw characters it was written as.
-// @lfy def/cli/main.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
+// @lfy def/cli/inspect.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
 #[test]
 fn tree_prints_a_node_as_its_range_and_a_token_as_its_value() {
     let tokens = tokens_of("const x = \"a\\nb\";\n");
@@ -287,14 +287,14 @@ fn tree_prints_a_node_as_its_range_and_a_token_as_its_value() {
     let lines = tree_lines(&tree, "def/a.lfy", false, false);
     // The root is its rule and its token range at no indent, and every line below it is
     // indented two spaces per level of depth.
-    // @lfy def/cli/main.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
+    // @lfy def/cli/inspect.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
     assert_eq!(lines[0], format!("{} 0..{}", tree.root.rule.identifier(), tree.tokens.len()));
     for line in &lines {
         assert_eq!((line.len() - line.trim_start().len()) % 2, 0, "{line:?} is indented by depth");
     }
     assert!(lines.iter().any(|line| line.starts_with("  ")), "nothing below the root is indented");
     // A token is given as its value, never as the characters it was written as.
-    // @lfy def/cli/main.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
+    // @lfy def/cli/inspect.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
     let shown = format!("{value:?}");
     assert!(lines.iter().any(|line| line.ends_with(&shown)), "no line gives {shown}: {lines:?}");
     let written = format!("{raw:?}");

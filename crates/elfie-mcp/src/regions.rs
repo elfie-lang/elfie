@@ -1,4 +1,4 @@
-// @lfy def/mcp/main.lfy:output
+// @lfy def/mcp/read.lfy:output
 //! The tools that read the generated code: where the regions of an entity or of a
 //! requirement are, where one line came from, and which lines match a pattern.
 
@@ -10,14 +10,14 @@ use super::*;
 
 /// The language a fenced block of an output is marked with: the output's extension, or
 /// nothing when it has none.
-// @lfy def/mcp/main.lfy:output#output:output:b5c9012118ce16c51f508f0dc7a730f69985ec6d3e5351b99d447dc69d898590
+// @lfy def/mcp/read.lfy:output#output:output:b5c9012118ce16c51f508f0dc7a730f69985ec6d3e5351b99d447dc69d898590
 fn fence_of(path: &str) -> &str {
     Path::new(path).extension().and_then(|extension| extension.to_str()).unwrap_or("")
 }
 
 /// The lines of an output from `first` through `last`, counting from 1, as they are on
 /// disk; the empty text when the file cannot be read.
-// @lfy def/mcp/main.lfy:output#output:output:b5c9012118ce16c51f508f0dc7a730f69985ec6d3e5351b99d447dc69d898590
+// @lfy def/mcp/read.lfy:output#output:output:b5c9012118ce16c51f508f0dc7a730f69985ec6d3e5351b99d447dc69d898590
 fn excerpt(workspace: &Workspace, output: &str, first: usize, last: usize) -> String {
     let Ok(text) = fs::read_to_string(workspace.root.join(output)) else {
         return String::new();
@@ -32,22 +32,22 @@ fn excerpt(workspace: &Workspace, output: &str, first: usize, last: usize) -> St
 /// ends on, a space, and what it came from, then, when `text` is true, its text in a fenced
 /// block; with `text` false the line stands alone, so however long an output is its regions
 /// read as a few lines.
-// @lfy def/mcp/main.lfy:output#output:output:22ddcfeba7456aa91005e6aeab2fcd871e9c512ede2849961438a5b7a3cc5d7c
+// @lfy def/mcp/read.lfy:output#output:output:22ddcfeba7456aa91005e6aeab2fcd871e9c512ede2849961438a5b7a3cc5d7c
 fn region_block(workspace: &Workspace, output: &str, marker: &Marker, text: bool) -> String {
     let mut heading = format!("{}:{}-{}", output, marker.output_line, marker.end);
     if let Some(entity) = &marker.entity {
         heading.push_str(&format!(" {entity}"));
     }
     // The marker names a requirement, so the line ends with its id, after the entity.
-    // @lfy def/mcp/main.lfy:output#output:output:f06f38040e8ba03b92a99e321da9419cc77651260ecc24f8c0087ce2ba8f1dcd
+    // @lfy def/mcp/read.lfy:output#output:output:f06f38040e8ba03b92a99e321da9419cc77651260ecc24f8c0087ce2ba8f1dcd
     if let Some(requirement) = &marker.requirement {
         heading.push_str(&format!(" {requirement}"));
     }
     if !text {
-        // @lfy def/mcp/main.lfy:output#output:output:a388e41750cae72a1a126c53b636547055414dad9404ae10cd679aed3861fe6a
+        // @lfy def/mcp/read.lfy:output#output:output:a388e41750cae72a1a126c53b636547055414dad9404ae10cd679aed3861fe6a
         return heading;
     }
-    // @lfy def/mcp/main.lfy:output#output:output:b5c9012118ce16c51f508f0dc7a730f69985ec6d3e5351b99d447dc69d898590
+    // @lfy def/mcp/read.lfy:output#output:output:b5c9012118ce16c51f508f0dc7a730f69985ec6d3e5351b99d447dc69d898590
     format!(
         "{heading}\n```{}\n{}\n```",
         fence_of(output),
@@ -57,7 +57,7 @@ fn region_block(workspace: &Workspace, output: &str, marker: &Marker, text: bool
 
 /// Every region of every source map, each with the output that holds it, in source map then
 /// output order, limited to one target when one is given.
-// @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
+// @lfy def/mcp/read.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
 fn every_region<'m>(maps: &'m [SourceMap], target: Option<&str>) -> Vec<(&'m str, &'m Marker)> {
     maps.iter()
         .filter(|map| !target.is_some_and(|target| map.target != target))
@@ -67,14 +67,14 @@ fn every_region<'m>(maps: &'m [SourceMap], target: Option<&str>) -> Vec<(&'m str
 
 /// The directories a build or a version control system keeps for itself, which hold no
 /// output however deep below a target's output directory they lie.
-// @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+// @lfy def/mcp/read.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
 const KEPT_DIRECTORIES: [&str; 3] = ["target", ".git", "node_modules"];
 
 /// Whether a path, relative to the workspace root, lies below one of those directories.
 /// Only the segments below the target's output directory are read, and the file's own name
 /// is no segment of them, so a target that writes under a directory of that name is read as
 /// it is written.
-// @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+// @lfy def/mcp/read.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
 fn below_a_kept_directory(path: &str, output_directory: &str) -> bool {
     let under = path.strip_prefix(output_directory).unwrap_or(path);
     let under = under.strip_prefix('/').unwrap_or(under);
@@ -87,14 +87,14 @@ fn below_a_kept_directory(path: &str, output_directory: &str) -> bool {
 /// session: under the target's output directory, with an extension among the target's, and
 /// there on disk, but below none of the directories a build or a version control system
 /// keeps. Limited to one target when one is named.
-// @lfy def/mcp/main.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
+// @lfy def/mcp/read.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
 fn is_output_file(workspace: &Workspace, path: &str, target: Option<&str>) -> bool {
     workspace
         .targets
         .iter()
         .filter(|of_target| target.is_none_or(|target| of_target.identifier == target))
         .any(|of_target| {
-            // @lfy def/mcp/main.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
+            // @lfy def/mcp/read.lfy:output#output:output:1d6736275de07ac86ca7ade748c7890f146871f150c5b312ffe1d56e39b23e05
             !below_a_kept_directory(path, &of_target.output_directory)
                 && output_files(workspace, of_target).iter().any(|known| known == path)
         })
@@ -103,54 +103,54 @@ fn is_output_file(workspace: &Workspace, path: &str, target: Option<&str>) -> bo
 /// Every marker one output file holds as it is read now, as acceptance reads them: the ends
 /// derived over every marker of the file, then the markers naming a file that is not in the
 /// program left out, since nothing was generated from a file the program does not hold.
-// @lfy def/mcp/main.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
-// @lfy def/mcp/main.lfy:output#output:output:84421a06b6eda0b985d11eb52870e3f12014a1594070085b9dc237f580115624
+// @lfy def/mcp/read.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
+// @lfy def/mcp/read.lfy:output#output:output:84421a06b6eda0b985d11eb52870e3f12014a1594070085b9dc237f580115624
 fn markers_now(workspace: &Workspace, path: &str) -> Vec<Marker> {
     let Ok(text) = fs::read_to_string(workspace.root.join(path)) else {
         return Vec::new();
     };
     generation::parse_markers(&text)
         .into_iter()
-        // @lfy def/mcp/main.lfy:output#output:output:84421a06b6eda0b985d11eb52870e3f12014a1594070085b9dc237f580115624
+        // @lfy def/mcp/read.lfy:output#output:output:84421a06b6eda0b985d11eb52870e3f12014a1594070085b9dc237f580115624
         .filter(|marker| workspace.file(&marker.file).is_some())
         .collect()
 }
 
 /// Where generated code is, with its text or without it: every region that came from one
 /// entity, that answers for one criterion or test, or that one output file holds.
-// @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
+// @lfy def/mcp/read.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
 pub fn output(session: &Session, name: &str, target: Option<&str>, text: bool) -> Result<String, String> {
     let workspace = &session.workspace;
-    check_target(workspace, target)?; // @lfy def/mcp/main.lfy:output#output:output:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
+    check_target(workspace, target)?; // @lfy def/mcp/read.lfy:output#output:output:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
     // The name is the path of an output file, so its regions are the markers it holds now,
     // read as acceptance reads them: a compiler that has just edited the file sees its
     // regions where they are rather than where the last acceptance recorded them.
-    // @lfy def/mcp/main.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
+    // @lfy def/mcp/read.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
     if is_output_file(workspace, name, target) {
         let held = markers_now(workspace, name);
         if held.is_empty() {
-            // @lfy def/mcp/main.lfy:output#output:output:7e2589822812f683a65808151f3ae1177182b076f571c65ab59fa2d7e78162a8
+            // @lfy def/mcp/read.lfy:output#output:output:7e2589822812f683a65808151f3ae1177182b076f571c65ab59fa2d7e78162a8
             return Ok(format!("nothing is generated for {name}"));
         }
-        // @lfy def/mcp/main.lfy:output#output:output:22ddcfeba7456aa91005e6aeab2fcd871e9c512ede2849961438a5b7a3cc5d7c
+        // @lfy def/mcp/read.lfy:output#output:output:22ddcfeba7456aa91005e6aeab2fcd871e9c512ede2849961438a5b7a3cc5d7c
         let blocks: Vec<String> = held
             .iter()
             .map(|marker| region_block(workspace, name, marker, text))
             .collect();
         return Ok(blocks.join("\n\n"));
     }
-    let maps = source_maps_of(session, None); // @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
+    let maps = source_maps_of(session, None); // @lfy def/mcp/read.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
     let every = every_region(&maps, target);
     // The name is one an entity owns, so the regions are the ones `regions_of` gives for it;
     // a marker is matched by the same target and the same marker it was found by, because
     // `regions_of` keeps no path.
-    // @lfy def/mcp/main.lfy:output#output:output:be2246cbf67960fbc315e1d8daab6a7955d7054b4d6376f787f087787197ae6f
+    // @lfy def/mcp/read.lfy:output#output:output:be2246cbf67960fbc315e1d8daab6a7955d7054b4d6376f787f087787197ae6f
     let owned = generation::regions_of(workspace, &maps, name, target);
     let mut regions: Vec<(&str, &Marker)> =
         every.iter().copied().filter(|(_, marker)| owned.contains(marker)).collect();
     // The name is the id of a criterion or test of the lowered program, local or global, so
     // its text comes first and the regions are the ones answering for it.
-    // @lfy def/mcp/main.lfy:output#output:output:008a8ee823b190c6fdc29d9f126ce5b9d2b3eb5ea49dc676720c978d2efa6229
+    // @lfy def/mcp/read.lfy:output#output:output:008a8ee823b190c6fdc29d9f126ce5b9d2b3eb5ea49dc676720c978d2efa6229
     let mut heading = None;
     if regions.is_empty() {
         let mut lowered = None;
@@ -169,10 +169,10 @@ pub fn output(session: &Session, name: &str, target: Option<&str>, text: bool) -
     }
     let mut blocks: Vec<String> = heading.into_iter().collect();
     if regions.is_empty() {
-        // @lfy def/mcp/main.lfy:output#output:output:7e2589822812f683a65808151f3ae1177182b076f571c65ab59fa2d7e78162a8
+        // @lfy def/mcp/read.lfy:output#output:output:7e2589822812f683a65808151f3ae1177182b076f571c65ab59fa2d7e78162a8
         blocks.push(format!("nothing is generated for {name}"));
     }
-    // @lfy def/mcp/main.lfy:output#output:output:22ddcfeba7456aa91005e6aeab2fcd871e9c512ede2849961438a5b7a3cc5d7c
+    // @lfy def/mcp/read.lfy:output#output:output:22ddcfeba7456aa91005e6aeab2fcd871e9c512ede2849961438a5b7a3cc5d7c
     blocks.extend(
         regions
             .into_iter()
@@ -183,7 +183,7 @@ pub fn output(session: &Session, name: &str, target: Option<&str>, text: bool) -
 
 /// One lowered criterion as one line: `When` and its situations, then its behaviors, then
 /// `Side effects:` and its side effects, joined by `: `, as a request and a review spell it.
-// @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+// @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
 fn lowered_criterion_text(criterion: &LoweredCriterion) -> String {
     let mut parts = Vec::new();
     if let Some(situation) = &criterion.situation {
@@ -200,7 +200,7 @@ fn lowered_criterion_text(criterion: &LoweredCriterion) -> String {
 
 /// Every criterion and test of a lowered node and the nodes under it, with those of the
 /// criteria and tests given, as its id and the one line it is spelled as.
-// @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+// @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
 fn collect_requirements(
     criteria: &[LoweredCriterion],
     tests: &[LoweredTest],
@@ -212,7 +212,7 @@ fn collect_requirements(
 
 /// Every criterion and test of the lowered program, each as its id and the one line it is
 /// spelled as: the local ones of every file, then the global ones.
-// @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+// @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
 pub(crate) fn requirements_of(program: &Program) -> Vec<(String, String)> {
     let mut found: Vec<(String, String)> = Vec::new();
     for lowered in &program.files {
@@ -224,14 +224,14 @@ pub(crate) fn requirements_of(program: &Program) -> Vec<(String, String)> {
         collect_requirements(&lowered.criteria, &lowered.tests, &mut found);
     }
     // A global criterion or test is in the program once, under no file.
-    // @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+    // @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
     collect_requirements(&program.criteria, &program.tests, &mut found);
     found
 }
 
 /// The text of the criterion or test one requirement id names, local or global, from the
 /// lowered program; `None` when the program holds none with that id.
-// @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+// @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
 fn requirement_text(program: &Program, id: &str) -> Option<String> {
     requirements_of(program)
         .into_iter()
@@ -241,12 +241,12 @@ fn requirement_text(program: &Program, id: &str) -> Option<String> {
 
 /// Where one line of generated code came from: the definition file, the entity, and its
 /// line.
-// @lfy def/mcp/main.lfy:source#source:source:7095bd8049d91a01f9b2a650bf5e71d17bb706c9f4e6a470e004c2dd9881494e
+// @lfy def/mcp/read.lfy:source#source:source:7095bd8049d91a01f9b2a650bf5e71d17bb706c9f4e6a470e004c2dd9881494e
 pub fn source(session: &Session, file: &str, line: f64) -> Result<String, String> {
     let workspace = &session.workspace;
     // A number that is no whole line of at least 1 is before every first marker, so no
     // source map covers it.
-    // @lfy def/mcp/main.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
+    // @lfy def/mcp/read.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
     if line.fract() != 0.0 || line < 1.0 {
         return Ok(format!("no source map covers {file}:{line}"));
     }
@@ -257,20 +257,20 @@ pub fn source(session: &Session, file: &str, line: f64) -> Result<String, String
         }
         // The marker read is the one whose region begins at or before the line and ends at
         // or after it.
-        // @lfy def/mcp/main.lfy:source#source:source:52459b54250cb2edeb5d2b3079e663f17b6814b8d50602682f49ab2f55bf2285
+        // @lfy def/mcp/read.lfy:source#source:source:52459b54250cb2edeb5d2b3079e663f17b6814b8d50602682f49ab2f55bf2285
         let Some(marker) = map.markers.iter().find(|marker| marker.covers(line)) else {
             continue;
         };
-        // @lfy def/mcp/main.lfy:source#source:source:7095bd8049d91a01f9b2a650bf5e71d17bb706c9f4e6a470e004c2dd9881494e
+        // @lfy def/mcp/read.lfy:source#source:source:7095bd8049d91a01f9b2a650bf5e71d17bb706c9f4e6a470e004c2dd9881494e
         let mut text = format!("{}:{}", marker.file, marker.line);
-        // @lfy def/mcp/main.lfy:source#source:source:b4c0ce9250c99f427b67858ad3e1b065b76f259ad3bf94c84085ee1551d51ab1
+        // @lfy def/mcp/read.lfy:source#source:source:b4c0ce9250c99f427b67858ad3e1b065b76f259ad3bf94c84085ee1551d51ab1
         if let Some(entity) = &marker.entity {
             text.push_str(&format!(" {entity}"));
         }
         // The requirement follows on the line after, and the text of that criterion or test
         // on the line after it; a criterion reads as a sentence, so it stands on its own
         // line rather than beside an id that is a name and a hash.
-        // @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+        // @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
         if let Some(requirement) = &marker.requirement {
             text.push('\n');
             text.push_str(requirement);
@@ -284,7 +284,7 @@ pub fn source(session: &Session, file: &str, line: f64) -> Result<String, String
         }
         return Ok(text);
     }
-    // @lfy def/mcp/main.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
+    // @lfy def/mcp/read.lfy:source#source:source:3bd573d9905fc8bbb2ff9b436ef7c2affcef119a2a9cf64efa242292f4bf0299
     Ok(format!("no source map covers {file}:{line}"))
 }
 
@@ -294,15 +294,15 @@ pub fn source(session: &Session, file: &str, line: f64) -> Result<String, String
 // compiler itself is written with, so every search ends in time linear in the text.
 
 /// How many matching lines a search gives before the rest are only counted.
-// @lfy def/mcp/main.lfy:search#search:search:a1cf2a0988555448b5857efc090387808f6292fa53e678aeff920abc5253a1b5
+// @lfy def/mcp/read.lfy:search#search:search:a1cf2a0988555448b5857efc090387808f6292fa53e678aeff920abc5253a1b5
 pub(crate) const SEARCHED_LINES: usize = 200;
 
 /// The files a search reads: every output file of every target it searches, each once, in
 /// the order of their paths.
-// @lfy def/mcp/main.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
+// @lfy def/mcp/read.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
 fn searched_files(session: &Session) -> Vec<String> {
     let workspace = &session.workspace;
-    // @lfy def/mcp/main.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
+    // @lfy def/mcp/read.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
     let targets = session_targets(workspace, session.binding.as_ref());
     let mut found: Vec<String> = targets
         .iter()
@@ -314,11 +314,11 @@ fn searched_files(session: &Session) -> Vec<String> {
 }
 
 /// The lines of generated code that match a regular expression.
-// @lfy def/mcp/main.lfy:search#search:search:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+// @lfy def/mcp/read.lfy:search#search:search:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
 pub fn search(session: &Session, pattern: &str, file: Option<&str>) -> Result<String, String> {
     let workspace = &session.workspace;
     let mut files = searched_files(session);
-    // @lfy def/mcp/main.lfy:search#search:search:6fee06b6e4e8b823d41f3b760f75a448a7c9357ea1409123aaf2b2b62685f6ab
+    // @lfy def/mcp/read.lfy:search#search:search:6fee06b6e4e8b823d41f3b760f75a448a7c9357ea1409123aaf2b2b62685f6ab
     if let Some(under) = file {
         let kept: Vec<String> = files
             .iter()
@@ -326,47 +326,47 @@ pub fn search(session: &Session, pattern: &str, file: Option<&str>) -> Result<St
             .cloned()
             .collect();
         if kept.is_empty() {
-            // @lfy def/mcp/main.lfy:search#search:search:53b64d09870e3da2a2a74debb3f5058f60fda381188b78182eb74ba5aa2269f1
+            // @lfy def/mcp/read.lfy:search#search:search:53b64d09870e3da2a2a74debb3f5058f60fda381188b78182eb74ba5aa2269f1
             return Err(format!("{under} is not under an output directory of this session's targets"));
         }
         files = kept;
     }
-    // @lfy def/mcp/main.lfy:search#search:search:b52b7d681a1ab14d16e4367a42f8fe72e5a2c4577ef0e113b5f4e7a1e458ab91
+    // @lfy def/mcp/read.lfy:search#search:search:b52b7d681a1ab14d16e4367a42f8fe72e5a2c4577ef0e113b5f4e7a1e458ab91
     let expression = regex::Regex::new(pattern)
-        // @lfy def/mcp/main.lfy:search#search:search:3eb91d30c58a23ec68143fc70f48b65844f317e8c7607db0b879df80b296c435
+        // @lfy def/mcp/read.lfy:search#search:search:3eb91d30c58a23ec68143fc70f48b65844f317e8c7607db0b879df80b296c435
         .map_err(|error| format!("{pattern} is not a regular expression: {error}"))?;
     let searched = files.len();
     let mut found: Vec<String> = Vec::new();
     // The files come in the order of their paths, compared by Unicode code point, and each
     // file's lines in line order.
-    // @lfy def/mcp/main.lfy:search#search:search:7841eec414d572a807f6ede13000e8a87220e884b36378adb2feef0da752b8ce
+    // @lfy def/mcp/read.lfy:search#search:search:7841eec414d572a807f6ede13000e8a87220e884b36378adb2feef0da752b8ce
     for path in files {
-        // @lfy def/mcp/main.lfy:search#search:search:54828c880e975ee7dc7220ac4d01db7f73b0a478d11a232ff914941398b8ac18
+        // @lfy def/mcp/read.lfy:search#search:search:54828c880e975ee7dc7220ac4d01db7f73b0a478d11a232ff914941398b8ac18
         let Ok(text) = fs::read_to_string(workspace.root.join(&path)) else { continue };
         let markers = markers_now(workspace, &path);
         for (index, line) in text.lines().enumerate() {
-            // @lfy def/mcp/main.lfy:search#search:search:713960fcdedc766c95bed050ea8ded3ab14967c01ec4d36ecb5698a162d92fdd
+            // @lfy def/mcp/read.lfy:search#search:search:713960fcdedc766c95bed050ea8ded3ab14967c01ec4d36ecb5698a162d92fdd
             if !expression.is_match(line) {
                 continue;
             }
             let number = index + 1;
-            // @lfy def/mcp/main.lfy:search#search:search:d5bf19a714d125133c9f9f09e4aa278dbfff8dc1e7da4d88535d71ab0650081f
+            // @lfy def/mcp/read.lfy:search#search:search:d5bf19a714d125133c9f9f09e4aa278dbfff8dc1e7da4d88535d71ab0650081f
             let region = markers
                 .iter()
                 .rev()
                 .find(|marker| marker.output_line <= number)
                 .map(marker_text)
-                // @lfy def/mcp/main.lfy:search#search:search:b08361d90ea78257dde207e7d32417d0b3458ac1edf1f2c1061ddfb9fcfaa2cd
+                // @lfy def/mcp/read.lfy:search#search:search:b08361d90ea78257dde207e7d32417d0b3458ac1edf1f2c1061ddfb9fcfaa2cd
                 .unwrap_or_else(|| "-".to_string());
-            // @lfy def/mcp/main.lfy:search#search:search:8112c25cc568699c5b153fd7ada26062fb8732b7fcaefef35a49e6389cc0a8ff
+            // @lfy def/mcp/read.lfy:search#search:search:8112c25cc568699c5b153fd7ada26062fb8732b7fcaefef35a49e6389cc0a8ff
             found.push(format!("{path}:{number} [{region}]: {}", shortened(line, KEPT_WIDTH)));
         }
     }
     if found.is_empty() {
-        // @lfy def/mcp/main.lfy:search#search:search:5fcbe5fc50d6c7ffeea79876a5cf547599a86c0eb99cb0bac1ed79367eee2402
+        // @lfy def/mcp/read.lfy:search#search:search:5fcbe5fc50d6c7ffeea79876a5cf547599a86c0eb99cb0bac1ed79367eee2402
         return Ok(format!("no line of the {searched} files searched matches {pattern}"));
     }
-    // @lfy def/mcp/main.lfy:search#search:search:a1cf2a0988555448b5857efc090387808f6292fa53e678aeff920abc5253a1b5
+    // @lfy def/mcp/read.lfy:search#search:search:a1cf2a0988555448b5857efc090387808f6292fa53e678aeff920abc5253a1b5
     if found.len() > SEARCHED_LINES {
         let left = found.len() - SEARCHED_LINES;
         found.truncate(SEARCHED_LINES);

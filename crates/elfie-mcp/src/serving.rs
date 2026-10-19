@@ -7,7 +7,7 @@ use super::*;
 /// What a fn of this module carries besides `tool`: `compilerTool`, which acts on the unit
 /// and the request of a compiler run, `commandTool`, which runs the target's command for one
 /// operation, or neither.
-// @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
+// @lfy def/mcp/main.lfy:serve#serve:serve:22e6a125429aa0d6d8471a2322eb2e761f6f972d0af7150507d5ad9fd54bcc72
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Carried {
     /// It carries `tool` alone.
@@ -19,9 +19,9 @@ enum Carried {
 }
 
 /// What the fn a tool name belongs to carries besides `tool`.
-// @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
-// @lfy def/mcp/main.lfy:host#host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1
-// @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
+// @lfy def/mcp/main.lfy:serve#serve:serve:22e6a125429aa0d6d8471a2322eb2e761f6f972d0af7150507d5ad9fd54bcc72
+// @lfy def/mcp/main.lfy:host#host:host:36334d0d3f4e76ec36889a25246c87e9009588671c55467141ab88d58305b36c
+// @lfy def/mcp/main.lfy:host#host:host:cd9a74728b88249c9d5ee9fd6993256b7651c1300bad550b7bbd270b279b12ff
 fn carried(name: &str) -> Carried {
     match name {
         "elfie_task" | "elfie_dependency" | "elfie_reach" | "elfie_touch" | "elfie_mark" | "elfie_submit" => {
@@ -45,9 +45,9 @@ fn carried(name: &str) -> Carried {
 /// of them and every fn carrying `tool` alone but `check`, which answers whether a unit's
 /// outputs would be accepted. Both are offered a fn carrying `commandTool` when a target of
 /// the session has a command for its operation.
-// @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
-// @lfy def/mcp/main.lfy:host#host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1
-// @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
+// @lfy def/mcp/main.lfy:serve#serve:serve:22e6a125429aa0d6d8471a2322eb2e761f6f972d0af7150507d5ad9fd54bcc72
+// @lfy def/mcp/main.lfy:host#host:host:36334d0d3f4e76ec36889a25246c87e9009588671c55467141ab88d58305b36c
+// @lfy def/mcp/main.lfy:host#host:host:cd9a74728b88249c9d5ee9fd6993256b7651c1300bad550b7bbd270b279b12ff
 pub(crate) fn offered(tools: &[Registered], workspace: &Workspace, binding: Option<&Binding>) -> Vec<String> {
     let targets = session_targets(workspace, binding);
     let withheld: &[&str] = match binding.map(|binding| binding.role) {
@@ -60,10 +60,10 @@ pub(crate) fn offered(tools: &[Registered], workspace: &Workspace, binding: Opti
         .filter(|name| !withheld.contains(&name.as_str()))
         .filter(|name| match carried(name) {
             Carried::None => true,
-            // @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
-            // @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
+            // @lfy def/mcp/main.lfy:serve#serve:serve:22e6a125429aa0d6d8471a2322eb2e761f6f972d0af7150507d5ad9fd54bcc72
+            // @lfy def/mcp/main.lfy:host#host:host:cd9a74728b88249c9d5ee9fd6993256b7651c1300bad550b7bbd270b279b12ff
             Carried::Compiler => binding.is_some_and(|binding| binding.role == Role::Compiler),
-            // @lfy def/mcp/main.lfy:host#host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1
+            // @lfy def/mcp/main.lfy:host#host:host:36334d0d3f4e76ec36889a25246c87e9009588671c55467141ab88d58305b36c
             Carried::Command(operation) => {
                 binding.is_some() && targets.iter().any(|target| line_for(target, operation).is_some())
             }
@@ -134,7 +134,7 @@ pub(crate) fn instructions(offered: &[String], binding: Option<&Binding>) -> Str
 // where the fn that carries the trait lives, and then handed on spelled as text through a
 // tool that says text, so that the one call path of `traits` still makes the call, catches
 // a failure, and answers with the result.
-// @lfy def/mcp/main.lfy:source
+// @lfy def/mcp/read.lfy:source
 pub(crate) fn call_tool(registered: &Registered, session: &Session, arguments: &JsonObject) -> ToolResult {
     if let Err(message) = traits::check_arguments(&registered.tool, arguments) {
         return ToolResult::error(message);
@@ -195,7 +195,7 @@ impl Served {
     // Decision: the definition loads the workspace on initialize; it is loaded when the
     // server is built, just before the initialize exchange, which the agent cannot tell
     // apart and which keeps the protocol library's handshake untouched.
-    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
+    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
     pub(crate) fn over_stdio(root: &Path) -> Served {
         let tools = tools();
         let session = Session::load(root);
@@ -220,33 +220,33 @@ impl Served {
     /// The tools the session is offered, as the protocol lists them. The result may be
     /// treated as fresh for no time at all and cached by this client only: what every tool
     /// answers depends on the files and the outputs as they are when the call arrives.
-    // @lfy def/mcp/main.lfy:problems#problems:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:find#find:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:entity#entity:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:references#references:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:outline#outline:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:grammar#grammar:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:units#units:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:request#request:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:check#check:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:output#output:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:source#source:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:changes#changes:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:review#review:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:globalReview#globalReview:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:report#report:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:task#task:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:dependency#dependency:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:reach#reach:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:touch#touch:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:mark#mark:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:submit#submit:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:search#search:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:build#build:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:test#test:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:lint#lint:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:format#format:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
-    // @lfy def/mcp/main.lfy:reportMany#reportMany:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:problems#problems:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:find#find:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:entity#entity:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:references#references:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:outline#outline:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:grammar#grammar:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:units#units:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:request#request:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:check#check:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:output#output:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:source#source:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:changes#changes:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:review#review:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:globalReview#globalReview:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:report#report:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:task#task:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:dependency#dependency:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:reach#reach:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:touch#touch:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:mark#mark:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:submit#submit:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:search#search:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/commands.lfy:build#build:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/commands.lfy:test#test:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/commands.lfy:lint#lint:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/commands.lfy:format#format:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/compiling.lfy:reportMany#reportMany:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     pub(crate) fn list(&self) -> ListToolsResult {
         let offered: Vec<Registered> = self
             .tools
@@ -293,7 +293,7 @@ struct Server {
 
 impl Server {
     /// A server over standard input and output, for the project at `root`.
-    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
+    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
     fn new(root: &Path) -> Server {
         Server {
             served: Arc::new(Served::over_stdio(root)),
@@ -337,7 +337,7 @@ impl ServerHandler for Server {
 /// The protocol library owns standard output and writes only protocol messages there;
 /// nothing here prints to it. Returns 0 when standard input closes.
 // @lfy def/mcp/main.lfy:serve#serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336
-// @lfy def/mcp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2
+// @lfy def/mcp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
 // Nothing here opens a file for writing, and no tool it serves does either: the agent
 // writes the outputs itself and asks the server to check them.
 // @lfy def/mcp/main.lfy:serve#serve:serve:41ad46670c5145672ee63c9f4ba6f892fd59cb442ca93c795e977b22fd589cef
@@ -351,7 +351,7 @@ pub fn serve(root: Option<&Path>) -> i32 {
         Ok(runtime) => runtime,
         // Every line the server logs goes to standard error, which leaves standard output
         // to the protocol alone.
-        // @lfy def/mcp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2:2
+        // @lfy def/mcp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2
         Err(error) => {
             eprintln!("elfie mcp: {error}");
             return FAILURE;
@@ -363,7 +363,7 @@ pub fn serve(root: Option<&Path>) -> i32 {
 
 /// [`serve`] over any pair of streams, so a test can drive the whole server in memory.
 // @lfy def/mcp/main.lfy:serve#serve:serve:7a38d3ecf5e074e43e215152a74b94923a889a14c60638b479fd67135299e336
-// @lfy def/mcp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2
+// @lfy def/mcp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
 pub(crate) async fn serve_on<I, O>(input: I, output: O, root: PathBuf) -> i32
 where
     I: AsyncRead + Send + Unpin + 'static,

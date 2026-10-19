@@ -131,7 +131,7 @@ impl Session {
     /// A session whose workspace is the project at `root`, loaded, with every file of it
     /// stamped as read. It is bound to nothing, so it reads the files on disk and holds no
     /// review.
-    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
+    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
     // @lfy def/mcp/main.lfy:serve#serve:serve:8579f2d17bf0b508fda59fe780ac73d54d3271fe8f9994ccd60bd5f66d026331
     pub fn load(root: &Path) -> Session {
         let workspace = workspace::load(root);
@@ -229,13 +229,13 @@ fn identifier_of(model: &Model, entity: EntityId) -> String {
 /// One diagnostic as `problems` spells it: the file, a colon, the line, a colon, the
 /// column, a colon, a space, the stage, a space, the severity, a colon, a space, and the
 /// message.
-// @lfy def/mcp/main.lfy:problems#problems:problems:c8c8b536f1269d0fb4bc9adb64fbce292df0715fa51d5d524a18f16685af7bf6
+// @lfy def/mcp/read.lfy:problems#problems:problems:c8c8b536f1269d0fb4bc9adb64fbce292df0715fa51d5d524a18f16685af7bf6
 fn diagnostic_line(file: &str, line: usize, column: usize, stage: &str, severity: &str, message: &str) -> String {
     format!("{file}:{line}:{column}: {stage} {severity}: {message}")
 }
 
 /// One lowered test as one line: its input and its expectation, as spelled.
-// @lfy def/mcp/main.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
+// @lfy def/mcp/read.lfy:source#source:source:bab27e2f0ed21f719d22e545c1c874a283b18a0ff5a8979b2a8bf9d324519b11
 fn lowered_test_text(test: &LoweredTest) -> String {
     format!("Input `{}` gives `{}`", test.input_text.trim(), test.expect_text.trim())
 }
@@ -254,7 +254,7 @@ fn bound_target<'w>(workspace: &'w Workspace, binding: &Binding) -> Option<&'w T
 /// The targets of a session: the target of the binding's unit when it has one, and every
 /// target of the workspace when it has none.
 // @lfy def/mcp/main.lfy:host#host:host:86c5b27a118a8e42708f657a3bd5003aadccf71738e30fbd257b324a3dc7eff1
-// @lfy def/mcp/main.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
+// @lfy def/mcp/read.lfy:search#search:search:df3ae7f5e2af71f93980ec71b8ae91ef48c499ac1432df8dd418ac0691681837
 fn session_targets<'w>(workspace: &'w Workspace, binding: Option<&Binding>) -> Vec<&'w Target> {
     if let Some(binding) = binding
         && binding.unit.is_some()
@@ -266,16 +266,16 @@ fn session_targets<'w>(workspace: &'w Workspace, binding: Option<&Binding>) -> V
 
 /// The name of an operation's member, as `Operation` spells it: the word its value begins
 /// with, before the colon that introduces what the operation is for.
-// @lfy def/mcp/main.lfy:build#build:commandTool:394aef9de6082d12b6f9d58c8eaae738d8ab0f6aef3341b5fda12620fe6500a6
+// @lfy def/mcp/commands.lfy:build#build:commandTool:394aef9de6082d12b6f9d58c8eaae738d8ab0f6aef3341b5fda12620fe6500a6
 fn operation_name(operation: Operation) -> &'static str {
     operation.value().split(':').next().unwrap_or_default()
 }
 
 /// The command of a target for one operation whose line is set, when it has one.
-// @lfy def/mcp/main.lfy:build#build:commandTool:654d31e36e3f112d06aa532374f30fda36190672b3a323580052a1c0f96e1401
-// @lfy def/mcp/main.lfy:test#test:commandTool:82d963f45b5a888916a03e865844e4c1961de319774b2584f65489dee966cdb5
-// @lfy def/mcp/main.lfy:lint#lint:commandTool:db94076681d45420de07709b25f27480d746751609aa1bb42a77c77d453001eb
-// @lfy def/mcp/main.lfy:format#format:commandTool:a09c5e43d4c38d2e3196576c80db3cf1cb918134842760d0c7e7aa134b552a6b
+// @lfy def/mcp/commands.lfy:build#build:commandTool:654d31e36e3f112d06aa532374f30fda36190672b3a323580052a1c0f96e1401
+// @lfy def/mcp/commands.lfy:test#test:commandTool:82d963f45b5a888916a03e865844e4c1961de319774b2584f65489dee966cdb5
+// @lfy def/mcp/commands.lfy:lint#lint:commandTool:db94076681d45420de07709b25f27480d746751609aa1bb42a77c77d453001eb
+// @lfy def/mcp/commands.lfy:format#format:commandTool:a09c5e43d4c38d2e3196576c80db3cf1cb918134842760d0c7e7aa134b552a6b
 fn line_for(target: &Target, operation: Operation) -> Option<&str> {
     target
         .commands
@@ -307,7 +307,7 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
 /// The first are the unit's outputs, which acceptance judges and records a map for; the rest
 /// are read for the markers they hold and nothing else, so a region of another unit that
 /// moved out of an output of this one is still found where it went.
-// @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
+// @lfy def/mcp/read.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
 fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> (Vec<Output>, Vec<Output>) {
     let unit = &plan.units[unit];
     let target = &workspace.targets[unit.target];
@@ -326,7 +326,7 @@ fn outputs_of(workspace: &Workspace, plan: &Plan, unit: usize) -> (Vec<Output>, 
         if generation::parse_markers(&output.text).iter().any(|marker| &marker.file == file) {
             found.push(output);
         } else {
-            // @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
+            // @lfy def/mcp/read.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
             elsewhere.push(output);
         }
     }
@@ -340,7 +340,7 @@ fn known_targets(workspace: &Workspace) -> String {
 }
 
 /// An error naming the known targets when the target given is not one.
-// @lfy def/mcp/main.lfy:units#units:units:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
+// @lfy def/mcp/read.lfy:units#units:units:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
 fn check_target(workspace: &Workspace, target: Option<&str>) -> Result<(), String> {
     match target {
         Some(target) if !workspace.targets.iter().any(|known| known.identifier == target) => {
@@ -355,7 +355,7 @@ fn check_target(workspace: &Workspace, target: Option<&str>) -> Result<(), Strin
 // Decision: `generation::plan` takes the workspace and gives back the program lowered from
 // it beside the plan, and every later call reads that program rather than the workspace, so
 // the three travel together.
-// @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
+// @lfy def/mcp/read.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
 struct Planned {
     /// The workspace lowered, which every request and review reads.
     program: Program,
@@ -378,9 +378,9 @@ impl Planned {
 ///
 /// The root of a hosted session's workspace is its binding's directory, so these are the
 /// files under that directory and the paths are relative to it.
-// @lfy def/mcp/main.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
-// @lfy def/mcp/main.lfy:mark#mark:mark:52dcea5ba1304502d225b631249c459cecf128b5f17ded9a63a98e62ef6c62bf
-// @lfy def/mcp/main.lfy:search#search:search:c17cae68f2b3424b9e51c005c2ca4bc5521e610abeb02c841daa9b067c1fa147
+// @lfy def/mcp/read.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
+// @lfy def/mcp/compiling.lfy:mark#mark:mark:52dcea5ba1304502d225b631249c459cecf128b5f17ded9a63a98e62ef6c62bf
+// @lfy def/mcp/read.lfy:search#search:search:c17cae68f2b3424b9e51c005c2ca4bc5521e610abeb02c841daa9b067c1fa147
 fn output_files(workspace: &Workspace, target: &Target) -> Vec<String> {
     let mut paths = Vec::new();
     walk_all(&workspace.root.join(&target.output_directory), &mut paths);
@@ -535,7 +535,7 @@ fn own_source_maps(session: &Session, target: Option<&str>, recorded: &[SourceMa
 /// has just written, so every map recorded for the source of one of them is left out and
 /// [`own_source_maps`] is read in their place. With no binding, what the last acceptance
 /// recorded under the session's root is all that is read.
-// @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
+// @lfy def/mcp/read.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
 // @lfy def/mcp/main.lfy:host#host:host:e547c3d522df6baa03ac6deef6399818b37df2757f24cf09ffa3f4b560d3dad0
 // @lfy def/mcp/main.lfy:host#host:host:95194b82e7d73fdb649bc9e5849c0f89ccc8e658569e33c82639c0cb1b739ef6
 // @lfy def/mcp/main.lfy:host#host:host:232c0725ae5219330822ed9664cc87be38c4591303cbc3dead664044e09b75eb
@@ -605,17 +605,17 @@ fn source_maps_of(session: &Session, target: Option<&str>) -> Vec<SourceMap> {
 // planning, so the plan is made once with no violated unit and again only when the last
 // global review names one; a project with none, which is every project until a global
 // review finds one, is planned once.
-// @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
+// @lfy def/mcp/read.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
 fn plan_of(session: &Session) -> Planned {
     let workspace = &session.workspace;
-    let maps = source_maps_of(session, None); // @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
+    let maps = source_maps_of(session, None); // @lfy def/mcp/read.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
     let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &[], &[]);
-    // @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
+    // @lfy def/mcp/read.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
     let stems = GlobalReview::read(&workspace.root).map(|last| last.violated_stems(&plan)).unwrap_or_default();
     if stems.is_empty() {
         return Planned { program, plan, maps };
     }
-    // @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
+    // @lfy def/mcp/read.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
     let (program, plan) = generation::plan(workspace.clone(), &maps, &[], &stems, &[]);
     Planned { program, plan, maps }
 }
@@ -626,7 +626,7 @@ fn plan_of(session: &Session) -> Planned {
 // Decision: a hosted session's plan is read with the program the compile lowered, at the
 // session's root, and the source maps the session reads now, so every tool that is given a
 // plan indexes into the units the binding names.
-// @lfy def/mcp/main.lfy:units#units:units:be4f6c886ef6e1db9b9b5072b338544e713652abd61a55caba16263e8386d4c4
+// @lfy def/mcp/read.lfy:units#units:units:be4f6c886ef6e1db9b9b5072b338544e713652abd61a55caba16263e8386d4c4
 fn shown_plan(session: &Session) -> Planned {
     match &session.binding {
         Some(binding) => Planned {
@@ -642,10 +642,10 @@ fn shown_plan(session: &Session) -> Planned {
 /// naming the one unit it acts on — or the global review, when it is bound to no unit — when
 /// it may not. Units are told apart by their stem and their target, so a plan made again
 /// from the same workspace names the binding's unit as the binding's plan does.
-// @lfy def/mcp/main.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
-// @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
-// @lfy def/mcp/main.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
-// @lfy def/mcp/main.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+// @lfy def/mcp/read.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
+// @lfy def/mcp/read.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+// @lfy def/mcp/read.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
+// @lfy def/mcp/read.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
 fn own_unit(session: &Session, plan: &Plan, index: usize) -> Result<(), String> {
     let Some(binding) = &session.binding else {
         return Ok(());
@@ -671,7 +671,7 @@ fn is_bound_unit(session: &Session, plan: &Plan, index: usize) -> bool {
 
 /// The unit with a stem, in the target given or the only target it is in; an error
 /// saying which when no unit has that stem or the target is ambiguous.
-// @lfy def/mcp/main.lfy:check
+// @lfy def/mcp/read.lfy:check
 fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&str>) -> Result<usize, String> {
     check_target(workspace, target)?;
     let matches: Vec<usize> = (0..plan.units.len())
@@ -681,15 +681,15 @@ fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&
         })
         .collect();
     match matches.as_slice() {
-        // @lfy def/mcp/main.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
-        // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+        // @lfy def/mcp/read.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+        // @lfy def/mcp/read.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
         [] => Err(match target {
             Some(target) => format!("no unit of the target {target} has the stem {stem}; elfie_units lists them"),
             None => format!("no unit has the stem {stem}; elfie_units lists them"),
         }),
         [index] => Ok(*index),
-        // @lfy def/mcp/main.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
-        // @lfy def/mcp/main.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+        // @lfy def/mcp/read.lfy:request#request:request:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
+        // @lfy def/mcp/read.lfy:review#review:review:35e5ad0177134a3f3f1deca8a9b000be17f11403bc5bb2ae319face434d2913f
         many => {
             let targets: Vec<&str> = many.iter().map(|&index| workspace.targets[plan.units[index].target].identifier.as_str()).collect();
             Err(format!("the unit {stem} is in more than one target ({}); name one with target", targets.join(", ")))
@@ -699,7 +699,7 @@ fn resolve_unit(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&
 
 /// The request for a unit, with its existing outputs read from disk, no previous source, no
 /// foreign edits, and made for no hosted compiler.
-// @lfy def/mcp/main.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
+// @lfy def/mcp/read.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
 fn request_for(program: &Program, plan: &Plan, unit: usize) -> Request {
     let existing: Vec<Output> = plan.units[unit]
         .outputs
@@ -713,13 +713,13 @@ fn request_for(program: &Program, plan: &Plan, unit: usize) -> Request {
     // The request is made here rather than handed to the session, so it is no hosted
     // compiler's request and quotes the interfaces of its dependencies whole. The unit is
     // given no previous source, so no hash-matched one either, and no foreign edit.
-    // @lfy def/mcp/main.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
+    // @lfy def/mcp/read.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
     generation::request(program, plan, unit, &existing, None, false, &[], &[])
 }
 
 /// One marker spelled as a marker line spells it after `@lfy` and a space.
-// @lfy def/mcp/main.lfy:mark#mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe
-// @lfy def/mcp/main.lfy:search#search:search:d5bf19a714d125133c9f9f09e4aa278dbfff8dc1e7da4d88535d71ab0650081f
+// @lfy def/mcp/compiling.lfy:mark#mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe
+// @lfy def/mcp/read.lfy:search#search:search:d5bf19a714d125133c9f9f09e4aa278dbfff8dc1e7da4d88535d71ab0650081f
 fn marker_text(marker: &Marker) -> String {
     match (&marker.entity, marker.column) {
         (Some(entity), _) => match &marker.requirement {
@@ -732,27 +732,27 @@ fn marker_text(marker: &Marker) -> String {
 }
 
 /// Every marker one of this batch's output files holds, read as acceptance reads them.
-// @lfy def/mcp/main.lfy:mark#mark:mark:d96f34893947ea1e4e0089a37629eff751029552c999231b9010ce42a90a738e
+// @lfy def/mcp/compiling.lfy:mark#mark:mark:d96f34893947ea1e4e0089a37629eff751029552c999231b9010ce42a90a738e
 fn markers_of(text: &str) -> Vec<Marker> {
     generation::parse_markers(text)
 }
 
 /// Every marker of one line of an output, as acceptance reads them.
-// @lfy def/mcp/main.lfy:mark#mark:mark:d96f34893947ea1e4e0089a37629eff751029552c999231b9010ce42a90a738e
+// @lfy def/mcp/compiling.lfy:mark#mark:mark:d96f34893947ea1e4e0089a37629eff751029552c999231b9010ce42a90a738e
 fn markers_on(markers: &[Marker], line: usize) -> Vec<&Marker> {
     markers.iter().filter(|marker| marker.output_line == line).collect()
 }
 
 /// How many characters of one line are given before the rest are left out.
-// @lfy def/mcp/main.lfy:search#search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f
+// @lfy def/mcp/read.lfy:search#search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f
 const KEPT_WIDTH: usize = 500;
 
 /// What marks a line that was cut short.
-// @lfy def/mcp/main.lfy:search#search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f
+// @lfy def/mcp/read.lfy:search#search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f
 const CUT: char = '…';
 
 /// A line kept at most `width` Unicode characters, followed by `…` when it was cut short.
-// @lfy def/mcp/main.lfy:search#search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f
+// @lfy def/mcp/read.lfy:search#search:search:68207e69227f6ee9bb5e6b5a46a769482b26d625a8589e28cdcef599d5b1756f
 fn shortened(line: &str, width: usize) -> String {
     let mut characters = line.chars();
     let kept: String = characters.by_ref().take(width).collect();
@@ -967,7 +967,7 @@ global@targets.add(rust);
 
         /// Git run in the fixture's root, so that a test can make the root a repository and
         /// commit the source a unit's outputs are then accepted against.
-        // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
+        // @lfy def/mcp/read.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
         fn git(&self, arguments: &[&str]) -> &Fixture {
             let status = Command::new("git")
                 .args(arguments)
@@ -1319,7 +1319,7 @@ global@targets.add(rust);
         };
         // A compiler run is given the request the compile made for its unit, as the CLI
         // gives it one.
-        // @lfy def/mcp/main.lfy:request#request:request:2f93fec1bd3f115335d968e64f7a1aefff036a5ba850d09ae602a280cc9d52ad
+        // @lfy def/mcp/read.lfy:request#request:request:2f93fec1bd3f115335d968e64f7a1aefff036a5ba850d09ae602a280cc9d52ad
         let request = match (role, named) {
             (Role::Compiler, Some(index)) => Some(generation::request(
                 &planned.program,
@@ -1400,7 +1400,7 @@ global@targets.add(rust);
     /// A session bound to a compiler run of the first planned unit of a fixture, with the
     /// source its outputs were generated from where one is given for its file, so that the
     /// request it is handed knows which criteria and tests were removed.
-    // @lfy def/mcp/main.lfy:task#task:compilerTool:53be6121fea61b9a15629426fe7a361a2087f814c2a67975b1a428e724574063
+    // @lfy def/mcp/compiling.lfy:task#task:compilerTool:53be6121fea61b9a15629426fe7a361a2087f814c2a67975b1a428e724574063
     fn compiling(fixture: &Fixture, previous: &[(&str, &str)]) -> Session {
         compiling_with(fixture, previous, &[])
     }
@@ -1408,7 +1408,7 @@ global@targets.add(rust);
     /// The same, with the paths of the units whose previous source is only their
     /// hash-matched one, which the request reads nothing of as a rewording and whose
     /// removed criteria and tests it can quote neither the place nor the text of.
-    // @lfy def/mcp/main.lfy:task#task:task:66f11c93795ee4ea2822907afd33f054e3589b0287b19b0b618c695e86e32fbb
+    // @lfy def/mcp/compiling.lfy:task#task:task:66f11c93795ee4ea2822907afd33f054e3589b0287b19b0b618c695e86e32fbb
     fn compiling_with(fixture: &Fixture, previous: &[(&str, &str)], hash_matched: &[&str]) -> Session {
         compiling_edited(fixture, previous, hash_matched, &[])
     }
@@ -1469,7 +1469,7 @@ global@targets.add(rust);
 
     /// A session bound to a compiler run of one accepted unit that another unit's edits made
     /// planned as touched, handed those edits, with its source unchanged since acceptance.
-    // @lfy def/mcp/main.lfy:task#task:task:149f88e6e3ce26a293b2ea7885c0696d5b8207e28d7993f0486dbe0339826da9
+    // @lfy def/mcp/compiling.lfy:task#task:task:149f88e6e3ce26a293b2ea7885c0696d5b8207e28d7993f0486dbe0339826da9
     fn compiling_touched(fixture: &Fixture, stem: &str, foreign_edits: &[ForeignEdit]) -> Session {
         let session = fixture.session();
         let planned = plan_of(&session);

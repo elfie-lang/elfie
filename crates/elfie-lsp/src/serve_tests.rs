@@ -130,7 +130,7 @@ fn uris_map_to_paths_relative_to_the_root_and_back() {
     let _ = fs::remove_dir_all(&root);
 }
 
-// @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
+// @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
 // @lfy def/lsp/main.lfy:serve#serve:serve:aa86a5495219844e1ddc4aa1bfb0955b0cfae99f274a5906be3f96398622b07b
 // @lfy def/lsp/main.lfy:serve#serve:serve:fa7d65433e4967e6668886caefd62bc4b421c62a2690c2abe9ff145233f53a4a
 #[test]

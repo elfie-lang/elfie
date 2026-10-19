@@ -11,7 +11,7 @@ fn the_tools_are_listed_with_their_arguments() {
     assert_eq!(names, EVERY_TOOL);
     // The tools offered to a session over standard input and output are every fn of
     // this module that carries `tool` but `report` and `reportMany`.
-    // @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
+    // @lfy def/mcp/main.lfy:serve#serve:serve:22e6a125429aa0d6d8471a2322eb2e761f6f972d0af7150507d5ad9fd54bcc72
     let fixture = Fixture::new();
     assert_eq!(offered(&tools(), &fixture.session().workspace, None), TOOL_NAMES);
     let served = Served::over_stdio(&fixture.root);
@@ -20,57 +20,57 @@ fn the_tools_are_listed_with_their_arguments() {
     assert!(served.session.lock().unwrap().binding.is_none());
     let result = served.list();
     // The result may be treated as fresh for no time and cached by this client only.
-    // @lfy def/mcp/main.lfy:problems#problems:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:problems#problems:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     assert_eq!(result.ttl_ms, Some(0));
     assert_eq!(result.cache_scope, Some(CacheScope::Private));
     let listed = result.tools;
     assert_eq!(listed.len(), TOOL_NAMES.len());
     // `report` is not offered, so it is not listed.
-    // @lfy def/mcp/main.lfy:report#report:tool:ff191fef77edc21f5b1b6379da11a026007625ceb2ea84877365d76b43d3a88f
+    // @lfy def/mcp/compiling.lfy:report#report:tool:ff191fef77edc21f5b1b6379da11a026007625ceb2ea84877365d76b43d3a88f
     assert!(!listed.iter().any(|tool| tool.name == "elfie_report"), "{listed:?}");
     // Nor is `reportMany`, which is not offered either.
     assert!(!listed.iter().any(|tool| tool.name == "elfie_reportMany"), "{listed:?}");
     // Every other tool is listed as one tool, named and described by its fn.
-    // @lfy def/mcp/main.lfy:problems#problems:tool:47dafd874509841945f72721454f0bde82f7cb760967d4104944c32a0b08e4f6
+    // @lfy def/mcp/read.lfy:problems#problems:tool:47dafd874509841945f72721454f0bde82f7cb760967d4104944c32a0b08e4f6
     assert_eq!(listed[0].name, "elfie_problems");
     // The one parameter of `problems` that is not the session is optional, so its
     // argument is not required; the one of `find` is neither optional nor defaulted.
-    // @lfy def/mcp/main.lfy:problems#problems:tool:87fb1f093e523c06d8bd452dd3daa9a60adcb2fa4c4dd899726161be0c185d3c
+    // @lfy def/mcp/read.lfy:problems#problems:tool:87fb1f093e523c06d8bd452dd3daa9a60adcb2fa4c4dd899726161be0c185d3c
     assert_eq!(listed[0].input_schema["required"], serde_json::json!([]));
-    // @lfy def/mcp/main.lfy:find#find:tool:26960caba8b776d48816a31b7cd3d9d20254e141db7595c95945236688b3ff13
+    // @lfy def/mcp/read.lfy:find#find:tool:26960caba8b776d48816a31b7cd3d9d20254e141db7595c95945236688b3ff13
     assert_eq!(listed[1].input_schema["required"], serde_json::json!(["name"]));
     // The description of an argument is the description of its parameter.
-    // @lfy def/mcp/main.lfy:problems#problems:tool:0d47cd7405248873ce91f19150020622e2bbc3156320aa272d9325d8ab7ad9b4
+    // @lfy def/mcp/read.lfy:problems#problems:tool:0d47cd7405248873ce91f19150020622e2bbc3156320aa272d9325d8ab7ad9b4
     assert_eq!(
         listed[0].input_schema["properties"]["file"]["description"],
         "a path relative to the root; every file when left out"
     );
     // The name of each tool is `elfie_` and the fn's identifier, and its description the
     // fn's definition.
-    // @lfy def/mcp/main.lfy:problems#problems:tool:e3326a06fa53e9623634da620a9bac4aa2a1d0c7e0ea9f0d1143f0f4443b8ba5
-    // @lfy def/mcp/main.lfy:problems#problems:tool:97369ca270f9c5503c620a5a45c2e5bda573d9d44900f052d6aa2f6fab3ccd0c
+    // @lfy def/mcp/read.lfy:problems#problems:tool:e3326a06fa53e9623634da620a9bac4aa2a1d0c7e0ea9f0d1143f0f4443b8ba5
+    // @lfy def/mcp/read.lfy:problems#problems:tool:97369ca270f9c5503c620a5a45c2e5bda573d9d44900f052d6aa2f6fab3ccd0c
     assert_eq!(
         listed[0].description.as_deref(),
         Some("The problems of the program, or of one file: what the compiler, an editor, or a check would report")
     );
     // A tool whose fn takes nothing but the session holds no argument.
-    // @lfy def/mcp/main.lfy:grammar#grammar:tool:7c4b82dcd83184afd88477db1f841b99e09a48579fbd8a607ecacab9384b07a8
+    // @lfy def/mcp/read.lfy:grammar#grammar:tool:7c4b82dcd83184afd88477db1f841b99e09a48579fbd8a607ecacab9384b07a8
     assert_eq!(listed[5].input_schema["properties"], serde_json::json!({}));
     // A line is a number, and is listed as one; `changes` now takes a target too.
-    // @lfy def/mcp/main.lfy:source#source:tool:c6487b689eaab2ccd0e199ee1b320e9a2665cee02bdd6cb984e65e94e9b22b46
+    // @lfy def/mcp/read.lfy:source#source:tool:c6487b689eaab2ccd0e199ee1b320e9a2665cee02bdd6cb984e65e94e9b22b46
     assert_eq!(listed[11].input_schema["properties"]["line"]["type"], "number");
-    // @lfy def/mcp/main.lfy:source#source:tool:5bf72ec14e48137ed89a57ea542187e7e9c485c8a42ba64d90d18cc298f7a0fe
+    // @lfy def/mcp/read.lfy:source#source:tool:5bf72ec14e48137ed89a57ea542187e7e9c485c8a42ba64d90d18cc298f7a0fe
     assert_eq!(listed[11].input_schema["required"], serde_json::json!(["file", "line"]));
-    // @lfy def/mcp/main.lfy:changes#changes:tool:ec3c7defff9f765cc593846440341f6c9ab6818d3c051ab9101385709365d3fb
+    // @lfy def/mcp/read.lfy:changes#changes:tool:ec3c7defff9f765cc593846440341f6c9ab6818d3c051ab9101385709365d3fb
     assert_eq!(listed[12].input_schema["properties"]["target"]["type"], "string");
-    // @lfy def/mcp/main.lfy:changes#changes:tool:0c631194a5026a108cc79d09dc3877b6278e686a4a4b0853d4b441b65c8bb6fc
+    // @lfy def/mcp/read.lfy:changes#changes:tool:0c631194a5026a108cc79d09dc3877b6278e686a4a4b0853d4b441b65c8bb6fc
     assert_eq!(listed[12].input_schema["required"], serde_json::json!(["unit"]));
     // `text` is a boolean with a default, so it is listed as one and is not required.
-    // @lfy def/mcp/main.lfy:output#output:tool:b44f0f08cd4a5a17ed3563ee169631ec0e06701a1866f2bcbb070d4ea652c7d5
-    // @lfy def/mcp/main.lfy:output#output:tool:cccf2bf991122a41e5f8d1b615ff93f9a9b92d85f03790b2610579b50c0becde
+    // @lfy def/mcp/read.lfy:output#output:tool:b44f0f08cd4a5a17ed3563ee169631ec0e06701a1866f2bcbb070d4ea652c7d5
+    // @lfy def/mcp/read.lfy:output#output:tool:cccf2bf991122a41e5f8d1b615ff93f9a9b92d85f03790b2610579b50c0becde
     assert_eq!(listed[9].input_schema["properties"]["text"]["type"], "boolean");
     assert_eq!(listed[9].input_schema["required"], serde_json::json!(["name"]));
-    // @lfy def/mcp/main.lfy:output#output:tool:d72cb21d0e903b84ed1802adf513079764243da9561991d7767a50a7eb2e2cbd
+    // @lfy def/mcp/read.lfy:output#output:tool:d72cb21d0e903b84ed1802adf513079764243da9561991d7767a50a7eb2e2cbd
     assert_eq!(
         listed[9].description.as_deref(),
         Some(
@@ -80,23 +80,23 @@ fn the_tools_are_listed_with_their_arguments() {
     // `search` carries `tool` alone, so a session over standard input and output is
     // offered it; the fns carrying `compilerTool` and `commandTool` are not listed,
     // since such a session has no binding.
-    // @lfy def/mcp/main.lfy:search#search:tool:38ffd83bb0a3a18ad44b57a02e041c06b560ae946cbab843e22f39a99e9aac66
-    // @lfy def/mcp/main.lfy:search#search:tool:49b02b5a6852ab0082ddca33e30f1e4557cf5670633599b4da7d94b54afc74a0
+    // @lfy def/mcp/read.lfy:search#search:tool:38ffd83bb0a3a18ad44b57a02e041c06b560ae946cbab843e22f39a99e9aac66
+    // @lfy def/mcp/read.lfy:search#search:tool:49b02b5a6852ab0082ddca33e30f1e4557cf5670633599b4da7d94b54afc74a0
     assert_eq!(listed[10].name, "elfie_search");
-    // @lfy def/mcp/main.lfy:search#search:tool:84b35a27f4c75349de61c3a20a30bb45eead886577edc895af4e407810c893a3
-    // @lfy def/mcp/main.lfy:search#search:tool:1e8cb253167c19b0e2e9148d8b4dd61e332b68d5b13ccf6aa0523572759ef678
-    // @lfy def/mcp/main.lfy:search#search:tool:32aab10a54d3615f163e0fbc4cd259bb8fdce07cc79bde7fddfbe0fa16fba954
+    // @lfy def/mcp/read.lfy:search#search:tool:84b35a27f4c75349de61c3a20a30bb45eead886577edc895af4e407810c893a3
+    // @lfy def/mcp/read.lfy:search#search:tool:1e8cb253167c19b0e2e9148d8b4dd61e332b68d5b13ccf6aa0523572759ef678
+    // @lfy def/mcp/read.lfy:search#search:tool:32aab10a54d3615f163e0fbc4cd259bb8fdce07cc79bde7fddfbe0fa16fba954
     assert_eq!(listed[10].input_schema["required"], serde_json::json!(["pattern"]));
-    // @lfy def/mcp/main.lfy:task#task:tool:b4a5feee0df4f25397442a14ddc5789cddaecd15441de63010655c2768703e25
-    // @lfy def/mcp/main.lfy:dependency#dependency:tool:c19bc9c85c771a6a121e931a3d90f5e925e08c8d87bdaf800db6922b0e2876ff
-    // @lfy def/mcp/main.lfy:mark#mark:tool:d0022315029fb169381cd2230a938407632d7d0dd0131fbc83073feec1ae22af
-    // @lfy def/mcp/main.lfy:submit#submit:tool:8f4adcbdfc16d749d9b83d55424fdb414dca3efc886559174e902fd2a4912a79
-    // @lfy def/mcp/main.lfy:build#build:tool:88906b89a3fff75afd55acabcbfcfcad2e07d893ba2ff2c1a9fbe35abfcb1f8d
-    // @lfy def/mcp/main.lfy:test#test:tool:3095733c477eec37202566f8813793d01f848b595701cdd835ffc630ba78f768
-    // @lfy def/mcp/main.lfy:lint#lint:tool:f0044ba556ab8e00066360dce81c2a584d6ad207e30d0233e25d4294fde9e8a5
-    // @lfy def/mcp/main.lfy:format#format:tool:fad2173ad6add7bf6e4a61983e9685caf2ffe4dfb3b1a4887c920667e347acee
-    // @lfy def/mcp/main.lfy:reach#reach:tool:faaa38b77c25cd822a66ebe6d91212142f18b490b4ca2097242485bfd37a3437
-    // @lfy def/mcp/main.lfy:touch#touch:tool:0953bf28021ac288a8c246b0a2488bbba9357be8c1477cff0f9155da3164508f
+    // @lfy def/mcp/compiling.lfy:task#task:tool:b4a5feee0df4f25397442a14ddc5789cddaecd15441de63010655c2768703e25
+    // @lfy def/mcp/compiling.lfy:dependency#dependency:tool:c19bc9c85c771a6a121e931a3d90f5e925e08c8d87bdaf800db6922b0e2876ff
+    // @lfy def/mcp/compiling.lfy:mark#mark:tool:d0022315029fb169381cd2230a938407632d7d0dd0131fbc83073feec1ae22af
+    // @lfy def/mcp/compiling.lfy:submit#submit:tool:8f4adcbdfc16d749d9b83d55424fdb414dca3efc886559174e902fd2a4912a79
+    // @lfy def/mcp/commands.lfy:build#build:tool:88906b89a3fff75afd55acabcbfcfcad2e07d893ba2ff2c1a9fbe35abfcb1f8d
+    // @lfy def/mcp/commands.lfy:test#test:tool:3095733c477eec37202566f8813793d01f848b595701cdd835ffc630ba78f768
+    // @lfy def/mcp/commands.lfy:lint#lint:tool:f0044ba556ab8e00066360dce81c2a584d6ad207e30d0233e25d4294fde9e8a5
+    // @lfy def/mcp/commands.lfy:format#format:tool:fad2173ad6add7bf6e4a61983e9685caf2ffe4dfb3b1a4887c920667e347acee
+    // @lfy def/mcp/compiling.lfy:reach#reach:tool:faaa38b77c25cd822a66ebe6d91212142f18b490b4ca2097242485bfd37a3437
+    // @lfy def/mcp/compiling.lfy:touch#touch:tool:0953bf28021ac288a8c246b0a2488bbba9357be8c1477cff0f9155da3164508f
     for withheld in [
         "elfie_task",
         "elfie_dependency",
@@ -115,65 +115,65 @@ fn the_tools_are_listed_with_their_arguments() {
 
 /// Every fn carrying `tool` is listed with the name, description, arguments, and
 /// required arguments its parameters give it, so each of them is one tool.
-// @lfy def/mcp/main.lfy:task#task:tool:b4176adea23f8e6c58f4d041e7a85447286076984bd05464e92528b60fda6d8b
-// @lfy def/mcp/main.lfy:task#task:tool:46ad78939d73914a576d0dce0904cae992474f9eeb184c717a5a0c324091d4d5
-// @lfy def/mcp/main.lfy:task#task:tool:18b0c73855584e9caf73515d1acf890c0655ed42c042d108a8914180338ce2b3
-// @lfy def/mcp/main.lfy:task#task:tool:6ddac2bcba95be32011edabc6d0abbc63da57cd4a0182a8c86f882a8482706e7
-// @lfy def/mcp/main.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
-// @lfy def/mcp/main.lfy:task#task:tool:b2e2fadd9a1cd573a4b55e2e77fbd573ec3a9f6184ccd88beca5e743b871e9cd
-// @lfy def/mcp/main.lfy:task#task:tool:b361de400635b42112cf8a02205ed19f3875a7f7f9835b646817814b39f0233d
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:4fd4dbdb36a4d1d4e8a9589471a29d8337372b850160162b8a14f940ad74bbc6
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:7b7fe0f695f34ca950fbd8f4bc3aa16eb90bc78d78ed5a87812fe95b03c71eb5
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:6cb58ea6b9b30b6f2aba6bd276fdc3a0e104710c2733f9df000387e646050f34
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:01c082cb2c776a72049a0c164c556b408ada68b6c8d3e961aed6be20476ba114
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:feb08658fc3d60e206035d80439de4021e443fe53d2226e6e8ad43298da9f5b7
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:4894a15426436158e1d439a6ad82b49784af28fc4c896d683eb4bcfe455480a0
-// @lfy def/mcp/main.lfy:dependency#dependency:tool:2b186e60bc3e791246ddc810258418700586e003d4998497bd580b40f6624761
-// @lfy def/mcp/main.lfy:mark#mark:tool:0f8e6f40a5d6de867cde8b1be5b3fc853845b786664671c550f9dad09eb01911
-// @lfy def/mcp/main.lfy:mark#mark:tool:0b9567706ca9a8b66a0757d097e5fd9c7e6df936098d4aeb7f7e6834a6635d71
-// @lfy def/mcp/main.lfy:mark#mark:tool:5295f5acf77612da1ff8627c746c87ccff5a0dbb1770c05ed869d1ed28d6c7a7
-// @lfy def/mcp/main.lfy:mark#mark:tool:44369bf678415e07ca9c08b82b57c5fe7969e2e9850e765a8f32faeab4b784c4
-// @lfy def/mcp/main.lfy:mark#mark:tool:644ced5c6aeca4f5ba2d0a64656faf7dc4224aa51d7dcfc2c46b2d9a241fb040
-// @lfy def/mcp/main.lfy:mark#mark:tool:84d31d74a162783af16e3e2c1bbb0339be256b810408f3869f52a6d8f243ec5e
-// @lfy def/mcp/main.lfy:mark#mark:tool:745f570e06eb5111681f3c579ae61468329b1f2ae73381dfb2d99e3ba743c32f
-// @lfy def/mcp/main.lfy:submit#submit:tool:46e6a49028a494b7d6bb872cd0cc63d6d03e25fffce40f625b0facd57b49a725
-// @lfy def/mcp/main.lfy:submit#submit:tool:46c97b8c41d5f41394e9c6efbaf1f3bdc24c40082759615fb1b06732fb2d02c7
-// @lfy def/mcp/main.lfy:submit#submit:tool:59836951e15ef484cb381d25b49b247ff2da58ae11631e91ff190839871ce24d
-// @lfy def/mcp/main.lfy:submit#submit:tool:27e3a76662e3a4a2d2275aa703d2b835bd68c51282753e21b9337c744d37e5d6
-// @lfy def/mcp/main.lfy:submit#submit:tool:87847e0f685515fe21c083343037e22e14155b3956e0220e0c6c17c145fd682d
-// @lfy def/mcp/main.lfy:submit#submit:tool:f5d375e7f92630c7c75c6af5a62d636df1c895f2abf6280b5fc27486624dd3d6
-// @lfy def/mcp/main.lfy:submit#submit:tool:5e8f39a0f84b057b8516d3aba402f08b7a867533e314d8ede4294d9169055ec1
-// @lfy def/mcp/main.lfy:search#search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8
-// @lfy def/mcp/main.lfy:search#search:tool:8cabf755d8b4ed9c400ddc760b3676b7d288d84ef6a4b4d3588840ee0fb85e46
-// @lfy def/mcp/main.lfy:search#search:tool:502a513b0a0681b5d9af190aa237ed651ee77b387a6b91c00943b77203be2a26
-// @lfy def/mcp/main.lfy:build#build:tool:437d060ed5ca74732574dd1afab19a5a166957ef20fcdb97bf4d590041c48336
-// @lfy def/mcp/main.lfy:build#build:tool:e0309114048649453e6790ef4c6deeabd6ec9481b22aa5d6159c671535d25832
-// @lfy def/mcp/main.lfy:build#build:tool:d0bfe30fbbef86bd5724c6c59435c754542f0b44ae99df590217de4b3e02fd28
-// @lfy def/mcp/main.lfy:build#build:tool:a89edaee38beabc1ef0df886f2a21cc45ce985962b64e3309e470a2a02e9b576
-// @lfy def/mcp/main.lfy:build#build:tool:a3290c07f19e4214355190476d5ab8cc6a9bba3ec08cfedee6e90f738f4dcfc0
-// @lfy def/mcp/main.lfy:build#build:tool:cc821fff828717e6310df1103a08b0267f91fc98bbc71bc89165e1224840cb87
-// @lfy def/mcp/main.lfy:build#build:tool:d7aadcec979a675c909a3493228563ee20b979feaf86ec325edc207f6683b4f5
-// @lfy def/mcp/main.lfy:test#test:tool:5386b37f95ca729944462379291817c9470858369f6cfb9387b834f8767c2b51
-// @lfy def/mcp/main.lfy:test#test:tool:a038afc81a5b6f64a780e0144c3ac1be7ce831938025338a3c18193929918aba
-// @lfy def/mcp/main.lfy:test#test:tool:2762b11ba85ed708418f9df9c62fc0b7f1cf6561920586cf0b39f730acb05fa8
-// @lfy def/mcp/main.lfy:test#test:tool:4930fab7d3d2c47253afb07544bc3ab8fcd4c5deb1e42ce3f9f8b2dcc6175c30
-// @lfy def/mcp/main.lfy:test#test:tool:cbeb0da9f28bfbd6a6d084bb140fca7c043af3a7fee4c0c506d08562fcb13392
-// @lfy def/mcp/main.lfy:test#test:tool:91cfa553c86897863866df4f70a520da5ab64eb9facaea1c00b2c552ee52e2da
-// @lfy def/mcp/main.lfy:test#test:tool:430d6d90db0096b765c313099b0425e48c0069b5c3a1f92aa82676371e14f7f3
-// @lfy def/mcp/main.lfy:lint#lint:tool:6e14d79b29847057cee32aad56ac37159ec40c848c8cb9346ffbcca0cf4ce022
-// @lfy def/mcp/main.lfy:lint#lint:tool:9f1b5c7200bd49c99da2c72dd74e0589a75980b35e4b797ecc4b538e18b380a1
-// @lfy def/mcp/main.lfy:lint#lint:tool:fada2d3544a4caf7440370d2fdff08fd8d46235a4307ed27758f2aa426047db5
-// @lfy def/mcp/main.lfy:lint#lint:tool:f23edb098a47aff31e4aaab809a03e3db1a479cda385597dafd4ffca5fc96a43
-// @lfy def/mcp/main.lfy:lint#lint:tool:9293b2f58b28f6819e289105b3ffdfeddf57cb0b003b969596d58a7cf3cedeab
-// @lfy def/mcp/main.lfy:lint#lint:tool:8415b8b106d669fec27102fd04507c3d814b919d8bcf79f8e7d2650f5fb4faee
-// @lfy def/mcp/main.lfy:lint#lint:tool:81afa3f50b86d1ed54b7bad2244850fb1e841e53d326e18b8f9188e1037bc426
-// @lfy def/mcp/main.lfy:format#format:tool:a84a6f1ea99ee3c31c458952672bfa71b4b076970b0ea7e5f97fc4ca1ad3476d
-// @lfy def/mcp/main.lfy:format#format:tool:c9525e9b70499077881113750f0011474b3ed51c8f839564643d93637cedd60c
-// @lfy def/mcp/main.lfy:format#format:tool:b844517eed0302f020cc276c74d1c8e649070a57de01e61e1bc8194d3157f1a5
-// @lfy def/mcp/main.lfy:format#format:tool:6b1377a3f7b741d23cf4ee8f6be9b6e69d161c9b715fd8f55d0247578017bb6c
-// @lfy def/mcp/main.lfy:format#format:tool:6f7967f9d4f086abae04ce989ce1d49bea43882ec4bbb31e34aee7bf9417d481
-// @lfy def/mcp/main.lfy:format#format:tool:c7c05422e084fd79bb583a5aa90b70d947898019100fe9d2bd60b4fe23a540f2
-// @lfy def/mcp/main.lfy:format#format:tool:41a181e4de5b31903fd19b4fec451a4d3982908e194189ef3b45c691280dd06b
+// @lfy def/mcp/compiling.lfy:task#task:tool:b4176adea23f8e6c58f4d041e7a85447286076984bd05464e92528b60fda6d8b
+// @lfy def/mcp/compiling.lfy:task#task:tool:46ad78939d73914a576d0dce0904cae992474f9eeb184c717a5a0c324091d4d5
+// @lfy def/mcp/compiling.lfy:task#task:tool:18b0c73855584e9caf73515d1acf890c0655ed42c042d108a8914180338ce2b3
+// @lfy def/mcp/compiling.lfy:task#task:tool:6ddac2bcba95be32011edabc6d0abbc63da57cd4a0182a8c86f882a8482706e7
+// @lfy def/mcp/compiling.lfy:task#task:tool:e91db1a6069241eefc991fb1723f76dac6a194f33db9dbeaa21f8163f69cbdaf
+// @lfy def/mcp/compiling.lfy:task#task:tool:b2e2fadd9a1cd573a4b55e2e77fbd573ec3a9f6184ccd88beca5e743b871e9cd
+// @lfy def/mcp/compiling.lfy:task#task:tool:b361de400635b42112cf8a02205ed19f3875a7f7f9835b646817814b39f0233d
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:4fd4dbdb36a4d1d4e8a9589471a29d8337372b850160162b8a14f940ad74bbc6
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:7b7fe0f695f34ca950fbd8f4bc3aa16eb90bc78d78ed5a87812fe95b03c71eb5
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:6cb58ea6b9b30b6f2aba6bd276fdc3a0e104710c2733f9df000387e646050f34
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:01c082cb2c776a72049a0c164c556b408ada68b6c8d3e961aed6be20476ba114
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:feb08658fc3d60e206035d80439de4021e443fe53d2226e6e8ad43298da9f5b7
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:4894a15426436158e1d439a6ad82b49784af28fc4c896d683eb4bcfe455480a0
+// @lfy def/mcp/compiling.lfy:dependency#dependency:tool:2b186e60bc3e791246ddc810258418700586e003d4998497bd580b40f6624761
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:0f8e6f40a5d6de867cde8b1be5b3fc853845b786664671c550f9dad09eb01911
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:0b9567706ca9a8b66a0757d097e5fd9c7e6df936098d4aeb7f7e6834a6635d71
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:5295f5acf77612da1ff8627c746c87ccff5a0dbb1770c05ed869d1ed28d6c7a7
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:44369bf678415e07ca9c08b82b57c5fe7969e2e9850e765a8f32faeab4b784c4
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:644ced5c6aeca4f5ba2d0a64656faf7dc4224aa51d7dcfc2c46b2d9a241fb040
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:84d31d74a162783af16e3e2c1bbb0339be256b810408f3869f52a6d8f243ec5e
+// @lfy def/mcp/compiling.lfy:mark#mark:tool:745f570e06eb5111681f3c579ae61468329b1f2ae73381dfb2d99e3ba743c32f
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:46e6a49028a494b7d6bb872cd0cc63d6d03e25fffce40f625b0facd57b49a725
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:46c97b8c41d5f41394e9c6efbaf1f3bdc24c40082759615fb1b06732fb2d02c7
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:59836951e15ef484cb381d25b49b247ff2da58ae11631e91ff190839871ce24d
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:27e3a76662e3a4a2d2275aa703d2b835bd68c51282753e21b9337c744d37e5d6
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:87847e0f685515fe21c083343037e22e14155b3956e0220e0c6c17c145fd682d
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:f5d375e7f92630c7c75c6af5a62d636df1c895f2abf6280b5fc27486624dd3d6
+// @lfy def/mcp/compiling.lfy:submit#submit:tool:5e8f39a0f84b057b8516d3aba402f08b7a867533e314d8ede4294d9169055ec1
+// @lfy def/mcp/read.lfy:search#search:tool:dffd65949512cdddb7735f1aeed21e452cf605acabf06b395717014263c1c4e8
+// @lfy def/mcp/read.lfy:search#search:tool:8cabf755d8b4ed9c400ddc760b3676b7d288d84ef6a4b4d3588840ee0fb85e46
+// @lfy def/mcp/read.lfy:search#search:tool:502a513b0a0681b5d9af190aa237ed651ee77b387a6b91c00943b77203be2a26
+// @lfy def/mcp/commands.lfy:build#build:tool:437d060ed5ca74732574dd1afab19a5a166957ef20fcdb97bf4d590041c48336
+// @lfy def/mcp/commands.lfy:build#build:tool:e0309114048649453e6790ef4c6deeabd6ec9481b22aa5d6159c671535d25832
+// @lfy def/mcp/commands.lfy:build#build:tool:d0bfe30fbbef86bd5724c6c59435c754542f0b44ae99df590217de4b3e02fd28
+// @lfy def/mcp/commands.lfy:build#build:tool:a89edaee38beabc1ef0df886f2a21cc45ce985962b64e3309e470a2a02e9b576
+// @lfy def/mcp/commands.lfy:build#build:tool:a3290c07f19e4214355190476d5ab8cc6a9bba3ec08cfedee6e90f738f4dcfc0
+// @lfy def/mcp/commands.lfy:build#build:tool:cc821fff828717e6310df1103a08b0267f91fc98bbc71bc89165e1224840cb87
+// @lfy def/mcp/commands.lfy:build#build:tool:d7aadcec979a675c909a3493228563ee20b979feaf86ec325edc207f6683b4f5
+// @lfy def/mcp/commands.lfy:test#test:tool:5386b37f95ca729944462379291817c9470858369f6cfb9387b834f8767c2b51
+// @lfy def/mcp/commands.lfy:test#test:tool:a038afc81a5b6f64a780e0144c3ac1be7ce831938025338a3c18193929918aba
+// @lfy def/mcp/commands.lfy:test#test:tool:2762b11ba85ed708418f9df9c62fc0b7f1cf6561920586cf0b39f730acb05fa8
+// @lfy def/mcp/commands.lfy:test#test:tool:4930fab7d3d2c47253afb07544bc3ab8fcd4c5deb1e42ce3f9f8b2dcc6175c30
+// @lfy def/mcp/commands.lfy:test#test:tool:cbeb0da9f28bfbd6a6d084bb140fca7c043af3a7fee4c0c506d08562fcb13392
+// @lfy def/mcp/commands.lfy:test#test:tool:91cfa553c86897863866df4f70a520da5ab64eb9facaea1c00b2c552ee52e2da
+// @lfy def/mcp/commands.lfy:test#test:tool:430d6d90db0096b765c313099b0425e48c0069b5c3a1f92aa82676371e14f7f3
+// @lfy def/mcp/commands.lfy:lint#lint:tool:6e14d79b29847057cee32aad56ac37159ec40c848c8cb9346ffbcca0cf4ce022
+// @lfy def/mcp/commands.lfy:lint#lint:tool:9f1b5c7200bd49c99da2c72dd74e0589a75980b35e4b797ecc4b538e18b380a1
+// @lfy def/mcp/commands.lfy:lint#lint:tool:fada2d3544a4caf7440370d2fdff08fd8d46235a4307ed27758f2aa426047db5
+// @lfy def/mcp/commands.lfy:lint#lint:tool:f23edb098a47aff31e4aaab809a03e3db1a479cda385597dafd4ffca5fc96a43
+// @lfy def/mcp/commands.lfy:lint#lint:tool:9293b2f58b28f6819e289105b3ffdfeddf57cb0b003b969596d58a7cf3cedeab
+// @lfy def/mcp/commands.lfy:lint#lint:tool:8415b8b106d669fec27102fd04507c3d814b919d8bcf79f8e7d2650f5fb4faee
+// @lfy def/mcp/commands.lfy:lint#lint:tool:81afa3f50b86d1ed54b7bad2244850fb1e841e53d326e18b8f9188e1037bc426
+// @lfy def/mcp/commands.lfy:format#format:tool:a84a6f1ea99ee3c31c458952672bfa71b4b076970b0ea7e5f97fc4ca1ad3476d
+// @lfy def/mcp/commands.lfy:format#format:tool:c9525e9b70499077881113750f0011474b3ed51c8f839564643d93637cedd60c
+// @lfy def/mcp/commands.lfy:format#format:tool:b844517eed0302f020cc276c74d1c8e649070a57de01e61e1bc8194d3157f1a5
+// @lfy def/mcp/commands.lfy:format#format:tool:6b1377a3f7b741d23cf4ee8f6be9b6e69d161c9b715fd8f55d0247578017bb6c
+// @lfy def/mcp/commands.lfy:format#format:tool:6f7967f9d4f086abae04ce989ce1d49bea43882ec4bbb31e34aee7bf9417d481
+// @lfy def/mcp/commands.lfy:format#format:tool:c7c05422e084fd79bb583a5aa90b70d947898019100fe9d2bd60b4fe23a540f2
+// @lfy def/mcp/commands.lfy:format#format:tool:41a181e4de5b31903fd19b4fec451a4d3982908e194189ef3b45c691280dd06b
 #[test]
 fn every_tool_is_listed_as_its_fn_declares_it() {
     let listed = traits::list(&tools());
@@ -190,16 +190,16 @@ fn every_tool_is_listed_as_its_fn_declares_it() {
     assert_eq!(task.input_schema["required"], serde_json::json!([]));
     assert_eq!(task.input_schema["properties"], serde_json::json!({}));
     // `reach` takes an optional unit, and `touch` needs both a unit and a note.
-    // @lfy def/mcp/main.lfy:reach#reach:tool:1e225d7ed7e538bb99a23803976c607a8fb5b5c2f2f590ec4b06f35d41697b9c
-    // @lfy def/mcp/main.lfy:reach#reach:tool:c88a7beb004c86a4f071d6b34d0c5f3d7912b0665b861ae6b5c12672faa877b7
-    // @lfy def/mcp/main.lfy:reach#reach:tool:0be8d749d8b083dc788a187d2a6411bd4e5cfd6e62a4371e69faffd3064ddae3
+    // @lfy def/mcp/compiling.lfy:reach#reach:tool:1e225d7ed7e538bb99a23803976c607a8fb5b5c2f2f590ec4b06f35d41697b9c
+    // @lfy def/mcp/compiling.lfy:reach#reach:tool:c88a7beb004c86a4f071d6b34d0c5f3d7912b0665b861ae6b5c12672faa877b7
+    // @lfy def/mcp/compiling.lfy:reach#reach:tool:0be8d749d8b083dc788a187d2a6411bd4e5cfd6e62a4371e69faffd3064ddae3
     let reached = of("elfie_reach");
     assert_eq!(reached.input_schema["required"], serde_json::json!([]));
     assert_eq!(reached.input_schema["properties"]["unit"]["type"], "string");
     assert!(reached.description.as_deref().is_some_and(|text| text.starts_with("The later units whose code")));
-    // @lfy def/mcp/main.lfy:touch#touch:tool:4da83db2b1e129fa631e9e83c60e0103445ac7000e8c574aae3c464bf2eca7ae
-    // @lfy def/mcp/main.lfy:touch#touch:tool:75d192739bfcff082aa5ae79c7958de50175542afac2af2f3f957082f35312e3
-    // @lfy def/mcp/main.lfy:touch#touch:tool:a0970db31ba3316fc4048021908a1353da824324e5a915be3be50a3018474644
+    // @lfy def/mcp/compiling.lfy:touch#touch:tool:4da83db2b1e129fa631e9e83c60e0103445ac7000e8c574aae3c464bf2eca7ae
+    // @lfy def/mcp/compiling.lfy:touch#touch:tool:75d192739bfcff082aa5ae79c7958de50175542afac2af2f3f957082f35312e3
+    // @lfy def/mcp/compiling.lfy:touch#touch:tool:a0970db31ba3316fc4048021908a1353da824324e5a915be3be50a3018474644
     let touched = of("elfie_touch");
     assert_eq!(touched.input_schema["required"], serde_json::json!(["unit", "note"]));
     assert!(touched.description.as_deref().is_some_and(|text| text.starts_with("Say why this compiler run edited")));
@@ -272,7 +272,7 @@ async fn serving_lists_the_tools_answers_a_call_and_returns_zero_when_input_clos
     let result = call(&session, "elfie_problems", serde_json::json!({ "file": "def/a.lfy" }));
     assert_eq!(result.text, text);
 
-    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
+    // @lfy def/mcp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
     let mut agent = Agent::connect(&fixture.root);
     let initialized = agent
         .request(
@@ -308,7 +308,7 @@ async fn serving_lists_the_tools_answers_a_call_and_returns_zero_when_input_clos
         .send(serde_json::json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }))
         .await;
 
-    // @lfy def/mcp/main.lfy:serve#serve:serve:fae469e7dbfdef868655e96269f387d1ceb2373d31a063ce8c099b6960d6a06a
+    // @lfy def/mcp/main.lfy:serve#serve:serve:22e6a125429aa0d6d8471a2322eb2e761f6f972d0af7150507d5ad9fd54bcc72
     let listed = agent.request("tools/list", serde_json::json!({})).await;
     let served: Vec<&str> = listed["result"]["tools"]
         .as_array()
@@ -318,7 +318,7 @@ async fn serving_lists_the_tools_answers_a_call_and_returns_zero_when_input_clos
         .collect();
     assert_eq!(served, TOOL_NAMES);
 
-    // @lfy def/mcp/main.lfy:problems#problems:tool:d9b6b1ce215d966d4d49ba31d319199d9539fe1614bed20bc86032b0e2fc28c0
+    // @lfy def/mcp/read.lfy:problems#problems:tool:d9b6b1ce215d966d4d49ba31d319199d9539fe1614bed20bc86032b0e2fc28c0
     let called = agent
         .request("tools/call", serde_json::json!({ "name": "elfie_problems", "arguments": {} }))
         .await;
@@ -329,7 +329,7 @@ async fn serving_lists_the_tools_answers_a_call_and_returns_zero_when_input_clos
     assert_eq!(agent.close().await, 0);
 }
 
-// @lfy def/mcp/main.lfy:problems#problems:problems:4e726dce93d9d233aedec39235ecea647b64e1f851fe518f6992aea5add1da3c
+// @lfy def/mcp/read.lfy:problems#problems:problems:4e726dce93d9d233aedec39235ecea647b64e1f851fe518f6992aea5add1da3c
 #[test]
 fn problems_says_when_there_are_none() {
     let fixture = Fixture::new();
@@ -339,15 +339,15 @@ fn problems_says_when_there_are_none() {
     assert_eq!(problems(&session, Some("def/a.lfy")).unwrap(), "no problems in def/a.lfy");
     // A file the program does not hold has no problems either, and is answered with
     // text rather than a failure.
-    // @lfy def/mcp/main.lfy:problems#problems:problems:4e726dce93d9d233aedec39235ecea647b64e1f851fe518f6992aea5add1da3c
+    // @lfy def/mcp/read.lfy:problems#problems:problems:4e726dce93d9d233aedec39235ecea647b64e1f851fe518f6992aea5add1da3c
     assert_eq!(problems(&session, Some("def/b.lfy")).unwrap(), "no problems in def/b.lfy");
 }
 
 // The session over standard input and output is offered both `find` and `outline`, so
 // an argument of either that is missing, unknown, or of the wrong type is an error
 // naming it and the fn is not called.
-// @lfy def/mcp/main.lfy:find#find:tool:14b1732157522ebf4b24b6038fcddb65b5b23a3689651521b1bf763ca8fb0879
-// @lfy def/mcp/main.lfy:find#find:tool:26dc105fcfc8d9cc4ed181d1ae1172c0d0e88942453e1513fd22d3d6c8b3b095
+// @lfy def/mcp/read.lfy:find#find:tool:14b1732157522ebf4b24b6038fcddb65b5b23a3689651521b1bf763ca8fb0879
+// @lfy def/mcp/read.lfy:find#find:tool:26dc105fcfc8d9cc4ed181d1ae1172c0d0e88942453e1513fd22d3d6c8b3b095
 #[test]
 fn a_bad_argument_is_an_error_naming_it() {
     let fixture = Fixture::new();
@@ -359,22 +359,22 @@ fn a_bad_argument_is_an_error_naming_it() {
     let result = call(&session, "elfie_find", serde_json::json!({ "name": "y", "extra": true }));
     assert!(result.is_error);
     assert!(result.text.contains("extra"), "{}", result.text);
-    // @lfy def/mcp/main.lfy:outline#outline:tool:6e95ab5fd88f41d7145f86ed344f8156d3464326e598b0ac637ac3ddbc5d369f
-    // @lfy def/mcp/main.lfy:outline#outline:tool:150963511f1c73e51401709017f75ec80e37e411880f968dadf301ed995494cd
+    // @lfy def/mcp/read.lfy:outline#outline:tool:6e95ab5fd88f41d7145f86ed344f8156d3464326e598b0ac637ac3ddbc5d369f
+    // @lfy def/mcp/read.lfy:outline#outline:tool:150963511f1c73e51401709017f75ec80e37e411880f968dadf301ed995494cd
     let result = call(&session, "elfie_outline", serde_json::json!({ "file": 1 }));
     assert!(result.is_error);
     assert!(result.text.contains("file") && result.text.contains("string"), "{}", result.text);
     // The fn fails: an error carrying the failure, and the server goes on, which the
     // call after this one shows.
-    // @lfy def/mcp/main.lfy:outline#outline:tool:6114e21db6cb9375ba623e9ff0b359857133d98565b50e37b08ee737a3e0ac41
-    // @lfy def/mcp/main.lfy:outline#outline:tool:532b2ad88427069a8c24f3a734fe21c29f9d0b4bcf57c523a2436c4d0228712f
+    // @lfy def/mcp/read.lfy:outline#outline:tool:6114e21db6cb9375ba623e9ff0b359857133d98565b50e37b08ee737a3e0ac41
+    // @lfy def/mcp/read.lfy:outline#outline:tool:532b2ad88427069a8c24f3a734fe21c29f9d0b4bcf57c523a2436c4d0228712f
     let result = call(&session, "elfie_outline", serde_json::json!({ "file": "def/none.lfy" }));
     assert!(result.is_error);
     assert!(result.text.contains("def/a.lfy"), "{}", result.text);
     // The fn returns: the result it returns is the call's result, and the fn was reached
     // with the session and the arguments.
-    // @lfy def/mcp/main.lfy:outline#outline:tool:56807c149fa490c87e28f903d14a7c0f45d7bd9ef10df81481e83b233f241b30
-    // @lfy def/mcp/main.lfy:outline#outline:tool:f5e2e8d44cd795aa69322fef5a2f21e8c943fd631ec83fb04f50665b2a0d412f
+    // @lfy def/mcp/read.lfy:outline#outline:tool:56807c149fa490c87e28f903d14a7c0f45d7bd9ef10df81481e83b233f241b30
+    // @lfy def/mcp/read.lfy:outline#outline:tool:f5e2e8d44cd795aa69322fef5a2f21e8c943fd631ec83fb04f50665b2a0d412f
     let result = call(&session, "elfie_outline", serde_json::json!({ "file": "def/a.lfy" }));
     assert!(!result.is_error, "{}", result.text);
     assert_eq!(result.text, outline(&session, "def/a.lfy").unwrap());
@@ -454,8 +454,8 @@ fn a_new_file_under_any_source_directory_is_read_before_a_call() {
 // @lfy def/mcp/main.lfy:host#host:host:238a67527a5f81bdc05abb6515eacc7b86b9ead269c56d3b3654d34d47184b50
 // @lfy def/mcp/main.lfy:host#host:host:b01f7a894faf3752cba01a91aaed7228df1bb1b93d87ea2c648f034427bcc3fd
 // @lfy def/mcp/main.lfy:host#host:host:bb7c6b5258b2c4026015a8f9915717da1ec50aa40dcc10a43e5b50bc9e39310e
-// @lfy def/mcp/main.lfy:host#host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1
-// @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
+// @lfy def/mcp/main.lfy:host#host:host:36334d0d3f4e76ec36889a25246c87e9009588671c55467141ab88d58305b36c
+// @lfy def/mcp/main.lfy:host#host:host:cd9a74728b88249c9d5ee9fd6993256b7651c1300bad550b7bbd270b279b12ff
 // @lfy def/mcp/main.lfy:host#host:host:91b44b23c29eaf7242b190da7fe5ab5f3642df5ec77212e680331af6b76e01b1
 /// The instructions name only the tools a session is offered: a verifier offered command
 /// tools but not `elfie_mark` is told what a command tool writes and nothing of
@@ -500,9 +500,9 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
     // `report` and `reportMany`, the fns carrying `compilerTool` among them; a verifier
     // is offered every tool carrying `tool` alone but `check`. The fixture's target has
     // no command, so neither is offered a command tool.
-    // @lfy def/mcp/main.lfy:host#host:host:dda4c7d26ad4016b54849285dc2862e998ac0d97cd234f0b56608729b03fdbb1
+    // @lfy def/mcp/main.lfy:host#host:host:36334d0d3f4e76ec36889a25246c87e9009588671c55467141ab88d58305b36c
     assert_eq!(compiling.offered, COMPILER_TOOLS);
-    // @lfy def/mcp/main.lfy:host#host:host:7afa5703849ae259b65ae3bd7d32057445477122e6db4ac372c99154d461ea95
+    // @lfy def/mcp/main.lfy:host#host:host:cd9a74728b88249c9d5ee9fd6993256b7651c1300bad550b7bbd270b279b12ff
     assert_eq!(verifying.offered, VERIFIER_TOOLS);
     assert!(verifying.offers("elfie_report"), "{:?}", verifying.offered);
     assert!(verifying.offers("elfie_reportMany"), "{:?}", verifying.offered);
@@ -517,7 +517,7 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
     assert!(hosting.offered("http://127.0.0.1:7/sessions/9").is_empty());
     assert!(hosting.offered("http://elsewhere/sessions/1").is_empty());
     // `check` is not offered to it, so it is not listed either.
-    // @lfy def/mcp/main.lfy:check#check:tool:d1b4319d34a3d00324ec0850bf1e0987ceb4112aab80f13d77b82554c27ca5f9
+    // @lfy def/mcp/read.lfy:check#check:tool:d1b4319d34a3d00324ec0850bf1e0987ceb4112aab80f13d77b82554c27ca5f9
     assert!(!verifying.list().tools.iter().any(|tool| tool.name == "elfie_check"));
     // Each session's instructions name only the tools that session is offered, say which
     // of them change files, and say which role it is bound to. The fixture's target has
@@ -558,8 +558,8 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
     }
     // A call naming a tool the session is not offered is an error saying so, and the fn
     // is not reached: nothing is checked and no plan is made.
-    // @lfy def/mcp/main.lfy:check#check:tool:171e2f1ce748190f5ccbf577a5f91fc2fd8683a6b877bb654a16a48965e01265
-    // @lfy def/mcp/main.lfy:check#check:tool:15fd0657dd9bfbe4565283f531743c14447968c8361b95ba4e874d2a8309c888
+    // @lfy def/mcp/read.lfy:check#check:tool:171e2f1ce748190f5ccbf577a5f91fc2fd8683a6b877bb654a16a48965e01265
+    // @lfy def/mcp/read.lfy:check#check:tool:15fd0657dd9bfbe4565283f531743c14447968c8361b95ba4e874d2a8309c888
     let refused = verifying
         .call(&calling("elfie_check", serde_json::json!({ "unit": "b" })))
         .expect("a result");
@@ -567,7 +567,7 @@ fn a_hosted_session_is_bound_numbered_and_closed_with_what_it_recorded() {
     assert!(failed, "{text}");
     assert_eq!(text, "elfie_check is not offered to this session");
     // A tool the session is offered is reached as ever.
-    // @lfy def/mcp/main.lfy:units#units:tool:c0392f44087e7b29669f0f8d6b5d294cb0195675616839b4f6d80e791125f939
+    // @lfy def/mcp/read.lfy:units#units:tool:c0392f44087e7b29669f0f8d6b5d294cb0195675616839b4f6d80e791125f939
     let listed = compiling.call(&calling("elfie_units", serde_json::json!({}))).expect("a result");
     let (failed, text) = answered(&listed);
     assert!(!failed, "{text}");
@@ -702,12 +702,12 @@ fn the_host_speaks_the_protocol_over_http_behind_its_token() {
     // names the very tools it listed.
     // @lfy def/mcp/main.lfy:host#host:host:d3b3abd60412e83fb1835597e514740cc7d4648f94a73575cf7f076399063025
     assert_eq!((host.offered)(&url), COMPILER_TOOLS);
-    // @lfy def/mcp/main.lfy:units#units:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
+    // @lfy def/mcp/read.lfy:units#units:tool:70270cbd25e8b7a53f43c0a444244a5587dec21cbcd6564c27f745fcf36d40e4
     assert_eq!(listed["result"]["ttlMs"], serde_json::json!(0), "{listed}");
     assert_eq!(listed["result"]["cacheScope"], "private", "{listed}");
 
     // A call of a tool the session is offered answers with what the fn returns.
-    // @lfy def/mcp/main.lfy:units#units:tool:59e3afe0a4f39564b82a347fa5494defa7421ae95a945c19049ed8e307b1b0e8
+    // @lfy def/mcp/read.lfy:units#units:tool:59e3afe0a4f39564b82a347fa5494defa7421ae95a945c19049ed8e307b1b0e8
     let called = r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"elfie_units","arguments":{}}}"#;
     let (status, body) = http(&url, Some(&host.token), called);
     assert_eq!(status, 200, "{body}");
@@ -881,34 +881,34 @@ fn a_reached_unit_the_run_edited_is_read_from_its_outputs() {
 /// A hosted session acts on its own unit and on no other: a request, a check, a change,
 /// or a review for another is an error naming the unit it acts on, or the global review
 /// when it is bound to none.
-// @lfy def/mcp/main.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
-// @lfy def/mcp/main.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
-// @lfy def/mcp/main.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
-// @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+// @lfy def/mcp/read.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
+// @lfy def/mcp/read.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
+// @lfy def/mcp/read.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+// @lfy def/mcp/read.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
 #[test]
 fn a_hosted_session_acts_only_on_its_own_unit() {
     let fixture = compiled_project();
     let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("a")));
-    // @lfy def/mcp/main.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
+    // @lfy def/mcp/read.lfy:request#request:request:48f89e4f5dbd19355149dfdab15f569200b5dc13cfbdb7524dd3cfabd7052097
     let error = request(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on its own unit, a"), "{error}");
-    // @lfy def/mcp/main.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
+    // @lfy def/mcp/read.lfy:check#check:check:de01f24fe16815616e98694787fdc90451dd8e2c6a0803dcf9936fb3f92eb1bf
     let error = check(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on its own unit, a"), "{error}");
-    // @lfy def/mcp/main.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+    // @lfy def/mcp/read.lfy:changes#changes:changes:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
     let error = changes(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on its own unit, a"), "{error}");
-    // @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+    // @lfy def/mcp/read.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
     let error = review(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on its own unit, a"), "{error}");
     // Its own unit is answered for as ever: the guard lets it through and the verdict
     // of `accept` is what comes back.
-    // @lfy def/mcp/main.lfy:check#check:check:aa65fce675d53a43132ff27e80f270948be090228ac8b39998f2eb2375b5519a
+    // @lfy def/mcp/read.lfy:check#check:check:aa65fce675d53a43132ff27e80f270948be090228ac8b39998f2eb2375b5519a
     let error = check(&session, "a", None).unwrap_err();
     assert!(error.starts_with("rejected a:"), "{error}");
 
     // A session bound to the global review acts on no unit at all.
-    // @lfy def/mcp/main.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
+    // @lfy def/mcp/read.lfy:review#review:review:47939b7e26a096d51016320d59ba7e3a38ffd7f43690c663bdeb522b5f87dcf3
     let session = bound(&fixture, binding_of(&fixture, Role::Verifier, None));
     let error = review(&session, "b", None).unwrap_err();
     assert!(error.contains("acts only on the global review"), "{error}");
@@ -921,7 +921,7 @@ fn a_hosted_session_acts_only_on_its_own_unit() {
 /// A verifier is given the review request it was run with, never one made again from
 /// the outputs as they are now; a compiler of the same unit has the request made for the
 /// unit.
-// @lfy def/mcp/main.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
+// @lfy def/mcp/read.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
 #[test]
 fn a_verifier_is_given_the_review_request_it_was_run_with() {
     /// What the review request the verifier was run with reads.
@@ -932,10 +932,10 @@ fn a_verifier_is_given_the_review_request_it_was_run_with() {
     given.instructions = GIVEN.to_string();
     binding.review = Some(given);
     let session = bound(&fixture, binding);
-    // @lfy def/mcp/main.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
+    // @lfy def/mcp/read.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
     assert_eq!(review(&session, "b", None).unwrap(), GIVEN);
     // A compiler's session has the request made for the unit instead.
-    // @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
+    // @lfy def/mcp/read.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
     let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b")));
     let instructions = review(&session, "b", None).unwrap();
     assert_ne!(instructions, GIVEN);

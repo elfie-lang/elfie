@@ -36,15 +36,15 @@ const WATCH_REGISTRATION: &str = "elfie.watched-files";
 /// yields an error response and the server goes on. Exit after shutdown returns 0; exit
 /// without shutdown before it returns 1.
 // @lfy def/lsp/main.lfy:serve#serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72
-// @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
-// @lfy def/lsp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2
+// @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2
+// @lfy def/lsp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2:2
 pub fn serve(root: Option<&Path>) -> i32 {
     let root = root.map(Path::to_path_buf);
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime,
         Err(error) => {
-            // @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
-            // @lfy def/lsp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2
+            // @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2
+            // @lfy def/lsp/main.lfy:serve#serve:serve:2e8afa5f7b4b656715c118a89eb0aa4e31bf4d6d7c23f5f07c261d830eba22d2:2
             eprintln!("elfie lsp: the runtime could not start: {error}");
             return 1;
         }
@@ -54,7 +54,7 @@ pub fn serve(root: Option<&Path>) -> i32 {
 
 /// [`serve`] over any pair of streams, so tests can drive the whole server in memory.
 // @lfy def/lsp/main.lfy:serve#serve:serve:98094be11487918342040661be4f07e244aca47c388ac7567c98f7fd986d0e72
-// @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c
+// @lfy def/lsp/main.lfy:serve#serve:serve:cdd8cbb19e8838a376ee63434bb80d8dd21a483810121a6bced851760822594c:2
 pub(crate) async fn serve_on<I, O>(input: I, output: O, root: Option<PathBuf>) -> i32
 where
     I: AsyncRead + Unpin,
@@ -341,7 +341,7 @@ impl LanguageServer for Backend {
     /// definition, references, completion, rename with prepare, document symbols, workspace
     /// symbols, document formatting, and semantic tokens for a whole document, and full
     /// text document synchronization.
-    // @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
+    // @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
     async fn initialize(&self, params: lsp::InitializeParams) -> Result<lsp::InitializeResult> {
         let root = chosen_root(self.shared.root.as_deref(), &params);
         // @lfy def/lsp/main.lfy:serve#serve:serve:c82aa87a38da9f76f6a0282cf762d75fc1a996f6387757f554851aa77dc039f8
@@ -724,7 +724,7 @@ impl LanguageServer for Backend {
 /// The project the session loads: the root `serve` was given when it was given one, the
 /// client's first workspace folder when the client names one, and the current directory
 /// otherwise.
-// @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b
+// @lfy def/lsp/main.lfy:serve#serve:serve:0d7ad5672274c815b6ad256268ff29d8425eb7ed8114bb7c9ea52bd41bedde9b:2
 pub(crate) fn chosen_root(given: Option<&Path>, params: &lsp::InitializeParams) -> PathBuf {
     let root = given
         .map(Path::to_path_buf)
