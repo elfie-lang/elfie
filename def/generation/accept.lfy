@@ -1,0 +1,696 @@
+use "../workspace/data";
+use "./data";
+use "elfie/system/file" as Files;
+use "elfie/system/path";
+use "elfie/system/time" as Time;
+use "elfie/target/language";
+use "./main";
+use "./maps";
+use "./review";
+
+// Decision: the touched-fix path, which settles a unit whose only reason is touched and whose
+// foreign edits are all fixes without a compiler, needs nothing of its own here. Its outputs are
+// accepted as they are, given as they are as before, so no line changed and the fixes become the
+// unit's own code, which [[SourceMap.text]] then hashes; [[review]] with the unit's records then
+// lists the criteria and tests of the entities the fixes touched. A stub always goes to the
+// compiler, since a stub line in the unit's own regions is always rejected.
+/// recorded: the source maps recorded for the other units of the unit's target
+/// elsewhere: every other file of the unit's target's output directory, as it is where the outputs are read
+/// before: every file of the unit's target's output directory as it was before the run, read where the outputs are read; undefined when not known, and then no foreign edit is judged
+/// touches: the note the run gave through elfie_touch for each unit it edited, by [[Unit.stem]]
+fn accept(
+  request: Request,
+  unit: Unit,
+  outputs: Output[],
+  recorded: SourceMap[] = [],
+  elsewhere: Output[] = [],
+  before?: Output[],
+  touches: Object<string> = {},
+): `Whether outputs satisfy a request for one unit structurally, the source maps they earn, the outputs with their markers normalized, and the edits they make to later units` => Verdict {
+  // Decision: an output may hold markers for other files of the program, because one output often
+  // mirrors several. A marker naming a file outside the program is a fixture or prose, not a claim
+  // about the program. A line marker inside an entity is rewritten to the entity's name, since a name
+  // survives edits and a line does not.
+  @acceptanceCriteria.add({ behavior = `[[Verdict.accepted]] is true exactly when [[Verdict.problems]] is empty` });
+
+  // Markers
+  @acceptanceCriteria
+    .add({ situation = `[[outputs]] is empty`, behavior = `[[Verdict.problems]] holds one saying so` })
+    // Decision: a file shared by several units is an output of each, as Rust's lib.rs must be; what a
+    // unit may not do is take away what another unit recorded in it. Moving it is not taking it
+    // away: splitting a module carries the markers another unit recorded in the unit's code into new
+    // files, so a recorded marker is looked for in every output of the unit and in every other file
+    // of the output directory, never only in the file it was recorded for. Markers are counted, not
+    // just found, so dropping one of two regions with the same name is still taking one away. A
+    // marker that is the unit's own, as [[SourceMap]] defines one, is the unit's to write or drop: a
+    // co-owner's map holds it only because a map records every marker of its output.
+    // Decision: in a shared output, whether a co-owner's region grew by lines the unit put under it is
+    // judged by these counts alone and never line by line, because a module line such as lib.rs's
+    // sits under whatever marker comes before it. [[SourceMap.text]] hashes the co-owner's own
+    // regions and is carried over when its maps are re-derived, so a grown region no longer matches
+    // it, and the co-owner's outputs are never kept as they are on that hash.
+    .add({
+      situation = [
+        `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
+        `For the [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]] of a marker of that source map that is not the unit's own, fewer markers with those three across [[outputs]] and [[elsewhere]] together than across every map of [[recorded]] with that source`,
+      ],
+      behavior = `[[Verdict.problems]] holds one naming the path, the other unit's source, the marker, and both counts`,
+    })
+    .add({
+      situation = [
+        `An output's path is [[SourceMap.output]] of a source map in [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
+        `For the [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]] of every marker of that source map that is not the unit's own, as many markers with those three or more across [[outputs]] and [[elsewhere]] together as across every map of [[recorded]] with that source`,
+      ],
+      behavior = `Sharing the output with that other unit adds no problem`,
+    })
+    .add({
+      behavior = `A file of [[elsewhere]] is in no [[Verdict.outputs]], has no source map, and its markers add no problem`,
+    })
+    .add({
+      situation = `An output's path does not [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target`,
+      behavior = `[[Verdict.problems]] holds one naming the path`,
+    })
+    .add({
+      situation = `An output's [[Path.extension]] is not among [[Target.extensions]] of the unit's target`,
+      behavior = `[[Verdict.problems]] holds one naming the path and the extensions the target allows`,
+    })
+    .add({
+      situation = `A marker names an entity`,
+      behavior = `Its line is derived as the first line of the declaring node of the entity with that name in that file, and the marker is left as written`,
+    })
+    .add({
+      situation = `A marker names a file of the program and an entity that file does not declare`,
+      behavior = `[[Verdict.problems]] holds one naming the output line and the name`,
+    })
+    .add({
+      situation = `A marker names a line of the unit's file, or of the file declaring an entity moved into the unit, that falls inside an entity's declaration`,
+      behavior = `The marker is rewritten in [[Verdict.outputs]] to name that entity`,
+    })
+    .add({
+      situation = `An output holds a [[Marker]] naming a line of the unit's [[File.path]], or of the file declaring an entity moved into the unit, beyond that file's last line`,
+      behavior = `[[Verdict.problems]] holds one naming the output line`,
+    })
+    .add({
+      situation = `A marker naming the unit's [[File.path]], or the file of an entity moved into the unit, names a requirement id that is neither a local criterion or test of the unit nor one of [[Request.globals]]`,
+      behavior = `[[Verdict.problems]] holds one naming the output line and the id`,
+    })
+    .add({
+      situation = `An output holds a [[Marker]] naming another file of the program and an entity that file declares`,
+      behavior = `The marker adds no problem`,
+    })
+    .add({
+      situation = `An output holds a [[Marker]] naming a file that is not in the program`,
+      behavior = [`The marker adds no problem`, `The marker is not in [[SourceMap.markers]]`],
+    })
+    .add({
+      situation = `An entity of the unit has no marker in any output naming it or a line its declaring node covers`,
+      behavior = `[[Verdict.problems]] holds one naming the entity`,
+    });
+
+  // Stubs left
+  // Decision: a unit holding a stub is never accepted, so every stub sits in the code of a unit not
+  // yet accepted, later in plan order, and a bottom-up compile ends.
+  @acceptanceCriteria
+    .add({
+      behavior = `A stub line naming a unit is a line that, with the white space before and after it removed, reads the stub line of the unit's target, the value the setters of [[Target.declaration]] give [[targetLanguage.stubLine]], read as [[Target.markerComment]] is the value they give markerComment, with \{{unit}} as that unit's [[Unit.stem]] and \{{reason}} as any text, which is the reason it gives`,
+    })
+    .add({
+      situation = `No setter of [[Target.declaration]] of the unit's target gives [[targetLanguage.stubLine]] a value`,
+      behavior = `No line is a stub line`,
+    })
+    .add({
+      situation = `A line of a region of a marker of the unit's own, in an output of [[outputs]], is a stub line naming any unit`,
+      behavior = `[[Verdict.problems]] holds one naming the output line and saying a stub is left in the unit's code`,
+    });
+
+  // Foreign edits
+  // Decision: what the run changed is read by comparing the files with what they held before it,
+  // because an edit to another unit's code shows in no marker. A changed line is judged by the
+  // region it falls in, so the rules follow ownership rather than files.
+  // Decision: a changed line of a shared output outside the unit's own regions is judged as before
+  // there were foreign edits, by the marker counts alone, because a module line such as lib.rs's or
+  // mod.rs's sits under whatever marker comes before it.
+  @acceptanceCriteria
+    .add({
+      situation = `[[before]] is undefined`,
+      behavior = [`No changed line is judged`, `[[Verdict.foreignEdits]] is empty`],
+    })
+    .add({
+      situation = `[[before]] is given`,
+      behavior = `The changed lines of a path are those a line diff removes from its text in [[before]] or adds in its text in [[outputs]], or in [[elsewhere]] when no output has the path, a path missing on either side being read as the empty text`,
+    })
+    .add({
+      behavior = `A removed line falls in the region that held it in [[before]], and an added line in the region that holds it now, a region being that of a [[Marker]] naming a file of the program`,
+    })
+    .add({
+      behavior = `A region is another unit's when its marker is that unit's own, as [[SourceMap]] defines one, and that unit is the owner of the region`,
+    })
+    .add({
+      behavior = `An output of [[outputs]] is shared when its path is [[SourceMap.output]] of a map of [[recorded]] whose [[SourceMap.source]] is not the file of the unit`,
+    })
+    .add({
+      situation = `A changed line falls in a region of a marker of the unit's own, or in an output of [[outputs]] that is not shared`,
+      behavior = `It is the unit's own code, and adds no problem and no foreign edit`,
+    })
+    .add({
+      situation = `A changed line of a shared output falls in no region of a marker of the unit's own`,
+      behavior = `It adds no problem and no foreign edit beyond the marker counts of a shared output`,
+    })
+    .add({
+      situation = [
+        `A changed line is of a path that is no output of [[outputs]]`,
+        `It falls in no region, or in a region whose marker is no unit's own`,
+      ],
+      behavior = `[[Verdict.problems]] holds one naming the path and the line, and saying the line is in no unit's code`,
+    })
+    .add({
+      situation = [
+        `A changed line is of a path that is no output of [[outputs]]`,
+        `It falls in another unit's region`,
+        `The owner is not among [[Reach.units]] of [[Request.reach]] of [[request]]`,
+      ],
+      behavior = `[[Verdict.problems]] holds one naming the path, the line, and the owner, and saying only the code of a unit in its reach, one that depends on it, is edited`,
+    })
+    .add({
+      situation = [
+        `A changed line is of a path that is no output of [[outputs]]`,
+        `It falls in another unit's region`,
+        `The changed lines of that region change the line of the marker that begins it, or add or remove a line read as a [[Marker]]`,
+      ],
+      behavior = `[[Verdict.problems]] holds one naming the path and the marker, and saying the markers of another unit's region stay as they were`,
+    })
+    .add({
+      situation = [
+        `The changed lines of a path that is no output of [[outputs]] fall in another unit's region`,
+        `The owner is among [[Reach.units]] of [[Request.reach]] of [[request]]`,
+        `They leave the markers of the region as they were`,
+      ],
+      behavior = `They are one [[ForeignEdit]] in [[Verdict.foreignEdits]], whose [[ForeignEdit.by]] is [[Unit.stem]] of [[unit]], whose [[ForeignEdit.owner]] is the owner's [[Unit.stem]], whose [[ForeignEdit.region]] is the marker that begins the region as [[before]] held it, and whose [[ForeignEdit.before]] and [[ForeignEdit.after]] are the lines of the region before and after`,
+    })
+    .add({
+      situation = [
+        `A foreign edit adds at least one line`,
+        `Every line it adds is a stub line naming [[unit]]`,
+      ],
+      behavior = [
+        `[[ForeignEdit.kind]] is stub`,
+        `[[ForeignEdit.note]] is the reason the first of its stub lines gives`,
+      ],
+    })
+    .add({
+      situation = `A foreign edit adds no line, or adds a line that is not a stub line naming [[unit]]`,
+      behavior = [`[[ForeignEdit.kind]] is fix`, `[[ForeignEdit.note]] is the note [[touches]] gives its owner`],
+    })
+    .add({
+      situation = `A fix changes more than [[Reach.fixLines]] of [[Request.reach]] of [[request]] lines`,
+      behavior = `[[Verdict.problems]] holds one naming the path, the marker of its region, the lines it changes, and the cap, and saying a bigger edit is a stub`,
+    })
+    .add({
+      situation = `The fixes of [[Verdict.foreignEdits]] with one owner together change more than [[Reach.fixUnitLines]] of [[Request.reach]] of [[request]] lines`,
+      behavior = `[[Verdict.problems]] holds one naming the owner, the lines they change, and the cap, and saying a bigger edit is a stub`,
+    })
+    .add({
+      situation = `A fix's owner has no entry in [[touches]], or an empty one`,
+      behavior = `[[Verdict.problems]] holds one naming the owner, and saying a fix needs a note given through elfie_touch`,
+    })
+    .add({ behavior = `A stub needs no note in [[touches]] and has no cap` });
+
+  // Source maps, mechanically
+  @acceptanceCriteria
+    .add({
+      situation = `[[Verdict.accepted]] is true`,
+      behavior = `[[Verdict.sourceMaps]] holds one [[SourceMap]] per output, in [[outputs]] order`,
+    })
+    .add({
+      behavior = `[[SourceMap.target]] of each of [[Verdict.sourceMaps]] is [[Target.identifier]] of the unit's target`,
+    })
+    .add({ behavior = `[[SourceMap.output]] of each of [[Verdict.sourceMaps]] is the path of the output it is for` })
+    .add({ behavior = `[[SourceMap.source]] of each of [[Verdict.sourceMaps]] is [[File.path]] of the unit's file` })
+    .add({
+      behavior = `[[SourceMap.hash]] of each of [[Verdict.sourceMaps]] is the SHA-256 of [[Unit.text]] of [[unit]]`,
+    })
+    .add({
+      behavior = `[[SourceMap.requirements]] of each of [[Verdict.sourceMaps]] is taken over the local criterion and test ids of [[unit]]`,
+    })
+    .add({
+      behavior = `[[SourceMap.answered]] of each of [[Verdict.sourceMaps]] is the local criterion and test ids of [[unit]], sorted`,
+    })
+    .add({
+      behavior = `[[SourceMap.signature]] of each of [[Verdict.sourceMaps]] is the SHA-256 of [[interfaceOf]] [[unit]]`,
+    })
+    .add({
+      behavior = `[[SourceMap.text]] of each of [[Verdict.sourceMaps]] is the SHA-256, as lowercase hex, of the unit's own region text, as [[SourceMap]] defines it, of the output it is for as [[Verdict.outputs]] holds it`,
+    })
+    .add({
+      behavior = `[[SourceMap.dependencies]] of each of [[Verdict.sourceMaps]] maps the source path of each of [[Unit.dependencies]] to the SHA-256 of [[interfaceOf]] it, as computed during this call`,
+    })
+    .add({
+      behavior = `[[SourceMap.generated]] of each of [[Verdict.sourceMaps]] is [[Time.Instant.rfc3339]] of [[Time.now]] during this call`,
+    })
+    .add({
+      behavior = `[[SourceMap.markers]] of each of [[Verdict.sourceMaps]] holds every marker of the output it is for that names a file of the program, in output order, with its derived line`,
+    })
+    .add({ behavior = `Nothing in a source map comes from the compiler's text except the names it spelled` })
+    .add({ behavior = `No command of the target is run` });
+
+  @test(
+    {
+      input = [
+        Request@like(`For the unit of a.lfy, with entities A and B`),
+        Unit@like(`that unit`),
+        [Output@like(`One file under the output directory with a marker a.lfy:A and one a.lfy:B`)],
+      ],
+      expect = Verdict@like(
+        `Accepted, one source map with two markers whose lines are those of A and B, the first ending on the line before the second and the second on the last line of the output, the output unchanged`,
+      ),
+    },
+    {
+      input = [
+        Request@like(`For the unit of a.lfy, with entities A and B`),
+        Unit@like(`that unit`),
+        [Output@like(`One file with a marker naming the line of A only`)],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming B`),
+    },
+    {
+      input = [
+        Request@like(`For the unit of a.lfy, with entity A on line 3`),
+        Unit@like(`that unit`),
+        [Output@like(`One file with a marker a.lfy:3`)],
+      ],
+      expect = Verdict@like(`Accepted, and the output in [[Verdict.outputs]] reads a.lfy:A instead`),
+    },
+    {
+      input = [
+        Request@like(`For the unit of b.lfy, which declares B`),
+        Unit@like(`that unit`),
+        [
+          Output@like(`src/mod.rs with a marker b.lfy:B`),
+          Output@like(`src/mod/part.rs, a new file, with a marker b.lfy:B and a marker a.lfy:A`),
+        ],
+        [SourceMap@like(`The recorded map of a.lfy for src/mod.rs, whose markers are a.lfy:A and b.lfy:B`)],
+      ],
+      expect = Verdict@like(`Accepted, with one source map for each of the two outputs`),
+    },
+    {
+      input = [
+        Request@like(`For the unit of b.lfy, which declares B`),
+        Unit@like(`that unit`),
+        [Output@like(`src/mod.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of a.lfy for src/mod.rs, whose markers are a.lfy:A and b.lfy:B`)],
+        [Output@like(`src/a.rs, which holds no marker of b.lfy, with a marker a.lfy:A`)],
+      ],
+      expect = Verdict@like(`Accepted, with one source map, for src/mod.rs`),
+    },
+    {
+      input = [
+        Request@like(`For the unit of b.lfy, which declares B`),
+        Unit@like(`that unit`),
+        [Output@like(`src/mod.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of a.lfy for src/mod.rs, whose markers are a.lfy:A and b.lfy:B`)],
+        [Output@like(`src/a.rs with no marker`)],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming src/mod.rs, a.lfy, the marker a.lfy:A, 0, and 1`),
+    },
+    {
+      input = [
+        Request@like(`For the unit of b.lfy, which declares B`),
+        Unit@like(`that unit`),
+        [Output@like(`src/lib.rs with a marker b.lfy:B and no marker naming a.lfy`)],
+        [
+          SourceMap@like(`The recorded map of a.lfy for src/lib.rs, whose markers are a.lfy:A and b.lfy:B`),
+          SourceMap@like(`The recorded map of a.lfy for src/a.rs, whose marker is a.lfy:A`),
+        ],
+        [Output@like(`src/a.rs with a marker a.lfy:A`)],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming src/lib.rs, a.lfy, the marker a.lfy:A, 1, and 2`),
+    },
+    {
+      input = [
+        Request@like(
+          `For the unit b of b.lfy, of target rust whose stub line is todo!("elfie stub: \{{unit}}: \{{reason}}"), with the unit a, whose output is src/a.rs, in its reach`,
+        ),
+        Unit@like(`that unit`),
+        [Output@like(`src/b.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of a.lfy for src/a.rs, whose marker is a.lfy:f`)],
+        [
+          Output@like(
+            `src/a.rs, whose body of f under the marker a.lfy:f is replaced by the line todo!("elfie stub: b: B.x is now a number")`,
+          ),
+        ],
+        [Output@like(`src/b.rs as it was`), Output@like(`src/a.rs as it was, f's body twenty lines long`)],
+      ],
+      expect = Verdict@like(
+        `Accepted, with one foreign edit: by b, owner a, in src/a.rs, kind stub, note B.x is now a number, region a.lfy:f, its lines before and after`,
+      ),
+    },
+    {
+      input = [
+        Request@like(`For the unit b of b.lfy, with the unit a, whose output is src/a.rs, in its reach`),
+        Unit@like(`that unit`),
+        [Output@like(`src/b.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of a.lfy for src/a.rs, whose marker is a.lfy:f`)],
+        [Output@like(`src/a.rs, with three lines of f's body under the marker a.lfy:f rewritten`)],
+        [Output@like(`src/b.rs as it was`), Output@like(`src/a.rs as it was`)],
+        Object@like(`a mapped to: B.x is now a number, so f converts it`),
+      ],
+      expect = Verdict@like(
+        `Accepted, with one foreign edit: by b, owner a, kind fix, note B.x is now a number, so f converts it`,
+      ),
+    },
+    {
+      input = [
+        Request@like(`For the unit b of b.lfy, with the unit a, whose output is src/a.rs, in its reach`),
+        Unit@like(`that unit`),
+        [Output@like(`src/b.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of a.lfy for src/a.rs, whose marker is a.lfy:f`)],
+        [Output@like(`src/a.rs, with three lines of f's body under the marker a.lfy:f rewritten`)],
+        [Output@like(`src/b.rs as it was`), Output@like(`src/a.rs as it was`)],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming a and saying a fix needs a note given through elfie_touch`),
+    },
+    {
+      input = [
+        Request@like(`For the unit b of b.lfy, with the unit a, whose output is src/a.rs, in its reach`),
+        Unit@like(`that unit`),
+        [Output@like(`src/b.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of a.lfy for src/a.rs, whose marker is a.lfy:f`)],
+        [Output@like(`src/a.rs, with twelve lines of f's body under the marker a.lfy:f rewritten`)],
+        [Output@like(`src/b.rs as it was`), Output@like(`src/a.rs as it was`)],
+        Object@like(`a mapped to a note`),
+      ],
+      expect = Verdict@like(`Rejected, one problem naming src/a.rs, the marker a.lfy:f, 12 lines, and the cap of 10`),
+    },
+    {
+      input = [
+        Request@like(
+          `For the unit b of b.lfy, whose reach is empty because c, whose output is src/c.rs, does not depend on it`,
+        ),
+        Unit@like(`that unit`),
+        [Output@like(`src/b.rs with a marker b.lfy:B`)],
+        [SourceMap@like(`The recorded map of c.lfy for src/c.rs, whose marker is c.lfy:g`)],
+        [Output@like(`src/c.rs, with one line of g's body under the marker c.lfy:g rewritten`)],
+        [Output@like(`src/b.rs as it was`), Output@like(`src/c.rs as it was`)],
+        Object@like(`c mapped to a note`),
+      ],
+      expect = Verdict@like(`Rejected, one problem naming src/c.rs, the line, and c, and no foreign edit`),
+    },
+    {
+      input = [
+        Request@like(`For the unit b of b.lfy`),
+        Unit@like(`that unit`),
+        [Output@like(`src/b.rs with a marker b.lfy:B`)],
+        [],
+        [Output@like(`src/notes.rs, which holds no marker, with one line added`)],
+        [Output@like(`src/b.rs as it was`), Output@like(`src/notes.rs as it was`)],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming src/notes.rs and the line, saying it is in no unit's code`),
+    },
+    {
+      input = [
+        Request@like(
+          `For the unit a of a.lfy, of target rust whose stub line is todo!("elfie stub: \{{unit}}: \{{reason}}")`,
+        ),
+        Unit@like(`that unit`),
+        [
+          Output@like(
+            `src/a.rs, whose marker a.lfy:f begins a region holding todo!("elfie stub: b: B.x is now a number")`,
+          ),
+        ],
+      ],
+      expect = Verdict@like(`Rejected, one problem naming the line of the stub in src/a.rs`),
+    },
+    {
+      input = [
+        Request@like(
+          `For the unit a of a.lfy, reason touched, whose one foreign edit is a fix by b in the region of a.lfy:f`,
+        ),
+        Unit@like(`that unit`),
+        [Output@like(`src/a.rs as the fix left it, with the markers a.lfy:A and a.lfy:f`)],
+        [],
+        [],
+        [Output@like(`src/a.rs as the fix left it`)],
+      ],
+      expect = Verdict@like(
+        `Accepted, no foreign edit, and one source map for src/a.rs whose text is the hash of a's own regions with the fix in them`,
+      ),
+    },
+  );
+}
+
+// Decision: when one unit writes a file another unit also has markers in, such as lib.rs, or moves
+// another unit's markers into new files by splitting a module, the other unit's recorded maps no
+// longer say where its regions are. Its maps are re-read from the files as they are, while
+// everything its last accepted generation recorded is carried over output by output, so what it
+// was generated from, and what decides whether it is planned, stays as it was.
+// Decision: [[SourceMap.text]] is carried over and never read again from the files: it is the hash
+// of the code the unit's own acceptance and review saw, so another unit's unreviewed edit inside
+// one of its regions, or lines put under one of its markers, leaves its outputs no longer matching
+// it. An output it had no map for has no text that was accepted, so its text is empty.
+/// unit: a unit of the target whose output files another unit has written since its maps were recorded
+/// sourceMaps: the maps the unit's map file holds, whether or not their outputs still exist
+fn rederive(workspace: Workspace, unit: Unit, sourceMaps: SourceMap[]): `The source maps of a unit as the files of its target's output directory hold its markers now, carrying over what its last accepted generation recorded` => SourceMap[] {
+  @acceptanceCriteria
+    .add({
+      behavior = `Returns one [[SourceMap]] for each file of [[Files.list]] of [[Target.outputDirectory]] of the unit's target under [[Workspace.root]], recursively, whose [[Files.read]] text holds a [[Marker]] that is the unit's own, as [[SourceMap]] defines one, in path order`,
+    })
+    .add({
+      behavior = `[[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] of each returned map are [[Target.identifier]] of the unit's target, the file's path relative to [[Workspace.root]], and [[File.path]] of the unit's file`,
+    })
+    .add({
+      behavior = `[[SourceMap.markers]] of each returned map holds every marker of its file that names a file of the program, in output order, read as [[accept]] reads a [[Marker]], left as written, and with its line and end derived as [[accept]] derives them`,
+    })
+    .add({
+      situation = `A map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
+      behavior = `[[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.text]], [[SourceMap.dependencies]], and [[SourceMap.generated]] of the returned map are that map's`,
+    })
+    .add({
+      situation = [
+        `No map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
+        `Every map of [[sourceMaps]] has the same [[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.dependencies]], and [[SourceMap.generated]]`,
+      ],
+      behavior = [
+        `Those six of the returned map are the ones every map of [[sourceMaps]] has`,
+        `[[SourceMap.text]] of the returned map is empty`,
+      ],
+    })
+    .add({
+      situation = [
+        `No map of [[sourceMaps]] has the same [[SourceMap.output]] as a returned map`,
+        `Two maps of [[sourceMaps]] differ in [[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.answered]], [[SourceMap.signature]], [[SourceMap.dependencies]], or [[SourceMap.generated]]`,
+      ],
+      behavior = `Returns [[sourceMaps]] as given`,
+    })
+    .add({
+      situation = `[[sourceMaps]] is empty, or no file of the output directory holds a marker that is the unit's own`,
+      behavior = `Returns [[sourceMaps]] as given`,
+    })
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `No compiler, verifier, or command of the target is run` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(
+          `One target rust; src/mod.rs holds markers a.lfy:A and b.lfy:B; src/mod/part.rs, added since a.lfy's maps were recorded, holds b.lfy:B and a.lfy:A.f`,
+        ),
+        Unit@like(`The unit of a.lfy, which declares A with a member f`),
+        [
+          SourceMap@like(
+            `One map for src/mod.rs with the markers a.lfy:A, a.lfy:A.f, and b.lfy:B, recorded at hash h with text t`,
+          ),
+        ],
+      ],
+      expect = [
+        SourceMap@like(`For src/mod.rs, markers a.lfy:A and b.lfy:B, hash h, text t`),
+        SourceMap@like(`For src/mod/part.rs, markers b.lfy:B and a.lfy:A.f, hash h, text empty`),
+      ],
+    },
+    {
+      input = [
+        Workspace@like(`One target rust; src/lib.rs holds a.lfy:A and a line another unit added since, under b.lfy:B`),
+        Unit@like(`The unit of a.lfy`),
+        [SourceMap@like(`One map for src/lib.rs with text t and the markers lib.rs held when it was accepted`)],
+      ],
+      expect = [SourceMap@like(`The same map, with text t and its markers as lib.rs holds them now`)],
+    },
+    {
+      input = [
+        Workspace@like(`One target rust; src/new.rs holds a.lfy:A`),
+        Unit@like(`The unit of a.lfy`),
+        [
+          SourceMap@like(`A map for src/a.rs at hash h1`),
+          SourceMap@like(`A map for src/b.rs at hash h2, written before a.rs's`),
+        ],
+      ],
+      expect = [SourceMap@like(`The map for src/a.rs, unchanged`), SourceMap@like(`The map for src/b.rs, unchanged`)],
+    },
+  );
+}
+
+// Decision: one rule rewrites a marker's id, whether a compile moves the markers of reworded
+// criteria before the compiler runs or a compiler asks elfie_mark to, so the two never differ.
+// Only the markers that name the unit's own file are rewritten, because a marker naming another
+// file is another unit's.
+/// outputs: output files as they are now; any of them may hold markers of the unit
+/// ids: for each id a marker names now, the id it is to name afterwards
+fn rename(unit: Unit, outputs: Output[], ids: Object<string>): `The output files in which a marker of one unit names an id being replaced, with each such marker rewritten to name the new id` => Output[] {
+  @acceptanceCriteria
+    .add({ behavior = `A marker in an output is read as [[accept]] reads a [[Marker]]` })
+    .add({
+      behavior = `The markers rewritten are those whose [[Marker.requirement]] is a key of [[ids]] and whose [[Marker.file]] is the [[File.path]] of the file of [[unit]], or of a file declaring an entity moved into [[unit]]`,
+    })
+    .add({
+      behavior = `A rewritten marker's line has its [[Marker.requirement]] replaced by the id [[ids]] gives for it, and every other character of the line, and every other line of its output, is kept`,
+    })
+    .add({
+      behavior = `Returns, in the order of [[outputs]], each of [[outputs]] that holds a rewritten marker, with [[Output.text]] as it reads once its markers are rewritten`,
+    })
+    .add({ behavior = `An output that holds no rewritten marker is not returned` })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Unit@like(`The unit of def/a.lfy, whose fn f has the criterion with id f:f:9c0d`),
+        [
+          Output@like(`src/a.rs, holding on lines 3 and 8 the markers // @lfy def/a.lfy:f#f:f:1f2e`),
+          Output@like(`src/b.rs, holding the marker // @lfy def/b.lfy:g#f:f:1f2e`),
+        ],
+        Object@like(`f:f:1f2e mapped to f:f:9c0d`),
+      ],
+      expect = [
+        Output@like(`src/a.rs, with lines 3 and 8 reading // @lfy def/a.lfy:f#f:f:9c0d and every other line as it was`),
+      ],
+    },
+  );
+}
+
+// Relocation
+
+/// plan: the plan of the workspace, made from the source maps recorded where the code is read
+/// directory: the directory the outputs, map files, and review record files are read from; [[Workspace.root]] of [[Plan.workspace]] when left out
+fn relocate(plan: Plan, directory?: string): `The markers, source maps, and review records of every entity whose code the outputs hold under the name of a file that no longer declares it, rewritten to name the one file that does` => Relocated {
+  // Markers
+  @acceptanceCriteria
+    .add({
+      behavior = `The outputs read are, for each of [[Workspace.targets]] of [[Plan.workspace]] of [[plan]], every file of [[Files.list]] of its [[Target.outputDirectory]] under [[directory]], recursively, skipping every directory named target, .git, or node_modules, as [[Files.read]] reads it there, with their markers read as [[accept]] reads a [[Marker]]`,
+    })
+    .add({
+      behavior = `A marker is orphaned when it names an entity, its [[Marker.file]] is the [[File.path]] of a file of the workspace that has no [[File.package]], and that file declares no entity built for the target of the output it is in whose identifier is [[Marker.entity]], or, for a name with a dot, the owner's identifier`,
+    })
+    .add({
+      behavior = `The candidates of an orphaned marker are the other files of the workspace with no [[File.package]] that declare an entity built for the same target whose identifier is [[Marker.entity]], or, for a name with a dot, that declare an entity built for the same target with the owner's identifier holding a member with that name`,
+    })
+    .add({
+      situation = `Some marker of the same target's outputs that names the same [[Marker.file]] and [[Marker.entity]] carries an id`,
+      behavior = `Only the candidates remain whose entity has one of those ids among its local criteria and tests, so an entity is relocated only to one that still answers for what its code answered for`,
+    })
+    .add({
+      behavior = `The candidates are decided once for all the orphaned markers of one target with the same [[Marker.file]] and [[Marker.entity]], so they are rewritten to the same file or none of them is`,
+    })
+    .add({
+      situation = `Exactly one candidate of an orphaned marker remains`,
+      behavior = `The marker's line has the path after @lfy and a space replaced by the [[File.path]] of that candidate, and every other character of the line, the id included, and every other line of its output, is kept`,
+    })
+    .add({
+      situation = `No candidate of an orphaned marker remains, or more than one`,
+      behavior = `The marker is left as it is`,
+    })
+    .add({
+      behavior = `[[Relocated.relocations]] holds one [[Relocation]] for each target, [[Marker.file]], and [[Marker.entity]] whose orphaned markers were rewritten, with [[Relocation.into]] the file they name now and [[Relocation.markers]] how many were rewritten`,
+    })
+    .add({
+      behavior = `[[Relocated.outputs]] holds each output file that holds a rewritten marker, with its text once every marker in it is rewritten`,
+    });
+
+  // Source maps
+  @acceptanceCriteria
+    .add({
+      behavior = `The source maps read are those of the map files under [[directory]], read as [[sourceMapsOf]] reads them`,
+    })
+    .add({
+      behavior = `The files as relocated are the output files under [[directory]], each of [[Relocated.outputs]] read as its text there and every other file as it is`,
+    })
+    .add({
+      behavior = `[[Relocated.sourceMaps]] holds, as read, every source map read of a unit that no relocation moved code out of or into and none of whose maps names one of [[Relocated.outputs]] as its [[SourceMap.output]]`,
+    })
+    .add({
+      situation = `A relocation moved code out of a unit, or into a unit of which a map was read, or a map read of a unit names one of [[Relocated.outputs]]`,
+      behavior = `That unit's maps in [[Relocated.sourceMaps]] are those [[rederive]] would give for it and its maps as read if the files as relocated were the files under [[directory]]`,
+    })
+    .add({
+      situation = [`A relocation moved code out of a unit`, `No file as relocated holds a marker of the unit's own`],
+      behavior = `That unit has no maps in [[Relocated.sourceMaps]]`,
+    })
+    .add({
+      situation = `A relocation moved code into a unit of which no map was read`,
+      behavior = [
+        `That unit's maps in [[Relocated.sourceMaps]] are one for each file as relocated that holds a marker of its own, as [[SourceMap]] defines one, in path order, with [[SourceMap.target]], [[SourceMap.output]], [[SourceMap.source]], and [[SourceMap.markers]] as [[rederive]] would derive them from the files as relocated`,
+        `[[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.signature]], [[SourceMap.dependencies]], and [[SourceMap.generated]] of each are those of the first map read of the unit of [[Relocation.origin]] of the first relocation into it`,
+        `[[SourceMap.text]] of each is empty`,
+      ],
+    })
+    .add({
+      situation = `A relocation moved code into a unit`,
+      behavior = `[[SourceMap.answered]] of each of that unit's maps in [[Relocated.sourceMaps]] holds the ids its maps as read answered, if any, and every id a marker rewritten into it carries, sorted, each once`,
+    });
+
+  // Review records
+  @acceptanceCriteria
+    .add({
+      behavior = `A unit's records are read from its review record file under [[directory]] as [[reviewsOf]] reads them, but keeping every record whatever its id`,
+    })
+    .add({
+      behavior = `A record moves when it is a record of a unit a relocation moved code out of, and its id is the id of a local criterion or test, of the unit the code moved into, that belongs to a relocated entity or to a member of one`,
+    })
+    .add({
+      behavior = [
+        `[[Relocated.reviews]] holds one [[UnitReviews]] for each unit a record moved out of or into`,
+        `The unit a record moved out of holds its other records`,
+        `The unit a record moved into holds its own records and the records moved into it, sorted by id, its own record kept where both have the same id`,
+        `A moved record keeps its [[ReviewRecord.id]], [[ReviewRecord.status]], and [[ReviewRecord.hash]]`,
+      ],
+    });
+
+  @acceptanceCriteria
+    .add({
+      situation = `No marker is orphaned, or none is rewritten`,
+      behavior = `[[Relocated.relocations]], [[Relocated.outputs]], and [[Relocated.reviews]] are empty, and [[Relocated.sourceMaps]] holds the maps read`,
+    })
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `No compiler, verifier, command of the target, or git is run` });
+
+  @test(
+    {
+      input = [
+        Plan@like(
+          `One target rust with output directory src; def/a.lfy declares A, and def/b.lfy declares f, which a.lfy declared before; src/a.rs holds a.lfy:A on line 1, a.lfy:f on line 5, and a.lfy:f#f:f:9c0d on line 9; a's map file records src/a.rs, b has no map file; a's review record file holds a satisfied record for f:f:9c0d and one for A:A:1f2e`,
+        ),
+      ],
+      expect = Relocated@like(
+        `One relocation of f, for rust, from def/a.lfy into def/b.lfy, two markers; src/a.rs with lines 5 and 9 naming def/b.lfy and every other character kept; a's map and b's map for src/a.rs, each with all three markers, A naming def/a.lfy and the two of f naming def/b.lfy; b's map with the hash, requirements, signature, dependencies, and generated time of a's map, the answered ids of a's map, and an empty text; a's records holding A:A:1f2e alone and b's holding f:f:9c0d`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One target rust; def/a.lfy no longer declares f; def/b.lfy and def/c.lfy each declare a fn f, and only c's has the criterion f:f:9c0d; src/a.rs holds a.lfy:f and a.lfy:f#f:f:9c0d`,
+        ),
+      ],
+      expect = Relocated@like(`One relocation of f from def/a.lfy into def/c.lfy, two markers`),
+    },
+    {
+      input = [
+        Plan@like(
+          `One target rust; def/a.lfy no longer declares f; def/b.lfy and def/c.lfy each declare a fn f with no criterion; src/a.rs holds a.lfy:f`,
+        ),
+      ],
+      expect = Relocated@like(`No relocation, no output, no reviews, and the maps as read`),
+    },
+    {
+      input = [Plan@like(`One target rust whose every marker names an entity its file declares`)],
+      expect = Relocated@like(`No relocation, no output, no reviews, and the maps as read`),
+    },
+  );
+}

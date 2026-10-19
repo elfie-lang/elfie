@@ -4,14 +4,14 @@
 use super::*;
 use crate::verdicts::asked_of;
 
-// @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
+// @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
 #[test]
 fn review_gives_the_review_request_of_one_unit() {
     let fixture = project_with_requirements();
     let session = fixture.session();
     // The request is made with no review record, so every criterion of the unit is asked
     // about however an earlier review found it.
-    // @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
+    // @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
     let instructions = review(&session, "b", None).unwrap();
     assert!(instructions.contains("Reviewing the unit"), "{instructions}");
     assert!(instructions.contains("It answers"), "{instructions}");
@@ -76,7 +76,7 @@ fn report_records_one_verdict_and_counts_what_is_still_missing() {
 
     // Reported by its place rather than by its id: the criterion that place names is
     // recorded, with the status, the evidence, and the note given.
-    // @lfy def/mcp/main.lfy:report#report:report:15a298dff4d1c9c629d5217e0802615370e072e57d444f4abd189e391365165b
+    // @lfy def/mcp/main.lfy:report#report:report:c4f952f8a704dc18d7317affedd3055f6c9333c486f27c39f10c6ef31af12b5d
     // @lfy def/mcp/main.lfy:report#report:report:82b739ccf95aa1e1faa11800427ce14cadd3fdeef5e2c7904cc9999d70958a3a
     let (file, line) = place_of_requirement(&session, &second);
     let text = report(
@@ -204,7 +204,7 @@ fn report_many_records_the_verdicts_of_its_lines_one_by_one() {
     assert_eq!(session.recorded().len(), 2);
 }
 
-// @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:b93638e7046f17fc2cf321187664d92150028acae44164992beee7e46349fb1c
+// @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:05a9407f78fc40f7476f94234604403011dfe484f0c8de801976da5a789f16ed
 #[test]
 fn global_review_gives_the_review_request_of_every_global_requirement() {
     let fixture = project_with_requirements();

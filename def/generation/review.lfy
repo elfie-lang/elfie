@@ -1,0 +1,275 @@
+use "../interpret/data";
+use "../workspace/data";
+use "./data";
+use "elfie/system/file" as Files;
+use "elfie/system/json" as Json;
+use "./maps";
+
+// Independent verification
+
+// Decision: the verifier is told where the regions are and pulls their code through the agent
+// server, so a request stays small however large the unit's outputs are, and its protocol allows
+// no edits: a review says where and why, never how to fix.
+// Decision: a criterion or test is reviewed again only when nothing says its verdict still holds:
+// it has no record, its last verdict was not satisfied, or the code of its entity changed since. A
+// change to code outside the entity's regions, such as a helper no marker names, does not count.
+// Decision: a marker comment is no part of a region's hash, while the code on its line is, so moving a reworded criterion's markers to
+// its new id, or adding a marker, does not send the other criteria of the entity to review again.
+// A reworded criterion is reviewed all the same: its new text may ask for something else, so no
+// verdict on the id it replaces stands for it.
+// Decision: a foreign edit changes the text of the owner's region, so the owner's earlier verdicts on
+// that entity no longer count, and a touched unit reviewed with its records is reviewed on the
+// entities the foreign edits touched and nothing whose verdict still holds; the touched-fix path
+// needs no review of its own.
+/// directory: the directory the unit's outputs were written in, which its regions are read from; [[Workspace.root]] when left out
+/// records: the review records of the unit; every criterion and test is reviewed when it is empty
+fn review(plan: Plan, unit: Unit, sourceMaps: SourceMap[], directory?: string, records: ReviewRecord[] = []): `Everything a verifier is handed to check the outputs of one unit against every criterion and test whose verdict is not carried` => ReviewRequest {
+  @acceptanceCriteria
+    .add({ behavior = `[[ReviewRequest.unit]] is [[unit]]` })
+    .add({
+      behavior = `Every output a region is read from is [[Files.read]] at [[SourceMap.output]] under [[directory]], or under [[Workspace.root]] when [[directory]] is left out`,
+    })
+    .add({ behavior = `[[ReviewRequest.instructions]] lists only local criteria and tests` })
+    .add({
+      behavior = `The regions of an entity are each [[Marker]] of [[regionsOf]] for its name in [[sourceMaps]] limited to the unit's target whose [[Marker.file]] is the file that declares the entity, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
+    })
+    .add({
+      behavior = `[[ReviewRequest.hashes]] gives each local criterion and test of [[unit]] the SHA-256, as lowercase hex, of the text of the regions of the entity it belongs to: each region's lines of its output, each with the marker comment it carries, from [[Target.markerComment]] before @lfy to the end of the line, and any white space before it, removed, and every line that is then empty left out, one region after another, each line followed by a line break`,
+    })
+    .add({
+      situation = `The output of a region cannot be read`,
+      behavior = `The region adds no text to a hash`,
+    })
+    .add({
+      situation = `A local criterion or test belongs to an entity with no region, or to the file's own entity`,
+      behavior = `Its hash is the SHA-256 of the empty text`,
+    })
+    .add({
+      situation = `A local criterion or test of [[unit]] has no record in [[records]], or its record's [[ReviewRecord.status]] is violated or unverifiable, or its record's [[ReviewRecord.hash]] differs from its hash in [[ReviewRequest.hashes]], or the entity it belongs to has no region`,
+      behavior = `It is listed in [[ReviewRequest.instructions]]`,
+    })
+    .add({
+      situation = `A local criterion or test of [[unit]] belongs to an entity with a region, and has a record in [[records]] whose [[ReviewRecord.status]] is satisfied and whose [[ReviewRecord.hash]] is its hash in [[ReviewRequest.hashes]]`,
+      behavior = [`It is not listed`, `Its record is in [[ReviewRequest.carried]]`],
+    })
+    .add({
+      behavior = `A local criterion or test whose entity has no region, or that belongs to the file's own entity, is never carried`,
+    })
+    .add({
+      behavior = `A record in [[records]] is carried only for the criterion or test whose id it holds, and never for one that rewords it, even when the regions of its entity are unchanged`,
+    })
+    .add({
+      situation = `At least one criterion or test is listed`,
+      behavior = [
+        `[[ReviewRequest.instructions]] says, in this order:`,
+        `A heading naming [[Unit.stem]] of [[unit]] and the target`,
+        `For each of [[Unit.entities]] with a listed criterion or test: its identifier, or its owner's identifier, a dot, and its name, then its definition, then each of its regions on one line as the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]], a region that begins on the line after the one before it in the same output being joined to it as one range, then each of its listed criteria as [[LoweredCriterion.text]] on one line prefixed by its id and place, then each of its listed tests as input and expectation on one line prefixed by its id and place`,
+        `Then, when a criterion or test of the file's own entity is listed: the file's path, then each of those listed criteria and tests the same way`,
+        `The verifier protocol`,
+      ],
+    })
+    .add({ behavior = `[[ReviewRequest.instructions]] holds no line of any output` })
+    .add({
+      situation = `An entity of [[unit]] has no listed criterion or test`,
+      behavior = `[[ReviewRequest.instructions]] names neither it nor its regions`,
+    })
+    .add({
+      situation = `Another file of the program declares an entity with the same name as an entity of [[unit]]`,
+      behavior = `[[ReviewRequest.instructions]] gives none of that other entity's regions`,
+    })
+    .add({
+      situation = `No criterion or test is listed`,
+      behavior = `[[ReviewRequest.instructions]] is the heading and one line saying nothing in the unit needs review`,
+    });
+
+  @test(
+    {
+      input = [
+        Plan@like(
+          `One unit, a.lfy for target rust, whose entity A has two criteria on lines 4 and 7 and one test on line 10`,
+        ),
+        Unit@like(`a`),
+        [SourceMap@like(`For rust and src/a.rs from a.lfy, with one marker a.lfy:A on line 1 ending on line 30`)],
+      ],
+      expect = ReviewRequest@like(
+        `Instructions headed a and rust; A with its definition and the region src/a.rs:1-30 with none of its lines; two criterion lines prefixed by their ids and def/a.lfy:4 and def/a.lfy:7, one test line prefixed by its id and def/a.lfy:10; then the protocol naming elfie_output, elfie_report, the six keys of the fallback line, and the three statuses, and ending with ELFIE: REVIEWED; asked holds the three ids; nothing carried`,
+      ),
+    },
+    {
+      input = [Plan@like(`The same plan`), Unit@like(`a`), []],
+      expect = ReviewRequest@like(`The same instructions with no region for A`),
+    },
+    {
+      input = [
+        Plan@like(`The same plan`),
+        Unit@like(`a`),
+        [SourceMap@like(`The same source map`)],
+        undefined,
+        [
+          ReviewRecord@like(`The criterion on line 4, satisfied, with the hash of src/a.rs lines 1 to 30 as they are`),
+          ReviewRecord@like(`The criterion on line 7, unverifiable, with the same hash`),
+        ],
+      ],
+      expect = ReviewRequest@like(
+        `A with the criterion on line 7 and the test on line 10 only; asked holds their two ids; carried holds the record of the criterion on line 4`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(`The same plan`),
+        Unit@like(`a`),
+        [SourceMap@like(`The same source map`)],
+        undefined,
+        [
+          ReviewRecord@like(
+            `The criterion on line 4, satisfied, with a hash of src/a.rs as it was before line 12 changed`,
+          ),
+        ],
+      ],
+      expect = ReviewRequest@like(
+        `A with both criteria and the test listed; asked holds the three ids; nothing carried`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(`The same plan`),
+        Unit@like(`a`),
+        [SourceMap@like(`The same source map`)],
+        undefined,
+        [
+          ReviewRecord@like(`The criterion on line 4, satisfied, with the hash of src/a.rs lines 1 to 30 as they are`),
+          ReviewRecord@like(`The criterion on line 7, satisfied, with the same hash`),
+          ReviewRecord@like(`The test on line 10, satisfied, with the same hash`),
+        ],
+      ],
+      expect = ReviewRequest@like(
+        `Instructions of the heading and a line saying nothing needs review; asked empty; carried holds the three records`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One unit a.lfy for target rust, reason touched, whose entities A and C each have one criterion; src/a.rs holds a.lfy:A on lines 1 to 20, where another unit's fix changed two lines, and a.lfy:C on lines 21 to 40`,
+        ),
+        Unit@like(`a`),
+        [SourceMap@like(`For rust and src/a.rs from a.lfy, with the markers a.lfy:A on line 1 and a.lfy:C on line 21`)],
+        string@like(`The copy of the root the change set is worked in`),
+        [
+          ReviewRecord@like(`The criterion of A, satisfied, with the hash of A's region before the fix`),
+          ReviewRecord@like(`The criterion of C, satisfied, with the hash of C's region as it is`),
+        ],
+      ],
+      expect = ReviewRequest@like(
+        `A with its criterion listed; asked holds its id; carried holds the record of C's criterion`,
+      ),
+    },
+  );
+}
+
+fn globalReview(plan: Plan, sourceMaps: SourceMap[]): `Everything a verifier is handed to check every global criterion and test once, across every output of the program` => ReviewRequest {
+  @acceptanceCriteria
+    .add({ behavior = `[[ReviewRequest.unit]] is undefined` })
+    .add({
+      behavior = `[[ReviewRequest.asked]] holds the ids of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]], in that order`,
+    })
+    .add({ behavior = `[[ReviewRequest.hashes]] and [[ReviewRequest.carried]] are empty` })
+    .add({
+      behavior = [
+        `[[ReviewRequest.instructions]] says, in this order:`,
+        `A heading naming the global review and the targets`,
+        `For each of [[Program.criteria]] then [[Program.tests]] of [[Plan.program]]: its id and place, then its text, [[LoweredCriterion.text]] for a criterion, then each [[Marker]] in [[sourceMaps]] whose [[Marker.requirement]] is its id, on one line as the output path, a colon, [[Marker.outputLine]], a dash, and [[Marker.end]]`,
+        `The verifier protocol`,
+      ],
+    })
+    .add({ behavior = `[[ReviewRequest.instructions]] holds no line of any output` })
+    .add({
+      situation = `No marker in any output names a global criterion's or test's id`,
+      behavior = `It is listed in [[ReviewRequest.instructions]] with a line saying no unit answered for it`,
+    });
+
+  @test(
+    {
+      input = [
+        Plan@like(
+          `A program with one global criterion g, whose id two outputs, src/a.rs and src/b.rs, name in a marker`,
+        ),
+        [SourceMap@like(`For src/a.rs and src/b.rs, each with one marker naming global and the id of g`)],
+      ],
+      expect = ReviewRequest@like(
+        `No unit; g once with its id, then the locations of two regions, one per output, with none of their lines, then the protocol; asked holds the id of g`,
+      ),
+    },
+    {
+      input = [Plan@like(`A program with one global criterion g that no marker names`), []],
+      expect = ReviewRequest@like(`No unit; g once with a line saying no unit answered for it`),
+    },
+  );
+}
+
+// Decision: review records live beside the maps in elfie-compile and are checked in, because a
+// verdict cannot be rebuilt from the definitions, the maps, and the outputs without a verifier.
+fn reviewsOf(workspace: Workspace, unit: Unit): `The review records of one unit, as its review record file holds them` => ReviewRecord[] {
+  @acceptanceCriteria
+    .add({ behavior = `Returns the records of the unit's review record file, in the order it lists them` })
+    .add({
+      situation = `The unit's review record file is missing, cannot be read, or is not a JSON list of review records`,
+      behavior = `Returns an empty list`,
+    })
+    .add({
+      situation = `A record of the file has an id that is not of a local criterion or test of the unit`,
+      behavior = `The record is left out`,
+    })
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `Nothing it returns depends on elfie-compile/cache` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`One target rust; elfie-compile/reviews/rust/a.json holds two records for criteria of A`),
+        Unit@like(`The unit of def/a.lfy, whose A still has both criteria`),
+      ],
+      expect = [ReviewRecord@like(`The first record`), ReviewRecord@like(`The second record`)],
+    },
+    {
+      input = [
+        Workspace@like(`One target rust with no elfie-compile/reviews folder`),
+        Unit@like(`The unit of def/a.lfy`),
+      ],
+      expect = [],
+    },
+  );
+}
+
+fn recordReviews(workspace: Workspace, unit: Unit, records: ReviewRecord[]): `Whether the review records of one unit are recorded in its review record file` => boolean {
+  @acceptanceCriteria
+    .add({
+      situation = `[[records]] is not empty`,
+      behavior = `The unit's review record file holds [[records]] afterwards, replacing whatever it held`,
+      sideEffects = [`The unit's review record file is written`],
+    })
+    .add({ behavior = `No other file is written` })
+    .add({
+      situation = `[[records]] is not empty`,
+      behavior = `The file is [[Json.stringify]] of [[records]] with [[Json.Layout.readable]]`,
+    })
+    .add({ behavior = `The file lists [[records]] in the order given` })
+    .add({ behavior = `The keys of every object in the file are in alphabetical order` })
+    .add({ behavior = `The same records always give the same bytes` })
+    .add({
+      situation = `No folder above the unit's review record file exists yet`,
+      behavior = `Every missing folder is created`,
+    })
+    .add({ situation = `[[records]] is empty`, behavior = `The review record file is removed by [[Files.remove]]` })
+    .add({ situation = `The file cannot be written`, behavior = `Returns false` });
+
+  @test(
+    {
+      input = [
+        Workspace@like(`One target rust with no elfie-compile folder`),
+        Unit@like(`The unit of def/cli/main.lfy`),
+        [ReviewRecord@like(`One satisfied record`)],
+      ],
+      expect = boolean@like(`true, and elfie-compile/reviews/rust/cli/main.json is created with every folder above it`),
+    },
+  );
+}

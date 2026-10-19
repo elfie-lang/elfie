@@ -30,7 +30,7 @@ pub fn review(session: &Session, unit: &str, target: Option<&str>) -> Result<Str
     {
         return Ok(given.instructions.clone());
     }
-    // @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
+    // @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
     Ok(
         generation::review(
             &planned.program,
@@ -46,14 +46,14 @@ pub fn review(session: &Session, unit: &str, target: Option<&str>) -> Result<Str
 
 /// The review request for every global criterion and test, once for the whole program, with
 /// where the regions that answer for each are.
-// @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:b93638e7046f17fc2cf321187664d92150028acae44164992beee7e46349fb1c
+// @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:05a9407f78fc40f7476f94234604403011dfe484f0c8de801976da5a789f16ed
 pub fn global_review(session: &Session) -> Result<String, String> {
     let planned = plan_of(session);
     // @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:f656c023948494da8d316780c15c2c1b96e1512caafb62d843dc6295be0d89be
     if planned.program.criteria.is_empty() && planned.program.tests.is_empty() {
         return Ok("no global criterion or test exists in the program".to_string());
     }
-    // @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:b93638e7046f17fc2cf321187664d92150028acae44164992beee7e46349fb1c
+    // @lfy def/mcp/main.lfy:globalReview#globalReview:globalReview:05a9407f78fc40f7476f94234604403011dfe484f0c8de801976da5a789f16ed
     Ok(generation::global_review(&planned.program, &planned.maps).instructions)
 }
 
@@ -104,7 +104,7 @@ fn record_verdict(
     // The criterion or test reported on is the one the review report reads a review line as
     // being for, so one line holding what was given is read exactly as a line of a final
     // message would be.
-    // @lfy def/mcp/main.lfy:report#report:report:15a298dff4d1c9c629d5217e0802615370e072e57d444f4abd189e391365165b
+    // @lfy def/mcp/main.lfy:report#report:report:c4f952f8a704dc18d7317affedd3055f6c9333c486f27c39f10c6ef31af12b5d
     let submitted = serde_json::json!({
         "id": id.unwrap_or_default(),
         "file": file.unwrap_or_default(),
@@ -115,7 +115,7 @@ fn record_verdict(
     })
     .to_string();
     let mut lowered = None;
-    // @lfy def/mcp/main.lfy:report#report:report:15a298dff4d1c9c629d5217e0802615370e072e57d444f4abd189e391365165b
+    // @lfy def/mcp/main.lfy:report#report:report:c4f952f8a704dc18d7317affedd3055f6c9333c486f27c39f10c6ef31af12b5d
     let program = match &session.binding {
         Some(binding) => &binding.program,
         None => lowered.insert(interpret::lower(session.workspace.clone())),

@@ -1,0 +1,411 @@
+[
+  {
+    "answered": [
+      "outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574",
+      "outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093",
+      "outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937",
+      "outcomeOf:outcomeOf:1f9450576bacd729304bcff7ae084540d9443231518dff19d18117b589962e74",
+      "outcomeOf:outcomeOf:2b319a66fa16164eba8a81c08bc04af79566ac5e04ad5eff1016c81e7c0fa50e",
+      "outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f",
+      "outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82",
+      "outcomeOf:outcomeOf:6bf1d1141713e0697e5b6705afad5a3fb71a4abc2de75c4c6bf36482558d79c2",
+      "outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1",
+      "outcomeOf:outcomeOf:873c80cfcfc9e8dcfbd60313bc0c671888373485ae58b84fd6d2b1203abec749",
+      "outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889",
+      "outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1",
+      "outcomeOf:outcomeOf:9b5e375791254742046cae15d9798eefeda114a69a17d7cf7c04b3a002d6ea6b",
+      "outcomeOf:outcomeOf:aea57156b53552b74d294e42cbfdb2c23586a32eb6b72697003fab1201f8de32",
+      "outcomeOf:outcomeOf:aeee475345e86d94cdd32bf4e6ab45bf3249adc5164e178c28e7a6e801566fb3",
+      "outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b",
+      "outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2",
+      "outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c",
+      "outcomeOf:outcomeOf:b98c498284033051b8b80db1847c7a733beeea9db786c21553593697deb79933",
+      "outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689"
+    ],
+    "dependencies": {
+      "def/generation/accept.lfy": "9338257fe134dc18a22e872b45d377173e1b98b116ca601e83a1e15a7dbac1ce",
+      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30"
+    },
+    "generated": "2026-10-19T02:36:50Z",
+    "hash": "939b1470fc4ceb3f278e61a8a2fac08d405d189dd99e5b6fd48cfbcb357505f1",
+    "markers": [
+      {
+        "column": null,
+        "end": 14,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 1,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 20,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 15,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 33,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 21,
+        "requirement": "outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82"
+      },
+      {
+        "column": null,
+        "end": 36,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 34,
+        "requirement": "outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b"
+      },
+      {
+        "column": null,
+        "end": 40,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 37,
+        "requirement": "outcomeOf:outcomeOf:873c80cfcfc9e8dcfbd60313bc0c671888373485ae58b84fd6d2b1203abec749"
+      },
+      {
+        "column": null,
+        "end": 46,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 41,
+        "requirement": "outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1"
+      },
+      {
+        "column": null,
+        "end": 48,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 47,
+        "requirement": "outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093"
+      },
+      {
+        "column": null,
+        "end": 52,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 49,
+        "requirement": "outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f"
+      },
+      {
+        "column": null,
+        "end": 60,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 53,
+        "requirement": "outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689"
+      },
+      {
+        "column": null,
+        "end": 73,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 61,
+        "requirement": "outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574"
+      },
+      {
+        "column": null,
+        "end": 76,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 74,
+        "requirement": "outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2"
+      },
+      {
+        "column": null,
+        "end": 87,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 77,
+        "requirement": "outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889"
+      },
+      {
+        "column": null,
+        "end": 90,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 88,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 98,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 91,
+        "requirement": "outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937"
+      },
+      {
+        "column": null,
+        "end": 102,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 99,
+        "requirement": "outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1"
+      },
+      {
+        "column": null,
+        "end": 105,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 103,
+        "requirement": "outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c"
+      }
+    ],
+    "output": "crates/elfie-core/src/generation/outcome.rs",
+    "requirements": "36e49e3e1a278b7590362116387133715abbc64bbd6ed0022e5962fa9980bfbf",
+    "signature": "7c5a9c90c966d8f3b7500038c1cb64c640b0a8d89e34ba5d28d6f8da19ac79be",
+    "source": "def/generation/outcome.lfy",
+    "target": "rust",
+    "text": "a475729cc5613d93327dce5774b370fea4d4e17261b236f771758a4f6c1ccf04"
+  },
+  {
+    "answered": [
+      "outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574",
+      "outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093",
+      "outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937",
+      "outcomeOf:outcomeOf:1f9450576bacd729304bcff7ae084540d9443231518dff19d18117b589962e74",
+      "outcomeOf:outcomeOf:2b319a66fa16164eba8a81c08bc04af79566ac5e04ad5eff1016c81e7c0fa50e",
+      "outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f",
+      "outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82",
+      "outcomeOf:outcomeOf:6bf1d1141713e0697e5b6705afad5a3fb71a4abc2de75c4c6bf36482558d79c2",
+      "outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1",
+      "outcomeOf:outcomeOf:873c80cfcfc9e8dcfbd60313bc0c671888373485ae58b84fd6d2b1203abec749",
+      "outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889",
+      "outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1",
+      "outcomeOf:outcomeOf:9b5e375791254742046cae15d9798eefeda114a69a17d7cf7c04b3a002d6ea6b",
+      "outcomeOf:outcomeOf:aea57156b53552b74d294e42cbfdb2c23586a32eb6b72697003fab1201f8de32",
+      "outcomeOf:outcomeOf:aeee475345e86d94cdd32bf4e6ab45bf3249adc5164e178c28e7a6e801566fb3",
+      "outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b",
+      "outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2",
+      "outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c",
+      "outcomeOf:outcomeOf:b98c498284033051b8b80db1847c7a733beeea9db786c21553593697deb79933",
+      "outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689"
+    ],
+    "dependencies": {
+      "def/generation/accept.lfy": "9338257fe134dc18a22e872b45d377173e1b98b116ca601e83a1e15a7dbac1ce",
+      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30"
+    },
+    "generated": "2026-10-19T02:36:50Z",
+    "hash": "939b1470fc4ceb3f278e61a8a2fac08d405d189dd99e5b6fd48cfbcb357505f1",
+    "markers": [
+      {
+        "column": null,
+        "end": 26,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 1,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 30,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 27,
+        "requirement": "outcomeOf:outcomeOf:aea57156b53552b74d294e42cbfdb2c23586a32eb6b72697003fab1201f8de32"
+      },
+      {
+        "column": null,
+        "end": 33,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 31,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 37,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 34,
+        "requirement": "outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82"
+      },
+      {
+        "column": null,
+        "end": 41,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 38,
+        "requirement": "outcomeOf:outcomeOf:1f9450576bacd729304bcff7ae084540d9443231518dff19d18117b589962e74"
+      },
+      {
+        "column": null,
+        "end": 47,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 42,
+        "requirement": "outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889"
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 48,
+        "requirement": "outcomeOf:outcomeOf:6bf1d1141713e0697e5b6705afad5a3fb71a4abc2de75c4c6bf36482558d79c2"
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 56,
+        "requirement": "outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2"
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 68,
+        "requirement": "outcomeOf:outcomeOf:2b319a66fa16164eba8a81c08bc04af79566ac5e04ad5eff1016c81e7c0fa50e"
+      },
+      {
+        "column": null,
+        "end": 84,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 76,
+        "requirement": "outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937"
+      },
+      {
+        "column": null,
+        "end": 96,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 85,
+        "requirement": "outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c"
+      },
+      {
+        "column": null,
+        "end": 108,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 97,
+        "requirement": "outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1"
+      },
+      {
+        "column": null,
+        "end": 120,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 109,
+        "requirement": "outcomeOf:outcomeOf:9b5e375791254742046cae15d9798eefeda114a69a17d7cf7c04b3a002d6ea6b"
+      },
+      {
+        "column": null,
+        "end": 126,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 121,
+        "requirement": "outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b"
+      },
+      {
+        "column": null,
+        "end": 138,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 127,
+        "requirement": "outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1"
+      },
+      {
+        "column": null,
+        "end": 145,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 139,
+        "requirement": "outcomeOf:outcomeOf:aeee475345e86d94cdd32bf4e6ab45bf3249adc5164e178c28e7a6e801566fb3"
+      },
+      {
+        "column": null,
+        "end": 153,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 146,
+        "requirement": "outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f"
+      },
+      {
+        "column": null,
+        "end": 157,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 154,
+        "requirement": "outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093"
+      },
+      {
+        "column": null,
+        "end": 165,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 158,
+        "requirement": "outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574"
+      },
+      {
+        "column": null,
+        "end": 172,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 166,
+        "requirement": "outcomeOf:outcomeOf:b98c498284033051b8b80db1847c7a733beeea9db786c21553593697deb79933"
+      },
+      {
+        "column": null,
+        "end": 181,
+        "entity": "outcomeOf",
+        "file": "def/generation/outcome.lfy",
+        "line": 9,
+        "outputLine": 173,
+        "requirement": "outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689"
+      }
+    ],
+    "output": "crates/elfie-core/src/generation/outcome_tests.rs",
+    "requirements": "36e49e3e1a278b7590362116387133715abbc64bbd6ed0022e5962fa9980bfbf",
+    "signature": "7c5a9c90c966d8f3b7500038c1cb64c640b0a8d89e34ba5d28d6f8da19ac79be",
+    "source": "def/generation/outcome.lfy",
+    "target": "rust",
+    "text": "c6174f16d461e69fd541af8397315f3e4d7019d0a5de33fb2d066a37a9a584e2"
+  }
+]

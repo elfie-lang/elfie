@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:regionsOf
+// @lfy def/generation/maps.lfy:regionsOf
 //! Mapped output access: regions, changes, rewordings, and renamed markers.
 
 use super::*;
@@ -12,14 +12,14 @@ use super::*;
 /// too, since a member's region is part of its owner's code, and a marker that names a line
 /// rather than an entity comes when its file declares the entity named `name` and the line
 /// falls inside its declaring node. Nothing matching gives an empty list.
-// @lfy def/generation/main.lfy:regionsOf
+// @lfy def/generation/maps.lfy:regionsOf
 pub fn regions_of(
     workspace: &Workspace,
     source_maps: &[SourceMap],
     name: &str,
     target: Option<&str>,
 ) -> Vec<Marker> {
-    // @lfy def/generation/main.lfy:regionsOf
+    // @lfy def/generation/maps.lfy:regionsOf
     matching_regions(workspace, source_maps, name, target)
         .into_iter()
         .map(|(_, marker)| marker.clone())
@@ -34,7 +34,7 @@ pub fn regions_of(
 const ADDED: &str = "it is declared now and was not in the file the outputs were generated from";
 const REMOVED: &str = "it was declared in the file the outputs were generated from and is not now";
 /// How long a text may be for a detail to quote it rather than name it.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 const DETAIL_LIMIT: usize = 80;
 
 /// What differs for each entity of a unit between its file as last accepted and as it is
@@ -47,7 +47,7 @@ const DETAIL_LIMIT: usize = 80;
 /// identifier, or the owner's identifier, a dot, and a member's name — so a reformatted or
 /// reordered file whose entities read the same gives no change at all.
 // Decision: a change is found by comparing entities, never by diffing lines.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> Vec<Change> {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -56,11 +56,11 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> V
     // What the unit's file declares for its target, in file order — not what the unit
     // compiles: an entity that moved to another unit is still one of this file's, and one
     // that moved in is the declaring file's to report.
-    // @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
+    // @lfy def/generation/changes.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
     let declared = declared_entities(program, &target, &path);
     let now = entity_table(model, &declared);
     let Some(previous) = previous else {
-        // @lfy def/generation/main.lfy:changes#changes:changes:771d19c7cdc3e68ae80e9c437cf28ae04d6d6112c99fdff85bcf61c1efacc428
+        // @lfy def/generation/changes.lfy:changes#changes:changes:771d19c7cdc3e68ae80e9c437cf28ae04d6d6112c99fdff85bcf61c1efacc428
         return declared
             .iter()
             .map(|&entity| Change {
@@ -73,11 +73,11 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> V
     // The file as it was is the one the program of `previous` declares, lowered once when it
     // was recovered, so its entities are read from that program's model and nothing is
     // lowered or bound here.
-    // @lfy def/generation/main.lfy:changes#changes:changes:2c1d93c21febc2f19ccf11a3653269f8b49c306e0c8cbf783655ab561be4a92f
+    // @lfy def/generation/changes.lfy:changes#changes:changes:2c1d93c21febc2f19ccf11a3653269f8b49c306e0c8cbf783655ab561be4a92f
     let before = &previous.program;
     // What the file declared then, built for the unit's target, read exactly as what it
     // declares now was read above, so that neither side is a unit's contents.
-    // @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
+    // @lfy def/generation/changes.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
     let was = entity_table(
         &before.workspace.model,
         &declared_entities(before, &target, &path),
@@ -92,7 +92,7 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> V
 
     // File order: the order of the unit's entities, with a removed entity after the last
     // entity that preceded it before and is still declared, or first when none is.
-    // @lfy def/generation/main.lfy:changes#changes:changes:3da24f82f28d461099bd3d405b1cb83ee6ea222a16f0a5a4ead591257085c4f7
+    // @lfy def/generation/changes.lfy:changes#changes:changes:3da24f82f28d461099bd3d405b1cb83ee6ea222a16f0a5a4ead591257085c4f7
     let mut anchor: Option<String> = None;
     let mut removed: Vec<(Option<String>, String)> = Vec::new();
     for (name, _) in &was {
@@ -103,7 +103,7 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> V
         }
     }
     // An entity no still-declared entity preceded comes first.
-    // @lfy def/generation/main.lfy:changes#changes:changes:8bf838e57cd210c5a27390714d305ae478381b305687353e2e12088e09cb7b10
+    // @lfy def/generation/changes.lfy:changes#changes:changes:8bf838e57cd210c5a27390714d305ae478381b305687353e2e12088e09cb7b10
     let mut order: Vec<String> = removed
         .iter()
         .filter(|(place, _)| place.is_none())
@@ -131,19 +131,19 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> V
             .find(|(candidate, _)| candidate == &name)
             .map(|&(_, entity)| entity);
         match (old, new) {
-            // @lfy def/generation/main.lfy:changes
+            // @lfy def/generation/changes.lfy:changes
             (None, Some(_)) => out.push(Change {
                 entity: name,
                 kind: ChangeKind::Added,
                 detail: ADDED.to_string(),
             }),
-            // @lfy def/generation/main.lfy:changes
+            // @lfy def/generation/changes.lfy:changes
             (Some(_), None) => out.push(Change {
                 entity: name,
                 kind: ChangeKind::Removed,
                 detail: REMOVED.to_string(),
             }),
-            // @lfy def/generation/main.lfy:changes
+            // @lfy def/generation/changes.lfy:changes
             (Some(old), Some(new)) => {
                 let (old_criteria, old_tests) = match lowered_before {
                     Some(file) => requirement_ids(file, old),
@@ -174,7 +174,7 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> V
 
 /// One side of a comparison: the model an entity was bound in, the entity, and the ids of
 /// its local criteria and of its local tests, in order.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 struct Side<'m> {
     model: &'m Model,
     entity: EntityId,
@@ -185,8 +185,8 @@ struct Side<'m> {
 /// Every entity of a unit and every member it declares, in file order, each with the name
 /// it is compared by: the identifier, or the owner's identifier, a dot, and the member's
 /// name.
-// @lfy def/generation/main.lfy:changes#changes:changes:d7b590dfd89c646eecf798bdafc911cd87dc2b66f0c3bc1e3cb916051b5fa6f8
-// @lfy def/generation/main.lfy:changes#changes:changes:f54761e4898e7ebd66aacb630307ee416935a1052c402126c3c712e2eb632c2a
+// @lfy def/generation/changes.lfy:changes#changes:changes:d7b590dfd89c646eecf798bdafc911cd87dc2b66f0c3bc1e3cb916051b5fa6f8
+// @lfy def/generation/changes.lfy:changes#changes:changes:f54761e4898e7ebd66aacb630307ee416935a1052c402126c3c712e2eb632c2a
 fn entity_table(model: &Model, entities: &[EntityId]) -> Vec<(String, EntityId)> {
     let mut out: Vec<(String, EntityId)> = Vec::new();
     let push = |name: String, entity: EntityId, out: &mut Vec<(String, EntityId)>| {
@@ -213,7 +213,7 @@ fn entity_table(model: &Model, entities: &[EntityId]) -> Vec<(String, EntityId)>
 ///
 /// What a unit compiles is not this: an entity of the file may have moved into another
 /// unit, and one of another file may have moved into this one. A change is of the file.
-// @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
+// @lfy def/generation/changes.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
 fn declared_entities(before: &Program, target: &str, path: &str) -> Vec<EntityId> {
     let workspace = &before.workspace;
     let Some(index) = workspace.files.iter().position(|file| file.path == path) else {
@@ -239,12 +239,12 @@ fn declared_entities(before: &Program, target: &str, path: &str) -> Vec<EntityId
 
 /// One change per kind that differs for a name declared on both sides, in the order
 /// [`ChangeKind`] declares them.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
     let (was, now) = (old.model, new.model);
     let mut out: Vec<Change> = Vec::new();
 
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/changes.lfy:changes
     let old_definition = was.entities[old.entity]
         .definition
         .clone()
@@ -261,7 +261,7 @@ fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
         });
     }
 
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/changes.lfy:changes
     let old_type = type_spelling(was, old.entity);
     let new_type = type_spelling(now, new.entity);
     if old_type != new_type {
@@ -272,7 +272,7 @@ fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
         });
     }
 
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/changes.lfy:changes
     let old_parameters = parameter_spellings(was, old.entity);
     let new_parameters = parameter_spellings(now, new.entity);
     let old_output = output_spelling(was, old.entity);
@@ -291,7 +291,7 @@ fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
     }
 
     // The ids of the local criteria, never their texts: a criterion whose text is the same
-    // has the same id, and one that was reworded has another. @lfy def/generation/main.lfy:changes
+    // has the same id, and one that was reworded has another. @lfy def/generation/changes.lfy:changes
     if old.criteria != new.criteria {
         out.push(Change {
             entity: name.to_string(),
@@ -300,7 +300,7 @@ fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
         });
     }
 
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/changes.lfy:changes
     if old.tests != new.tests {
         out.push(Change {
             entity: name.to_string(),
@@ -309,7 +309,7 @@ fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
         });
     }
 
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/changes.lfy:changes
     let old_body = body_text(was, old.entity);
     let new_body = body_text(now, new.entity);
     if old_body != new_body {
@@ -325,7 +325,7 @@ fn differences(name: &str, old: &Side<'_>, new: &Side<'_>) -> Vec<Change> {
 
 /// One line saying what differs: the old and the new quoted when each is short, and their
 /// lengths named otherwise.
-// @lfy def/generation/main.lfy:changes#changes:changes:e44d4ec0e8b50ac4324b8435669db74cc0bb0e0e5eae175b424fd5a527f1065a
+// @lfy def/generation/changes.lfy:changes#changes:changes:e44d4ec0e8b50ac4324b8435669db74cc0bb0e0e5eae175b424fd5a527f1065a
 fn detail(what: &str, old: &str, new: &str) -> String {
     let (before, after) = (old.chars().count(), new.chars().count());
     if before < DETAIL_LIMIT && after < DETAIL_LIMIT {
@@ -336,7 +336,7 @@ fn detail(what: &str, old: &str, new: &str) -> String {
 }
 
 /// One line naming which parameter or output differs.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn signature_detail(
     old: &[(String, String)],
     new: &[(String, String)],
@@ -374,7 +374,7 @@ fn signature_detail(
 /// place and takes a new id.
 // Decision: an id is longer than a detail quotes, so the ids are named rather than quoted,
 // as a long old and new are.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn id_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> String {
     let mut parts = vec![format!(
         "{} {plural} before and {} now",
@@ -388,7 +388,7 @@ fn id_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> St
             position + 1
         ));
     }
-    // @lfy def/generation/main.lfy:changes
+    // @lfy def/generation/changes.lfy:changes
     for id in new
         .iter()
         .filter(|id| !old.contains(id) && !reworded.iter().any(|(_, _, is)| is == id))
@@ -414,8 +414,8 @@ fn id_detail(plural: &str, singular: &str, old: &[String], new: &[String]) -> St
 ///
 /// This is the one place the pairing is decided, so that [`id_detail`], which says it in a
 /// line, and [`reworded`], which hands the pairs on, can never differ.
-// @lfy def/generation/main.lfy:changes#changes:changes:7d485ed12575ab1f8fb73fd1af344036fcd0e209e355d3895b8822a170c9d276
-// @lfy def/generation/main.lfy:changes#changes:changes:e4f0785b9f7bbfa92530f7edab6e298a57fbc81f4665bd43e72947b6327ef1d6
+// @lfy def/generation/changes.lfy:changes#changes:changes:7d485ed12575ab1f8fb73fd1af344036fcd0e209e355d3895b8822a170c9d276
+// @lfy def/generation/changes.lfy:changes#changes:changes:e4f0785b9f7bbfa92530f7edab6e298a57fbc81f4665bd43e72947b6327ef1d6
 fn reworded_pairs<'i>(old: &'i [String], new: &'i [String]) -> Vec<(usize, &'i String, &'i String)> {
     old.iter()
         .zip(new)
@@ -426,13 +426,13 @@ fn reworded_pairs<'i>(old: &'i [String], new: &'i [String]) -> Vec<(usize, &'i S
 }
 
 /// The type of an entity, as `interfaceOf` spells it; empty when it has none.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn type_spelling(model: &Model, entity: EntityId) -> String {
     model::type_text_of(model, model.entities[entity].ty.as_ref()).unwrap_or_default()
 }
 
 /// The parameters of a fn with their types, as `interfaceOf` spells them.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn parameter_spellings(model: &Model, entity: EntityId) -> Vec<(String, String)> {
     model.entities[entity]
         .parameters()
@@ -445,7 +445,7 @@ fn parameter_spellings(model: &Model, entity: EntityId) -> Vec<(String, String)>
 }
 
 /// The output of a fn, as `interfaceOf` spells it; empty when it has none.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn output_spelling(model: &Model, entity: EntityId) -> String {
     model::type_text_of(model, model.entities[entity].output()).unwrap_or_default()
 }
@@ -457,7 +457,7 @@ fn output_spelling(model: &Model, entity: EntityId) -> String {
 // those are left out nothing of it remains and its body never differs; and the members a
 // data, type, trait, or enum declares are left out of its body, since each is compared as
 // an entity of its own under it.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn body_text(model: &Model, entity: EntityId) -> String {
     let record = &model.entities[entity];
     if matches!(
@@ -536,7 +536,7 @@ fn body_text(model: &Model, entity: EntityId) -> String {
 }
 
 /// Leave the tokens of a node out of a body, when it falls inside the declaration.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn exclude(
     model: &Model,
     declaration: NodeRef,
@@ -558,7 +558,7 @@ fn exclude(
 
 /// The statement of a declaration's body that holds a node: the ancestor whose parent is
 /// the declaration or a block of it. `None` when the node is not inside the declaration.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn statement_in(model: &Model, declaration: NodeRef, node: NodeRef) -> Option<NodeRef> {
     if node.file != declaration.file {
         return None;
@@ -589,7 +589,7 @@ fn statement_in(model: &Model, declaration: NodeRef, node: NodeRef) -> Option<No
 }
 
 /// The nodes a node holds as children, in source order.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
     model
         .node(node)
@@ -611,7 +611,7 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 /// as `text` and every other file as it is, and whether it is only the hash-matched source.
 // Decision: the callers that recover a previous source hold its text; the one lowering it
 // needs is done here, once, so the functions that read it lower and bind nothing.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 pub fn previous_of(workspace: &Workspace, unit: &Unit, text: &str, hash_matched: bool) -> Previous {
     let path = &workspace.files[unit.file].path;
     Previous {
@@ -634,8 +634,8 @@ pub fn previous_of(workspace: &Workspace, unit: &Unit, text: &str, hash_matched:
 // Decision: the definition passes the workspace; the ids of a unit's local criteria and
 // tests are the lowered program's, which a plan here does not own, so the program stands in
 // for the workspace as it does for [`changes`].
-// @lfy def/generation/main.lfy:reworded#reworded:reworded:af54e4c28fb74d4c2fa75b4d1a8399d931aa52c592d5f16bd59ab25cc730a812
-// @lfy def/generation/main.lfy:reworded#reworded:reworded:ddbdcd5e429486d18ddb68f37de72b7e4f0a6da2b4f0a61f901c41b98bb3774e
+// @lfy def/generation/changes.lfy:reworded#reworded:reworded:af54e4c28fb74d4c2fa75b4d1a8399d931aa52c592d5f16bd59ab25cc730a812
+// @lfy def/generation/changes.lfy:reworded#reworded:reworded:ddbdcd5e429486d18ddb68f37de72b7e4f0a6da2b4f0a61f901c41b98bb3774e
 pub fn reworded(program: &Program, unit: &Unit, previous: &Previous) -> Vec<Rewording> {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -654,7 +654,7 @@ pub fn reworded(program: &Program, unit: &Unit, previous: &Previous) -> Vec<Rewo
         return Vec::new();
     };
     let lowered_before = &before.files[index];
-    // @lfy def/generation/main.lfy:reworded#reworded:reworded:2f1cf2b33aaff46609462adfbaa4694777c741613a70a5ec0912b0a967cb69da
+    // @lfy def/generation/changes.lfy:reworded#reworded:reworded:2f1cf2b33aaff46609462adfbaa4694777c741613a70a5ec0912b0a967cb69da
     let said: BTreeMap<String, String> = local_requirements(lowered_before)
         .iter()
         .map(|requirement| match requirement {
@@ -686,11 +686,11 @@ pub fn reworded(program: &Program, unit: &Unit, previous: &Previous) -> Vec<Rewo
             for (_, replaces, id) in reworded_pairs(old_ids, new_ids) {
                 // A pair whose added id is no local criterion or test of this unit belongs
                 // to an entity the unit does not compile.
-                // @lfy def/generation/main.lfy:reworded#reworded:reworded:76d54235a5b3b04295f6e88bef925ebc2cdc34e3d520ac52acf3457939b122bc
+                // @lfy def/generation/changes.lfy:reworded#reworded:reworded:76d54235a5b3b04295f6e88bef925ebc2cdc34e3d520ac52acf3457939b122bc
                 if !local.contains(id) {
                     continue;
                 }
-                // @lfy def/generation/main.lfy:reworded#reworded:reworded:68b8e0096a61b2d00deb8e85b9cff1e55e3c804dbb2f9e01870cd1526955b171
+                // @lfy def/generation/changes.lfy:reworded#reworded:reworded:68b8e0096a61b2d00deb8e85b9cff1e55e3c804dbb2f9e01870cd1526955b171
                 out.push(Rewording {
                     id: id.clone(),
                     replaces: replaces.clone(),
@@ -717,7 +717,7 @@ pub fn reworded(program: &Program, unit: &Unit, previous: &Previous) -> Vec<Rewo
 // Decision: the definition passes the unit; which files a unit claims is the plan's, which
 // does not own its workspace here, so the workspace and the plan are extra first parameters
 // and the unit is given as its index into the plan, as [`accept`] takes it.
-// @lfy def/generation/main.lfy:rename#rename:rename:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+// @lfy def/generation/accept.lfy:rename#rename:rename:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
 pub fn rename(
     workspace: &Workspace,
     plan: &Plan,
@@ -726,7 +726,7 @@ pub fn rename(
     ids: &BTreeMap<String, String>,
 ) -> Vec<Output> {
     // The files whose markers are this unit's, exactly as acceptance claims them.
-    // @lfy def/generation/main.lfy:rename#rename:rename:3091710a31989abcb75e52c70a366b960dac1fabd585e5a3bf0971af66686c8f
+    // @lfy def/generation/accept.lfy:rename#rename:rename:3091710a31989abcb75e52c70a366b960dac1fabd585e5a3bf0971af66686c8f
     let planned = &plan.units[unit];
     let mut claimed: Vec<&str> = vec![&workspace.files[planned.file].path];
     for moved in plan.moves.iter().filter(|moved| moved.into == unit) {
@@ -736,7 +736,7 @@ pub fn rename(
         }
     }
     let mut out: Vec<Output> = Vec::new();
-    // @lfy def/generation/main.lfy:rename#rename:rename:90a597b0c488f100859379a0d11bf0e632fbfbb941a554b7b5c2669c9d8320d3
+    // @lfy def/generation/accept.lfy:rename#rename:rename:90a597b0c488f100859379a0d11bf0e632fbfbb941a554b7b5c2669c9d8320d3
     for output in outputs {
         // Each line with the break that ends it, so that what is not rewritten comes
         // through character for character, whatever a line ends with.
@@ -751,7 +751,7 @@ pub fn rename(
                 None => text.push_str(line),
             }
         }
-        // @lfy def/generation/main.lfy:rename#rename:rename:8cb5f57f44ec1a7de3b03c33feda6e4ceedd4fa55d4d2ec4fdd0ae92c27e9d82
+        // @lfy def/generation/accept.lfy:rename#rename:rename:8cb5f57f44ec1a7de3b03c33feda6e4ceedd4fa55d4d2ec4fdd0ae92c27e9d82
         if !changed {
             continue;
         }
@@ -770,8 +770,8 @@ pub fn rename(
 /// replaced within the token it was spelled in, so that the comment opener, the path, the
 /// entity, anything written after the marker, and the break that ends the line are left
 /// exactly as they were.
-// @lfy def/generation/main.lfy:rename#rename:rename:98bd688d7b8dd91a3fbd9fc7eb8c0999c69eba315873a7bcb74f7627b0a5897d
-// @lfy def/generation/main.lfy:rename#rename:rename:4091b5d02c428166459a836f17453935a76b69ac96600c57604d197dccf120e3
+// @lfy def/generation/accept.lfy:rename#rename:rename:98bd688d7b8dd91a3fbd9fc7eb8c0999c69eba315873a7bcb74f7627b0a5897d
+// @lfy def/generation/accept.lfy:rename#rename:rename:4091b5d02c428166459a836f17453935a76b69ac96600c57604d197dccf120e3
 fn renamed_line(line: &str, ids: &BTreeMap<String, String>, claimed: &[&str]) -> Option<String> {
     let mut out = String::new();
     let mut rest = line;

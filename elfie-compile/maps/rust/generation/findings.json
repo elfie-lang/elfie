@@ -1,0 +1,2225 @@
+[
+  {
+    "answered": [
+      "reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea",
+      "reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490",
+      "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6",
+      "reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600",
+      "reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3",
+      "reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921",
+      "reviewOf:reviewOf:389bbf9e57884ff5e66e1b8be297335a6fb9e9a36faae98a32402328be553325",
+      "reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e",
+      "reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c",
+      "reviewOf:reviewOf:5ccf168d438b1997f2ec7fd50ef09356d148a7940500a34b5a6b2fc51a43b52c",
+      "reviewOf:reviewOf:6ad3006e396fe8b3c5ea739e4852be683f1bba8ddaa4b1b13dd25123422037c6",
+      "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9",
+      "reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d",
+      "reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce",
+      "reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535",
+      "reviewOf:reviewOf:ac3a89b9ae9599493a551003577acdff2855f9342959c0d3bc606cddc53e939d",
+      "reviewOf:reviewOf:ac6ab38189abc2b73e52041d213cdb86de455386497b27bce939a60307b57adc",
+      "reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1",
+      "reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6",
+      "reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2",
+      "reviewOf:reviewOf:e4e51ceff95aa7cf3d202b2e42573e755ade4bc85b77d90b1621d3f425a5d109",
+      "reviewOf:reviewOf:e6ffb38e943b879b8a71a248dd7fd22884f5aa51001084248c3eb7c90b3eda91",
+      "reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac",
+      "reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc",
+      "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+    ],
+    "dependencies": {
+      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
+    },
+    "generated": "2026-10-19T02:09:16Z",
+    "hash": "548b589d20f4d2ca1e5ad89578b22bf79d0d7ac386d80b7c0e5ef2dcf27c1462",
+    "markers": [
+      {
+        "column": null,
+        "end": 37,
+        "entity": "Plan",
+        "file": "def/generation/data.lfy",
+        "line": 465,
+        "outputLine": 37,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 95,
+        "entity": "previousOf",
+        "file": "def/generation/previous.lfy",
+        "line": 11,
+        "outputLine": 38,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 106,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 96,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 122,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 107,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 132,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 123,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 141,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 133,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 156,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 142,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 172,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 157,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 185,
+        "entity": "SourceMap.answered",
+        "file": "def/generation/data.lfy",
+        "line": 68,
+        "outputLine": 173,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 195,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 186,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 241,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 196,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 254,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 242,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 271,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 255,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 289,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 272,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 296,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 15,
+        "outputLine": 290,
+        "requirement": "interfaceOf:interfaceOf:df415af10d739698174e3358d1293c5c82973190a3202adf8f50300ab0f4f3d5"
+      },
+      {
+        "column": null,
+        "end": 329,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 15,
+        "outputLine": 297,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 341,
+        "entity": "interfaceOf",
+        "file": "def/generation/main.lfy",
+        "line": 15,
+        "outputLine": 330,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 370,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 58,
+        "outputLine": 342,
+        "requirement": "SourceMap:SourceMap:fd62af8a8ab692d82a9ff1cd315fe1ba7411cb837421fff2038240e570114c59"
+      },
+      {
+        "column": null,
+        "end": 389,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 371,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 426,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 390,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 427,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 427,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 437,
+        "entity": "ReviewRequest",
+        "file": "def/generation/data.lfy",
+        "line": 330,
+        "outputLine": 428,
+        "requirement": "ReviewRequest:ReviewRequest:89af425d63c0f40d30e4db0494e14a97b63ea5ff20139e294920432acbccb8cf"
+      },
+      {
+        "column": null,
+        "end": 458,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 438,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 504,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 459,
+        "requirement": "plan:plan:5ea9c1a46ff002cb966b639dd7fa5752f17660d0d99bf21d939baffb3c345b31"
+      },
+      {
+        "column": null,
+        "end": 522,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 505,
+        "requirement": "plan:plan:e32007c54b7c28a4e6102a813e4c61dc2c7f36b487af8e3f5c778220338975cf"
+      },
+      {
+        "column": null,
+        "end": 553,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 523,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 555,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 554,
+        "requirement": "plan:plan:c3b45b9c75fa54e5426018d8de412d9c76d287a296f9384ce03c03717a3ee93c"
+      },
+      {
+        "column": null,
+        "end": 557,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 556,
+        "requirement": "plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45"
+      },
+      {
+        "column": null,
+        "end": 576,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 558,
+        "requirement": "plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45"
+      },
+      {
+        "column": null,
+        "end": 595,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 577,
+        "requirement": "plan:plan:d0ff84cddcd136c8da02cfa47f06025000486fd0e764ca59f7baba40be4d9c45"
+      },
+      {
+        "column": null,
+        "end": 650,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 596,
+        "requirement": "plan:plan:c6bed32df9850fc2409ccc08a49904114e67a864cad86e4c61b6b0addd1d0dab"
+      },
+      {
+        "column": null,
+        "end": 651,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 651,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 666,
+        "entity": "Unit",
+        "file": "def/generation/data.lfy",
+        "line": 137,
+        "outputLine": 652,
+        "requirement": "Unit:Unit:544d21ab36e8de59ea9fcf77ae7fa34947e690a8e2c4c41f740f290b2efeb354"
+      },
+      {
+        "column": null,
+        "end": 701,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 58,
+        "outputLine": 667,
+        "requirement": "SourceMap:SourceMap:ebcb994cc8d4e88d7422b2773d618db5d2d5c753477db1c16b1b11635b80e3fb"
+      },
+      {
+        "column": null,
+        "end": 723,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 58,
+        "outputLine": 702,
+        "requirement": "SourceMap:SourceMap:09446c0cd62e3661c21774df9093f0d0bcabcf6e89e04299d1c69e8ff57564e5"
+      },
+      {
+        "column": null,
+        "end": 724,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 58,
+        "outputLine": 724,
+        "requirement": "SourceMap:SourceMap:09446c0cd62e3661c21774df9093f0d0bcabcf6e89e04299d1c69e8ff57564e5"
+      },
+      {
+        "column": null,
+        "end": 744,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 725,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 770,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 745,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 782,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 771,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 786,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 783,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 798,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 787,
+        "requirement": "accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481"
+      },
+      {
+        "column": null,
+        "end": 801,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 799,
+        "requirement": "Marker:Marker:76e237fb260caf5b11bc6d84be162349e39c76c149a14baf79eb7d16efa750a6"
+      },
+      {
+        "column": null,
+        "end": 802,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 802,
+        "requirement": "accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4"
+      },
+      {
+        "column": null,
+        "end": 810,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 803,
+        "requirement": "accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95"
+      },
+      {
+        "column": null,
+        "end": 823,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 811,
+        "requirement": "accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3"
+      },
+      {
+        "column": null,
+        "end": 839,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 824,
+        "requirement": "accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced"
+      },
+      {
+        "column": null,
+        "end": 840,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 840,
+        "requirement": "accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b"
+      },
+      {
+        "column": null,
+        "end": 853,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 841,
+        "requirement": "accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa"
+      },
+      {
+        "column": null,
+        "end": 878,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 854,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 896,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 879,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 925,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 897,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 932,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 926,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 941,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 933,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 967,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 942,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 979,
+        "entity": "regionsOf",
+        "file": "def/generation/maps.lfy",
+        "line": 160,
+        "outputLine": 968,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 985,
+        "entity": "regionsOf",
+        "file": "def/generation/maps.lfy",
+        "line": 160,
+        "outputLine": 980,
+        "requirement": "regionsOf:regionsOf:d0dd761f2a88d10b62707b3452f9804e82f4c9ae6d4212b5b8b799f9355a82c5"
+      },
+      {
+        "column": null,
+        "end": 986,
+        "entity": "regionsOf",
+        "file": "def/generation/maps.lfy",
+        "line": 160,
+        "outputLine": 986,
+        "requirement": "regionsOf:regionsOf:38d2833b48e58c718adaf9951281dfe50568a87b1fd9fcf0cf493596b2406bae"
+      },
+      {
+        "column": null,
+        "end": 990,
+        "entity": "regionsOf",
+        "file": "def/generation/maps.lfy",
+        "line": 160,
+        "outputLine": 987,
+        "requirement": "regionsOf:regionsOf:093e721919b4f8d968ccd2497d31d9e1ac8783ddfb5ee2bbda092b4302715a0f"
+      },
+      {
+        "column": null,
+        "end": 1003,
+        "entity": "regionsOf",
+        "file": "def/generation/maps.lfy",
+        "line": 160,
+        "outputLine": 991,
+        "requirement": "regionsOf:regionsOf:66a35d2038e53526c71eb7ac77c60c00ba7678d9ffc14769336d39c7f3aeadb6"
+      },
+      {
+        "column": null,
+        "end": 1018,
+        "entity": "regionsOf",
+        "file": "def/generation/maps.lfy",
+        "line": 160,
+        "outputLine": 1004,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1042,
+        "entity": "changes",
+        "file": "def/generation/changes.lfy",
+        "line": 11,
+        "outputLine": 1019,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1059,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1043,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1075,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 1060,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1091,
+        "entity": "Marker.end",
+        "file": "def/generation/data.lfy",
+        "line": 26,
+        "outputLine": 1076,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1097,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 1092,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1131,
+        "entity": "Marker.requirement",
+        "file": "def/generation/data.lfy",
+        "line": 25,
+        "outputLine": 1098,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1135,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 1132,
+        "requirement": "Marker:Marker:55eeb537f74d15d3b738387a76843bfe4e688258322b57eb5046ead0be1e71dc"
+      },
+      {
+        "column": null,
+        "end": 1146,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 1136,
+        "requirement": "Marker:Marker:e5a2dc69b3714f2fe9ec245e19aa4b7d2bc03926cf7410cabc1e0a7ed86cf86c"
+      },
+      {
+        "column": null,
+        "end": 1161,
+        "entity": "Marker.entity",
+        "file": "def/generation/data.lfy",
+        "line": 22,
+        "outputLine": 1147,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1167,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 1162,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1180,
+        "entity": "Marker",
+        "file": "def/generation/data.lfy",
+        "line": 19,
+        "outputLine": 1168,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1193,
+        "entity": "SourceMap.hash",
+        "file": "def/generation/data.lfy",
+        "line": 64,
+        "outputLine": 1181,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1211,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 58,
+        "outputLine": 1194,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1225,
+        "entity": "SourceMap",
+        "file": "def/generation/data.lfy",
+        "line": 58,
+        "outputLine": 1212,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1327,
+        "entity": "SourceMap.generated",
+        "file": "def/generation/data.lfy",
+        "line": 78,
+        "outputLine": 1226,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1328,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 1328,
+        "requirement": "plan:plan:f94bebcadb345989b89582a2716579351dbfc0c4b56c770f7661f54fe2e65be3"
+      },
+      {
+        "column": null,
+        "end": 1336,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 1329,
+        "requirement": "request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907"
+      },
+      {
+        "column": null,
+        "end": 1337,
+        "entity": "request",
+        "file": "def/generation/request.lfy",
+        "line": 29,
+        "outputLine": 1337,
+        "requirement": "request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e"
+      },
+      {
+        "column": null,
+        "end": 1368,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 1338,
+        "requirement": "accept:accept:ec9bf2b28c1f3b0e6144d76c6bcf7912791a9eb3f8d41f1c5f2ef658d041f34a"
+      },
+      {
+        "column": null,
+        "end": 1680,
+        "entity": "accept",
+        "file": "def/generation/accept.lfy",
+        "line": 21,
+        "outputLine": 1369,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1899,
+        "entity": "plan",
+        "file": "def/generation/main.lfy",
+        "line": 27,
+        "outputLine": 1681,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/generation/mod.rs",
+    "requirements": "fb4010cc256390d3921fb5cf10e752be9ae05392bc35c99a7a2ce13bf57187cb",
+    "signature": "dee523e1866dbfa4b4c48e20462d53544f0b8263c88b3178ffa051960041f11e",
+    "source": "def/generation/findings.lfy",
+    "target": "rust",
+    "text": "6cde84b9dc5f042a7b35612abb95a87db50ad7cb880bb4e81f692593b690afd6"
+  },
+  {
+    "answered": [
+      "reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea",
+      "reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490",
+      "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6",
+      "reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600",
+      "reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3",
+      "reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921",
+      "reviewOf:reviewOf:389bbf9e57884ff5e66e1b8be297335a6fb9e9a36faae98a32402328be553325",
+      "reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e",
+      "reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c",
+      "reviewOf:reviewOf:5ccf168d438b1997f2ec7fd50ef09356d148a7940500a34b5a6b2fc51a43b52c",
+      "reviewOf:reviewOf:6ad3006e396fe8b3c5ea739e4852be683f1bba8ddaa4b1b13dd25123422037c6",
+      "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9",
+      "reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d",
+      "reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce",
+      "reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535",
+      "reviewOf:reviewOf:ac3a89b9ae9599493a551003577acdff2855f9342959c0d3bc606cddc53e939d",
+      "reviewOf:reviewOf:ac6ab38189abc2b73e52041d213cdb86de455386497b27bce939a60307b57adc",
+      "reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1",
+      "reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6",
+      "reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2",
+      "reviewOf:reviewOf:e4e51ceff95aa7cf3d202b2e42573e755ade4bc85b77d90b1621d3f425a5d109",
+      "reviewOf:reviewOf:e6ffb38e943b879b8a71a248dd7fd22884f5aa51001084248c3eb7c90b3eda91",
+      "reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac",
+      "reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc",
+      "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+    ],
+    "dependencies": {
+      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
+    },
+    "generated": "2026-10-19T02:09:16Z",
+    "hash": "548b589d20f4d2ca1e5ad89578b22bf79d0d7ac386d80b7c0e5ef2dcf27c1462",
+    "markers": [
+      {
+        "column": null,
+        "end": 46,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 1,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 47,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 47,
+        "requirement": "review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6"
+      },
+      {
+        "column": null,
+        "end": 58,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 48,
+        "requirement": "review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0"
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 59,
+        "requirement": "review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca"
+      },
+      {
+        "column": null,
+        "end": 78,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 76,
+        "requirement": "review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6"
+      },
+      {
+        "column": null,
+        "end": 89,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 79,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 100,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 90,
+        "requirement": "review:review:8067f4b70be69f26ef14e51b27d063565e561dc22f54a024158105cad82cc9c5"
+      },
+      {
+        "column": null,
+        "end": 101,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 101,
+        "requirement": "review:review:efbaab9e13ed7569408b035ce9b34392a9e0b4fa0a274b747ea27c0ef681cd65"
+      },
+      {
+        "column": null,
+        "end": 137,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 102,
+        "requirement": "review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417"
+      },
+      {
+        "column": null,
+        "end": 143,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 138,
+        "requirement": "review:review:0d8c71e5e6a2fc7df9307c06e3d90e10a1982484663081fdffc8b2b46c7f029b"
+      },
+      {
+        "column": null,
+        "end": 158,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 144,
+        "requirement": "review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831"
+      },
+      {
+        "column": null,
+        "end": 175,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 159,
+        "requirement": "review:review:88af78276d6f8df3f4a8999ca87628c8de2e6a194a2718d39aa64e803f157c0d"
+      },
+      {
+        "column": null,
+        "end": 176,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 176,
+        "requirement": "review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1"
+      },
+      {
+        "column": null,
+        "end": 213,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 177,
+        "requirement": "review:review:5923148a7793fded1531a97ff6a9c369389688e0a1ca8f50ed586a04dcee3b46"
+      },
+      {
+        "column": null,
+        "end": 214,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 214,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 241,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 215,
+        "requirement": "review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903"
+      },
+      {
+        "column": null,
+        "end": 242,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 242,
+        "requirement": "review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033"
+      },
+      {
+        "column": null,
+        "end": 243,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 243,
+        "requirement": "review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d"
+      },
+      {
+        "column": null,
+        "end": 244,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 244,
+        "requirement": "review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417"
+      },
+      {
+        "column": null,
+        "end": 271,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 245,
+        "requirement": "review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2"
+      },
+      {
+        "column": null,
+        "end": 282,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 272,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 296,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 283,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 309,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 297,
+        "requirement": "review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831"
+      },
+      {
+        "column": null,
+        "end": 321,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 310,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 347,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 322,
+        "requirement": "review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6"
+      },
+      {
+        "column": null,
+        "end": 369,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 348,
+        "requirement": "review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6"
+      },
+      {
+        "column": null,
+        "end": 370,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 370,
+        "requirement": "review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0"
+      },
+      {
+        "column": null,
+        "end": 390,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 371,
+        "requirement": "globalReview:globalReview:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0"
+      },
+      {
+        "column": null,
+        "end": 432,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 391,
+        "requirement": "review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6"
+      },
+      {
+        "column": null,
+        "end": 439,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 433,
+        "requirement": "globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858"
+      },
+      {
+        "column": null,
+        "end": 469,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 440,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 472,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 470,
+        "requirement": "globalReview:globalReview:3163f899ae0e06b99cc3cfbdf7857a8f62a41a8e5685323600713e1e6347797b"
+      },
+      {
+        "column": null,
+        "end": 483,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 473,
+        "requirement": "globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858"
+      },
+      {
+        "column": null,
+        "end": 494,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 484,
+        "requirement": "globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858"
+      },
+      {
+        "column": null,
+        "end": 502,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 495,
+        "requirement": "globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2"
+      },
+      {
+        "column": null,
+        "end": 506,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 503,
+        "requirement": "globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858"
+      },
+      {
+        "column": null,
+        "end": 512,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 507,
+        "requirement": "globalReview:globalReview:c913846c41638a67bec9c31d691948d7a0a285ed211c13711ab1bfbb7a47c67b"
+      },
+      {
+        "column": null,
+        "end": 525,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 513,
+        "requirement": "globalReview:globalReview:e9cc8a4c5b45b3440c827bd67a1fd514c12870041202d0cd54fad21179548843"
+      },
+      {
+        "column": null,
+        "end": 526,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 526,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 527,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 527,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 599,
+        "entity": "ReviewRequest",
+        "file": "def/generation/data.lfy",
+        "line": 330,
+        "outputLine": 528,
+        "requirement": "ReviewRequest:ReviewRequest:5e59c550936dcf7bf2e5d061524a9f594d0fad8ec3bcde714954a0e266066d26"
+      },
+      {
+        "column": null,
+        "end": 612,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 600,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 614,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 613,
+        "requirement": "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6"
+      },
+      {
+        "column": null,
+        "end": 620,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 615,
+        "requirement": "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6"
+      },
+      {
+        "column": null,
+        "end": 631,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 621,
+        "requirement": "reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d"
+      },
+      {
+        "column": null,
+        "end": 634,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 632,
+        "requirement": "reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc"
+      },
+      {
+        "column": null,
+        "end": 636,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 635,
+        "requirement": "reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921"
+      },
+      {
+        "column": null,
+        "end": 641,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 637,
+        "requirement": "reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3"
+      },
+      {
+        "column": null,
+        "end": 642,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 642,
+        "requirement": "reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c"
+      },
+      {
+        "column": null,
+        "end": 643,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 643,
+        "requirement": "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9"
+      },
+      {
+        "column": null,
+        "end": 647,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 644,
+        "requirement": "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+      },
+      {
+        "column": null,
+        "end": 654,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 648,
+        "requirement": "reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e"
+      },
+      {
+        "column": null,
+        "end": 660,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 655,
+        "requirement": "reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600"
+      },
+      {
+        "column": null,
+        "end": 661,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 661,
+        "requirement": "reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6"
+      },
+      {
+        "column": null,
+        "end": 662,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 662,
+        "requirement": "reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490"
+      },
+      {
+        "column": null,
+        "end": 666,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 663,
+        "requirement": "reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac"
+      },
+      {
+        "column": null,
+        "end": 675,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 667,
+        "requirement": "reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2"
+      },
+      {
+        "column": null,
+        "end": 679,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 676,
+        "requirement": "reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1"
+      },
+      {
+        "column": null,
+        "end": 695,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 680,
+        "requirement": "reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535"
+      },
+      {
+        "column": null,
+        "end": 710,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 696,
+        "requirement": "reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2"
+      },
+      {
+        "column": null,
+        "end": 711,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 711,
+        "requirement": "reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea"
+      },
+      {
+        "column": null,
+        "end": 748,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 712,
+        "requirement": "reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce"
+      },
+      {
+        "column": null,
+        "end": 758,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 749,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 764,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 759,
+        "requirement": "reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c"
+      },
+      {
+        "column": null,
+        "end": 775,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 765,
+        "requirement": "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9"
+      },
+      {
+        "column": null,
+        "end": 783,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 776,
+        "requirement": "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+      },
+      {
+        "column": null,
+        "end": 810,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 784,
+        "requirement": "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9"
+      },
+      {
+        "column": null,
+        "end": 827,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 811,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 863,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 828,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/generation/review.rs",
+    "requirements": "fb4010cc256390d3921fb5cf10e752be9ae05392bc35c99a7a2ce13bf57187cb",
+    "signature": "dee523e1866dbfa4b4c48e20462d53544f0b8263c88b3178ffa051960041f11e",
+    "source": "def/generation/findings.lfy",
+    "target": "rust",
+    "text": "f00af95eac3948fe7d556d5cac89e4edbedddc5681adab7b56832ab698b75339"
+  },
+  {
+    "answered": [
+      "reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea",
+      "reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490",
+      "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6",
+      "reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600",
+      "reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3",
+      "reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921",
+      "reviewOf:reviewOf:389bbf9e57884ff5e66e1b8be297335a6fb9e9a36faae98a32402328be553325",
+      "reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e",
+      "reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c",
+      "reviewOf:reviewOf:5ccf168d438b1997f2ec7fd50ef09356d148a7940500a34b5a6b2fc51a43b52c",
+      "reviewOf:reviewOf:6ad3006e396fe8b3c5ea739e4852be683f1bba8ddaa4b1b13dd25123422037c6",
+      "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9",
+      "reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d",
+      "reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce",
+      "reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535",
+      "reviewOf:reviewOf:ac3a89b9ae9599493a551003577acdff2855f9342959c0d3bc606cddc53e939d",
+      "reviewOf:reviewOf:ac6ab38189abc2b73e52041d213cdb86de455386497b27bce939a60307b57adc",
+      "reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1",
+      "reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6",
+      "reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2",
+      "reviewOf:reviewOf:e4e51ceff95aa7cf3d202b2e42573e755ade4bc85b77d90b1621d3f425a5d109",
+      "reviewOf:reviewOf:e6ffb38e943b879b8a71a248dd7fd22884f5aa51001084248c3eb7c90b3eda91",
+      "reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac",
+      "reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc",
+      "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+    ],
+    "dependencies": {
+      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
+      "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
+      "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
+      "def/model/data.lfy": "2dab24940492126fb678695e948a6c01bb2ae7cdc3747af0e246d491928a2410",
+      "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
+      "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
+    },
+    "generated": "2026-10-19T02:09:16Z",
+    "hash": "548b589d20f4d2ca1e5ad89578b22bf79d0d7ac386d80b7c0e5ef2dcf27c1462",
+    "markers": [
+      {
+        "column": null,
+        "end": 49,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 1,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 55,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 50,
+        "requirement": "review:review:1539ee32577f98ca87dae778fb98bd55c8110cc7b0a02be6306d516ef9a4f321"
+      },
+      {
+        "column": null,
+        "end": 59,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 56,
+        "requirement": "review:review:88af78276d6f8df3f4a8999ca87628c8de2e6a194a2718d39aa64e803f157c0d"
+      },
+      {
+        "column": null,
+        "end": 67,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 60,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 68,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 68,
+        "requirement": "review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1"
+      },
+      {
+        "column": null,
+        "end": 75,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 69,
+        "requirement": "review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0"
+      },
+      {
+        "column": null,
+        "end": 91,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 76,
+        "requirement": "review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831"
+      },
+      {
+        "column": null,
+        "end": 95,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 92,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 102,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 96,
+        "requirement": "review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033"
+      },
+      {
+        "column": null,
+        "end": 109,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 103,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 142,
+        "entity": "ReviewRequest",
+        "file": "def/generation/data.lfy",
+        "line": 330,
+        "outputLine": 110,
+        "requirement": "ReviewRequest:ReviewRequest:5e59c550936dcf7bf2e5d061524a9f594d0fad8ec3bcde714954a0e266066d26"
+      },
+      {
+        "column": null,
+        "end": 175,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 143,
+        "requirement": "review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6"
+      },
+      {
+        "column": null,
+        "end": 196,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 176,
+        "requirement": "review:review:331030ac2ff8059882ba1d6d951e96c529a0aff56edda0112a546d30912cd9a6"
+      },
+      {
+        "column": null,
+        "end": 203,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 197,
+        "requirement": "review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d"
+      },
+      {
+        "column": null,
+        "end": 211,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 204,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 255,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 212,
+        "requirement": "review:review:67ee9ec99448901eb17cdb7b76de2ade931d541db70a75b4279e12a40b128279"
+      },
+      {
+        "column": null,
+        "end": 257,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 256,
+        "requirement": "review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033"
+      },
+      {
+        "column": null,
+        "end": 265,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 258,
+        "requirement": "review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d"
+      },
+      {
+        "column": null,
+        "end": 286,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 266,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 328,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 306,
+        "requirement": "review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2"
+      },
+      {
+        "column": null,
+        "end": 340,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 329,
+        "requirement": "review:review:29af26a8687b4c42aeccb91116bd72d08a3b1df9e18ea8413bdae5a61d114869"
+      },
+      {
+        "column": null,
+        "end": 350,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 341,
+        "requirement": "review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033"
+      },
+      {
+        "column": null,
+        "end": 367,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 351,
+        "requirement": "review:review:93d9b5acfbd7c0036df3f84c0e174e83857f5908e82506f9a878403fa4ed4b52"
+      },
+      {
+        "column": null,
+        "end": 376,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 368,
+        "requirement": "review:review:0d8c71e5e6a2fc7df9307c06e3d90e10a1982484663081fdffc8b2b46c7f029b"
+      },
+      {
+        "column": null,
+        "end": 384,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 377,
+        "requirement": "review:review:8067f4b70be69f26ef14e51b27d063565e561dc22f54a024158105cad82cc9c5"
+      },
+      {
+        "column": null,
+        "end": 440,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 385,
+        "requirement": "review:review:5923148a7793fded1531a97ff6a9c369389688e0a1ca8f50ed586a04dcee3b46"
+      },
+      {
+        "column": null,
+        "end": 449,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 441,
+        "requirement": "review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1"
+      },
+      {
+        "column": null,
+        "end": 511,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 450,
+        "requirement": "review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1"
+      },
+      {
+        "column": null,
+        "end": 525,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 512,
+        "requirement": "review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01"
+      },
+      {
+        "column": null,
+        "end": 564,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 526,
+        "requirement": "review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831"
+      },
+      {
+        "column": null,
+        "end": 576,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 565,
+        "requirement": "review:review:600dffcb18a0b3cdd40367085bb183f86996d54d6c7762da18b59bd751034596"
+      },
+      {
+        "column": null,
+        "end": 592,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 577,
+        "requirement": "review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417"
+      },
+      {
+        "column": null,
+        "end": 594,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 593,
+        "requirement": "review:review:efbaab9e13ed7569408b035ce9b34392a9e0b4fa0a274b747ea27c0ef681cd65"
+      },
+      {
+        "column": null,
+        "end": 604,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 595,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 630,
+        "entity": "review",
+        "file": "def/generation/review.lfy",
+        "line": 26,
+        "outputLine": 605,
+        "requirement": "review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903"
+      },
+      {
+        "column": null,
+        "end": 668,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 631,
+        "requirement": "globalReview:globalReview:10afbcf8a7a4d4bfbeb07d0648e6b03f2e305d1a6fd788b1784131a3ea739333"
+      },
+      {
+        "column": null,
+        "end": 671,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 669,
+        "requirement": "globalReview:globalReview:c913846c41638a67bec9c31d691948d7a0a285ed211c13711ab1bfbb7a47c67b"
+      },
+      {
+        "column": null,
+        "end": 674,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 672,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 682,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 675,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 683,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 683,
+        "requirement": "globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858"
+      },
+      {
+        "column": null,
+        "end": 690,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 684,
+        "requirement": "globalReview:globalReview:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0"
+      },
+      {
+        "column": null,
+        "end": 691,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 691,
+        "requirement": "globalReview:globalReview:3163f899ae0e06b99cc3cfbdf7857a8f62a41a8e5685323600713e1e6347797b"
+      },
+      {
+        "column": null,
+        "end": 696,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 692,
+        "requirement": "globalReview:globalReview:e9cc8a4c5b45b3440c827bd67a1fd514c12870041202d0cd54fad21179548843"
+      },
+      {
+        "column": null,
+        "end": 716,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 697,
+        "requirement": "globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858"
+      },
+      {
+        "column": null,
+        "end": 729,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 717,
+        "requirement": "globalReview:globalReview:8222ea4a6a9a6f89cc5638b9fd971cd4b2276b001299e8c08a68f0fd51a32ccc"
+      },
+      {
+        "column": null,
+        "end": 794,
+        "entity": "globalReview",
+        "file": "def/generation/review.lfy",
+        "line": 169,
+        "outputLine": 730,
+        "requirement": "globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2"
+      },
+      {
+        "column": null,
+        "end": 806,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 795,
+        "requirement": "reviewOf:reviewOf:6ad3006e396fe8b3c5ea739e4852be683f1bba8ddaa4b1b13dd25123422037c6"
+      },
+      {
+        "column": null,
+        "end": 809,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 807,
+        "requirement": "reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc"
+      },
+      {
+        "column": null,
+        "end": 817,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 810,
+        "requirement": "reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c"
+      },
+      {
+        "column": null,
+        "end": 823,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 818,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 826,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 824,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 832,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 827,
+        "requirement": "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6"
+      },
+      {
+        "column": null,
+        "end": 848,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 833,
+        "requirement": "reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921"
+      },
+      {
+        "column": null,
+        "end": 868,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 849,
+        "requirement": "reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9"
+      },
+      {
+        "column": null,
+        "end": 884,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 869,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 896,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 885,
+        "requirement": "reviewOf:reviewOf:5ccf168d438b1997f2ec7fd50ef09356d148a7940500a34b5a6b2fc51a43b52c"
+      },
+      {
+        "column": null,
+        "end": 900,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 897,
+        "requirement": "reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3"
+      },
+      {
+        "column": null,
+        "end": 911,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 901,
+        "requirement": "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+      },
+      {
+        "column": null,
+        "end": 912,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 912,
+        "requirement": "reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea"
+      },
+      {
+        "column": null,
+        "end": 931,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 913,
+        "requirement": "reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce"
+      },
+      {
+        "column": null,
+        "end": 942,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 932,
+        "requirement": "reviewOf:reviewOf:e4e51ceff95aa7cf3d202b2e42573e755ade4bc85b77d90b1621d3f425a5d109"
+      },
+      {
+        "column": null,
+        "end": 948,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 943,
+        "requirement": "reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490"
+      },
+      {
+        "column": null,
+        "end": 955,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 949,
+        "requirement": "reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490"
+      },
+      {
+        "column": null,
+        "end": 956,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 956,
+        "requirement": "reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac"
+      },
+      {
+        "column": null,
+        "end": 966,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 957,
+        "requirement": "reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6"
+      },
+      {
+        "column": null,
+        "end": 976,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 967,
+        "requirement": "reviewOf:reviewOf:389bbf9e57884ff5e66e1b8be297335a6fb9e9a36faae98a32402328be553325"
+      },
+      {
+        "column": null,
+        "end": 979,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 977,
+        "requirement": "reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6"
+      },
+      {
+        "column": null,
+        "end": 983,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 980,
+        "requirement": "reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600"
+      },
+      {
+        "column": null,
+        "end": 996,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 984,
+        "requirement": "reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1"
+      },
+      {
+        "column": null,
+        "end": 1003,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 997,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1022,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1004,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 1023,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1023,
+        "requirement": "reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2"
+      },
+      {
+        "column": null,
+        "end": 1042,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1024,
+        "requirement": "reviewOf:reviewOf:ac3a89b9ae9599493a551003577acdff2855f9342959c0d3bc606cddc53e939d"
+      },
+      {
+        "column": null,
+        "end": 1059,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1043,
+        "requirement": "reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018"
+      },
+      {
+        "column": null,
+        "end": 1083,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1060,
+        "requirement": "reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535"
+      },
+      {
+        "column": null,
+        "end": 1094,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1084,
+        "requirement": "reviewOf:reviewOf:e6ffb38e943b879b8a71a248dd7fd22884f5aa51001084248c3eb7c90b3eda91"
+      },
+      {
+        "column": null,
+        "end": 1099,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1095,
+        "requirement": "reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d"
+      },
+      {
+        "column": null,
+        "end": 1108,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1100,
+        "requirement": "reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e"
+      },
+      {
+        "column": null,
+        "end": 1117,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1109,
+        "requirement": "reviewOf:reviewOf:ac6ab38189abc2b73e52041d213cdb86de455386497b27bce939a60307b57adc"
+      },
+      {
+        "column": null,
+        "end": 1136,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1118,
+        "requirement": "reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d"
+      },
+      {
+        "column": null,
+        "end": 1164,
+        "entity": "reviewOf",
+        "file": "def/generation/findings.lfy",
+        "line": 15,
+        "outputLine": 1137,
+        "requirement": null
+      }
+    ],
+    "output": "crates/elfie-core/src/generation/review_tests.rs",
+    "requirements": "fb4010cc256390d3921fb5cf10e752be9ae05392bc35c99a7a2ce13bf57187cb",
+    "signature": "dee523e1866dbfa4b4c48e20462d53544f0b8263c88b3178ffa051960041f11e",
+    "source": "def/generation/findings.lfy",
+    "target": "rust",
+    "text": "fc479c05b09606e2249828188d858668a380dd697777d98b287d97981ebe80cb"
+  }
+]

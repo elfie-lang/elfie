@@ -349,52 +349,52 @@ pub(crate) fn ignore_the_cache(root: &Path) -> io::Result<()> {
 /// problems when any is an error and success otherwise. With no files given and no error,
 /// each unit that is not up to date is also printed as a warning and counted, and --strict
 /// fails on any warning, error, or stale unit.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:check
 pub(crate) fn check(invocation: &Invocation) -> ExitCode {
     let root = Path::new(&invocation.root);
     let workspace = workspace::load(root);
     let json = invocation.flag("json");
     let on = Paint::of(invocation).out;
     // Every diagnostic of the program, or of the files given as arguments only, printed.
-    // @lfy def/cli/main.lfy:main#main:main:5195c7d14b9b471efde014a85a9899221c2f10ef7c18a0bae7557e737b529f8e
-    // @lfy def/cli/main.lfy:main#main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1
+    // @lfy def/cli/main.lfy:check#check:check:5195c7d14b9b471efde014a85a9899221c2f10ef7c18a0bae7557e737b529f8e
+    // @lfy def/cli/main.lfy:check#check:check:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1
     let diagnostics = collect_diagnostics(&workspace, &invocation.arguments);
     for diagnostic in &diagnostics {
         print_diagnostic(diagnostic, json, on);
     }
-    // @lfy def/cli/main.lfy:main#main:main:e1c492734a8a85af39b52fb6730be86b2953604eb5ec203d3e081e8d54b386d7
+    // @lfy def/cli/main.lfy:check#check:check:e1c492734a8a85af39b52fb6730be86b2953604eb5ec203d3e081e8d54b386d7
     if diagnostics.iter().any(|d| d.severity == Severity::Error) {
         return ExitCode::Problems;
     }
     // With no files given, the plan is made with no stems requested, from the source maps of
     // the workspace and the stems the last global review found violated, and each unit that
     // is not up to date is printed as a warning of stage generation.
-    // @lfy def/cli/main.lfy:main#main:main:32543293ed4af09d979dd15d096116fcfe9a8604b2530010f3228a20dd8126b4
+    // @lfy def/cli/main.lfy:check#check:check:32543293ed4af09d979dd15d096116fcfe9a8604b2530010f3228a20dd8126b4
     let mut stale = 0usize;
     let mut cycles = 0usize;
     if invocation.arguments.is_empty() {
         // A program that declares no target says so once, at elfie.json: it is neither a
         // problem nor a stale unit, since there is nothing wrong with it and nothing to
         // bring up to date.
-        // @lfy def/cli/main.lfy:main#main:main:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+        // @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
         if workspace.targets.is_empty() {
             print_no_target(&root.join("elfie.json").display().to_string(), json, on);
         }
         // The plan is made from the source maps of the workspace, with no stems requested,
         // and with the violated units of the last global review as its violated units.
-        // @lfy def/cli/main.lfy:main#main:main:97a1afc5885c67e733bbc5a12d4919a97a3bf22bfdf6cd2fc8066dec4da9c2fc
+        // @lfy def/cli/main.lfy:check#check:check:1dd4b91ffbc47864a00741651b1900e8748f7846852e68cb1aaf4727db76e449
         let maps = generation::source_maps_of(&workspace, None);
         let (program, plan) = planned(root, &maps, &[], false, &violated_ids(root), &[]);
         // A cycle among files that no move could resolve is an error of stage generation at
         // its node and counts among the problems.
-        // @lfy def/cli/main.lfy:main#main:main:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a
+        // @lfy def/cli/main.lfy:check#check:check:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a
         for problem in &plan.problems {
             cycles += 1;
             print_plan_problem(&program.workspace, problem, json, on);
         }
         // A move is information of stage generation: neither a problem nor a stale unit.
-        // @lfy def/cli/main.lfy:main#main:main:d9b19641dafa296e2a23f8ccc4fcc5131549aa763ea4d727e8df11b3e07c3e18
-        // @lfy def/cli/main.lfy:main#main:main:c89a1f3b912b1924d320ba6e0c1fb1de16f233edbef8b0b8182a60605107867a
+        // @lfy def/cli/main.lfy:check#check:check:d9b19641dafa296e2a23f8ccc4fcc5131549aa763ea4d727e8df11b3e07c3e18
+        // @lfy def/cli/main.lfy:check#check:check:c89a1f3b912b1924d320ba6e0c1fb1de16f233edbef8b0b8182a60605107867a
         for moved in &plan.moves {
             print_move(&program.workspace, &plan, moved, json, on);
         }
@@ -406,16 +406,16 @@ pub(crate) fn check(invocation: &Invocation) -> ExitCode {
     }
     // The last line counts the files, the problems, and the stale units: the count of files
     // is plain, the problems are a tally in failure, and the stale units one in warning.
-    // @lfy def/cli/main.lfy:main#main:main:9e7210de90827836891690ff65aa3f8c5367c71675e78701e57428954c22d633
+    // @lfy def/cli/main.lfy:check#check:check:9e7210de90827836891690ff65aa3f8c5367c71675e78701e57428954c22d633
     // A cycle no move could resolve counts among the problems, as every error or warning
     // diagnostic printed does.
-    // @lfy def/cli/main.lfy:main#main:main:7ac16e9976c60d6a2af6a4ade349ff7a5c56e296265b682ecd0f59c0cf03f5d4
+    // @lfy def/cli/main.lfy:check#check:check:7ac16e9976c60d6a2af6a4ade349ff7a5c56e296265b682ecd0f59c0cf03f5d4
     let problems = diagnostics.len() + cycles;
     if json {
         // @lfy def/cli/main.lfy:main#main:main:506eab00d30b7bdabeedfaa49835ffb31dd39d992da62dd3f70f8d67b08034d2
         println!("{}", serde_json::json!({ "files": workspace.files.len(), "problems": problems, "stale": stale }));
     } else {
-        // @lfy def/cli/main.lfy:main#main:main:e4a92e90c92796a64c208f188a8f672fb3cb8c79eb89b30ec2f4c53b260c6d92
+        // @lfy def/cli/main.lfy:check#check:check:e4a92e90c92796a64c208f188a8f672fb3cb8c79eb89b30ec2f4c53b260c6d92
         println!(
             "{} files, {}, {}",
             workspace.files.len(),
@@ -425,25 +425,25 @@ pub(crate) fn check(invocation: &Invocation) -> ExitCode {
     }
     // --strict: the code is problems when anything at all was printed as a warning or
     // error, a stale unit included.
-    // @lfy def/cli/main.lfy:main#main:main:1e2154af80e63be28da09546cbb9a591d4443af66f06409d3c369826dd80b8f6
+    // @lfy def/cli/main.lfy:check#check:check:1e2154af80e63be28da09546cbb9a591d4443af66f06409d3c369826dd80b8f6
     if invocation.flag("strict") && (problems > 0 || stale > 0) {
         ExitCode::Problems
     } else if cycles > 0 {
         // A cycle was printed as an error, so the code is problems as any printed error
         // makes it.
-        // @lfy def/cli/main.lfy:main#main:main:e1c492734a8a85af39b52fb6730be86b2953604eb5ec203d3e081e8d54b386d7
+        // @lfy def/cli/main.lfy:check#check:check:e1c492734a8a85af39b52fb6730be86b2953604eb5ec203d3e081e8d54b386d7
         ExitCode::Problems
     } else {
         // No error and no warning was printed, so --strict is success too.
-        // @lfy def/cli/main.lfy:main#main:main:4c43ec7913846d2cf1040881428da0f35394bea06a61ac4e69f4cffc7d8d3d52
-        // @lfy def/cli/main.lfy:main#main:main:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d
+        // @lfy def/cli/main.lfy:check#check:check:4c43ec7913846d2cf1040881428da0f35394bea06a61ac4e69f4cffc7d8d3d52
+        // @lfy def/cli/main.lfy:check#check:check:291f143dfc5205e9d6fe730e2b2ed169dbf14ff75c662c86ce140e99714e009d
         ExitCode::Success
     }
 }
 
 /// One line of information of stage generation at `elfie.json` saying the program declares
 /// no target, so nothing will be built; it is neither a problem nor a stale unit.
-// @lfy def/cli/main.lfy:main#main:main:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+// @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
 pub(crate) fn print_no_target(manifest: &str, json: bool, on: bool) {
     let message = "the program declares no target, so nothing will be built";
     if json {
@@ -458,7 +458,7 @@ pub(crate) fn print_no_target(manifest: &str, json: bool, on: bool) {
             })
         );
     } else {
-        // @lfy def/cli/main.lfy:main#main:main:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
+        // @lfy def/cli/main.lfy:check#check:check:ab61edddf16362666867261f64e558c75d78f00fb2fb566bd5a55a393d93fadc
         println!(
             "{} {} {}: {message}",
             paint(&format!("{manifest}:"), Tone::Subject, on),
@@ -471,7 +471,7 @@ pub(crate) fn print_no_target(manifest: &str, json: bool, on: bool) {
 /// A unit that is not up to date, printed as a warning of stage generation at its source
 /// file, naming the target, the unit, and the description of its reason; the target and the
 /// unit are subject and the description is painted in the reason's own tone.
-// @lfy def/cli/main.lfy:main#main:main:32543293ed4af09d979dd15d096116fcfe9a8604b2530010f3228a20dd8126b4
+// @lfy def/cli/main.lfy:check#check:check:32543293ed4af09d979dd15d096116fcfe9a8604b2530010f3228a20dd8126b4
 pub(crate) fn print_stale(workspace: &Workspace, unit: &Unit, reason: Reason, json: bool, on: bool) {
     let file = &workspace.files[unit.file].path;
     let target = &workspace.targets[unit.target].identifier;
@@ -483,7 +483,7 @@ pub(crate) fn print_stale(workspace: &Workspace, unit: &Unit, reason: Reason, js
             serde_json::json!({ "file": file, "stage": "generation", "severity": "warning", "message": message })
         );
     } else {
-        // @lfy def/cli/main.lfy:main#main:main:8f743c1762e241dd7fd8ae0a41cb33ca28b92b6cb56c513da3310a47a926449f
+        // @lfy def/cli/main.lfy:check#check:check:8f743c1762e241dd7fd8ae0a41cb33ca28b92b6cb56c513da3310a47a926449f
         let message = format!(
             "{} {}: {}",
             paint(target, Tone::Subject, on),
@@ -503,7 +503,7 @@ pub(crate) fn print_stale(workspace: &Workspace, unit: &Unit, reason: Reason, js
 /// One of [`Plan::moves`] printed as information of stage generation at the file of its
 /// origin, naming the target, the identifiers of the entities moved, the stem of the unit
 /// that compiles them, and the cause; it is neither a problem nor a stale unit.
-// @lfy def/cli/main.lfy:main#main:main:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a
+// @lfy def/cli/main.lfy:check#check:check:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a
 pub(crate) fn print_move(workspace: &Workspace, plan: &Plan, moved: &Move, json: bool, on: bool) {
     let origin = &plan.units[moved.origin];
     let file = &workspace.files[origin.file].path;
@@ -531,28 +531,28 @@ pub(crate) fn print_move(workspace: &Workspace, plan: &Plan, moved: &Move, json:
     }
 }
 
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:check
 pub(crate) fn collect_diagnostics(workspace: &Workspace, files: &[String]) -> Vec<Diagnostic> {
-    // @lfy def/cli/main.lfy:main#main:main:5195c7d14b9b471efde014a85a9899221c2f10ef7c18a0bae7557e737b529f8e
+    // @lfy def/cli/main.lfy:check#check:check:5195c7d14b9b471efde014a85a9899221c2f10ef7c18a0bae7557e737b529f8e
     if files.is_empty() {
         query::diagnostics_of(workspace, None)
     } else {
-        // @lfy def/cli/main.lfy:main#main:main:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1
+        // @lfy def/cli/main.lfy:check#check:check:2522a3017f6b6c237cf9b516c25d92ce44fedd90b1e60a1c5bf46810edf6a8c1
         files.iter().flat_map(|file| query::diagnostics_of(workspace, Some(file))).collect()
     }
 }
 
 /// Each file given, or every .lfy file under each source directory, is replaced by the
 /// standard layout when that differs; --check only reports.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:format
 pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
     let root = Path::new(&invocation.root);
     let check_only = invocation.flag("check");
     let json = invocation.flag("json");
     let style = Paint::of(invocation);
     // Every .lfy file under each source directory, recursively, or each file given.
-    // @lfy def/cli/main.lfy:main#main:main:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
-    // @lfy def/cli/main.lfy:main#main:main:3454380ed0ab0be90c65034578648d28e79c0ec647abe81aafa5f4149ea66d16
+    // @lfy def/cli/main.lfy:format#format:format:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
+    // @lfy def/cli/main.lfy:format#format:format:3454380ed0ab0be90c65034578648d28e79c0ec647abe81aafa5f4149ea66d16
     let files: Vec<PathBuf> = if invocation.arguments.is_empty() {
         let workspace = workspace::load(root);
         let mut found = Vec::new();
@@ -562,8 +562,8 @@ pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
         found.sort();
         found
     } else {
-        // @lfy def/cli/main.lfy:main#main:main:6e2a2b3949ecb246a2d961d2c723330f7368260169b99e1b66bfbc0191c34fb9
-        // @lfy def/cli/main.lfy:main#main:main:6e2a2b3949ecb246a2d961d2c723330f7368260169b99e1b66bfbc0191c34fb9
+        // @lfy def/cli/main.lfy:format#format:format:6e2a2b3949ecb246a2d961d2c723330f7368260169b99e1b66bfbc0191c34fb9
+        // @lfy def/cli/main.lfy:format#format:format:6e2a2b3949ecb246a2d961d2c723330f7368260169b99e1b66bfbc0191c34fb9
         invocation.arguments.iter().map(PathBuf::from).collect()
     };
     let mut code = ExitCode::Success;
@@ -588,9 +588,9 @@ pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
         let tree = parse(tokens, None);
         // A file whose tree has errors has its errors printed, is left as it is, and the code
         // is problems.
-        // @lfy def/cli/main.lfy:main#main:main:ab93b927612e920e99ff39e2c52a46ea43151d6b2560a8e13248bb27550a15d2
+        // @lfy def/cli/main.lfy:format#format:format:ab93b927612e920e99ff39e2c52a46ea43151d6b2560a8e13248bb27550a15d2
         if !tree.errors.is_empty() {
-            // @lfy def/cli/main.lfy:main#main:main:ab93b927612e920e99ff39e2c52a46ea43151d6b2560a8e13248bb27550a15d2
+            // @lfy def/cli/main.lfy:format#format:format:ab93b927612e920e99ff39e2c52a46ea43151d6b2560a8e13248bb27550a15d2
             for error in &tree.errors {
                 let token = tree.tokens.get(error.start).or(tree.tokens.last());
                 let (line, column) = token.map_or((0, 0), |t| (t.line, t.column));
@@ -619,32 +619,32 @@ pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
                 }
             }
             // The file is left as it is and the code is problems.
-            // @lfy def/cli/main.lfy:main#main:main:71eacf537d345adea7d105912e412bf5d0854cdf6be1dadd22f7ea8f2f226d86
-            // @lfy def/cli/main.lfy:main#main:main:fca47b36164e7adbd33f1fc08dc5f5524cc5ea893ed7a94e375fbc0b28a7f5d3
+            // @lfy def/cli/main.lfy:format#format:format:71eacf537d345adea7d105912e412bf5d0854cdf6be1dadd22f7ea8f2f226d86
+            // @lfy def/cli/main.lfy:format#format:format:fca47b36164e7adbd33f1fc08dc5f5524cc5ea893ed7a94e375fbc0b28a7f5d3
             code = ExitCode::Problems;
             continue;
         }
         // The formatted text is the format of the parse of the lex of what the file holds.
-        // @lfy def/cli/main.lfy:main#main:main:eee5fecd3046566d4f1d1916b27d8700e565f2f248f895a74ef7138c56e48b58
+        // @lfy def/cli/main.lfy:format#format:format:eee5fecd3046566d4f1d1916b27d8700e565f2f248f895a74ef7138c56e48b58
         // The file is replaced by the standard layout only where that differs from its text.
-        // @lfy def/cli/main.lfy:main#main:main:b755a72c010c9d018d321559876bc2cacde3c27cb4f4ddf2a7b6751d0f881bd0
+        // @lfy def/cli/main.lfy:format#format:format:b755a72c010c9d018d321559876bc2cacde3c27cb4f4ddf2a7b6751d0f881bd0
         let formatted = elfie_core::format::format(&tree);
         if formatted == source {
             continue;
         }
         // Nothing is written; each file that would change is printed.
-        // @lfy def/cli/main.lfy:main#main:main:f1176fb82acbd19538241e67b518efa48f67433cec1fd4b946b49f9271cd558a
+        // @lfy def/cli/main.lfy:format#format:format:f1176fb82acbd19538241e67b518efa48f67433cec1fd4b946b49f9271cd558a
         if check_only {
-            // @lfy def/cli/main.lfy:main#main:main:6e2a2b3949ecb246a2d961d2c723330f7368260169b99e1b66bfbc0191c34fb9
-            // @lfy def/cli/main.lfy:main#main:main:3454380ed0ab0be90c65034578648d28e79c0ec647abe81aafa5f4149ea66d16
+            // @lfy def/cli/main.lfy:format#format:format:6e2a2b3949ecb246a2d961d2c723330f7368260169b99e1b66bfbc0191c34fb9
+            // @lfy def/cli/main.lfy:format#format:format:3454380ed0ab0be90c65034578648d28e79c0ec647abe81aafa5f4149ea66d16
             println!("{}", formatted_line(json, &display, true, style.out));
-            // @lfy def/cli/main.lfy:main#main:main:8f66b1f987d4182118d36748e1764b51e86e73de389e963296f6f5f78e5d8ab1
+            // @lfy def/cli/main.lfy:format#format:format:8f66b1f987d4182118d36748e1764b51e86e73de389e963296f6f5f78e5d8ab1
             code = ExitCode::Problems;
         } else if let Err(error) = fs::write(&path, formatted) {
             complain(style.err, Some(&display), &error.to_string());
             code = ExitCode::Failure;
         } else {
-            // @lfy def/cli/main.lfy:main#main:main:bde950645f1a232e219e4c47c365187cb2799f267532edecb9f18ae2f761bc2f
+            // @lfy def/cli/main.lfy:format#format:format:bde950645f1a232e219e4c47c365187cb2799f267532edecb9f18ae2f761bc2f
             println!("{}", formatted_line(json, &display, false, style.out));
         }
     }
@@ -655,7 +655,7 @@ pub(crate) fn format_command(invocation: &Invocation) -> ExitCode {
 /// result is a JSON line and nothing else reaches standard output, and the text otherwise —
 /// the file alone painted warning for one --check found would change, and formatted painted
 /// success, a space, and the file for one that was written.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:format
 pub(crate) fn formatted_line(json: bool, file: &str, check_only: bool, on: bool) -> String {
     // @lfy def/cli/main.lfy:main#main:main:506eab00d30b7bdabeedfaa49835ffb31dd39d992da62dd3f70f8d67b08034d2
     if json {
@@ -665,16 +665,16 @@ pub(crate) fn formatted_line(json: bool, file: &str, check_only: bool, on: bool)
             serde_json::json!({ "file": file, "formatted": true }).to_string()
         };
     }
-    // @lfy def/cli/main.lfy:main#main:main:d504cb8ad2e387fe99beb3a519324beeacca4def6dedd849adabc59474e1e0fe
+    // @lfy def/cli/main.lfy:format#format:format:d504cb8ad2e387fe99beb3a519324beeacca4def6dedd849adabc59474e1e0fe
     if check_only {
         return paint(file, Tone::Warning, on);
     }
-    // @lfy def/cli/main.lfy:main#main:main:bde950645f1a232e219e4c47c365187cb2799f267532edecb9f18ae2f761bc2f
+    // @lfy def/cli/main.lfy:format#format:format:bde950645f1a232e219e4c47c365187cb2799f267532edecb9f18ae2f761bc2f
     format!("{} {file}", paint("formatted", Tone::Success, on))
 }
 
 /// Every `.lfy` file under a directory.
-// @lfy def/cli/main.lfy:main#main:main:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
+// @lfy def/cli/main.lfy:format#format:format:c7d7291e53c36dbf36962e6e8f80c4b5660d3e85a30bf7c345d861e32d8e7fc6
 pub(crate) fn walk(directory: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(directory) else { return };
     for entry in entries.flatten() {
@@ -711,7 +711,7 @@ pub(crate) fn rule_name(token: &Token) -> &'static str {
 }
 
 /// Where an error node begins, as the line and column of its first token.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:tree
 pub(crate) fn error_position(tree: &Tree, error: &ErrorNode) -> (usize, usize) {
     let token = tree.tokens.get(error.start).or(tree.tokens.last());
     token.map_or((0, 0), |token| (token.line, token.column))
@@ -735,7 +735,7 @@ pub(crate) fn node_json(tree: &Tree, node: &Node, depth: usize, out: &mut Vec<St
         match child {
             Child::Node(child) => node_json(tree, child, depth + 1, out),
             // An error node is given with what it expected, as the text form gives it.
-            // @lfy def/cli/main.lfy:main#main:main:df8eae91a10b3ccf0886164683a4fd7b05f4460ac0ba6a67f49f9f5fbb1ed85f
+            // @lfy def/cli/main.lfy:tree#tree:tree:df8eae91a10b3ccf0886164683a4fd7b05f4460ac0ba6a67f49f9f5fbb1ed85f
             Child::Error(error) => {
                 let (line, column) = error_position(tree, error);
                 let value = serde_json::json!({
@@ -773,13 +773,13 @@ pub(crate) fn node_json(tree: &Tree, node: &Node, depth: usize, out: &mut Vec<St
 /// A token is given as `Token::value`, the characters with escapes applied, never the raw
 /// characters it was written as; the text it covers is only ever printed raw for an error
 /// node, which stands for text no token could be made of.
-// @lfy def/cli/main.lfy:main#main:main:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
+// @lfy def/cli/main.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
 pub(crate) fn node_lines(tree: &Tree, node: &Node, depth: usize, on: bool, out: &mut Vec<String>) {
     let indent = " ".repeat(depth * 2);
     // One node per line indented by depth, as its rule and its token range; the rule is
     // active and the range is muted.
-    // @lfy def/cli/main.lfy:main#main:main:b409d01cc636c5584a8f66bae5a3cf7e6416ba67105dfdf93bd0d6395f51e6db
-    // @lfy def/cli/main.lfy:main#main:main:6592bac5b3c0185c725d378c01c62838c7fdac553537b6c317eb5d0b4a736afe
+    // @lfy def/cli/main.lfy:tree#tree:tree:b409d01cc636c5584a8f66bae5a3cf7e6416ba67105dfdf93bd0d6395f51e6db
+    // @lfy def/cli/main.lfy:tree#tree:tree:2160fcf9e53b90677d2720dfa6a9383563a6c6dd65624cce845b052adcf3c5e5
     out.push(format!(
         "{indent}{} {}",
         paint(node.rule.identifier(), Tone::Active, on),
@@ -789,7 +789,7 @@ pub(crate) fn node_lines(tree: &Tree, node: &Node, depth: usize, on: bool, out: 
     for child in &node.children {
         match child {
             Child::Node(child) => node_lines(tree, child, depth + 1, on, out),
-            // @lfy def/cli/main.lfy:main#main:main:b5834d8c0825c5c8edbdc8bd66074a5a35f59f1c15630f4416a73142537d7f00
+            // @lfy def/cli/main.lfy:tree#tree:tree:b5834d8c0825c5c8edbdc8bd66074a5a35f59f1c15630f4416a73142537d7f00
             Child::Error(error) => out.push(format!(
                 "{indent}{} {} {} {}",
                 paint("Error", Tone::Failure, on),
@@ -801,8 +801,8 @@ pub(crate) fn node_lines(tree: &Tree, node: &Node, depth: usize, on: bool, out: 
                 let token = tree.token(*index);
                 // A token as its rule and its value, the characters with escapes applied
                 // rather than as written; the rule is active and the value is success.
-                // @lfy def/cli/main.lfy:main#main:main:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3
-                // @lfy def/cli/main.lfy:main#main:main:6592bac5b3c0185c725d378c01c62838c7fdac553537b6c317eb5d0b4a736afe
+                // @lfy def/cli/main.lfy:tree#tree:tree:e6f0f308d5eaac2370089dcf54b826785084d2268b4495637c219c758541efe3
+                // @lfy def/cli/main.lfy:tree#tree:tree:2160fcf9e53b90677d2720dfa6a9383563a6c6dd65624cce845b052adcf3c5e5
                 out.push(format!(
                     "{indent}{} {}",
                     paint(rule_name(token), Tone::Active, on),
@@ -817,7 +817,7 @@ pub(crate) fn node_lines(tree: &Tree, node: &Node, depth: usize, on: bool, out: 
 /// node as its rule and its token range, a token as its rule and its value, then every
 /// error with what it expected. With --json each result is one JSON object on one line
 /// instead of the text.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:tree
 pub(crate) fn tree_lines(tree: &Tree, path: &str, json: bool, on: bool) -> Vec<String> {
     let mut lines = Vec::new();
     // @lfy def/cli/main.lfy:main#main:main:506eab00d30b7bdabeedfaa49835ffb31dd39d992da62dd3f70f8d67b08034d2
@@ -827,8 +827,8 @@ pub(crate) fn tree_lines(tree: &Tree, path: &str, json: bool, on: bool) -> Vec<S
     }
     node_lines(tree, &tree.root, 0, on, &mut lines);
     // Each error node is printed with what it expected, painted failure.
-    // @lfy def/cli/main.lfy:main#main:main:df8eae91a10b3ccf0886164683a4fd7b05f4460ac0ba6a67f49f9f5fbb1ed85f
-    // @lfy def/cli/main.lfy:main#main:main:b5834d8c0825c5c8edbdc8bd66074a5a35f59f1c15630f4416a73142537d7f00
+    // @lfy def/cli/main.lfy:tree#tree:tree:df8eae91a10b3ccf0886164683a4fd7b05f4460ac0ba6a67f49f9f5fbb1ed85f
+    // @lfy def/cli/main.lfy:tree#tree:tree:b5834d8c0825c5c8edbdc8bd66074a5a35f59f1c15630f4416a73142537d7f00
     for error in &tree.errors {
         let (line, column) = error_position(tree, error);
         lines.push(paint(
@@ -846,7 +846,7 @@ pub(crate) fn tree_lines(tree: &Tree, path: &str, json: bool, on: bool) -> Vec<S
 
 /// Prints the parse of the one file given, one node or token per line, and the errors;
 /// the code is problems when there is one.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:tree
 pub(crate) fn tree(invocation: &Invocation) -> ExitCode {
     let (path, source) = match read_one_file(invocation) {
         Ok(read) => read,
@@ -861,19 +861,19 @@ pub(crate) fn tree(invocation: &Invocation) -> ExitCode {
     };
     let tree = parse(tokens, None);
     let mut out = io::BufWriter::new(io::stdout().lock());
-    // @lfy def/cli/main.lfy:main#main:main:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
+    // @lfy def/cli/main.lfy:tree#tree:tree:c888bea4f4ce679a5bef8e137a01e4d58fef7062c146500ddf5476aec6fe5668
     for line in tree_lines(&tree, &path, invocation.flag("json"), Paint::of(invocation).out) {
         let _ = writeln!(out, "{line}");
     }
     let _ = out.flush();
-    // @lfy def/cli/main.lfy:main#main:main:e9edf88c58bc339db1427baac3c710de71d0f8ca43d95682df4cf366b4ca5477
+    // @lfy def/cli/main.lfy:tree#tree:tree:e9edf88c58bc339db1427baac3c710de71d0f8ca43d95682df4cf366b4ca5477
     if tree.errors.is_empty() { ExitCode::Success } else { ExitCode::Problems }
 }
 
 /// The lines the tokens command prints: one token per line as its line, column, rule, and
 /// value. With --json each token is one JSON object on one line instead of the text. The line
 /// and column are muted, the rule is active, and the value is success.
-// @lfy def/cli/main.lfy:main#main:main:a39ab7b95d5bde21d9c6cac0a61d6ae97cb16498162052240c5f466c7d066355
+// @lfy def/cli/main.lfy:tokens#tokens:tokens:a39ab7b95d5bde21d9c6cac0a61d6ae97cb16498162052240c5f466c7d066355
 pub(crate) fn token_lines(tokens: &[Token], json: bool, on: bool) -> Vec<String> {
     tokens
         .iter()
@@ -890,8 +890,8 @@ pub(crate) fn token_lines(tokens: &[Token], json: bool, on: bool) -> Vec<String>
             } else {
                 // One token per line as its line, column, rule, and value; the line and
                 // column are muted, the rule is active, and the value is success.
-                // @lfy def/cli/main.lfy:main#main:main:a39ab7b95d5bde21d9c6cac0a61d6ae97cb16498162052240c5f466c7d066355
-                // @lfy def/cli/main.lfy:main#main:main:6592bac5b3c0185c725d378c01c62838c7fdac553537b6c317eb5d0b4a736afe
+                // @lfy def/cli/main.lfy:tokens#tokens:tokens:a39ab7b95d5bde21d9c6cac0a61d6ae97cb16498162052240c5f466c7d066355
+                // @lfy def/cli/main.lfy:tokens#tokens:tokens:784ccf56ead3c408207da098229e404de5a0dd58021f53ce6d2846f3523f5fd0
                 format!(
                     "{}\t{}\t{}",
                     paint(&format!("{}:{}", token.line, token.column), Tone::Muted, on),
@@ -905,7 +905,7 @@ pub(crate) fn token_lines(tokens: &[Token], json: bool, on: bool) -> Vec<String>
 
 /// Prints the tokens of the one file given, one per line as line, column, rule, and
 /// value.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:tokens
 pub(crate) fn tokens(invocation: &Invocation) -> ExitCode {
     let (path, source) = match read_one_file(invocation) {
         Ok(read) => read,
@@ -919,7 +919,7 @@ pub(crate) fn tokens(invocation: &Invocation) -> ExitCode {
         }
     };
     let mut out = io::BufWriter::new(io::stdout().lock());
-    // @lfy def/cli/main.lfy:main#main:main:a39ab7b95d5bde21d9c6cac0a61d6ae97cb16498162052240c5f466c7d066355
+    // @lfy def/cli/main.lfy:tokens#tokens:tokens:a39ab7b95d5bde21d9c6cac0a61d6ae97cb16498162052240c5f466c7d066355
     for line in token_lines(&tokens, invocation.flag("json"), Paint::of(invocation).out) {
         let _ = writeln!(out, "{line}");
     }

@@ -724,7 +724,7 @@ fn the_host_speaks_the_protocol_over_http_behind_its_token() {
 
 /// The source maps a verifier's review was made with stand in for what the last
 /// acceptance recorded, so the verifier reads the outputs it is judging.
-// @lfy def/mcp/main.lfy:host#host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e
+// @lfy def/mcp/main.lfy:host#host:host:e547c3d522df6baa03ac6deef6399818b37df2757f24cf09ffa3f4b560d3dad0
 #[test]
 fn the_source_maps_of_a_review_stand_in_for_the_recorded_ones() {
     let fixture = accepted_project();
@@ -736,7 +736,7 @@ fn the_source_maps_of_a_review_stand_in_for_the_recorded_ones() {
         .unwrap_or_else(|| panic!("a recorded map, not {recorded:?}"))
         .clone();
     // A map of the same target and the same source as a recorded one stands in for it.
-    // @lfy def/mcp/main.lfy:host#host:host:6f8405c8e6f3e4591069a7d71ce8930df3cd097e586d761bdaa8bb9a2df6ce2e
+    // @lfy def/mcp/main.lfy:host#host:host:e547c3d522df6baa03ac6deef6399818b37df2757f24cf09ffa3f4b560d3dad0
     let mut given = found.clone();
     given.output = "out/elsewhere.rs".to_string();
     let mut binding = binding_of(&fixture, Role::Verifier, None);
@@ -755,7 +755,7 @@ fn the_source_maps_of_a_review_stand_in_for_the_recorded_ones() {
 /// In a compiler's session the map of one of its own units is read from the markers its
 /// output holds now, while every other member of it is the recorded map's, so the unit
 /// still plans, changes, and requests as the compile planned it.
-// @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
+// @lfy def/mcp/main.lfy:host#host:host:598a466ba7344222f95978069af38b8fb6fa8e044ef60584dc81c15193d6ec7c
 #[test]
 fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
     let fixture = Fixture::new();
@@ -799,11 +799,11 @@ fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
         },
     );
     let live = of_output(source_maps_of(&session, None));
-    // @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
+    // @lfy def/mcp/main.lfy:host#host:host:598a466ba7344222f95978069af38b8fb6fa8e044ef60584dc81c15193d6ec7c
     assert_eq!(live.markers.first().map(|marker| marker.output_line), Some(2));
     assert_ne!(live.markers, recorded.markers);
     // Nothing else differs: with the recorded markers put back, the two maps are one.
-    // @lfy def/mcp/main.lfy:host#host:host:f194cb2b23fb9a9e51d3b224e3b4d0fda41188de9b68521b5bba9e8bae897058
+    // @lfy def/mcp/main.lfy:host#host:host:598a466ba7344222f95978069af38b8fb6fa8e044ef60584dc81c15193d6ec7c
     let carried = SourceMap { markers: recorded.markers.clone(), ..live };
     assert_eq!(carried, recorded);
 }
@@ -811,7 +811,7 @@ fn a_compilers_own_source_map_keeps_what_the_recorded_one_holds() {
 /// In a compiler's session a unit whose map file holds no map still has one map per
 /// output file holding a marker of its own, read from the file as it is now, with every
 /// other member of each empty, since nothing was ever recorded to carry over.
-// @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
+// @lfy def/mcp/main.lfy:host#host:host:a69d23077328780095f15ae233b130c24a9bb79601d62808f1632ad7320eca99
 #[test]
 fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
     let fixture = compiled_project();
@@ -820,17 +820,17 @@ fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
     fixture.write("out/b.rs", "// A note.\n// @lfy def/b.lfy:B\npub struct B;\n");
     let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b")));
     let maps = source_maps_of(&session, None);
-    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
+    // @lfy def/mcp/main.lfy:host#host:host:a69d23077328780095f15ae233b130c24a9bb79601d62808f1632ad7320eca99
     let read: Vec<&SourceMap> = maps.iter().filter(|map| map.source == "def/b.lfy").collect();
     let [map] = read[..] else { panic!("one map of def/b.lfy, not {read:?}") };
     assert_eq!((map.target.as_str(), map.output.as_str()), ("rust", "out/b.rs"));
     // The markers are the ones the file holds now, read as acceptance reads them.
-    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
+    // @lfy def/mcp/main.lfy:host#host:host:a69d23077328780095f15ae233b130c24a9bb79601d62808f1632ad7320eca99
     assert_eq!(map.markers.len(), 1);
     assert_eq!(map.markers[0].output_line, 2);
     assert_eq!(map.markers[0].entity.as_deref(), Some("B"));
     // Every other member is empty.
-    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
+    // @lfy def/mcp/main.lfy:host#host:host:a69d23077328780095f15ae233b130c24a9bb79601d62808f1632ad7320eca99
     let empty = SourceMap {
         markers: map.markers.clone(),
         target: map.target.clone(),
@@ -846,7 +846,7 @@ fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
     };
     assert_eq!(map, &empty);
     // No file holds a marker of `a`, so it has no map at all.
-    // @lfy def/mcp/main.lfy:host#host:host:30971f2996d90d286e6f8713533242c83a6e8a57eb4551290cf5a30d4373910b
+    // @lfy def/mcp/main.lfy:host#host:host:a69d23077328780095f15ae233b130c24a9bb79601d62808f1632ad7320eca99
     assert!(!maps.iter().any(|map| map.source == "def/a.lfy"), "{maps:?}");
 }
 
@@ -854,7 +854,7 @@ fn a_compilers_own_source_map_is_read_from_the_files_when_none_was_recorded() {
 /// run is an edited unit, so its map is read from the markers its output holds now; a unit
 /// of the reach the run left alone is read as recorded.
 // @lfy def/mcp/main.lfy:host#host:host:b13df361f68d03163d9154bd53097634706a3976e5dd60ef743bad1f5f7d8f22
-// @lfy def/mcp/main.lfy:host#host:host:d3337eaab7af4245ed2aea215d9b2a7a3dc070180f650d25a2cd723e3eba308b
+// @lfy def/mcp/main.lfy:host#host:host:95194b82e7d73fdb649bc9e5849c0f89ccc8e658569e33c82639c0cb1b739ef6
 #[test]
 fn a_reached_unit_the_run_edited_is_read_from_its_outputs() {
     let (fixture, session) = reached_project();
@@ -903,7 +903,7 @@ fn a_hosted_session_acts_only_on_its_own_unit() {
     assert!(error.contains("acts only on its own unit, a"), "{error}");
     // Its own unit is answered for as ever: the guard lets it through and the verdict
     // of `accept` is what comes back.
-    // @lfy def/mcp/main.lfy:check#check:check:2a16ea176547468dbe87eb74de7c195dc58e16c26122fc69de5f2ff15dd469f1
+    // @lfy def/mcp/main.lfy:check#check:check:aa65fce675d53a43132ff27e80f270948be090228ac8b39998f2eb2375b5519a
     let error = check(&session, "a", None).unwrap_err();
     assert!(error.starts_with("rejected a:"), "{error}");
 
@@ -935,7 +935,7 @@ fn a_verifier_is_given_the_review_request_it_was_run_with() {
     // @lfy def/mcp/main.lfy:review#review:review:089fcf12de8d9e51b3bbb0617a1751ca69d441fac98223543f48f619ee444d8b
     assert_eq!(review(&session, "b", None).unwrap(), GIVEN);
     // A compiler's session has the request made for the unit instead.
-    // @lfy def/mcp/main.lfy:review#review:review:fdaa4bc8880c49e6db561ce8263cc3c4823659432b439716a64cd674b0e8e68a
+    // @lfy def/mcp/main.lfy:review#review:review:c740460a9b2a9a93ef78c878f47891a3e765f2b27f98ca543951b16271e1e257
     let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("b")));
     let instructions = review(&session, "b", None).unwrap();
     assert_ne!(instructions, GIVEN);

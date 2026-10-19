@@ -901,7 +901,7 @@ fn a_new_criterion_plans_the_unit_for_its_requirements() {
     assert_eq!(map.hash, source_hash(&program.files[b.lowered].text));
     assert_ne!(map.requirements, requirements_hash(&program, b));
     // The unit's own section says its code is unchanged and that its criteria or tests
-    // differ. @lfy def/generation/main.lfy:request
+    // differ. @lfy def/generation/request.lfy:request
     let request = request(&program, &plan, b_index, &[], None, false, &[], &[]);
     assert!(
         request

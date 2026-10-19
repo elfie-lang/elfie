@@ -1,0 +1,110 @@
+use "./data";
+use "./accept";
+
+/// report: everything the compiler wrote to standard output
+/// verdict: the [[Verdict]] of [[accept]] on the unit's outputs after the run; undefined when the compiler never got that far
+/// submitted: the last outcome the compiler submitted through elfie_submit during the run; undefined when it submitted none
+// Decision: a submitted outcome was checked when it arrived, so it wins over the report's ELFIE:
+// line; the report is read only when nothing was submitted.
+fn outcomeOf(report: string, verdict: Verdict | undefined, submitted?: Submission): `How one run of the compiler ended, read from its submitted outcome or its report, and the verdict on its unit` => Outcome {
+  @acceptanceCriteria
+    .add({
+      situation = `[[submitted]] is given`,
+      behavior = `No line of [[report]] changes the outcome`,
+    })
+    .add({
+      situation = [
+        `[[submitted]] is undefined`,
+        `The last line of [[report]] that begins with ELFIE: reads ELFIE: BLOCKED:`,
+      ],
+      behavior = `The kind is blocked and the message is the rest of that line and every line after it`,
+    })
+    .add({
+      situation = [
+        `[[submitted]] is undefined`,
+        `The last line of [[report]] that begins with ELFIE: reads ELFIE: CLARIFY:`,
+      ],
+      behavior = `The kind is clarification and the message is the rest of that line and every line after it`,
+    })
+    .add({
+      situation = `[[Submission.outcome]] of [[submitted]] is blocked`,
+      behavior = `The kind is blocked and the message is [[Submission.message]] of [[submitted]]`,
+    })
+    .add({
+      situation = `[[Submission.outcome]] of [[submitted]] is clarify`,
+      behavior = `The kind is clarification and the message is [[Submission.message]] of [[submitted]]`,
+    })
+    .add({
+      situation = [
+        `[[submitted]] is undefined`,
+        `[[verdict]] is undefined and no line of [[report]] begins with ELFIE:`,
+      ],
+      behavior = `The kind is failed and the message says the compiler reported nothing`,
+    })
+    .add({
+      situation = [
+        `[[submitted]] is undefined`,
+        `[[verdict]] is rejected`,
+        `The last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      ],
+      behavior = `The kind is rejected and the message is the first problem of [[verdict]]`,
+    })
+    .add({
+      situation = [
+        `[[submitted]] is undefined`,
+        `[[verdict]] is undefined or accepted`,
+        `[[verdict]] is defined or some line of [[report]] begins with ELFIE:`,
+        `The last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+      ],
+      behavior = `The kind is accepted and the message is empty`,
+    })
+    .add({
+      situation = [`[[Submission.outcome]] of [[submitted]] is done`, `[[verdict]] is rejected`],
+      behavior = `The kind is rejected and the message is the first problem of [[verdict]]`,
+    })
+    .add({
+      situation = [`[[Submission.outcome]] of [[submitted]] is done`, `[[verdict]] is accepted`],
+      behavior = `The kind is accepted and the message is empty`,
+    })
+    .add({
+      situation = [`[[Submission.outcome]] of [[submitted]] is done`, `[[verdict]] is undefined`],
+      behavior = `The kind is failed and the message says the compiler submitted done but the unit was not judged`,
+    })
+    .add({
+      situation = `[[Submission.outcome]] of [[submitted]] is done`,
+      behavior = `[[Submission.message]] of [[submitted]] is no part of [[Outcome.message]]`,
+    })
+    .add({ behavior = `[[Outcome.verdict]] is [[verdict]]` });
+
+  @test(
+    {
+      input = [`I wrote it.\nELFIE: DONE`, Verdict@like(`accepted`)],
+      expect = Outcome@like(`accepted, empty message`),
+    },
+    {
+      input = [`ELFIE: CLARIFY: should Range.end be inclusive?`, undefined],
+      expect = Outcome@like(`clarification with the question`),
+    },
+    {
+      input = [`ELFIE: BLOCKED: \[[tokenAt\]] contradicts \[[nodesAt\]] on empty files`, undefined],
+      expect = Outcome@like(`blocked with the reason`),
+    },
+    { input = [``, undefined], expect = Outcome@like(`failed`) },
+    {
+      input = [
+        `I wrote it.\nELFIE: DONE`,
+        Verdict@like(`accepted`),
+        Submission@like(`blocked, with the message: two criteria of f conflict`),
+      ],
+      expect = Outcome@like(`blocked with the message two criteria of f conflict`),
+    },
+    {
+      input = [``, Verdict@like(`rejected, with the problem: no marker for B`), Submission@like(`done`)],
+      expect = Outcome@like(`rejected with the message no marker for B`),
+    },
+    {
+      input = [`ELFIE: DONE`, undefined, Submission@like(`done`)],
+      expect = Outcome@like(`failed, with a message saying the unit was not judged`),
+    },
+  );
+}

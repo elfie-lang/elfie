@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:relocate
+// @lfy def/generation/accept.lfy:relocate
 //! Tests of `relocate`.
 
 use super::*;
@@ -32,7 +32,7 @@ fn a_rs(marked: &str, id: &str) -> String {
     )
 }
 
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:16d462e16009bd6bf62f282aad018937494a50a8e19adaaa689a406db72a3440
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:16d462e16009bd6bf62f282aad018937494a50a8e19adaaa689a406db72a3440
 #[test]
 fn the_code_of_an_entity_moved_to_another_file_is_relocated_with_its_maps_and_records() {
     let fixture = Fixture::with_rust_target();
@@ -66,7 +66,7 @@ fn the_code_of_an_entity_moved_to_another_file_is_relocated_with_its_maps_and_re
 
     let relocated = relocate(&program, &plan, None);
     // One relocation of `f`, for rust, from a.lfy into b.lfy, of its two markers.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:1a059000fb6ab9058a68deed6e5262648945ef089d52434a0e87147e30c1372f
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:1a059000fb6ab9058a68deed6e5262648945ef089d52434a0e87147e30c1372f
     assert_eq!(
         relocated.relocations,
         [Relocation {
@@ -78,8 +78,8 @@ fn the_code_of_an_entity_moved_to_another_file_is_relocated_with_its_maps_and_re
         }]
     );
     // The output with the two markers of `f` naming b.lfy, every other character kept.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:06c13663c823f02268ff24aa0f738e83e5f78bd0a30f52df199dc354a1ddeb64
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:5fb8c262b31de69c1722a9c987d846610497e6d16ff3e10c58ab920056275481
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:06c13663c823f02268ff24aa0f738e83e5f78bd0a30f52df199dc354a1ddeb64
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:5fb8c262b31de69c1722a9c987d846610497e6d16ff3e10c58ab920056275481
     let after = before
         .replace("// @lfy def/a.lfy:f\n", "// @lfy def/b.lfy:f\n")
         .replace("// @lfy def/a.lfy:f#", "// @lfy def/b.lfy:f#");
@@ -91,8 +91,8 @@ fn the_code_of_an_entity_moved_to_another_file_is_relocated_with_its_maps_and_re
         }]
     );
     // a's map and b's, each with the three markers.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:84efefcf9edab1fb512d7edbadb3d52ba33e608fead07de81066b06907cd15f5
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:8792744e69676cd1ef4f2b424f39a10564c50fd60fa42a3724583de37fa00f41
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:84efefcf9edab1fb512d7edbadb3d52ba33e608fead07de81066b06907cd15f5
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:8792744e69676cd1ef4f2b424f39a10564c50fd60fa42a3724583de37fa00f41
     assert_eq!(relocated.source_maps.len(), 2, "{:?}", relocated.source_maps);
     let of_a = &relocated.source_maps[0];
     let of_b = &relocated.source_maps[1];
@@ -109,12 +109,12 @@ fn the_code_of_an_entity_moved_to_another_file_is_relocated_with_its_maps_and_re
     assert_eq!(of_b.dependencies, recorded.dependencies);
     assert_eq!(of_b.generated, recorded.generated);
     assert_eq!(of_b.text, "");
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:75fa6b15d3932f256be72c37e82f0a66d665d357df32a5fa918c20083d3d798c
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:75fa6b15d3932f256be72c37e82f0a66d665d357df32a5fa918c20083d3d798c
     assert_eq!(of_b.answered, std::slice::from_ref(&id));
     // a keeps A's record and b takes f's.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:694389998ffd76aa31af05bd6c58accca7643be261e0e0c1c1f5eb06982e3d60
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:dd567a2eb50a504594a9d8a80a5f42513601274f87909a8fd34ab55432c47b97
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:fdd1bc51c38f9c62c44b1cbbd6f35402ebc120996898c5ea02ed62ade39fe519
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:694389998ffd76aa31af05bd6c58accca7643be261e0e0c1c1f5eb06982e3d60
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:dd567a2eb50a504594a9d8a80a5f42513601274f87909a8fd34ab55432c47b97
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:fdd1bc51c38f9c62c44b1cbbd6f35402ebc120996898c5ea02ed62ade39fe519
     assert_eq!(
         relocated.reviews,
         [
@@ -131,14 +131,14 @@ fn the_code_of_an_entity_moved_to_another_file_is_relocated_with_its_maps_and_re
         ]
     );
     // Nothing is written.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
     assert_eq!(fs::read_to_string(fixture.root.join("src/a.rs")).unwrap(), before);
     assert!(!review_file(workspace, &plan.units[b]).exists());
 }
 
 /// A unit whose map names a rewritten output, though no file holds a marker of its own, keeps
 /// its maps as read, as rederive gives them.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:84efefcf9edab1fb512d7edbadb3d52ba33e608fead07de81066b06907cd15f5
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:84efefcf9edab1fb512d7edbadb3d52ba33e608fead07de81066b06907cd15f5
 #[test]
 fn a_unit_whose_map_names_a_rewritten_output_keeps_its_maps_as_rederive_gives_them() {
     let fixture = Fixture::with_rust_target();
@@ -166,9 +166,9 @@ fn a_unit_whose_map_names_a_rewritten_output_keeps_its_maps_as_rederive_gives_th
 }
 
 /// Two files declare `f` now, and only one of them answers for the id its code carries.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:6efd150e921c3acb701bf44dea80a76db4af961969869f78eeb54165cd5e08a3
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:a519caccbc677cf75a549ad61efab1ac3308d321a0569fe1405c1b60e878a212
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:235508d273bf7a0baa2e362b069972c22f8112165ad4c2446e0c3a312196c918
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:6efd150e921c3acb701bf44dea80a76db4af961969869f78eeb54165cd5e08a3
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:a519caccbc677cf75a549ad61efab1ac3308d321a0569fe1405c1b60e878a212
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:235508d273bf7a0baa2e362b069972c22f8112165ad4c2446e0c3a312196c918
 #[test]
 fn only_the_file_that_still_answers_for_the_code_takes_it() {
     let fixture = Fixture::with_rust_target();
@@ -186,8 +186,8 @@ fn only_the_file_that_still_answers_for_the_code_takes_it() {
 }
 
 /// Two files declare `f` now, and nothing tells them apart, so nothing moves.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:aefaa6e860114ee4208ffcf0030ae946f4913f0378f704d07d57e7d418ffd430
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:be73db54a2d75fbbad58de702fb271bc2d14eff7a087d844a030c8318ee2a2eb
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:aefaa6e860114ee4208ffcf0030ae946f4913f0378f704d07d57e7d418ffd430
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:be73db54a2d75fbbad58de702fb271bc2d14eff7a087d844a030c8318ee2a2eb
 #[test]
 fn an_entity_two_files_declare_alike_is_not_relocated() {
     let fixture = Fixture::with_rust_target();
@@ -209,10 +209,10 @@ fn an_entity_two_files_declare_alike_is_not_relocated() {
 
 /// Every marker names an entity its file declares, and an output under a directory named
 /// target is never read.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:2e2e5b2ed5da7292f36fa19f46de7380162949db3677787156e0796eaf9cc0c9
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:ed503738db6fcf03f63af23719e2dac5524eb316ff0a2527f41665d52e24ba05
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:d571fb77bdde93f51e6308b17cf2d32fc4f3abd9a421a361b314697542ddd5f9
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:2e2e5b2ed5da7292f36fa19f46de7380162949db3677787156e0796eaf9cc0c9
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:ed503738db6fcf03f63af23719e2dac5524eb316ff0a2527f41665d52e24ba05
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:d571fb77bdde93f51e6308b17cf2d32fc4f3abd9a421a361b314697542ddd5f9
 #[test]
 fn nothing_is_relocated_while_every_marker_names_what_its_file_declares() {
     let fixture = Fixture::with_rust_target();
@@ -231,7 +231,7 @@ fn nothing_is_relocated_while_every_marker_names_what_its_file_declares() {
     assert!(relocated.relocations.is_empty(), "{:?}", relocated.relocations);
     assert!(relocated.outputs.is_empty());
     assert!(relocated.reviews.is_empty());
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:b365192b3311058a64e4835640b7d8f4d411459fd0cebd5be19c821e4b3e6288
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:b365192b3311058a64e4835640b7d8f4d411459fd0cebd5be19c821e4b3e6288
     assert_eq!(relocated.source_maps, source_maps_of(workspace, None));
     assert_eq!(relocated.source_maps.len(), 1);
 }

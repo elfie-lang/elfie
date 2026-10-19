@@ -1,5 +1,11 @@
 use "../generation/data";
 use "../generation/main" as Generation;
+use "../generation/accept" as Acceptance;
+use "../generation/changes" as Changes;
+use "../generation/findings" as Findings;
+use "../generation/maps" as Maps;
+use "../generation/request" as Requests;
+use "../generation/review" as Reviews;
 use "../generation/previous" as Recovery;
 use "../grammar/main" as Grammar;
 use "../interpret/data";
@@ -134,7 +140,7 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
     })
     .add({
       situation = [
-        `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
+        `A call of a session reads [[Maps.sourceMapsOf]] the workspace`,
         `[[Binding.sourceMaps]] is not empty`,
       ],
       behavior = `Every map read whose [[SourceMap.target]] and [[SourceMap.source]] are those of a map of [[Binding.sourceMaps]] is left out, and every map of [[Binding.sourceMaps]] is read in their place`,
@@ -148,29 +154,29 @@ fn host(): `Serve agents over HTTP on this machine for the length of one compile
     })
     .add({
       situation = [
-        `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
+        `A call of a session reads [[Maps.sourceMapsOf]] the workspace`,
         `[[Binding.role]] of the session is compiler`,
       ],
       behavior = `Every map read whose [[SourceMap.source]] is the [[File.path]] of an edited unit is left out`,
     })
-    // Decision: the maps read in their place are those [[Generation.rederive]] gives, so a region is
+    // Decision: the maps read in their place are those [[Acceptance.rederive]] gives, so a region is
     // bounded the same way in a session as once the unit is recorded, and every member but the
     // markers, the recorded text included, is what the compile planned with.
     .add({
       situation = [
-        `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
+        `A call of a session reads [[Maps.sourceMapsOf]] the workspace`,
         `[[Binding.role]] of the session is compiler`,
         `An edited unit has maps in its map file`,
       ],
-      behavior = `In place of its recorded maps, the maps read for it are [[Generation.rederive]] of the workspace, the unit, and the maps its map file holds, with the output files as they are when the call arrives`,
+      behavior = `In place of its recorded maps, the maps read for it are [[Acceptance.rederive]] of the workspace, the unit, and the maps its map file holds, with the output files as they are when the call arrives`,
     })
     .add({
       situation = [
-        `A call of a session reads [[Generation.sourceMapsOf]] the workspace`,
+        `A call of a session reads [[Maps.sourceMapsOf]] the workspace`,
         `[[Binding.role]] of the session is compiler`,
         `An edited unit has no map in its map file`,
       ],
-      behavior = `For each output file of its target, as [[output]] defines one, that holds a marker that is the unit's own, as [[SourceMap]] defines one, one map is read whose [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] are those, whose [[SourceMap.markers]] are read from the file when the call arrives as [[Generation.rederive]] reads them, and whose other members are empty`,
+      behavior = `For each output file of its target, as [[output]] defines one, that holds a marker that is the unit's own, as [[SourceMap]] defines one, one map is read whose [[SourceMap.target]], [[SourceMap.output]], and [[SourceMap.source]] are those, whose [[SourceMap.markers]] are read from the file when the call arrives as [[Acceptance.rederive]] reads them, and whose other members are empty`,
     })
     .add({
       situation = `[[Binding.role]] of a session is compiler`,
@@ -297,7 +303,7 @@ fn units(session: Session, target?: string) is tool: `The units the compiler wou
   @acceptanceCriteria
     .add({
       situation = `[[Session.binding]] is undefined`,
-      behavior = `The plan shown is [[Generation.plan]] of the workspace with [[Generation.sourceMapsOf]] the workspace, and with the violated units of the last [[GlobalReview]] as its violated units`,
+      behavior = `The plan shown is [[Generation.plan]] of the workspace with [[Maps.sourceMapsOf]] the workspace, and with the violated units of the last [[GlobalReview]] as its violated units`,
     })
     .add({
       situation = `[[Session.binding]] is set`,
@@ -331,7 +337,7 @@ fn request(session: Session, unit: string, target?: string) is tool: `The full r
   @acceptanceCriteria
     .add({
       situation = `[[Session.binding]] is undefined, or its [[Binding.role]] is verifier`,
-      behavior = `[[Request.instructions]] of [[Generation.request]] for the unit, with the existing outputs read from disk, no previous source, no foreign edits, and hosted false`,
+      behavior = `[[Request.instructions]] of [[Requests.request]] for the unit, with the existing outputs read from disk, no previous source, no foreign edits, and hosted false`,
     })
     .add({
       situation = [
@@ -542,11 +548,11 @@ fn dependency(session: Session, name: string) is tool, compilerTool: `What one e
 fn check(session: Session, unit: string, target?: string) is tool: `Whether the outputs on disk satisfy the request for one unit, and what is wrong when they do not` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[Generation.accept]] of the unit against its request and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk, with the source maps recorded for the target's other units as recorded, with every other file under [[Target.outputDirectory]], read from disk, as elsewhere, and with [[Session.touches]] as touches`,
+      behavior = `[[Acceptance.accept]] of the unit against its request and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk, with the source maps recorded for the target's other units as recorded, with every other file under [[Target.outputDirectory]], read from disk, as elsewhere, and with [[Session.touches]] as touches`,
     })
     .add({
       situation = `[[Session.binding]] is set and its [[Binding.role]] is compiler`,
-      behavior = `[[Generation.accept]] is given [[Binding.before]] as before`,
+      behavior = `[[Acceptance.accept]] is given [[Binding.before]] as before`,
     })
     .add({
       situation = [
@@ -563,18 +569,18 @@ fn check(session: Session, unit: string, target?: string) is tool: `Whether the 
     // what a run changed in it, and judges no foreign edit.
     .add({
       situation = `[[Session.binding]] is undefined`,
-      behavior = `[[Generation.accept]] is given no before`,
+      behavior = `[[Acceptance.accept]] is given no before`,
     })
     .add({
-      situation = `[[Generation.accept]] of the unit accepts it`,
+      situation = `[[Acceptance.accept]] of the unit accepts it`,
       behavior = `The text says so and lists the outputs`,
     })
     .add({
-      situation = [`[[Generation.accept]] of the unit accepts it`, `[[Verdict.foreignEdits]] is not empty`],
+      situation = [`[[Acceptance.accept]] of the unit accepts it`, `[[Verdict.foreignEdits]] is not empty`],
       behavior = `After the outputs, the text gives one line per [[ForeignEdit]] of [[Verdict.foreignEdits]], in their order, reading its [[ForeignEdit.kind]], a space, in, a space, its [[ForeignEdit.owner]], a space, its [[ForeignEdit.path]], a colon, the [[Marker.outputLine]] of its [[ForeignEdit.region]], a space, and the lines it changes as [[ForeignEdit]] counts them`,
     })
     .add({
-      situation = `[[Generation.accept]] of the unit rejects it`,
+      situation = `[[Acceptance.accept]] of the unit rejects it`,
       behavior = `An error listing [[Verdict.problems]]`,
     })
     .add({
@@ -600,7 +606,7 @@ fn reach(session: Session, unit?: string) is tool, compilerTool: `The later unit
       behavior = `The text begins with a line giving [[Reach.fixLines]] as the lines a fix may change in one region and [[Reach.fixUnitLines]] as the lines the fixes may change in one unit, and saying that a bigger edit must be a stub and that every unit with a fix needs a note through elfie_touch`,
     })
     .add({
-      behavior = `The regions of a unit of [[Reach.units]] are the [[Marker]] of each of its markers that its output files hold when the call arrives, read as [[Generation.rederive]] reads them, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
+      behavior = `The regions of a unit of [[Reach.units]] are the [[Marker]] of each of its markers that its output files hold when the call arrives, read as [[Acceptance.rederive]] reads them, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
     })
     .add({
       behavior = `A region is edited when its lines differ from the lines of the region with the same marker in the [[Output.text]] of the file of [[Binding.before]] at its output path, or when that file has no such region`,
@@ -723,7 +729,7 @@ fn touch(session: Session, unit: string, note: string) is tool, compilerTool: `S
 // criterion to its new id in one call. Compile already moves the markers of a criterion reworded in
 // place before the compiler runs; a rename is for the pairs it could not see, such as a criterion
 // that moved as well as changed. Marker lines are written only in the unit's own regions: a
-// rename rewrites what [[Generation.rename]] rewrites, only the markers that name the unit's file,
+// rename rewrites what [[Acceptance.rename]] rewrites, only the markers that name the unit's file,
 // and an insertion is refused inside a region of a file outside the unit, so it never touches
 // another unit's markers, which a foreign edit must leave as they were.
 // Decision: the arguments a call gives say what it wants: replaces asks for a rename, and file,
@@ -739,7 +745,7 @@ fn mark(session: Session, id?: string, replaces?: string, file?: string, line?: 
     .add({
       behavior = `The output files of the unit's target are the files, recursively, under [[Target.outputDirectory]] of the [[Unit.target]] of [[Binding.unit]] under [[Binding.directory]], whose [[Path.extension]] is among [[Target.extensions]] of that target`,
     })
-    .add({ behavior = `A marker in an output is read as [[Generation.accept]] reads a [[Marker]]` })
+    .add({ behavior = `A marker in an output is read as [[Acceptance.accept]] reads a [[Marker]]` })
     .add({
       situation = `[[replaces]] is given, and [[id]] is not given or one of [[file]], [[line]], and [[entity]] is`,
       behavior = [`An error saying a rename takes replaces and id and nothing else`, `Nothing is written`],
@@ -759,10 +765,10 @@ fn mark(session: Session, id?: string, replaces?: string, file?: string, line?: 
     })
     .add({
       situation = [`[[replaces]] is given`, `[[id]] is the id of a local criterion or test of the unit`],
-      behavior = `Each output of [[Generation.rename]] of the unit, the output files of the unit's target as they are when the call arrives, and [[replaces]] mapped to [[id]], is [[Files.write]] at its path under [[Binding.directory]], and no other output is written`,
+      behavior = `Each output of [[Acceptance.rename]] of the unit, the output files of the unit's target as they are when the call arrives, and [[replaces]] mapped to [[id]], is [[Files.write]] at its path under [[Binding.directory]], and no other output is written`,
     })
     .add({
-      behavior = `The markers rewritten are those [[Generation.rename]] rewrites`,
+      behavior = `The markers rewritten are those [[Acceptance.rename]] rewrites`,
     })
     .add({
       situation = `Some marker is rewritten`,
@@ -936,7 +942,7 @@ fn submit(session: Session, outcome: string, message: string) is tool, compilerT
   );
 }
 
-// Decision: the source maps the tools below read are [[Generation.sourceMapsOf]] the workspace, as
+// Decision: the source maps the tools below read are [[Maps.sourceMapsOf]] the workspace, as
 // elfie_units reads them, so what a tool answers for an entity or an id is what the last acceptance
 // recorded in elfie-compile/maps. In a session [[host]] serves for a verifier, the source maps its
 // review was made with stand in for the recorded maps of those units, so the verifier reads the
@@ -964,7 +970,7 @@ fn output(session: Session, name: string, target?: string, text: boolean = true)
     })
     .add({
       situation = `[[name]] is not the path of an output file`,
-      behavior = `Every region is read from [[Generation.sourceMapsOf]] the workspace, limited to [[target]] when it is set`,
+      behavior = `Every region is read from [[Maps.sourceMapsOf]] the workspace, limited to [[target]] when it is set`,
     })
     .add({
       behavior = `Each region is a line reading the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], a space, and [[Marker.entity]]`,
@@ -980,7 +986,7 @@ fn output(session: Session, name: string, target?: string, text: boolean = true)
     .add({ situation = `[[text]] is false`, behavior = `No line of an output follows the line of a region` })
     .add({
       situation = `[[name]] is the path of an output file`,
-      behavior = `The regions are every [[Marker]] the file holds as [[Files.read]] reads it when the call arrives, read as [[Generation.accept]] reads them, in output order, with [[Marker.end]] derived as a source map derives it`,
+      behavior = `The regions are every [[Marker]] the file holds as [[Files.read]] reads it when the call arrives, read as [[Acceptance.accept]] reads them, in output order, with [[Marker.end]] derived as a source map derives it`,
     })
     .add({
       situation = `[[name]] is the path of an output file`,
@@ -989,14 +995,14 @@ fn output(session: Session, name: string, target?: string, text: boolean = true)
     .add({
       situation = [
         `[[name]] is not the path of an output file`,
-        `[[Generation.regionsOf]] for [[name]] and [[target]] gives a [[Marker]]`,
+        `[[Maps.regionsOf]] for [[name]] and [[target]] gives a [[Marker]]`,
       ],
-      behavior = `The regions are every [[Marker]] of [[Generation.regionsOf]] for [[name]] and [[target]]`,
+      behavior = `The regions are every [[Marker]] of [[Maps.regionsOf]] for [[name]] and [[target]]`,
     })
     .add({
       situation = [
         `[[name]] is not the path of an output file`,
-        `[[Generation.regionsOf]] for [[name]] and [[target]] gives no [[Marker]]`,
+        `[[Maps.regionsOf]] for [[name]] and [[target]] gives no [[Marker]]`,
         `[[name]] is the id of a criterion or test of the lowered program, local or global`,
       ],
       behavior = `The text of that criterion or test comes first, then the regions are every [[Marker]] whose [[Marker.requirement]] is [[name]], in source map then output order`,
@@ -1062,7 +1068,7 @@ fn search(session: Session, pattern: string, file?: string) is tool: `The lines 
       behavior = `Each matching line given is one line reading its path relative to the root, a colon, its line number, a space, its region between square brackets, a colon, a space, and the line's text`,
     })
     .add({
-      behavior = `The region of a line is the marker on the last line at or before it, in the file as read, that is read as a [[Marker]] as [[Generation.accept]] reads one and names a file of the program, spelled as the marker spells it after @lfy and a space`,
+      behavior = `The region of a line is the marker on the last line at or before it, in the file as read, that is read as a [[Marker]] as [[Acceptance.accept]] reads one and names a file of the program, spelled as the marker spells it after @lfy and a space`,
     })
     .add({
       situation = `No line at or before a matching line is read as a [[Marker]] naming a file of the program`,
@@ -1130,10 +1136,10 @@ fn source(session: Session, file: string, line: number) is tool: `Where one line
 fn changes(session: Session, unit: string, target?: string) is tool: `What differs for each entity of a unit since its outputs were last accepted` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `One line per [[Change]] of [[Generation.changes]] of the unit with that stem, reading [[Change.entity]], [[Change.kind]], and [[Change.detail]]`,
+      behavior = `One line per [[Change]] of [[Changes.changes]] of the unit with that stem, reading [[Change.entity]], [[Change.kind]], and [[Change.detail]]`,
     })
     .add({
-      behavior = `The previous source passed to [[Generation.changes]] is [[Recovery.previousOf]] of the program the plan was made from, the unit, and its [[Unit.outputs]]`,
+      behavior = `The previous source passed to [[Changes.changes]] is [[Recovery.previousOf]] of the program the plan was made from, the unit, and its [[Unit.outputs]]`,
     })
     .add({
       situation = `[[Previous.hashMatched]] of that previous source is true`,
@@ -1142,10 +1148,10 @@ fn changes(session: Session, unit: string, target?: string) is tool: `What diffe
     .add({ situation = `[[Unit.outputs]] of the unit is empty`, behavior = `The text says no previous output` })
     .add({
       situation = [`The unit has outputs`, `[[Recovery.previousOf]] of the unit gives undefined`],
-      behavior = `The text says so first, then lists every entity as added, as [[Generation.changes]] gives them with undefined`,
+      behavior = `The text says so first, then lists every entity as added, as [[Changes.changes]] gives them with undefined`,
     })
     .add({
-      situation = `[[Generation.changes]] of the unit gives no [[Change]]`,
+      situation = `[[Changes.changes]] of the unit gives no [[Change]]`,
       behavior = `The text says no changes`,
     })
     .add({ situation = `No unit has that stem`, behavior = `An error saying so` })
@@ -1165,7 +1171,7 @@ fn review(session: Session, unit: string, target?: string) is tool: `The full re
   @acceptanceCriteria
     .add({
       situation = `[[Session.binding]] is undefined, or its [[Binding.role]] is compiler`,
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.review]] for the unit, with [[Generation.sourceMapsOf]] the workspace and no review records`,
+      behavior = `[[ReviewRequest.instructions]] of [[Reviews.review]] for the unit, with [[Maps.sourceMapsOf]] the workspace and no review records`,
     })
     .add({
       situation = [
@@ -1191,7 +1197,7 @@ fn review(session: Session, unit: string, target?: string) is tool: `The full re
 fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with where the regions that answer for each are` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `[[ReviewRequest.instructions]] of [[Generation.globalReview]] of [[Generation.plan]] of the workspace and [[Generation.sourceMapsOf]] the workspace`,
+      behavior = `[[ReviewRequest.instructions]] of [[Reviews.globalReview]] of [[Generation.plan]] of the workspace and [[Maps.sourceMapsOf]] the workspace`,
     })
     .add({ situation = `No global criterion or test exists`, behavior = `The text says so` });
 }
@@ -1208,7 +1214,7 @@ fn globalReview(session: Session) is tool: `The review request for every global 
 fn report(session: Session, id?: string, file?: string, line?: number, status: string, evidence: string, note: string) is tool: `Submit the verdict on one criterion or test of the review this session is for` => ToolResult {
   @acceptanceCriteria
     .add({
-      behavior = `The criterion or test reported on is the one [[Generation.reviewOf]] reads a review line as being for when the line holds [[id]], [[file]], [[line]], and [[status]], with [[Binding.program]] as its program`,
+      behavior = `The criterion or test reported on is the one [[Findings.reviewOf]] reads a review line as being for when the line holds [[id]], [[file]], [[line]], and [[status]], with [[Binding.program]] as its program`,
     })
     .add({
       situation = `[[status]], compared without regard to case, is none of [[ReviewStatus]]`,

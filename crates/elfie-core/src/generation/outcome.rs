@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:outcomeOf
+// @lfy def/generation/outcome.lfy:outcomeOf
 //! How one run of the compiler ended.
 
 use super::*;
@@ -6,30 +6,19 @@ use super::*;
 /// How one run of the compiler ended, read from its submitted outcome or its report, and the
 /// verdict on its unit.
 ///
-/// `verdict` is the verdict of [`accept`] on the unit's outputs after the run, and `None`
-/// when the compiler never got that far. `submitted` is the last outcome the compiler
-/// submitted through `elfie_submit` during the run, and `None` when it submitted none. A
-/// submitted outcome decides on its own, and no line of the report is read: `blocked` and
-/// `clarify` give blocked and clarification with the submission's message, and `done` gives
-/// rejected with the first problem of a rejected verdict, failed when the unit was not
-/// judged, and accepted otherwise — the note a `done` submission may carry is no part of the
-/// message.
-///
-/// With nothing submitted, the last line of the report beginning with `ELFIE:` decides
-/// first: `ELFIE: BLOCKED:` gives blocked and `ELFIE: CLARIFY:` gives clarification, each
-/// with the rest of that line and every line after it as the message. With no such line and
-/// no verdict the run failed; with a rejected verdict it was rejected, with its first
-/// problem as the message; otherwise it was accepted, with an empty message — a report that
-/// ended and left no verdict is accepted, since the compiler said it was done.
+/// `report` is everything the compiler wrote to standard output. `verdict` is the verdict of
+/// [`accept`] on the unit's outputs after the run, and `None` when the compiler never got that
+/// far. `submitted` is the last outcome the compiler submitted through `elfie_submit` during
+/// the run, and `None` when it submitted none.
 // Decision: a submitted outcome was checked when it arrived, so it wins over the report's
 // `ELFIE:` line; the report is read only when nothing was submitted.
-// @lfy def/generation/main.lfy:outcomeOf
+// @lfy def/generation/outcome.lfy:outcomeOf
 pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Submission>) -> Outcome {
     const BLOCKED: &str = "ELFIE: BLOCKED:";
     const CLARIFY: &str = "ELFIE: CLARIFY:";
 
     // The verdict is handed back whatever the outcome.
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82
     let outcome = |kind: OutcomeKind, message: String, verdict: Option<Verdict>| Outcome {
         kind,
         message,
@@ -42,26 +31,26 @@ pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Sub
             .map(|verdict| verdict.problems.first().cloned().unwrap_or_default())
     };
 
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b
     if let Some(submission) = submitted {
         return match submission.outcome {
-            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:873c80cfcfc9e8dcfbd60313bc0c671888373485ae58b84fd6d2b1203abec749
+            // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:873c80cfcfc9e8dcfbd60313bc0c671888373485ae58b84fd6d2b1203abec749
             SubmittedOutcome::Blocked => {
                 outcome(OutcomeKind::Blocked, submission.message.clone(), verdict)
             }
-            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1
+            // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1
             SubmittedOutcome::Clarify => {
                 outcome(OutcomeKind::Clarification, submission.message.clone(), verdict)
             }
             // A compiler that says it is done is still held to the verdict on its unit, and
             // the note it may have submitted says nothing about the outcome.
-            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093
+            // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093
             SubmittedOutcome::Done => {
-                // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f
+                // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f
                 if let Some(message) = rejection(&verdict) {
                     return outcome(OutcomeKind::Rejected, message, verdict);
                 }
-                // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689
+                // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689
                 if verdict.is_none() {
                     return outcome(
                         OutcomeKind::Failed,
@@ -69,7 +58,7 @@ pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Sub
                         verdict,
                     );
                 }
-                // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574
+                // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574
                 outcome(OutcomeKind::Accepted, String::new(), verdict)
             }
         };
@@ -82,10 +71,10 @@ pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Sub
     if let Some(index) = last {
         let line = lines[index].trim_start();
         let prefix = if line.starts_with(BLOCKED) {
-            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2
+            // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2
             Some((BLOCKED, OutcomeKind::Blocked))
         } else if line.starts_with(CLARIFY) {
-            // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889
+            // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889
             Some((CLARIFY, OutcomeKind::Clarification))
         } else {
             None
@@ -96,10 +85,10 @@ pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Sub
                 message.push('\n');
                 message.push_str(line);
             }
-            return outcome(kind, message.trim_end().to_string(), verdict); // @lfy def/generation/main.lfy:outcomeOf
+            return outcome(kind, message.trim_end().to_string(), verdict); // @lfy def/generation/outcome.lfy:outcomeOf
         }
     }
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937
     if verdict.is_none() && last.is_none() {
         return outcome(
             OutcomeKind::Failed,
@@ -107,10 +96,10 @@ pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Sub
             verdict,
         );
     }
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1
     if let Some(message) = rejection(&verdict) {
         return outcome(OutcomeKind::Rejected, message, verdict);
     }
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c
     outcome(OutcomeKind::Accepted, String::new(), verdict)
 }

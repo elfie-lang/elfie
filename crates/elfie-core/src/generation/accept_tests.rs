@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 //! Tests of `accept`.
 
 use super::*;
@@ -60,8 +60,8 @@ fn judge(
 
 /// An entity moved into a unit is marked with the file that declares it, so a marker
 /// naming that file covers it and the ids such a marker spells are this unit's.
-// @lfy def/generation/main.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
-// @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
+// @lfy def/generation/accept.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
+// @lfy def/generation/accept.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
 #[test]
 fn a_moved_entity_is_marked_with_the_file_that_declares_it() {
     let fixture = a_cycle();
@@ -100,7 +100,7 @@ fn a_moved_entity_is_marked_with_the_file_that_declares_it() {
     );
 
     // The id a marker naming the file of a moved entity spells is checked against this
-    // unit's criteria and tests. @lfy def/generation/main.lfy:accept
+    // unit's criteria and tests. @lfy def/generation/accept.lfy:accept
     let wrong = Output {
         path: "src/b.rs".to_string(),
         text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C#C:C:ffff\npub struct C;\n"
@@ -114,7 +114,7 @@ fn a_moved_entity_is_marked_with_the_file_that_declares_it() {
     // A line beyond the last line of the file declaring a moved entity is a problem of
     // this unit's, just as one beyond the last line of its own file is: both files are
     // this unit's to mark.
-    // @lfy def/generation/main.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
+    // @lfy def/generation/accept.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
     let beyond = Output {
         path: "src/b.rs".to_string(),
         text: "// @lfy def/b.lfy:B\npub struct B;\n\n// @lfy def/a.lfy:C\npub struct C;\n\n// @lfy def/a.lfy:900\npub struct Extra;\n"
@@ -130,7 +130,7 @@ fn a_moved_entity_is_marked_with_the_file_that_declares_it() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:bf3fc96705e05d502db0a2644419b38e19666dba765ae89eac34c69c30655edc
+// @lfy def/generation/accept.lfy:accept#accept:accept:bf3fc96705e05d502db0a2644419b38e19666dba765ae89eac34c69c30655edc
 #[test]
 fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
     let fixture = a_with_two_entities();
@@ -155,26 +155,26 @@ fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
     assert!(verdict.problems.is_empty());
     assert_eq!(verdict.source_maps.len(), 1);
     // A marker that names an entity is left as written.
-    // @lfy def/generation/main.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
+    // @lfy def/generation/accept.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
     assert_eq!(verdict.outputs, std::slice::from_ref(&output));
     // One source map per output, in `outputs` order.
-    // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
+    // @lfy def/generation/accept.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
     let map = &verdict.source_maps[0];
-    // @lfy def/generation/main.lfy:accept#accept:accept:8d2a3aa698445970d859538af521c42b878c576deae6eac97af3a97c5c7fd25f
+    // @lfy def/generation/accept.lfy:accept#accept:accept:8d2a3aa698445970d859538af521c42b878c576deae6eac97af3a97c5c7fd25f
     assert_eq!(map.target, "rust");
-    // @lfy def/generation/main.lfy:accept#accept:accept:ea45d8dd2770ae8698006fbdd6aa54ebb0af32fabeb5d9edf8a1a432812d7d7c
+    // @lfy def/generation/accept.lfy:accept#accept:accept:ea45d8dd2770ae8698006fbdd6aa54ebb0af32fabeb5d9edf8a1a432812d7d7c
     assert_eq!(map.output, "src/a.rs");
-    // @lfy def/generation/main.lfy:accept#accept:accept:b27edcf9cd5b896cb993b81cba1f8faa47d79995f135c37e63d5e9ab648eed77
+    // @lfy def/generation/accept.lfy:accept#accept:accept:b27edcf9cd5b896cb993b81cba1f8faa47d79995f135c37e63d5e9ab648eed77
     assert_eq!(map.source, "def/a.lfy");
     // Every hash of the source map is derived here, never taken from the compiler's text.
-    // @lfy def/generation/main.lfy:accept#accept:accept:1f423d0a0d06e5fc1e0ddf109f2e402b9a84537a80a91e6e4e459fb24ac288dc
-    // @lfy def/generation/main.lfy:accept#accept:accept:90bf10cc4db0c256646cd0f1ba8c45bda247489103c46e1ce26289709829903a
+    // @lfy def/generation/accept.lfy:accept#accept:accept:1f423d0a0d06e5fc1e0ddf109f2e402b9a84537a80a91e6e4e459fb24ac288dc
+    // @lfy def/generation/accept.lfy:accept#accept:accept:90bf10cc4db0c256646cd0f1ba8c45bda247489103c46e1ce26289709829903a
     assert_eq!(map.hash, source_hash(&request.source));
     assert_eq!(map.hash, source_hash(&plan.units[index].text));
-    // @lfy def/generation/main.lfy:accept#accept:accept:0bcfc0b4637d084c09be1b3c407696d0b16f9c7f082c7f0d91de9ea2950d2902
+    // @lfy def/generation/accept.lfy:accept#accept:accept:0bcfc0b4637d084c09be1b3c407696d0b16f9c7f082c7f0d91de9ea2950d2902
     assert_eq!(map.answered, answered_ids(&program, &plan.units[index]));
     assert!(map.answered.windows(2).all(|pair| pair[0] <= pair[1]));
-    // @lfy def/generation/main.lfy:accept#accept:accept:4a6c75702e77d3fab75aa1d127f35eaad993c997ed4cd0dd14f01162c019bc21
+    // @lfy def/generation/accept.lfy:accept#accept:accept:4a6c75702e77d3fab75aa1d127f35eaad993c997ed4cd0dd14f01162c019bc21
     assert_eq!(
         map.signature,
         source_hash(&interface_of(&workspace, &plan.units[index]))
@@ -182,7 +182,7 @@ fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
     // The text hash is of the unit's own region text of the output as `Verdict.outputs`
     // holds it: both regions are this unit's, and of each line only the code is kept, so
     // the marker comments and the blank line between them are no part of it.
-    // @lfy def/generation/main.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
+    // @lfy def/generation/accept.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
     assert_eq!(
         map.text,
         source_hash(&own_region_text(
@@ -195,10 +195,10 @@ fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
         ))
     );
     assert_eq!(map.text, source_hash("pub struct A;\npub struct B;\n"));
-    // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
+    // @lfy def/generation/accept.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
     assert!(map.dependencies.is_empty());
     assert!(plan.units[index].dependencies.is_empty());
-    // @lfy def/generation/main.lfy:accept#accept:accept:95161566ef61156ea6f857f212fb510a3edf6221a4238a87b45595f60b6466bb
+    // @lfy def/generation/accept.lfy:accept#accept:accept:95161566ef61156ea6f857f212fb510a3edf6221a4238a87b45595f60b6466bb
     assert!(parse_rfc3339(&map.generated).is_some(), "{}", map.generated);
     // The lines are derived from the model, never copied from the compiler.
     assert_eq!(
@@ -209,13 +209,13 @@ fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
         [(Some("A".to_string()), 4), (Some("B".to_string()), 8)]
     );
     // A marker followed by another ends on the line before it.
-    // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
+    // @lfy def/generation/accept.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
     assert_eq!((map.markers[0].output_line, map.markers[0].end), (1, 3));
     // The last marker of an output ends on its last line.
-    // @lfy def/generation/main.lfy:accept
+    // @lfy def/generation/accept.lfy:accept
     assert_eq!((map.markers[1].output_line, map.markers[1].end), (4, 5));
     // So the regions partition the output from its first marker on.
-    // @lfy def/generation/main.lfy:accept
+    // @lfy def/generation/accept.lfy:accept
     assert_eq!(
         map.markers
             .iter()
@@ -238,7 +238,7 @@ fn outputs_with_a_marker_per_entity_are_accepted_with_one_source_map() {
 /// A unit compiled in a copy of the root is reviewed in that copy: the regions the
 /// verifier is shown are read from the directory given, and from the workspace root when
 /// none is.
-// @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
+// @lfy def/generation/review.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
 #[test]
 fn the_regions_of_a_review_are_read_from_the_directory_given() {
     let fixture = Fixture::with_rust_target();
@@ -279,8 +279,8 @@ fn the_regions_of_a_review_are_read_from_the_directory_given() {
 /// regions that unit's recorded map names are all still in it; dropping one of them is a
 /// problem naming the path, that unit's source, and the region. The unit's own recorded
 /// map for the same path is what acceptance replaces.
-// @lfy def/generation/main.lfy:accept#accept:accept:1aaaacdd8811d51407ed234af63ea8d8998b836c844531b97748fdce1bbb526d
-// @lfy def/generation/main.lfy:accept#accept:accept:153c7d11fef9fc4164bcdb50d754e6d780760ab490f4f9de86fc5aeb6eaa7b70
+// @lfy def/generation/accept.lfy:accept#accept:accept:1aaaacdd8811d51407ed234af63ea8d8998b836c844531b97748fdce1bbb526d
+// @lfy def/generation/accept.lfy:accept#accept:accept:153c7d11fef9fc4164bcdb50d754e6d780760ab490f4f9de86fc5aeb6eaa7b70
 #[test]
 fn a_shared_output_keeps_the_regions_another_units_map_records() {
     let fixture = Fixture::with_rust_target();
@@ -309,7 +309,7 @@ fn a_shared_output_keeps_the_regions_another_units_map_records() {
         ..map_for("src/a.rs", "def/c.lfy")
     };
     // The region `def/c.lfy` records is still there, so sharing adds no problem.
-    // @lfy def/generation/main.lfy:accept#accept:accept:153c7d11fef9fc4164bcdb50d754e6d780760ab490f4f9de86fc5aeb6eaa7b70
+    // @lfy def/generation/accept.lfy:accept#accept:accept:153c7d11fef9fc4164bcdb50d754e6d780760ab490f4f9de86fc5aeb6eaa7b70
     let shared = named_output(&format!("{mine}{theirs}"));
     let verdict = judge(
         &program,
@@ -322,7 +322,7 @@ fn a_shared_output_keeps_the_regions_another_units_map_records() {
     );
     assert!(verdict.accepted, "{:?}", verdict.problems);
     // Dropped, it is one problem naming the path, the other source, and the region.
-    // @lfy def/generation/main.lfy:accept#accept:accept:1aaaacdd8811d51407ed234af63ea8d8998b836c844531b97748fdce1bbb526d
+    // @lfy def/generation/accept.lfy:accept#accept:accept:1aaaacdd8811d51407ed234af63ea8d8998b836c844531b97748fdce1bbb526d
     let dropped = named_output(mine);
     let verdict = judge(
         &program,
@@ -339,7 +339,7 @@ fn a_shared_output_keeps_the_regions_another_units_map_records() {
         assert!(verdict.problems[0].contains(named), "{:?}", verdict.problems);
     }
     // The unit's own recorded map for the same output is what acceptance replaces.
-    // @lfy def/generation/main.lfy:accept
+    // @lfy def/generation/accept.lfy:accept
     let own = map_for("src/a.rs", "def/a.lfy");
     let verdict = judge(
         &program,
@@ -353,7 +353,7 @@ fn a_shared_output_keeps_the_regions_another_units_map_records() {
     assert!(verdict.accepted, "{:?}", verdict.problems);
     // A region of this unit's own file is in the co-owner's map only because a map holds
     // every marker of its output; it is this unit's to drop, so dropping B is no problem
-    // of sharing. @lfy def/generation/main.lfy:accept
+    // of sharing. @lfy def/generation/accept.lfy:accept
     let theirs_only = SourceMap {
         markers: vec![
             Marker {
@@ -418,7 +418,7 @@ fn b_beside_a(fixture: &Fixture) -> (Program, Plan, Request, usize) {
 
 /// Splitting a shared module moves a co-owner's region into a submodule file of the unit,
 /// where it is counted all the same, so both outputs earn a source map.
-// @lfy def/generation/main.lfy:accept#accept:accept:05909df1f8c1452cdc1c9e6508262ca59120570a3614ebbd27d6ae3278b9c2ec
+// @lfy def/generation/accept.lfy:accept#accept:accept:05909df1f8c1452cdc1c9e6508262ca59120570a3614ebbd27d6ae3278b9c2ec
 #[test]
 fn a_co_owners_region_is_counted_across_the_outputs_written() {
     let fixture = Fixture::with_rust_target();
@@ -449,7 +449,7 @@ fn a_co_owners_region_is_counted_across_the_outputs_written() {
         &[],
     );
     assert!(verdict.accepted, "{:?}", verdict.problems);
-    // @lfy def/generation/main.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
+    // @lfy def/generation/accept.lfy:accept#accept:accept:30a65355d64f16689cede881188462ef9f94082f48857623e59af57399ad7503
     assert_eq!(
         outputs_of(&verdict.source_maps),
         ["src/mod.rs", "src/mod/part.rs"]
@@ -459,8 +459,8 @@ fn a_co_owners_region_is_counted_across_the_outputs_written() {
 /// A file of `elsewhere` is read for its markers alone: it holds the co-owner's region, so
 /// nothing is lost, and it earns no source map of its own. With no marker in it the region
 /// is gone, and the problem names the path, the other source, the region, and both counts.
-// @lfy def/generation/main.lfy:accept#accept:accept:7c77beecc164ae7e0f8d968139a01c753b4d3648c66d978d247d6a690e28f258
-// @lfy def/generation/main.lfy:accept#accept:accept:2eee9403f46d1c92a418f4d939651104b89eeb53a5a71c4da1e87f8c715cd20d
+// @lfy def/generation/accept.lfy:accept#accept:accept:7c77beecc164ae7e0f8d968139a01c753b4d3648c66d978d247d6a690e28f258
+// @lfy def/generation/accept.lfy:accept#accept:accept:2eee9403f46d1c92a418f4d939651104b89eeb53a5a71c4da1e87f8c715cd20d
 #[test]
 fn a_file_of_elsewhere_is_read_for_its_markers_and_earns_no_source_map() {
     let fixture = Fixture::with_rust_target();
@@ -476,7 +476,7 @@ fn a_file_of_elsewhere_is_read_for_its_markers_and_earns_no_source_map() {
         path: "src/mod.rs".to_string(),
         text: "// @lfy def/b.lfy:B\npub struct B;\n".to_string(),
     };
-    // @lfy def/generation/main.lfy:accept#accept:accept:f294daed3a09adf31c632ee350bb60d1852500e5b36371b68343a7732c173749
+    // @lfy def/generation/accept.lfy:accept#accept:accept:f294daed3a09adf31c632ee350bb60d1852500e5b36371b68343a7732c173749
     let moved = Output {
         path: "src/a.rs".to_string(),
         text: "// @lfy def/a.lfy:A\npub struct A;\n".to_string(),
@@ -519,7 +519,7 @@ fn a_file_of_elsewhere_is_read_for_its_markers_and_earns_no_source_map() {
 
 /// A region the co-owner's maps record twice must be among the target's files twice, so a
 /// file holding it once is one short, and both counts are named.
-// @lfy def/generation/main.lfy:accept#accept:accept:35949cfaec8ac36bc0170a4efa086e3d59a7edf0d2decb9fea715e362f27caff
+// @lfy def/generation/accept.lfy:accept#accept:accept:35949cfaec8ac36bc0170a4efa086e3d59a7edf0d2decb9fea715e362f27caff
 #[test]
 fn a_region_two_of_a_co_owners_maps_record_is_counted_in_both() {
     let fixture = Fixture::with_rust_target();
@@ -561,7 +561,7 @@ fn a_region_two_of_a_co_owners_maps_record_is_counted_in_both() {
     }
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:91d657f922af0ef5d5882e33ee27a54ecf9790eda5172e42756a7d428f5e448b
+// @lfy def/generation/accept.lfy:accept#accept:accept:91d657f922af0ef5d5882e33ee27a54ecf9790eda5172e42756a7d428f5e448b
 #[test]
 fn an_entity_without_a_marker_is_rejected_by_name() {
     let fixture = a_with_two_entities();
@@ -570,7 +570,7 @@ fn an_entity_without_a_marker_is_rejected_by_name() {
     // A marker on the documentation line of A counts for A; nothing names B.
     let output = named_output("// @lfy def/a.lfy:3\npub struct A;\n");
     let verdict = judge(&program, &plan, &request, index, &[output], &[], &[]);
-    // @lfy def/generation/main.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
+    // @lfy def/generation/accept.lfy:accept#accept:accept:2a90cbf7112a647235b9f1c81167c5d44301cbc8369b5d4cc2973be6102fea26
     assert!(!verdict.accepted);
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
     assert!(
@@ -582,7 +582,7 @@ fn an_entity_without_a_marker_is_rejected_by_name() {
     assert!(verdict.outputs.is_empty());
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:c1e527e5cd13bf2055a97e19e738e0a208cdfe33b97931485ac79c0d1c9ecdde
+// @lfy def/generation/accept.lfy:accept#accept:accept:c1e527e5cd13bf2055a97e19e738e0a208cdfe33b97931485ac79c0d1c9ecdde
 #[test]
 fn a_marker_naming_a_line_inside_a_declaration_is_rewritten_to_name_it() {
     let fixture = Fixture::with_rust_target();
@@ -596,7 +596,7 @@ fn a_marker_naming_a_line_inside_a_declaration_is_rewritten_to_name_it() {
     let output = named_output("// @lfy def/a.lfy:3\npub struct A;\n");
     let verdict = judge(&program, &plan, &request, index, &[output], &[], &[]);
     assert!(verdict.accepted, "{:?}", verdict.problems);
-    // @lfy def/generation/main.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
+    // @lfy def/generation/accept.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
     assert_eq!(
         verdict.outputs[0].text,
         "// @lfy def/a.lfy:A\npub struct A;\n"
@@ -609,7 +609,7 @@ fn a_marker_naming_a_line_inside_a_declaration_is_rewritten_to_name_it() {
     // The text hash is of the unit's own region text of the output, of which a marker
     // comment is no part, so normalizing a marker from a line to a name leaves it as it
     // was and sends nothing back to review.
-    // @lfy def/generation/main.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
+    // @lfy def/generation/accept.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
     assert_eq!(
         verdict.source_maps[0].text,
         source_hash("pub struct A;\n")
@@ -632,7 +632,7 @@ fn a_marker_naming_a_line_inside_a_declaration_is_rewritten_to_name_it() {
 /// B's last line records B's first. A marker on a line no declaration covers names no
 /// entity to derive a line from, so it is recorded as written: it names a file of the
 /// program, and the map holds every marker that does.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 #[test]
 fn the_lines_of_a_source_map_are_derived_and_never_the_compilers() {
     let fixture = a_with_two_entities();
@@ -650,7 +650,7 @@ fn the_lines_of_a_source_map_are_derived_and_never_the_compilers() {
     // Each marker of the output names a file of the program, so the map holds all three:
     // the two that resolved, with the line of the declaration they named, and the one
     // that resolved to no declaration, with the line it spells and no entity.
-    // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
+    // @lfy def/generation/accept.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
     assert_eq!(
         verdict.source_maps[0]
             .markers
@@ -671,7 +671,7 @@ fn the_lines_of_a_source_map_are_derived_and_never_the_compilers() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:4a48dc9bd184c822a38d627cf303e55c050d877bac33bf8d5f8794db459af17d
+// @lfy def/generation/accept.lfy:accept#accept:accept:4a48dc9bd184c822a38d627cf303e55c050d877bac33bf8d5f8794db459af17d
 #[test]
 fn no_outputs_are_rejected() {
     let fixture = a_with_two_entities();
@@ -686,7 +686,7 @@ fn no_outputs_are_rejected() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:324f6bd2c925ffa32b5feee5d17d3195c149deb99f00247918a0ee6d58d1b870
+// @lfy def/generation/accept.lfy:accept#accept:accept:324f6bd2c925ffa32b5feee5d17d3195c149deb99f00247918a0ee6d58d1b870
 #[test]
 fn an_output_outside_the_output_directory_is_rejected_by_path() {
     let fixture = a_with_two_entities();
@@ -704,7 +704,7 @@ fn an_output_outside_the_output_directory_is_rejected_by_path() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:e25297fa468e4f2b18f120993ee14b756d7715661e928e3e161f9aba05aad304
+// @lfy def/generation/accept.lfy:accept#accept:accept:e25297fa468e4f2b18f120993ee14b756d7715661e928e3e161f9aba05aad304
 #[test]
 fn an_output_whose_extension_the_target_does_not_allow_is_rejected_by_path() {
     let fixture = a_with_two_entities();
@@ -728,7 +728,7 @@ fn an_output_whose_extension_the_target_does_not_allow_is_rejected_by_path() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3
+// @lfy def/generation/accept.lfy:accept#accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3
 #[test]
 fn a_marker_naming_an_entity_the_file_does_not_declare_is_rejected_by_output_line_and_name() {
     let fixture = a_with_two_entities();
@@ -751,7 +751,7 @@ fn a_marker_naming_an_entity_the_file_does_not_declare_is_rejected_by_output_lin
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
+// @lfy def/generation/accept.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
 #[test]
 fn a_marker_naming_a_line_past_the_last_is_rejected_by_output_line() {
     let fixture = a_with_two_entities();
@@ -776,7 +776,7 @@ fn a_marker_naming_a_line_past_the_last_is_rejected_by_output_line() {
 
 /// A marker naming a file the program does not hold is a fixture or prose, not a claim
 /// about the program, so it is ignored and not recorded.
-// @lfy def/generation/main.lfy:accept#accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481
+// @lfy def/generation/accept.lfy:accept#accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481
 #[test]
 fn a_marker_naming_a_file_that_is_not_in_the_program_is_ignored() {
     let fixture = a_with_two_entities();
@@ -804,7 +804,7 @@ fn a_marker_naming_a_file_that_is_not_in_the_program_is_ignored() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95
+// @lfy def/generation/accept.lfy:accept#accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95
 #[test]
 fn an_output_may_hold_markers_for_other_files_of_the_program() {
     let fixture = a_and_b();
@@ -825,7 +825,7 @@ fn an_output_may_hold_markers_for_other_files_of_the_program() {
     assert_eq!(markers[1].file, "def/b.lfy");
     assert_eq!(markers[1].entity.as_deref(), Some("B"));
     assert_eq!(markers[1].line, 1);
-    // @lfy def/generation/main.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
+    // @lfy def/generation/accept.lfy:accept#accept:accept:d9879de703d6314164058495241caf82738d58c8f39595b07a19ace78cdbd758
     assert_eq!(verdict.source_maps[0].dependencies.len(), 1);
     let (_, b) = unit_of(&workspace, &plan, "def/b.lfy");
     assert_eq!(
@@ -837,7 +837,7 @@ fn an_output_may_hold_markers_for_other_files_of_the_program() {
     // local criterion: the id belongs to that file's unit, so this unit does not check it.
     // An output shared by two units holds the other unit's markers and ids, and checking
     // them here would make the shared output unacceptable to one of them.
-    // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
+    // @lfy def/generation/accept.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
     let make = *b.entities.last().expect("make is an entity of b");
     let (criteria, _) = requirement_ids(&program.files[b.lowered], make);
     let output = named_output(&format!(
@@ -849,7 +849,7 @@ fn an_output_may_hold_markers_for_other_files_of_the_program() {
     // An id no file of the program knows is not checked either, when the marker names
     // another file: only a marker of this unit's own file makes a claim this unit answers
     // for.
-    // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
+    // @lfy def/generation/accept.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
     let output = named_output(
         "// @lfy def/a.lfy:A\npub struct A;\n\n// @lfy def/b.lfy:make#make:make:nowhere\nfn make() {}\n",
     );
@@ -860,7 +860,7 @@ fn an_output_may_hold_markers_for_other_files_of_the_program() {
 /// A marker of the unit's own file may answer for a local criterion of the unit or for a
 /// global one, and for nothing else; the source map records the hash of the unit's
 /// requirement ids.
-// @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
+// @lfy def/generation/accept.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
 #[test]
 fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_id() {
     let fixture = Fixture::with_rust_target();
@@ -878,14 +878,14 @@ fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_
 
     // An id of a local criterion and one of a global criterion are both known, so the
     // outputs are accepted and earn their source maps.
-    // @lfy def/generation/main.lfy:accept
+    // @lfy def/generation/accept.lfy:accept
     let output = named_output(&format!(
         "// @lfy def/a.lfy:A#{}\npub struct A;\n// @lfy def/a.lfy:A#{global}\nfn holds() {{}}\n",
         local[0]
     ));
     let verdict = judge(&program, &plan, &request, index, &[output], &[], &[]);
     assert!(verdict.accepted, "{:?}", verdict.problems);
-    // @lfy def/generation/main.lfy:accept#accept:accept:666051c035bda35cafa77995ca9f05915cb5d6f3d9dc74b172f9187d403c1a15
+    // @lfy def/generation/accept.lfy:accept#accept:accept:666051c035bda35cafa77995ca9f05915cb5d6f3d9dc74b172f9187d403c1a15
     assert_eq!(
         verdict.source_maps[0].requirements,
         requirements_hash(&program, unit)
@@ -897,7 +897,7 @@ fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_
 
     // An id of neither, on a marker of the unit's own file, is rejected by output line
     // and id.
-    // @lfy def/generation/main.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
+    // @lfy def/generation/accept.lfy:accept#accept:accept:74f035d081f6ce720abe1fc4c5fcf290ac28f50f8c6b57ea614ec91de0e3e075
     let output = named_output("// @lfy def/a.lfy:A#A:A:nowhere\npub struct A;\n");
     let verdict = judge(&program, &plan, &request, index, &[output], &[], &[]);
     assert!(!verdict.accepted);
@@ -917,7 +917,7 @@ fn a_marker_answering_for_an_unknown_requirement_is_rejected_by_output_line_and_
 /// Acceptance is structural: an output whose text no compiler of the target would accept
 /// is accepted all the same, because the guidance says how to build it and the caller
 /// runs it.
-// @lfy def/generation/main.lfy:accept#accept:accept:9bde11d25fcf12e8c1a113f8be1c479d68185569c8170c39b3348772bf613541
+// @lfy def/generation/accept.lfy:accept#accept:accept:9bde11d25fcf12e8c1a113f8be1c479d68185569c8170c39b3348772bf613541
 #[test]
 fn whether_an_output_builds_is_not_checked_here() {
     let fixture = a_with_two_entities();
@@ -930,7 +930,7 @@ fn whether_an_output_builds_is_not_checked_here() {
     assert!(verdict.accepted, "{:?}", verdict.problems);
     assert_eq!(verdict.source_maps.len(), 1);
     // What the files held before the run is not known, so no changed line is judged.
-    // @lfy def/generation/main.lfy:accept#accept:accept:b2a0c24659e730b5b7223cdf8ed1537a82470cbd637d779824236f5a354d9481
+    // @lfy def/generation/accept.lfy:accept#accept:accept:b2a0c24659e730b5b7223cdf8ed1537a82470cbd637d779824236f5a354d9481
     assert!(verdict.foreign_edits.is_empty(), "{:?}", verdict.foreign_edits);
 }
 
@@ -1039,7 +1039,7 @@ fn judge_b(later: &LaterUnit, after: &str, touches: &[(&str, &str)]) -> Verdict 
     )
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:760bfb191b329495f0caa71ea575a602ccde9a0f7ed463829b0ed5018edfa6a0
+// @lfy def/generation/accept.lfy:accept#accept:accept:760bfb191b329495f0caa71ea575a602ccde9a0f7ed463829b0ed5018edfa6a0
 #[test]
 fn a_stub_in_a_later_units_region_is_one_foreign_edit() {
     let later = b_then_a(true);
@@ -1053,7 +1053,7 @@ fn a_stub_in_a_later_units_region_is_one_foreign_edit() {
     );
     let verdict = judge_b(&later, &stubbed, &[]);
     assert!(verdict.accepted, "{:?}", verdict.problems);
-    // @lfy def/generation/main.lfy:accept#accept:accept:673c8ca4213750333bbe2a3efcbf3c8c4f0effe89de65f4fdb92b2bb2ca0add3
+    // @lfy def/generation/accept.lfy:accept#accept:accept:673c8ca4213750333bbe2a3efcbf3c8c4f0effe89de65f4fdb92b2bb2ca0add3
     assert_eq!(verdict.foreign_edits.len(), 1, "{:?}", verdict.foreign_edits);
     let edit = &verdict.foreign_edits[0];
     assert_eq!(edit.by, "b");
@@ -1073,16 +1073,16 @@ fn a_stub_in_a_later_units_region_is_one_foreign_edit() {
     );
     // Every line it adds is a stub line naming b, and the note is its reason; a stub
     // needs no note and has no cap.
-    // @lfy def/generation/main.lfy:accept#accept:accept:8a1e611687ca02dd6ca89d5c5933e46879b0cbd6ee2ef85fc9e53c8848559b6d
-    // @lfy def/generation/main.lfy:accept#accept:accept:4638ec2f3c3da87201f9123091fb0e8e54d466a9b5173afcc85f622fc1b79852
+    // @lfy def/generation/accept.lfy:accept#accept:accept:8a1e611687ca02dd6ca89d5c5933e46879b0cbd6ee2ef85fc9e53c8848559b6d
+    // @lfy def/generation/accept.lfy:accept#accept:accept:4638ec2f3c3da87201f9123091fb0e8e54d466a9b5173afcc85f622fc1b79852
     assert_eq!(edit.kind, ForeignEditKind::Stub);
     assert_eq!(edit.note, "B.x is now a number");
     // The file of elsewhere earns no source map.
-    // @lfy def/generation/main.lfy:accept#accept:accept:f294daed3a09adf31c632ee350bb60d1852500e5b36371b68343a7732c173749
+    // @lfy def/generation/accept.lfy:accept#accept:accept:f294daed3a09adf31c632ee350bb60d1852500e5b36371b68343a7732c173749
     assert_eq!(outputs_of(&verdict.source_maps), ["src/b.rs"]);
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:9f7b35903fce707f9662ffeb1877bcb75e04e4858414503d7674a8745ce0cd7c
+// @lfy def/generation/accept.lfy:accept#accept:accept:9f7b35903fce707f9662ffeb1877bcb75e04e4858414503d7674a8745ce0cd7c
 #[test]
 fn a_small_fix_with_a_note_is_one_foreign_edit() {
     let later = b_then_a(false);
@@ -1094,14 +1094,14 @@ fn a_small_fix_with_a_note_is_one_foreign_edit() {
     assert!(verdict.accepted, "{:?}", verdict.problems);
     assert_eq!(verdict.foreign_edits.len(), 1, "{:?}", verdict.foreign_edits);
     let edit = &verdict.foreign_edits[0];
-    // @lfy def/generation/main.lfy:accept#accept:accept:8e628203f0c8221c728cebe1ce188a0dd58163d7974231ca4498cd36c2a91296
+    // @lfy def/generation/accept.lfy:accept#accept:accept:8e628203f0c8221c728cebe1ce188a0dd58163d7974231ca4498cd36c2a91296
     assert_eq!(edit.kind, ForeignEditKind::Fix);
     assert_eq!(edit.note, "B.x is now a number, so f converts it");
     assert_eq!((edit.by.as_str(), edit.owner.as_str()), ("b", "a"));
     assert_eq!(edit.changed_lines(), 3);
 
     // A fix that changes the marker beginning the region is refused, however small.
-    // @lfy def/generation/main.lfy:accept#accept:accept:9003974dcb53621de6101c21aa4bf533f452ad27b09cbc1480aacfe7cccae1ea
+    // @lfy def/generation/accept.lfy:accept#accept:accept:9003974dcb53621de6101c21aa4bf533f452ad27b09cbc1480aacfe7cccae1ea
     let remarked = a_with_lines_rewritten(1).replace(
         "// @lfy def/a.lfy:f\n",
         "// @lfy def/a.lfy:f#f:f:0000\n",
@@ -1118,13 +1118,13 @@ fn a_small_fix_with_a_note_is_one_foreign_edit() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:4d1752d5ed071305cbf850d742138877d670f62f8b76a6ca4c7ed46bcff7487f
+// @lfy def/generation/accept.lfy:accept#accept:accept:4d1752d5ed071305cbf850d742138877d670f62f8b76a6ca4c7ed46bcff7487f
 #[test]
 fn a_fix_with_no_note_is_rejected() {
     let later = b_then_a(false);
     let verdict = judge_b(&later, &a_with_lines_rewritten(3), &[]);
     assert!(!verdict.accepted);
-    // @lfy def/generation/main.lfy:accept#accept:accept:41e970a839c8e929087ba7d9bce5cfeef8a74241a4acf8c4553e13080b8b99a2
+    // @lfy def/generation/accept.lfy:accept#accept:accept:41e970a839c8e929087ba7d9bce5cfeef8a74241a4acf8c4553e13080b8b99a2
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
     assert!(verdict.problems[0].contains(" a "), "{:?}", verdict.problems);
     assert!(
@@ -1138,20 +1138,20 @@ fn a_fix_with_no_note_is_rejected() {
     assert!(!verdict.accepted);
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:a51c35c152bb9d7fb1a7cc4532b92c66ccc81c58ef3a9ebfaa360d07e3bdb59b
+// @lfy def/generation/accept.lfy:accept#accept:accept:a51c35c152bb9d7fb1a7cc4532b92c66ccc81c58ef3a9ebfaa360d07e3bdb59b
 #[test]
 fn a_fix_over_the_cap_of_one_region_is_rejected() {
     let later = b_then_a(false);
     let verdict = judge_b(&later, &a_with_lines_rewritten(12), &[("a", "a note")]);
     assert!(!verdict.accepted);
-    // @lfy def/generation/main.lfy:accept#accept:accept:74b5b83a0e812b11c206618586026619959622840bbeca19fa01551901d0dbee
+    // @lfy def/generation/accept.lfy:accept#accept:accept:74b5b83a0e812b11c206618586026619959622840bbeca19fa01551901d0dbee
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
     for named in ["src/a.rs", "def/a.lfy:f", "12 lines", "cap of 10", "a bigger edit is a stub"] {
         assert!(verdict.problems[0].contains(named), "{named}: {:?}", verdict.problems);
     }
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:912b53b5130dde6fac2bf9728a2f8b434fd8beaf27ecf603cd0947f959aea6ed
+// @lfy def/generation/accept.lfy:accept#accept:accept:912b53b5130dde6fac2bf9728a2f8b434fd8beaf27ecf603cd0947f959aea6ed
 #[test]
 fn an_edit_in_the_code_of_a_unit_that_does_not_depend_on_the_run_is_rejected() {
     let fixture = Fixture::with_rust_target();
@@ -1187,7 +1187,7 @@ fn an_edit_in_the_code_of_a_unit_that_does_not_depend_on_the_run_is_rejected() {
         &touches,
     );
     assert!(!verdict.accepted);
-    // @lfy def/generation/main.lfy:accept#accept:accept:081354ab25d7caa23751b7750efc59d1d5c9ca9fc6b2197450de047cfee648f8
+    // @lfy def/generation/accept.lfy:accept#accept:accept:081354ab25d7caa23751b7750efc59d1d5c9ca9fc6b2197450de047cfee648f8
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
     for named in [
         "src/c.rs:3",
@@ -1199,7 +1199,7 @@ fn an_edit_in_the_code_of_a_unit_that_does_not_depend_on_the_run_is_rejected() {
     assert!(verdict.foreign_edits.is_empty());
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:d9e2181c8f34c29629fcc36b59d0a59088c54f8a0d1bbf0ecea9f8ede9a163ab
+// @lfy def/generation/accept.lfy:accept#accept:accept:d9e2181c8f34c29629fcc36b59d0a59088c54f8a0d1bbf0ecea9f8ede9a163ab
 #[test]
 fn a_changed_line_in_no_units_code_is_rejected() {
     let later = b_then_a(false);
@@ -1216,7 +1216,7 @@ fn a_changed_line_in_no_units_code_is_rejected() {
         &BTreeMap::new(),
     );
     assert!(!verdict.accepted);
-    // @lfy def/generation/main.lfy:accept#accept:accept:ce15bdbc6104d9c96f45ecd76aa1c3deb9e2e47c5bb449710162aefd10e3aff2
+    // @lfy def/generation/accept.lfy:accept#accept:accept:ce15bdbc6104d9c96f45ecd76aa1c3deb9e2e47c5bb449710162aefd10e3aff2
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
     assert!(
         verdict.problems[0].contains("src/notes.rs:2") && verdict.problems[0].contains("no unit's code"),
@@ -1225,7 +1225,7 @@ fn a_changed_line_in_no_units_code_is_rejected() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:3b23d3899645498521c0590204bbfb195589ccfef754c377f1b8fa75a24921d9
+// @lfy def/generation/accept.lfy:accept#accept:accept:3b23d3899645498521c0590204bbfb195589ccfef754c377f1b8fa75a24921d9
 #[test]
 fn a_stub_left_in_the_units_own_code_is_rejected() {
     let later = b_then_a(true);
@@ -1238,8 +1238,8 @@ fn a_stub_left_in_the_units_own_code_is_rejected() {
     let verdict = judge(&later.program, &later.plan, &request, later.a, &[output], &[], &[]);
     assert!(!verdict.accepted);
     // A stub line naming any unit, its white space aside, is one.
-    // @lfy def/generation/main.lfy:accept#accept:accept:851d0e32fd8478618d009c3df456da99f2bb0f1983e8e867a9c3e184ece945c9
-    // @lfy def/generation/main.lfy:accept#accept:accept:5e0b06a7232782f41a1259999162148cc42567b3738ee363433be4f33d64c65f
+    // @lfy def/generation/accept.lfy:accept#accept:accept:851d0e32fd8478618d009c3df456da99f2bb0f1983e8e867a9c3e184ece945c9
+    // @lfy def/generation/accept.lfy:accept#accept:accept:5e0b06a7232782f41a1259999162148cc42567b3738ee363433be4f33d64c65f
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
     assert!(
         verdict.problems[0].starts_with("src/a.rs:5:")
@@ -1250,7 +1250,7 @@ fn a_stub_left_in_the_units_own_code_is_rejected() {
     assert!(is_any_stub_line("  todo!(\"elfie stub: x/y: why\")  ", STUB_LINE));
     assert!(!is_any_stub_line("todo!(\"something else\")", STUB_LINE));
     // Without a stub line, no line is one.
-    // @lfy def/generation/main.lfy:accept#accept:accept:ec9bf2b28c1f3b0e6144d76c6bcf7912791a9eb3f8d41f1c5f2ef658d041f34a
+    // @lfy def/generation/accept.lfy:accept#accept:accept:ec9bf2b28c1f3b0e6144d76c6bcf7912791a9eb3f8d41f1c5f2ef658d041f34a
     let plain = b_then_a(false);
     assert_eq!(
         stub_line_of(&plain.program.workspace.model, &plain.program.workspace.targets[0]),
@@ -1258,7 +1258,7 @@ fn a_stub_left_in_the_units_own_code_is_rejected() {
     );
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:a21ceb983c04daf8b46b41ecd490263beae458042f5abd4c18b233317651b5f1
+// @lfy def/generation/accept.lfy:accept#accept:accept:a21ceb983c04daf8b46b41ecd490263beae458042f5abd4c18b233317651b5f1
 #[test]
 fn a_touched_unit_accepted_as_the_fix_left_it_makes_the_fix_its_own() {
     let later = b_then_a(false);
@@ -1279,7 +1279,7 @@ fn a_touched_unit_accepted_as_the_fix_left_it_makes_the_fix_its_own() {
     assert!(verdict.foreign_edits.is_empty(), "{:?}", verdict.foreign_edits);
     assert_eq!(outputs_of(&verdict.source_maps), ["src/a.rs"]);
     // The text hash is of a's own regions with the fix in them.
-    // @lfy def/generation/main.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
+    // @lfy def/generation/accept.lfy:accept#accept:accept:a31f0ba80f83a7d71e25224d7fa0612b14b3e59805cfb780c1293591243c7b01
     let code: String = fixed
         .lines()
         .filter(|line| !line.starts_with("// @lfy"))
@@ -1290,7 +1290,7 @@ fn a_touched_unit_accepted_as_the_fix_left_it_makes_the_fix_its_own() {
 
 /// The line diff keeps a longest common subsequence: a rewritten line is one removed and
 /// one added, at the lines each has in its own text.
-// @lfy def/generation/main.lfy:accept#accept:accept:0a1470345711d81632a94e78c934b73d81c67b8564e43fcffb6a91c40b535f73
+// @lfy def/generation/accept.lfy:accept#accept:accept:0a1470345711d81632a94e78c934b73d81c67b8564e43fcffb6a91c40b535f73
 #[test]
 fn the_changed_lines_are_those_a_line_diff_removes_and_adds() {
     assert_eq!(line_diff(&["a", "b", "c"], &["a", "x", "c"]), (vec![2], vec![2]));

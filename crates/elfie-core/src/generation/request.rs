@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 //! Everything the compiler is handed to produce the outputs of one unit.
 
 use super::*;
@@ -52,7 +52,7 @@ use super::*;
 // gets the interfaces by name only, and reads each definition another way.
 // Decision: the request is handed the foreign edits rather than reading them, because only
 // the compile loop keeps the change set they are recorded in.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 #[allow(clippy::too_many_arguments)]
 pub fn request(
     program: &Program,
@@ -72,11 +72,11 @@ pub fn request(
     let path = &workspace.files[unit.file].path;
     let hash_matched = previous.is_some_and(|previous| previous.hash_matched);
 
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let requirements: Vec<Requirement> = unit.requirements(program);
     let held = |id: &str| requirements.iter().any(|requirement| requirement.id() == id);
     // The relocations of the unit's target into or out of the unit's file, in their order.
-    // @lfy def/generation/main.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
+    // @lfy def/generation/request.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
     let relocated: Vec<Relocation> = relocations
         .iter()
         .filter(|relocation| relocation.target == target.identifier)
@@ -89,12 +89,12 @@ pub fn request(
     let kept = |id: &str| held(id) || relocated_out.iter().any(|out| out == id);
     // The unit's file as it was when its outputs were accepted, as the program of `previous`
     // holds it, lowered once already.
-    // @lfy def/generation/main.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
+    // @lfy def/generation/request.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
     let was: Option<(String, Vec<RemovedRequirement>)> =
         previous.and_then(|previous| file_as_it_was(previous, path));
     // The lowered text the unit's outputs were generated from, which the instructions read
     // against the lowered text of the unit now.
-    // @lfy def/generation/main.lfy:request#request:request:f716d0d680ccdf61f0d7552cc5067d5a325199077fe3d5d7280c889ed2df6c4b
+    // @lfy def/generation/request.lfy:request#request:request:f716d0d680ccdf61f0d7552cc5067d5a325199077fe3d5d7280c889ed2df6c4b
     let previous_lowered: Option<String> = was.as_ref().map(|(lowered, _)| lowered.clone());
     // The ids the existing outputs were generated against: what the map file of the unit
     // recorded, or, where it recorded none, the ids of the file as it was.
@@ -104,9 +104,9 @@ pub fn request(
         .find(|map| !map.answered.is_empty())
         .map(|map| map.answered.clone());
     let answered: Option<Vec<String>> = match recorded {
-        // @lfy def/generation/main.lfy:request#request:request:54d1c80b3d1e38ff7f2e58e0cce13959161756838579cc4936f7e34c3efcffab
+        // @lfy def/generation/request.lfy:request#request:request:54d1c80b3d1e38ff7f2e58e0cce13959161756838579cc4936f7e34c3efcffab
         Some(ids) => Some(ids),
-        // @lfy def/generation/main.lfy:request#request:request:c0f16d7718690de14a23abb41bfc4969ec02c0d005d99bc9c10b079f30ed8856
+        // @lfy def/generation/request.lfy:request#request:request:c0f16d7718690de14a23abb41bfc4969ec02c0d005d99bc9c10b079f30ed8856
         None => was.as_ref().map(|(_, before)| {
             before
                 .iter()
@@ -123,10 +123,10 @@ pub fn request(
             // A hash-matched source is some other revision of the file that lowers to the
             // same code; where its criteria stood says nothing about what the outputs were
             // accepted against, so none of them is read as a rewording.
-            // @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
+            // @lfy def/generation/request.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
             Vec::new()
         } else {
-            // @lfy def/generation/main.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
+            // @lfy def/generation/request.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
             reworded(program, unit, previous)
         }
     });
@@ -140,7 +140,7 @@ pub fn request(
             // A hash-matched source holds another revision's criteria and tests, so what the
             // outputs answered for is only what their maps recorded: the ids alone, in id
             // order, with neither the place nor the text that revision does not hold.
-            // @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
+            // @lfy def/generation/request.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
             let mut gone: Vec<RemovedRequirement> = answered
                 .as_deref()
                 .unwrap_or_default()
@@ -156,7 +156,7 @@ pub fn request(
             return gone;
         }
         // In the order the file as it was gives them.
-        // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+        // @lfy def/generation/request.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
         let rewords = rewordings.as_deref().unwrap_or_default();
         was.as_ref()
             .map(|(_, before)| {
@@ -179,8 +179,8 @@ pub fn request(
     // its markers is then the whole of the work, which the caller may do without the
     // compiler; anywhere any of that does not hold, it is not.
     // @lfy def/generation/data.lfy:Request.rewordedOnly
-    // @lfy def/generation/main.lfy:request#request:request:618fbef70b317544c9a741f5feeab781cc4c29251a1c0cf07a08fcd52b4021bf
-    // @lfy def/generation/main.lfy:request#request:request:dcfedcbc95ad64785427d7952c0d6e5a4a7223f1d42d34620e4d3fb6a1330099
+    // @lfy def/generation/request.lfy:request#request:request:618fbef70b317544c9a741f5feeab781cc4c29251a1c0cf07a08fcd52b4021bf
+    // @lfy def/generation/request.lfy:request#request:request:dcfedcbc95ad64785427d7952c0d6e5a4a7223f1d42d34620e4d3fb6a1330099
     let reworded_only = {
         let rewords = rewordings.as_deref().unwrap_or_default();
         let known = answered.as_deref().unwrap_or_default();
@@ -208,7 +208,7 @@ pub fn request(
                     .all(|map| map.dependencies.get(of_path) == Some(&signature))
             })
     };
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let globals: Vec<Requirement> = program
         .criteria
         .iter()
@@ -216,14 +216,14 @@ pub fn request(
         .map(Requirement::Criterion)
         .chain(program.tests.iter().cloned().map(Requirement::Test))
         .collect();
-    // @lfy def/generation/main.lfy:request#request:request:403680d3f5bf2a057752d5d237cbfb6d63463cc8feff3f3e51a12a290e249b3e
+    // @lfy def/generation/request.lfy:request#request:request:403680d3f5bf2a057752d5d237cbfb6d63463cc8feff3f3e51a12a290e249b3e
     let existing: BTreeMap<String, String> = existing
         .iter()
         .filter(|output| unit.outputs.iter().any(|map| map.output == output.path))
         .map(|output| (output.path.clone(), output.text.clone()))
         .collect();
     // The edits the unit owns, in the order they were made.
-    // @lfy def/generation/main.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
+    // @lfy def/generation/request.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
     let foreign_edits: Vec<ForeignEdit> = foreign_edits
         .iter()
         .filter(|edit| owns(unit, target, edit))
@@ -231,13 +231,13 @@ pub fn request(
         .collect();
     // Every later unit of the target that has outputs, read from the plan's units and their
     // outputs alone, so what is planned changes nothing of it.
-    // @lfy def/generation/main.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    // @lfy def/generation/request.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
     let reach = Reach::of(workspace, plan, index);
     // One interface per dependency, each holding every entity of that dependency: what a
     // hosted compiler is given by name is the same interface a request read anywhere else
     // quotes whole, so the request carries no less for being hosted.
-    // @lfy def/generation/main.lfy:request
-    // @lfy def/generation/main.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
+    // @lfy def/generation/request.lfy:request
+    // @lfy def/generation/request.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
     let mut interfaces: Vec<Interface> = Vec::new();
     for &dependency in &unit.dependencies {
         if interfaces
@@ -257,12 +257,12 @@ pub fn request(
         });
     }
     let guidance = guidance_for(model, target);
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let native_dependencies: Vec<NativeDependency> = target.native_dependencies.clone();
     let commands: Vec<Command> = target.commands.clone();
     // The target's knowledge, then that of each entity of the unit, then that of each entity
     // of an interface, each item once.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let mut knowledge: Vec<Knowledge> = Vec::new();
     let hold = |items: &[Knowledge], knowledge: &mut Vec<Knowledge>| {
         for item in items {
@@ -307,7 +307,7 @@ pub fn request(
     );
 
     Request {
-        // @lfy def/generation/main.lfy:request#request:request:959d0fbacdba0aea498605d429f4ef8f02ed09ff514957b1eb5c5d9cd0244bf9
+        // @lfy def/generation/request.lfy:request#request:request:959d0fbacdba0aea498605d429f4ef8f02ed09ff514957b1eb5c5d9cd0244bf9
         unit: index,
         instructions,
         source: unit.text.clone(),
@@ -333,8 +333,8 @@ pub fn request(
 /// The ids of the local criteria and tests of every entity relocated out of the unit whose
 /// file is `path`, and of its members: those the entity holds in the file it was relocated
 /// into, as the program declares it now.
-// @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
-// @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
+// @lfy def/generation/request.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+// @lfy def/generation/request.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
 fn relocated_out_ids(program: &Program, relocated: &[Relocation], path: &str) -> Vec<String> {
     let model = &program.workspace.model;
     let mut out: Vec<String> = Vec::new();
@@ -369,7 +369,7 @@ fn relocated_out_ids(program: &Program, relocated: &[Relocation], path: &str) ->
 /// What the instructions quote, gathered before they are written.
 // Decision: the definition writes the instructions from the request it is building; the
 // parts are grouped here rather than passed one by one.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 struct Quoted<'r> {
     source: &'r str,
     globals: &'r [Requirement],
@@ -401,12 +401,12 @@ struct Quoted<'r> {
 // trait's own criteria keep a template value of its parameters as written — the parameters
 // are unbound where the trait is declared — and the application that bound them is what the
 // declaration holds.
-// @lfy def/generation/main.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
+// @lfy def/generation/request.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
 pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
     let held = model::criteria_of(model, target.declaration);
     // A trait reached through two layers is inherited by the declaration once per path, so
     // what one contributor gave is taken once.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let once = |criteria: Vec<Criterion>| -> Vec<Criterion> {
         let mut out: Vec<Criterion> = Vec::new();
         for criterion in criteria {
@@ -420,11 +420,11 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
     // what comes first is what none of them gave. Nearest first: a trait is reached a whole
     // level after the trait that extends it, and a trait reached twice keeps its first
     // place.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let mut layered: Vec<EntityId> = Vec::new();
     for &layer in &target.layers {
         if layered.contains(&layer) {
-            continue; // @lfy def/generation/main.lfy:request
+            continue; // @lfy def/generation/request.lfy:request
         }
         layered.push(layer);
     }
@@ -436,14 +436,14 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
             if !matches!(applied.source, AppliedSource::Extends(_))
                 || layered.contains(&applied.entity)
             {
-                continue; // @lfy def/generation/main.lfy:request
+                continue; // @lfy def/generation/request.lfy:request
             }
             layered.push(applied.entity);
         }
     }
     // Whoever else gave the declaration a criterion comes first: the declaration's own body,
     // or the file that adds one with an add call on the const's acceptanceCriteria.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let mut out: Vec<Criterion> = once(
         held.iter()
             .filter(|criterion| !layered.contains(&criterion.contributor))
@@ -467,7 +467,7 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
                 .collect(),
         )
     };
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     for &entity in &layered {
         out.extend(by(entity));
     }
@@ -475,15 +475,15 @@ pub fn guidance_for(model: &Model, target: &Target) -> Vec<Criterion> {
 }
 
 /// The heading of the unit's section, which the parts before it name it by.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 const UNIT_SECTION: &str = "The unit to compile";
 
 /// The prompt: what to produce, where, the rules for producing it, and how to report the
 /// outcome, in the order the definition lists: first every part that reads the same for
 /// every unit of the target, then the interfaces, the unit's knowledge, the unit's section,
 /// the foreign edits, the existing outputs, and the reach.
-// @lfy def/generation/main.lfy:request#request:request:0efe0565880b5d7bbc83ee22c7e44e71d1599754ad1d82c9ea4fc7fd4bda4282
-// @lfy def/generation/main.lfy:request#request:request:eb00a710ef7f9ae5f807e0eee8c047af03c75306a424a1d098caac52a1699eb1
+// @lfy def/generation/request.lfy:request#request:request:0efe0565880b5d7bbc83ee22c7e44e71d1599754ad1d82c9ea4fc7fd4bda4282
+// @lfy def/generation/request.lfy:request#request:request:eb00a710ef7f9ae5f807e0eee8c047af03c75306a424a1d098caac52a1699eb1
 fn instructions(
     program: &Program,
     plan: &Plan,
@@ -499,7 +499,7 @@ fn instructions(
     write_role(&mut out, target);
     write_guidance(&mut out, target, quoted.guidance, quoted.native_dependencies);
     // The target's knowledge, which every unit of the target is given.
-    // @lfy def/generation/main.lfy:request#request:request:52ca7fc29e1e450ee23c263741df61d61b239c73a255a810b7d879c5cf38f7ac
+    // @lfy def/generation/request.lfy:request#request:request:52ca7fc29e1e450ee23c263741df61d61b239c73a255a810b7d879c5cf38f7ac
     let (of_target, of_unit): (Vec<Knowledge>, Vec<Knowledge>) = quoted
         .knowledge
         .iter()
@@ -516,7 +516,7 @@ fn instructions(
     // What is the unit's own.
     write_interfaces(&mut out, workspace, plan, hosted, quoted.interfaces);
     // Every other item of the knowledge, in its order.
-    // @lfy def/generation/main.lfy:request#request:request:c98e56391cddb2a9c1906590ced0e660422b844fd0eaf115ecabe5c0d384a131
+    // @lfy def/generation/request.lfy:request#request:request:c98e56391cddb2a9c1906590ced0e660422b844fd0eaf115ecabe5c0d384a131
     write_knowledge(&mut out, workspace, "Knowledge of the unit", &of_unit);
     write_unit(&mut out, program, plan, index, quoted);
     write_foreign_edits(&mut out, target, quoted.foreign_edits);
@@ -526,8 +526,8 @@ fn instructions(
 }
 
 /// The reader and its job, and where the outputs go.
-// @lfy def/generation/main.lfy:request#request:request:fff6f01c8ce622f973502bc046ee6f471011a0368d5ba7c0c0c0a4f4c94a8e0c
-// @lfy def/generation/main.lfy:request#request:request:ebef3352a48540ef0a12abd094f973ab2762f62746edd431a7b3d4d95f8c3780
+// @lfy def/generation/request.lfy:request#request:request:fff6f01c8ce622f973502bc046ee6f471011a0368d5ba7c0c0c0a4f4c94a8e0c
+// @lfy def/generation/request.lfy:request#request:request:ebef3352a48540ef0a12abd094f973ab2762f62746edd431a7b3d4d95f8c3780
 fn write_role(out: &mut String, target: &Target) {
     let _ = writeln!(out, "# Compiling one unit for the target `{}`\n", target.identifier);
     let _ = writeln!(
@@ -547,7 +547,7 @@ fn write_role(out: &mut String, target: &Target) {
 }
 
 /// The guidance and the native dependencies.
-// @lfy def/generation/main.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
+// @lfy def/generation/request.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
 fn write_guidance(
     out: &mut String,
     target: &Target,
@@ -596,7 +596,7 @@ fn write_guidance(
 }
 
 /// Every global criterion and test, each once with its id.
-// @lfy def/generation/main.lfy:request#request:request:947030aa711f453c710b970e654a978a41f4db5a2776707bc669e1c0efd5bea8
+// @lfy def/generation/request.lfy:request#request:request:947030aa711f453c710b970e654a978a41f4db5a2776707bc669e1c0efd5bea8
 fn write_globals(out: &mut String, globals: &[Requirement]) {
     out.push_str("## Global criteria and tests\n\n");
     out.push_str(
@@ -614,17 +614,17 @@ fn write_globals(out: &mut String, globals: &[Requirement]) {
 
 /// The rules: criteria and tests are never restated, the standard library, the kinds, the
 /// markers, and the tests.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_rules(out: &mut String, target: &Target) {
     // Criteria and tests are never restated in an output.
-    // @lfy def/generation/main.lfy:request#request:request:88bad81c76d679b95e82ea566e65627b4a1615584da2fe8b645fd322f0b26fb3
+    // @lfy def/generation/request.lfy:request#request:request:88bad81c76d679b95e82ea566e65627b4a1615584da2fe8b645fd322f0b26fb3
     out.push_str("## Criteria and tests in an output\n\n");
     out.push_str(
         "Never restate a criterion or a test in an output, as a comment or as documentation. An \
          output names one only by its id, in the marker of the region that answers for it.\n\n",
     );
 
-    // The standard library. @lfy def/generation/main.lfy:request
+    // The standard library. @lfy def/generation/request.lfy:request
     out.push_str("## The standard library\n\n");
     out.push_str(
         "The data and fns of the standard library that carry `builtin` are bound to what the guidance \
@@ -632,7 +632,7 @@ fn write_rules(out: &mut String, target: &Target) {
          library written out in full is translated where it is used.\n\n",
     );
 
-    // The rules for kinds. @lfy def/generation/main.lfy:request
+    // The rules for kinds. @lfy def/generation/request.lfy:request
     out.push_str("## Rules for kinds\n\n");
     out.push_str(
         "- A DataDeclaration becomes a type.\n\
@@ -649,8 +649,8 @@ fn write_rules(out: &mut String, target: &Target) {
     // Markers. The marker comment is spelled out, since the line comment a marker is written
     // in must begin with it and nothing else in the request says how this language begins
     // one.
-    // @lfy def/generation/main.lfy:request#request:request:671617e25d98e36f8c646b0c76d941034839245f2544e239cb4ede3581bb2f33
-    // @lfy def/generation/main.lfy:request#request:request:44f9eb2a9dcf558687d93ade60ce6a62697e5ff6c388a512e83449be94e9a7fd
+    // @lfy def/generation/request.lfy:request#request:request:671617e25d98e36f8c646b0c76d941034839245f2544e239cb4ede3581bb2f33
+    // @lfy def/generation/request.lfy:request#request:request:44f9eb2a9dcf558687d93ade60ce6a62697e5ff6c388a512e83449be94e9a7fd
     out.push_str("## Markers\n\n");
     let _ = write!(
         out,
@@ -667,7 +667,7 @@ fn write_rules(out: &mut String, target: &Target) {
     );
 
     // Tests.
-    // @lfy def/generation/main.lfy:request#request:request:6151dc423cf3f97336663532752b0e5607981574be689ec41445917c49163e8d
+    // @lfy def/generation/request.lfy:request#request:request:6151dc423cf3f97336663532752b0e5607981574be689ec41445917c49163e8d
     out.push_str("## Tests\n\n");
     out.push_str(
         "Each test becomes one test, and each criterion that can be checked mechanically becomes one \
@@ -678,7 +678,7 @@ fn write_rules(out: &mut String, target: &Target) {
 
 /// What a run may do to the code of a later unit: a stub, where the target has a stub line,
 /// or a fix within the cap, and nothing to its markers.
-// @lfy def/generation/main.lfy:request#request:request:23c0b1c1769d21fd81691a3e8adf218de21358861507f7e3ab4b0a8523d6ceaf
+// @lfy def/generation/request.lfy:request#request:request:23c0b1c1769d21fd81691a3e8adf218de21358861507f7e3ab4b0a8523d6ceaf
 fn write_stubs(out: &mut String, workspace: &Workspace, target: &Target, reach: &Reach) {
     out.push_str("## Stubs and fixes in later units\n\n");
     out.push_str(
@@ -686,9 +686,9 @@ fn write_stubs(out: &mut String, workspace: &Workspace, target: &Target, reach: 
          target's build or a test from passing, and only inside the regions of a unit the part \
          \"The reach of this run\" lists.\n\n",
     );
-    // @lfy def/generation/main.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
+    // @lfy def/generation/request.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
     match stub_line_of(&workspace.model, target) {
-        // @lfy def/generation/main.lfy:request#request:request:56cbf2c86de7cfc98b613cf1133778da57a587d2a252e62391857d01fa0dcc1e
+        // @lfy def/generation/request.lfy:request#request:request:56cbf2c86de7cfc98b613cf1133778da57a587d2a252e62391857d01fa0dcc1e
         Some(stub_line) => {
             out.push_str(
                 "A stub replaces the body of an item inside a later unit's region with the stub \
@@ -701,12 +701,12 @@ fn write_stubs(out: &mut String, workspace: &Workspace, target: &Target, reach: 
                  names, and {{{{reason}}}} as one line saying why the body was replaced.\n"
             );
         }
-        // @lfy def/generation/main.lfy:request#request:request:fa7877d32be5d508227d6d6bf22128a10d3041153bcb8b6aee2e60a4efad0c5b
+        // @lfy def/generation/request.lfy:request#request:request:fa7877d32be5d508227d6d6bf22128a10d3041153bcb8b6aee2e60a4efad0c5b
         None => out.push_str(
             "The target has no stub line, so a later unit's code is edited only by a fix.\n\n",
         ),
     }
-    // @lfy def/generation/main.lfy:request#request:request:5a3b2f10f5d312fabcd0e80c04eda116a66569db896d16d3c1df765c201a5b12
+    // @lfy def/generation/request.lfy:request#request:request:5a3b2f10f5d312fabcd0e80c04eda116a66569db896d16d3c1df765c201a5b12
     let _ = writeln!(
         out,
         "A fix is any other edit inside a later unit's region. It changes at most {} lines in one \
@@ -714,16 +714,16 @@ fn write_stubs(out: &mut String, workspace: &Workspace, target: &Target, reach: 
          larger of the lines a line diff removes and the lines it adds.",
         reach.fix_lines, reach.fix_unit_lines
     );
-    // @lfy def/generation/main.lfy:request#request:request:71a074ec9746e65337f38a647fd2376bc862cd1a25601b0650f2ffa6c566d5ec
+    // @lfy def/generation/request.lfy:request#request:request:71a074ec9746e65337f38a647fd2376bc862cd1a25601b0650f2ffa6c566d5ec
     out.push_str("An edit bigger than a fix may be is written as a stub.\n\n");
-    // @lfy def/generation/main.lfy:request#request:request:00813b09739a9f5b779cac994285df76689c777d1752c796d019f6732b636c93
+    // @lfy def/generation/request.lfy:request#request:request:00813b09739a9f5b779cac994285df76689c777d1752c796d019f6732b636c93
     out.push_str("The markers of a later unit's region are never changed, added, or removed.\n\n");
-    // @lfy def/generation/main.lfy:request#request:request:62d883a30a28badaea4f03b2960f52fb3aa9c70f5050d0dbf476d7a7f1acbd15
+    // @lfy def/generation/request.lfy:request#request:request:62d883a30a28badaea4f03b2960f52fb3aa9c70f5050d0dbf476d7a7f1acbd15
     out.push_str(
         "Every unit a fix is made in needs a note given through `elfie_touch` with that unit's stem \
          and why it was edited, or the run is rejected.\n\n",
     );
-    // @lfy def/generation/main.lfy:request#request:request:e2b687435e285ea5c19b4f0a0d795cc0e9ab80185ea8f399f3b9e959041cdcda
+    // @lfy def/generation/request.lfy:request#request:request:e2b687435e285ea5c19b4f0a0d795cc0e9ab80185ea8f399f3b9e959041cdcda
     let _ = writeln!(
         out,
         "A stub line left in the regions of the unit the section \"{UNIT_SECTION}\" names rejects \
@@ -732,7 +732,7 @@ fn write_stubs(out: &mut String, workspace: &Workspace, target: &Target, reach: 
 }
 
 /// The tools of the agent server.
-// @lfy def/generation/main.lfy:request#request:request:43974a3eb5968199e4c0d2b5b84afd218c864eb58c47c072bbcc471866a03921
+// @lfy def/generation/request.lfy:request#request:request:43974a3eb5968199e4c0d2b5b84afd218c864eb58c47c072bbcc471866a03921
 fn write_tools(out: &mut String, hosted: bool) {
     out.push_str("## The agent server\n\n");
     out.push_str(
@@ -750,7 +750,7 @@ fn write_tools(out: &mut String, hosted: bool) {
          - `elfie_check` for whether acceptance would pass.\n\n",
     );
     if hosted {
-        // @lfy def/generation/main.lfy:request#request:request:ee02a52de55ba8387ed07c92e9dcbdf5b9c85589d8fdaada91f00910e1406e76
+        // @lfy def/generation/request.lfy:request#request:request:ee02a52de55ba8387ed07c92e9dcbdf5b9c85589d8fdaada91f00910e1406e76
         out.push_str(
             "This session offers these too:\n\n\
              - `elfie_task` gives the unit's obligations again: its outputs and its reason, and every \
@@ -765,11 +765,11 @@ fn write_tools(out: &mut String, hosted: bool) {
 }
 
 /// How to end the report.
-// @lfy def/generation/main.lfy:request#request:request:e4ff528873311ac2c054d3eb98c7015eca5064897eae15ff47429cfdd53b7860
+// @lfy def/generation/request.lfy:request#request:request:e4ff528873311ac2c054d3eb98c7015eca5064897eae15ff47429cfdd53b7860
 fn write_report(out: &mut String, hosted: bool) {
     out.push_str("## How to report\n\n");
     if hosted {
-        // @lfy def/generation/main.lfy:request#request:request:4a237f69a0cf92b366172dde838e3583135a0dc294c8ef43f2392d08c1c1e1bd
+        // @lfy def/generation/request.lfy:request#request:request:4a237f69a0cf92b366172dde838e3583135a0dc294c8ef43f2392d08c1c1e1bd
         out.push_str(
             "Submit the outcome through `elfie_submit` before your final message: `done` when every \
              output is written, `blocked` with the reason as its message, or `clarify` with the \
@@ -788,7 +788,7 @@ fn write_report(out: &mut String, hosted: bool) {
 }
 
 /// Each interface: quoted whole, or named for a hosted compiler to pull.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_interfaces(
     out: &mut String,
     workspace: &Workspace,
@@ -801,7 +801,7 @@ fn write_interfaces(
     if interfaces.is_empty() {
         out.push_str("The unit depends on no other unit.\n\n");
     } else {
-        // @lfy def/generation/main.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
+        // @lfy def/generation/request.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
         out.push_str(
             "The unit depends on the units below. Use their entities by the names their outputs \
              spell, and never edit their outputs.\n\n",
@@ -809,7 +809,7 @@ fn write_interfaces(
         if hosted {
             // A hosted compiler pulls the interface of the one entity it needs, so the
             // request names the entities and spells none of them out.
-            // @lfy def/generation/main.lfy:request#request:request:91c07c652cfc9edd8b82e5c1bebc5ef3998ae8e528cbd1623161418170399772
+            // @lfy def/generation/request.lfy:request#request:request:91c07c652cfc9edd8b82e5c1bebc5ef3998ae8e528cbd1623161418170399772
             out.push_str(
                 "Read the interface of one of those entities — its kind, its definition, its type, its \
                  parameters, and its output — with `elfie_dependency`.\n\n",
@@ -819,7 +819,7 @@ fn write_interfaces(
     for interface in interfaces {
         let dependency = &plan.units[interface.unit];
         if hosted {
-            // @lfy def/generation/main.lfy:request#request:request:c5448d7c2bb4f497fbdd859f9d7405cd0bdf319c54990d943d33d646b6da87d4
+            // @lfy def/generation/request.lfy:request#request:request:c5448d7c2bb4f497fbdd859f9d7405cd0bdf319c54990d943d33d646b6da87d4
             let paths: Vec<String> = interface
                 .outputs
                 .iter()
@@ -847,7 +847,7 @@ fn write_interfaces(
             );
             continue;
         }
-        // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
+        // @lfy def/generation/request.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
         let _ = writeln!(out, "### `{}`\n", workspace.files[dependency.file].path);
         out.push_str("Outputs:\n");
         if interface.outputs.is_empty() {
@@ -875,7 +875,7 @@ fn write_interfaces(
 
 /// The unit's section: its heading, where its outputs go, what it is asked now, and what
 /// was removed since its outputs were accepted.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, quoted: &Quoted<'_>) {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -885,17 +885,17 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
     let answered = quoted.answered;
     let rewordings = quoted.reworded;
 
-    // @lfy def/generation/main.lfy:request#request:request:61e677b44b6f0c053f64e20b7685d271519f83515df009d807762ca548cbfbeb
+    // @lfy def/generation/request.lfy:request#request:request:61e677b44b6f0c053f64e20b7685d271519f83515df009d807762ca548cbfbeb
     let _ = write!(out, "## {UNIT_SECTION}: `{}` (`{}`)", unit.stem, file.path);
     if let Some(reason) = unit.reason {
         let _ = write!(out, ", planned because it is {reason}");
     }
     out.push_str("\n\n");
     if unit.outputs.is_empty() {
-        // @lfy def/generation/main.lfy:request#request:request:f2a22f45bc9513dedff93a88f20ba324a34cd2dbadc5b117686df4eb14f73a47
+        // @lfy def/generation/request.lfy:request#request:request:f2a22f45bc9513dedff93a88f20ba324a34cd2dbadc5b117686df4eb14f73a47
         out.push_str("Nothing has been generated for it yet.\n\n");
     } else {
-        // @lfy def/generation/main.lfy:request#request:request:09f94a5ded65108d10253c1fb3262ce6174fd78e63b564b55a231c913cd36a02
+        // @lfy def/generation/request.lfy:request#request:request:09f94a5ded65108d10253c1fb3262ce6174fd78e63b564b55a231c913cd36a02
         let paths: Vec<String> = unit
             .outputs
             .iter()
@@ -910,7 +910,7 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
     }
     // A unit whose lowered code is unchanged has criteria or tests that are not: the code is
     // held to what each of them now says, which may be behavior it never had.
-    // @lfy def/generation/main.lfy:request#request:request:e9d469e6b5e3e7503987163405e59232553f60e223ea220e7bd04734d2dcfd4c
+    // @lfy def/generation/request.lfy:request#request:request:e9d469e6b5e3e7503987163405e59232553f60e223ea220e7bd04734d2dcfd4c
     if unit.reason == Some(Reason::Requirements) {
         out.push_str(
             "The lowered code of this unit is unchanged, but its criteria or tests differ. The \
@@ -921,7 +921,7 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
     // A criterion or test the existing outputs did not answer for may be a removed one put in
     // other words, and the code is held to the new wording either way. One that rewords a
     // criterion in place is marked reworded rather than new, so it is no part of this.
-    // @lfy def/generation/main.lfy:request#request:request:1804b6b498c5043da3a7cf8c5a175a457bf933f4f3f4586491df94745de5e1d9
+    // @lfy def/generation/request.lfy:request#request:request:1804b6b498c5043da3a7cf8c5a175a457bf933f4f3f4586491df94745de5e1d9
     if answered.is_some_and(|ids| {
         unit.requirements(program).iter().any(|requirement| {
             !ids.iter().any(|id| id == requirement.id())
@@ -937,7 +937,7 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
     }
     // A criterion whose text changed keeps its place and takes a new id, so the markers of its
     // old id have already been moved and only what it now asks is left to read.
-    // @lfy def/generation/main.lfy:request#request:request:3acaed2ffa70c62f8ca37a64447e578819b1c7a7e2d0b480cd8f741b827c3a7e
+    // @lfy def/generation/request.lfy:request#request:request:3acaed2ffa70c62f8ca37a64447e578819b1c7a7e2d0b480cd8f741b827c3a7e
     if !rewordings.is_empty() {
         out.push_str(
             "A marker naming the id a reworded criterion or test replaces is rewritten to name \
@@ -959,7 +959,7 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
     write_relocations(out, &file.path, quoted.relocated);
     // Each entity's lowered code, and then, apart from the code, its local criteria and
     // tests, each on its own line with its id.
-    // @lfy def/generation/main.lfy:request#request:request:53047b9ea4a7fce9d7173c9b614c2c73247779aa5d5245a9720c351789d608c1
+    // @lfy def/generation/request.lfy:request#request:request:53047b9ea4a7fce9d7173c9b614c2c73247779aa5d5245a9720c351789d608c1
     for &entity in &unit.entities {
         write_entity(
             out,
@@ -972,7 +972,7 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
         );
     }
     // The criteria and tests of the file's own entity belong to no declaration of it.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let own: Vec<Requirement> = lowered
         .criteria
         .iter()
@@ -986,13 +986,13 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
     }
     // What the outputs answered for and the unit no longer has, last in its section: an id
     // and a text are all that is left of a criterion or a test a unit has dropped.
-    // @lfy def/generation/main.lfy:request#request:request:345bea3ab85ad7f91097e0f2d2bb6cb5c995e660d46c32999ad0e500adabfaf6
+    // @lfy def/generation/request.lfy:request#request:request:345bea3ab85ad7f91097e0f2d2bb6cb5c995e660d46c32999ad0e500adabfaf6
     if let Some(gone) = quoted.removed.filter(|gone| !gone.is_empty()) {
         out.push_str("### Removed since its outputs were accepted\n\n");
         for requirement in gone {
             // The text of a criterion the outputs answered for is not known where the source
             // they were accepted from is not: only its id was recorded.
-            // @lfy def/generation/main.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
+            // @lfy def/generation/request.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
             let said = if requirement.text.is_empty() {
                 "what it said is not known"
             } else {
@@ -1007,18 +1007,18 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
 /// The edits other units' runs made inside the unit's regions, in the order they were made:
 /// who made each, of which kind, where, in which region, and why, with the region's lines
 /// before and after. Left out when there are none.
-// @lfy def/generation/main.lfy:request#request:request:5c766480f2aeaf0ebb1ddf1b6a70d47e9bf4cd4b053467207c3a9d2d1eb8b527
+// @lfy def/generation/request.lfy:request#request:request:5c766480f2aeaf0ebb1ddf1b6a70d47e9bf4cd4b053467207c3a9d2d1eb8b527
 fn write_foreign_edits(out: &mut String, target: &Target, foreign_edits: &[ForeignEdit]) {
     if foreign_edits.is_empty() {
         return;
     }
     out.push_str("## Foreign edits\n\n");
-    // @lfy def/generation/main.lfy:request#request:request:09e9aef14ec2e21a2597b994510795ad4658cd65c4665c53db6b26e6b2d31698
+    // @lfy def/generation/request.lfy:request#request:request:09e9aef14ec2e21a2597b994510795ad4658cd65c4665c53db6b26e6b2d31698
     out.push_str(
         "These edits were written inside this unit's regions by the runs of the units they name. \
          Keep their code only where it does what this unit's criteria and tests ask.\n\n",
     );
-    // @lfy def/generation/main.lfy:request#request:request:29f2379bc0d7e987f6c443d1ffe113cf29d2293392d94b62ebfe545af3055eb0
+    // @lfy def/generation/request.lfy:request#request:request:29f2379bc0d7e987f6c443d1ffe113cf29d2293392d94b62ebfe545af3055eb0
     if foreign_edits
         .iter()
         .any(|edit| edit.kind == ForeignEditKind::Stub)
@@ -1028,7 +1028,7 @@ fn write_foreign_edits(out: &mut String, target: &Target, foreign_edits: &[Forei
              criteria and tests ask.\n\n",
         );
     }
-    // @lfy def/generation/main.lfy:request#request:request:d64715f05a3c70edd92983d1c91cc1002a00462c6f57ec320e5acb9580bc3cdb
+    // @lfy def/generation/request.lfy:request#request:request:d64715f05a3c70edd92983d1c91cc1002a00462c6f57ec320e5acb9580bc3cdb
     for (number, edit) in foreign_edits.iter().enumerate() {
         let _ = writeln!(
             out,
@@ -1059,18 +1059,18 @@ fn write_foreign_edits(out: &mut String, target: &Target, foreign_edits: &[Forei
 /// change, that names and structure are otherwise kept, the previous lowered source or that
 /// it is not known, and that which criteria are new is not known where no ids were recorded.
 /// Left out when nothing exists yet.
-// @lfy def/generation/main.lfy:request#request:request:f2c797c5d0ef378166c8076e5ab2728b7f37655f9e7217e2c879e60c4694babf
+// @lfy def/generation/request.lfy:request#request:request:f2c797c5d0ef378166c8076e5ab2728b7f37655f9e7217e2c879e60c4694babf
 fn write_existing(out: &mut String, quoted: &Quoted<'_>) {
     if quoted.existing.is_empty() {
         return;
     }
     out.push_str("## Existing outputs\n\n");
-    // @lfy def/generation/main.lfy:request#request:request:0ba41c4d98f01ad24856a70c3eb94ada370e2dbc756ad6bb03d09c1593aa935b
+    // @lfy def/generation/request.lfy:request#request:request:0ba41c4d98f01ad24856a70c3eb94ada370e2dbc756ad6bb03d09c1593aa935b
     out.push_str("These outputs exist already:\n");
     for path in quoted.existing.keys() {
         let _ = writeln!(out, "- `{path}`");
     }
-    // @lfy def/generation/main.lfy:request#request:request:b328124ea1eb5cbf654b1744945d6267f6201a13dbdbf58b20e83731c97b1cf1
+    // @lfy def/generation/request.lfy:request#request:request:b328124ea1eb5cbf654b1744945d6267f6201a13dbdbf58b20e83731c97b1cf1
     out.push_str(
         "\nChange only what the difference between the previous source and the current source, the \
          criteria and tests marked new, reworded, or removed, the foreign edits, and a split the \
@@ -1081,7 +1081,7 @@ fn write_existing(out: &mut String, quoted: &Quoted<'_>) {
          unchanged items.\n",
     );
     match quoted.previous {
-        // @lfy def/generation/main.lfy:request#request:request:921f0ecc9962f3241a69e55b5e8db934f9a538bdb6ba94b75df67399bf4e7dcf
+        // @lfy def/generation/request.lfy:request#request:request:921f0ecc9962f3241a69e55b5e8db934f9a538bdb6ba94b75df67399bf4e7dcf
         Some(text) => {
             let _ = writeln!(
                 out,
@@ -1091,7 +1091,7 @@ fn write_existing(out: &mut String, quoted: &Quoted<'_>) {
             );
         }
         // A unit whose outputs record no source is reconciled with its source instead.
-        // @lfy def/generation/main.lfy:request#request:request:f56fdcbd147d90b70d21fc0a3ca55daee274a966874753ec15588bbcb77df8c2
+        // @lfy def/generation/request.lfy:request#request:request:f56fdcbd147d90b70d21fc0a3ca55daee274a966874753ec15588bbcb77df8c2
         None => out.push_str(
             "\nThe source these outputs were generated from is not known. Reconcile the existing \
              outputs with the unit's source.\n",
@@ -1099,7 +1099,7 @@ fn write_existing(out: &mut String, quoted: &Quoted<'_>) {
     }
     // A unit whose outputs record no ids leaves nothing to say which of its criteria and tests
     // are new, so the existing code is read against every one of them.
-    // @lfy def/generation/main.lfy:request#request:request:9dc09496cd7e7f35f205f84cbca429a26f53841256c22511554622cf64d3408e
+    // @lfy def/generation/request.lfy:request#request:request:9dc09496cd7e7f35f205f84cbca429a26f53841256c22511554622cf64d3408e
     if quoted.answered.is_none() {
         out.push_str(
             "\nWhich criteria and tests of the unit are new is not known. Read the existing code \
@@ -1110,20 +1110,20 @@ fn write_existing(out: &mut String, quoted: &Quoted<'_>) {
 }
 
 /// The later units whose code the run may edit, and that no other unit's code is edited.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_reach(out: &mut String, plan: &Plan, reach: &Reach) {
     out.push_str("## The reach of this run\n\n");
     if reach.units.is_empty() {
-        // @lfy def/generation/main.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
+        // @lfy def/generation/request.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
         out.push_str("This run edits the outputs of no other unit.\n");
         return;
     }
-    // @lfy def/generation/main.lfy:request#request:request:6866b21e4106d263e68cc05d262be33367c3a2efc454a318258613d378049040
+    // @lfy def/generation/request.lfy:request#request:request:6866b21e4106d263e68cc05d262be33367c3a2efc454a318258613d378049040
     out.push_str(
         "The code of these later units may be edited only as the part \"Stubs and fixes in later \
          units\" says, and no other unit's code is edited:\n\n",
     );
-    // @lfy def/generation/main.lfy:request#request:request:7f048ee3afbc169385d5f7d6b40dbfba7314647d732caed0c4723e93ac727dd4
+    // @lfy def/generation/request.lfy:request#request:request:7f048ee3afbc169385d5f7d6b40dbfba7314647d732caed0c4723e93ac727dd4
     for &later in &reach.units {
         let unit = &plan.units[later];
         let paths: Vec<String> = unit
@@ -1138,7 +1138,7 @@ fn write_reach(out: &mut String, plan: &Plan, reach: &Reach) {
 /// What the compiler is given to read, in the order the request gathered it: a reference
 /// or an example either quoted in full or named to be read; a definition as the files its
 /// use path resolves to; a tool as the tool of the agent server to call.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowledge: &[Knowledge]) {
     let _ = writeln!(out, "## {heading}\n");
     if knowledge.is_empty() {
@@ -1149,7 +1149,7 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowl
     let mut quoted: Vec<(String, String, String)> = Vec::new();
     for item in knowledge {
         match item.kind {
-            // @lfy def/generation/main.lfy:request#request:request:18fa49f6ae0fe059f4d8b65429f7356e822363b0bb901d611f266ca1393c940b
+            // @lfy def/generation/request.lfy:request#request:request:18fa49f6ae0fe059f4d8b65429f7356e822363b0bb901d611f266ca1393c940b
             KnowledgeKind::Tool => {
                 let _ = writeln!(
                     out,
@@ -1158,7 +1158,7 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowl
                     item.topic, item.source
                 );
             }
-            // @lfy def/generation/main.lfy:request#request:request:179394ea2be57b4a87b41dac2988b30f36b058129a701fc79ff34cc290769606
+            // @lfy def/generation/request.lfy:request#request:request:179394ea2be57b4a87b41dac2988b30f36b058129a701fc79ff34cc290769606
             KnowledgeKind::Definition => {
                 let files = definition_files(workspace, item);
                 let named = if files.is_empty() {
@@ -1173,15 +1173,15 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowl
                 let _ = writeln!(out, "- {}: read {named} as Elfie.", item.topic);
             }
             KnowledgeKind::Reference | KnowledgeKind::Example => {
-                // @lfy def/generation/main.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
+                // @lfy def/generation/request.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
                 let path = under_root(&knowledge_root(workspace, item), &item.source);
                 if item.quote == Some(true) {
-                    // @lfy def/generation/main.lfy:request#request:request:c08c09e6b0039e6d48af43ad1c7e16111ea4c541b7b9968bfd3cbce3dcbf93cc
+                    // @lfy def/generation/request.lfy:request#request:request:c08c09e6b0039e6d48af43ad1c7e16111ea4c541b7b9968bfd3cbce3dcbf93cc
                     let text = std::fs::read_to_string(workspace.root.join(&path))
                         .unwrap_or_else(|error| format!("(`{path}` could not be read: {error})"));
                     quoted.push((item.topic.clone(), path, text));
                 } else {
-                    // @lfy def/generation/main.lfy:request#request:request:4dcb0da9fd03a1602667b395e3dbb573d050278d678ebb597d4e2aba063f5b60
+                    // @lfy def/generation/request.lfy:request#request:request:4dcb0da9fd03a1602667b395e3dbb573d050278d678ebb597d4e2aba063f5b60
                     let _ = writeln!(
                         out,
                         "- {}: read `{path}` before writing anything it covers.",
@@ -1204,8 +1204,8 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowl
 /// The directory a knowledge item's source is relative to: the root of the package of the
 /// file its contributor is declared in, and the project's own root when that file is the
 /// project's own.
-// @lfy def/generation/main.lfy:request
-// @lfy def/generation/main.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
+// @lfy def/generation/request.lfy:request
+// @lfy def/generation/request.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
 fn knowledge_root(workspace: &Workspace, item: &Knowledge) -> String {
     workspace.model.entities[item.contributor]
         .file
@@ -1218,7 +1218,7 @@ fn knowledge_root(workspace: &Workspace, item: &Knowledge) -> String {
 
 /// The files of the program the source of a knowledge item of the kind `definition`
 /// resolves to: it is a use path, read from the file its contributor is declared in.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn definition_files(workspace: &Workspace, item: &Knowledge) -> Vec<String> {
     let from = workspace.model.entities[item.contributor]
         .file
@@ -1251,7 +1251,7 @@ fn definition_files(workspace: &Workspace, item: &Knowledge) -> Vec<String> {
 }
 
 /// The commands the compiler runs instead of knowing the tools, one line per operation.
-// @lfy def/generation/main.lfy:request#request:request:09b0190ee8969e01b9ff7a561a98c3663f87fb8b97fa83c588d0631e7989bc20
+// @lfy def/generation/request.lfy:request#request:request:09b0190ee8969e01b9ff7a561a98c3663f87fb8b97fa83c588d0631e7989bc20
 fn write_commands(out: &mut String, target: &Target, commands: &[Command]) {
     out.push_str("## Commands\n\n");
     let _ = writeln!(
@@ -1285,19 +1285,19 @@ fn write_commands(out: &mut String, target: &Target, commands: &[Command]) {
     );
     // The command of an operation the agent server has a tool for is run through that tool,
     // which runs the same line; a line is run by hand only where no tool is offered for it.
-    // @lfy def/generation/main.lfy:request#request:request:f700bbb14b11b81fadfe6c18b018250b1c7b9cdadbd0bd8b2a66ce896dfc54c9
+    // @lfy def/generation/request.lfy:request#request:request:f700bbb14b11b81fadfe6c18b018250b1c7b9cdadbd0bd8b2a66ce896dfc54c9
     out.push_str(
         "Where the agent server offers `elfie_build`, `elfie_test`, `elfie_lint`, or `elfie_format`, \
          the command of that operation is run through that tool. Run a line by hand only for an \
          operation whose tool is not offered.\n\n",
     );
-    // @lfy def/generation/main.lfy:request#request:request:f4b1430a5e2784e149775d2e69bdf4d652782d426521aa999f67d64b6c8a76c5
+    // @lfy def/generation/request.lfy:request#request:request:f4b1430a5e2784e149775d2e69bdf4d652782d426521aa999f67d64b6c8a76c5
     out.push_str(
         "The filter of `elfie_test` is given to the test command as `TESTS`, and the scope of \
          `elfie_build`, `elfie_test`, and `elfie_lint` is given to the command as `SCOPE`. Either \
          narrows the run only where the command's line reads it.\n\n",
     );
-    // @lfy def/generation/main.lfy:request#request:request:e198f2bcd4f8eb39c9c181816e09b176b6436e859f6c7e7015ba21dcf9e0f4ca
+    // @lfy def/generation/request.lfy:request#request:request:e198f2bcd4f8eb39c9c181816e09b176b6436e859f6c7e7015ba21dcf9e0f4ca
     out.push_str(
         "After the run, the unit is judged with the test command run with stubs allowed, given to \
          it as `ALLOW_STUBS` and through `allowStubs` of `elfie_test`, so that a test failing only \
@@ -1307,7 +1307,7 @@ fn write_commands(out: &mut String, target: &Target, commands: &[Command]) {
 }
 
 /// The name of an operation, as the standard library spells it.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn operation_name(operation: Operation) -> &'static str {
     match operation {
         Operation::Install => "install",
@@ -1322,7 +1322,7 @@ fn operation_name(operation: Operation) -> &'static str {
 
 /// What moved into and out of one unit, in that unit's section of the instructions: which
 /// entities, from or into which unit, and because of which cause.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usize) {
     let model = &workspace.model;
     let spelled = |entities: &[EntityId]| -> String {
@@ -1332,15 +1332,15 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
             .collect::<Vec<String>>()
             .join(", ")
     };
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let into: Vec<&Move> = plan
         .moves
         .iter()
         .filter(|moved| moved.into == index)
         .collect();
     if !into.is_empty() {
-        // @lfy def/generation/main.lfy:request#request:request:e0d2c5750e61bf64facae6b21f456aaeafa4cfd1be0dc60ff387efee1c092a88
-        // @lfy def/generation/main.lfy:request#request:request:ac5358d47d574ae4484013ee8bdc0488e7f6ce892b6e384d1346f27daea31d51
+        // @lfy def/generation/request.lfy:request#request:request:e0d2c5750e61bf64facae6b21f456aaeafa4cfd1be0dc60ff387efee1c092a88
+        // @lfy def/generation/request.lfy:request#request:request:ac5358d47d574ae4484013ee8bdc0488e7f6ce892b6e384d1346f27daea31d51
         out.push_str(
             "These entities are compiled in this unit although another file declares them, because \
              the two files would otherwise reach each other. Write them into this unit's outputs \
@@ -1348,7 +1348,7 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
              them, a `use` of that file is satisfied by them here and never by importing that \
              file.\n",
         );
-        // @lfy def/generation/main.lfy:request#request:request:da09691bed9bbd4cea507b74ae9d6919801f1f5948f2c6d2728226a9c8d5f73f
+        // @lfy def/generation/request.lfy:request#request:request:da09691bed9bbd4cea507b74ae9d6919801f1f5948f2c6d2728226a9c8d5f73f
         for moved in into {
             let origin = &plan.units[moved.origin];
             let _ = writeln!(
@@ -1361,22 +1361,22 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
         }
         out.push('\n');
     }
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     let outward: Vec<&Move> = plan
         .moves
         .iter()
         .filter(|moved| moved.origin == index)
         .collect();
     if !outward.is_empty() {
-        // @lfy def/generation/main.lfy:request#request:request:b30f51561b31df6c26b31d4c397791d154398bc31a9a56efc45eb145fae5800a
-        // @lfy def/generation/main.lfy:request#request:request:034c1bdfc4725cdfe7e5eb86af7e47ed43e227a1f7eef528cbb549521620143e
+        // @lfy def/generation/request.lfy:request#request:request:b30f51561b31df6c26b31d4c397791d154398bc31a9a56efc45eb145fae5800a
+        // @lfy def/generation/request.lfy:request#request:request:034c1bdfc4725cdfe7e5eb86af7e47ed43e227a1f7eef528cbb549521620143e
         out.push_str(
             "These entities this file declares are compiled in another unit, because the two files \
              would otherwise reach each other. Import them from that unit's outputs and never write \
              them again, and make each of them available from this unit's outputs under the name \
              and path it would have had, so that code naming it here still finds it.\n",
         );
-        // @lfy def/generation/main.lfy:request#request:request:0f1d87f11591131ce4052dfc72bc179de20f377a5b220fb4cb1cd3f9237e0d4e
+        // @lfy def/generation/request.lfy:request#request:request:0f1d87f11591131ce4052dfc72bc179de20f377a5b220fb4cb1cd3f9237e0d4e
         for moved in outward {
             let into = &plan.units[moved.into];
             let _ = writeln!(
@@ -1393,14 +1393,14 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
 
 /// What was relocated into and out of the unit whose file is `path`, in its section: which
 /// entities, from or into which file, and what becomes of their code.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_relocations(out: &mut String, path: &str, relocated: &[Relocation]) {
     let into: Vec<&Relocation> = relocated
         .iter()
         .filter(|relocation| relocation.into == path)
         .collect();
     if !into.is_empty() {
-        // @lfy def/generation/main.lfy:request#request:request:8ef7cabaa1ffd44e92776ee0d9dcb63c0fc0f45c81a6d02e6e4a581fa179daad
+        // @lfy def/generation/request.lfy:request#request:request:8ef7cabaa1ffd44e92776ee0d9dcb63c0fc0f45c81a6d02e6e4a581fa179daad
         out.push_str(
             "These entities were relocated into this unit, since this unit's file declares them now. \
              Their code is already in this unit's outputs, under markers that now name this unit's \
@@ -1417,7 +1417,7 @@ fn write_relocations(out: &mut String, path: &str, relocated: &[Relocation]) {
         .filter(|relocation| relocation.origin == path)
         .collect();
     if !outward.is_empty() {
-        // @lfy def/generation/main.lfy:request#request:request:b061d31417b089c8b88fe3fcd63a32d6608ce44a82cd1e7b845e3bd2daa5e079
+        // @lfy def/generation/request.lfy:request#request:request:b061d31417b089c8b88fe3fcd63a32d6608ce44a82cd1e7b845e3bd2daa5e079
         out.push_str(
             "These entities were relocated out of this unit, since another file declares them now. \
              Their code is the code of the unit of that file now: neither write it again nor remove \
@@ -1433,7 +1433,7 @@ fn write_relocations(out: &mut String, path: &str, relocated: &[Relocation]) {
 /// One entity of a unit: its name, its kind, its definition, its type, its lowered code,
 /// and then, apart from the code, its local criteria and tests, each on its own line with
 /// its id.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_entity(
     out: &mut String,
     model: &Model,
@@ -1458,7 +1458,7 @@ fn write_entity(
     }
     // An entity moved into the unit is declared in the file it came from, so its code is
     // looked for across the program when the unit's own lowered file does not hold it.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     if let Some(node) = lowered_node_of(&program.files[lowered], entity)
         .or_else(|| lowered_declaration(program, entity))
     {
@@ -1482,8 +1482,8 @@ fn write_entity(
 /// id is none of them is marked new, so that a compiler reading existing code knows which of
 /// them that code was never held to. A line whose id rewords one of them is marked reworded
 /// instead, and the id and the text it replaces follow it on a line of their own.
-// @lfy def/generation/main.lfy:request#request:request:258d7f943a5b84ea809c220868bbf11249a423cd3891bd01fced30a1d9b5bfc1
-// @lfy def/generation/main.lfy:request#request:request:aa208260d2e6de0481fdd00165686f8ac50d4c5662ac4e1445cbaecdfb556b09
+// @lfy def/generation/request.lfy:request#request:request:258d7f943a5b84ea809c220868bbf11249a423cd3891bd01fced30a1d9b5bfc1
+// @lfy def/generation/request.lfy:request#request:request:aa208260d2e6de0481fdd00165686f8ac50d4c5662ac4e1445cbaecdfb556b09
 fn write_requirements(
     out: &mut String,
     requirements: &[Requirement],
@@ -1503,7 +1503,7 @@ fn write_requirements(
         }
     };
     // What a reworded one replaces, on the line after it.
-    // @lfy def/generation/main.lfy:request#request:request:0bc1580cb79537e04f3b1d9cc19ee8db2fb9277b47ffe12994bb0d31371cbee8
+    // @lfy def/generation/request.lfy:request#request:request:0bc1580cb79537e04f3b1d9cc19ee8db2fb9277b47ffe12994bb0d31371cbee8
     let replaced = |out: &mut String, id: &str| {
         if let Some(rewording) = rewording(id) {
             let _ = writeln!(out, "  replaces {} — {}", rewording.replaces, rewording.text);
@@ -1561,7 +1561,7 @@ fn write_requirements(
 /// A criterion of the guidance is a criterion as written, never lowered, so it has no
 /// [`LoweredCriterion::text`] to be shown by; it is spelled here exactly as that spells a
 /// lowered one, so that every criterion a request quotes reads the same way.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn write_criterion(out: &mut String, criterion: &Criterion) {
     let mut line = String::new();
     if let Some(situation) = &criterion.situation {
@@ -1582,8 +1582,8 @@ fn write_criterion(out: &mut String, criterion: &Criterion) {
 /// The local criteria and tests of one entity of a unit, criteria first: those of its
 /// declaration in the unit's own lowered file, or, for an entity moved into the unit, those
 /// of its declaration in the file it came from.
-// @lfy def/generation/main.lfy:request
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/request.lfy:request
+// @lfy def/generation/review.lfy:review
 fn declared_requirements(program: &Program, lowered: usize, entity: EntityId) -> Vec<Requirement> {
     let own = entity_requirements(&program.files[lowered], entity);
     if !own.is_empty() || lowered_node_of(&program.files[lowered], entity).is_some() {
@@ -1608,8 +1608,8 @@ fn declared_requirements(program: &Program, lowered: usize, entity: EntityId) ->
 /// recovered, so nothing is lowered or bound here; its text is the lowered text a request
 /// carries for the file now and the two can be read side by side, and the ids come out
 /// spelled as the unit's own are. `None` when that program holds no file at that path.
-// @lfy def/generation/main.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
-// @lfy def/generation/main.lfy:request#request:request:a5c47f2c55a69433503b4e3695c342527d245e9af1cf95c78e340d2dafe6c4d9
+// @lfy def/generation/request.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
+// @lfy def/generation/request.lfy:request#request:request:a5c47f2c55a69433503b4e3695c342527d245e9af1cf95c78e340d2dafe6c4d9
 fn file_as_it_was(previous: &Previous, path: &str) -> Option<(String, Vec<RemovedRequirement>)> {
     let before = &previous.program;
     let index = before

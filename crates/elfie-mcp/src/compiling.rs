@@ -529,7 +529,7 @@ struct ReachRegion {
 /// the same spelling, the same place among the markers spelled alike — in the file of the
 /// binding's `before` at its path, or when that file has no such region. Its kind is stub when
 /// it only keeps lines it had and adds stub lines naming the run's unit, and fix otherwise.
-// @lfy def/mcp/main.lfy:reach#reach:reach:56fe7454b45669756bcc6a2df3906336b5a2c923de6eb5ef025f3e9d03b3cb73
+// @lfy def/mcp/main.lfy:reach#reach:reach:6e08c2c858ffbe279c640710e6c84d3e359af0f54110f8861822777f9274ec4f
 fn reach_regions(session: &Session, run: &Run<'_>, index: usize) -> Vec<ReachRegion> {
     let binding = run.binding;
     let program = program_at_root(session, binding);
@@ -787,7 +787,7 @@ fn is_global_requirement(request: &Request, id: &str) -> bool {
 /// acceptance does: only the markers naming the unit's file, or a file declaring an entity
 /// moved into it, so another unit's markers are never touched.
 /// The outputs it returns are the ones whose markers it rewrote, and only those are written.
-// @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
+// @lfy def/mcp/main.lfy:mark#mark:mark:4f1164ac3a94d643b82a1b08eb15af6e67163154209b7f063c857c86b7238356
 fn rename_markers(
     session: &Session,
     run: &Run<'_>,
@@ -806,7 +806,7 @@ fn rename_markers(
     }
     let index = run.index();
     // The output files of the unit's target as they are when the call arrives.
-    // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
+    // @lfy def/mcp/main.lfy:mark#mark:mark:1a530e21d2168ea23ea4022f14c67e29613acca0bccddaf0f5e246bc1bbad43a
     let mut read: Vec<Output> = Vec::new();
     for output in output_files(workspace, target) {
         let path = workspace.root.join(&output);
@@ -814,17 +814,17 @@ fn rename_markers(
         read.push(Output { path: output, text });
     }
     let ids = BTreeMap::from([(replaces.to_string(), id.to_string())]);
-    // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
+    // @lfy def/mcp/main.lfy:mark#mark:mark:1a530e21d2168ea23ea4022f14c67e29613acca0bccddaf0f5e246bc1bbad43a
     let renamed = generation::rename(workspace, &binding.plan, index, &read, &ids);
     let mut rewritten: Vec<String> = Vec::new();
     for output in &renamed {
-        // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
+        // @lfy def/mcp/main.lfy:mark#mark:mark:1a530e21d2168ea23ea4022f14c67e29613acca0bccddaf0f5e246bc1bbad43a
         let path = workspace.root.join(&output.path);
         fs::write(&path, &output.text)
             .map_err(|error| format!("{} cannot be written: {error}", output.path))?;
         // The lines that differ from the file as it was read are the rewritten markers, since
         // `rename` keeps every other line of an output it returns.
-        // @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
+        // @lfy def/mcp/main.lfy:mark#mark:mark:4f1164ac3a94d643b82a1b08eb15af6e67163154209b7f063c857c86b7238356
         let before: Vec<&str> = read
             .iter()
             .find(|one| one.path == output.path)

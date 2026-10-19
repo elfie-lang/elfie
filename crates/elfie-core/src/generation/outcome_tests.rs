@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:outcomeOf
+// @lfy def/generation/outcome.lfy:outcomeOf
 //! Tests of `outcomeOf`.
 
 use super::*;
@@ -24,28 +24,28 @@ fn rejected_verdict(problem: &str) -> Verdict {
     }
 }
 
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:aea57156b53552b74d294e42cbfdb2c23586a32eb6b72697003fab1201f8de32
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:aea57156b53552b74d294e42cbfdb2c23586a32eb6b72697003fab1201f8de32
 #[test]
 fn a_report_ending_in_done_with_an_accepted_verdict_is_accepted() {
     let outcome = outcome_of("I wrote it.\nELFIE: DONE", Some(accepted_verdict()), None);
-    // @lfy def/generation/main.lfy:outcomeOf
+    // @lfy def/generation/outcome.lfy:outcomeOf
     assert_eq!(outcome.kind, OutcomeKind::Accepted);
     assert_eq!(outcome.message, "");
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:5638d124765a4530529d5bcc010da070ba5c9d64eb393735290bb86942590f82
     assert_eq!(outcome.verdict, Some(accepted_verdict()));
 }
 
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:1f9450576bacd729304bcff7ae084540d9443231518dff19d18117b589962e74
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:1f9450576bacd729304bcff7ae084540d9443231518dff19d18117b589962e74
 #[test]
 fn a_report_ending_in_clarify_is_a_clarification_with_the_question() {
     let outcome = outcome_of("ELFIE: CLARIFY: should Range.end be inclusive?", None, None);
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:88f72bf6172d2e7ca8cb8cc9cc191d01af0d765a70d6c2b3146a244d430bc889
     assert_eq!(outcome.kind, OutcomeKind::Clarification);
     assert_eq!(outcome.message, "should Range.end be inclusive?");
     assert!(outcome.verdict.is_none());
 }
 
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:6bf1d1141713e0697e5b6705afad5a3fb71a4abc2de75c4c6bf36482558d79c2
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:6bf1d1141713e0697e5b6705afad5a3fb71a4abc2de75c4c6bf36482558d79c2
 #[test]
 fn a_report_ending_in_blocked_is_blocked_with_the_reason_and_every_line_after_it() {
     let outcome = outcome_of(
@@ -53,7 +53,7 @@ fn a_report_ending_in_blocked_is_blocked_with_the_reason_and_every_line_after_it
         None,
         None,
     );
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b49d5420de2c94cb85a8ea62b3d2f39a0ea55b1b8867b33ca9d7f24d0eb760c2
     assert_eq!(outcome.kind, OutcomeKind::Blocked);
     assert_eq!(
         outcome.message,
@@ -65,7 +65,7 @@ fn a_report_ending_in_blocked_is_blocked_with_the_reason_and_every_line_after_it
     assert_eq!(outcome.message, "no");
 }
 
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:2b319a66fa16164eba8a81c08bc04af79566ac5e04ad5eff1016c81e7c0fa50e
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:2b319a66fa16164eba8a81c08bc04af79566ac5e04ad5eff1016c81e7c0fa50e
 #[test]
 fn a_report_with_nothing_and_no_verdict_has_failed() {
     let outcome = outcome_of("", None, None);
@@ -73,7 +73,7 @@ fn a_report_with_nothing_and_no_verdict_has_failed() {
     assert_eq!(outcome.message, "the compiler reported nothing");
     assert!(outcome.verdict.is_none());
     // Prose alone, with no line beginning with `ELFIE:`, has failed too.
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937
     assert_eq!(
         outcome_of("I had a look around.", None, None).kind,
         OutcomeKind::Failed
@@ -82,7 +82,7 @@ fn a_report_with_nothing_and_no_verdict_has_failed() {
 
 /// A report that ended but left no verdict is accepted: the compiler said it was done,
 /// and no verdict says otherwise.
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c
 #[test]
 fn a_report_that_ended_with_no_verdict_is_accepted() {
     let outcome = outcome_of("ELFIE: DONE", None, None);
@@ -94,7 +94,7 @@ fn a_report_that_ended_with_no_verdict_is_accepted() {
     assert_eq!(outcome.kind, OutcomeKind::Accepted);
 }
 
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1
 #[test]
 fn a_rejected_verdict_is_rejected_with_its_first_problem() {
     let rejected = rejected_verdict("the entity B has no marker");
@@ -106,7 +106,7 @@ fn a_rejected_verdict_is_rejected_with_its_first_problem() {
 
 /// A submitted outcome decides on its own: the report still ends in `ELFIE: DONE`, and
 /// the run is blocked with the message the compiler submitted.
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:9b5e375791254742046cae15d9798eefeda114a69a17d7cf7c04b3a002d6ea6b
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:9b5e375791254742046cae15d9798eefeda114a69a17d7cf7c04b3a002d6ea6b
 #[test]
 fn a_submitted_block_wins_over_a_report_that_ended_in_done() {
     let submitted = Submission {
@@ -118,13 +118,13 @@ fn a_submitted_block_wins_over_a_report_that_ended_in_done() {
         Some(accepted_verdict()),
         Some(&submitted),
     );
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b45e8bdae8388f9c4a41678f0f3df59a004bd2edf3747f0da5dcf5dfde13c18b
     assert_eq!(outcome.kind, OutcomeKind::Blocked);
     assert_eq!(outcome.message, "two criteria of f conflict");
     assert_eq!(outcome.verdict, Some(accepted_verdict()));
 
     // A submitted question is a clarification the same way, whatever the report says.
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:8ec2e69b637448582ca10cfc40a3268b7ac51e3c0400efb384bf91954e650bc1
     let asked = Submission {
         outcome: SubmittedOutcome::Clarify,
         message: "should Range.end be inclusive?".to_string(),
@@ -136,14 +136,14 @@ fn a_submitted_block_wins_over_a_report_that_ended_in_done() {
 
 /// A compiler that submitted `done` is still held to the verdict on its unit, and the note
 /// it submitted with `done` is no part of the message.
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:aeee475345e86d94cdd32bf4e6ab45bf3249adc5164e178c28e7a6e801566fb3
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:aeee475345e86d94cdd32bf4e6ab45bf3249adc5164e178c28e7a6e801566fb3
 #[test]
 fn a_submitted_done_with_a_rejected_verdict_is_rejected() {
     let submitted = Submission {
         outcome: SubmittedOutcome::Done,
         message: "I had to move a helper".to_string(),
     };
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:2b934058b8993b21d5206312199acde537634a494ac1d4fc8ee1da93ca975b2f
     let outcome = outcome_of(
         "",
         Some(rejected_verdict("no marker for B")),
@@ -151,11 +151,11 @@ fn a_submitted_done_with_a_rejected_verdict_is_rejected() {
     );
     assert_eq!(outcome.kind, OutcomeKind::Rejected);
     assert_eq!(outcome.message, "no marker for B");
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:0caaac66529a98a351e460ed1abb1858129a0773b2fa6e8f02250c06b9005093
     assert!(!outcome.message.contains("I had to move a helper"));
 
     // With the verdict accepted, a submitted `done` is accepted and the note is gone.
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:04b6f0c24f4e650e22038c1e80bd287adf96f0ea7bcde76e829f3d07b0be1574
     let outcome = outcome_of("", Some(accepted_verdict()), Some(&submitted));
     assert_eq!(outcome.kind, OutcomeKind::Accepted);
     assert_eq!(outcome.message, "");
@@ -163,14 +163,14 @@ fn a_submitted_done_with_a_rejected_verdict_is_rejected() {
 
 /// A compiler that submitted `done` while its unit was not judged has failed: its outputs
 /// never reached acceptance, whatever its report said.
-// @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:b98c498284033051b8b80db1847c7a733beeea9db786c21553593697deb79933
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b98c498284033051b8b80db1847c7a733beeea9db786c21553593697deb79933
 #[test]
 fn a_submitted_done_with_no_verdict_has_failed() {
     let submitted = Submission {
         outcome: SubmittedOutcome::Done,
         message: String::new(),
     };
-    // @lfy def/generation/main.lfy:outcomeOf#outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:f8ffca525ed8ecad98217b596be4755172abc9a94a4b78445e03ffdcffee7689
     let outcome = outcome_of("ELFIE: DONE", None, Some(&submitted));
     assert_eq!(outcome.kind, OutcomeKind::Failed);
     assert_eq!(

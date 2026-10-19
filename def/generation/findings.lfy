@@ -1,0 +1,203 @@
+use "../interpret/data";
+use "./data";
+use "elfie/system/json" as Json;
+
+/// report: everything the verifier wrote to standard output
+/// program: the lowered program, whose criteria and tests the ids name
+/// asked: the ids of the criteria and tests the review request gave the verifier; empty when not known
+/// recorded: the reviews the verifier submitted through the agent server during the run, in the order recorded; empty when none
+// Decision: a review line names its criterion by place as well as by id, because a 64-digit id is
+// easy to copy wrong and a place is not; a line that names nothing yet says violated is kept apart,
+// so a found failure is never lost for want of a name.
+// Decision: a verdict submitted through the agent server was checked when it arrived, so it wins
+// over a line of the report for the same criterion; the report is read only for what was not
+// submitted.
+fn reviewOf(report: string, program: Program, asked: string[] = [], recorded: Review[] = []): `What a verifier found, read mechanically from the verdicts it submitted and from its report` => ReviewReport {
+  // Decision: the report is read leniently and only what tries to be a review can be wrong, because
+  // a verifier that adds a sentence or a fence around its lines has still reviewed everything, and
+  // running a second verifier for that costs as much as the first.
+  @acceptanceCriteria
+    .add({
+      behavior = `Whitespace around a line of [[report]] is ignored wherever the line is compared or parsed`,
+    })
+    .add({
+      situation = `A line of [[report]] reads ELFIE: REVIEWED, and no later line does`,
+      behavior = `Every line after it is ignored`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It does not begin with {`,
+      ],
+      behavior = `It is ignored, whatever it says`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It begins with {`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
+        `Its id is the id of a criterion or test of [[program]]`,
+      ],
+      behavior = `It is read as one [[Review]] for that criterion or test`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It begins with {`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
+        `Its id is the id of no criterion or test of [[program]]`,
+        `Exactly one id of a criterion or test of [[program]] begins with its id, or is the beginning of it, and the two share at least the receiver, the contributor, and 16 hex digits`,
+      ],
+      behavior = `It is read as one [[Review]] for that criterion or test`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It begins with {`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
+        `It has no id, or its id is the id of no criterion or test of [[program]] and no single id of one begins with it or is the beginning of it, sharing at least the receiver, the contributor, and 16 hex digits`,
+        `Its file and line are the file and line where exactly one criterion or test of [[program]] begins`,
+      ],
+      behavior = `It is read as one [[Review]] for that criterion or test`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It begins with {`,
+        `[[Json.parse]] does not read it as an object`,
+      ],
+      behavior = `It is in [[ReviewReport.problems]] as written`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It begins with {`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is none of [[ReviewStatus]]`,
+      ],
+      behavior = `It is in [[ReviewReport.problems]] as written`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is followed by a line reading ELFIE: REVIEWED, or no line of [[report]] reads ELFIE: REVIEWED`,
+        `It begins with {`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is one of [[ReviewStatus]]`,
+        `It has no id, or its id is the id of no criterion or test of [[program]] and no single id of one begins with it or is the beginning of it, sharing at least the receiver, the contributor, and 16 hex digits`,
+        `It has no file and line, or they are not where exactly one criterion or test of [[program]] begins`,
+      ],
+      behavior = `It is in [[ReviewReport.problems]] as written`,
+    })
+    .add({
+      situation = [
+        `A line of [[report]] is in [[ReviewReport.problems]] as written`,
+        `[[Json.parse]] reads it as an object whose status, compared without regard to case, is violated`,
+      ],
+      behavior = `It is in [[ReviewReport.unplaced]] as written, in report order`,
+    })
+    .add({
+      behavior = `[[ReviewReport.reviews]] holds every review of [[recorded]], in the order of [[recorded]], then every [[Review]] read from [[report]] whose id no review of [[recorded]] has`,
+    })
+    .add({
+      situation = `A line of [[report]] is read as a [[Review]] whose id a review of [[recorded]] has`,
+      behavior = `The line is neither in [[ReviewReport.reviews]] nor in [[ReviewReport.problems]]`,
+    })
+    .add({
+      behavior = `[[ReviewReport.missing]] holds each of [[asked]] that is the id of no review in [[ReviewReport.reviews]], in the order of [[asked]]`,
+    })
+    .add({
+      behavior = `The reviews read from [[report]] that are kept, and the lines of [[ReviewReport.problems]], are each in report order among themselves`,
+    })
+    .add({ behavior = `A [[Review]] takes its evidence and note as the line gives them, or empty when missing` })
+    .add({ behavior = `Keys of a review line other than id, file, line, status, evidence, and note are ignored` })
+    .add({
+      situation = `Two lines of [[report]] that are each read as a [[Review]] name the same criterion or test`,
+      behavior = `Only the last is kept in [[ReviewReport.reviews]], at its own place`,
+    })
+    .add({
+      situation = `No line of [[report]] reads ELFIE: REVIEWED`,
+      behavior = `[[ReviewReport.problems]] ends with a line reading: the report did not end`,
+    });
+
+  @test(
+    {
+      input = [
+        `# reading src/a.rs\n{"id":"A:A:1f2e","status":"satisfied","evidence":"src/a.rs:1-30","note":"the field is there"}\n{"id":"A:A:9c0d","status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined instead of an empty list"}\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+      ],
+      expect = ReviewReport@like(
+        `Two reviews, satisfied then violated, placed at def/a.lfy:4 and def/a.lfy:7 for A, and no problems`,
+      ),
+    },
+    {
+      input = [
+        `{"id":"A:A:1f2e","status":"maybe","evidence":"","note":"unsure"}\nI think it is fine.\n{"id":"A:A:9c0d","status":"unverifiable","evidence":"","note":"no region"}\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+      ],
+      expect = ReviewReport@like(`One review, unverifiable at line 7, and one problem: the line whose status is maybe`),
+    },
+    {
+      input = [
+        `All tests pass. Report follows.\n\`\`\`\n{"file":"def/a.lfy","line":4,"entity":"A","status":"Satisfied","evidence":"src/a.rs:1-9","note":"ok"}\n\`\`\`\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+      ],
+      expect = ReviewReport@like(`One review, satisfied, placed at def/a.lfy:4 for A, and no problems`),
+    },
+    {
+      input = [
+        `{"id":"A:A:1f2e","status":"satisfied","evidence":"","note":"first"}\n{"id":"A:A:1f2e","status":"violated","evidence":"src/a.rs:3-3","note":"second"}`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+      ],
+      expect = ReviewReport@like(
+        `One review, violated with note second, and one problem reading: the report did not end`,
+      ),
+    },
+    {
+      input = [
+        `{"id":"A:A:9c0e","file":"def/a.lfy","line":7,"status":"violated","evidence":"src/a.rs:12-18","note":"returns undefined"}\n{"id":"A:A:77aa","status":"violated","evidence":"src/a.rs:3-3","note":"no such id"}\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+        [`A:A:1f2e`, `A:A:9c0d`],
+      ],
+      expect = ReviewReport@like(
+        `One review, violated at def/a.lfy:7 for the criterion A:A:9c0d; the A:A:77aa line in both problems and unplaced; A:A:1f2e missing`,
+      ),
+    },
+    {
+      input = [
+        `{"id":"A:A:1f2e","status":"satisfied","evidence":"","note":"from the report"}\nELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+        [`A:A:1f2e`, `A:A:9c0d`],
+        [Review@like(`A:A:1f2e, violated, at def/a.lfy:4 for A, with note submitted`)],
+      ],
+      expect = ReviewReport@like(
+        `One review, the submitted violated one for A:A:1f2e; no problems; A:A:9c0d missing`,
+      ),
+    },
+    {
+      input = [
+        `ELFIE: REVIEWED`,
+        Program@like(
+          `A program whose def/a.lfy declares A with two local criteria, id A:A:1f2e on line 4 and id A:A:9c0d on line 7`,
+        ),
+        [`A:A:1f2e`, `A:A:9c0d`],
+        [
+          Review@like(`A:A:9c0d, satisfied, at def/a.lfy:7 for A`),
+          Review@like(`A:A:1f2e, unverifiable, at def/a.lfy:4 for A`),
+        ],
+      ],
+      expect = ReviewReport@like(
+        `The two submitted reviews in that order, A:A:9c0d then A:A:1f2e; no problems; nothing missing`,
+      ),
+    },
+  );
+}

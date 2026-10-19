@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 //! Everything a verifier is handed, and what it found.
 
 use super::*;
@@ -44,8 +44,8 @@ use super::*;
 // Decision: the definition passes the plan and the unit; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter, and
 // the unit is named by its index in `Plan::units`, as `ReviewRequest::unit` names it.
-// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
-// @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
+// @lfy def/generation/review.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
+// @lfy def/generation/review.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
 pub fn review(
     program: &Program,
     plan: &Plan,
@@ -56,7 +56,7 @@ pub fn review(
 ) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
-    // @lfy def/generation/main.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
+    // @lfy def/generation/review.lfy:review#review:review:1c072387bd071f939c216da6d4ce6239cccd17ffa2df2f585223778cc3680fca
     let directory = directory.unwrap_or(workspace.root.as_path());
     let index = unit;
     let unit = &plan.units[index];
@@ -73,10 +73,10 @@ pub fn review(
     let mut carried: Vec<ReviewRecord> = Vec::new();
     let mut body = String::new();
     {
-        // @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
+        // @lfy def/generation/review.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
         for &entity in &unit.entities {
             let regions = entity_regions(workspace, source_maps, entity, target);
-            // @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
+            // @lfy def/generation/review.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
             let hash = source_hash(&regions_text(directory, marker_comment, &regions));
             let requirements = reviewed_requirements(program, unit.lowered, entity);
             let listed = listed_requirements(
@@ -87,7 +87,7 @@ pub fn review(
                 &mut hashes,
                 &mut carried,
             );
-            // @lfy def/generation/main.lfy:review#review:review:8067f4b70be69f26ef14e51b27d063565e561dc22f54a024158105cad82cc9c5
+            // @lfy def/generation/review.lfy:review#review:review:8067f4b70be69f26ef14e51b27d063565e561dc22f54a024158105cad82cc9c5
             if listed.is_empty() {
                 continue;
             }
@@ -98,8 +98,8 @@ pub fn review(
         }
         // A criterion or test of the unit's own file answers for no entity's code, so it has
         // no region of its own, hashes to the empty text, and is always listed.
-        // @lfy def/generation/main.lfy:review#review:review:efbaab9e13ed7569408b035ce9b34392a9e0b4fa0a274b747ea27c0ef681cd65
-        // @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
+        // @lfy def/generation/review.lfy:review#review:review:efbaab9e13ed7569408b035ce9b34392a9e0b4fa0a274b747ea27c0ef681cd65
+        // @lfy def/generation/review.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
         let file = &program.files[unit.lowered];
         let own: Vec<Requirement> = file
             .criteria
@@ -135,13 +135,13 @@ pub fn review(
         unit.stem, target
     );
     if asked.is_empty() {
-        // @lfy def/generation/main.lfy:review#review:review:0d8c71e5e6a2fc7df9307c06e3d90e10a1982484663081fdffc8b2b46c7f029b
+        // @lfy def/generation/review.lfy:review#review:review:0d8c71e5e6a2fc7df9307c06e3d90e10a1982484663081fdffc8b2b46c7f029b
         out.push_str(
             "Nothing in the unit needs review: every criterion and test of it was found \
              satisfied against the code it still stands on.\n",
         );
     } else {
-        // @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
+        // @lfy def/generation/review.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
         out.push_str(
             "Every criterion and test below is local to one entity of this unit. A global \
              one is reviewed once, on its own, across every output of the program.\n\n",
@@ -156,7 +156,7 @@ pub fn review(
         out.push_str(PROTOCOL);
     }
 
-    // @lfy def/generation/main.lfy:review#review:review:88af78276d6f8df3f4a8999ca87628c8de2e6a194a2718d39aa64e803f157c0d
+    // @lfy def/generation/review.lfy:review#review:review:88af78276d6f8df3f4a8999ca87628c8de2e6a194a2718d39aa64e803f157c0d
     ReviewRequest {
         unit: Some(index),
         instructions: out,
@@ -173,8 +173,8 @@ pub fn review(
 /// Only what the file declaring the entity generated, so an entity of another file with the
 /// same name brings none of its code, while an entity moved into the unit brings its own,
 /// which its declaring file marks.
-// @lfy def/generation/main.lfy:review#review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1
-// @lfy def/generation/main.lfy:review#review:review:5923148a7793fded1531a97ff6a9c369389688e0a1ca8f50ed586a04dcee3b46
+// @lfy def/generation/review.lfy:review#review:review:a4959dc5c79c68106f15ab278c665fa965bf1e3d36b6b1a3e0f5449b3673bac1
+// @lfy def/generation/review.lfy:review#review:review:5923148a7793fded1531a97ff6a9c369389688e0a1ca8f50ed586a04dcee3b46
 fn entity_regions<'m>(
     workspace: &Workspace,
     source_maps: &'m [SourceMap],
@@ -211,8 +211,8 @@ fn entity_regions<'m>(
 ///
 /// `directory` is the directory the outputs were written in, which each region is read from,
 /// and `marker_comment` is how a line comment of the target's language begins.
-// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
-// @lfy def/generation/main.lfy:review#review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903
+// @lfy def/generation/review.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
+// @lfy def/generation/review.lfy:review#review:review:b20a4c21286c959c6a77873bc8d178ac43d720cb03877030c893be7f015f5903
 fn regions_text(
     directory: &Path,
     marker_comment: &str,
@@ -239,10 +239,10 @@ fn regions_text(
 /// A record is matched by its id alone, so a criterion that rewords another is never carried
 /// on the verdict the id it replaces earned, however little the code of its entity moved:
 /// the new text may ask for something the code does not do.
-// @lfy def/generation/main.lfy:review#review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033
-// @lfy def/generation/main.lfy:review#review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d
-// @lfy def/generation/main.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
-// @lfy def/generation/main.lfy:review#review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2
+// @lfy def/generation/review.lfy:review#review:review:79a851646614a7ae02fda5c6fca4946a5e185414f8174d5acb5c40413f0c8033
+// @lfy def/generation/review.lfy:review#review:review:b69235bec9f185a5ede4305f9d6e8d84ea38a64ab23b11147e9b2436d364a84d
+// @lfy def/generation/review.lfy:review#review:review:944917284f9b6da4a52ad0fe6ba57ee0440f72ee59ecdfdc8b90585e6e1e7417
+// @lfy def/generation/review.lfy:review#review:review:cfa867e320d611cec123830eb03c4368327c6de40443d7d3c904f20f1fb214d2
 fn listed_requirements<'r>(
     requirements: &'r [Requirement],
     hash: &str,
@@ -269,7 +269,7 @@ fn listed_requirements<'r>(
 }
 
 /// Criteria and tests apart, each in the order they were given.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn split_requirements<'r>(
     requirements: &[&'r Requirement],
 ) -> (Vec<&'r Requirement>, Vec<&'r Requirement>) {
@@ -280,7 +280,7 @@ fn split_requirements<'r>(
 }
 
 /// The ids of criteria or tests, in the order they were given.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn ids_of(requirements: &[&Requirement]) -> Vec<String> {
     requirements
         .iter()
@@ -294,7 +294,7 @@ fn ids_of(requirements: &[&Requirement]) -> Vec<String> {
 // Decision: a member's criteria are reviewed under the declaration that holds it, as
 // `regionsOf` gives a member's regions to its owner, so every local criterion and test of a
 // unit is listed under one of its entities or under its own file and none goes unasked.
-// @lfy def/generation/main.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
+// @lfy def/generation/review.lfy:review#review:review:f3ebae56b7c2144a9edb3e3b69ac07f174e3974f258284e909f2e10068ec9831
 fn reviewed_requirements(program: &Program, lowered: usize, entity: EntityId) -> Vec<Requirement> {
     let node = lowered_node_of(&program.files[lowered], entity)
         .or_else(|| lowered_declaration(program, entity));
@@ -307,7 +307,7 @@ fn reviewed_requirements(program: &Program, lowered: usize, entity: EntityId) ->
 
 /// The criteria and tests of one declaration, appended: those of the node, criteria before
 /// tests, then those of the nodes within it, which are its members.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn requirements_within(node: &LoweredNode, out: &mut Vec<Requirement>) {
     out.extend(node.criteria.iter().cloned().map(Requirement::Criterion));
     out.extend(node.tests.iter().cloned().map(Requirement::Test));
@@ -319,7 +319,7 @@ fn requirements_within(node: &LoweredNode, out: &mut Vec<Requirement>) {
 /// One entity of a unit for a verifier: its name, its definition, where each of its regions
 /// is, and then each criterion and each test under review on one line prefixed by its id and
 /// its place.
-// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
+// @lfy def/generation/review.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 fn write_review_entity(
     out: &mut String,
     model: &Model,
@@ -345,7 +345,7 @@ fn write_review_entity(
 
 /// Each criterion or test under review on one line: its id, its place, an em dash, and its
 /// text.
-// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
+// @lfy def/generation/review.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 fn write_reviewed(out: &mut String, model: &Model, heading: &str, requirements: &[&Requirement]) {
     let _ = writeln!(out, "{heading}:");
     if requirements.is_empty() {
@@ -367,8 +367,8 @@ fn write_reviewed(out: &mut String, model: &Model, heading: &str, requirements: 
 /// Where every region given is: the output path, a colon, the first output line, a dash, and
 /// the last, one region per line. None of their code is written, so the instructions hold no
 /// line of any output; the verifier reads a region through the agent server.
-// @lfy def/generation/main.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
+// @lfy def/generation/review.lfy:review#review:review:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
+// @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:67735b4dd73460a1ce9714a4d61445247a01cff8daca1989651bea577a7f50e0
 fn write_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
     if regions.is_empty() {
         out.push_str("No region of any output was generated for it.\n\n");
@@ -388,7 +388,7 @@ fn write_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
 ///
 /// The regions come in output order and then in output line order, so a region adjacent to
 /// the one before it is always the one it can be joined to.
-// @lfy def/generation/main.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
+// @lfy def/generation/review.lfy:review#review:review:a223ed6fa73eed7e47f542016405111d798bc5fd892675f33af0b77d0d8681c6
 fn write_joined_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
     if regions.is_empty() {
         out.push_str("No region of any output was generated for it.\n\n");
@@ -430,14 +430,14 @@ fn write_joined_regions(out: &mut String, regions: &[(&SourceMap, &Marker)]) {
 /// argument of [`plan`].
 // Decision: the definition passes the plan; a plan here does not own the program lowered
 // from its workspace, and nothing else of the plan is read, so the program stands in for it.
-// @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
+// @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
 pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequest {
     let workspace = &program.workspace;
     let model = &workspace.model;
     let mut out = String::new();
 
     // A heading naming the global review and the targets.
-    // @lfy def/generation/main.lfy:globalReview
+    // @lfy def/generation/review.lfy:globalReview
     let targets: Vec<String> = workspace
         .targets
         .iter()
@@ -467,10 +467,10 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
     if globals.is_empty() {
         out.push_str("## What was asked\n\nThe program has no global criterion and no global test.\n\n");
     }
-    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:3163f899ae0e06b99cc3cfbdf7857a8f62a41a8e5685323600713e1e6347797b
+    // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:3163f899ae0e06b99cc3cfbdf7857a8f62a41a8e5685323600713e1e6347797b
     let mut asked: Vec<String> = Vec::new();
     for requirement in &globals {
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
+        // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
         let (id, origin, text) = match requirement {
             Requirement::Criterion(criterion) => {
                 (&criterion.id, criterion.origin, criterion.text())
@@ -481,7 +481,7 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
         let _ = writeln!(out, "## `{id}` {}\n", origin_place(model, origin));
         let _ = writeln!(out, "{text}\n");
         // Every region whose marker answers for this id, whatever target it was built for.
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
+        // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
         let regions: Vec<(&SourceMap, &Marker)> = source_maps
             .iter()
             .flat_map(|map| {
@@ -492,7 +492,7 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
             })
             .collect();
         if regions.is_empty() {
-            // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2
+            // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:602d5d9913771ebb9a5ab23bc1b03ed23f9e22888e45cf65e826b7cfdbcc02e2
             out.push_str("No unit answered for it, so it cannot be checked against any region.\n\n");
             continue;
         }
@@ -500,17 +500,17 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
     }
 
     // The verifier protocol.
-    // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
+    // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:e0b38a1741c79bbd7d207fe9104c4f01ee115f0ccc6e3c9d2c738d8a30bac858
     out.push_str(PROTOCOL);
 
     ReviewRequest {
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:c913846c41638a67bec9c31d691948d7a0a285ed211c13711ab1bfbb7a47c67b
+        // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:c913846c41638a67bec9c31d691948d7a0a285ed211c13711ab1bfbb7a47c67b
         unit: None,
         instructions: out,
         asked,
         // A global criterion stands on the whole program rather than on the regions of one
         // entity, so there is no hash of its own code to carry a verdict on.
-        // @lfy def/generation/main.lfy:globalReview#globalReview:globalReview:e9cc8a4c5b45b3440c827bd67a1fd514c12870041202d0cd54fad21179548843
+        // @lfy def/generation/review.lfy:globalReview#globalReview:globalReview:e9cc8a4c5b45b3440c827bd67a1fd514c12870041202d0cd54fad21179548843
         hashes: BTreeMap::new(),
         carried: Vec::new(),
     }
@@ -523,8 +523,8 @@ pub fn global_review(program: &Program, source_maps: &[SourceMap]) -> ReviewRequ
 // derives the place from the id and never from what was submitted; a verifier that copies
 // the place it was given names its criterion in a way a person can read, and one that
 // garbles the id is still placed by the file and line it copied.
-// @lfy def/generation/main.lfy:review
-// @lfy def/generation/main.lfy:globalReview
+// @lfy def/generation/review.lfy:review
+// @lfy def/generation/review.lfy:globalReview
 // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:5e59c550936dcf7bf2e5d061524a9f594d0fad8ec3bcde714954a0e266066d26
 const PROTOCOL: &str = "\
 ## How to review
@@ -597,7 +597,7 @@ End your final message with exactly one line reading `ELFIE: REVIEWED`.
 ///
 /// `asked` is the ids the review request gave the verifier, and empty when they are not
 /// known; each of them no review names is missing.
-// @lfy def/generation/main.lfy:reviewOf
+// @lfy def/generation/findings.lfy:reviewOf
 pub fn review_of(
     report: &str,
     program: &Program,
@@ -610,15 +610,15 @@ pub fn review_of(
     let placed = placed_requirements(program);
     let begun = requirements_by_place(&placed);
     let lines: Vec<&str> = report.lines().collect();
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
     let end = lines.iter().rposition(|line| line.trim() == REVIEWED);
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:10e1a05e247051fa67e5af8f9351b3d6c08728d0642aa557109f7db27e01e1d6
     let body = match end {
         Some(index) => &lines[..index],
         None => &lines[..],
     };
     // What the verifier submitted during the run comes first, in the order it was recorded.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:9ebef2c6f21093486b00c8a0124de7e4c4262014632c2a66b0b47702c693b59d
     let mut reviews: Vec<Review> = Vec::new();
     for review in recorded {
         reviews.retain(|kept| kept.id != review.id);
@@ -629,42 +629,42 @@ pub fn review_of(
     let mut unplaced: Vec<String> = Vec::new();
     // The reviews read from the report and the problems come in report order, as the body is
     // read line by line.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:fdcd21d1f06a140e2bfae307be2625b9c27d43f2b73e320c1f152a39fd9638bc
     for line in body {
         // Whitespace around a line is ignored wherever the line is compared or parsed.
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921
+        // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:2bf986f1d26195d0e45f531c18f47a790716471b351423d3a52d37d04c898921
         let text = line.trim();
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3
+        // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:24c8a0d8aab48ace02aea35fdac897930db4e5ea8b8b4bd675b3bd00afefeac3
         if !text.starts_with('{') {
             continue;
         }
         match read_review(text, &placed, &begun) {
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
+            // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
+            // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
+            // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
             Some(review) => {
                 // A criterion the verifier already submitted a verdict for was checked when
                 // it arrived, so the line adds nothing and is no problem either.
-                // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e
+                // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:42415f0b3dec0f93094d195e8abb7b6b4c6f2a363c4db117d8c0c9e8b3c5417e
                 if reviews[..submitted]
                     .iter()
                     .any(|held| held.id == review.id)
                 {
                     continue;
                 }
-                // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
+                // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:19f540298a118815926304ba19a124afbedf6dedfe2303d1b51cb9b16e308600
                 reviews.retain(|kept| kept.id != review.id);
                 reviews.push(review);
             }
             // A line that reads as no object, that names no status of a review, or that
             // places itself nowhere is a problem as written.
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490
-            // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac
+            // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:cc8ee014686684d4965cbc76770ce45c98db561453c188050a7a3d3c4b345ad6
+            // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:065297aa8507d1cce029b56f7ee5ede6af8c5913fb55092cd6433f748dcff490
+            // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:ebd07d63053ee05f2507003716efdd9c78f20b38aecdf60cca2c1874d85612ac
             None => {
                 // A line that claims a violation and places it nowhere is kept apart as
                 // well, so that no violation is lost to an id a verifier garbled.
-                // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
+                // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
                 if claims_violation(text) {
                     unplaced.push(text.to_string());
                 }
@@ -673,11 +673,11 @@ pub fn review_of(
         }
     }
     if end.is_none() {
-        // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1
+        // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:b6eda5717d7bcd79108423e0c0c000b75e1bd73f8bd2a124b3cefcb31a67bae1
         problems.push(UNENDED.to_string());
     }
     // Each id the review was asked about that no review names, in the order it was asked.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:a7bd850a8fc6e8bf19c7c580ea931ed26ea1ea26c2cad6c2ea48096aa93c9535
     let missing: Vec<String> = asked
         .iter()
         .filter(|id| !reviews.iter().any(|review| &&review.id == id))
@@ -693,7 +693,7 @@ pub fn review_of(
 
 /// Whether a review line that was read as no review still says its status is violated: its
 /// text reads as an object whose status names [`ReviewStatus::Violated`], whatever its case.
-// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
+// @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:d4b52386cd8dd2565497fdaaf59b6fcafe4852653e38d732b6f4a7f4cb2d42f2
 fn claims_violation(line: &str) -> bool {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
         return false;
@@ -708,8 +708,8 @@ fn claims_violation(line: &str) -> bool {
 /// names a member of [`ReviewStatus`], whatever its case, and that names a criterion or
 /// test of the program. Its evidence and note are taken as given, and empty when missing;
 /// every other key is ignored.
-// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea
-// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce
+// @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:03c66ae037b851c7cce98a476e8c2dc9fe0e1d51213bd0f884fca3d2bf00fdea
+// @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:9edd00519d199e54062049e61315587483989f62a46fc5a31c9be591c90931ce
 fn read_review(
     line: &str,
     placed: &BTreeMap<String, (String, usize, String)>,
@@ -746,7 +746,7 @@ fn read_review(
 /// exactly one id near it begins or is begun by, so an id copied a character short or long
 /// still counts; or, failing both — with no id, or with one that is no id of the program and
 /// near no single one — the one that begins alone where its file and line say.
-// @lfy def/generation/main.lfy:reviewOf
+// @lfy def/generation/findings.lfy:reviewOf
 fn named_requirement(
     object: &serde_json::Map<String, serde_json::Value>,
     placed: &BTreeMap<String, (String, usize, String)>,
@@ -756,13 +756,13 @@ fn named_requirement(
         .get("id")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:4bf722eab5ca52f5732c6c9f8f080d2efd0dbed5df5ea0319fa4c4a56cade02c
     if placed.contains_key(given) {
         return Some(given.to_string());
     }
     // An id a character short or long names what it nearly is, as long as it nearly is one
     // thing only; an empty id is near every id, so it names nothing by this reading.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
     if !given.is_empty() {
         let mut near = placed.keys().filter(|id| is_near(id, given));
         if let Some(found) = near.next()
@@ -773,7 +773,7 @@ fn named_requirement(
     }
     // With no id, or with one that names nothing and is near nothing or near more than one
     // thing, the place the line gives names it when exactly one begins there.
-    // @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
+    // @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:ffcb26fa671fb0476f3effa3e247f546bf1144d511802cfdd3a726c5756fc018
     let file = object.get("file")?.as_str()?.trim().to_string();
     let line = usize::try_from(object.get("line")?.as_u64()?).ok()?;
     begun.get(&(file, line)).cloned()
@@ -781,7 +781,7 @@ fn named_requirement(
 
 /// Whether two ids are the same one up to a character: one begins the other, and they share
 /// their receiver, their contributor, and at least sixteen hex digits of their hash.
-// @lfy def/generation/main.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
+// @lfy def/generation/findings.lfy:reviewOf#reviewOf:reviewOf:731b47ce4e9dbb551b71e00078efb0e67419160fb2a75436b70be87929a8b8a9
 fn is_near(id: &str, given: &str) -> bool {
     /// How many hex digits of the hash two ids share to be the same one.
     const SHARED: usize = 16;
@@ -808,7 +808,7 @@ fn is_near(id: &str, given: &str) -> bool {
 /// The id of the criterion or test that begins at each place where exactly one of them
 /// begins, as its file and its line; a place two begin at is left out, since a review line
 /// with no id would name neither.
-// @lfy def/generation/main.lfy:reviewOf
+// @lfy def/generation/findings.lfy:reviewOf
 fn requirements_by_place(
     placed: &BTreeMap<String, (String, usize, String)>,
 ) -> BTreeMap<(String, usize), String> {
@@ -825,7 +825,7 @@ fn requirements_by_place(
 
 /// Every criterion and test of a program by id, global and local, each with the file and
 /// the line its origin gives and the name of the entity it belongs to.
-// @lfy def/generation/main.lfy:reviewOf
+// @lfy def/generation/findings.lfy:reviewOf
 fn placed_requirements(program: &Program) -> BTreeMap<String, (String, usize, String)> {
     let model = &program.workspace.model;
     let mut out: BTreeMap<String, (String, usize, String)> = BTreeMap::new();

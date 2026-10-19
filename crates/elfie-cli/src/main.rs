@@ -31,8 +31,8 @@ use elfie_core::model::{EntityId, Operation, Problem};
 use elfie_core::parser::{Child, ErrorNode, Node, Tree, parse};
 use elfie_core::query::{self, Diagnostic, Severity};
 use elfie_core::workspace::{self, Target, Workspace};
-// @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
-// @lfy def/cli/main.lfy:main#main:main:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
+// @lfy def/cli/main.lfy:compile#compile:compile:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
+// @lfy def/cli/main.lfy:compile#compile:compile:2992ce86fed8f5b6e58cb53a172e157d0398241d6fb037edd64df68376cd8d80
 use elfie_mcp::{Binding, GlobalReview, Host, Role, SessionRecord};
 
 pub use data::{ChangeSet, ChangeSetUnit, Command, ExitCode, Invocation, Progress, Step, UnitState};
@@ -206,12 +206,17 @@ pub fn run(arguments: &[String]) -> u8 {
         Command::Help => help(&invocation),
         Command::Version => version(),
         Command::Init => init(&invocation),
+        // @lfy def/cli/main.lfy:main#main:main:481d4218ce7077ec2927351bce1faee54e0b38c651589302ff8954f5de21bcb5
         Command::Check => check(&invocation),
+        // @lfy def/cli/main.lfy:main#main:main:63e041dd0eb2785e056ef2f4dfa286f3e9180c74abc863fa5ba8d0c5509c19a0
         Command::Format => format_command(&invocation),
+        // @lfy def/cli/main.lfy:main#main:main:d2dfa82545147fcdacc310d86cd6148f4032d0be2a04a009c446cf8c66d14029
         Command::Tree => tree(&invocation),
+        // @lfy def/cli/main.lfy:main#main:main:c14eb6d4e898170d9311ec97860a68360e1ebd33a5ca414cdc8b0ccd690ff140
         Command::Tokens => tokens(&invocation),
+        // @lfy def/cli/main.lfy:main#main:main:b7b3bc0be22c23f68f958477429b9cec7660b706949318684e87f53812c4435f
         Command::Compile => compile(&invocation),
-        // @lfy def/cli/main.lfy:main
+        // @lfy def/cli/main.lfy:main#main:main:58577360b51377dc9f947bd36c2146edf4e724f26454444cf5f6845da104fe5f
         Command::Verify => verify(&invocation),
         // @lfy def/cli/main.lfy:main#main:main:36f48d78f9141f2f56383741b2ba370ebe00b73a100f6cf7b27dc59c508be4ac
         Command::Lsp => ExitCode::from_code(elfie_lsp::serve(Some(Path::new(&invocation.root)))),
@@ -252,7 +257,7 @@ fn relative(root: &Path, path: &Path) -> String {
 }
 
 /// How many units may run at once when --jobs is not given.
-// @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+// @lfy def/cli/main.lfy:compile#compile:compile:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
 const DEFAULT_JOBS: usize = 4;
 
 /// The global options help lists: how each is written and one line of what it does.
@@ -271,7 +276,7 @@ const OPTIONS: [(&str, &str); 15] = [
     ("--continue", "compile: keep running the units that do not depend on a stopped one"),
     ("--no-verify", "compile: do not run the verifier on a unit that was accepted"),
     ("--global", "verify: review only the global criteria and tests"),
-    // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
+    // @lfy def/cli/main.lfy:verify#verify:verify:9fc0da16b4fb4241e8c2e859851d9e3fb85f014aa0a2f7a997decf40c5da9d86
     ("--full", "verify: review every criterion and test again, carrying no earlier verdict"),
     ("--help, -h", "Print this help"),
     ("--version", "Print the version"),
@@ -333,7 +338,7 @@ fn help_text(on: bool) -> String {
 const MAPS: &str = "elfie-compile/maps";
 
 /// Where the review records of every unit of a target are kept, under the root.
-// @lfy def/cli/main.lfy:main#main:main:ea7ff5171f6e9c135b3736f46e4d6878cfe8097bd5ca7b45686d9b57a0e0cfb7
+// @lfy def/cli/main.lfy:compile#compile:compile:ea7ff5171f6e9c135b3736f46e4d6878cfe8097bd5ca7b45686d9b57a0e0cfb7
 const REVIEWS: &str = "elfie-compile/reviews";
 
 /// A diagnostic is printed as the file, a colon, the line, a colon, the column, a colon, the
@@ -378,8 +383,8 @@ fn print_diagnostic(diagnostic: &Diagnostic, json: bool, on: bool) {
 
 /// One of [`Plan::problems`] printed as an error of stage generation at its node: a cycle
 /// among files that no move could resolve, so there is no order to build them in.
-// @lfy def/cli/main.lfy:main#main:main:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a
-// @lfy def/cli/main.lfy:main#main:main:055ed621ccb4cfc04dafc60c4ae42b146676fbac4139bd00ac26ddae87c1ad70
+// @lfy def/cli/main.lfy:check#check:check:2c23167a93d05731803b314b2b6545c5ee1481978f5c546aacb5c0b7f512115a
+// @lfy def/cli/main.lfy:compile#compile:compile:055ed621ccb4cfc04dafc60c4ae42b146676fbac4139bd00ac26ddae87c1ad70
 fn print_plan_problem(workspace: &Workspace, problem: &Problem, json: bool, on: bool) {
     let range = query::range_of_node(workspace, problem.node);
     if json {
@@ -419,11 +424,11 @@ fn moved_entities(workspace: &Workspace, moved: &Move) -> String {
         .join(", ")
 }
 /// The heading below which a person writes the answer to a question the compiler asked.
-// @lfy def/cli/main.lfy:main#main:main:469c6230ef224ea4f0cd3756084725704c81af1b734d9ca5e217dc12f854edb8
+// @lfy def/cli/main.lfy:compile#compile:compile:a3ff4cc29185e0a608fd124eb6e98d73490a313012922426815ffdaaf23e2e2a
 const ANSWER_HEADING: &str = "## The answer";
 
 /// Every step, so that the step column keeps one width for the whole compile.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:compile
 const STEPS: [Step; 26] = [
     Step::Planned,
     Step::Requesting,
@@ -455,18 +460,18 @@ const STEPS: [Step; 26] = [
 
 /// The width of the step column: the longest name of [`Step`] with its glyph, so every unit
 /// starts in the same column.
-// @lfy def/cli/main.lfy:main#main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c
+// @lfy def/cli/main.lfy:compile#compile:compile:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c
 fn step_column() -> usize {
     STEPS.iter().map(|step| width(glyph_of(*step)) + 1 + width(step.name())).max().unwrap_or(0)
 }
 
 /// How many columns the time column takes.
-// @lfy def/cli/main.lfy:main#main:main:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
+// @lfy def/cli/main.lfy:compile#compile:compile:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
 const TIME_COLUMN: usize = 6;
 
 /// How many spaces a problem, a reason, or a question that follows a progress line is
 /// indented by.
-// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+// @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
 const INDENT: &str = "    ";
 
 /// The counts a reviewed, globalReviewed, or finished line reports: how many, what they
@@ -477,8 +482,8 @@ type Counts = Vec<(usize, &'static str, Tone)>;
 /// The counts as one message: each a [`tally`], separated by a comma and a space. Painted or
 /// not, it holds the same words, so the message a script reads with --json is the one a
 /// person reads.
-// @lfy def/cli/main.lfy:main#main:main:d51d2b775176b8280c71a2ed87d370cbeb087b43471ac01fd88baa7509973bd3
-// @lfy def/cli/main.lfy:main#main:main:081257eb508c08a673bc5c569b3099485967e6b85b434c98d303c2de2d9958c5
+// @lfy def/cli/main.lfy:compile#compile:compile:d51d2b775176b8280c71a2ed87d370cbeb087b43471ac01fd88baa7509973bd3
+// @lfy def/cli/main.lfy:compile#compile:compile:081257eb508c08a673bc5c569b3099485967e6b85b434c98d303c2de2d9958c5
 fn counts_message(counts: &Counts, on: bool) -> String {
     counts.iter().map(|(count, label, tone)| tally(*count, label, *tone, on)).collect::<Vec<_>>().join(", ")
 }
@@ -486,14 +491,14 @@ fn counts_message(counts: &Counts, on: bool) -> String {
 /// The counts of satisfied, violated, and unverifiable reviews, in that order, each with the
 /// tone it is painted in, with every id the review was asked about that no review names
 /// counted as unverifiable: nothing answered for it, which is what unverifiable means.
-// @lfy def/cli/main.lfy:main#main:main:d51d2b775176b8280c71a2ed87d370cbeb087b43471ac01fd88baa7509973bd3
-// @lfy def/cli/main.lfy:main#main:main:8533b0690caaa0d5a3703e6633b44fd6034ce112c1a2c32f151e384e973b8bdf
+// @lfy def/cli/main.lfy:compile#compile:compile:d51d2b775176b8280c71a2ed87d370cbeb087b43471ac01fd88baa7509973bd3
+// @lfy def/cli/main.lfy:compile#compile:compile:8533b0690caaa0d5a3703e6633b44fd6034ce112c1a2c32f151e384e973b8bdf
 fn counts_with_missing(reviews: &[Review], missing: usize) -> Counts {
     let (satisfied, violated, unverifiable) = counts_of(reviews);
     vec![
         (satisfied, "satisfied", Tone::Success),
         (violated, "violated", Tone::Failure),
-        // @lfy def/cli/main.lfy:main#main:main:8533b0690caaa0d5a3703e6633b44fd6034ce112c1a2c32f151e384e973b8bdf
+        // @lfy def/cli/main.lfy:compile#compile:compile:8533b0690caaa0d5a3703e6633b44fd6034ce112c1a2c32f151e384e973b8bdf
         (unverifiable + missing, "unverifiable", Tone::Warning),
     ]
 }
@@ -504,16 +509,16 @@ fn counts_with_missing(reviews: &[Review], missing: usize) -> Counts {
 ///
 /// With nothing carried the counts end with the unverifiable, as they do for a global review,
 /// which carries nothing.
-// @lfy def/cli/main.lfy:main#main:main:79aeca787363a11f87e229a581c29dfcab7548d25cd5e7e3018983a54dbcb14d
-// @lfy def/cli/main.lfy:main#main:main:42cb7931abf1b1cbc69474e94e4981f4280630610c6622305d2f9ce3dab316d1
-// @lfy def/cli/main.lfy:main#main:main:0ae375c1084691369dda163c81e2e1f335de4780dfb63290fe31e727ca79fec3
-// @lfy def/cli/main.lfy:main#main:main:2edbac225cec2318ff261227fbb09c7256786df4743f9748be8742962271a3ac
+// @lfy def/cli/main.lfy:compile#compile:compile:79aeca787363a11f87e229a581c29dfcab7548d25cd5e7e3018983a54dbcb14d
+// @lfy def/cli/main.lfy:compile#compile:compile:42cb7931abf1b1cbc69474e94e4981f4280630610c6622305d2f9ce3dab316d1
+// @lfy def/cli/main.lfy:compile#compile:compile:0ae375c1084691369dda163c81e2e1f335de4780dfb63290fe31e727ca79fec3
+// @lfy def/cli/main.lfy:verify#verify:verify:2edbac225cec2318ff261227fbb09c7256786df4743f9748be8742962271a3ac
 fn counts_with_carried(reviews: &[Review], missing: usize, carried: usize) -> Counts {
     let mut counts = counts_with_missing(reviews, missing);
     // The count of carried verdicts and the word carried, painted muted: a verdict nothing
     // had to look at again is worth noticing least of all.
-    // @lfy def/cli/main.lfy:main#main:main:79aeca787363a11f87e229a581c29dfcab7548d25cd5e7e3018983a54dbcb14d
-    // @lfy def/cli/main.lfy:main#main:main:01ac2a8e3e988e7c07b647cd40cc38bce72044f98971d9e5e72eb5c62425cc0e
+    // @lfy def/cli/main.lfy:compile#compile:compile:79aeca787363a11f87e229a581c29dfcab7548d25cd5e7e3018983a54dbcb14d
+    // @lfy def/cli/main.lfy:compile#compile:compile:01ac2a8e3e988e7c07b647cd40cc38bce72044f98971d9e5e72eb5c62425cc0e
     if carried > 0 {
         counts.push((carried, "carried", Tone::Muted));
     }
@@ -528,35 +533,35 @@ fn counts_with_carried(reviews: &[Review], missing: usize, carried: usize) -> Co
 /// The counter and the time are muted, the step is its own tone unless one is given, the
 /// unit is subject, and the message is the step's tone for a rejection, a failure, a block,
 /// or a question, the counts when there are counts, and plain otherwise.
-// @lfy def/cli/main.lfy:main#main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621
+// @lfy def/cli/main.lfy:compile#compile:compile:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621
 fn text_of(progress: &Progress, counts: Option<&Counts>, tone: Option<Tone>, on: bool) -> String {
     // The counter keeps one width for the whole compile.
-    // @lfy def/cli/main.lfy:main#main:main:a8367555ef05292d4118872e01aece83edde2d5816e9e4c404840757608603d3
+    // @lfy def/cli/main.lfy:compile#compile:compile:a8367555ef05292d4118872e01aece83edde2d5816e9e4c404840757608603d3
     let digits = progress.total.to_string().len();
     let counter = paint(&format!("[{:>digits$}/{}]", progress.done, progress.total), Tone::Muted, on);
-    // @lfy def/cli/main.lfy:main#main:main:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
+    // @lfy def/cli/main.lfy:compile#compile:compile:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
     let time = paint(&format!("{:>TIME_COLUMN$}", duration(progress.elapsed)), Tone::Muted, on);
-    // @lfy def/cli/main.lfy:main#main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c
+    // @lfy def/cli/main.lfy:compile#compile:compile:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c
     let named = format!("{} {}", glyph_of(progress.step), progress.step.name());
     let step = padded(&paint(&named, tone.unwrap_or_else(|| tone_of(progress.step)), on), step_column());
     let mut columns = vec![counter, time, step];
     // The unit a step concerns follows the step, painted subject.
-    // @lfy def/cli/main.lfy:main#main:main:679737b9c65e8c1627af4566b3a9f5d490c8790929b3f394353619a617003c6e
+    // @lfy def/cli/main.lfy:compile#compile:compile:679737b9c65e8c1627af4566b3a9f5d490c8790929b3f394353619a617003c6e
     if let Some(unit) = &progress.unit {
         columns.push(paint(unit, Tone::Subject, on));
     }
-    // @lfy def/cli/main.lfy:main#main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621
+    // @lfy def/cli/main.lfy:compile#compile:compile:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621
     let message = match counts {
-        // @lfy def/cli/main.lfy:main#main:main:d51d2b775176b8280c71a2ed87d370cbeb087b43471ac01fd88baa7509973bd3
+        // @lfy def/cli/main.lfy:compile#compile:compile:d51d2b775176b8280c71a2ed87d370cbeb087b43471ac01fd88baa7509973bd3
         Some(counts) => counts_message(counts, on),
         None => {
             let first = progress.message.lines().next().unwrap_or_default();
             match progress.step {
-                // @lfy def/cli/main.lfy:main#main:main:c164c51236df72a93cac3a3c7bcc44ec0848586ed13d2f9add36192db3bc1999
+                // @lfy def/cli/main.lfy:compile#compile:compile:c164c51236df72a93cac3a3c7bcc44ec0848586ed13d2f9add36192db3bc1999
                 Step::Rejected | Step::Failed | Step::Blocked | Step::Clarification => {
                     paint(first, tone_of(progress.step), on)
                 }
-                // @lfy def/cli/main.lfy:main#main:main:fa43f8b6da9b3c369ebca761ab832f180a9bc8eb02b280dd2435250f4884c825
+                // @lfy def/cli/main.lfy:compile#compile:compile:fa43f8b6da9b3c369ebca761ab832f180a9bc8eb02b280dd2435250f4884c825
                 Step::Planned
                 | Step::Requesting
                 | Step::Resuming
@@ -578,23 +583,23 @@ fn text_of(progress: &Progress, counts: Option<&Counts>, tone: Option<Tone>, on:
                 | Step::Retrying => first.to_string(),
                 // A line of counts whose counts were not given, which only a reviewed,
                 // globalReviewed, or finished line carries, reads as it was written.
-                // @lfy def/cli/main.lfy:main#main:main:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621
+                // @lfy def/cli/main.lfy:compile#compile:compile:e644285bff17055757f9da45f329dc88d9e4ec34a19c3b5ce92b8a4a03950621
                 Step::Reviewed | Step::GlobalReviewed | Step::Finished => first.to_string(),
             }
         }
     };
     // The line ends with the first line of the message.
-    // @lfy def/cli/main.lfy:main#main:main:72582398057ef4b458680631986c9aa55de4061eecc790f79ca14cc77a71b86d
+    // @lfy def/cli/main.lfy:compile#compile:compile:72582398057ef4b458680631986c9aa55de4061eecc790f79ca14cc77a71b86d
     if !message.is_empty() {
         columns.push(message);
     }
     // The columns are separated by two spaces.
-    // @lfy def/cli/main.lfy:main#main:main:fd851430001b39d2d1c79a0807242453986bf07f0fbe972e5ecd9815c3380aba
+    // @lfy def/cli/main.lfy:compile#compile:compile:fd851430001b39d2d1c79a0807242453986bf07f0fbe972e5ecd9815c3380aba
     columns.join("  ")
 }
 
 /// One progress line as one JSON object.
-// @lfy def/cli/main.lfy:main#main:main:bbad3c69582995a56ff9152a6a483894f2d276f7b0d0b4805da999767796b37e
+// @lfy def/cli/main.lfy:compile#compile:compile:bbad3c69582995a56ff9152a6a483894f2d276f7b0d0b4805da999767796b37e
 fn json_of(progress: &Progress) -> serde_json::Value {
     serde_json::json!({
         "step": progress.step.name(),
@@ -607,7 +612,7 @@ fn json_of(progress: &Progress) -> serde_json::Value {
 }
 
 /// Seconds since an instant, milliseconds kept as a fraction and never negative.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:compile
 fn elapsed(start: SystemTime) -> f64 {
     SystemTime::now().duration_since(start).map_or(0.0, |since| since.as_secs_f64())
 }
@@ -618,7 +623,7 @@ fn elapsed(start: SystemTime) -> f64 {
 ///
 /// Every unit that runs at once prints through a clone of the one reporter of its compile, so
 /// the counts and whether a started line was printed yet are shared between them.
-// @lfy def/cli/main.lfy:main#main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e
+// @lfy def/cli/main.lfy:compile#compile:compile:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e
 #[derive(Clone)]
 struct Reporter {
     json: bool,
@@ -634,12 +639,12 @@ struct Reporter {
 
 /// The counter every progress line shows, and whether the compile printed a started line yet,
 /// so that every started line after the first one has an empty line before it.
-// @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+// @lfy def/cli/main.lfy:compile#compile:compile:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
 #[derive(Default)]
 struct Counter {
     total: usize,
     done: usize,
-    // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+    // @lfy def/cli/main.lfy:compile#compile:compile:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
     begun: bool,
 }
 
@@ -652,7 +657,7 @@ impl Reporter {
 
     /// The units merged so far and the units planned, as the counter shows them from the next
     /// line on.
-    // @lfy def/cli/main.lfy:main#main:main:a8367555ef05292d4118872e01aece83edde2d5816e9e4c404840757608603d3
+    // @lfy def/cli/main.lfy:compile#compile:compile:a8367555ef05292d4118872e01aece83edde2d5816e9e4c404840757608603d3
     fn set_counts(&self, done: usize, total: usize) {
         let mut counter = self.counter.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         counter.done = done;
@@ -665,14 +670,14 @@ impl Reporter {
     }
 
     /// The turn to print, held while a line and what follows it are printed together.
-    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    // @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
     fn hold(&self) -> Turn {
         turn()
     }
 
     /// One line for one step, printed and logged.
-    // @lfy def/cli/main.lfy:main#main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e
-    // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+    // @lfy def/cli/main.lfy:compile#compile:compile:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e
+    // @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
     fn report(&self, step: Step, unit: Option<&str>, message: &str) {
         self.emit(step, unit, message.to_string(), None, None);
     }
@@ -682,7 +687,7 @@ impl Reporter {
     // @lfy def/cli/main.lfy:main
     fn report_counts(&self, step: Step, unit: Option<&str>, counts: &Counts, tone: Option<Tone>) {
         // The message with --json holds the same words the counts are printed with.
-        // @lfy def/cli/main.lfy:main#main:main:081257eb508c08a673bc5c569b3099485967e6b85b434c98d303c2de2d9958c5
+        // @lfy def/cli/main.lfy:compile#compile:compile:081257eb508c08a673bc5c569b3099485967e6b85b434c98d303c2de2d9958c5
         let message = counts_message(counts, false);
         self.emit(step, unit, message, Some(counts), tone);
     }
@@ -695,7 +700,7 @@ impl Reporter {
             // An empty line before every started line after the first one, and before
             // relocated, finalGate, globalVerifying, merging, and finished, so each reads as
             // one block.
-            // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+            // @lfy def/cli/main.lfy:compile#compile:compile:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
             let apart = match step {
                 Step::Started => std::mem::replace(&mut counter.begun, true),
                 Step::Relocated | Step::FinalGate | Step::GlobalVerifying | Step::Merging | Step::Finished => true,
@@ -708,17 +713,17 @@ impl Reporter {
             unit: unit.map(str::to_string),
             done,
             total,
-            // @lfy def/cli/main.lfy:main#main:main:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
+            // @lfy def/cli/main.lfy:compile#compile:compile:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
             elapsed: elapsed(self.started),
             message,
         };
         // The empty line is printed and logged.
-        // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+        // @lfy def/cli/main.lfy:compile#compile:compile:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
         if !self.json && apart {
             println!();
             self.append("");
         }
-        // @lfy def/cli/main.lfy:main#main:main:bbad3c69582995a56ff9152a6a483894f2d276f7b0d0b4805da999767796b37e
+        // @lfy def/cli/main.lfy:compile#compile:compile:bbad3c69582995a56ff9152a6a483894f2d276f7b0d0b4805da999767796b37e
         if self.json {
             let line = json_of(&progress).to_string();
             println!("{line}");
@@ -733,7 +738,7 @@ impl Reporter {
 
     /// One line for one step with the problems that belong to it after it, printed in one
     /// turn, so no line of another unit comes between them.
-    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    // @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
     fn report_problems(&self, step: Step, unit: Option<&str>, message: &str, problems: &[String]) {
         let _turn = self.hold();
         self.report(step, unit, message);
@@ -742,7 +747,7 @@ impl Reporter {
 
     /// One line for one step with the reason or the question that belongs to it after it,
     /// printed in one turn.
-    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    // @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
     fn report_reason(&self, step: Step, unit: Option<&str>, message: &str, reason: &str) {
         let _turn = self.hold();
         self.report(step, unit, message);
@@ -752,7 +757,7 @@ impl Reporter {
     /// The problems of a step, following the line they belong to: one per line, each indented
     /// four spaces, beginning with `-` and a space and painted failure. With --json nothing
     /// follows, since the whole of the message is in the [`Progress`].
-    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    // @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
     fn problems(&self, problems: &[String]) {
         if self.json {
             return;
@@ -761,7 +766,7 @@ impl Reporter {
         for problem in problems {
             // A problem that runs to several lines, as one followed by the lines of a
             // command's output does, has the dash before its first line alone.
-            // @lfy def/cli/main.lfy:main#main:main:7278a611f5028db0b60166d22b250e5673ae6472e74d4da368aacbd121b9843b
+            // @lfy def/cli/main.lfy:compile#compile:compile:7278a611f5028db0b60166d22b250e5673ae6472e74d4da368aacbd121b9843b
             for (at, line) in problem.lines().enumerate() {
                 let body = if at == 0 { format!("- {line}") } else { format!("  {line}") };
                 println!("{INDENT}{}", paint(&body, Tone::Failure, self.style.out));
@@ -772,14 +777,14 @@ impl Reporter {
 
     /// A reason or a question, following the line it belongs to: one line of text per line,
     /// each indented four spaces and painted warning.
-    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    // @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
     fn reason(&self, text: &str) {
         if self.json {
             return;
         }
         let _turn = self.hold();
         for line in text.lines() {
-            // @lfy def/cli/main.lfy:main#main:main:f74f012b6abed1f12784b91dd8349a19d7a6b3e65f13f043f7bf8dc07929bc01
+            // @lfy def/cli/main.lfy:compile#compile:compile:f74f012b6abed1f12784b91dd8349a19d7a6b3e65f13f043f7bf8dc07929bc01
             println!("{INDENT}{}", paint(line, Tone::Warning, self.style.out));
             self.append(&format!("{INDENT}{line}"));
         }
@@ -787,8 +792,8 @@ impl Reporter {
 
     /// Appends text to `elfie-requests/compile.log` under the root, so a run can be read
     /// after the fact.
-    // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
-    // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+    // @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+    // @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
     fn append(&self, text: &str) {
         append_to(&self.logs, text);
     }
@@ -796,20 +801,20 @@ impl Reporter {
 
 /// Which thread holds the turn to print, and how many times over it took it, so that a line
 /// and what follows it are printed in one turn and the same thread may take it again inside.
-// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+// @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
 static TURN: Mutex<Option<(std::thread::ThreadId, usize)>> = Mutex::new(None);
 
 /// What a thread waiting for the turn is woken by.
-// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+// @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
 static FREED: std::sync::Condvar = std::sync::Condvar::new();
 
 /// The turn to print, held until it is dropped.
-// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+// @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
 struct Turn;
 
 /// The turn to print taken, once every other thread has given it up; a thread that holds it
 /// already takes it once more.
-// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+// @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
 fn turn() -> Turn {
     let me = std::thread::current().id();
     let mut held = TURN.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -829,7 +834,7 @@ fn turn() -> Turn {
 }
 
 impl Drop for Turn {
-    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    // @lfy def/cli/main.lfy:compile#compile:compile:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
     fn drop(&mut self) {
         let mut held = TURN.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some((_, depth)) = &mut *held {
@@ -845,15 +850,15 @@ impl Drop for Turn {
 /// The lock every line of a log is written under, so that the lines a command writes to its
 /// standard output and to its standard error never mix: a line reaches the log whole or not
 /// at all, as it reaches the terminal whole through one `println!`.
-// @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+// @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
 static LOGGING: Mutex<()> = Mutex::new(());
 
 /// One line appended to each log, so a run can be read after the fact. Nothing that writes a
 /// line to a person is without this, so the log holds everything the run showed.
-// @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
-// @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+// @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+// @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
 fn append_to(logs: &[PathBuf], text: &str) {
-    // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+    // @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
     let _held = LOGGING.lock();
     for path in logs {
         let Some(parent) = path.parent() else { continue };
@@ -876,7 +881,7 @@ fn manifest_command(root: &Path, key: &str) -> Option<String> {
 }
 
 /// The manifest's `compiler` command, when it names one.
-// @lfy def/cli/main.lfy:main#main:main:3794ecd87cdab206cb18cf520d802e324546a2124e9c3ab4f934dc88f93dbb58
+// @lfy def/cli/main.lfy:compile#compile:compile:3a5a6187176db8b0b5e61a117d0b28b3181489ed6ba22acc61e795ac4bbf9d31
 fn compiler_command(root: &Path) -> Option<String> {
     manifest_command(root, "compiler")
 }
@@ -892,23 +897,23 @@ fn verifier_command(root: &Path) -> Option<String> {
 /// the criteria of its declaration and then its tests, then those of its own file, which is
 /// exactly what a review request computes a hash for. A unit's review records are written for
 /// these, in this order.
-// @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+// @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
 fn requirement_ids_of(program: &Program, unit: &Unit) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for &entity in &unit.entities {
-        // @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+        // @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
         let Some(node) = declared_node(program, unit.lowered, entity) else { continue };
         out.extend(node.criteria.iter().map(|criterion| criterion.id.clone()));
         out.extend(node.tests.iter().map(|test| test.id.clone()));
     }
     // A criterion or test of the unit's own file is one of the unit's own all the same.
-    // @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+    // @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
     let file = &program.files[unit.lowered];
     out.extend(file.criteria.iter().map(|criterion| criterion.id.clone()));
     out.extend(file.tests.iter().map(|test| test.id.clone()));
     // Sorted by id, so the records of a unit are written in one order whatever the order its
     // entities were reviewed in.
-    // @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+    // @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
     out.sort();
     out.dedup();
     out
@@ -918,15 +923,15 @@ fn requirement_ids_of(program: &Program, unit: &Unit) -> Vec<String> {
 /// lowered file, or, for an entity moved into the unit from another file, its declaration in
 /// the file it came from, whose criteria and tests are the unit's to answer for just the
 /// same.
-// @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+// @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
 fn declared_node(program: &Program, lowered: usize, entity: EntityId) -> Option<&LoweredNode> {
-    // @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+    // @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
     declaring_node(&program.files[lowered].root, entity)
         .or_else(|| program.files.iter().find_map(|file| declaring_node(&file.root, entity)))
 }
 
 /// The node of a lowered tree that declares an entity, the node itself before its children.
-// @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
+// @lfy def/cli/main.lfy:compile#compile:compile:ce733e8816d1638bf89269929d621f9cc341aaee184834fbd66203ed30bfb6b1
 fn declaring_node(node: &LoweredNode, entity: EntityId) -> Option<&LoweredNode> {
     if node.entity == Some(entity) {
         return Some(node);
@@ -954,7 +959,7 @@ fn walk_all(directory: &Path, out: &mut Vec<PathBuf>) {
 /// A unit's request name: its stem with each `/` replaced by `-`, such as `cli-main` for
 /// `def/cli/main.lfy`, since a stem holds slashes and a file name may not. `global` names the
 /// global review the same way.
-// @lfy def/cli/main.lfy:main#main:main:471b5ff5941e414fe0f5f5350c3d0f8c3560fdbfd6326589991ff388f7367356
+// @lfy def/cli/main.lfy:compile#compile:compile:471b5ff5941e414fe0f5f5350c3d0f8c3560fdbfd6326589991ff388f7367356
 fn request_name(stem: &str) -> String {
     stem.replace('/', "-")
 }
@@ -972,26 +977,26 @@ fn target_of<'w>(workspace: &'w Workspace, unit: &Unit) -> &'w str {
 /// The file it is kept in, what it holds, and which of its reviews are violated belong to the
 /// agent server's data rather than here, because both this and the agent server plan with the
 /// units the last global review found violated.
-// @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
+// @lfy def/cli/main.lfy:compile#compile:compile:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
 fn violated_ids(root: &Path) -> BTreeSet<String> {
-    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
+    // @lfy def/cli/main.lfy:compile#compile:compile:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     let Some(last) = GlobalReview::read(root) else {
         return BTreeSet::new();
     };
-    // @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
+    // @lfy def/cli/main.lfy:compile#compile:compile:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
     last.violated_requirements().into_iter().collect()
 }
 
 /// The stems of every unit whose outputs, or whose maps among those given beside them, hold a
 /// marker whose requirement is one of these ids. The maps given are those a kept change set's
 /// copy holds, where a unit's markers are when the root never took its change set.
-// @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
+// @lfy def/cli/main.lfy:compile#compile:compile:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
 fn stems_answering(workspace: &Workspace, plan: &Plan, ids: &BTreeSet<String>, beside: &[SourceMap]) -> Vec<String> {
     if ids.is_empty() {
         return Vec::new();
     }
     let answers = |map: &SourceMap| {
-        // @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
+        // @lfy def/cli/main.lfy:compile#compile:compile:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
         map.markers.iter().any(|marker| marker.requirement.as_deref().is_some_and(|id| ids.contains(id)))
     };
     let mut stems: Vec<String> = plan
@@ -1021,13 +1026,13 @@ fn plan_with(
     violated: &[String],
     foreign_edits: &[ForeignEdit],
 ) -> (Program, Plan) {
-    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
+    // @lfy def/cli/main.lfy:compile#compile:compile:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     generation::plan(workspace::load(root), maps, requested, violated, foreign_edits)
 }
 
 /// What a command plans with: the source maps, the stems requested, and the foreign edits,
 /// so that a compile can make its plan again with the same inputs and other foreign edits.
-// @lfy def/cli/main.lfy:main#main:main:fc8d9730ea95e71cb418a2d3c7249b91a9f7ca20d5041d67b3296632614122c8
+// @lfy def/cli/main.lfy:compile#compile:compile:fc8d9730ea95e71cb418a2d3c7249b91a9f7ca20d5041d67b3296632614122c8
 #[derive(Clone, Default)]
 struct Planning {
     maps: Vec<SourceMap>,
@@ -1038,7 +1043,7 @@ struct Planning {
 impl Planning {
     /// The plan made from these inputs and the foreign edits given; its order is the same
     /// whatever the foreign edits are, since only the definitions decide it.
-    // @lfy def/cli/main.lfy:main#main:main:fc8d9730ea95e71cb418a2d3c7249b91a9f7ca20d5041d67b3296632614122c8
+    // @lfy def/cli/main.lfy:compile#compile:compile:fc8d9730ea95e71cb418a2d3c7249b91a9f7ca20d5041d67b3296632614122c8
     fn plan(&self, root: &Path, foreign_edits: &[ForeignEdit]) -> (Program, Plan) {
         plan_with(root, &self.maps, &self.requested, &self.violated, foreign_edits)
     }
@@ -1060,16 +1065,16 @@ fn planning_of(
     beside: &[SourceMap],
 ) -> Planning {
     // The stems given as arguments are the requested units.
-    // @lfy def/cli/main.lfy:main#main:main:7293a67c5e6d7c3cb9a59ca62501969dcb425b97ef7cc4ae74b048b61f3d56b0
+    // @lfy def/cli/main.lfy:compile#compile:compile:7293a67c5e6d7c3cb9a59ca62501969dcb425b97ef7cc4ae74b048b61f3d56b0
     let mut planning = Planning { maps: maps.to_vec(), requested: requested.to_vec(), violated: Vec::new() };
     if violated.is_empty() && !all {
         return planning;
     }
     let (program, plan) = planning.plan(root, &[]);
-    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
+    // @lfy def/cli/main.lfy:compile#compile:compile:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     planning.violated = stems_answering(&program.workspace, &plan, violated, beside);
     // --all requests every unit.
-    // @lfy def/cli/main.lfy:main#main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d
+    // @lfy def/cli/main.lfy:compile#compile:compile:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d
     if all {
         planning.requested = plan.units.iter().map(|unit| unit.stem.clone()).collect();
     }
@@ -1093,27 +1098,27 @@ fn planned(
 
 /// `elfie-requests/compile.log` under the root, never under an output directory, so no
 /// output is ever mistaken for the CLI's own files.
-// @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+// @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
 fn log_paths(root: &Path) -> Vec<PathBuf> {
     vec![requests_directory(root).join("compile.log")]
 }
 
 /// `elfie-requests` under the root: where the CLI's own files live, never under an output
 /// directory.
-// @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
+// @lfy def/cli/main.lfy:compile#compile:compile:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
 fn requests_directory(root: &Path) -> PathBuf {
     root.join("elfie-requests")
 }
 
 /// The counts of satisfied, violated, and unverifiable reviews, in that order.
-// @lfy def/cli/main.lfy:main#main:main:aefab83034ace05b16e3a0289b1a6d708bca8805648197925ce1c4cb013db13d
+// @lfy def/cli/main.lfy:verify#verify:verify:aefab83034ace05b16e3a0289b1a6d708bca8805648197925ce1c4cb013db13d
 fn counts_of(reviews: &[Review]) -> (usize, usize, usize) {
     let count = |status| reviews.iter().filter(|review| review.status == status).count();
     (count(ReviewStatus::Satisfied), count(ReviewStatus::Violated), count(ReviewStatus::Unverifiable))
 }
 
 /// What `git` wrote in a directory, when it ran and ended well.
-// @lfy def/cli/main.lfy:main
+// @lfy def/cli/main.lfy:compile
 fn git(directory: &Path, arguments: &[&str]) -> Option<String> {
     let output =
         Process::new("git").args(arguments).current_dir(directory).stderr(Stdio::null()).output().ok()?;
@@ -1122,14 +1127,14 @@ fn git(directory: &Path, arguments: &[&str]) -> Option<String> {
 
 /// The root's git directory, when the root is a git repository, as an absolute path, so that
 /// the `.git` file of a copy names the same place from wherever the copy sits.
-// @lfy def/cli/main.lfy:main#main:main:8a305990c26ec5a21e609fca17bc010a769c49511853e849d7b5b29db5b1b906
+// @lfy def/cli/main.lfy:compile#compile:compile:8a305990c26ec5a21e609fca17bc010a769c49511853e849d7b5b29db5b1b906
 fn git_directory(root: &Path) -> Option<PathBuf> {
     git(root, &["rev-parse", "--absolute-git-dir"]).map(|text| PathBuf::from(text.trim()))
 }
 
 /// The target --target limits the plan to, when it names a known one.
-// @lfy def/cli/main.lfy:main#main:main:ab0e6c732c90fb6b7fa9232e9b5f894e7f913233bb84f30a1d08a14830314820
-// @lfy def/cli/main.lfy:main#main:main:aa8d8f7253225d4bbfb5d6995399aa58057a616f7d55984c01a6687dc0ff2ee9
+// @lfy def/cli/main.lfy:compile#compile:compile:ab0e6c732c90fb6b7fa9232e9b5f894e7f913233bb84f30a1d08a14830314820
+// @lfy def/cli/main.lfy:verify#verify:verify:aa8d8f7253225d4bbfb5d6995399aa58057a616f7d55984c01a6687dc0ff2ee9
 fn target_named(workspace: &Workspace, invocation: &Invocation) -> Result<Option<String>, ExitCode> {
     let Some(name) = invocation.option("target") else {
         return Ok(None);
@@ -1137,15 +1142,15 @@ fn target_named(workspace: &Workspace, invocation: &Invocation) -> Result<Option
     if !workspace.targets.iter().any(|known| known.identifier == name) {
         // A usage message naming the identifiers of the targets, nothing compiled or
         // reviewed, and the code is usage.
-        // @lfy def/cli/main.lfy:main#main:main:022c51b85274d94f99424138e1f93c2421f285701b3ad67ff7eba4845f51626a
-        // @lfy def/cli/main.lfy:main#main:main:315342ecb200e927c15546ab751e43c381772c3fa07f27e1d0f154a7c2b09afd
+        // @lfy def/cli/main.lfy:compile#compile:compile:022c51b85274d94f99424138e1f93c2421f285701b3ad67ff7eba4845f51626a
+        // @lfy def/cli/main.lfy:compile#compile:compile:315342ecb200e927c15546ab751e43c381772c3fa07f27e1d0f154a7c2b09afd
         let known: Vec<&str> = workspace.targets.iter().map(|t| t.identifier.as_str()).collect();
         complain(
             Paint::of(invocation).err,
             None,
             &format!("{name} is not a target; the targets are: {}", known.join(", ")),
         );
-        // @lfy def/cli/main.lfy:main#main:main:305f0dfcde799b22957fd531d22657ae8b808df4f65b4301dbd9bbdf42a3e1cd
+        // @lfy def/cli/main.lfy:compile#compile:compile:305f0dfcde799b22957fd531d22657ae8b808df4f65b4301dbd9bbdf42a3e1cd
         return Err(ExitCode::Usage);
     }
     Ok(Some(name.to_string()))
@@ -1488,7 +1493,7 @@ global@targets.add(rust);
 
     /// A verifier writing the end line and no review at all: it answered for nothing it was
     /// asked about, so it is run once more.
-    // @lfy def/cli/main.lfy:main#main:main:6c97f065ec22808dd6a71afa10fbb1b9f2c63c5fe6ab869aeeb129eeb68a59d1
+    // @lfy def/cli/main.lfy:compile#compile:compile:6c97f065ec22808dd6a71afa10fbb1b9f2c63c5fe6ab869aeeb129eeb68a59d1
     const NOTHING_REVIEWED: &str =
         "#!/bin/sh\ncat > /dev/null\necho verify >> '<notes>/verifications.txt'\necho 'ELFIE: REVIEWED'\n";
 
@@ -1499,7 +1504,7 @@ global@targets.add(rust);
     /// A verifier that satisfies the criterion, writes a line that reads as an object but
     /// names no criterion, and then ends: a report that answered for every id it was asked
     /// about stands, whatever else it holds.
-    // @lfy def/cli/main.lfy:main#main:main:6e067459146b4d2bf024656cdb23445dfe967a1375be4a87f72a515e611ffef4
+    // @lfy def/cli/main.lfy:compile#compile:compile:c3711c547c11411e55264eed71019f21008660209ec5348f9c940bbad6ddeb23
     const SATISFIED_WITH_A_STRAY_OBJECT: &str = "#!/bin/sh\ncat > /dev/null\necho verify >> '<notes>/verifications.txt'\necho '{\"id\":\"<id>\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"covered by a test\"}'\necho '{\"thought\":\"I also looked at the tests\"}'\necho 'ELFIE: REVIEWED'\n";
 
     /// A verifier that satisfies the criterion and writes a line of its own to standard error,
@@ -1508,7 +1513,7 @@ global@targets.add(rust);
 
     /// The review records of a project removed, so that a review of it carries nothing and
     /// every criterion and test is asked about again.
-    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
+    // @lfy def/cli/main.lfy:verify#verify:verify:62ee8e26855d189d744062b262cfed91d039f0cd61f31e843738d7a60ec73d44
     fn forget_reviews(fixture: &Fixture) {
         let _ = fs::remove_dir_all(fixture.root.join("elfie-compile/reviews"));
     }
@@ -1552,7 +1557,7 @@ global@targets.add(rust);
 
     /// A fixture root made a git repository, so that a copy of it holds what git lists; false
     /// when there is no git to make one with.
-    // @lfy def/cli/main.lfy:main#main:main:670dca2fbcb84c029ce58dc80e12e107f388904bf0cf79378ec5b4136e8b6097
+    // @lfy def/cli/main.lfy:compile#compile:compile:670dca2fbcb84c029ce58dc80e12e107f388904bf0cf79378ec5b4136e8b6097
     fn a_repository(fixture: &Fixture) -> bool {
         git(fixture, &["init", "-q"])
             && git(fixture, &["config", "user.email", "p@example.com"])
@@ -1561,7 +1566,7 @@ global@targets.add(rust);
 
     /// Whether a text is a version 4 UUID spelled as 36 lowercase characters in the 8-4-4-4-12
     /// form, with the version in the thirteenth character and the variant in the seventeenth.
-    // @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
+    // @lfy def/cli/main.lfy:compile#compile:compile:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
     fn is_a_uuid(text: &str) -> bool {
         let groups: Vec<&str> = text.split('-').collect();
         groups.len() == 5
@@ -1584,7 +1589,7 @@ global@targets.add(rust);
     }
 
     /// The maps one map file under the root holds, as JSON.
-    // @lfy def/cli/main.lfy:main#main:main:42e098db25f729f653afa31b4ff6a56916d8ce4d4d18049d458c6d86ed140e13
+    // @lfy def/cli/main.lfy:compile#compile:compile:3d902ee1bcf6d6cc1e1820560d8d0cb6595db90f02696457e1c34eeceb299755
     fn maps_of(fixture: &Fixture, path: &str) -> serde_json::Value {
         serde_json::from_str(&fixture.read(path)).expect("a map file of JSON")
     }

@@ -120,7 +120,7 @@ fn lowered_entities(file: &LoweredFile) -> Vec<EntityId> {
 }
 
 /// The lowered node that declares an entity; `None` when none does.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn lowered_node_of(file: &LoweredFile, entity: EntityId) -> Option<&LoweredNode> {
     let mut nodes = Vec::new();
     lowered_nodes(&file.root, &mut nodes);
@@ -139,7 +139,7 @@ fn lowered_declaration(program: &Program, entity: EntityId) -> Option<&LoweredNo
 }
 
 /// The local criteria and tests of one entity of a file, criteria first.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn entity_requirements(file: &LoweredFile, entity: EntityId) -> Vec<Requirement> {
     let Some(node) = lowered_node_of(file, entity) else {
         return Vec::new();
@@ -154,7 +154,7 @@ fn entity_requirements(file: &LoweredFile, entity: EntityId) -> Vec<Requirement>
 
 /// Every local criterion and test of a file: those of each lowered node in file order,
 /// criteria before tests, then those of the file's own entity.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn local_requirements(file: &LoweredFile) -> Vec<Requirement> {
     let mut nodes = Vec::new();
     lowered_nodes(&file.root, &mut nodes);
@@ -193,7 +193,7 @@ fn requirements_hash(program: &Program, unit: &Unit) -> String {
 // Decision: lowering spells a whole file this way into `LoweredFile.text`, and exports no
 // spelling of one node; a request quotes one entity's code at a time, so the same spelling
 // is written here for a node.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn lowered_code(model: &Model, node: &LoweredNode) -> String {
     if let Some(value) = &node.value {
         return lowered_value(model, value);
@@ -239,7 +239,7 @@ fn lowered_code(model: &Model, node: &LoweredNode) -> String {
 }
 
 /// The member a lowered node is, when it is one of its parent's entity.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn member_node(model: &Model, node: &LoweredNode) -> Option<EntityId> {
     let entity = node.entity?;
     (node.value.is_none()
@@ -252,7 +252,7 @@ fn member_node(model: &Model, node: &LoweredNode) -> Option<EntityId> {
 }
 
 /// A member as Elfie spells one: its name, its description, and its type or value.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn lowered_member(model: &Model, entity: EntityId) -> String {
     let record = &model.entities[entity];
     let mut out = format!("${}", record.identifier.clone().unwrap_or_default());
@@ -269,7 +269,7 @@ fn lowered_member(model: &Model, entity: EntityId) -> String {
 }
 
 /// A folded value as Elfie spells it; a prompted value as the call that asked for it.
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 fn lowered_value(model: &Model, value: &Evaluated) -> String {
     match value {
         Evaluated::Value(value) => value.spelled(model),
@@ -368,7 +368,7 @@ fn write_interface_entity(out: &mut String, model: &Model, entity: EntityId, ind
 // ---------------------------------------------------------------------------------------
 
 /// One test as one line: its input and its expectation, as spelled.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn test_text(test: &LoweredTest) -> String {
     format!(
         "Input `{}` gives `{}`",
@@ -387,7 +387,7 @@ fn entity_name(model: &Model, entity: EntityId) -> String {
 
 /// The name an entity is named by, as a marker and a change spell it: the identifier, or
 /// the owner's identifier, a dot, and a member's name.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn qualified_name(model: &Model, entity: EntityId) -> String {
     if let Some(file) = model.entities[entity].file
         && let Some((name, _)) = named_entities(model, file, &[entity])
@@ -424,7 +424,7 @@ fn kind_text(entity: &Entity) -> &'static str {
 
 /// A criterion's or test's place: the file of its origin relative to the workspace root, a
 /// colon, and the line its origin begins on.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 // @lfy def/generation/data.lfy:ReviewRequest#ReviewRequest:ReviewRequest:89af425d63c0f40d30e4db0494e14a97b63ea5ff20139e294920432acbccb8cf
 fn origin_place(model: &Model, origin: NodeRef) -> String {
     format!(
@@ -435,7 +435,7 @@ fn origin_place(model: &Model, origin: NodeRef) -> String {
 }
 
 /// The source line a node begins on, counting from 1.
-// @lfy def/generation/main.lfy:review
+// @lfy def/generation/review.lfy:review
 fn line_of(model: &Model, node: NodeRef) -> usize {
     model.first_token(node).map_or(1, |token| token.line)
 }
@@ -722,7 +722,7 @@ fn own_region_text(
 /// space before it taken off, every line that is then empty left out, and each line followed
 /// by a line break.
 // @lfy def/generation/data.lfy:SourceMap#SourceMap:SourceMap:09446c0cd62e3661c21774df9093f0d0bcabcf6e89e04299d1c69e8ff57564e5
-// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
+// @lfy def/generation/review.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
 fn push_region(lines: &[&str], marker: &Marker, marker_comment: &str, out: &mut String) {
     let last = marker.end.min(lines.len());
     let first = marker.output_line.saturating_sub(1).min(last);
@@ -742,7 +742,7 @@ fn push_region(lines: &[&str], marker: &Marker, marker_comment: &str, out: &mut 
 ///
 /// The opener is looked for before each marker rather than at the start of the line, so a
 /// comment that is prose stays and a marker trailing code takes only itself away.
-// @lfy def/generation/main.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
+// @lfy def/generation/review.lfy:review#review:review:cd1ebbdd30f45c288876eb3c3e144180848e744373e0780577158f70511f6d01
 fn without_marker_comment<'l>(line: &'l str, marker_comment: &str) -> &'l str {
     if marker_comment.is_empty() {
         return line;
@@ -768,7 +768,7 @@ fn without_marker_comment<'l>(line: &'l str, marker_comment: &str) -> &'l str {
 ///
 /// A number the compiler wrote is only where to look: whatever the marker was spelled as,
 /// the line kept is the first line of the declaration it resolved to.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn resolve_marker(
     workspace: &Workspace,
     file: &File,
@@ -780,11 +780,11 @@ fn resolve_marker(
 ) -> Option<Marker> {
     let model = &workspace.model;
     // Decision: an output may carry markers for other files of the program (one Rust file
-    // often mirrors several definition files). @lfy def/generation/main.lfy:accept
+    // often mirrors several definition files). @lfy def/generation/accept.lfy:accept
     let Some(declaring) = workspace.file(&marker.file) else {
         // A marker naming a file outside the program is a fixture or prose, not a claim
         // about the program, so it is ignored and not recorded.
-        // @lfy def/generation/main.lfy:accept#accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481
+        // @lfy def/generation/accept.lfy:accept#accept:accept:f4b16e912ad6060ea8d1d2f85da81f81022ff64e04b9b347f00579d497e86481
         return None;
     };
     // The entities the marker's file declares: the unit's own table for its own file, since
@@ -799,8 +799,8 @@ fn resolve_marker(
     // @lfy def/generation/data.lfy:Marker#Marker:Marker:76e237fb260caf5b11bc6d84be162349e39c76c149a14baf79eb7d16efa750a6
     if let Some(name) = &marker.entity {
         match table.iter().find(|(candidate, _)| candidate == name) {
-            // @lfy def/generation/main.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
-            // @lfy def/generation/main.lfy:accept#accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95
+            // @lfy def/generation/accept.lfy:accept#accept:accept:3464ba36f8e1e5d762286978e6be41278e751aded80a6bf152a33a3c4c2cb3a4
+            // @lfy def/generation/accept.lfy:accept#accept:accept:4d6cc733ae9a9a4d4abc942dff1d089398f749e30a393fd194edafe27c85cf95
             Some(&(_, entity)) => {
                 return Some(Marker {
                     line: declaration_line(model, entity).unwrap_or(1),
@@ -808,7 +808,7 @@ fn resolve_marker(
                 });
             }
             None => {
-                // @lfy def/generation/main.lfy:accept#accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3
+                // @lfy def/generation/accept.lfy:accept#accept:accept:c9819875941e1d859a6baa6c2043bfaaebeee7923b85b2e2edbd4b88ec00c6f3
                 problems.push(format!(
                     "{}:{}: the marker names {}, which {} does not declare",
                     output.path, marker.output_line, name, marker.file
@@ -821,7 +821,7 @@ fn resolve_marker(
     // that file's own text; the request carries the lowered text, whose lines are not its.
     // The files whose lines this unit answers for are the ones it claims: its own, and the
     // file of each entity moved into it, which keeps the marker of the file declaring it.
-    // @lfy def/generation/main.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
+    // @lfy def/generation/accept.lfy:accept#accept:accept:032dc250d174c0232dd914cac293ffeb3f0494c8065247e29aaa7d0ff849dced
     if claimed.contains(&marker.file.as_str()) {
         let last_line = source_text(workspace, declaring).lines().count().max(1);
         if marker.line == 0 || marker.line > last_line {
@@ -837,8 +837,8 @@ fn resolve_marker(
     // where to look and is not itself recorded. A line no declaration covers names no
     // entity, so the marker stands as written, with the line it spells, which is what a
     // line marker's line is; it names a file of the program and is recorded like any other.
-    // @lfy def/generation/main.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
-    // @lfy def/generation/main.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
+    // @lfy def/generation/accept.lfy:accept#accept:accept:f0f63ff3da1a2ceca7ecc1a89adc26e6a86649f0beed8e94ccc5726914eb4c4b
+    // @lfy def/generation/accept.lfy:accept#accept:accept:e4b7f22f09d4b3bbbc78c4edf8763f1f23ff76f5f4e5c858304e8315e8fe30aa
     let Some((name, entity)) = innermost(model, table, marker.line) else {
         return Some(marker.clone());
     };
@@ -851,7 +851,7 @@ fn resolve_marker(
 }
 
 /// The innermost entity whose declaration covers a line, with the name it is named by.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn innermost(
     model: &Model,
     named: &[(String, EntityId)],
@@ -876,7 +876,7 @@ fn innermost(
 /// Every entity of a file a marker may name, with the name it is named by: each
 /// declaration of the file scope and each entity the unit builds, then the members each
 /// of them declares as `owner.member`.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn named_entities(model: &Model, source: FileId, extra: &[EntityId]) -> Vec<(String, EntityId)> {
     let mut declarations: Vec<EntityId> = Vec::new();
     if let Some(&scope) = model.file_scopes.get(source) {
@@ -894,7 +894,7 @@ fn named_entities(model: &Model, source: FileId, extra: &[EntityId]) -> Vec<(Str
     }
     // An entity moved into the unit is declared in another file, and is named by a marker of
     // that file; only what this file declares belongs to its table.
-    // @lfy def/generation/main.lfy:accept
+    // @lfy def/generation/accept.lfy:accept
     for &entity in extra {
         let record = &model.entities[entity];
         if record.node.is_some()
@@ -923,14 +923,14 @@ fn named_entities(model: &Model, source: FileId, extra: &[EntityId]) -> Vec<(Str
 }
 
 /// The path of the file that declares an entity; `None` for an entity with no node.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn declaring_path(model: &Model, entity: EntityId) -> Option<&str> {
     let node = model.entities[entity].node?;
     Some(&model.sources.get(node.file)?.path)
 }
 
 /// The first line of an entity's declaring node; `None` for an entity with no node.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn declaration_line(model: &Model, entity: EntityId) -> Option<usize> {
     let node = model.entities[entity].node?;
     let info = model.info(node);
@@ -939,7 +939,7 @@ fn declaration_line(model: &Model, entity: EntityId) -> Option<usize> {
 
 /// The first and last source line an entity's declaration covers, documentation
 /// included; `None` for an entity with no node.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn declaration_lines(model: &Model, entity: EntityId) -> Option<(usize, usize)> {
     let node = model.entities[entity].node?;
     let tokens = model.tokens(node.file);
@@ -965,7 +965,7 @@ fn declaration_lines(model: &Model, entity: EntityId) -> Option<(usize, usize)> 
 
 /// Every region one name owns, each with the source map that holds it, so that a caller
 /// that needs the output path has it; [`regions_of`] is this without the source maps.
-// @lfy def/generation/main.lfy:regionsOf
+// @lfy def/generation/maps.lfy:regionsOf
 fn matching_regions<'m>(
     workspace: &Workspace,
     source_maps: &'m [SourceMap],
@@ -977,18 +977,18 @@ fn matching_regions<'m>(
     let member = format!("{name}.");
     let mut out: Vec<(&SourceMap, &Marker)> = Vec::new();
     for map in source_maps {
-        // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:d0dd761f2a88d10b62707b3452f9804e82f4c9ae6d4212b5b8b799f9355a82c5
+        // @lfy def/generation/maps.lfy:regionsOf#regionsOf:regionsOf:d0dd761f2a88d10b62707b3452f9804e82f4c9ae6d4212b5b8b799f9355a82c5
         if target.is_some_and(|target| map.target != target) {
             continue;
         }
         for marker in &map.markers {
             let matched = match &marker.entity {
-                // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:38d2833b48e58c718adaf9951281dfe50568a87b1fd9fcf0cf493596b2406bae
-                // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:093e721919b4f8d968ccd2497d31d9e1ac8783ddfb5ee2bbda092b4302715a0f
+                // @lfy def/generation/maps.lfy:regionsOf#regionsOf:regionsOf:38d2833b48e58c718adaf9951281dfe50568a87b1fd9fcf0cf493596b2406bae
+                // @lfy def/generation/maps.lfy:regionsOf#regionsOf:regionsOf:093e721919b4f8d968ccd2497d31d9e1ac8783ddfb5ee2bbda092b4302715a0f
                 Some(entity) => entity == name || entity.starts_with(&member),
                 // A marker that names a line belongs to the entity whose declaration
                 // covers it.
-                // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:66a35d2038e53526c71eb7ac77c60c00ba7678d9ffc14769336d39c7f3aeadb6
+                // @lfy def/generation/maps.lfy:regionsOf#regionsOf:regionsOf:66a35d2038e53526c71eb7ac77c60c00ba7678d9ffc14769336d39c7f3aeadb6
                 None => covers_named(model, &marker.file, name, marker.line),
             };
             if matched {
@@ -1001,7 +1001,7 @@ fn matching_regions<'m>(
 
 /// Whether a file of the program declares an entity of this name whose declaring node
 /// covers a line.
-// @lfy def/generation/main.lfy:regionsOf
+// @lfy def/generation/maps.lfy:regionsOf
 fn covers_named(model: &Model, path: &str, name: &str, line: usize) -> bool {
     let Some(source) = model.file(path) else {
         return false;
@@ -1016,7 +1016,7 @@ fn covers_named(model: &Model, path: &str, name: &str, line: usize) -> bool {
 }
 
 /// The ids of an entity's local criteria and of its local tests, in order.
-// @lfy def/generation/main.lfy:changes
+// @lfy def/generation/changes.lfy:changes
 fn requirement_ids(file: &LoweredFile, entity: EntityId) -> (Vec<String>, Vec<String>) {
     let requirements = entity_requirements(file, entity);
     let criteria = requirements
@@ -1040,7 +1040,7 @@ fn requirement_ids(file: &LoweredFile, entity: EntityId) -> (Vec<String>, Vec<St
 /// `global`, then the name of the entity whose body holds it, then the hash, each after a
 /// colon. The receiver and the contributor hold no colon, so the hash is what follows the
 /// last one.
-// @lfy def/generation/main.lfy:reviewOf
+// @lfy def/generation/findings.lfy:reviewOf
 fn id_parts(id: &str) -> Option<(&str, &str, &str)> {
     let (head, hash) = id.rsplit_once(':')?;
     let (receiver, contributor) = head.split_once(':')?;
@@ -1326,7 +1326,7 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 /// lies under its target's output directory, so an edit recorded for another target, whose
 /// stems may agree, is not its.
 // @lfy def/generation/main.lfy:plan#plan:plan:f94bebcadb345989b89582a2716579351dbfc0c4b56c770f7661f54fe2e65be3
-// @lfy def/generation/main.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
+// @lfy def/generation/request.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
 fn owns(unit: &Unit, target: &Target, edit: &ForeignEdit) -> bool {
     edit.owner == unit.stem && under(&edit.path, &target.output_directory)
 }
@@ -1334,8 +1334,8 @@ fn owns(unit: &Unit, target: &Target, edit: &ForeignEdit) -> bool {
 /// The stub line of a target: the value the setters of its declaration give the member
 /// `stubLine` of `targetLanguage`, read as [`Target::marker_comment`] is read from
 /// `markerComment`; `None` when no setter gives it one, and then no line is a stub line.
-// @lfy def/generation/main.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
-// @lfy def/generation/main.lfy:accept#accept:accept:ec9bf2b28c1f3b0e6144d76c6bcf7912791a9eb3f8d41f1c5f2ef658d041f34a
+// @lfy def/generation/request.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
+// @lfy def/generation/accept.lfy:accept#accept:accept:ec9bf2b28c1f3b0e6144d76c6bcf7912791a9eb3f8d41f1c5f2ef658d041f34a
 fn stub_line_of(model: &Model, target: &Target) -> Option<String> {
     model.entities[target.declaration]
         .value("stubLine")
@@ -1366,7 +1366,7 @@ fn under_root(directory: &str, name: &str) -> String {
 
 /// `Path.extension`: what follows the last dot of the last segment, without the dot; `None`
 /// when the name has no dot or only a leading one.
-// @lfy def/generation/main.lfy:accept
+// @lfy def/generation/accept.lfy:accept
 fn extension_of(path: &str) -> Option<&str> {
     let name = path.rsplit('/').next().unwrap_or(path);
     match name.rfind('.') {

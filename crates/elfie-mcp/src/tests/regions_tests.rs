@@ -4,7 +4,7 @@
 use super::*;
 use crate::regions::SEARCHED_LINES;
 
-// @lfy def/mcp/main.lfy:output#output:output:d930026963bc74a22a71de25fff3d4d8ac8a7b00ff6209a9e7d4afbbff550eb1
+// @lfy def/mcp/main.lfy:output#output:output:be2246cbf67960fbc315e1d8daab6a7955d7054b4d6376f787f087787197ae6f
 #[test]
 fn output_gives_every_region_of_an_entity_with_its_text() {
     let fixture = accepted_project();
@@ -17,7 +17,7 @@ fn output_gives_every_region_of_an_entity_with_its_text() {
     assert_eq!(output(&session, "B", Some("rust"), true).unwrap(), text);
     // The name is the path of an output file, so the regions are every marker it holds.
     // @lfy def/mcp/main.lfy:output#output:output:e3ada846896a5d797c74467acb25cc6ab9c9f3667f13eae813f8169d01373c8f
-    // @lfy def/mcp/main.lfy:output#output:output:5f91a9d6a55f8212f9288be65dd547c69391009665dc988e76b8a5150ac20406
+    // @lfy def/mcp/main.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
     assert_eq!(output(&session, "out/b.rs", None, true).unwrap(), text);
     // Every file under the output directory with an extension of the target's is one, as
     // deep as it lies.
@@ -105,7 +105,7 @@ fn an_output_file_is_read_with_the_markers_it_holds_now() {
     );
 }
 
-// @lfy def/mcp/main.lfy:output#output:output:8ac14ea384bf2a5e4cb895bab8105f34dfe6124df0ef5ae67edcf3fba77a408d
+// @lfy def/mcp/main.lfy:output#output:output:008a8ee823b190c6fdc29d9f126ce5b9d2b3eb5ea49dc676720c978d2efa6229
 #[test]
 fn output_gives_the_regions_that_answer_for_a_requirement() {
     let fixture = project_with_requirements();
@@ -119,7 +119,7 @@ fn output_gives_the_regions_that_answer_for_a_requirement() {
     let session = fixture.session();
     // The text of the criterion comes first, then the region, whose line names the
     // requirement after the entity.
-    // @lfy def/mcp/main.lfy:output#output:output:8ac14ea384bf2a5e4cb895bab8105f34dfe6124df0ef5ae67edcf3fba77a408d
+    // @lfy def/mcp/main.lfy:output#output:output:008a8ee823b190c6fdc29d9f126ce5b9d2b3eb5ea49dc676720c978d2efa6229
     assert_eq!(
         output(&session, &local, None, true).unwrap(),
         format!(
@@ -128,7 +128,7 @@ fn output_gives_the_regions_that_answer_for_a_requirement() {
     );
     // A global id is read from the lowered program the same way; no region answers for
     // this one, so its text is followed by nothing being generated for it.
-    // @lfy def/mcp/main.lfy:output#output:output:8ac14ea384bf2a5e4cb895bab8105f34dfe6124df0ef5ae67edcf3fba77a408d
+    // @lfy def/mcp/main.lfy:output#output:output:008a8ee823b190c6fdc29d9f126ce5b9d2b3eb5ea49dc676720c978d2efa6229
     assert!(Review::is_global(&global), "{global}");
     let text = output(&session, &global, None, true).unwrap();
     assert_eq!(
@@ -241,7 +241,7 @@ fn search_gives_the_lines_of_the_outputs_that_match() {
     let session = compiling(&fixture, &[]);
     // The line reads its path, its line, the region between brackets, and its text.
     // @lfy def/mcp/main.lfy:search#search:search:8112c25cc568699c5b153fd7ada26062fb8732b7fcaefef35a49e6389cc0a8ff
-    // @lfy def/mcp/main.lfy:search#search:search:fa10d4c06de0e21bae6488a493c889c66e5ea9d22f426fbcf0488df26d15e041
+    // @lfy def/mcp/main.lfy:search#search:search:d5bf19a714d125133c9f9f09e4aa278dbfff8dc1e7da4d88535d71ab0650081f
     assert_eq!(
         search(&session, "fn helper[(]", None).unwrap(),
         format!("out/b.rs:8 [def/b.lfy:b#{first}]: fn helper() {{")

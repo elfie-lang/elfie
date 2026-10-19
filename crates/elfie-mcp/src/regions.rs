@@ -57,7 +57,7 @@ fn region_block(workspace: &Workspace, output: &str, marker: &Marker, text: bool
 
 /// Every region of every source map, each with the output that holds it, in source map then
 /// output order, limited to one target when one is given.
-// @lfy def/mcp/main.lfy:output#output:output:18bbd05acd9d7ef32f170d4713899aaf2e4c19f93da25c7feae2938e50414fc1
+// @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
 fn every_region<'m>(maps: &'m [SourceMap], target: Option<&str>) -> Vec<(&'m str, &'m Marker)> {
     maps.iter()
         .filter(|map| !target.is_some_and(|target| map.target != target))
@@ -103,7 +103,7 @@ fn is_output_file(workspace: &Workspace, path: &str, target: Option<&str>) -> bo
 /// Every marker one output file holds as it is read now, as acceptance reads them: the ends
 /// derived over every marker of the file, then the markers naming a file that is not in the
 /// program left out, since nothing was generated from a file the program does not hold.
-// @lfy def/mcp/main.lfy:output#output:output:5f91a9d6a55f8212f9288be65dd547c69391009665dc988e76b8a5150ac20406
+// @lfy def/mcp/main.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
 // @lfy def/mcp/main.lfy:output#output:output:84421a06b6eda0b985d11eb52870e3f12014a1594070085b9dc237f580115624
 fn markers_now(workspace: &Workspace, path: &str) -> Vec<Marker> {
     let Ok(text) = fs::read_to_string(workspace.root.join(path)) else {
@@ -118,14 +118,14 @@ fn markers_now(workspace: &Workspace, path: &str) -> Vec<Marker> {
 
 /// Where generated code is, with its text or without it: every region that came from one
 /// entity, that answers for one criterion or test, or that one output file holds.
-// @lfy def/mcp/main.lfy:output#output:output:18bbd05acd9d7ef32f170d4713899aaf2e4c19f93da25c7feae2938e50414fc1
+// @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
 pub fn output(session: &Session, name: &str, target: Option<&str>, text: bool) -> Result<String, String> {
     let workspace = &session.workspace;
     check_target(workspace, target)?; // @lfy def/mcp/main.lfy:output#output:output:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
     // The name is the path of an output file, so its regions are the markers it holds now,
     // read as acceptance reads them: a compiler that has just edited the file sees its
     // regions where they are rather than where the last acceptance recorded them.
-    // @lfy def/mcp/main.lfy:output#output:output:5f91a9d6a55f8212f9288be65dd547c69391009665dc988e76b8a5150ac20406
+    // @lfy def/mcp/main.lfy:output#output:output:105c0dacce2989afb3f3f5a1b3428f09f12f328b2bf1a417ae65e452a7c92cc4
     if is_output_file(workspace, name, target) {
         let held = markers_now(workspace, name);
         if held.is_empty() {
@@ -139,18 +139,18 @@ pub fn output(session: &Session, name: &str, target: Option<&str>, text: bool) -
             .collect();
         return Ok(blocks.join("\n\n"));
     }
-    let maps = source_maps_of(session, None); // @lfy def/mcp/main.lfy:output#output:output:18bbd05acd9d7ef32f170d4713899aaf2e4c19f93da25c7feae2938e50414fc1
+    let maps = source_maps_of(session, None); // @lfy def/mcp/main.lfy:output#output:output:c170ea42c1d4b8e1fa0479ee5daaf8147596071ef142113705131e39b24d6605
     let every = every_region(&maps, target);
     // The name is one an entity owns, so the regions are the ones `regions_of` gives for it;
     // a marker is matched by the same target and the same marker it was found by, because
     // `regions_of` keeps no path.
-    // @lfy def/mcp/main.lfy:output#output:output:d930026963bc74a22a71de25fff3d4d8ac8a7b00ff6209a9e7d4afbbff550eb1
+    // @lfy def/mcp/main.lfy:output#output:output:be2246cbf67960fbc315e1d8daab6a7955d7054b4d6376f787f087787197ae6f
     let owned = generation::regions_of(workspace, &maps, name, target);
     let mut regions: Vec<(&str, &Marker)> =
         every.iter().copied().filter(|(_, marker)| owned.contains(marker)).collect();
     // The name is the id of a criterion or test of the lowered program, local or global, so
     // its text comes first and the regions are the ones answering for it.
-    // @lfy def/mcp/main.lfy:output#output:output:8ac14ea384bf2a5e4cb895bab8105f34dfe6124df0ef5ae67edcf3fba77a408d
+    // @lfy def/mcp/main.lfy:output#output:output:008a8ee823b190c6fdc29d9f126ce5b9d2b3eb5ea49dc676720c978d2efa6229
     let mut heading = None;
     if regions.is_empty() {
         let mut lowered = None;
@@ -350,7 +350,7 @@ pub fn search(session: &Session, pattern: &str, file: Option<&str>) -> Result<St
                 continue;
             }
             let number = index + 1;
-            // @lfy def/mcp/main.lfy:search#search:search:fa10d4c06de0e21bae6488a493c889c66e5ea9d22f426fbcf0488df26d15e041
+            // @lfy def/mcp/main.lfy:search#search:search:d5bf19a714d125133c9f9f09e4aa278dbfff8dc1e7da4d88535d71ab0650081f
             let region = markers
                 .iter()
                 .rev()

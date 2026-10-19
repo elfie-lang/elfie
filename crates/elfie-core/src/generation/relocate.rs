@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:relocate
+// @lfy def/generation/accept.lfy:relocate
 //! Relocation: the code of entities whose declaration moved to another file, given to the
 //! unit of that file by rewriting the markers that name it.
 
@@ -7,7 +7,7 @@ use super::*;
 
 /// Directories never walked for outputs: a build's own output, a repository's data, and a
 /// package manager's downloads.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
 const SKIPPED: [&str; 3] = ["target", ".git", "node_modules"];
 
 /// The markers, source maps, and review records of every entity whose code the outputs hold
@@ -26,13 +26,13 @@ const SKIPPED: [&str; 3] = ["target", ".git", "node_modules"];
 /// compiler, verifier, command of the target, or git is run.
 // Decision: the definition passes the plan; a plan here does not own its workspace or the
 // program lowered from it, so the program is an extra first parameter, as for `review`.
-// @lfy def/generation/main.lfy:relocate
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:33b7f9769323ab6b2fd84b9cf7d4d1eb7a6255ca9cc0b9f975464704b877be0d
+// @lfy def/generation/accept.lfy:relocate
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:33b7f9769323ab6b2fd84b9cf7d4d1eb7a6255ca9cc0b9f975464704b877be0d
 pub fn relocate(program: &Program, plan: &Plan, directory: Option<&Path>) -> Relocated {
     let workspace = &program.workspace;
     let directory = directory.unwrap_or(workspace.root.as_path());
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:b365192b3311058a64e4835640b7d8f4d411459fd0cebd5be19c821e4b3e6288
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:b365192b3311058a64e4835640b7d8f4d411459fd0cebd5be19c821e4b3e6288
     let maps_read = source_maps_under(workspace, directory, None);
 
     // The outputs of each target, and the markers of each, rewritten where one candidate is
@@ -45,7 +45,7 @@ pub fn relocate(program: &Program, plan: &Plan, directory: Option<&Path>) -> Rel
     for target in &workspace.targets {
         let outputs = outputs_under(directory, &target.output_directory);
         let (mut found, groups) = relocations_of(program, target, &outputs);
-        // @lfy def/generation/main.lfy:relocate#relocate:relocate:5fb8c262b31de69c1722a9c987d846610497e6d16ff3e10c58ab920056275481
+        // @lfy def/generation/accept.lfy:relocate#relocate:relocate:5fb8c262b31de69c1722a9c987d846610497e6d16ff3e10c58ab920056275481
         let relocated: Vec<Output> = outputs
             .iter()
             .filter_map(|output| {
@@ -58,7 +58,7 @@ pub fn relocate(program: &Program, plan: &Plan, directory: Option<&Path>) -> Rel
             .collect();
         // The files as relocated: each rewritten output as its text is now, every other file
         // as it is.
-        // @lfy def/generation/main.lfy:relocate#relocate:relocate:1be884fee5cf1d76d6ee16c247bb9752196fe8f49f22d8700b6789d33f8800fa
+        // @lfy def/generation/accept.lfy:relocate#relocate:relocate:1be884fee5cf1d76d6ee16c247bb9752196fe8f49f22d8700b6789d33f8800fa
         let as_relocated: Vec<Output> = outputs
             .into_iter()
             .map(|output| {
@@ -80,7 +80,7 @@ pub fn relocate(program: &Program, plan: &Plan, directory: Option<&Path>) -> Rel
     }
     rewritten.sort_by(|left, right| left.path.cmp(&right.path));
 
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:ed503738db6fcf03f63af23719e2dac5524eb316ff0a2527f41665d52e24ba05
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:ed503738db6fcf03f63af23719e2dac5524eb316ff0a2527f41665d52e24ba05
     if relocations.is_empty() {
         return Relocated {
             source_maps: maps_read,
@@ -109,7 +109,7 @@ pub fn relocate(program: &Program, plan: &Plan, directory: Option<&Path>) -> Rel
 /// Every file of an output directory under `directory`, recursively, skipping every
 /// directory named as [`SKIPPED`] says, each read as text, with its path relative to the
 /// root, in path order. A file that cannot be read as text is left out.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
 fn outputs_under(directory: &Path, output_directory: &str) -> Vec<Output> {
     let mut paths: Vec<String> = Vec::new();
     walk(&directory.join(output_directory), output_directory, &mut paths);
@@ -125,7 +125,7 @@ fn outputs_under(directory: &Path, output_directory: &str) -> Vec<Output> {
 
 /// Every file at or under one directory, as a path relative to the root with `/` between
 /// the segments, skipping the directories [`SKIPPED`] names.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:4d0103d3f96ff9071e2501adbecf2688ff28d6f0b3a3450a4eaa87de84415d55
 fn walk(directory: &Path, prefix: &str, out: &mut Vec<String>) {
     let Ok(entries) = std::fs::read_dir(directory) else {
         return;
@@ -148,7 +148,7 @@ fn walk(directory: &Path, prefix: &str, out: &mut Vec<String>) {
 /// in `Workspace::files` order of [`Relocation::into`] and then in the order the first
 /// marker of each appears in the outputs; and, for each, the file and entity its markers
 /// named and the file they name now.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:1a059000fb6ab9058a68deed6e5262648945ef089d52434a0e87147e30c1372f
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:1a059000fb6ab9058a68deed6e5262648945ef089d52434a0e87147e30c1372f
 #[allow(clippy::type_complexity)]
 fn relocations_of(
     program: &Program,
@@ -158,7 +158,7 @@ fn relocations_of(
     let workspace = &program.workspace;
     // Every orphaned marker, grouped by the file and entity it names, in the order the first
     // of each group appears; with every id a marker of the same file and entity carries.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:990b22675864bed9546b54d04431029d79dc65c6ec03bfc62e2b5067f4f1de50
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:990b22675864bed9546b54d04431029d79dc65c6ec03bfc62e2b5067f4f1de50
     let mut groups: Vec<(String, String, usize)> = Vec::new();
     let mut ids: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
     for output in outputs {
@@ -191,14 +191,14 @@ fn relocations_of(
             .unwrap_or_default();
         let mut candidates = candidates_of(program, target, &origin, &entity);
         // Only a candidate that still answers for what the code answered for.
-        // @lfy def/generation/main.lfy:relocate#relocate:relocate:a519caccbc677cf75a549ad61efab1ac3308d321a0569fe1405c1b60e878a212
+        // @lfy def/generation/accept.lfy:relocate#relocate:relocate:a519caccbc677cf75a549ad61efab1ac3308d321a0569fe1405c1b60e878a212
         if !asked.is_empty() {
             candidates.retain(|&(_, declared)| {
                 let held = entity_ids(program, declared);
                 asked.iter().any(|id| held.contains(id))
             });
         }
-        // @lfy def/generation/main.lfy:relocate#relocate:relocate:be73db54a2d75fbbad58de702fb271bc2d14eff7a087d844a030c8318ee2a2eb
+        // @lfy def/generation/accept.lfy:relocate#relocate:relocate:be73db54a2d75fbbad58de702fb271bc2d14eff7a087d844a030c8318ee2a2eb
         let [(file, _)] = candidates[..] else {
             continue;
         };
@@ -238,7 +238,7 @@ fn relocations_of(
 /// Whether a marker naming `entity` of `file` is orphaned for a target: the file is a file of
 /// the workspace with no package, and declares no entity built for the target whose
 /// identifier is the name, or for a name with a dot, the owner's identifier.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:d571fb77bdde93f51e6308b17cf2d32fc4f3abd9a421a361b314697542ddd5f9
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:d571fb77bdde93f51e6308b17cf2d32fc4f3abd9a421a361b314697542ddd5f9
 fn is_orphaned(workspace: &Workspace, target: &Target, file: &str, entity: &str) -> bool {
     let Some(declaring) = workspace.file(file) else {
         return false;
@@ -257,7 +257,7 @@ fn is_orphaned(workspace: &Workspace, target: &Target, file: &str, entity: &str)
 /// target named as `entity` names one, or, for a name with a dot, an entity with the owner's
 /// identifier holding a member of that name; each as its index into `Workspace::files` and
 /// the entity the name names there.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:235508d273bf7a0baa2e362b069972c22f8112165ad4c2446e0c3a312196c918
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:235508d273bf7a0baa2e362b069972c22f8112165ad4c2446e0c3a312196c918
 fn candidates_of(
     program: &Program,
     target: &Target,
@@ -293,7 +293,7 @@ fn candidates_of(
 
 /// The ids of the local criteria and tests of one entity and of its members, as its
 /// lowered declaration holds them.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:a519caccbc677cf75a549ad61efab1ac3308d321a0569fe1405c1b60e878a212
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:a519caccbc677cf75a549ad61efab1ac3308d321a0569fe1405c1b60e878a212
 fn entity_ids(program: &Program, entity: EntityId) -> Vec<String> {
     let Some(node) = lowered_declaration(program, entity) else {
         return Vec::new();
@@ -314,7 +314,7 @@ fn entity_ids(program: &Program, entity: EntityId) -> Vec<String> {
 /// The text of an output with the path of every marker naming a relocated file and entity
 /// replaced by the file it names now, and every other character of each line, and every
 /// other line, kept; `None` when it holds no such marker.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:06c13663c823f02268ff24aa0f738e83e5f78bd0a30f52df199dc354a1ddeb64
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:06c13663c823f02268ff24aa0f738e83e5f78bd0a30f52df199dc354a1ddeb64
 fn rewritten_text(text: &str, renames: &[(String, String, String)]) -> Option<String> {
     let mut out = String::with_capacity(text.len());
     let mut changed = false;
@@ -360,7 +360,7 @@ fn unit_at(program: &Program, plan: &Plan, target: &str, path: &str) -> Option<u
 /// or one of whose maps names a rewritten output, derived again from the files as relocated;
 /// each such unit's maps take the place of its first map read, and those of a unit no map
 /// was read of come last.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:8c8c0549bee9699f3d5acd1c42e3114dd32e49cd04eb2fb184f2340c04d80df3
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:8c8c0549bee9699f3d5acd1c42e3114dd32e49cd04eb2fb184f2340c04d80df3
 fn maps_relocated(
     program: &Program,
     plan: &Plan,
@@ -418,18 +418,18 @@ fn maps_relocated(
                 if found.is_empty() && (moved_out || read.is_empty()) {
                     // Code moved out of the unit and no file holds a marker of its own any more,
                     // or nothing of it was read and nothing holds one: it has no maps.
-                    // @lfy def/generation/main.lfy:relocate#relocate:relocate:93c9f26b9163a6b3fda68ddf455863570eae244f4a471842aca21fa013a3f5de
+                    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:93c9f26b9163a6b3fda68ddf455863570eae244f4a471842aca21fa013a3f5de
                     Vec::new()
                 } else if !read.is_empty() {
                     // Otherwise as rederive gives them, which keeps the maps as read where no
                     // file holds a marker of the unit's own.
-                    // @lfy def/generation/main.lfy:relocate#relocate:relocate:84efefcf9edab1fb512d7edbadb3d52ba33e608fead07de81066b06907cd15f5
+                    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:84efefcf9edab1fb512d7edbadb3d52ba33e608fead07de81066b06907cd15f5
                     rederive_in(program, plan, unit, &read, of_target)
                 } else {
                     // A unit code moved into and of which no map was read takes what the
                     // first map read of the unit the first relocation into it came from
                     // recorded, with no text.
-                    // @lfy def/generation/main.lfy:relocate#relocate:relocate:8792744e69676cd1ef4f2b424f39a10564c50fd60fa42a3724583de37fa00f41
+                    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:8792744e69676cd1ef4f2b424f39a10564c50fd60fa42a3724583de37fa00f41
                     let template = relocations
                         .iter()
                         .find(|relocation| &relocation.target == target && &relocation.into == source)
@@ -466,7 +466,7 @@ fn maps_relocated(
     }
 
     // The ids a unit's maps answered for, and every id carried into it.
-    // @lfy def/generation/main.lfy:relocate#relocate:relocate:75fa6b15d3932f256be72c37e82f0a66d665d357df32a5fa918c20083d3d798c
+    // @lfy def/generation/accept.lfy:relocate#relocate:relocate:75fa6b15d3932f256be72c37e82f0a66d665d357df32a5fa918c20083d3d798c
     for ((target, source), maps) in &mut derived {
         let into: Vec<usize> = (0..relocations.len())
             .filter(|&at| &relocations[at].target == target && &relocations[at].into == source)
@@ -517,9 +517,9 @@ fn maps_relocated(
 /// record whatever its id. A record of a unit code was relocated out of moves when its id is
 /// that of a local criterion or test, of the unit the code moved into, of a relocated entity
 /// or of a member of one; it keeps its id, status, and hash.
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:fdd1bc51c38f9c62c44b1cbbd6f35402ebc120996898c5ea02ed62ade39fe519
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:dd567a2eb50a504594a9d8a80a5f42513601274f87909a8fd34ab55432c47b97
-// @lfy def/generation/main.lfy:relocate#relocate:relocate:694389998ffd76aa31af05bd6c58accca7643be261e0e0c1c1f5eb06982e3d60
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:fdd1bc51c38f9c62c44b1cbbd6f35402ebc120996898c5ea02ed62ade39fe519
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:dd567a2eb50a504594a9d8a80a5f42513601274f87909a8fd34ab55432c47b97
+// @lfy def/generation/accept.lfy:relocate#relocate:relocate:694389998ffd76aa31af05bd6c58accca7643be261e0e0c1c1f5eb06982e3d60
 fn reviews_relocated(
     program: &Program,
     plan: &Plan,

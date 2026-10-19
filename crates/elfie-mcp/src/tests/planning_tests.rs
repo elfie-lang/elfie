@@ -31,7 +31,7 @@ fn units_lists_every_unit_or_one_targets() {
     assert!(error.contains("go is not a target") && error.contains("rust"), "{error}");
 }
 
-// @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
+// @lfy def/mcp/main.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
 #[test]
 fn request_gives_the_instructions_of_one_unit() {
     let fixture = compiled_project();
@@ -49,18 +49,18 @@ fn request_gives_the_instructions_of_one_unit() {
     assert!(error.contains("go is not a target"), "{error}");
 }
 
-// @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+// @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
 #[test]
 fn check_reads_the_outputs_from_disk_and_writes_nothing() {
     let fixture = compiled_project();
     let session = fixture.session();
     // Rejected: an error listing the problems.
-    // @lfy def/mcp/main.lfy:check#check:check:2a16ea176547468dbe87eb74de7c195dc58e16c26122fc69de5f2ff15dd469f1
+    // @lfy def/mcp/main.lfy:check#check:check:aa65fce675d53a43132ff27e80f270948be090228ac8b39998f2eb2375b5519a
     let error = check(&session, "b", None).unwrap_err();
     assert!(error.starts_with("rejected b:"), "{error}");
     fixture.write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B;\n");
     // Accepted: the text says so and lists the outputs.
-    // @lfy def/mcp/main.lfy:check#check:check:7d045cb553e0d306e634e78ed9a299647790d4beae5075ece0962d22ff2d4ef8
+    // @lfy def/mcp/main.lfy:check#check:check:f3f55cf806901e6c7c5de76844080355b2901cae32c8244bf1c4109365eb069d
     let text = check(&session, "b", None).unwrap();
     assert!(text.starts_with("accepted b for rust: 1 output\n  out/b.rs"), "{text}");
     assert!(!fixture.root.join("out/source-map.json").exists());
@@ -71,7 +71,7 @@ fn check_reads_the_outputs_from_disk_and_writes_nothing() {
 /// A region another unit moved out of a shared output into a file of its own is still
 /// found, because the check reads every other file of the output directory where it reads
 /// the outputs, and so sees that unit's region where it went.
-// @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+// @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
 #[test]
 fn check_reads_every_other_file_of_the_output_directory() {
     let fixture = compiled_project();
@@ -84,17 +84,17 @@ fn check_reads_every_other_file_of_the_output_directory() {
     record_unit(&fixture, "b");
     // `b` has since moved its region into a file of its own, which carries no marker of
     // `a` and so is none of the outputs the check judges.
-    // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+    // @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
     fixture.write("out/shared.rs", "// @lfy def/a.lfy:A\npub struct A;\n");
     fixture.write("out/b.rs", "// @lfy def/b.lfy:B\npub struct B;\n");
     let session = fixture.session();
-    // @lfy def/mcp/main.lfy:check#check:check:7d045cb553e0d306e634e78ed9a299647790d4beae5075ece0962d22ff2d4ef8
+    // @lfy def/mcp/main.lfy:check#check:check:f3f55cf806901e6c7c5de76844080355b2901cae32c8244bf1c4109365eb069d
     let text = check(&session, "a", None).unwrap();
     assert!(text.starts_with("accepted a for rust: 1 output\n  out/shared.rs"), "{text}");
     // With that file gone, the region of `b` is nowhere, and the shared output holds
     // fewer of its regions than what was recorded for it, so the unit is rejected: it is
     // the other file that answered for it.
-    // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+    // @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
     fs::remove_file(fixture.root.join("out/b.rs")).unwrap();
     let error = check(&session, "a", None).unwrap_err();
     assert!(error.starts_with("rejected a:") && error.contains("out/shared.rs"), "{error}");
@@ -103,7 +103,7 @@ fn check_reads_every_other_file_of_the_output_directory() {
 /// A compiler's check of its own unit is made against the request it was given, the files
 /// before its run, and the notes it recorded, so the edits it made to a later unit's code
 /// are judged and listed after its outputs; without a note for a fixed unit it is rejected.
-// @lfy def/mcp/main.lfy:check#check:check:3475f72c3ad61b4c4f2156a3726b40e635a69204d88169984cdadd42fdcc2cf1
+// @lfy def/mcp/main.lfy:check#check:check:f62b2808006bb1ede584a2e554e66f850b587343f1593b99f7b47aeb05e5de6f
 // @lfy def/mcp/main.lfy:check#check:check:45672f7351ea405dd7ffc891b1f97edf8bc53b0c6318964ac46234940a594410
 #[test]
 fn check_of_a_compiler_run_judges_its_edits_to_later_units() {
@@ -113,27 +113,27 @@ fn check_of_a_compiler_run_judges_its_edits_to_later_units() {
     let error = check(&session, "a", None).unwrap_err();
     assert!(error.contains("gave no note"), "{error}");
     touch(&session, "b", "a renamed G.one to G.uno").unwrap();
-    // @lfy def/mcp/main.lfy:check#check:check:3fbbf8a1ad1e7e731818a436899a0f61e7d0c7505c0f22229556e2a35f6568c1
+    // @lfy def/mcp/main.lfy:check#check:check:118b7ce146ef04014cced08a2301ca2de11ee4af2a1bab5bb2eb970a0fa0b9c7
     let text = check(&session, "a", None).unwrap();
     assert!(text.starts_with("accepted a for rust: 1 output\n  out/a.rs\n"), "{text}");
     assert!(text.contains("\nfix in b out/b.rs:1 3 lines\n"), "{text}");
     assert!(text.contains("\nstub in b out/b.rs:7 1 lines\n"), "{text}");
     // A session bound to no run is given no files before a run, so the same edits are
     // nothing it judges.
-    // @lfy def/mcp/main.lfy:check#check:check:78908963fd2ee7bcbad8fac4938f354a4ad423f802bdec1e1f80b478611f8f74
+    // @lfy def/mcp/main.lfy:check#check:check:c38c9a07a3699d11511265746c3a3d56f97ca029e28d14f4f2fbc5c31e955939
     // @lfy def/mcp/main.lfy:check#check:check:99ef27a8e37ec8ae852a1fbed7fb641118f4d212b8dc0298bd44088933fa5488
     let text = check(&fixture.session(), "a", None).unwrap();
     assert!(!text.contains("fix in"), "{text}");
 }
 
-// @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+// @lfy def/mcp/main.lfy:changes#changes:changes:76805f808eadb6afc31288f850876553118dd0066c28d603b5716c112369b09c
 #[test]
 fn changes_reports_what_differs_since_the_outputs_were_accepted() {
     let fixture = accepted_project();
     // The unit's file has changed since its outputs were accepted, and the root is no
     // repository, so no previous source can be recovered: the text says so first, then
     // every entity as added.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:4260318a5866f37c4f4c137011eee37c136720d68918bd04c5c7a652538dc6dc
+    // @lfy def/mcp/main.lfy:changes#changes:changes:b2b31f75eb94528c8ec7526264ada5e72ab1d96bfb72f1d04697c832979b751d
     fixture.write("def/b.lfy", "d B {}\nd C {}\n");
     let session = fixture.session();
     assert_eq!(recovered_of(&session, "b"), None);
@@ -142,7 +142,7 @@ fn changes_reports_what_differs_since_the_outputs_were_accepted() {
     assert!(text.contains("\nB added "), "{text}");
     assert!(text.contains("\nC added "), "{text}");
     // The target may be named, and names the same unit.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+    // @lfy def/mcp/main.lfy:changes#changes:changes:76805f808eadb6afc31288f850876553118dd0066c28d603b5716c112369b09c
     assert_eq!(changes(&session, "b", Some("rust")).unwrap(), text);
     // The outputs of a unit are empty.
     // @lfy def/mcp/main.lfy:changes#changes:changes:413343511b79d06a29fa38852b4bf26d600fdb0e411965a13d3190ca9375546e
@@ -164,7 +164,7 @@ fn changes_reports_what_differs_since_the_outputs_were_accepted() {
 /// that source is the previous text: the revision is found by the hash of its lowered
 /// text, which is what the source map records, and the entities added since are the
 /// only changes.
-// @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+// @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
 #[test]
 fn changes_recovers_the_previous_source_from_git() {
     let fixture = accepted_project();
@@ -184,18 +184,18 @@ fn changes_recovers_the_previous_source_from_git() {
     // The revision is found although the file on disk now carries a comment the
     // committed one did not, because it is matched by the hash of its lowered text and
     // a comment is not lowered.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     fixture.write("def/b.lfy", "// a comment\nd B {}\nd C {}\n");
     let session = fixture.session();
     // What is passed on is that revision as git holds it, never lowered: `git show` of
     // the revision the map's hash names.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     assert_eq!(recovered_of(&session, "b"), Some(("d B {}\n".to_string(), false)));
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     let text = changes(&session, "b", None).unwrap();
     assert!(!text.contains("cannot be recovered"), "{text}");
     // `B` was declared in the recovered source, so only `C` is an addition.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     assert!(!text.contains("B added"), "{text}");
     assert!(text.lines().any(|line| line.starts_with("C added ")), "{text}");
 }
@@ -234,7 +234,7 @@ fn commit(fixture: &Fixture, message: &str) {
 /// so the source the outputs were accepted from is the most recent revision whose
 /// criteria and tests are the ones the map records as answered, not merely the most
 /// recent one that lowers to the same code.
-// @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+// @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
 #[test]
 fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
     let (fixture, accepted, _) = project_with_an_accepted_criterion();
@@ -242,7 +242,7 @@ fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
     commit(&fixture, "the accepted source");
     // A criterion reworded leaves the lowered code untouched, so the newer revision
     // lowers to the same code as the accepted one.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     fixture.write("def/b.lfy", &accepted.replace("It answers", "It replies"));
     commit(&fixture, "reworded");
     let session = fixture.session();
@@ -253,9 +253,9 @@ fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
     assert_eq!(lowered, unit.outputs[0].hash, "both revisions lower to the accepted code");
     // The older revision is the one the outputs were accepted from, and it is given back
     // as git holds it, criteria and all.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     assert_eq!(recovered_of(&session, "b"), Some((accepted.clone(), false)));
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     let text = changes(&session, "b", None).unwrap();
     assert!(!text.contains("is not known"), "{text}");
     // What differs since is the rewording of that criterion, which is a change to `b`.
@@ -289,11 +289,11 @@ fn changes_falls_back_to_the_latest_revision_with_the_same_lowered_code() {
     assert!(first.contains("the latest revision of its file with the same lowered code"), "{text}");
     assert!(first.contains("may not be those that changed since its outputs were accepted"), "{text}");
     // Nothing differs between that revision and the file as it is, so the rest says so.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+    // @lfy def/mcp/main.lfy:changes#changes:changes:c91839604ea31b5f8cf98f38c9e887c17fa9d386f697dd83a406cd2307166b3d
     assert_eq!(text.lines().next_back(), Some("no changes in b since its outputs were accepted"));
 }
 
-// @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+// @lfy def/mcp/main.lfy:changes#changes:changes:c91839604ea31b5f8cf98f38c9e887c17fa9d386f697dd83a406cd2307166b3d
 #[test]
 fn changes_says_so_when_nothing_differs() {
     let fixture = accepted_project();
@@ -302,7 +302,7 @@ fn changes_says_so_when_nothing_differs() {
     let index = unit_of_stem(planned.workspace(), &planned.plan, "b", None).unwrap();
     // The file as it is now is the file the outputs were generated from, so nothing
     // differs.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+    // @lfy def/mcp/main.lfy:changes#changes:changes:c91839604ea31b5f8cf98f38c9e887c17fa9d386f697dd83a406cd2307166b3d
     let text = fs::read_to_string(fixture.root.join("def/b.lfy")).unwrap();
     let unit = &planned.plan.units[index];
     let was = generation::previous_of(planned.workspace(), unit, &text, false);
@@ -386,7 +386,7 @@ fn a_move_is_one_line_naming_what_moved_and_why() {
 /// A unit whose output answers for a violated review of the last [`GlobalReview`] is
 /// planned with the reason `violated`; without that review the plan is made with no
 /// violated unit at all.
-// @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
+// @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
 #[test]
 fn units_plans_a_violated_unit_again() {
     let fixture = project_with_requirements();
@@ -399,13 +399,13 @@ fn units_plans_a_violated_unit_again() {
 
     // There is no last global review, so the plan is made with no violated unit and the
     // recorded unit is up to date.
-    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
+    // @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
     let session = fixture.session();
     assert_eq!(units(&session, None).unwrap(), "rust b up to date []");
 
     // A review that is satisfied names no violated unit either. The file is written as
     // the command line writes it: a global review stringified.
-    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
+    // @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
     let review_file = |status: &str| {
         let last = GlobalReview {
             requirements: "0".repeat(64),
@@ -430,7 +430,7 @@ fn units_plans_a_violated_unit_again() {
 
     // The review is violated and a marker of the unit's output answers for its id, so
     // the unit is planned again.
-    // @lfy def/mcp/main.lfy:units#units:units:26e66d9e92ce56ad4e7d42e3bb7323e3b3dc8d0a39050e4ae4c5777afbe476b5
+    // @lfy def/mcp/main.lfy:units#units:units:141e46a551381ad83b1cc8266dc7d3bca58959091eeaa85ab4768b13d4c1f99f
     fixture.write("elfie-requests/global.reviews.json", &review_file("violated"));
     let session = fixture.session();
     assert_eq!(units(&session, None).unwrap(), "rust b violated []");

@@ -105,7 +105,7 @@ pub fn units(session: &Session, target: Option<&str>) -> Result<String, String> 
 
 /// The full request for one unit: what to produce, where, every criterion to satisfy, the
 /// edits other units made to its outputs, the later units it may edit, and how to report.
-// @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
+// @lfy def/mcp/main.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
 pub fn request(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
     // The plan is the one elfie_units shows.
     let planned = shown_plan(session);
@@ -137,7 +137,7 @@ pub fn request(session: &Session, unit: &str, target: Option<&str>) -> Result<St
     {
         return Ok(given.instructions.clone());
     }
-    Ok(request_for(&planned.program, plan, index).instructions) // @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
+    Ok(request_for(&planned.program, plan, index).instructions) // @lfy def/mcp/main.lfy:request#request:request:458d02f36175e2302ccdf1f4a0a5e4f6427d6ad3caafb42b339a713769527d7f
 }
 
 /// One foreign edit an accepted verdict holds, as a line: its kind, the word in, its owner,
@@ -155,7 +155,7 @@ fn edit_line(edit: &ForeignEdit) -> String {
 
 /// Whether the outputs on disk satisfy the request for one unit, and what is wrong when
 /// they do not. Nothing is written; the CLI records source maps.
-// @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+// @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
 pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
     let planned = shown_plan(session);
     let (workspace, plan) = (planned.workspace(), &planned.plan);
@@ -176,15 +176,15 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
             &made
         }
     };
-    // @lfy def/mcp/main.lfy:check#check:check:3475f72c3ad61b4c4f2156a3726b40e635a69204d88169984cdadd42fdcc2cf1
-    // @lfy def/mcp/main.lfy:check#check:check:78908963fd2ee7bcbad8fac4938f354a4ad423f802bdec1e1f80b478611f8f74
+    // @lfy def/mcp/main.lfy:check#check:check:f62b2808006bb1ede584a2e554e66f850b587343f1593b99f7b47aeb05e5de6f
+    // @lfy def/mcp/main.lfy:check#check:check:c38c9a07a3699d11511265746c3a3d56f97ca029e28d14f4f2fbc5c31e955939
     let before: Option<&[Output]> = compiler.and_then(|binding| binding.before.as_deref());
     let touches = session.touched();
-    // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+    // @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
     let (outputs, elsewhere) = outputs_of(workspace, plan, index);
     // What the last acceptance recorded for the target's other units, so that an output
     // another unit is to write is seen as that unit's rather than as this one's.
-    // @lfy def/mcp/main.lfy:check#check:check:d517596f37da6f2ebd9a8bac21cc5e470ac25921376da26b3cafa005e22b51ee
+    // @lfy def/mcp/main.lfy:check#check:check:c6866961ccb185b658d527b660124a894f5a6e4c4c8a6b6b79f8d40199fd33a7
     let source = workspace.files[plan.units[index].file].path.clone();
     let identifier = workspace.targets[plan.units[index].target].identifier.clone();
     let recorded: Vec<SourceMap> = generation::source_maps_of(workspace, Some(&identifier))
@@ -203,7 +203,7 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
         &touches,
     );
     if verdict.accepted {
-        // @lfy def/mcp/main.lfy:check#check:check:7d045cb553e0d306e634e78ed9a299647790d4beae5075ece0962d22ff2d4ef8
+        // @lfy def/mcp/main.lfy:check#check:check:f3f55cf806901e6c7c5de76844080355b2901cae32c8244bf1c4109365eb069d
         let mut text = format!(
             "accepted {} for {}: {} output{}",
             plan.units[index].stem,
@@ -214,14 +214,14 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
         for output in &outputs {
             text.push_str(&format!("\n  {}", output.path));
         }
-        // @lfy def/mcp/main.lfy:check#check:check:3fbbf8a1ad1e7e731818a436899a0f61e7d0c7505c0f22229556e2a35f6568c1
+        // @lfy def/mcp/main.lfy:check#check:check:118b7ce146ef04014cced08a2301ca2de11ee4af2a1bab5bb2eb970a0fa0b9c7
         for edit in &verdict.foreign_edits {
             text.push_str(&format!("\n{}", edit_line(edit)));
         }
         text.push_str("\nnothing was written; the CLI records the source maps");
         Ok(text)
     } else {
-        // @lfy def/mcp/main.lfy:check#check:check:2a16ea176547468dbe87eb74de7c195dc58e16c26122fc69de5f2ff15dd469f1
+        // @lfy def/mcp/main.lfy:check#check:check:aa65fce675d53a43132ff27e80f270948be090228ac8b39998f2eb2375b5519a
         let mut text = format!("rejected {}:", plan.units[index].stem);
         for problem in &verdict.problems {
             text.push_str(&format!("\n  {problem}"));
@@ -232,7 +232,7 @@ pub fn check(session: &Session, unit: &str, target: Option<&str>) -> Result<Stri
 
 /// The unit with a stem, in the target given or, when none is given, of the first target in
 /// `Workspace::targets` order that has a unit with that stem.
-// @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+// @lfy def/mcp/main.lfy:changes#changes:changes:76805f808eadb6afc31288f850876553118dd0066c28d603b5716c112369b09c
 pub(crate) fn unit_of_stem(workspace: &Workspace, plan: &Plan, stem: &str, target: Option<&str>) -> Result<usize, String> {
     check_target(workspace, target)?; // @lfy def/mcp/main.lfy:changes#changes:changes:e2e8756b78db77377231d8ef5ee9fd3e078703c801906a9b774ee59a2135a3ab
     for index in 0..workspace.targets.len() {
@@ -253,7 +253,7 @@ pub(crate) fn unit_of_stem(workspace: &Workspace, plan: &Plan, stem: &str, targe
 }
 
 /// What differs for each entity of a unit since its outputs were last accepted.
-// @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+// @lfy def/mcp/main.lfy:changes#changes:changes:76805f808eadb6afc31288f850876553118dd0066c28d603b5716c112369b09c
 pub fn changes(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
     let planned = plan_of(session);
     let workspace = planned.workspace();
@@ -267,7 +267,7 @@ pub fn changes(session: &Session, unit: &str, target: Option<&str>) -> Result<St
     }
     // The source the outputs were accepted from, recovered once from the program the plan
     // was made from and lowered once, as `generation::changes` takes it.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    // @lfy def/mcp/main.lfy:changes#changes:changes:53f95c52d3400ab227bfb9638eec7debe3964e9d9931c78c15358a719c56d337
     let previous = generation::previous::previous_of(&planned.program, of_stem, &of_stem.outputs);
     let mut text = String::new();
     match &previous {
@@ -278,19 +278,19 @@ pub fn changes(session: &Session, unit: &str, target: Option<&str>) -> Result<St
              the latest revision of its file with the same lowered code, so the criteria and tests \
              they report as changed may not be those that changed since its outputs were accepted\n",
         ),
-        // @lfy def/mcp/main.lfy:changes#changes:changes:4260318a5866f37c4f4c137011eee37c136720d68918bd04c5c7a652538dc6dc
+        // @lfy def/mcp/main.lfy:changes#changes:changes:b2b31f75eb94528c8ec7526264ada5e72ab1d96bfb72f1d04697c832979b751d
         None => text.push_str(
             "neither the source its outputs were accepted from nor a revision of its file with the \
              same lowered code can be recovered; every entity is listed as added\n",
         ),
     }
-    let found = generation::changes(&planned.program, of_stem, previous.as_ref()); // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+    let found = generation::changes(&planned.program, of_stem, previous.as_ref()); // @lfy def/mcp/main.lfy:changes#changes:changes:76805f808eadb6afc31288f850876553118dd0066c28d603b5716c112369b09c
     if found.is_empty() {
-        // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
+        // @lfy def/mcp/main.lfy:changes#changes:changes:c91839604ea31b5f8cf98f38c9e887c17fa9d386f697dd83a406cd2307166b3d
         text.push_str(&format!("no changes in {unit} since its outputs were accepted"));
         return Ok(text);
     }
-    // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+    // @lfy def/mcp/main.lfy:changes#changes:changes:76805f808eadb6afc31288f850876553118dd0066c28d603b5716c112369b09c
     let lines: Vec<String> = found
         .iter()
         .map(|change| format!("{} {} {}", change.entity, change.kind.as_str(), change.detail))

@@ -1,4 +1,4 @@
-// @lfy def/generation/main.lfy:request
+// @lfy def/generation/request.lfy:request
 //! Tests of `request`.
 
 use super::*;
@@ -16,7 +16,7 @@ fn part<'t>(text: &'t str, heading: &str) -> &'t str {
     &rest[..end]
 }
 
-// @lfy def/generation/main.lfy:request#request:request:791a8be2cf25fb1173708afcc97731764294fd1536d2712c435d59d1f67ab210
+// @lfy def/generation/request.lfy:request#request:request:791a8be2cf25fb1173708afcc97731764294fd1536d2712c435d59d1f67ab210
 #[test]
 fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     let fixture = a_and_b();
@@ -27,16 +27,16 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
     let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
     let request = request(&program, &plan, a_index, &[], None, false, &[], &[]);
-    // @lfy def/generation/main.lfy:request#request:request:959d0fbacdba0aea498605d429f4ef8f02ed09ff514957b1eb5c5d9cd0244bf9
+    // @lfy def/generation/request.lfy:request#request:request:959d0fbacdba0aea498605d429f4ef8f02ed09ff514957b1eb5c5d9cd0244bf9
     assert_eq!(request.unit, a_index);
     // The source is the lowered text of the unit's file, and the requirements its local
     // criteria and tests.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert_eq!(request.source, program.files[a.lowered].text);
     assert!(request.source.contains("d A: `An a` {"), "{}", request.source);
     assert!(request.requirements.is_empty(), "{:?}", request.requirements);
     // Nothing of this project is added to global, so there is no global requirement.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert!(request.globals.is_empty(), "{:?}", request.globals);
     // Nothing was handed over of what the outputs were generated from.
     assert_eq!(request.previous, None);
@@ -44,26 +44,26 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     assert_eq!(request.removed, None);
     assert_eq!(request.reworded, None);
     assert!(!request.reworded_only);
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert!(request.existing.is_empty());
     assert!(request.foreign_edits.is_empty());
     // a is the last unit, so the run may edit no other unit's code.
-    // @lfy def/generation/main.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    // @lfy def/generation/request.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
     assert!(request.reach.units.is_empty(), "{:?}", request.reach);
     // b is a's dependency, and so its interface.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert_eq!(request.interfaces.len(), 1);
     assert_eq!(request.interfaces[0].unit, b_index);
     // The declaration has no criterion of its own, the layout and the ecosystem none
     // either, and the language one; `target` is all that they extend, and it has none.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert_eq!(
         request.guidance,
         guidance_for(&workspace.model, &workspace.targets[0])
     );
     assert_eq!(request.guidance.len(), 1);
     // What the target's own dependencies, commands, and knowledge give.
-    // @lfy def/generation/main.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
+    // @lfy def/generation/request.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
     assert_eq!(
         request
             .native_dependencies
@@ -78,7 +78,7 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
 
     let text = &request.instructions;
     // The role: the compiler for the target, whose whole job is the one unit's outputs.
-    // @lfy def/generation/main.lfy:request#request:request:fff6f01c8ce622f973502bc046ee6f471011a0368d5ba7c0c0c0a4f4c94a8e0c
+    // @lfy def/generation/request.lfy:request#request:request:fff6f01c8ce622f973502bc046ee6f471011a0368d5ba7c0c0c0a4f4c94a8e0c
     assert!(text.contains("You are the compiler for the target `rust`."), "{text}");
     assert!(
         text.contains("Your whole job is the outputs of the one unit"),
@@ -88,24 +88,24 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
         text.contains("you write nothing outside them, except the edits to later units"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:ebef3352a48540ef0a12abd094f973ab2762f62746edd431a7b3d4d95f8c3780
+    // @lfy def/generation/request.lfy:request#request:request:ebef3352a48540ef0a12abd094f973ab2762f62746edd431a7b3d4d95f8c3780
     assert!(
         text.contains("The outputs go under `src`, their paths spelled from the unit's stem"),
         "{text}"
     );
     // The unit's section begins with a heading naming the stem, the file, and the reason.
-    // @lfy def/generation/main.lfy:request#request:request:61e677b44b6f0c053f64e20b7685d271519f83515df009d807762ca548cbfbeb
+    // @lfy def/generation/request.lfy:request#request:request:61e677b44b6f0c053f64e20b7685d271519f83515df009d807762ca548cbfbeb
     assert!(
         text.contains(
             "## The unit to compile: `a` (`def/a.lfy`), planned because it is fresh"
         ),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:f2a22f45bc9513dedff93a88f20ba324a34cd2dbadc5b117686df4eb14f73a47
+    // @lfy def/generation/request.lfy:request#request:request:f2a22f45bc9513dedff93a88f20ba324a34cd2dbadc5b117686df4eb14f73a47
     assert!(text.contains("Nothing has been generated for it yet."), "{text}");
     assert!(text.contains("### `A` (data: DataDeclaration)"), "{text}");
     // The entity's lowered code, not its source: the documentation is gone.
-    // @lfy def/generation/main.lfy:request#request:request:53047b9ea4a7fce9d7173c9b614c2c73247779aa5d5245a9720c351789d608c1
+    // @lfy def/generation/request.lfy:request#request:request:53047b9ea4a7fce9d7173c9b614c2c73247779aa5d5245a9720c351789d608c1
     assert!(text.contains("d A: `An a` {\n  $b = B;\n}"), "{text}");
     assert!(text.contains("Definition: An a"), "{text}");
     assert!(
@@ -118,32 +118,32 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     assert!(text.contains("### `def/b.lfy`"), "{text}");
     // Markers name entities, never lines, and sit in a line comment beginning with the
     // target's marker comment.
-    // @lfy def/generation/main.lfy:request#request:request:671617e25d98e36f8c646b0c76d941034839245f2544e239cb4ede3581bb2f33
+    // @lfy def/generation/request.lfy:request#request:request:671617e25d98e36f8c646b0c76d941034839245f2544e239cb4ede3581bb2f33
     assert!(text.contains("Never write a line number."), "{text}");
     assert!(
         text.contains("a line comment beginning with `//`, then `@lfy`"),
         "{text}"
     );
     // The three report lines.
-    // @lfy def/generation/main.lfy:request#request:request:e4ff528873311ac2c054d3eb98c7015eca5064897eae15ff47429cfdd53b7860
+    // @lfy def/generation/request.lfy:request#request:request:e4ff528873311ac2c054d3eb98c7015eca5064897eae15ff47429cfdd53b7860
     assert!(text.contains("`ELFIE: DONE`"), "{text}");
     assert!(text.contains("`ELFIE: BLOCKED: `"), "{text}");
     assert!(text.contains("`ELFIE: CLARIFY: `"), "{text}");
     // The standard library is bound, never generated.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert!(
         text.contains("carry `builtin` are bound to what the guidance"),
         "{text}"
     );
     // A criterion is never restated in an output, only named by its id.
-    // @lfy def/generation/main.lfy:request#request:request:88bad81c76d679b95e82ea566e65627b4a1615584da2fe8b645fd322f0b26fb3
+    // @lfy def/generation/request.lfy:request#request:request:88bad81c76d679b95e82ea566e65627b4a1615584da2fe8b645fd322f0b26fb3
     assert!(
         text.contains("Never restate a criterion or a test in an output"),
         "{text}"
     );
     // The commands run with `sh -c` in the output directory, and a dependency is added
     // only by running the add command.
-    // @lfy def/generation/main.lfy:request#request:request:09b0190ee8969e01b9ff7a561a98c3663f87fb8b97fa83c588d0631e7989bc20
+    // @lfy def/generation/request.lfy:request#request:request:09b0190ee8969e01b9ff7a561a98c3663f87fb8b97fa83c588d0631e7989bc20
     assert!(text.contains("These run with `sh -c` in `src`"), "{text}");
     assert!(
         text.contains("never by editing a manifest or a lockfile by hand"),
@@ -154,24 +154,24 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
         "{text}"
     );
     // No foreign edit and no existing output, so neither part is there.
-    // @lfy def/generation/main.lfy:request#request:request:5c766480f2aeaf0ebb1ddf1b6a70d47e9bf4cd4b053467207c3a9d2d1eb8b527
+    // @lfy def/generation/request.lfy:request#request:request:5c766480f2aeaf0ebb1ddf1b6a70d47e9bf4cd4b053467207c3a9d2d1eb8b527
     assert!(!text.contains("## Foreign edits"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:f2c797c5d0ef378166c8076e5ab2728b7f37655f9e7217e2c879e60c4694babf
+    // @lfy def/generation/request.lfy:request#request:request:f2c797c5d0ef378166c8076e5ab2728b7f37655f9e7217e2c879e60c4694babf
     assert!(!text.contains("## Existing outputs"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
+    // @lfy def/generation/request.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
     assert!(
         text.contains("This run edits the outputs of no other unit."),
         "{text}"
     );
     // The fixture's language sets no stub line, so a later unit is edited only by a fix.
-    // @lfy def/generation/main.lfy:request#request:request:fa7877d32be5d508227d6d6bf22128a10d3041153bcb8b6aee2e60a4efad0c5b
+    // @lfy def/generation/request.lfy:request#request:request:fa7877d32be5d508227d6d6bf22128a10d3041153bcb8b6aee2e60a4efad0c5b
     assert!(
         text.contains("The target has no stub line, so a later unit's code is edited only by a fix."),
         "{text}"
     );
 
     // The parts come in the definition's order.
-    // @lfy def/generation/main.lfy:request#request:request:0efe0565880b5d7bbc83ee22c7e44e71d1599754ad1d82c9ea4fc7fd4bda4282
+    // @lfy def/generation/request.lfy:request#request:request:0efe0565880b5d7bbc83ee22c7e44e71d1599754ad1d82c9ea4fc7fd4bda4282
     let headings = [
         "# Compiling",
         "## Where the outputs go",
@@ -208,7 +208,7 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
 
 /// Every part before the interfaces reads the same in the request for every unit of the
 /// target made from one plan with the same `hosted`, so it is cached across units.
-// @lfy def/generation/main.lfy:request#request:request:eb00a710ef7f9ae5f807e0eee8c047af03c75306a424a1d098caac52a1699eb1
+// @lfy def/generation/request.lfy:request#request:request:eb00a710ef7f9ae5f807e0eee8c047af03c75306a424a1d098caac52a1699eb1
 #[test]
 fn every_part_before_the_interfaces_is_the_same_for_every_unit() {
     let fixture = a_and_b();
@@ -231,7 +231,7 @@ fn every_part_before_the_interfaces_is_the_same_for_every_unit() {
     }
 }
 
-// @lfy def/generation/main.lfy:request#request:request:258d7f943a5b84ea809c220868bbf11249a423cd3891bd01fced30a1d9b5bfc1
+// @lfy def/generation/request.lfy:request#request:request:258d7f943a5b84ea809c220868bbf11249a423cd3891bd01fced30a1d9b5bfc1
 #[test]
 fn a_request_quotes_every_criterion_and_test_of_an_entity() {
     let fixture = a_and_b();
@@ -243,7 +243,7 @@ fn a_request_quotes_every_criterion_and_test_of_an_entity() {
     let request = request(&program, &plan, b_index, &[], None, false, &[], &[]);
     // The requirements hold every local criterion and test of the file, each with its
     // id: one criterion and one test, both of `make`.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert_eq!(request.requirements.len(), 2);
     assert!(
         request
@@ -285,7 +285,7 @@ fn a_request_quotes_every_criterion_and_test_of_an_entity() {
 
 /// Every global criterion and test of the program is in one section of its own, each
 /// once with its id, and the instructions say what a unit does with one.
-// @lfy def/generation/main.lfy:request#request:request:947030aa711f453c710b970e654a978a41f4db5a2776707bc669e1c0efd5bea8
+// @lfy def/generation/request.lfy:request#request:request:947030aa711f453c710b970e654a978a41f4db5a2776707bc669e1c0efd5bea8
 #[test]
 fn a_request_holds_every_global_criterion_once_with_its_id() {
     let fixture = Fixture::with_rust_target();
@@ -297,7 +297,7 @@ fn a_request_holds_every_global_criterion_once_with_its_id() {
     assert_bound(&program.workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let request = request(&program, &plan, 0, &[], None, false, &[], &[]);
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert_eq!(
         request
             .globals
@@ -332,7 +332,7 @@ fn a_request_holds_every_global_criterion_once_with_its_id() {
 /// layer extends gave, then each layer's in guidance order, then those of every trait
 /// the layers extend, nearest first and each trait once, with every template value
 /// rendered from the layer's arguments.
-// @lfy def/generation/main.lfy:request#request:request:87e9993504e790d854b0888818bd3cd0f6e6cabc4fe778e8ca201843373bbc6a
+// @lfy def/generation/request.lfy:request#request:request:87e9993504e790d854b0888818bd3cd0f6e6cabc4fe778e8ca201843373bbc6a
 #[test]
 fn the_guidance_is_the_declarations_criteria_then_its_layers_then_what_they_extend() {
     let fixture = Fixture::with_rust_target();
@@ -398,7 +398,7 @@ fn the_guidance_is_the_declarations_criteria_then_its_layers_then_what_they_exte
     // gave it; then the layout and the language, in guidance order, with the language's
     // template value rendered from its argument; then the traits they extend, nearest
     // first.
-    // @lfy def/generation/main.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
+    // @lfy def/generation/request.lfy:request#request:request:135e15c4022af725fbc8ead4da685356a7bd57007a779d43dc620fb979b49d4e
     assert_eq!(
         behaviors,
         [
@@ -433,7 +433,7 @@ fn the_guidance_is_the_declarations_criteria_then_its_layers_then_what_they_exte
 /// The knowledge of the unit's entities and of the entities of an interface, each item
 /// once, in the unit's knowledge part: a reference quoted in full, one named to be read, a
 /// definition as the files its use path resolves to, and a tool of the agent server.
-// @lfy def/generation/main.lfy:request#request:request:c98e56391cddb2a9c1906590ced0e660422b844fd0eaf115ecabe5c0d384a131
+// @lfy def/generation/request.lfy:request#request:request:c98e56391cddb2a9c1906590ced0e660422b844fd0eaf115ecabe5c0d384a131
 #[test]
 fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     let fixture = Fixture::with_rust_target();
@@ -458,7 +458,7 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
     let request = request(&program, &plan, a_index, &[], None, false, &[], &[]);
     // Each item once, in the order the request gathers them.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert_eq!(
         request
             .knowledge
@@ -474,7 +474,7 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     );
     let text = &request.instructions;
     // The target gives none of its own; every item is the unit's.
-    // @lfy def/generation/main.lfy:request#request:request:52ca7fc29e1e450ee23c263741df61d61b239c73a255a810b7d879c5cf38f7ac
+    // @lfy def/generation/request.lfy:request#request:request:52ca7fc29e1e450ee23c263741df61d61b239c73a255a810b7d879c5cf38f7ac
     assert!(
         part(text, "## Knowledge of the target")
             .contains("The compiler is given nothing of this kind to read."),
@@ -483,11 +483,11 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     let unit_part = part(text, "## Knowledge of the unit");
     // A reference whose quote is true is quoted in full, from its source joined to the
     // root of the project its contributor is declared in.
-    // @lfy def/generation/main.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
+    // @lfy def/generation/request.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
     assert!(unit_part.contains("From `docs/style.md`:"), "{text}");
     assert!(unit_part.contains("Two spaces, never a tab."), "{text}");
     // One whose quote is left out is named, to be read first.
-    // @lfy def/generation/main.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
+    // @lfy def/generation/request.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
     assert!(
         unit_part.contains(
             "- the shape of a module: read `docs/shape.md` before writing anything it covers."
@@ -496,13 +496,13 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     );
     assert!(!text.contains("A long guide nobody quotes."), "{text}");
     // A definition names the files its use path resolves to, read as Elfie.
-    // @lfy def/generation/main.lfy:request#request:request:179394ea2be57b4a87b41dac2988b30f36b058129a701fc79ff34cc290769606
+    // @lfy def/generation/request.lfy:request#request:request:179394ea2be57b4a87b41dac2988b30f36b058129a701fc79ff34cc290769606
     assert!(
         unit_part.contains("- what a b is: read `def/b.lfy` as Elfie."),
         "{text}"
     );
     // A tool is called before anything relies on what it answers.
-    // @lfy def/generation/main.lfy:request#request:request:18fa49f6ae0fe059f4d8b65429f7356e822363b0bb901d611f266ca1393c940b
+    // @lfy def/generation/request.lfy:request#request:request:18fa49f6ae0fe059f4d8b65429f7356e822363b0bb901d611f266ca1393c940b
     assert!(
         unit_part.contains(
             "- the program: call the tool `elfie_entity` of the agent server before relying on \
@@ -512,8 +512,8 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     );
 }
 
-// @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
-// @lfy def/generation/main.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
+// @lfy def/generation/request.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
+// @lfy def/generation/request.lfy:request#request:request:7424b0fcb62916f23bfb6c1265f3a3f943fb1354558e0d4b0ea4722212bc0c7f
 #[test]
 fn a_dependency_is_an_interface_with_its_outputs_and_entities() {
     let fixture = a_and_b();
@@ -551,7 +551,7 @@ fn a_dependency_is_an_interface_with_its_outputs_and_entities() {
 /// the request still holds every entity of the dependency; its tools part names
 /// `elfie_task`, `elfie_mark`, and `elfie_reach`, its stubs part `elfie_touch`, and its
 /// report part `elfie_submit` and the three lines.
-// @lfy def/generation/main.lfy:request#request:request:88959b8d48ca3a336e3c22cd37a1dc460e6e8d3ea8f5f2f7946e3defb0b28501
+// @lfy def/generation/request.lfy:request#request:request:88959b8d48ca3a336e3c22cd37a1dc460e6e8d3ea8f5f2f7946e3defb0b28501
 #[test]
 fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
     let fixture = a_and_b();
@@ -563,14 +563,14 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
     let request = request(&program, &plan, a_index, &[], None, true, &[], &[]);
     // Hosted or not, the request holds every entity of the dependency.
-    // @lfy def/generation/main.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
+    // @lfy def/generation/request.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
     assert_eq!(
         names(&workspace, &request.interfaces[0].entities),
         ["B", "make"]
     );
     let text = &request.instructions;
     // One line naming the file, its outputs, and its entities.
-    // @lfy def/generation/main.lfy:request#request:request:c5448d7c2bb4f497fbdd859f9d7405cd0bdf319c54990d943d33d646b6da87d4
+    // @lfy def/generation/request.lfy:request#request:request:c5448d7c2bb4f497fbdd859f9d7405cd0bdf319c54990d943d33d646b6da87d4
     assert!(
         text.contains("- `def/b.lfy`: outputs `src/b.rs`; entities `B`, `make`"),
         "{text}"
@@ -578,9 +578,9 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
     // No definition, kind, or type of an entity of the interface is spelled out.
     assert!(!text.contains("### `def/b.lfy`"), "{text}");
     assert!(!text.contains("(data: DataDeclaration): A b"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:91c07c652cfc9edd8b82e5c1bebc5ef3998ae8e528cbd1623161418170399772
+    // @lfy def/generation/request.lfy:request#request:request:91c07c652cfc9edd8b82e5c1bebc5ef3998ae8e528cbd1623161418170399772
     assert!(text.contains("with `elfie_dependency`"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:ee02a52de55ba8387ed07c92e9dcbdf5b9c85589d8fdaada91f00910e1406e76
+    // @lfy def/generation/request.lfy:request#request:request:ee02a52de55ba8387ed07c92e9dcbdf5b9c85589d8fdaada91f00910e1406e76
     for piece in [
         "`elfie_task` gives the unit's obligations again: its outputs and its reason",
         "marked new, kept, or unknown",
@@ -592,12 +592,12 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
     ] {
         assert!(text.contains(piece), "{piece} is missing:\n{text}");
     }
-    // @lfy def/generation/main.lfy:request#request:request:62d883a30a28badaea4f03b2960f52fb3aa9c70f5050d0dbf476d7a7f1acbd15
+    // @lfy def/generation/request.lfy:request#request:request:62d883a30a28badaea4f03b2960f52fb3aa9c70f5050d0dbf476d7a7f1acbd15
     assert!(
         part(text, "## Stubs and fixes in later units").contains("`elfie_touch`"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:4a237f69a0cf92b366172dde838e3583135a0dc294c8ef43f2392d08c1c1e1bd
+    // @lfy def/generation/request.lfy:request#request:request:4a237f69a0cf92b366172dde838e3583135a0dc294c8ef43f2392d08c1c1e1bd
     assert!(
         text.contains("Submit the outcome through `elfie_submit` before your final message"),
         "{text}"
@@ -608,7 +608,7 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
 
     // A request that is not hosted quotes the interface whole and names none of the
     // session's own tools.
-    // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
+    // @lfy def/generation/request.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
     let text =
         super::request(&program, &plan, a_index, &[], None, false, &[], &[]).instructions;
     assert!(text.contains("### `def/b.lfy`"), "{text}");
@@ -620,8 +620,8 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
 
 /// The commands part says which operations the agent server runs through a tool of its
 /// own, which variables narrow such a run, and how the unit is judged after its run.
-// @lfy def/generation/main.lfy:request#request:request:f700bbb14b11b81fadfe6c18b018250b1c7b9cdadbd0bd8b2a66ce896dfc54c9
-// @lfy def/generation/main.lfy:request#request:request:f4b1430a5e2784e149775d2e69bdf4d652782d426521aa999f67d64b6c8a76c5
+// @lfy def/generation/request.lfy:request#request:request:f700bbb14b11b81fadfe6c18b018250b1c7b9cdadbd0bd8b2a66ce896dfc54c9
+// @lfy def/generation/request.lfy:request#request:request:f4b1430a5e2784e149775d2e69bdf4d652782d426521aa999f67d64b6c8a76c5
 #[test]
 fn the_commands_part_says_which_tool_runs_an_operation_and_what_narrows_it() {
     let fixture = a_and_b();
@@ -641,7 +641,7 @@ fn the_commands_part_says_which_tool_runs_an_operation_and_what_narrows_it() {
     ] {
         assert!(commands.contains(piece), "{piece} is missing:\n{text}");
     }
-    // @lfy def/generation/main.lfy:request#request:request:e198f2bcd4f8eb39c9c181816e09b176b6436e859f6c7e7015ba21dcf9e0f4ca
+    // @lfy def/generation/request.lfy:request#request:request:e198f2bcd4f8eb39c9c181816e09b176b6436e859f6c7e7015ba21dcf9e0f4ca
     for piece in [
         "the unit is judged with the test command run with stubs allowed",
         "`ALLOW_STUBS`",
@@ -653,7 +653,7 @@ fn the_commands_part_says_which_tool_runs_an_operation_and_what_narrows_it() {
     }
     // The tools part names every tool of the agent server a compiler reads the program
     // and its outputs through.
-    // @lfy def/generation/main.lfy:request#request:request:43974a3eb5968199e4c0d2b5b84afd218c864eb58c47c072bbcc471866a03921
+    // @lfy def/generation/request.lfy:request#request:request:43974a3eb5968199e4c0d2b5b84afd218c864eb58c47c072bbcc471866a03921
     for piece in [
         "before files are searched or read by hand",
         "`elfie_entity` for a definition with its criteria and tests",
@@ -673,8 +673,8 @@ fn the_commands_part_says_which_tool_runs_an_operation_and_what_narrows_it() {
 /// The section of a unit entities moved into says which they are, from which file, and
 /// because of which cause, and the section of the unit they left says which they are and
 /// which unit compiles them.
-// @lfy def/generation/main.lfy:request#request:request:da09691bed9bbd4cea507b74ae9d6919801f1f5948f2c6d2728226a9c8d5f73f
-// @lfy def/generation/main.lfy:request#request:request:0f1d87f11591131ce4052dfc72bc179de20f377a5b220fb4cb1cd3f9237e0d4e
+// @lfy def/generation/request.lfy:request#request:request:da09691bed9bbd4cea507b74ae9d6919801f1f5948f2c6d2728226a9c8d5f73f
+// @lfy def/generation/request.lfy:request#request:request:0f1d87f11591131ce4052dfc72bc179de20f377a5b220fb4cb1cd3f9237e0d4e
 #[test]
 fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
     let fixture = a_cycle();
@@ -692,15 +692,15 @@ fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
         text.contains("- `C` from `def/a.lfy`, because of `B.c`."),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:e0d2c5750e61bf64facae6b21f456aaeafa4cfd1be0dc60ff387efee1c092a88
+    // @lfy def/generation/request.lfy:request#request:request:e0d2c5750e61bf64facae6b21f456aaeafa4cfd1be0dc60ff387efee1c092a88
     assert!(
         text.contains("markers naming the file that declares them"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:ac5358d47d574ae4484013ee8bdc0488e7f6ce892b6e384d1346f27daea31d51
+    // @lfy def/generation/request.lfy:request#request:request:ac5358d47d574ae4484013ee8bdc0488e7f6ce892b6e384d1346f27daea31d51
     assert!(text.contains("never by importing that file"), "{text}");
     // The source of the unit is the text it compiles, so `C` is in it.
-    // @lfy def/generation/main.lfy:request
+    // @lfy def/generation/request.lfy:request
     assert!(into.source.contains("d C"), "{}", into.source);
 
     // In the request of `def/a.lfy`, which `C` moved out of.
@@ -710,9 +710,9 @@ fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
         text.contains("- `C` in the unit `b` (`def/b.lfy`)."),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:b30f51561b31df6c26b31d4c397791d154398bc31a9a56efc45eb145fae5800a
+    // @lfy def/generation/request.lfy:request#request:request:b30f51561b31df6c26b31d4c397791d154398bc31a9a56efc45eb145fae5800a
     assert!(text.contains("never write them again"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:034c1bdfc4725cdfe7e5eb86af7e47ed43e227a1f7eef528cbb549521620143e
+    // @lfy def/generation/request.lfy:request#request:request:034c1bdfc4725cdfe7e5eb86af7e47ed43e227a1f7eef528cbb549521620143e
     assert!(
         text.contains("under the name and path it would have had"),
         "{text}"
@@ -723,7 +723,7 @@ fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
 /// An existing output is kept only where its path is among the unit's outputs, and the
 /// previous source it was generated from is the file as it was, lowered the way the unit's
 /// own source is, so that the two texts can be read side by side.
-// @lfy def/generation/main.lfy:request#request:request:403680d3f5bf2a057752d5d237cbfb6d63463cc8feff3f3e51a12a290e249b3e
+// @lfy def/generation/request.lfy:request#request:request:403680d3f5bf2a057752d5d237cbfb6d63463cc8feff3f3e51a12a290e249b3e
 #[test]
 fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     let fixture = a_and_b();
@@ -760,12 +760,12 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     assert_eq!(with_previous.existing["src/a.rs"], "// old");
     // `Request.previous` is the lowered text of the file as it was, never the text as
     // written: it is read against `Request.source`, which is lowered too.
-    // @lfy def/generation/main.lfy:request#request:request:f716d0d680ccdf61f0d7552cc5067d5a325199077fe3d5d7280c889ed2df6c4b
+    // @lfy def/generation/request.lfy:request#request:request:f716d0d680ccdf61f0d7552cc5067d5a325199077fe3d5d7280c889ed2df6c4b
     let was = with_previous.previous.clone().expect("a previous source");
     assert_ne!(was, with_previous.source);
     // It is the file as it was in the program of `previous`: here the same file but for the
     // documentation comment the current one carries.
-    // @lfy def/generation/main.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
+    // @lfy def/generation/request.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
     let lowered = &previous.program;
     let index = lowered
         .workspace
@@ -778,13 +778,13 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     assert!(with_previous.source.contains("A record."));
     let text = &with_previous.instructions;
     let existing_part = part(text, "## Existing outputs");
-    // @lfy def/generation/main.lfy:request#request:request:0ba41c4d98f01ad24856a70c3eb94ada370e2dbc756ad6bb03d09c1593aa935b
+    // @lfy def/generation/request.lfy:request#request:request:0ba41c4d98f01ad24856a70c3eb94ada370e2dbc756ad6bb03d09c1593aa935b
     assert!(existing_part.contains("- `src/a.rs`"), "{text}");
     assert!(!existing_part.contains("src/other.rs"), "{text}");
     // Only what the difference, the marked criteria and tests, the foreign edits, and a
     // split the guidance requires call for changes; names, structure, and the markers of
     // unchanged items are otherwise kept.
-    // @lfy def/generation/main.lfy:request#request:request:b328124ea1eb5cbf654b1744945d6267f6201a13dbdbf58b20e83731c97b1cf1
+    // @lfy def/generation/request.lfy:request#request:request:b328124ea1eb5cbf654b1744945d6267f6201a13dbdbf58b20e83731c97b1cf1
     for piece in [
         "Keep the markers of unchanged items.",
         "Keep names and structure, except that a module the \
@@ -797,7 +797,7 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     ] {
         assert!(existing_part.contains(piece), "{piece} is missing:\n{text}");
     }
-    // @lfy def/generation/main.lfy:request#request:request:921f0ecc9962f3241a69e55b5e8db934f9a538bdb6ba94b75df67399bf4e7dcf
+    // @lfy def/generation/request.lfy:request#request:request:921f0ecc9962f3241a69e55b5e8db934f9a538bdb6ba94b75df67399bf4e7dcf
     assert!(
         existing_part.contains("The source the outputs were generated from"),
         "{text}"
@@ -805,7 +805,7 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     assert!(existing_part.contains(was.trim_end()), "{text}");
     // The outputs of a unit that has some go at the paths its `Unit.outputs` names, except
     // that a module the guidance says to split gains submodule files.
-    // @lfy def/generation/main.lfy:request#request:request:09f94a5ded65108d10253c1fb3262ce6174fd78e63b564b55a231c913cd36a02
+    // @lfy def/generation/request.lfy:request#request:request:09f94a5ded65108d10253c1fb3262ce6174fd78e63b564b55a231c913cd36a02
     assert!(
         text.contains(
             "Its outputs go at `src/a.rs`, except that a module the target's guidance says to \
@@ -815,7 +815,7 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     );
 
     // With no previous source, the existing outputs are reconciled with the unit's source.
-    // @lfy def/generation/main.lfy:request#request:request:f56fdcbd147d90b70d21fc0a3ca55daee274a966874753ec15588bbcb77df8c2
+    // @lfy def/generation/request.lfy:request#request:request:f56fdcbd147d90b70d21fc0a3ca55daee274a966874753ec15588bbcb77df8c2
     let without = request(&program, &plan, a_index, &existing, None, false, &[], &[]);
     assert!(
         without
@@ -829,7 +829,7 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
 /// A unit whose outputs recorded no answered ids leaves the request nothing to say which
 /// of its criteria and tests are new, so the outputs part says to read the existing code
 /// against each of them; with the file as it was handed over, its ids stand in.
-// @lfy def/generation/main.lfy:request#request:request:9dc09496cd7e7f35f205f84cbca429a26f53841256c22511554622cf64d3408e
+// @lfy def/generation/request.lfy:request#request:request:9dc09496cd7e7f35f205f84cbca429a26f53841256c22511554622cf64d3408e
 #[test]
 fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
     let fixture = a_and_b();
@@ -856,7 +856,7 @@ fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
         unknown.instructions
     );
     // The file as it was says which ids the outputs were generated against.
-    // @lfy def/generation/main.lfy:request#request:request:c0f16d7718690de14a23abb41bfc4969ec02c0d005d99bc9c10b079f30ed8856
+    // @lfy def/generation/request.lfy:request#request:request:c0f16d7718690de14a23abb41bfc4969ec02c0d005d99bc9c10b079f30ed8856
     let known = request(&program, &plan, b_index, &existing, Some(&previous_of(&workspace, b, B, false)), false, &[], &[]);
     let ids: Vec<String> = b
         .requirements(&program)
@@ -874,7 +874,7 @@ fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
 /// A unit whose lowered code is unchanged but whose criteria differ: its section says so,
 /// each criterion the outputs did not answer for is marked new, and each one the unit no
 /// longer has is listed under a heading of its own with its text.
-// @lfy def/generation/main.lfy:request#request:request:89ad0cbeb59e818fc04cdcb22b2d08c7e77528505863ee85d3cc5a1f11ce8834
+// @lfy def/generation/request.lfy:request#request:request:89ad0cbeb59e818fc04cdcb22b2d08c7e77528505863ee85d3cc5a1f11ce8834
 #[test]
 fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone() {
     let fixture = a_and_b();
@@ -921,14 +921,14 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
     let request = request(&program, &plan, b_index, &existing, Some(&previous_of(&workspace, b, &was, false)), false, &[], &[]);
 
     // What the outputs answered for is what the map file recorded.
-    // @lfy def/generation/main.lfy:request#request:request:54d1c80b3d1e38ff7f2e58e0cce13959161756838579cc4936f7e34c3efcffab
+    // @lfy def/generation/request.lfy:request#request:request:54d1c80b3d1e38ff7f2e58e0cce13959161756838579cc4936f7e34c3efcffab
     let mut sorted = before.clone();
     sorted.sort();
     assert_eq!(request.answered, Some(sorted));
     // The one criterion the unit no longer has, with the id it had, its place in the file
     // as it was, and what it said.
-    // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
-    // @lfy def/generation/main.lfy:request#request:request:a5c47f2c55a69433503b4e3695c342527d245e9af1cf95c78e340d2dafe6c4d9
+    // @lfy def/generation/request.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+    // @lfy def/generation/request.lfy:request#request:request:a5c47f2c55a69433503b4e3695c342527d245e9af1cf95c78e340d2dafe6c4d9
     let gone = request.removed.clone().expect("what was removed");
     assert_eq!(gone.len(), 1, "{gone:?}");
     assert!(before.contains(&gone[0].id), "{gone:?} {before:?}");
@@ -943,7 +943,7 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
     let text = &request.instructions;
     // The section says the code is unchanged and holds the code to what each criterion
     // now says.
-    // @lfy def/generation/main.lfy:request#request:request:e9d469e6b5e3e7503987163405e59232553f60e223ea220e7bd04734d2dcfd4c
+    // @lfy def/generation/request.lfy:request#request:request:e9d469e6b5e3e7503987163405e59232553f60e223ea220e7bd04734d2dcfd4c
     assert!(
         text.contains("The lowered code of this unit is unchanged, but its criteria or tests differ."),
         "{text}"
@@ -953,7 +953,7 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
         "{text}"
     );
     // The criterion the outputs answered for is unmarked; the one they did not is new.
-    // @lfy def/generation/main.lfy:request#request:request:aa208260d2e6de0481fdd00165686f8ac50d4c5662ac4e1445cbaecdfb556b09
+    // @lfy def/generation/request.lfy:request#request:request:aa208260d2e6de0481fdd00165686f8ac50d4c5662ac4e1445cbaecdfb556b09
     let held = b.requirements(&program);
     let kept = held
         .iter()
@@ -973,13 +973,13 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
         .unwrap_or_else(|| panic!("{text}"));
     assert!(!kept_line.ends_with("(new)"), "{kept_line}");
     // A new one may restate a removed one in other words.
-    // @lfy def/generation/main.lfy:request#request:request:1804b6b498c5043da3a7cf8c5a175a457bf933f4f3f4586491df94745de5e1d9
+    // @lfy def/generation/request.lfy:request#request:request:1804b6b498c5043da3a7cf8c5a175a457bf933f4f3f4586491df94745de5e1d9
     assert!(
         text.contains("may restate a removed one in other words"),
         "{text}"
     );
     // What is gone is listed last in the unit's section, with its id and its text.
-    // @lfy def/generation/main.lfy:request#request:request:345bea3ab85ad7f91097e0f2d2bb6cb5c995e660d46c32999ad0e500adabfaf6
+    // @lfy def/generation/request.lfy:request#request:request:345bea3ab85ad7f91097e0f2d2bb6cb5c995e660d46c32999ad0e500adabfaf6
     let unit_part = part(text, "## The unit to compile");
     let heading = unit_part
         .find("### Removed since its outputs were accepted")
@@ -990,8 +990,8 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
     );
     // No criterion of the unit stands where one the outputs answered for stood, so
     // nothing was reworded, and the unit asks for more than its markers being moved.
-    // @lfy def/generation/main.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
-    // @lfy def/generation/main.lfy:request#request:request:dcfedcbc95ad64785427d7952c0d6e5a4a7223f1d42d34620e4d3fb6a1330099
+    // @lfy def/generation/request.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
+    // @lfy def/generation/request.lfy:request#request:request:dcfedcbc95ad64785427d7952c0d6e5a4a7223f1d42d34620e4d3fb6a1330099
     assert_eq!(request.reworded, Some(Vec::new()));
     assert!(!request.reworded_only);
     assert!(!text.contains("(reworded)"), "{text}");
@@ -1000,7 +1000,7 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
 /// A unit whose one criterion was reworded in place: it is marked reworded rather than
 /// new, the id and the text it replaces follow it, nothing is listed as removed, and the
 /// unit is one whose outputs differ only in that id.
-// @lfy def/generation/main.lfy:request#request:request:133df1c813c8ebae8251e76c3ffc895f78fd5c0d71b3437e2975bc3a0cbf30d6
+// @lfy def/generation/request.lfy:request#request:request:133df1c813c8ebae8251e76c3ffc895f78fd5c0d71b3437e2975bc3a0cbf30d6
 #[test]
 fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replaces() {
     let fixture = a_and_b();
@@ -1047,7 +1047,7 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
 
     // One rewording: the id the unit has now, the id it replaces, and what that one
     // said, taken from the lowering of the file as it was.
-    // @lfy def/generation/main.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
+    // @lfy def/generation/request.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
     let rewordings = request.reworded.clone().expect("what was reworded");
     assert_eq!(rewordings.len(), 1, "{rewordings:?}");
     assert_eq!(rewordings[0].replaces, replaced);
@@ -1060,15 +1060,15 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
         .expect("the second criterion of the unit");
     assert_eq!(rewordings[0].id, reworded);
     // What was reworded is not gone, so nothing is listed as removed.
-    // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+    // @lfy def/generation/request.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
     assert_eq!(request.removed, Some(Vec::new()));
     // Nothing but that id differs from what the outputs were generated against.
-    // @lfy def/generation/main.lfy:request#request:request:618fbef70b317544c9a741f5feeab781cc4c29251a1c0cf07a08fcd52b4021bf
+    // @lfy def/generation/request.lfy:request#request:request:618fbef70b317544c9a741f5feeab781cc4c29251a1c0cf07a08fcd52b4021bf
     assert!(request.reworded_only);
 
     let text = &request.instructions;
     // The line is marked reworded, not new, and the id and text it replaces follow it.
-    // @lfy def/generation/main.lfy:request#request:request:0bc1580cb79537e04f3b1d9cc19ee8db2fb9277b47ffe12994bb0d31371cbee8
+    // @lfy def/generation/request.lfy:request#request:request:0bc1580cb79537e04f3b1d9cc19ee8db2fb9277b47ffe12994bb0d31371cbee8
     assert!(
         text.contains(&format!(
             "- {reworded} — When x is brief: the b is bare (reworded)\n  replaces {replaced} \
@@ -1078,7 +1078,7 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
     );
     assert!(!text.contains(&format!("- {reworded} — When x is brief: the b is bare (new)")));
     // The section says the markers have been moved already and what is left to read.
-    // @lfy def/generation/main.lfy:request#request:request:3acaed2ffa70c62f8ca37a64447e578819b1c7a7e2d0b480cd8f741b827c3a7e
+    // @lfy def/generation/request.lfy:request#request:request:3acaed2ffa70c62f8ca37a64447e578819b1c7a7e2d0b480cd8f741b827c3a7e
     for piece in [
         "is rewritten to name its new id",
         "compile has done so before you run",
@@ -1099,8 +1099,8 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
 /// its, what is gone is read off the recorded ids alone — with neither a place nor a text,
 /// which the instructions say — and the unit is not one whose markers are the whole of the
 /// work.
-// @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
-// @lfy def/generation/main.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
+// @lfy def/generation/request.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
+// @lfy def/generation/request.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
 #[test]
 fn a_hash_matched_source_gives_the_recorded_ids_alone() {
     let fixture = a_and_b();
@@ -1165,7 +1165,7 @@ fn a_hash_matched_source_gives_the_recorded_ids_alone() {
 /// Three units of one target, `c`, then `b`, then `a`, each with outputs: the run for `b`
 /// may edit `a` alone, within the fix cap, and the stubs part gives the stub line the
 /// target's language sets as written.
-// @lfy def/generation/main.lfy:request#request:request:afaca936b77600cb1fab069e2aa1fad374a01236f2307eaffec71b2b81e7f7e2
+// @lfy def/generation/request.lfy:request#request:request:afaca936b77600cb1fab069e2aa1fad374a01236f2307eaffec71b2b81e7f7e2
 #[test]
 fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
     let fixture = Fixture::with_rust_target();
@@ -1178,7 +1178,7 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
     let workspace = program.workspace.clone();
     assert_bound(&workspace);
     // The stub line of the target is the value its language's setter gives it.
-    // @lfy def/generation/main.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
+    // @lfy def/generation/request.lfy:request#request:request:5367b0ce97e471a1ab266e29356a00115ec74e7fcc5ace4805721d77194a180e
     assert_eq!(
         stub_line_of(&workspace.model, &workspace.targets[0]).as_deref(),
         Some(STUB_LINE)
@@ -1198,23 +1198,23 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         text: "// old".to_string(),
     }];
     let request = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
-    // @lfy def/generation/main.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    // @lfy def/generation/request.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
     assert_eq!(request.reach.units, [a_index]);
     assert_eq!(request.reach.fix_lines, 10);
     assert_eq!(request.reach.fix_unit_lines, 40);
     let text = &request.instructions;
     let reach = part(text, "## The reach of this run");
-    // @lfy def/generation/main.lfy:request#request:request:7f048ee3afbc169385d5f7d6b40dbfba7314647d732caed0c4723e93ac727dd4
+    // @lfy def/generation/request.lfy:request#request:request:7f048ee3afbc169385d5f7d6b40dbfba7314647d732caed0c4723e93ac727dd4
     assert!(reach.contains("- `a`: `src/a.rs`"), "{text}");
     assert!(!reach.contains("`c`"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:6866b21e4106d263e68cc05d262be33367c3a2efc454a318258613d378049040
+    // @lfy def/generation/request.lfy:request#request:request:6866b21e4106d263e68cc05d262be33367c3a2efc454a318258613d378049040
     assert!(
         reach.contains("may be edited only as the part \"Stubs and fixes in later units\" says"),
         "{text}"
     );
     assert!(reach.contains("no other unit's code is edited"), "{text}");
     let stubs = part(text, "## Stubs and fixes in later units");
-    // @lfy def/generation/main.lfy:request#request:request:23c0b1c1769d21fd81691a3e8adf218de21358861507f7e3ab4b0a8523d6ceaf
+    // @lfy def/generation/request.lfy:request#request:request:23c0b1c1769d21fd81691a3e8adf218de21358861507f7e3ab4b0a8523d6ceaf
     assert!(
         stubs.contains(
             "edited only where this unit's own change would otherwise stop the target's build or \
@@ -1222,7 +1222,7 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         ),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:56cbf2c86de7cfc98b613cf1133778da57a587d2a252e62391857d01fa0dcc1e
+    // @lfy def/generation/request.lfy:request#request:request:56cbf2c86de7cfc98b613cf1133778da57a587d2a252e62391857d01fa0dcc1e
     assert!(stubs.contains(STUB_LINE), "{text}");
     assert!(stubs.contains("keeps the item's signature"), "{text}");
     assert!(
@@ -1233,29 +1233,29 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         stubs.contains("{{reason}} as one line saying why the body was replaced"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:5a3b2f10f5d312fabcd0e80c04eda116a66569db896d16d3c1df765c201a5b12
+    // @lfy def/generation/request.lfy:request#request:request:5a3b2f10f5d312fabcd0e80c04eda116a66569db896d16d3c1df765c201a5b12
     assert!(
         stubs.contains("at most 10 lines in one region and at most 40 lines across the regions of one unit"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:71a074ec9746e65337f38a647fd2376bc862cd1a25601b0650f2ffa6c566d5ec
+    // @lfy def/generation/request.lfy:request#request:request:71a074ec9746e65337f38a647fd2376bc862cd1a25601b0650f2ffa6c566d5ec
     assert!(
         stubs.contains("An edit bigger than a fix may be is written as a stub."),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:00813b09739a9f5b779cac994285df76689c777d1752c796d019f6732b636c93
+    // @lfy def/generation/request.lfy:request#request:request:00813b09739a9f5b779cac994285df76689c777d1752c796d019f6732b636c93
     assert!(
         stubs.contains("never changed, added, or removed"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:e2b687435e285ea5c19b4f0a0d795cc0e9ab80185ea8f399f3b9e959041cdcda
+    // @lfy def/generation/request.lfy:request#request:request:e2b687435e285ea5c19b4f0a0d795cc0e9ab80185ea8f399f3b9e959041cdcda
     assert!(stubs.contains("A stub line left in the regions of the unit"), "{text}");
     assert!(stubs.contains("rejects the run"), "{text}");
 }
 
 /// Two units of one target, `b` before `a`, each with outputs, and `a`'s outputs recording
 /// `b`'s interface as it is now: the run for `b` edits the outputs of no other unit.
-// @lfy def/generation/main.lfy:request#request:request:73e6319604bfc6196c21282144e9a8d47993b05dcb4da344327511b46cd859c9
+// @lfy def/generation/request.lfy:request#request:request:73e6319604bfc6196c21282144e9a8d47993b05dcb4da344327511b46cd859c9
 #[test]
 fn a_reach_is_empty_while_the_dependents_record_the_interface_as_it_is() {
     let fixture = a_and_b();
@@ -1271,14 +1271,14 @@ fn a_reach_is_empty_while_the_dependents_record_the_interface_as_it_is() {
     }];
     let request = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
     assert!(request.reach.units.is_empty(), "{:?}", request.reach);
-    // @lfy def/generation/main.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
+    // @lfy def/generation/request.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
     let reach = part(&request.instructions, "## The reach of this run");
     assert!(reach.contains("This run edits the outputs of no other unit."), "{reach}");
 }
 
 /// The relocations of the unit's target into the unit's file are kept, and its section
 /// says what was relocated into it, from where, and that its code is kept as it is.
-// @lfy def/generation/main.lfy:request#request:request:5cb380316e5d90750f1423c2e622008b8022c1a1cd944773215b87c29370e352
+// @lfy def/generation/request.lfy:request#request:request:5cb380316e5d90750f1423c2e622008b8022c1a1cd944773215b87c29370e352
 #[test]
 fn a_request_gives_the_relocations_into_the_unit_for_its_target() {
     let fixture = Fixture::with_rust_target();
@@ -1317,11 +1317,11 @@ fn a_request_gives_the_relocations_into_the_unit_for_its_target() {
         &[],
         &[of_f.clone(), of_g],
     );
-    // @lfy def/generation/main.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
+    // @lfy def/generation/request.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
     assert_eq!(request.relocated, [of_f]);
     let text = &request.instructions;
     let unit_part = part(text, "## The unit to compile");
-    // @lfy def/generation/main.lfy:request#request:request:8ef7cabaa1ffd44e92776ee0d9dcb63c0fc0f45c81a6d02e6e4a581fa179daad
+    // @lfy def/generation/request.lfy:request#request:request:8ef7cabaa1ffd44e92776ee0d9dcb63c0fc0f45c81a6d02e6e4a581fa179daad
     assert!(unit_part.contains("relocated into this unit"), "{text}");
     assert!(unit_part.contains("- `f` from `def/a.lfy`."), "{text}");
     assert!(unit_part.contains("Keep it as it is"), "{text}");
@@ -1329,7 +1329,7 @@ fn a_request_gives_the_relocations_into_the_unit_for_its_target() {
     assert!(!unit_part.contains("relocated out of this unit"), "{text}");
 
     // Seen from `a`, the same relocation took `f` out of it.
-    // @lfy def/generation/main.lfy:request#request:request:b061d31417b089c8b88fe3fcd63a32d6608ce44a82cd1e7b845e3bd2daa5e079
+    // @lfy def/generation/request.lfy:request#request:request:b061d31417b089c8b88fe3fcd63a32d6608ce44a82cd1e7b845e3bd2daa5e079
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
     let relocation = request_relocated(&program, &plan, a_index);
     let unit_part = part(&relocation, "## The unit to compile");
@@ -1338,7 +1338,7 @@ fn a_request_gives_the_relocations_into_the_unit_for_its_target() {
     assert!(unit_part.contains("neither write it again nor remove it"), "{relocation}");
 
     // `a` as it was declared `f` with its criterion; relocated out, it was not removed.
-    // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+    // @lfy def/generation/request.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
     let was = format!("d A {{ $x = string; }}\n\n{RELOCATED_F}");
     let previous = previous_of(&workspace, &plan.units[a_index], &was, false);
     let moved = Relocation {
@@ -1370,7 +1370,7 @@ fn request_relocated(program: &Program, plan: &Plan, index: usize) -> String {
 
 /// The foreign edits the unit owns, in the order they were made, each with who made it,
 /// its kind, where, its region's marker, its note, and its lines before and after.
-// @lfy def/generation/main.lfy:request#request:request:effb4fa4084f20517052db1f796f18b41025c08d8283ccee67d3f632a70992ad
+// @lfy def/generation/request.lfy:request#request:request:effb4fa4084f20517052db1f796f18b41025c08d8283ccee67d3f632a70992ad
 #[test]
 fn a_request_gives_the_foreign_edits_the_unit_owns() {
     let fixture = a_and_b();
@@ -1414,12 +1414,12 @@ fn a_request_gives_the_foreign_edits_the_unit_owns() {
         &[stub.clone(), elsewhere],
         &[],
     );
-    // @lfy def/generation/main.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
+    // @lfy def/generation/request.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
     assert_eq!(request.foreign_edits, [stub]);
     assert!(request.reach.units.is_empty(), "{:?}", request.reach);
     let text = &request.instructions;
     let edits = part(text, "## Foreign edits");
-    // @lfy def/generation/main.lfy:request#request:request:d64715f05a3c70edd92983d1c91cc1002a00462c6f57ec320e5acb9580bc3cdb
+    // @lfy def/generation/request.lfy:request#request:request:d64715f05a3c70edd92983d1c91cc1002a00462c6f57ec320e5acb9580bc3cdb
     assert!(
         edits.contains("### 1. A stub by `b` in `src/a.rs`, in the region `// @lfy def/a.lfy:f`"),
         "{text}"
@@ -1431,7 +1431,7 @@ fn a_request_gives_the_foreign_edits_the_unit_owns() {
         .unwrap_or_else(|| panic!("{text}"));
     assert!(before < after, "{text}");
     assert!(!edits.contains("src/c.rs"), "{text}");
-    // @lfy def/generation/main.lfy:request#request:request:09e9aef14ec2e21a2597b994510795ad4658cd65c4665c53db6b26e6b2d31698
+    // @lfy def/generation/request.lfy:request#request:request:09e9aef14ec2e21a2597b994510795ad4658cd65c4665c53db6b26e6b2d31698
     assert!(
         edits.contains("written inside this unit's regions by the runs of the units they name"),
         "{text}"
@@ -1440,7 +1440,7 @@ fn a_request_gives_the_foreign_edits_the_unit_owns() {
         edits.contains("Keep their code only where it does what this unit's criteria and tests ask"),
         "{text}"
     );
-    // @lfy def/generation/main.lfy:request#request:request:29f2379bc0d7e987f6c443d1ffe113cf29d2293392d94b62ebfe545af3055eb0
+    // @lfy def/generation/request.lfy:request#request:request:29f2379bc0d7e987f6c443d1ffe113cf29d2293392d94b62ebfe545af3055eb0
     assert!(
         edits.contains("Replace each stub line in this unit's regions by code that does what"),
         "{text}"

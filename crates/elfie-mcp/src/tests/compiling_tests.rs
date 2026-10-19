@@ -265,7 +265,7 @@ fn mark_renames_every_marker_of_an_old_id() {
         ),
     );
     let session = compiling(&fixture, &[("def/b.lfy", &was)]);
-    // @lfy def/mcp/main.lfy:mark#mark:mark:4f60b16548a3a5d470c0ee9cd9a0c70970ffdedc84b94fa5e4f5efbde3465999
+    // @lfy def/mcp/main.lfy:mark#mark:mark:4f1164ac3a94d643b82a1b08eb15af6e67163154209b7f063c857c86b7238356
     // @lfy def/mcp/main.lfy:mark#mark:mark:5bb1f1250f7f259cd65c04fd3be30c251cc135967710c7ce195a78f31866f8fe
     let text = mark(&session, Some(&fresh), Some(&gone), None, None, None).unwrap();
     assert!(text.starts_with("2 markers rewritten"), "{text}");
@@ -273,7 +273,7 @@ fn mark_renames_every_marker_of_an_old_id() {
     assert!(text.contains(&format!("out/b.rs:5 def/b.lfy:b#{fresh}")), "{text}");
     // The output `rename` returned was written at its path, and it is the file `rename`
     // gives: only the id changed.
-    // @lfy def/mcp/main.lfy:mark#mark:mark:86d4a3c6fe5b3120fc0fb96bbb0c929054629025987d9c9f87bbe6cd5de3d8bc
+    // @lfy def/mcp/main.lfy:mark#mark:mark:1a530e21d2168ea23ea4022f14c67e29613acca0bccddaf0f5e246bc1bbad43a
     let written = fs::read_to_string(fixture.root.join("out/b.rs")).unwrap();
     assert_eq!(
         written,

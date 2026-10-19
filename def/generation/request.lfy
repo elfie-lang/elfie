@@ -1,0 +1,555 @@
+use "../grammar/rules/statement";
+use "../interpret/data";
+use "../model/data";
+use "../workspace/data";
+use "./data";
+use "elfie/system/file" as Files;
+use "elfie/system/path";
+use "elfie/target/framework";
+use "elfie/target/language";
+use "elfie/target/layout";
+use "./changes";
+use "./main";
+
+// Decision: every request, review request, and acceptance is about one unit. A request puts first
+// what is the same for every unit of a target, so the context several units once shared in one
+// request is reused from a prompt cache instead.
+
+/// previous: the unit's source at its last accepted generation, or its hash-matched source, recovered once for the compile; undefined when not known
+/// hosted: whether the compiler reading the request runs in a compiler session of the compile-hosted agent server, which offers elfie_task, elfie_dependency, elfie_mark, elfie_reach, elfie_touch, and elfie_submit
+/// foreignEdits: the foreign edits the change set records since the unit was last accepted in it, in the order they were made; edits of other units among them are left out
+/// relocations: the relocations of this compile, in the order they were made; those of other units among them are left out
+// Decision: the caller says whether the request is for a hosted compiler session, because only the
+// caller knows; a hosted compiler pulls an interface when it needs one, so its request names the
+// interfaces instead of quoting them, while a request read anywhere else quotes them whole. A
+// compiler command that never uses the session it is hosted in still gets the interfaces by name
+// only, and reads each definition another way.
+// Decision: the request is handed the foreign edits rather than reading them, because only the
+// compile loop keeps the change set they are recorded in.
+fn request(
+  plan: Plan,
+  unit: Unit,
+  existing: Output[],
+  previous?: Previous,
+  hosted: boolean = false,
+  foreignEdits: ForeignEdit[] = [],
+  relocations: Relocation[] = [],
+): `Everything the compiler is handed to produce the outputs of one unit` => Request {
+  @acceptanceCriteria
+    .add({ behavior = `[[Request.unit]] is [[unit]]` })
+    .add({
+      behavior = [
+        `The file as it was is the [[LoweredFile]] of the unit's file in [[Previous.program]] of [[previous]]`,
+        `Nothing is lowered or bound`,
+      ],
+    })
+    .add({
+      situation = `[[previous]] is given`,
+      behavior = `[[Request.previous]] is [[LoweredFile.text]] of the file as it was`,
+    })
+    .add({
+      situation = `Some [[SourceMap.answered]] of the [[Unit.outputs]] of [[unit]] is not empty`,
+      behavior = `[[Request.answered]] is the ids of that [[SourceMap.answered]]`,
+    })
+    .add({
+      situation = [`Every [[SourceMap.answered]] of the [[Unit.outputs]] of [[unit]] is empty`, `[[previous]] is given`],
+      behavior = `[[Request.answered]] is the ids of the local criteria and tests of the file as it was`,
+    })
+    .add({
+      situation = [`[[previous]] is given`, `[[Previous.hashMatched]] of [[previous]] is false`],
+      behavior = `[[Request.removed]] is one [[RemovedRequirement]] for each local criterion and test of the file as it was whose id is none of the unit's now, is the [[Rewording.replaces]] of none of [[Request.reworded]], and is the id of no local criterion or test of an entity relocated out of the unit by one of [[Request.relocated]], in the order the file as it was gives them`,
+    })
+    .add({
+      situation = [`[[previous]] is given`, `[[Previous.hashMatched]] of [[previous]] is false`],
+      behavior = `[[Request.reworded]] is [[reworded]] of [[Program.workspace]] of [[Plan.program]], [[unit]], and [[previous]]`,
+    })
+    .add({
+      situation = [`[[previous]] is given`, `[[Previous.hashMatched]] of [[previous]] is true`],
+      behavior = [
+        `[[Request.reworded]] is an empty list`,
+        `[[Request.removed]] is one [[RemovedRequirement]] for each id of [[Request.answered]] that is none of the unit's local criterion and test ids now and is the id of no local criterion or test of an entity relocated out of the unit by one of [[Request.relocated]], in id order, each with [[RemovedRequirement.place]] and [[RemovedRequirement.text]] empty`,
+      ],
+    })
+    .add({
+      situation = [
+        `[[unit]] has the reason requirements`,
+        `[[previous]] is given`,
+        `[[Previous.hashMatched]] of [[previous]] is false`,
+        `[[Request.removed]] is an empty list`,
+        `[[Request.reworded]] is a list that is not empty`,
+        `The id of every local criterion and test of the unit is in [[Request.answered]], or is the [[Rewording.id]] of one of [[Request.reworded]]`,
+        `For each of [[Unit.dependencies]], every [[SourceMap.dependencies]] of the unit's [[Unit.outputs]] records the SHA-256 of [[interfaceOf]] that dependency`,
+      ],
+      behavior = `[[Request.rewordedOnly]] is true`,
+    })
+    .add({ behavior = `[[Request.rewordedOnly]] is false wherever any of those does not hold` })
+    .add({
+      behavior = `A [[RemovedRequirement]] has the id of its criterion or test, its place in the file as it was, and its text, all taken from the file as it was in [[Previous.program]] of [[previous]]`,
+    })
+    .add({
+      behavior = `[[Request.existing]] maps the path of each of [[existing]] whose path is among the [[Unit.outputs]] of [[unit]] to its text`,
+    })
+    .add({
+      behavior = `[[Request.foreignEdits]] is each of [[foreignEdits]] whose [[ForeignEdit.owner]] is [[Unit.stem]] of [[unit]] and whose [[ForeignEdit.path]] [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, in the order of [[foreignEdits]]`,
+    })
+    .add({
+      behavior = `[[Request.reach]] is read from [[Plan.units]] of [[plan]], their [[Unit.outputs]], and the hash of [[interfaceOf]] [[unit]], and never from their [[Unit.reason]]`,
+    })
+    .add({
+      behavior = `[[Request.relocated]] is each of [[relocations]] whose [[Relocation.target]] is [[Target.identifier]] of the unit's target and whose [[Relocation.into]] or [[Relocation.origin]] is the [[File.path]] of [[unit]], in the order of [[relocations]]`,
+    });
+
+  // Knowledge
+  @acceptanceCriteria
+    .add({
+      behavior = `A knowledge item's source path is [[Knowledge.source]] joined, as [[Path.join]] joins, to the [[Package.root]] of the [[File.package]] of the file its contributor is declared in, or to [[Workspace.root]] when that file has no [[File.package]]`,
+    })
+    .add({
+      situation = [`A knowledge item has the kind reference or example`, `Its quote is true`],
+      behavior = `[[Request.instructions]] quotes the [[Files.read]] text of its source path`,
+    })
+    .add({
+      situation = [`A knowledge item has the kind reference or example`, `Its quote is false or left out`],
+      behavior = `[[Request.instructions]] gives its source path and says to read it before writing anything it covers`,
+    })
+    .add({
+      situation = `A knowledge item has the kind definition`,
+      behavior = `[[Request.instructions]] gives the files its source, a use path, resolves to and says to read them as Elfie`,
+    })
+    .add({
+      situation = `A knowledge item has the kind tool`,
+      behavior = `[[Request.instructions]] names the tool of the agent server its source names and says to call it before relying on what it answers`,
+    });
+
+  // Instructions
+  // Decision: the instructions quote every criterion and test already resolved, so a compiler with no
+  // access to the model can still work; the agent server is offered for what the request leaves out.
+  // Decision: the tools of the agent server are offered first because they answer from the program
+  // and its source maps at once.
+  // Decision: the parts that read the same for every unit of a target come first, so a prompt cache
+  // keeps them from one unit's request to the next; the unit's own parts follow them.
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Request.instructions]] gives its parts in this order: the role, the guidance, the native dependencies, the target's knowledge, the commands, the global section, the rules, the stubs, the tools, and the report; then the interfaces, the unit's knowledge, the unit's section, the foreign edits, the existing outputs, and the reach`,
+    })
+    .add({
+      behavior = `Every part before the interfaces reads the same in the request for every unit of the target made from [[plan]] with the same [[hosted]]`,
+    })
+    .add({
+      behavior = [
+        `The role says that the reader is the compiler for the target`,
+        `The role says that its whole job is the outputs of the one unit the unit's section names`,
+        `The role says that it writes nothing outside them, except the edits to later units the reach part allows`,
+      ],
+    })
+    .add({
+      behavior = `The role says that the outputs go under [[Target.outputDirectory]], spelled from the unit's stem as the guidance says`,
+    })
+    .add({
+      behavior = `The guidance and native dependencies parts give [[Request.guidance]] and [[Request.nativeDependencies]]`,
+    })
+    .add({
+      behavior = `The target's knowledge part gives the items of [[Request.knowledge]] that come from [[Target.knowledge]]`,
+    })
+    .add({
+      behavior = `The unit's knowledge part gives every other item of [[Request.knowledge]], in its order`,
+    })
+    .add({
+      situation = `[[hosted]] is false`,
+      behavior = `The interfaces part gives, for each of [[Request.interfaces]], the dependency's output paths and the identifier, kind, definition, and type of each of its entities`,
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = `The interfaces part gives, for each of [[Request.interfaces]], one line reading the [[File.path]] of [[Interface.unit]], its output paths, and the identifiers of its entities, and no definition, kind, or type`,
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = `The interfaces part says that the interface of one of those entities, with its kind, definition, type, parameters, and output, is read with elfie_dependency`,
+    })
+    .add({
+      behavior = `[[Request.interfaces]] holds every entity of each dependency whether or not [[hosted]] is true`,
+    })
+    .add({
+      behavior = `The interfaces part says that an interface is used by the names its outputs spell and never edited`,
+    })
+    .add({
+      behavior = `The commands part gives [[Request.commands]], one line per operation, and says that the build, test, and lint commands are run before the report and their results stated in it`,
+    })
+    // Decision: the commands part states both ways whether or not [[hosted]] is true, because a
+    // command tool is offered only for an operation the target has a line for, and the tools the
+    // reader is offered decide; a reader with the tools never needs a shell.
+    .add({
+      behavior = [
+        `The commands part says that when the agent server offers elfie_build, elfie_test, elfie_lint, or elfie_format, the command of that operation is run through that tool`,
+        `The commands part says that a line is run by hand only for an operation whose tool is not offered`,
+      ],
+    })
+    .add({
+      behavior = `The commands part says that elfie_test's filter is given to the test command as TESTS, and the scope of elfie_build, elfie_test, and elfie_lint to the command as SCOPE, which narrow the run only when the command's line reads them`,
+    })
+    .add({
+      behavior = [
+        `The commands part says that the unit is judged after its run with the test command run with stubs allowed, given as ALLOW_STUBS and through elfie_test's allowStubs, so that a test failing only by reaching a stub in a later unit's code does not fail the unit`,
+        `The commands part says that a lint warning fails the unit only in the unit's own code`,
+      ],
+    })
+    .add({
+      behavior = [
+        `The global section gives each of [[Request.globals]] once, with its id, marked global, a criterion as [[LoweredCriterion.text]]`,
+        `The global section says that they hold across the whole program`,
+        `The global section says that a unit answers for one only where it is relevant to that unit's code and ignores it otherwise`,
+        `The global section says that the global review checks each once`,
+      ],
+    })
+    .add({
+      behavior = `The rules say that criteria and tests are never restated in an output as comments or documentation, and that an output names one only by its id in a [[Marker]]`,
+    })
+    .add({
+      behavior = `The rules say that every emitted item and every test carries a [[Marker]] naming the entity it comes from, spelled as [[Marker]] says in a line comment beginning with [[Target.markerComment]], and never a line number`,
+    })
+    .add({
+      behavior = `The rules say that each [[LoweredTest]] becomes one test, and each [[LoweredCriterion]] that can be checked mechanically becomes one test, each carrying a [[Marker]] with its id, placed where the guidance says`,
+    })
+    .add({
+      behavior = `The rules say that a [[Marker]] carrying a criterion's id is written only on code that does what the criterion says in every situation it names, and that a marker never stands in for code`,
+    });
+
+  // Stubs and fixes
+  // Decision: how to stub and the fix cap are the same for every unit of a target, so they are said
+  // once in the shared parts; which units the run may edit is the unit's own, so it is said in the
+  // reach part.
+  @acceptanceCriteria
+    .add({
+      behavior = `The stub line of the target is the value the setters of [[Target.declaration]] of the unit's target give [[targetLanguage.stubLine]], read as [[Target.markerComment]] is the value they give markerComment; the target has no stub line when none gives it one`,
+    })
+    .add({
+      behavior = `The stubs part says that a later unit's code is edited only where the unit's own change would otherwise stop the target's build or a test from passing, and only inside the regions of a unit the reach part lists`,
+    })
+    .add({
+      situation = `The target has a stub line`,
+      behavior = [
+        `The stubs part says that a stub replaces the body of an item inside a later unit's region with the stub line and keeps the item's signature`,
+        `The stubs part gives the stub line as the target sets it, and says that \{{unit}} in it is written as the stem of the unit the unit's section names and \{{reason}} as one line saying why the body was replaced`,
+      ],
+    })
+    .add({
+      situation = `The target has no stub line`,
+      behavior = `The stubs part says that the target has no stub line, so a later unit's code is edited only by a fix`,
+    })
+    .add({
+      behavior = `The stubs part says that a fix is any other edit inside a later unit's region, and that it changes at most [[Reach.fixLines]] of [[Request.reach]] lines in one region and at most [[Reach.fixUnitLines]] of [[Request.reach]] lines across the regions of one unit, counting lines as a [[ForeignEdit]] counts them`,
+    })
+    .add({ behavior = `The stubs part says that an edit bigger than a fix may be is written as a stub` })
+    .add({
+      behavior = `The stubs part says that the markers of a later unit's region are never changed, added, or removed`,
+    })
+    .add({
+      behavior = `The stubs part says that every unit a fix is made in needs a note given through elfie_touch with that unit's stem and why it was edited, or the run is rejected`,
+    })
+    .add({
+      behavior = `The stubs part says that a stub line left in the regions of the unit the unit's section names rejects the run`,
+    });
+
+  // The unit
+  @acceptanceCriteria
+    .add({
+      behavior = `The unit's section begins with a heading naming [[Unit.stem]] and the [[File.path]] of [[unit]], and its [[Unit.reason]] when it has one`,
+    })
+    .add({
+      situation = `[[Unit.outputs]] of [[unit]] is empty`,
+      behavior = `The unit's section says that nothing has been generated for it yet`,
+    })
+    .add({
+      situation = `[[Unit.outputs]] of [[unit]] is not empty`,
+      behavior = `The unit's section says that its outputs go at the paths in its [[Unit.outputs]], except that a module the target's guidance says to split gains submodule files and has its code moved into them`,
+    })
+    .add({
+      behavior = `The unit's section holds, for each of its entities, the entity's lowered code and then, apart from the code, its local criteria and tests, each on its own line with its id`,
+    })
+    .add({
+      behavior = `A criterion's line in the unit's section reads its id, a space, an em dash, a space, and [[LoweredCriterion.text]]`,
+    })
+    .add({
+      situation = `[[Request.answered]] is defined`,
+      behavior = `In the unit's section, the line of each criterion and test whose id is not in [[Request.answered]], and is the [[Rewording.id]] of none of [[Request.reworded]], is marked new`,
+    })
+    .add({
+      situation = `[[Request.reworded]] is defined`,
+      behavior = `In the unit's section, the line of each criterion and test whose id is the [[Rewording.id]] of one of [[Request.reworded]] is marked reworded, and is followed by a line reading replaces, a space, its [[Rewording.replaces]], a space, an em dash, a space, and its [[Rewording.text]]`,
+    })
+    // Decision: compile moves a reworded criterion's markers to its new id before the request is
+    // made, so the compiler is not asked to; the code is still read against the new text, because a
+    // rewording may change what is asked.
+    .add({
+      situation = `A criterion or test of [[unit]] is marked reworded`,
+      behavior = [
+        `The unit's section says that a marker naming the id a reworded one replaces is rewritten to name its new id, and that compile has done so before the compiler runs`,
+        `The unit's section says that the code of a reworded one is read against what it says now, and changed wherever it asks for what the code does not do`,
+      ],
+    })
+    .add({
+      situation = `[[Request.removed]] is not empty`,
+      behavior = `The unit's section ends with each [[RemovedRequirement]] of [[Request.removed]] on its own line, reading its [[RemovedRequirement.id]], a space, an em dash, a space, and its [[RemovedRequirement.text]], under a heading saying they were removed since its outputs were accepted`,
+    })
+    .add({
+      situation = `A [[RemovedRequirement]] of [[Request.removed]] has an empty [[RemovedRequirement.text]]`,
+      behavior = `Its line reads its [[RemovedRequirement.id]], a space, an em dash, a space, and words saying its text is not known`,
+    })
+    .add({
+      situation = `A criterion or test of [[unit]] is marked new`,
+      behavior = `The unit's section says that a new one may restate a removed one in other words, and that its code is read against what the new one says, not against the removed one`,
+    })
+    .add({
+      situation = `Entities moved into [[unit]]`,
+      behavior = `The unit's section says which of its entities moved in, from which file, and because of which [[Move.cause]]`,
+    })
+    .add({
+      situation = `Entities moved into [[unit]]`,
+      behavior = `The unit's section says that they are written into the unit's outputs with markers naming the file that declares them`,
+    })
+    .add({
+      situation = `Entities moved into [[unit]]`,
+      behavior = `The unit's section says that a [[Use]] of the file they moved from is satisfied by the moved entities wherever the unit's code needs only them, never by importing that file`,
+    })
+    .add({
+      situation = `Entities moved out of [[unit]]`,
+      behavior = `The unit's section says which entities moved out and into which unit`,
+    })
+    .add({
+      situation = `Entities moved out of [[unit]]`,
+      behavior = `The unit's section says that they are imported from the outputs of the unit they moved into and never written again`,
+    })
+    .add({
+      situation = `Entities moved out of [[unit]]`,
+      behavior = `The unit's section says that the unit's outputs make each of them available under the name and path it would have had`,
+    })
+    .add({
+      situation = `A relocation of [[Request.relocated]] has the [[File.path]] of [[unit]] as its [[Relocation.into]]`,
+      behavior = [
+        `The unit's section says which entities were relocated into the unit and the file each came from, its [[Relocation.origin]]`,
+        `The unit's section says that their code is already in the unit's outputs, under markers that now name the unit's file, and is kept as it is, changed only where what the unit asks differs from what it does`,
+      ],
+    })
+    .add({
+      situation = `A relocation of [[Request.relocated]] has the [[File.path]] of [[unit]] as its [[Relocation.origin]]`,
+      behavior = [
+        `The unit's section says which entities were relocated out of the unit and the file each went to, its [[Relocation.into]]`,
+        `The unit's section says that their code is the code of the unit of that file now, and is neither written again nor removed by the unit`,
+      ],
+    })
+    // Decision: a requirements unit is never told its code is unchanged. Its lowered code is the
+    // same, but a fn's criteria are what its code must do, so a changed criterion can ask for
+    // behavior no code has yet.
+    .add({
+      situation = `[[unit]] has the reason requirements`,
+      behavior = `The unit's section says that its lowered code is unchanged but its criteria or tests differ, and that the code must do what each criterion and test now says, which may mean writing new behavior`,
+    });
+
+  // Foreign edits
+  // Decision: a foreign edit is shown with the lines it replaced and the unit whose run made it, so
+  // the compiler never takes that code for code its own unit's last accepted run wrote.
+  @acceptanceCriteria
+    .add({ situation = `[[Request.foreignEdits]] is empty`, behavior = `The foreign edits part is left out` })
+    .add({
+      situation = `[[Request.foreignEdits]] is not empty`,
+      behavior = `The foreign edits part gives each of [[Request.foreignEdits]] in order: its [[ForeignEdit.by]], [[ForeignEdit.kind]], [[ForeignEdit.path]], the marker of [[ForeignEdit.region]] as the output spells it, and [[ForeignEdit.note]], then the lines of [[ForeignEdit.before]], then those of [[ForeignEdit.after]]`,
+    })
+    .add({
+      situation = `[[Request.foreignEdits]] is not empty`,
+      behavior = `The foreign edits part says that those edits were written by the runs of the units they name, and that their code is kept only where it does what the unit's criteria and tests ask`,
+    })
+    .add({
+      situation = `A foreign edit of [[Request.foreignEdits]] is a stub`,
+      behavior = `The foreign edits part says that each stub line in the unit's regions is replaced by code that does what the unit's criteria and tests ask`,
+    });
+
+  // Existing outputs
+  @acceptanceCriteria
+    .add({ situation = `[[Request.existing]] is empty`, behavior = `The existing outputs part is left out` })
+    .add({
+      situation = `[[Request.existing]] is not empty`,
+      behavior = `The existing outputs part lists each path of [[Request.existing]]`,
+    })
+    .add({
+      situation = `[[Request.existing]] is not empty`,
+      behavior = [
+        `The existing outputs part says that only what the difference between [[Request.previous]] and [[Request.source]], the criteria and tests marked new, reworded, or removed, the foreign edits, and a split the target's guidance requires, require changes, and that the code of an entity relocated into the unit is kept`,
+        `The existing outputs part says that names and structure are kept, except that a module the target's guidance says to split gains submodule files and has its code moved into them; that split is the one change of structure allowed, and it keeps every name other units use`,
+        `The existing outputs part says that markers of unchanged items are kept`,
+      ],
+    })
+    .add({
+      situation = [`[[Request.existing]] is not empty`, `[[Request.previous]] is defined`],
+      behavior = `The existing outputs part quotes [[Request.previous]] as the source the outputs were generated from`,
+    })
+    .add({
+      situation = [`[[Request.existing]] is not empty`, `[[Request.previous]] is undefined`],
+      behavior = `The existing outputs part says that the existing outputs are reconciled with the unit's source`,
+    })
+    .add({
+      situation = [`[[Request.existing]] is not empty`, `[[Request.answered]] is undefined`],
+      behavior = `The existing outputs part says that which criteria and tests are new is not known, so the existing code is read against each of them before its marker is written`,
+    });
+
+  // Reach
+  @acceptanceCriteria
+    .add({
+      situation = `[[Reach.units]] of [[Request.reach]] is empty`,
+      behavior = `The reach part says that the run edits the outputs of no other unit`,
+    })
+    .add({
+      situation = `[[Reach.units]] of [[Request.reach]] is not empty`,
+      behavior = `The reach part lists each of [[Reach.units]], in order, by its [[Unit.stem]] with the paths of its [[Unit.outputs]]`,
+    })
+    .add({
+      situation = `[[Reach.units]] of [[Request.reach]] is not empty`,
+      behavior = `The reach part says that the code of those units may be edited only as the stubs part says, and that no other unit's code is edited`,
+    });
+
+  // Tools and report
+  @acceptanceCriteria
+    .add({
+      behavior = `The tools part says that the tools of the agent server are called before files are searched or read by hand: elfie_entity for a definition with its criteria and tests, elfie_find for where a name is declared, elfie_references for where it is used, elfie_outline for the declarations of a file, elfie_output for the generated code of an entity, of a requirement id, or of an output file, and with text false for the regions of an output file without their code, elfie_search for the lines of the outputs that match a pattern, elfie_source for where a line of generated code came from, elfie_changes for what changed in a unit since its outputs were accepted, and elfie_check for whether acceptance would pass`,
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = [
+        `The tools part says that elfie_task gives the unit's obligations again: its outputs and reason, and every criterion and test with its id, place, and text, marked new, kept, or unknown, with the removed ones`,
+        `The tools part says that elfie_mark writes a marker line, and rewrites the id every marker of the unit's outputs names, so that an id is never typed by hand`,
+        `The tools part says that elfie_reach gives the units the run may edit, their regions, and what is left of the fix cap`,
+      ],
+    })
+    .add({
+      situation = `[[hosted]] is true`,
+      behavior = `The report part says that the outcome is submitted through elfie_submit as done, blocked, or clarify, with the reason or the question as its message, before the final message, which still ends with the line the outcome reads`,
+    })
+    .add({
+      behavior = [
+        `The report part says to end the report with one line reading ELFIE: DONE when every output is written`,
+        `The report part says to end it with ELFIE: BLOCKED: followed by the reason when an ambiguous criterion, two criteria in conflict, a name that resolves nowhere, or anything else stops it, then to write no output for the unit and to quote the criterion`,
+        `The report part says to end it with ELFIE: CLARIFY: followed by one question when only a person can decide, then to write nothing`,
+      ],
+    });
+
+  @test(
+    {
+      input = [Plan@like(`Two units of one target, b before a, a using b`), Unit@like(`a`), []],
+      expect = Request@like(
+        `Instructions naming the target and a, quoting a's entities with their criteria, the interface of b, no existing outputs, no foreign edits, a reach part saying no other unit's outputs are edited, and the three report lines`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One unit, for a target whose language layer is a trait rust extending [[targetLanguage]], with two criteria of its own and a template value in one of them, whose layout layer is a trait flat extending [[targetLayout]] and [[targetFramework]] with one criterion, and whose frameworks hold flat too; the target's declaration has one criterion added to it by an add call at the top of its file`,
+        ),
+        Unit@like(`the unit`),
+        [],
+      ],
+      expect = Request@like(
+        `Guidance holding the declaration's own criterion, then flat's criterion once, then rust's two with the template value evaluated`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One unit a, reason requirements, whose fn f has criteria c3 then c1 now, and whose one output's source map answered the ids of c1 and c2`,
+        ),
+        Unit@like(`a`),
+        [Output@like(`The existing output of a`)],
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, not hash-matched`),
+      ],
+      expect = Request@like(
+        `A section for a that says its criteria differ and the code must do what each now says; c1's line unmarked, c3's line marked new, and c2 listed with its text as removed; nothing reworded, and rewordedOnly false`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One unit a, reason requirements, whose fn f has criteria c1 then c4 now, and whose one output's source map answered the ids of c1 and c2`,
+        ),
+        Unit@like(`a`),
+        [Output@like(`The existing output of a`)],
+        Previous@like(`a.lfy as it was: f with criteria c1 then c2, c2 worded differently from c4, not hash-matched`),
+      ],
+      expect = Request@like(
+        `A section for a with c1's line unmarked, and c4's line marked reworded and followed by a line reading replaces, the id of c2, and the text of c2; nothing removed; reworded holds c4 replacing c2; rewordedOnly true`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One unit a, whose fn f takes a B declared by data B in def/b.lfy, an earlier unit with the output src/b.rs`,
+        ),
+        Unit@like(`a`),
+        [],
+        undefined,
+        true,
+      ],
+      expect = Request@like(
+        `Interfaces holding b with B; instructions whose interfaces part is one line reading def/b.lfy, src/b.rs, and B, with no definition of B, and a line saying to read an interface with elfie_dependency; a tools part naming elfie_task, elfie_mark, and elfie_reach; a stubs part naming elfie_touch; a report part naming elfie_submit and the three report lines`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `Three units of target rust with output directory src, c, then b, then a, each with outputs, src/c.rs, src/b.rs, and src/a.rs, a using b and c, and a's outputs recording for b an interface hash other than the one b has now; rust's language layer sets stubLine to todo!("elfie stub: \{{unit}}: \{{reason}}")`,
+        ),
+        Unit@like(`b`),
+        [Output@like(`src/b.rs`)],
+      ],
+      expect = Request@like(
+        `A reach whose units are a alone, fixLines 10 and fixUnitLines 40; a reach part listing a with src/a.rs; a stubs part giving todo!("elfie stub: \{{unit}}: \{{reason}}") as written and the caps of 10 and 40 lines`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `Two units of target rust with output directory src, b before a, a using b, each with outputs, src/b.rs and src/a.rs, and a's outputs recording for b the interface hash b has now`,
+        ),
+        Unit@like(`b`),
+        [Output@like(`src/b.rs`)],
+      ],
+      expect = Request@like(`An empty reach, and a reach part saying the run edits the outputs of no other unit`),
+    },
+    {
+      input = [
+        Plan@like(
+          `Two units of target rust, a.lfy and b.lfy, with output src/b.rs holding b's code under markers that name def/b.lfy`,
+        ),
+        Unit@like(`b`),
+        [Output@like(`src/b.rs`)],
+        undefined,
+        false,
+        [],
+        [
+          Relocation@like(`Of the entity f, for rust, from def/a.lfy into def/b.lfy, three markers`),
+          Relocation@like(`Of the entity g, for another target, from def/a.lfy into def/b.lfy`),
+        ],
+      ],
+      expect = Request@like(
+        `relocated holding the relocation of f alone; a section for b saying f was relocated into it from def/a.lfy and its code is kept as it is`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `Two units of target rust with output directory src, b before a, a using b, each with outputs, src/b.rs and src/a.rs`,
+        ),
+        Unit@like(`a`),
+        [Output@like(`src/a.rs`)],
+        undefined,
+        false,
+        [
+          ForeignEdit@like(
+            `A stub by b in the region of a.lfy:f in src/a.rs, with owner a and the note f's field changed type`,
+          ),
+          ForeignEdit@like(`A fix by b in a region of src/c.rs, with owner c`),
+        ],
+      ],
+      expect = Request@like(
+        `foreignEdits holding the stub alone; a foreign edits part naming b, stub, src/a.rs, the marker of a.lfy:f, and the note, with the lines before and after, and saying each stub line is replaced by code that does what a's criteria and tests ask; an empty reach`,
+      ),
+    },
+  );
+}
