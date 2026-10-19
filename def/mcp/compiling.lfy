@@ -1,0 +1,715 @@
+use "../generation/data";
+use "../generation/main" as Generation;
+use "../generation/accept" as Acceptance;
+use "../generation/findings" as Findings;
+use "../interpret/data";
+use "../workspace/data";
+use "./data";
+use "./traits";
+use "elfie/system/file" as Files;
+use "elfie/system/path";
+
+// Decision: elfie_task repeats what the unit section of the request pushes, read from the very
+// request the compiler was given, so a compiler deep in a long run reads its obligations again
+// without scrolling back, and never from definitions that may have changed since the compile
+// planned. It takes no unit, because the session's binding names the one unit the run is for.
+fn task(session: Session) is tool, compilerTool: `What this compiler run must do: its unit's outputs and reason, the edits other units made to them, every criterion and test to answer for with its id, place, and text, each marked new, reworded, kept, or unknown, and those removed since the outputs were accepted` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `Answers from [[Binding.request]] and [[Binding.program]], and reads no definition file and no output`,
+    })
+    .add({ behavior = `The unit given is [[Request.unit]]` })
+    .add({
+      behavior = `The text begins with a line reading the unit's [[Unit.stem]], the [[File.path]] of its [[Unit.file]], and its [[Unit.reason]]`,
+    })
+    .add({
+      situation = `The [[Unit.outputs]] of the unit is not empty`,
+      behavior = `Its next line lists the [[SourceMap.output]] of each of its [[Unit.outputs]]`,
+    })
+    .add({
+      situation = `The [[Unit.outputs]] of the unit is empty`,
+      behavior = `Its next line says it has no output yet, and that its outputs go under [[Target.outputDirectory]] at the paths the guidance spells from its stem`,
+    })
+    .add({
+      situation = `[[Request.foreignEdits]] is not empty`,
+      behavior = `Then a line says that other units edited its outputs since it was last accepted, followed by one line per [[ForeignEdit]] of [[Request.foreignEdits]], in their order`,
+    })
+    .add({
+      behavior = `The line of a foreign edit reads its [[ForeignEdit.kind]], a space, by, a space, its [[ForeignEdit.by]], a space, in, a space, its [[ForeignEdit.path]], a colon, the [[Marker.outputLine]] of its [[ForeignEdit.region]], a space, the [[Marker.entity]] of its [[ForeignEdit.region]], a space, an em dash, a space, and its [[ForeignEdit.note]]`,
+    })
+    .add({
+      situation = `[[Request.foreignEdits]] is empty`,
+      behavior = `No line about foreign edits is given`,
+    })
+    .add({
+      behavior = `Then each criterion and test of [[Request.requirements]] is one line, in that order`,
+    })
+    .add({
+      situation = `A criterion or test is the first given for the entity it is for`,
+      behavior = `Its line comes after a line naming that entity: its identifier, or its owner's identifier, a dot, and its name, or the unit's [[File.path]] for the file's own entity`,
+    })
+    .add({
+      situation = `An entity named by such a line was moved into the unit`,
+      behavior = `The line ends with the file that declares it`,
+    })
+    .add({
+      behavior = `The line of a criterion or test reads its mark, a space, its id, a space, its place, a space, an em dash, a space, and its text`,
+    })
+    .add({
+      behavior = `A place is the file of the origin of the criterion or test relative to [[Workspace.root]], a colon, and the line its origin begins on, as a [[ReviewRequest]] spells it`,
+    })
+    .add({
+      behavior = `The text of a criterion is its [[LoweredCriterion.text]], and the text of a test is its input and its expectation as written`,
+    })
+    .add({
+      situation = [`[[Request.answered]] is defined`, `It holds the id`],
+      behavior = `The mark is kept`,
+    })
+    .add({
+      situation = [
+        `[[Request.answered]] is defined and does not hold the id, or the unit's [[Unit.outputs]] is empty`,
+        `The id is the [[Rewording.id]] of none of [[Request.reworded]]`,
+      ],
+      behavior = `The mark is new`,
+    })
+    .add({
+      situation = `The id is the [[Rewording.id]] of one of [[Request.reworded]]`,
+      behavior = [
+        `The mark is reworded`,
+        `The line is followed by one reading replaces, a space, its [[Rewording.replaces]], a space, an em dash, a space, and its [[Rewording.text]]`,
+      ],
+    })
+    .add({
+      situation = [`[[Request.answered]] is undefined`, `The unit's [[Unit.outputs]] is not empty`],
+      behavior = `The mark is unknown`,
+    })
+    .add({
+      situation = `Some entity of [[Unit.entities]] of the unit has no criterion or test`,
+      behavior = `Then a line lists the identifiers of those entities, and says that each still needs a [[Marker]]`,
+    })
+    .add({
+      situation = `Every entity of [[Unit.entities]] of the unit has a criterion or test`,
+      behavior = `Then a line says that no entity lacks a criterion or test`,
+    })
+    .add({
+      situation = `[[Request.removed]] is defined and not empty`,
+      behavior = `The unit's lines end with a line saying these were removed since its outputs were accepted, then one line for each [[RemovedRequirement]] of [[Request.removed]], in its order, reading removed, a space, its [[RemovedRequirement.id]], a space, its [[RemovedRequirement.place]], a space, an em dash, a space, and its [[RemovedRequirement.text]]`,
+    })
+    .add({
+      situation = [
+        `[[Request.removed]] is defined and not empty`,
+        `A [[RemovedRequirement]] of it has an empty [[RemovedRequirement.text]]`,
+      ],
+      behavior = `Its line reads removed, a space, its [[RemovedRequirement.id]], a space, an em dash, a space, and words saying its text is not known, in place of the line above`,
+    })
+    .add({
+      situation = [`[[Request.removed]] is undefined`, `The unit's [[Unit.outputs]] is not empty`],
+      behavior = `The unit's lines end with a line saying which criteria and tests were removed is not known`,
+    })
+    .add({
+      behavior = `The text ends with a line counting the criteria and tests given as new, reworded, kept, unknown, and removed`,
+    });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run of unit a for def/a.lfy, which has the reason requirements and the output src/a.rs, and no foreign edits; its fn f has the criterion c1 on line 4, the criterion c3 on line 9, and the criterion c4 on line 12; the output answered c1, c2, and c5; the request has c2, which was on line 6, as removed, and c4 as rewording c5`,
+        ),
+      ],
+      expect = ToolResult@like(
+        `Not an error: a line reading a, def/a.lfy, and requirements; a line listing src/a.rs; a line naming f; a line reading kept, the id of c1, def/a.lfy:4, and the text of c1; a line reading new, the id of c3, def/a.lfy:9, and the text of c3; a line reading reworded, the id of c4, def/a.lfy:12, and the text of c4, then a line reading replaces, the id of c5, and the text of c5; a line saying no entity lacks a criterion or test; a line saying these were removed, then a line reading removed, the id of c2, def/a.lfy:6, and the text of c2; a last line counting 1 new, 1 reworded, 1 kept, 0 unknown, and 1 removed`,
+      ),
+    },
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run of unit b for def/b.lfy, which has the reason touched and the output src/b.rs; its request has one foreign edit, a fix by a in src/b.rs in the region of g that begins on line 20, with the note a renamed Thing.size to Thing.len; g has the criterion c1 on line 3, which the output answered, and nothing was removed`,
+        ),
+      ],
+      expect = ToolResult@like(
+        `Not an error: a line reading b, def/b.lfy, and touched; a line listing src/b.rs; a line saying other units edited its outputs, then a line reading fix by a in src/b.rs:20 g, an em dash, and a renamed Thing.size to Thing.len; a line naming g; a line reading kept, the id of c1, def/b.lfy:3, and the text of c1; a line saying no entity lacks a criterion or test; a last line counting 0 new, 0 reworded, 1 kept, 0 unknown, and 0 removed`,
+      ),
+    },
+  );
+}
+
+// Decision: a dependency's interface is pulled one entity at a time from the request the compiler
+// was given, so a hosted request names its dependencies' entities instead of quoting them all.
+/// name: the identifier of an entity of a dependency of the unit, as the request's interfaces part names it, or an owner's identifier, a dot, and a member's name; a dependency's file path and a colon before it limits the search to that dependency
+fn dependency(session: Session, name: string) is tool, compilerTool: `What one entity of a dependency of this compiler run's unit offers its dependents: the dependency's unit and outputs, and the entity's kind, definition, type, parameters, output, and members` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `Answers from [[Request.interfaces]] of [[Binding.request]], and reads no definition file and no output`,
+    })
+    .add({
+      behavior = `After any leading file path and colon is set aside from [[name]], the identifier is what remains, or its part before the first dot when it holds one`,
+    })
+    .add({
+      behavior = `The entities given are every entity of the [[Interface.entities]] of each of [[Request.interfaces]] whose identifier is that identifier`,
+    })
+    .add({
+      situation = `[[name]] begins with a file path and a colon`,
+      behavior = `Only entities of the [[Interface]] whose [[Interface.unit]] has that [[File.path]] are given`,
+    })
+    .add({
+      behavior = `An entity given begins with a line reading the [[Unit.stem]] and the [[File.path]] of its [[Interface.unit]], then a line listing its [[Interface.outputs]]`,
+    })
+    .add({
+      behavior = `Then come the lines of the entity in [[Generation.interfaceOf]] of [[Program.workspace]] of [[Binding.program]] and its [[Interface.unit]]: its own line, then the line of each member or enum member it declares`,
+    })
+    .add({
+      situation = `What remains of [[name]] once any leading file path and colon is set aside holds a dot`,
+      behavior = `Of the lines of its members, only that of the member whose name follows the dot is given`,
+    })
+    .add({ situation = `More than one entity is given`, behavior = `Each is separated by a rule` })
+    .add({
+      situation = `No entity is given`,
+      behavior = [
+        `An error saying that no dependency of the unit declares [[name]]`,
+        `The error says that an entity of the unit itself, or of any file, is read with elfie_entity`,
+      ],
+    });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run of unit a, which depends on unit b for def/b.lfy with the output src/b.rs, declaring data B: a thing, with one member n of type number`,
+        ),
+        `B`,
+      ],
+      expect = ToolResult@like(
+        `Not an error: a line reading b and def/b.lfy, a line listing src/b.rs, the line of B reading its kind data and its definition, then the line of its member n with its type number`,
+      ),
+    },
+    {
+      input = [Session@like(`The same session`), `Missing`],
+      expect = ToolResult@like(
+        `An error saying no dependency of the unit declares Missing, and naming elfie_entity`,
+      ),
+    },
+  );
+}
+
+// Decision: the cap left is measured against the outputs as they were before the run, never
+// against the last call, so it says what acceptance will count, however many edits made it.
+/// unit: the stem of one unit of the reach, as this tool lists it, to list every region of its outputs; when left out, only the regions this run has edited are listed
+fn reach(session: Session, unit?: string) is tool, compilerTool: `The later units whose code this compiler run may edit, the regions of their outputs, and what is left of the fix cap for each region and each unit, given the outputs on disk now` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `Answers from [[Request.reach]] of [[Binding.request]], [[Binding.before]], [[Session.touches]], and the output files under [[Binding.directory]] as they are when the call arrives, and reads no definition file`,
+    })
+    .add({
+      situation = `[[Reach.units]] is empty`,
+      behavior = `The text says this run may edit no other unit's code, so every line it changes is in its own regions or in a shared output`,
+    })
+    .add({
+      situation = `[[Reach.units]] is not empty`,
+      behavior = `The text begins with a line giving [[Reach.fixLines]] as the lines a fix may change in one region and [[Reach.fixUnitLines]] as the lines the fixes may change in one unit, and saying that a bigger edit must be a stub and that every unit with a fix needs a note through elfie_touch`,
+    })
+    .add({
+      behavior = `The regions of a unit of [[Reach.units]] are the [[Marker]] of each of its markers that its output files hold when the call arrives, read as [[Acceptance.rederive]] reads them, in [[SourceMap.output]] order, then in [[Marker.outputLine]] order`,
+    })
+    .add({
+      behavior = `A region is edited when its lines differ from the lines of the region with the same marker in the [[Output.text]] of the file of [[Binding.before]] at its output path, or when that file has no such region`,
+    })
+    .add({
+      behavior = `The kind of an edited region is stub or fix, as [[ForeignEditKind]] defines them for an edit by [[Binding.unit]], and the lines it changes are counted as [[ForeignEdit]] counts them`,
+    })
+    .add({
+      situation = `[[unit]] is left out`,
+      behavior = `Then each unit of [[Reach.units]] is given in their order, each with its line and then the line of each of its edited regions`,
+    })
+    .add({
+      situation = `[[unit]] is the [[Unit.stem]] of a unit of [[Reach.units]]`,
+      behavior = `Then only that unit is given, with its line and then the line of each of its regions, edited or not`,
+    })
+    .add({
+      behavior = `The line of a unit reads its [[Unit.stem]], the [[File.path]] of its [[Unit.file]], the count of the lines its edited regions of kind fix change together, of [[Reach.fixUnitLines]], and what is left of [[Reach.fixUnitLines]], or by how many lines the count exceeds it`,
+    })
+    .add({
+      situation = [`A unit has an edited region of kind fix`, `[[Session.touches]] holds no note for its [[Unit.stem]]`],
+      behavior = `Its line ends by saying it needs a note through elfie_touch`,
+    })
+    .add({
+      situation = `[[Session.touches]] holds a note for the [[Unit.stem]] of a unit`,
+      behavior = `Its line ends with that note`,
+    })
+    .add({
+      behavior = `The line of a region is indented by two spaces and reads its output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], a space, and [[Marker.entity]], then [[Marker.requirement]] when the marker names one`,
+    })
+    .add({
+      situation = `A region is edited and of kind stub`,
+      behavior = `Its line ends with the word stub`,
+    })
+    .add({
+      situation = `A region is edited and of kind fix`,
+      behavior = `Its line ends with the word fix, the count of the lines it changes, of [[Reach.fixLines]], and what is left of [[Reach.fixLines]], or by how many lines the count exceeds it`,
+    })
+    .add({
+      situation = `A region given is not edited`,
+      behavior = `Its line ends with the word unedited`,
+    })
+    .add({
+      situation = [`[[unit]] is given`, `[[unit]] is the [[Unit.stem]] of no unit of [[Reach.units]]`],
+      behavior = `An error listing the stems of [[Reach.units]], or saying this run may edit no other unit's code when it is empty`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run of unit a whose reach holds unit b for def/b.lfy with the output src/b.rs and unit c for def/c.lfy with the output src/c.rs, with the caps 10 and 40; since the run began, 3 lines of the region of g at src/b.rs lines 20 to 31 were rewritten, and the body of the region of h at src/b.rs lines 33 to 35 was replaced by the stub line naming a; no note is recorded`,
+        ),
+        undefined,
+      ],
+      expect = ToolResult@like(
+        `Not an error: a line giving the caps 10 and 40; a line reading b, def/b.lfy, 3 of 40, 37 left, and needs a note through elfie_touch; a line reading src/b.rs:20-31 g fix 3 of 10, 7 left; a line reading src/b.rs:33-35 h stub; a line reading c, def/c.lfy, 0 of 40, 40 left`,
+      ),
+    },
+    {
+      input = [Session@like(`The same session`), `d`],
+      expect = ToolResult@like(`An error listing b and c`),
+    },
+  );
+}
+
+// Decision: a note says why a run changed another unit's code, so a later run of that unit, and a
+// person reading the change set, never take the change for that unit's own. It is kept in the
+// session and handed back by [[Host.close]], so the CLI gives it to acceptance, which rejects a fix
+// whose owner has no note.
+/// unit: the stem of a unit of this run's reach, as elfie_reach lists it
+/// note: why this run edited that unit's code, in one line, such as what it renamed that the code used
+fn touch(session: Session, unit: string, note: string) is tool, compilerTool: `Say why this compiler run edited the code of a later unit; every unit whose code the run fixes needs a note` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      situation = `[[unit]] is the [[Unit.stem]] of no unit of [[Reach.units]] of [[Request.reach]] of [[Binding.request]]`,
+      behavior = [
+        `An error listing the stems of [[Reach.units]], or saying this run may edit no other unit's code when it is empty`,
+        `Nothing is recorded`,
+      ],
+    })
+    .add({
+      situation = `[[note]] is empty or holds only white space`,
+      behavior = [`An error saying a note says why the unit's code was edited`, `Nothing is recorded`],
+    })
+    .add({
+      situation = `[[note]] holds a line break`,
+      behavior = [`An error saying a note is one line`, `Nothing is recorded`],
+    })
+    .add({
+      situation = `No error above is given`,
+      behavior = `[[Session.touches]] maps [[unit]] to [[note]], in place of any note recorded for it earlier`,
+    })
+    .add({
+      situation = `A note is recorded`,
+      behavior = `The text says it was recorded for [[unit]], that it is the note of every fix this run makes in that unit's code, and that a later call for the same unit replaces it`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(`Bound to a compiler run of unit a whose reach holds unit b, with no note recorded`),
+        `b`,
+        `a renamed Thing.size to Thing.len`,
+      ],
+      expect = ToolResult@like(
+        `Not an error: recorded for b, and a later call replaces it; the session's touches map b to a renamed Thing.size to Thing.len`,
+      ),
+    },
+    {
+      input = [Session@like(`The same session`), `c`, `a renamed Thing.size to Thing.len`],
+      expect = ToolResult@like(`An error listing b, and the touches unchanged`),
+    },
+  );
+}
+
+// Decision: an id is 64 hex digits and more, which an agent copies wrong often enough to matter, so
+// the server writes a marker's id from one it has checked, and moves every marker of a reworded
+// criterion to its new id in one call. Compile already moves the markers of a criterion reworded in
+// place before the compiler runs; a rename is for the pairs it could not see, such as a criterion
+// that moved as well as changed. Marker lines are written only in the unit's own regions: a
+// rename rewrites what [[Acceptance.rename]] rewrites, only the markers that name the unit's file,
+// and an insertion is refused inside a region of a file outside the unit, so it never touches
+// another unit's markers, which a foreign edit must leave as they were.
+// Decision: the arguments a call gives say what it wants: replaces asks for a rename, and file,
+// line, and entity ask for an insertion; a call that gives both, or neither whole, is refused.
+/// id: the id a marker names afterwards: for a rename, the new id; for an insertion, the id of the criterion or test the new marker answers for, left out for a marker naming only its entity
+/// replaces: for a rename, the id every marker to rewrite names now
+/// file: for an insertion, the path of the output file to insert the marker into, relative to the root
+/// line: for an insertion, the line of that file the marker is inserted before, counting from 1; one past its last line appends it
+/// entity: for an insertion, the entity the marker names: an identifier, or an owner's identifier, a dot, and a member's name; a definition file's path and a colon before it limits it to that file
+fn mark(session: Session, id?: string, replaces?: string, file?: string, line?: number, entity?: string) is tool,
+  compilerTool: `Write a marker line into one of this compiler run's outputs, or rewrite to a new id every marker of its outputs that names an old one, so that no id is typed by hand` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The output files of the unit's target are the files, recursively, under [[Target.outputDirectory]] of the [[Unit.target]] of [[Binding.unit]] under [[Binding.directory]], whose [[Path.extension]] is among [[Target.extensions]] of that target`,
+    })
+    .add({ behavior = `A marker in an output is read as [[Acceptance.accept]] reads a [[Marker]]` })
+    .add({
+      situation = `[[replaces]] is given, and [[id]] is not given or one of [[file]], [[line]], and [[entity]] is`,
+      behavior = [`An error saying a rename takes replaces and id and nothing else`, `Nothing is written`],
+    })
+    .add({
+      situation = `[[replaces]] is not given, and one of [[file]], [[line]], and [[entity]] is not given`,
+      behavior = [`An error saying an insertion takes file, line, and entity, and optionally id`, `Nothing is written`],
+    })
+    .add({ behavior = `No file but an output file of the unit's target is written` })
+    .add({ behavior = `No source map and no review record is written` });
+
+  // Renaming
+  @acceptanceCriteria
+    .add({
+      situation = [`[[replaces]] is given`, `[[id]] is not the id of a local criterion or test of the unit`],
+      behavior = [`An error naming [[id]] and saying it is no criterion or test of the unit`, `Nothing is written`],
+    })
+    .add({
+      situation = [`[[replaces]] is given`, `[[id]] is the id of a local criterion or test of the unit`],
+      behavior = `Each output of [[Acceptance.rename]] of the unit, the output files of the unit's target as they are when the call arrives, and [[replaces]] mapped to [[id]], is [[Files.write]] at its path under [[Binding.directory]], and no other output is written`,
+    })
+    .add({
+      behavior = `The markers rewritten are those [[Acceptance.rename]] rewrites`,
+    })
+    .add({
+      situation = `Some marker is rewritten`,
+      behavior = `The text counts the markers rewritten, then gives one line for each: the output path, a colon, its line, a space, and the marker as it reads afterwards after @lfy and a space`,
+    })
+    .add({
+      situation = [`[[replaces]] is given`, `No marker is rewritten`],
+      behavior = `An error saying that no marker of the output files of the unit's target naming the unit's file names [[replaces]]`,
+    });
+
+  // Inserting
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `[[file]] is given`,
+        `[[file]] is not the path, relative to the root, of one of the output files of the unit's target`,
+      ],
+      behavior = [
+        `An error saying the file is not an output file of the unit's target, and that a new output is written before a marker is inserted into it`,
+        `Nothing is written`,
+      ],
+    })
+    .add({
+      situation = [`[[line]] is given`, `[[line]] is less than 1 or more than one past the last line of [[file]]`],
+      behavior = [`An error giving the count of the lines of [[file]]`, `Nothing is written`],
+    })
+    .add({
+      situation = [
+        `[[file]] and [[line]] are given`,
+        `The last line of [[file]] before [[line]] that is read as a [[Marker]] names a file that is neither the [[File.path]] of the unit nor the file of an entity moved into it`,
+      ],
+      behavior = [
+        `An error saying [[line]] falls in a region of another unit, naming the file that marker names and the unit of that file when it has one`,
+        `Nothing is written`,
+      ],
+    })
+    .add({
+      behavior = `After any leading file path and colon is set aside from [[entity]], the identifier is what remains, or its part before the first dot when it holds one`,
+    })
+    .add({
+      behavior = `The entity [[entity]] names is the entity of [[Unit.entities]] of the unit whose identifier is that identifier, or, when what remains holds a dot, that entity's member whose name follows the dot; when [[entity]] begins with a file path and a colon, only an entity declared in that file`,
+    })
+    .add({
+      situation = [`[[entity]] is given`, `[[entity]] names no entity`],
+      behavior = [
+        `An error saying the unit does not declare [[entity]], naming its stem`,
+        `Nothing is written`,
+      ],
+    })
+    .add({
+      situation = [`[[entity]] is given`, `[[entity]] names entities of more than one file`],
+      behavior = [
+        `An error naming each of those files and saying a file path and a colon before the name chooses one`,
+        `Nothing is written`,
+      ],
+    })
+    .add({
+      situation = [
+        `[[entity]] and [[id]] are given`,
+        `[[id]] is neither the id of a local criterion or test of the unit whose entity [[entity]] names nor that of one of [[Request.globals]]`,
+      ],
+      behavior = [
+        `An error naming [[id]] and saying it is no criterion or test of that unit and no global one`,
+        `Nothing is written`,
+      ],
+    })
+    .add({
+      behavior = `The inserted line is the spaces and tabs that begin the line at [[line]] before the insertion, or nothing when it is appended, then [[Target.markerComment]], a space, @lfy, a space, the path of the file that declares the entity relative to [[Workspace.root]], a colon, and [[entity]] without its file path and colon, then a # and [[id]] when [[id]] is given`,
+    })
+    .add({
+      behavior = `The inserted line comes before the line that was at [[line]], ended by the line break the file's first line ends with, or by a line feed when it has none, and every other character of the file is kept`,
+    })
+    .add({
+      situation = [`The line is appended`, `The file's last line has no line break`],
+      behavior = `That line break is added to the file's last line first`,
+    })
+    .add({
+      situation = `A line is inserted`,
+      behavior = `The text gives the output path, a colon, the number of the inserted line, a space, and the inserted line`,
+    });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run of unit a for def/a.lfy, which has the criterion of f with id f:f:9c0d, and whose output src/a.rs holds on lines 3 and 8 the markers // @lfy def/a.lfy:f#f:f:1f2e`,
+        ),
+        `f:f:9c0d`,
+        `f:f:1f2e`,
+        undefined,
+        undefined,
+        undefined,
+      ],
+      expect = ToolResult@like(
+        `Not an error: 2 markers rewritten, src/a.rs:3 and src/a.rs:8, each now reading def/a.lfy:f#f:f:9c0d; nothing else of src/a.rs changed`,
+      ),
+    },
+    {
+      input = [
+        Session@like(
+          `The same session, with line 12 of src/a.rs reading four spaces and fn helper() {, and the rust target's marker comment //`,
+        ),
+        `f:f:9c0d`,
+        undefined,
+        `src/a.rs`,
+        12,
+        `f`,
+      ],
+      expect = ToolResult@like(
+        `Not an error: src/a.rs:12 reading four spaces and // @lfy def/a.lfy:f#f:f:9c0d, and the line that was 12 is now 13`,
+      ),
+    },
+    {
+      input = [Session@like(`The same session`), `f:f:0000`, `f:f:1f2e`, undefined, undefined, undefined],
+      expect = ToolResult@like(`An error naming f:f:0000, and src/a.rs unchanged`),
+    },
+  );
+}
+
+// Decision: the compiler's outcome is submitted while it is still working, checked when it arrives,
+// and kept in its session for the CLI, so how a run ended never depends on the last lines of a
+// final message; the last submission wins, so a compiler that changes its mind says so again.
+/// outcome: done, blocked, or clarify
+/// message: for blocked, the reason, quoting the criterion; for clarify, the one question; for done, a note that is no part of the outcome, or empty
+fn submit(session: Session, outcome: string, message: string) is tool, compilerTool: `Say how this compiler run ended: done when every output is written, blocked when it cannot proceed, or clarify when only a person can decide` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      situation = `[[outcome]], compared without regard to case, is none of [[SubmittedOutcome]]`,
+      behavior = [`An error naming done, blocked, and clarify`, `Nothing is recorded`],
+    })
+    .add({
+      situation = [
+        `[[outcome]], compared without regard to case, is blocked or clarify`,
+        `[[message]] is empty or holds only white space`,
+      ],
+      behavior = [`An error saying blocked needs its reason and clarify its question`, `Nothing is recorded`],
+    })
+    .add({
+      situation = `Neither error above is given`,
+      behavior = `[[Session.submission]] becomes a [[Submission]] whose [[Submission.outcome]] is the member of [[SubmittedOutcome]] [[outcome]] names and whose [[Submission.message]] is [[message]], in place of any earlier one`,
+    })
+    .add({
+      situation = `A [[Submission]] is recorded`,
+      behavior = `The text says it was recorded, with its outcome, and that a later call of elfie_submit replaces it`,
+    })
+    .add({
+      situation = `A [[Submission]] is recorded`,
+      behavior = `The text says that the final message still ends with the line for the outcome: ELFIE: DONE, ELFIE: BLOCKED: and the reason, or ELFIE: CLARIFY: and the question`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(`Bound to a compiler run with no submission`),
+        `Blocked`,
+        `f:f:9c0d contradicts f:f:1f2e on empty lists`,
+      ],
+      expect = ToolResult@like(
+        `Not an error: recorded blocked, a later call replaces it, and the final message ends with ELFIE: BLOCKED: and the reason; the session's submission is blocked with that message`,
+      ),
+    },
+    {
+      input = [Session@like(`The same session`), `clarify`, ``],
+      expect = ToolResult@like(`An error saying clarify needs its question, and the submission still blocked`),
+    },
+    {
+      input = [Session@like(`The same session`), `finished`, ``],
+      expect = ToolResult@like(`An error naming done, blocked, and clarify`),
+    },
+  );
+}
+
+// Decision: a verdict is submitted as soon as it is judged and checked as it arrives, so a verdict
+// with a wrong id is answered at once, while the verifier still knows what it meant, and none is
+// lost to a final message that ends too soon or runs too long.
+/// id: the id of the criterion or test, as the review request gives it; may be left out when file and line name it
+/// file: the first half of the place the review request gives the criterion or test, such as def/a.lfy
+/// line: the second half of that place
+/// status: satisfied, violated, or unverifiable
+/// evidence: the output path and line range judged, such as crates/elfie-core/src/x.rs:120-134; empty when none
+/// note: why, in one line; for a violated one, what the code does instead
+fn report(session: Session, id?: string, file?: string, line?: number, status: string, evidence: string, note: string) is tool: `Submit the verdict on one criterion or test of the review this session is for` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The criterion or test reported on is the one [[Findings.reviewOf]] reads a review line as being for when the line holds [[id]], [[file]], [[line]], and [[status]], with [[Binding.program]] as its program`,
+    })
+    .add({
+      situation = `[[status]], compared without regard to case, is none of [[ReviewStatus]]`,
+      behavior = [`An error naming the three statuses`, `Nothing is recorded`],
+    })
+    .add({
+      situation = [`[[status]] is one of [[ReviewStatus]]`, `No criterion or test is reported on`],
+      behavior = [
+        `An error naming the id, file, or line given, saying no criterion or test matches it`,
+        `Nothing is recorded`,
+      ],
+    })
+    .add({
+      situation = [
+        `[[status]] is one of [[ReviewStatus]]`,
+        `The id of the criterion or test reported on is not among [[ReviewRequest.asked]] of [[Binding.review]]`,
+      ],
+      behavior = [`An error saying that id was not asked in this review`, `Nothing is recorded`],
+    })
+    .add({
+      situation = [
+        `[[status]] is one of [[ReviewStatus]]`,
+        `The id of the criterion or test reported on is among [[ReviewRequest.asked]] of [[Binding.review]]`,
+      ],
+      behavior = `One [[Review]] for that id, with [[status]], [[evidence]], and [[note]], is appended to [[Session.reviews]]`,
+    })
+    .add({
+      situation = [
+        `A [[Review]] is appended to [[Session.reviews]]`,
+        `[[Session.reviews]] already held one for the same id`,
+      ],
+      behavior = `The earlier one is removed`,
+    })
+    .add({
+      situation = `A [[Review]] is appended to [[Session.reviews]]`,
+      behavior = `The text says it was recorded, with its id and place`,
+    })
+    .add({
+      situation = `A [[Review]] is appended to [[Session.reviews]]`,
+      behavior = `The text then counts the ids of [[ReviewRequest.asked]] that no review of [[Session.reviews]] names, and lists the first five of them in the order asked`,
+    })
+    .add({
+      situation = [
+        `A [[Review]] is appended to [[Session.reviews]]`,
+        `Every id of [[ReviewRequest.asked]] has a review`,
+      ],
+      behavior = `The text says every criterion and test asked has a verdict, and that the final message ends with ELFIE: REVIEWED`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a verifier run whose review asked A:A:1f2e on def/a.lfy line 4 and A:A:9c0d on def/a.lfy line 7, with no review recorded`,
+        ),
+        undefined,
+        `def/a.lfy`,
+        7,
+        `violated`,
+        `src/a.rs:12-18`,
+        `returns undefined instead of an empty list`,
+      ],
+      expect = ToolResult@like(`Not an error: recorded A:A:9c0d at def/a.lfy:7; 1 still missing: A:A:1f2e`),
+    },
+    {
+      input = [
+        Session@like(`The same session`),
+        `A:A:77aa`,
+        undefined,
+        undefined,
+        `satisfied`,
+        ``,
+        `ok`,
+      ],
+      expect = ToolResult@like(
+        `An error naming A:A:77aa and saying no criterion or test matches it, and nothing recorded`,
+      ),
+    },
+    {
+      input = [
+        Session@like(`The same session`),
+        `A:A:1f2e`,
+        undefined,
+        undefined,
+        `maybe`,
+        ``,
+        `unsure`,
+      ],
+      expect = ToolResult@like(`An error naming satisfied, violated, and unverifiable, and nothing recorded`),
+    },
+  );
+}
+
+// Decision: a verifier's turns, not its verdicts, set what a review costs, because every turn
+// re-reads the whole context so far, so a verifier submits many verdicts in one call.
+/// lines: one JSON object per line, with the keys id, file, line, status, evidence, and note, holding what report would be given; blank lines are skipped
+fn reportMany(session: Session, lines: string) is tool: `Submit the verdicts on several criteria and tests of the review this session is for, one per line` => ToolResult {
+  @acceptanceCriteria
+    .add({ behavior = `A line of [[lines]] that holds only whitespace is skipped` })
+    .add({
+      situation = `A line of [[lines]] is a JSON object`,
+      behavior = `It is handled as [[report]] given that line's id, file, line, status, evidence, and note`,
+    })
+    .add({
+      situation = `A line of [[lines]] is a JSON object that lacks some of its keys`,
+      behavior = `A lacking id, file, or line is left out, and a lacking status, evidence, or note is the empty string`,
+    })
+    .add({ behavior = `The lines of [[lines]] are handled in the order they are written` })
+    .add({
+      situation = `A line of [[lines]] holds more than whitespace and is not a JSON object`,
+      behavior = [`An error for that line, saying it is not a JSON object`, `Nothing is recorded for it`],
+    })
+    .add({ behavior = `An error for one line never stops a later line from being handled` })
+    .add({
+      behavior = `The text has one line for each line of [[lines]] that is not skipped, in the same order, saying it was recorded, with its id and place, or giving its error`,
+    })
+    .add({
+      behavior = `After those lines, the text counts the ids of [[ReviewRequest.asked]] that no review of [[Session.reviews]] names once every line is handled, and lists the first five of them in the order asked`,
+    })
+    .add({
+      situation = `Every id of [[ReviewRequest.asked]] has a review once every line is handled`,
+      behavior = `The text then says every criterion and test asked has a verdict, and that the final message ends with ELFIE: REVIEWED`,
+    })
+    .add({ situation = `No line of [[lines]] is recorded`, behavior = `[[ToolResult.isError]] is true` })
+    .add({ situation = `Some line of [[lines]] is recorded`, behavior = `[[ToolResult.isError]] is false` })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a verifier run whose review asked A:A:1f2e on def/a.lfy line 4 and A:A:9c0d on def/a.lfy line 7, with no review recorded`,
+        ),
+        string@like(
+          `Three lines: a JSON object with file def/a.lfy, line 7, status violated, evidence src/a.rs:12-18, and note returns undefined; an empty line; and the words satisfied A:A:1f2e`,
+        ),
+      ],
+      expect = ToolResult@like(
+        `Not an error, with three lines of text: recorded A:A:9c0d at def/a.lfy:7; an error saying the line of words is not a JSON object; 1 still missing: A:A:1f2e`,
+      ),
+    },
+    {
+      input = [
+        Session@like(`The same session, after that call`),
+        string@like(
+          `Two lines: a JSON object with id A:A:77aa, status satisfied, and note ok; and a JSON object with id A:A:1f2e, status satisfied, evidence src/a.rs:3-9, and note ok`,
+        ),
+      ],
+      expect = ToolResult@like(
+        `Not an error, with lines of text: an error naming A:A:77aa and saying no criterion or test matches it; recorded A:A:1f2e at def/a.lfy:4; 0 still missing; every criterion and test asked has a verdict, and the final message ends with ELFIE: REVIEWED`,
+      ),
+    },
+  );
+}

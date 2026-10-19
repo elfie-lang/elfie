@@ -1,0 +1,202 @@
+use "../format/main" as Formatter;
+use "../generation/data";
+use "../generation/main" as Generation;
+use "../generation/maps" as Maps;
+use "../lexer/main" as Lexer;
+use "../mcp/data" as McpData;
+use "../parser/data";
+use "../parser/main" as Parser;
+use "../query/main" as Query;
+use "../workspace/data";
+use "../workspace/main" as Loader;
+use "./data";
+use "./style" as Style;
+use "elfie/system/file" as Files;
+use "elfie/system/path";
+
+/// invocation: the command line, as parse read it, naming the check command
+fn check(invocation: Invocation): `Report the problems of the program and the units whose outputs are stale` => number {
+  // Decision: check with --strict fails on anything stale too, so one command checks that the
+  // definitions bind cleanly and that every output is up to date.
+  @acceptanceCriteria
+    .add({
+      situation = [`check`, `No files are given as arguments`],
+      behavior = `Prints every diagnostic of [[Query.diagnosticsOf]] of [[Loader.load]] of the root`,
+    })
+    .add({
+      situation = [`check`, `Files are given as arguments`],
+      behavior = `Prints, for each file given, the diagnostics of [[Query.diagnosticsOf]] of [[Loader.load]] of the root and that file`,
+    })
+    .add({
+      situation = [`check`, `No files are given as arguments`, `No diagnostic of the program is an error`],
+      behavior = `[[Generation.plan]] is made from [[Maps.sourceMapsOf]] the workspace, with no stems requested, and with the violated units of the last [[McpData.GlobalReview]] as its violated units`,
+    })
+    .add({
+      situation = [
+        `check`,
+        `No files are given as arguments`,
+        `No diagnostic of the program is an error`,
+        `A unit of the plan has a [[Unit.reason]]`,
+      ],
+      behavior = `The unit is printed as a stale unit: a warning of stage generation at its source file, naming the target, the unit, and the description of its [[Unit.reason]]`,
+    })
+    .add({
+      situation = [`check`, `No files are given as arguments`, `No diagnostic of the program is an error`],
+      behavior = `Each of [[Plan.problems]] is printed as an error of stage generation at its node`,
+    })
+    .add({
+      situation = [`check`, `No files are given as arguments`, `No diagnostic of the program is an error`],
+      behavior = `Each of [[Plan.moves]] is printed as information of stage generation at the file of [[Move.origin]], naming the target, the identifiers of [[Move.entities]], the stem of [[Move.into]], and [[Move.cause]]`,
+    })
+    .add({
+      situation = [
+        `check`,
+        `No files are given as arguments`,
+        `No diagnostic of the program is an error`,
+        `[[Workspace.targets]] is empty`,
+      ],
+      behavior = `One line of information of stage generation at the root says the program declares no target and nothing will be built`,
+    })
+    .add({
+      situation = [`check`, `No diagnostic of the program is an error`],
+      behavior = `The last line counts the files, the problems, and the stale units`,
+    })
+    .add({
+      situation = `check`,
+      behavior = `Every error or warning diagnostic printed, and every one of [[Plan.problems]], counts among the problems`,
+    })
+    .add({
+      situation = `check`,
+      behavior = `A line of information counts as neither a problem nor a stale unit, with or without --strict`,
+    })
+    .add({ situation = [`check`, `An error is printed`], behavior = `Returns [[ExitCode.problems]]` })
+    .add({
+      situation = [`check`, `No error is printed`, `--strict is not given`],
+      behavior = `Returns [[ExitCode.success]]`,
+    })
+    .add({
+      situation = [`check with --strict`, `A warning is printed, a stale unit included`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = [`check with --strict`, `No error and no warning is printed`],
+      behavior = `Returns [[ExitCode.success]]`,
+    })
+    .add({
+      situation = `check without --json`,
+      behavior = `In the last line the count of files is plain, the problems are [[Style.tally]] in failure, and the stale units are [[Style.tally]] in warning`,
+    })
+    .add({
+      situation = [`check without --json`, `A stale unit is printed`],
+      behavior = [
+        `Its target and unit are painted subject`,
+        `The description of its [[Unit.reason]] is painted in [[Style.reasonTone]] of it`,
+      ],
+    });
+
+  @test(
+    {
+      input = [Invocation@like(`check, with the root as a root whose def holds a.lfy reading: const y = z;`)],
+      expect = number@like(`1, after printing def/a.lfy:1:10: binder error: and the message`),
+    },
+  );
+}
+
+/// invocation: the command line, as parse read it, naming the format command
+fn format(invocation: Invocation): `Lay out definition files the standard way, or with --check report those that would change` => number {
+  @acceptanceCriteria
+    .add({
+      situation = [`format`, `Files are given as arguments`],
+      behavior = `The files formatted are the files given`,
+    })
+    .add({
+      situation = [`format`, `No files are given as arguments`],
+      behavior = `The files formatted are every file of [[Files.list]] of each of [[Workspace.sourceDirectories]], recursively, whose [[Path.extension]] is lfy`,
+    })
+    .add({
+      situation = `format`,
+      behavior = `The formatted text of a file is [[Formatter.format]] of [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of it`,
+    })
+    .add({
+      situation = [`format without --check`, `The formatted text of a file formatted differs from its text`],
+      behavior = `That file is replaced by [[Files.write]] of its formatted text`,
+    })
+    .add({ situation = `format with --check`, behavior = `Nothing is written` })
+    .add({
+      situation = [`format with --check`, `The formatted text of a file formatted differs from its text`],
+      behavior = `The file is printed`,
+    })
+    .add({
+      situation = [`format with --check`, `The formatted text of a file formatted differs from its text`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = [`format without --check and without --json`, `A file is written`],
+      behavior = `It is printed as formatted, painted success, a space, and the file`,
+    })
+    .add({
+      situation = [`format with --check and without --json`, `A file would change`],
+      behavior = `The file printed is painted warning`,
+    })
+    .add({ situation = `format on a file whose tree has errors`, behavior = `The errors of its tree are printed` })
+    .add({ situation = `format on a file whose tree has errors`, behavior = `The file is left as it is` })
+    .add({ situation = `format on a file whose tree has errors`, behavior = `Returns [[ExitCode.problems]]` });
+
+  @test(
+    {
+      input = [Invocation@like(`format --check, with the root as a root whose def holds a.lfy reading: const   x=1;`)],
+      expect = number@like(`1, after printing def/a.lfy, and the file unchanged`),
+    },
+  );
+}
+
+/// invocation: the command line, as parse read it, naming the tree command
+fn tree(invocation: Invocation): `Print how one file parses` => number {
+  @acceptanceCriteria
+    .add({
+      situation = `tree`,
+      behavior = `Prints [[Parser.parse]] of [[Lexer.lex]] of [[Files.read]] of the one file given, one node or token per line, indented by its depth`,
+    })
+    .add({ situation = `tree`, behavior = `A node's line reads its rule and its token range` })
+    .add({
+      situation = `tree`,
+      behavior = `A token's line reads its rule and its value with escapes applied, never its raw characters`,
+    })
+    .add({
+      situation = [`tree`, `The tree of the file given holds an [[ErrorNode]]`],
+      behavior = `Each [[ErrorNode]] is printed with what it expected`,
+    })
+    .add({
+      situation = [`tree`, `The tree of the file given holds an [[ErrorNode]]`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = `tree`,
+      behavior = [
+        `A rule is painted active`,
+        `A token's value is painted success`,
+        `A token range, line, or column is painted muted`,
+      ],
+    })
+    .add({
+      situation = [`tree`, `The tree of the file given holds an [[ErrorNode]]`],
+      behavior = `Each [[ErrorNode]] and what it expected are painted failure`,
+    });
+}
+
+/// invocation: the command line, as parse read it, naming the tokens command
+fn tokens(invocation: Invocation): `Print how one file lexes` => number {
+  @acceptanceCriteria
+    .add({
+      situation = `tokens`,
+      behavior = `Prints [[Lexer.lex]] of [[Files.read]] of the one file given, one token per line as its line, column, rule, and value`,
+    })
+    .add({
+      situation = `tokens`,
+      behavior = [
+        `A rule is painted active`,
+        `A token's value is painted success`,
+        `A line or column is painted muted`,
+      ],
+    });
+}

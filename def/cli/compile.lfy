@@ -1,0 +1,2108 @@
+use "../generation/data";
+use "../generation/main" as Generation;
+use "../generation/accept" as Acceptance;
+use "../generation/changes" as Changes;
+use "../generation/findings" as Findings;
+use "../generation/maps" as Maps;
+use "../generation/outcome" as Outcomes;
+use "../generation/request" as Requests;
+use "../generation/review" as Reviews;
+use "../generation/previous" as Recovery;
+use "../interpret/data";
+use "../mcp/data" as McpData;
+use "../mcp/main" as Mcp;
+use "../workspace/data";
+use "../workspace/main" as Loader;
+use "./data";
+use "./style" as Style;
+use "elfie/system/file" as Files;
+use "elfie/system/json" as Json;
+use "elfie/system/process" as Process;
+use "elfie/system/time" as Time;
+
+/// invocation: the command line, as parse read it, naming the compile command
+fn compile(invocation: Invocation): `Generate the outputs of the units that need it, or with --dry-run print the plan` => number {
+  // Decision: the compiler is never handed a program with problems.
+  // Decision: a cycle among files that no move resolves has no order to build in, so compile
+  // refuses a plan with problems.
+  @acceptanceCriteria
+    .add({ situation = `compile`, behavior = `The program compiled is [[Loader.load]] of the root` })
+    .add({
+      situation = [`compile`, `A diagnostic of the loaded program is an error`],
+      behavior = `The diagnostics of the loaded program are printed`,
+    })
+    .add({
+      situation = [`compile`, `A diagnostic of the loaded program is an error`],
+      behavior = `No compiler runs and nothing is generated`,
+    })
+    .add({
+      situation = [`compile`, `A diagnostic of the loaded program is an error`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = [`compile or verify with --target`, `--target names no target of [[Workspace.targets]]`],
+      behavior = `A usage message naming the identifiers of [[Workspace.targets]] is printed`,
+    })
+    .add({
+      situation = [`compile or verify with --target`, `--target names no target of [[Workspace.targets]]`],
+      behavior = `Nothing is compiled or reviewed`,
+    })
+    .add({
+      situation = [`compile or verify with --target`, `--target names no target of [[Workspace.targets]]`],
+      behavior = `Returns [[ExitCode.usage]]`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `The compile's relocation is [[Acceptance.relocate]] of [[Generation.plan]] made as the plan below is but from the source maps [[Maps.sourceMapsOf]] the workspace gives, with the root as its directory, called once, before any other plan is made`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `The units generated are the planned units of [[Generation.plan]] made from [[Relocated.sourceMaps]] of the compile's relocation, with the violated units of the last [[McpData.GlobalReview]] as its violated units and, as its foreign edits, those of [[ChangeSet.foreignEdits]] of the kept change set of each target it plans that were recorded since their owner was last accepted in it, as [[ChangeSet]] says`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Relocated.relocations]] of the compile's relocation holds a relocation of a target the compile plans`,
+      ],
+      behavior = `One relocated progress line is printed for each such target, after the planned line, its message the target, then the counts of the entities relocated, the markers rewritten, and the review records moved, each with its word`,
+    })
+    .add({
+      situation = `compile with --target`,
+      behavior = `Only the relocations, outputs, source maps, and review records of the target --target names count among the compile's relocation`,
+    })
+    // Decision: a unit a kept change set accepted stays planned until the root takes the set, so a
+    // compile whose units were requested by name can be resumed without naming them again, which
+    // would run them again.
+    .add({
+      situation = [
+        `compile`,
+        `A kept change set is found for a target`,
+        `A unit accepted or reviewed in it has the [[ChangeSetUnit.hash]] and [[ChangeSetUnit.requirements]] it has now`,
+        `No stem given as an argument, and no --all, requests that unit`,
+      ],
+      behavior = `The unit is among the units generated, at its place in [[Plan.units]] order, with its [[ChangeSetUnit.reason]], even when [[Generation.plan]] plans it with no reason`,
+    })
+    .add({
+      situation = [`compile`, `[[Plan.problems]] is not empty`],
+      behavior = `Each of [[Plan.problems]] is printed as an error of stage generation at its node`,
+    })
+    .add({ situation = [`compile`, `[[Plan.problems]] is not empty`], behavior = `Nothing is generated` })
+    .add({
+      situation = [`compile`, `[[Plan.problems]] is not empty`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = `compile with --target`,
+      behavior = `The source maps are [[Maps.sourceMapsOf]] the workspace for the target --target names`,
+    })
+    .add({
+      situation = `compile with --target`,
+      behavior = `Only units of the target --target names are generated`,
+    })
+    .add({ situation = `compile with --target`, behavior = `No map file of another target changes` })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A planned target's maps were read from source-map.json under its [[Target.outputDirectory]]`,
+      ],
+      behavior = `Before any unit runs, each unit's maps from that file are recorded in its map file in the target's working directory by [[Maps.record]]`,
+    })
+    .add({
+      situation = [`compile without --dry-run`, `Every unit's maps from a source-map.json were recorded`],
+      behavior = `That source-map.json is removed by [[Files.remove]] in the target's working directory before any unit runs`,
+    })
+    .add({
+      situation = [`compile without --dry-run`, `A unit's maps from a source-map.json could not be recorded`],
+      behavior = `That source-map.json is not removed`,
+    })
+    // A map file belongs to no unit when its definition file was deleted, moved, or no longer
+    // builds for the target.
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A map file under the folder of a planned target belongs to no unit of the plan`,
+      ],
+      behavior = `The map file is removed by [[Files.remove]] in the target's working directory before any unit runs`,
+    })
+    .add({
+      situation = `compile without --all`,
+      behavior = `[[Generation.plan]] is made with the stems given as arguments as its requested units`,
+    })
+    .add({
+      situation = `compile with --all`,
+      behavior = `[[Generation.plan]] is made with the stem of every unit as its requested units`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `Each of [[Plan.moves]] is printed as a move line: the word move, the target, the stem of [[Move.origin]], the word into, the stem of [[Move.into]], the identifiers of [[Move.entities]] in brackets, the word for, and [[Move.cause]]`,
+    })
+    .add({
+      situation = [`compile without --json`, `A move line is printed`],
+      behavior = [
+        `The target and the words move, into, and for are painted muted`,
+        `The two stems are painted subject`,
+        `The identifiers and [[Move.cause]] are plain`,
+      ],
+    })
+    .add({ situation = `compile with --dry-run`, behavior = `Nothing is generated` })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `Each planned unit is printed on a line reading its target, [[Unit.stem]], its reason or up to date, and the stems of its dependencies, in [[Plan.units]] order`,
+    })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `Each of [[Relocated.relocations]] of the compile's relocation is printed as a relocate line: the word relocate, the target, [[Relocation.entity]], [[Relocation.origin]], the word into, [[Relocation.into]], and [[Relocation.markers]] with the word marker, or markers when it is not 1`,
+    })
+    .add({
+      situation = [`compile with --dry-run and without --json`, `A relocate line is printed`],
+      behavior = [
+        `The target and the words relocate and into are painted muted`,
+        `The two files are painted subject`,
+        `The entity and the count are plain`,
+      ],
+    })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `The move lines come first, then the relocate lines, then the unit lines`,
+    })
+    .add({ situation = `compile with --dry-run`, behavior = `Nothing the compile's relocation gives is written` })
+    .add({
+      situation = `compile with --dry-run and without --json`,
+      behavior = [
+        `In a unit's line the target is painted muted`,
+        `In a unit's line the stem is painted subject`,
+        `In a unit's line the reason is painted in [[Style.reasonTone]] of it`,
+        `In a unit's line the dependencies are painted muted`,
+      ],
+    })
+    .add({
+      situation = [`compile without --dry-run and without --json`, `[[Plan.moves]] is not empty`],
+      behavior = `The move lines follow the planned line, each indented four spaces`,
+    });
+
+  // Progress
+  // Decision: progress is a stream of one-line events rather than a redrawn screen, so it reads the
+  // same in a terminal, in a log, and as JSON lines for a script.
+  @acceptanceCriteria
+    .add({ situation = `compile`, behavior = `Every step of a compile prints one [[Progress]] line as it happens` })
+    .add({ situation = `compile with --json`, behavior = `Each [[Progress]] is one result` })
+    .add({ situation = `compile`, behavior = `The first [[Progress]] line of a compile is planned` })
+    .add({
+      situation = `compile`,
+      behavior = `The message of the planned line counts the units planned and the moves`,
+    })
+    .add({ situation = `compile`, behavior = `The last [[Progress]] line of a compile is finished` })
+    .add({
+      situation = `compile`,
+      behavior = `The message of the finished line is the count of units accepted and the word accepted, the count of units rejected and the word rejected, the count of units blocked and the word blocked, and the count of units failed and the word failed, each count and its word separated by a space and the four separated by a comma and a space`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A unit counts as accepted in the finished line when its state in its change set is [[UnitState.accepted]] or [[UnitState.reviewed]] at the end of the compile, a unit kept from a resumed change set included`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = `The columns of a [[Progress]] line are separated by two spaces`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = `A [[Progress]] line begins with the counter, the time, and the step, in that order`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = `A [[Progress]] line ends with the first line of [[Progress.message]]`,
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = [
+        `The counter is [, done right aligned to the width of total, /, total, and ]`,
+        `The counter is painted muted`,
+      ],
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = [
+        `The time is [[Style.duration]] of [[Time.elapsed]] since the compile began, right aligned to six columns`,
+        `The time is painted muted`,
+      ],
+    })
+    .add({
+      situation = `compile without --json`,
+      behavior = [
+        `The step is [[Style.glyphOf]] the step, a space, and the step's name`,
+        `The step is painted in [[Style.toneOf]] the step`,
+        `The step is padded with [[Style.padded]] to the longest name of [[Step]] with its glyph`,
+      ],
+    })
+    .add({
+      situation = [`compile without --json`, `The [[Progress.unit]] of a step is set`],
+      behavior = `Its [[Progress]] line reads the unit, painted subject, after the step`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `Every planned unit that runs in the compile has at least one [[Progress]] line whose [[Progress.unit]] is its stem`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is rejected, failed, blocked, or clarification`],
+      behavior = `The message is painted in [[Style.toneOf]] the step`,
+    })
+    .add({
+      situation = [
+        `compile without --json`,
+        `The step is planned, requesting, resuming, relocated, started, rewording, building, compiling, checking, accepted, touched, stubbed, verifying, merged, undone, globalVerifying, finalGate, merging, or retrying`,
+      ],
+      behavior = `The message is plain`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is reviewed or globalReviewed`],
+      behavior = `The message begins with [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The step is reviewed`,
+        `[[ReviewRequest.carried]] of the unit's last review request is not empty`,
+      ],
+      behavior = `The message ends with a comma, a space, the count of [[ReviewRequest.carried]], a space, and the word carried`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The step is reviewed`,
+        `[[ReviewRequest.carried]] of the unit's last review request is empty`,
+      ],
+      behavior = `The message ends with the count of unverifiable reviews and its word`,
+    })
+    .add({
+      situation = [`compile without --json`, `The message of a reviewed line counts carried verdicts`],
+      behavior = `That count and its word are [[Style.tally]] of them in muted`,
+    })
+    .add({
+      situation = [`compile`, `The step is resuming, relocated, finalGate, or merging`],
+      behavior = `The message begins with the [[Target.identifier]] of the target whose change set it concerns`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`],
+      behavior = `In the message each count and its word is [[Style.tally]] of them: accepted in success, rejected in failure, blocked in warning, and failed in failure`,
+    })
+    .add({
+      situation = [
+        `compile without --json`,
+        `A [[Progress]] line is a started line after the first started line of the compile, or is relocated, finalGate, globalVerifying, merging, or finished`,
+      ],
+      behavior = `An empty line is printed and logged before it`,
+    })
+    .add({
+      situation = [
+        `compile without --json`,
+        `The step is finished`,
+        `Nothing was rejected, blocked, or failed, and no final gate, global review, or merge failed`,
+      ],
+      behavior = `Its glyph and name are painted success`,
+    })
+    .add({
+      situation = [
+        `compile without --json`,
+        `The step is finished`,
+        `Something was rejected, blocked, or failed, or a final gate, the global review, or the merge failed`,
+      ],
+      behavior = `Its glyph and name are painted failure`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`, `A planned unit is neither accepted nor reviewed`],
+      behavior = `The finished line is followed by one line, indented four spaces, reading did not complete:, a space, and the stems of the planned units that are neither accepted nor reviewed, in [[Plan.units]] order, separated by a comma and a space`,
+    })
+    .add({
+      situation = [`compile without --json`, `The step is finished`, `A planned unit is neither accepted nor reviewed`],
+      behavior = `The line listing the units that did not complete is painted warning`,
+    })
+    .add({
+      situation = [`compile without --json`, `Problems, a reason, or a question are printed`],
+      behavior = `They follow the [[Progress]] line they belong to, with no line of another unit between them, one problem or line of text per line, each indented four spaces`,
+    })
+    .add({
+      situation = [`compile without --json`, `A problem is printed`],
+      behavior = [`It begins with - and a space`, `It is painted failure`],
+    })
+    .add({
+      situation = [`compile without --json`, `A reason or a question is printed`],
+      behavior = `It is painted warning`,
+    })
+    .add({
+      situation = [`compile without --json`, `Every unit is up to date`],
+      behavior = `One line saying every unit is up to date is printed, painted success`,
+    })
+    .add({
+      situation = [`compile or verify`, `The compiler or the verifier writes a line`],
+      behavior = `The line, as [[Process.stream]] passes it to onLine, is shown as it arrives, prefixed by the [[Unit.stem]] of its unit, or by global for the global review`,
+    })
+    .add({
+      situation = `compile or verify without --json`,
+      behavior = [
+        `The prefix of a line from the compiler or the verifier is two spaces, the unit or global, a space, │, and a space`,
+        `The line itself is shown exactly as the command wrote it`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile or verify without --json`,
+        `A line from the compiler or the verifier came from [[Process.Stream.output]]`,
+      ],
+      behavior = `Its prefix is painted muted`,
+    })
+    .add({
+      situation = [
+        `compile or verify without --json`,
+        `A line from the compiler or the verifier came from [[Process.Stream.error]]`,
+      ],
+      behavior = `Its prefix is painted warning`,
+    })
+    .add({
+      situation = `compile or verify`,
+      behavior = `Every [[Progress]] line, every line the compiler or the verifier writes, and every report is [[Files.append]] to elfie-requests/compile.log under the root`,
+    });
+
+  // The change set
+  // Decision: a change set is kept in elfie-compile/cache when a compile stops, because losing it
+  // costs only time, and the next compile resumes it, so a unit accepted under definitions that
+  // have not changed is not compiled again.
+  // Decision: only the target's outputs, maps, and review records are a change set's own files;
+  // every other file of a resumed copy is taken from the root again, so a resumed change set reads
+  // the definitions as they are now.
+  // Decision: a root that is not a git repository is copied whole, but for the directories every
+  // output listing skips, because no ignore rule says which of its files belong to the project.
+  // Decision: no git variable is added to the environment of the compiler, the verifier, or a
+  // command, so a repository one of them creates elsewhere stays its own.
+  @acceptanceCriteria
+    .add({
+      situation = [`compile without --dry-run and without --accept`, `elfie.json names a compiler`],
+      behavior = `Every planned unit of a target is worked in the target's change set, a [[ChangeSet]] whose [[ChangeSet.units]] are the target's planned units in [[Plan.units]] order`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A target's working directory is [[ChangeSet.directory]] of the target's change set when the compile works one, and the root otherwise`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A change set's own files are the files of its copy under its target's [[Target.outputDirectory]], outside every directory named target, .git, or node_modules, and the files of its copy under elfie-compile/maps/<target> and elfie-compile/reviews/<target>, with <target> the [[Target.identifier]]`,
+    })
+    // When a unit starts
+    .add({
+      situation = `compile`,
+      behavior = `A unit planned in the compile's first plan starts once every unit of its [[Unit.waitsFor]], as that plan gives it, has merged, been skipped, or stopped in the change set`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A unit planned during the compile, as touched, again for a foreign edit, or by the global review, starts once every planned unit before it in [[ChangeSet.units]] has merged, been skipped, or stopped`,
+    })
+    .add({
+      situation = [`compile`, `A kept change set is resumed`],
+      behavior = `A unit it keeps in state [[UnitState.accepted]] or [[UnitState.reviewed]] counts as merged`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `At most as many units run at once, across every target, as the option jobs gives, or 4 when --jobs is not given`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A unit runs from when it starts until it is done in its copy, or stops; a unit that is done and waits to merge does not count among the units running`,
+    })
+    .add({
+      situation = [`compile`, `More units are ready to start than may run`],
+      behavior = `The earliest of them in [[Plan.units]] starts first`,
+    })
+    .add({
+      situation = [`compile`, `A unit of a change set starts`],
+      behavior = `One started progress line for it says how many units are running once it started, the word of, how many may run at once, and the word running`,
+    })
+    // A unit's copy
+    .add({
+      situation = [`compile`, `A unit of a change set runs`],
+      behavior = `Its directory is a copy of its own, elfie-compile/cache/changes/<target>/units/<name> under the root, with <target> the [[Target.identifier]] and <name> the unit's request name: its outputs are read and written there, and the compiler, the verifier, and the target's commands run for it there`,
+    })
+    .add({
+      situation = [`compile`, `A unit's copy is made`],
+      behavior = [
+        `It holds every file a new copy of the change set would hold, but the change set's own files, which it holds as the change set's start holds them`,
+        `Then, for each unit it waits for, directly or through the [[Unit.waitsFor]] of those units, that merged since the change set's start was made, in [[Plan.units]] order, each path of that unit's [[ChangeSetUnit.merged]] is written in as that unit's last merge kept it, or removed when that merge kept nothing at that path`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The copy of a unit planned during the compile, or of a unit whose merge was undone, is made`,
+      ],
+      behavior = `It holds what a new copy of the change set would hold, with the change set's own files as the change set's copy holds them when the unit starts`,
+    })
+    .add({
+      situation = [`compile`, `A unit's copy is made`],
+      behavior = `What it holds depends on no order in which units started or finished`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `The units a unit's copy holds the merges of are those whose merges were written into it, and for a copy made as the change set's copy stands, every unit merged when it was made`,
+    })
+    .add({
+      situation = [`compile`, `A unit's copy is to be made`, `A directory is at its path`],
+      behavior = `That directory is removed first`,
+    })
+    .add({
+      situation = [`compile`, `A unit has merged or stopped, or the compile stops`],
+      behavior = `The unit's copy is removed once nothing more is read from it`,
+    })
+    // Merging into the change set
+    .add({
+      situation = [
+        `compile`,
+        `A unit of a change set is done in its copy: accepted, through its unit gate, and verified, or not to be verified`,
+      ],
+      behavior = `It merges into the change set once every planned unit before it in [[ChangeSet.units]] has merged, been skipped, or stopped`,
+    })
+    .add({
+      situation = [`compile`, `A unit merges`],
+      behavior = `Each file under the target's [[Target.outputDirectory]] that its copy holds otherwise than when the copy was made, or added or removed since, is written into, or removed from, the change set's copy: its outputs and the files of its foreign edits`,
+    })
+    .add({
+      situation = [`compile`, `A unit merges`],
+      behavior = [
+        `Its map file and its review record file are written into the change set's copy as its copy holds them, and are never three-way merged`,
+        `Then the maps of the unit, and of every unit with a marker of its own in a file the merge wrote, are [[Acceptance.rederive]] of the workspace with the change set's copy as its root, the unit, and the maps its map file there holds, and are recorded there by [[Maps.record]]`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A unit merges`,
+        `A file it writes was changed in the change set's copy since the unit's copy was made`,
+      ],
+      behavior = `The file written is the three-way merge of the change set's file and the unit's against what the unit's copy held when it was made, as [[Process.run]] of git merge-file gives it`,
+    })
+    .add({
+      situation = [`compile`, `A unit merged, and the build and the test after it passed or did not run`],
+      behavior = [
+        `It is accepted in the change set: its state becomes [[UnitState.reviewed]] when it was reviewed, and [[UnitState.accepted]] otherwise`,
+        `Its [[ChangeSetUnit.hash]] and [[ChangeSetUnit.requirements]] become those of its source maps`,
+        `Each of [[Verdict.foreignEdits]] of its last accepted verdict is appended to [[ChangeSet.foreignEdits]], in order`,
+        `Its [[ChangeSetUnit.edits]] becomes the count of [[ChangeSet.foreignEdits]] once they are appended`,
+        `Its [[ChangeSetUnit.merged]] lists the paths it wrote or removed, and what it wrote is kept, as [[ChangeSet]] says`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit's merge wrote or removed a file under the target's [[Target.outputDirectory]]`],
+      behavior = `The target's build, then its test with stubs allowed, run in the change set's copy as the unit gate runs them, each only once the one before it succeeded`,
+    })
+    .add({
+      situation = [`compile`, `A unit's merge wrote and removed no file under the target's [[Target.outputDirectory]]`],
+      behavior = `No command runs after it`,
+    })
+    .add({
+      situation = [`compile`, `A unit merged, and the build and the test after it passed or did not run`],
+      behavior = `One merged progress line for it counts the files its merge wrote or removed, and no building line is printed for the commands after a merge`,
+    })
+    // Undoing a merge
+    .add({
+      situation = [
+        `compile`,
+        `A unit is to merge`,
+        `A region of a marker of its own, or a region it made a foreign edit in, holds other lines in the change set's copy than its own copy held when it was made`,
+      ],
+      behavior = `Nothing of it is merged, and its merge counts as undone`,
+    })
+    .add({
+      situation = [`compile`, `A unit is to merge`, `The three-way merge of a file it writes has a conflict`],
+      behavior = `Nothing of it is merged, and its merge counts as undone`,
+    })
+    .add({
+      situation = [`compile`, `The build or the test after a unit's merge fails`],
+      behavior = `The merge is undone: every file it wrote or removed holds again what it held before the merge, and nothing of it is recorded in the change set`,
+    })
+    .add({
+      situation = [`compile`, `A unit's merge is undone`],
+      behavior = [
+        `One undone progress line for it says why: the operation and the exit code of the command that failed, the region another unit changed, or the file that did not merge`,
+        `The unit runs again from its start, as a planned unit, in a new copy of its own that holds what the change set's copy holds as it stands`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit runs again because its merge was undone`],
+      behavior = `The run counts toward none of its retries, and the counts that decide whether it runs once more or stops are of the runs since its new copy was made`,
+    })
+    .add({
+      situation = [`compile`, `A unit's merge is undone, and the merge of its run before was undone too`],
+      behavior = `The unit stops without being accepted, with the reason of the undone merge as its problem`,
+    })
+    .add({
+      situation = [`compile`, `A target's change set is made new`],
+      behavior = `[[ChangeSet.directory]] is the absolute path of elfie-compile/cache/changes/<target>/copy under the root, made before the target's first unit runs`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A target's change set is made new`,
+        `A directory is at the path of its copy or of its base`,
+      ],
+      behavior = `That directory is removed before the copy is made`,
+    })
+    .add({
+      situation = [`compile`, `A copy is made`, `The root is a git repository`],
+      behavior = `The copy holds every file of the root that git tracks or would track, except those under elfie-compile/cache and elfie-requests, as [[Process.run]] of git ls-files --cached --others --exclude-standard lists them in the root`,
+    })
+    .add({
+      situation = [`compile`, `A copy is made`, `The root is not a git repository`],
+      behavior = `The copy holds every file of [[Files.list]] of the root, recursively, except those under elfie-compile/cache and elfie-requests and those under a directory named target, .git, or node_modules`,
+    })
+    .add({
+      situation = [`compile`, `A file is copied into a copy or its base`],
+      behavior = `It is copied to the same path, byte for byte, keeping whether it is executable`,
+    })
+    .add({
+      situation = [`compile`, `A target's change set is made new`],
+      behavior = `Its base, elfie-compile/cache/changes/<target>/base under the root, holds at the same paths every one of the change set's own files as the copy held it when it was made`,
+    })
+    .add({
+      situation = [`compile`, `The root is a git repository`],
+      behavior = `Git run in a copy reads the root's history, through a .git file in the copy reading gitdir:, a space, and the absolute path of the root's git directory`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `No git variable is added to the environment of the compiler, the verifier, or a command of the target`,
+    })
+    .add({
+      situation = [`compile`, `The state of a unit of a change set changes, or a foreign edit is recorded in it`],
+      behavior = `The change set's file under elfie-compile/cache is [[Files.write]] at once`,
+    })
+    .add({
+      situation = [
+        `compile without --dry-run and without --accept`,
+        `A kept change set is resumed, as [[ChangeSet]] says when one is`,
+      ],
+      behavior = [
+        `Its copy and its base are used as they are`,
+        `One resuming progress line counts the units it keeps and the units that run again`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A kept change set is resumed`],
+      behavior = `Before its first unit runs, every file a new copy would hold that is none of the change set's own files is copied into the copy from the root, and every file of the copy that is none of its own files, is not its .git file, is not one a new copy would hold, and is under no directory named target, .git, or node_modules, is removed`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A kept change set is resumed`,
+        `A unit kept in it is in state [[UnitState.accepted]]`,
+        `A verifier is to review`,
+      ],
+      behavior = `The unit is verified in the change set's copy, as after its unit gate passed, before any unit of the change set starts`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A kept change set is resumed`,
+        `A stem given as an argument, or --all, requests a unit kept in it`,
+      ],
+      behavior = `That unit and every unit after it in [[ChangeSet.units]] run again, as after a unit whose definitions changed`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A kept change set for a target is found`,
+        `No unit of it would keep its state, as [[ChangeSet]] says`,
+      ],
+      behavior = [
+        `It, its copy, and its base are removed, and the target's change set is made new`,
+        `Before any unit runs, the plan is made again from [[Relocated.sourceMaps]] of the compile's relocation as if no change set were kept for the target, so no unit is planned as touched by its foreign edits`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `A kept change set is for a target the plan holds no planned unit of`,
+        `--target is not given, or names that target`,
+      ],
+      behavior = `It, its copy, and its base are removed`,
+    })
+    .add({
+      situation = [`compile`, `A kept change set is resumed, or a change set is made new`],
+      behavior = [
+        `Before its first unit starts, [[Acceptance.relocate]] of the plan the units are generated from, with the change set's copy as its directory, is called`,
+        `Each of [[Relocated.outputs]] it gives is [[Files.write]] at its path in the copy`,
+        `The maps of [[Relocated.sourceMaps]] of each unit whose maps it changed are recorded there by [[Maps.record]], given the workspace with the change set's copy as its root`,
+        `The records of each of [[Relocated.reviews]] are recorded there for its unit by [[Reviews.recordReviews]], given the same workspace`,
+        `Every kept unit to verify is verified only once that is written`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A kept change set is resumed, or a change set is made new`],
+      behavior = `Once the relocation is written and every kept unit to verify is verified, and before its first unit starts, the change set's start, elfie-compile/cache/changes/<target>/start under the root, is made new, holding at the same paths every one of the change set's own files as its copy holds them then; every unit's [[ChangeSetUnit.merged]] is then emptied, and elfie-compile/cache/changes/<target>/merged is removed`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A foreign edit is recorded in a change set`,
+        `Its [[ForeignEdit.owner]] is not among [[ChangeSet.units]]`,
+      ],
+      behavior = `The owner joins [[ChangeSet.units]] at its place in [[Plan.units]] order, planned as [[Generation.plan]] made with the foreign edits recorded so far plans it, with reason [[Reason.touched]]`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A foreign edit is recorded in a change set`,
+        `Its [[ForeignEdit.owner]] is among [[ChangeSet.units]] in state [[UnitState.accepted]] or [[UnitState.reviewed]]`,
+      ],
+      behavior = `The owner's state becomes [[UnitState.planned]], with the reason [[Generation.plan]] made with the foreign edits recorded so far gives it, and it runs again at its place in [[Plan.units]] order`,
+    })
+    .add({
+      situation = [`compile`, `The foreign edits of an accepted unit are recorded`],
+      behavior = `From then on, the plan every request, review request, and [[McpData.Binding.plan]] of the compile is made from is [[Generation.plan]] made as the compile's first plan was, with the foreign edits of the change sets recorded since their owner was last accepted, as [[ChangeSet]] says, in place of those it was given, so its order is the same`,
+    })
+    .add({
+      situation = [`compile`, `The foreign edits of an accepted unit are recorded`],
+      behavior = `One progress line follows for each unit they were made in, in [[Plan.units]] order: stubbed when one of the edits made in it is a stub, and touched otherwise`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A unit of a change set stops without being accepted: rejected after its retries, blocked, with a question, failed a second time, or with its merge undone twice in a row`,
+      ],
+      behavior = [
+        `Nothing of its copy is merged into the change set`,
+        `Every file under the target's [[Target.outputDirectory]] that its copy holds otherwise than when the copy was made, or added since, is [[Files.write]], as its copy holds it, at its path relative to the copy under elfie-requests/<name>.rejected under the root, with <name> the unit's request name`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit of a change set is rejected after its retries`],
+      behavior = `Its state is [[UnitState.rejected]]`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A unit of a change set stops blocked, with a question, failed a second time, or with its merge undone twice in a row`,
+      ],
+      behavior = `Its state stays [[UnitState.planned]]`,
+    })
+    .add({
+      situation = [`compile without --continue`, `A unit stops without being accepted`],
+      behavior = `The compile stops: no unit of any target starts or merges after it, and no final gate, global review, or merge into the root runs`,
+    })
+    .add({
+      situation = [`compile with --continue`, `A unit stops without being accepted`],
+      behavior = `Every unit that depends on it, directly or through other units, is skipped: it does not run and its state stays [[UnitState.planned]]`,
+    })
+    .add({
+      situation = [`compile with --continue`, `A unit stops without being accepted`],
+      behavior = `Every unit that depends on no unit that stopped still runs and merges, as any unit does`,
+    })
+    .add({
+      situation = [`compile`, `A unit stopped without being accepted, or was skipped`],
+      behavior = [
+        `No final gate, global review, or merge runs`,
+        `The root takes no change set of the compile, and every change set is kept`,
+      ],
+    })
+    .add({ situation = [`compile`, `The compile stops`], behavior = `No unit starts after that` })
+    .add({
+      situation = [`compile`, `The compile stops`],
+      behavior = `Every run of the compiler, the verifier, or a command of the target still running is stopped, with every process of its group, and what it gives is ignored`,
+    })
+    // Decision: a unit that writes a file another unit has markers in, such as lib.rs, or that moves
+    // another unit's markers into new files by splitting a module, or that edits another unit's
+    // region, leaves that unit's recorded maps pointing at regions that moved. So once a unit's maps
+    // are recorded, the maps of every other unit with markers in its files are read again from the
+    // files as they are, carrying over everything acceptance recorded, the hash of its own regions
+    // included. Nothing that decides whether a unit is planned changes, and a region another unit's
+    // lines were put under no longer matches that hash, so it is never kept as it is on it.
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `The source maps of a unit are recorded by [[Maps.record]], whether after a run of the compiler, after a first run that skipped it, or with --accept`,
+      ],
+      behavior = `The unit's co-owners are the units of its target other than it that have a marker of their own, as [[SourceMap]] defines one, in a file the recorded maps name as [[SourceMap.output]], or whose map file names such a file or a file a map of the unit named before they were recorded`,
+    })
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `The source maps of a unit are recorded by [[Maps.record]]`,
+        `The unit has a co-owner`,
+      ],
+      behavior = [
+        `Once the unit's maps are recorded, in the target's working directory, each co-owner's maps are [[Acceptance.rederive]] of the workspace, the co-owner, and the maps its map file there holds, read as [[Maps.sourceMapsOf]] reads a map file but whether or not their outputs exist`,
+        `Those maps are recorded for the co-owner by [[Maps.record]] in the same directory`,
+        `Each co-owner's maps are re-derived once for the unit`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `A co-owner's maps are re-derived after a unit's source maps are recorded`,
+      ],
+      behavior = [
+        `No compiler or verifier runs for the co-owner`,
+        `No review record file of the co-owner changes`,
+        `No file but the co-owner's map file is written for it`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile, with or without --accept`,
+        `A co-owner's maps are re-derived after a unit's source maps are recorded`,
+        `The regions of the co-owner's own markers with one [[Marker.file]], [[Marker.entity]], and [[Marker.requirement]] span more output lines in total in the re-derived maps than in the maps they replace`,
+      ],
+      behavior = [
+        `The re-derived maps are recorded all the same`,
+        `A message printed to standard error names the co-owner, the unit, and the marker, and says another unit's lines may now lie in the co-owner's region`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit's maps or review records are recorded while it is worked in a change set`],
+      behavior = `[[Maps.record]], [[Acceptance.rederive]], and [[Reviews.recordReviews]] are given the workspace with the unit's copy as its [[Workspace.root]], so they write in that copy and never in the root`,
+    });
+
+  // The environment of the compiler and the verifier
+  // Decision: ELFIE names this executable, so an agent server the compiler or the verifier starts
+  // itself, when it does not use the hosted one, is this same program.
+  @acceptanceCriteria
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = [
+        `ELFIE_ROOT in its environment is the directory it runs in`,
+        `ELFIE in its environment is the path of the running executable`,
+        `ELFIE_MCP_CONFIG in its environment is the absolute path of the MCP config file of the run's hosted session`,
+        `ELFIE_COMMAND_TOOLS in its environment is the names among [[McpData.Host.offered]] of the run's hosted session that are elfie_build, elfie_test, elfie_lint, or elfie_format, in the order [[McpData.Host.offered]] gives them, joined by spaces; empty when there is none`,
+      ],
+    })
+    .add({
+      situation = `The compiler or the verifier is run on a unit, by compile or by verify`,
+      behavior = `ELFIE_UNIT in its environment is the unit's [[Unit.stem]]`,
+    })
+    .add({
+      situation = `The verifier is run for the global review, by compile or by verify`,
+      behavior = `ELFIE_UNIT in its environment is global`,
+    });
+
+  // Agent sessions of the compiler and the verifier
+  // Decision: each run is given an agent session id, the id of the compiler's or the verifier's own
+  // conversation (not the hosted session of the agent server), and a retry that answers problems
+  // resumes the agent session of the run before it, so it keeps what the first attempt already read
+  // instead of reading it again. The retry's request, problems appended, is still given on standard
+  // input, and the run is counted as before. Whether and how the id is used is the compiler or
+  // verifier command's business; the CLI only names it, and a command may start afresh instead.
+  // Decision: an agent session is kept under the directory it ran in, so only a run in the same
+  // directory resumes.
+  // Decision: only a retry that answers problems resumes: one after a rejected outcome, or after a
+  // review that found a violation. A run that failed, was stopped, or ended without every verdict
+  // may have left a session that is broken or too long to continue, so its retry starts afresh.
+  // Decision: a resumed agent session keeps the id it was resumed by, so a third run resumes the
+  // session the second one continued, not the second one's own unused id.
+  @acceptanceCriteria
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = `ELFIE_SESSION in its environment is an agent session id new for the run: a version 4 UUID made from the operating system's secure random source, spelled as 36 lowercase characters in the 8-4-4-4-12 form`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The compiler or the verifier is run on a unit as a resuming run, which is exactly one of three: the compiler's run once more after its run's outcome was rejected, by acceptance or by the unit gate; the compiler's run once more after the verifier's report on the unit held a violated review or an unplaced violation, the compiler having run on the unit before in the compile; and the verifier's run once more after that run of the compiler is accepted`,
+        `The run of the same one of them on the unit before it in the compile was in the same directory`,
+      ],
+      behavior = `ELFIE_RESUME in its environment is the agent session id of that run before it: its ELFIE_RESUME when it had one, and its ELFIE_SESSION otherwise`,
+    })
+    .add({
+      situation = [
+        `The compiler or the verifier is run, by compile or by verify`,
+        `It is no resuming run, or the run of the same one of them on the unit before it was in another directory; no resuming run is a first run, the compiler's first run after a first run that skipped it as a reworded-only, dependency-only, or touched-fix unit's may, a run for the global review, a run of a unit the global review planned, a run once more after a failed run or an exit code of -1, a run after an undone merge, or the verifier's run once more after a run that ended without every verdict`,
+      ],
+      behavior = `ELFIE_RESUME is not in its environment, even when the environment compile or verify was started in holds it`,
+    });
+
+  // Files for a person
+  // Decision: the files the CLI writes for a person under elfie-requests are named by a unit's stem
+  // with its slashes replaced, so they sit side by side in one folder.
+  @acceptanceCriteria.add({
+    situation = `compile or verify`,
+    behavior = `A unit's request name is its [[Unit.stem]] with each / replaced by -, such as cli-main for def/cli/main.lfy`,
+  });
+
+  // The hosted agent server
+  // Decision: one host serves every run of a compile or verify, each run through a session of its
+  // own, so the CLI learns each run's verdicts, each compiler run's submitted outcome, and the notes
+  // it gave for the units it touched, from the session that recorded them.
+  @acceptanceCriteria
+    .add({
+      situation = `compile or verify runs the compiler or the verifier`,
+      behavior = `[[Mcp.host]] is called once, before the first run`,
+    })
+    .add({
+      situation = `compile or verify runs neither the compiler nor the verifier`,
+      behavior = `[[Mcp.host]] is not called`,
+    })
+    .add({
+      situation = `compile or verify called [[Mcp.host]]`,
+      behavior = `[[McpData.Host.stop]] of it is called once, after the last run has returned and before the command returns, whatever the outcome`,
+    })
+    .add({
+      situation = `[[Mcp.host]] fails`,
+      behavior = [`Its failure is printed`, `No compiler or verifier runs`, `Returns [[ExitCode.failure]]`],
+    })
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = `[[McpData.Host.open]] is called for the run just before it starts, with a [[McpData.Binding]] whose [[McpData.Binding.directory]] is the directory the run is in, whose [[McpData.Binding.plan]] is the plan the command made, and whose [[McpData.Binding.program]] is the program it lowered and planned`,
+    })
+    .add({
+      situation = `The compiler is run on a unit`,
+      behavior = `The run's [[McpData.Binding]] has the role compiler, the unit, the request the run's input was made from, as [[McpData.Binding.before]] the unit's files before its first run, no review, and no source maps`,
+    })
+    // Decision: a retry after a rejection is measured against the same files as the run before it,
+    // so its foreign edits are counted against the cap once; a run after the unit was accepted, as
+    // one a violated review sends, is measured from what that acceptance left, so the foreign edits
+    // that acceptance recorded are not recorded again.
+    .add({
+      situation = `compile runs the compiler on a unit`,
+      behavior = `The unit's files before its first run are every file of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively skipping every directory named target, .git, or node_modules, as [[Files.read]] reads it there just before the first run of the compiler on the unit since its copy was made`,
+    })
+    .add({
+      situation = `The verifier is run on a unit`,
+      behavior = `The run's [[McpData.Binding]] has the role verifier, the unit, the review request given as its input, and the source maps that review request was made with`,
+    })
+    .add({
+      situation = `The verifier is run for the global review`,
+      behavior = `The run's [[McpData.Binding]] has the role verifier, no unit, the global review request given as its input, and the source maps that review request was made with`,
+    })
+    .add({
+      situation = `The compiler or the verifier is run, by compile or by verify`,
+      behavior = `The MCP config file of the run's session is [[Files.write]] to elfie-requests/<name>.<role>.mcp.json under the root before it starts, where <name> is the request name of the run's unit, or global for the global review, and <role> is compiler or verifier`,
+    })
+    .add({
+      situation = `The MCP config file of a session is written`,
+      behavior = `It holds [[Json.stringify]] of one object with the key mcpServers, holding one object with the key elfie, holding the keys type reading http, url reading the session's URL, and headers holding the key Authorization reading Bearer, a space, and [[McpData.Host.token]]`,
+    })
+    .add({
+      situation = `A run of the compiler or the verifier returns its [[Process.Exit]]`,
+      behavior = `[[McpData.Host.close]] of the run's session URL is called before the run's outcome is read`,
+    })
+    .add({
+      situation = `A run of the compiler or the verifier returns its [[Process.Exit]]`,
+      behavior = `The run's MCP config file is removed, since the token it holds no longer opens anything`,
+    });
+
+  // Running the compiler
+  // Decision: with --accept, a compiler that worked through the agent server has its work
+  // recorded. It works in the root, outside any change set, so it records no foreign edit.
+  // Decision: a unit's request lists the foreign edits made in its regions since it was last
+  // accepted, so the code an earlier unit's run wrote there is never taken for its own.
+  @acceptanceCriteria
+    .add({
+      situation = [`compile`, `elfie.json names a compiler`],
+      behavior = [
+        `Each run of a unit is one [[Process.stream]] of the command elfie.json names under compiler`,
+        `Its input is [[Request.instructions]] of [[Requests.request]] for the unit, given hosted true`,
+        `Its directory is the unit's directory`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `[[Requests.request]] is made for a unit of a change set`],
+      behavior = `It is given, as the unit's foreign edits, the foreign edits recorded since the unit was last accepted in the change set, as [[ChangeSet]] says, whose [[ForeignEdit.by]] is a unit its copy holds the merge of, in their order`,
+    })
+    .add({
+      situation = [`compile`, `[[Requests.request]] is made for a unit of a change set`],
+      behavior = `It is given, as existing outputs, the files of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively skipping every directory named target, .git, or node_modules, whose [[Files.read]] text carries a [[Marker]] for the unit`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A planned unit has [[Unit.outputs]], not every one of which the compile's relocation made for a unit with no map of its own`,
+      ],
+      behavior = [
+        `The unit's previous source is [[Recovery.previousOf]] of the program the plan was made from, the unit, and its [[Unit.outputs]], called once for the unit in the compile, before anything else is done for it`,
+        `The rewording of its markers, every [[Requests.request]] made for it, [[Changes.reworded]], and the checks of the steps without the compiler and of a kept unit are given that same previous source, however many times the unit runs in the compile`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A planned unit has no [[Unit.outputs]], or every map of its [[Unit.outputs]] was made by the compile's relocation for a unit with no map of its own`,
+      ],
+      behavior = `It has no previous source, and [[Recovery.previousOf]] is not called for it`,
+    })
+    .add({
+      situation = [`compile`, `[[Requests.request]] is made for a unit`],
+      behavior = `It is given the unit's previous source as previous, and [[Relocated.relocations]] of the compile's relocation as relocations`,
+    })
+    .add({
+      situation = `[[Process.stream]] of the compiler for a unit returns its [[Process.Exit]]`,
+      behavior = `The unit is accepted or rejected by the [[Verdict]] of [[Acceptance.accept]] of the unit's request on the files of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively skipping every directory named target, .git, or node_modules, whose [[Files.read]] text carries a [[Marker]] for the unit, with the source maps recorded for the target's other units, as the map files in the unit's directory hold them, as recorded, with every other file of that listing, as [[Files.read]] reads it there, as elsewhere, with the unit's files before its first run as before, and with [[McpData.SessionRecord.touches]] of what [[McpData.Host.close]] returned for the run's session as the notes for the units it touched`,
+    })
+    .add({
+      situation = `[[Process.stream]] of the compiler for a unit returns its [[Process.Exit]]`,
+      behavior = `How the run ended is [[Outcomes.outcomeOf]] of [[Process.Exit.stdout]] as the report, the unit's verdict, and [[McpData.SessionRecord.submission]] of what [[McpData.Host.close]] returned for the run's session as submitted`,
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is accepted`,
+      behavior = [
+        `[[Verdict.outputs]] of the unit's verdict are [[Files.write]] back in the unit's directory`,
+        `The unit gate runs`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Outcomes.outcomeOf]] of a unit's compiler run is accepted`,
+        `The unit gate passes`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+      ],
+      behavior = `The unit is verified`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Outcomes.outcomeOf]] of a unit's compiler run is accepted`,
+        `The unit gate passes`,
+        `elfie.json names no verifier, or --no-verify is given`,
+      ],
+      behavior = [
+        `[[Verdict.sourceMaps]] of the unit's verdict are recorded by [[Maps.record]] in the unit's directory`,
+        `The unit is done in its copy, to merge in state [[UnitState.accepted]]`,
+      ],
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is rejected, or the unit gate fails after it`,
+      behavior = `The problems are printed`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `For the first time in the compile, [[Outcomes.outcomeOf]] of a unit's compiler run is rejected, or the unit gate fails after a run of the compiler on it`,
+      ],
+      behavior = `The unit is run once more with the problems appended to [[Request.instructions]]`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `For the second time in the compile, [[Outcomes.outcomeOf]] of a unit's compiler run is rejected, or the unit gate fails after a run of the compiler on it`,
+      ],
+      behavior = `The unit is rejected after its retries`,
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is blocked`,
+      behavior = `The reason is printed`,
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is blocked`,
+      behavior = `The reason is [[Files.write]] to elfie-requests/<name>.blocked.md under the root, with <name> the unit's request name`,
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is blocked`,
+      behavior = `The unit stops blocked`,
+    })
+    // A person answers a question by editing the definitions, or by writing the answer below the
+    // question in its file.
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is clarification`,
+      behavior = `The question is printed`,
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is clarification`,
+      behavior = `The question is [[Files.write]] to elfie-requests/<name>.question.md under the root, with <name> the unit's request name`,
+    })
+    .add({
+      situation = `[[Outcomes.outcomeOf]] of a unit's compiler run is clarification`,
+      behavior = `The unit stops with a question`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `elfie-requests/<name>.question.md under the root, with <name> a unit's request name, holds an answer written below the question`,
+      ],
+      behavior = `The compile of that unit [[Files.read]] the answer and appends it to the unit's instructions`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `For the first time in the compile, [[Outcomes.outcomeOf]] of a unit's compiler run is failed, or [[Process.Exit.code]] of that run is -1`,
+      ],
+      behavior = `The unit is run once more`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `For the second time in the compile, [[Outcomes.outcomeOf]] of a unit's compiler run is failed, or [[Process.Exit.code]] of that run is -1`,
+      ],
+      behavior = `The unit stops failed`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `elfie.json names a compiler`,
+        `No unit is planned, or the root took every change set of the compile`,
+      ],
+      behavior = `Returns [[ExitCode.success]]`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A unit was rejected, blocked, asked a question, or failed, or a final gate, the global review, or the merge failed`,
+      ],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({ situation = [`compile`, `A command could not run`], behavior = `Returns [[ExitCode.failure]]` })
+    // Without a compiler, the requests are for a compiler run by hand.
+    .add({
+      situation = [`compile`, `elfie.json names no compiler`],
+      behavior = `The request of each planned unit, [[Requests.request]] given hosted false and made from the root, is [[Files.write]] to elfie-requests/<name>.md under the root, with <name> the unit's request name`,
+    })
+    .add({
+      situation = [`compile`, `elfie.json names no compiler`],
+      behavior = [
+        `No change set is made, resumed, or removed`,
+        `Nothing the compile's relocation gives is written`,
+        `Returns [[ExitCode.success]]`,
+      ],
+    })
+    .add({ situation = `compile with --accept`, behavior = `No compiler is run` })
+    .add({
+      situation = `compile with --accept`,
+      behavior = [`No change set is made, resumed, or removed`, `Every output is read and written in the root`],
+    })
+    .add({
+      situation = `compile with --accept`,
+      behavior = `Before any unit is checked, the compile's relocation is written in the root: each of [[Relocated.outputs]] is [[Files.write]] at its path, the maps of [[Relocated.sourceMaps]] of each unit a relocation moved code out of or into are recorded by [[Maps.record]], and the records of each of [[Relocated.reviews]] by [[Reviews.recordReviews]]`,
+    })
+    .add({
+      situation = `compile with --accept`,
+      behavior = `The outputs of each planned unit, in [[Plan.units]] order, the files of [[Files.list]] of [[Target.outputDirectory]], recursively skipping every directory named target, .git, or node_modules, whose text carries a [[Marker]] for the unit, are checked with [[Acceptance.accept]] of the unit's request, with the source maps recorded for the target's other units, as the map files in the root hold them, as recorded, and with every other file of that listing as elsewhere`,
+    })
+    .add({
+      situation = [
+        `compile with --accept`,
+        `[[Acceptance.accept]] accepts a planned unit`,
+        `[[Verdict.foreignEdits]] of its verdict is empty`,
+      ],
+      behavior = `Its [[Verdict.outputs]] are [[Files.write]] back, normalized`,
+    })
+    .add({
+      situation = [
+        `compile with --accept`,
+        `[[Acceptance.accept]] accepts a planned unit`,
+        `[[Verdict.foreignEdits]] of its verdict is empty`,
+      ],
+      behavior = `Its [[Verdict.sourceMaps]] are recorded by [[Maps.record]]`,
+    })
+    .add({
+      situation = [`compile with --accept`, `[[Verdict.foreignEdits]] of a planned unit's verdict is not empty`],
+      behavior = `The unit is rejected with one problem per foreign edit, naming its [[ForeignEdit.owner]] and [[ForeignEdit.path]], and saying that --accept records no foreign edit`,
+    })
+    .add({
+      situation = [`compile with --accept`, `A planned unit is rejected`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    });
+
+  // Steps without the compiler
+  // Decision: what needs no judgment is done by the CLI. A criterion or test reworded in place keeps
+  // its position but not its id, so before every request its markers are moved to the new id by
+  // the rule elfie_mark's rename uses, and the request marks it reworded instead of new.
+  // Decision: a unit whose outputs differ only in reworded ids goes from the rewritten markers
+  // straight to acceptance and review, because its code did not change and the review asks about
+  // every reworded one. It does so only when a verifier will run, since nothing else would read
+  // the new text against the code. A violation sends it to the compiler as its run once more.
+  // Decision: a unit with the reason dependency runs the unit gate before any compiler. When it
+  // passes, its code still fits the interfaces it depends on, so its outputs are accepted as they
+  // are and recorded against the new interfaces, and no verifier runs, since no code changed and
+  // its review records still hold, which is why it counts as reviewed.
+  // Decision: a unit planned only because another unit fixed code in its regions runs the unit gate
+  // and the verifier on the entities whose regions were fixed before any compiler, since the fix
+  // was written against interfaces that already hold and only the fixed code is new. A stub always
+  // goes to the compiler, because a stub is code that must be written again.
+  // Decision: the reworded-only and dependency-only paths keep outputs as they are, so both apply
+  // only to outputs whose unit's own regions still hold the code accepted, as [[SourceMap.text]]
+  // records it, and never to a unit whose request lists a foreign edit. Only the unit's own regions
+  // are compared, so another unit writing elsewhere in a shared file, such as lib.rs, does not send
+  // it to the compiler, while an edit inside one of its regions, or lines put under one of its
+  // markers, does.
+  // Decision: the reworded-only path needs the source at the last accepted generation, never only
+  // the hash-matched one, since it moves markers by pairing old ids with new.
+  // Decision: markers are rewritten only when a run of the compiler or the reworded-only path follows,
+  // never for requests written for a compiler run by hand.
+  // Decision: the counts that decide a retry (the first or second rejected outcome, the first or
+  // second failed run, the first or second verifier's report) count runs of the compiler and of the
+  // verifier only; a first run that skipped the compiler is not a run of it.
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `compile`,
+        `A unit's first run skipped the compiler, as a reworded-only, a dependency-only, or a touched-fix unit's may`,
+      ],
+      behavior = `The skipped run counts as no run of the compiler in any count that decides whether the unit is run once more or stops`,
+    })
+    .add({
+      situation = [
+        `compile without --dry-run and without --accept`,
+        `elfie.json names a compiler`,
+        `The unit's previous source is defined, and [[Previous.hashMatched]] of it is false`,
+      ],
+      behavior = `Before each call of [[Requests.request]] for the unit, each output that [[Acceptance.rename]] gives is [[Files.write]] at its path in the unit's directory, given the unit, the files of [[Files.list]] of [[Target.outputDirectory]] in the unit's directory, recursively, whose [[Files.read]] text carries a [[Marker]] for the unit, and the [[Rewording.replaces]] of each of [[Changes.reworded]] of the workspace, the unit, and its previous source, mapped to its [[Rewording.id]]`,
+    })
+    .add({
+      situation = [
+        `compile with --accept`,
+        `The previous source of a planned unit is defined, and [[Previous.hashMatched]] of it is false`,
+      ],
+      behavior = `Before its outputs are checked, each output that [[Acceptance.rename]] gives is [[Files.write]] at its path in the root, given the unit, its outputs as they are checked, and the [[Rewording.replaces]] of each of [[Changes.reworded]] of the workspace, the unit, and its previous source, mapped to its [[Rewording.id]]`,
+    })
+    .add({
+      situation = [`compile`, `An output of a unit is written for its reworded criteria and tests`],
+      behavior = `One rewording progress line for the unit counts its reworded criteria and tests and the outputs written`,
+    })
+    // Reworded only
+    .add({
+      situation = [
+        `compile without --accept`,
+        `elfie.json names a compiler and a verifier`,
+        `--no-verify is not given`,
+        `[[Request.rewordedOnly]] of the request made for the unit's first run is true`,
+        `[[Request.foreignEdits]] of that request is empty`,
+        `Every output of the unit, read in its directory before any of its markers is rewritten, has its own region text hash to [[SourceMap.text]] of its map`,
+        `The unit's previous source is defined, and [[Previous.hashMatched]] of it is false`,
+      ],
+      behavior = [
+        `The compiler does not run for the unit's first run`,
+        `The unit is accepted or rejected by the [[Verdict]] of [[Acceptance.accept]] of its request on its outputs in its directory, as after a run of the compiler, with every file of the listing as it is now as before and with no notes`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `[[Request.rewordedOnly]] of the request made for a unit's first run is true, and the compiler did not run for it`,
+        `The unit is accepted`,
+      ],
+      behavior = [
+        `[[Verdict.outputs]] of its verdict are [[Files.write]] back in its directory`,
+        `The unit gate runs, and when it passes the unit is verified, as after a compiler run whose outcome is accepted`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `[[Request.rewordedOnly]] of the request made for a unit's first run is true, and the compiler did not run for it`,
+        `The unit is rejected, or its unit gate fails`,
+      ],
+      behavior = [
+        `The problems are printed`,
+        `The compiler runs on the unit as its first run, and the rejection counts toward no retry`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The first verifier's report on a unit whose outputs were accepted without a run of the compiler holds a violated review or an unplaced violation`,
+      ],
+      behavior = `The unit's run once more is the compiler's first run on it, with the problems appended to [[Request.instructions]]`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Request.rewordedOnly]] of a unit's first request is true`,
+        `elfie.json names no verifier, or --no-verify is given`,
+      ],
+      behavior = `The compiler runs on the unit as on any unit`,
+    })
+    // Dependency only
+    .add({
+      situation = [
+        `compile without --accept`,
+        `elfie.json names a compiler`,
+        `[[Unit.reason]] of the unit is [[Reason.dependency]]`,
+        `[[Target.commands]] of the unit's target holds a command with a line for the build operation and one with a line for the test operation`,
+        `[[Request.foreignEdits]] of the request made for its first run is empty`,
+        `Every output of the unit, read in its directory, has its own region text hash to [[SourceMap.text]] of its map`,
+      ],
+      behavior = `Before the compiler would first run on the unit, the unit gate runs on its outputs as they are`,
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `[[Unit.reason]] of the unit is [[Reason.dependency]]`,
+        `The unit gate passes on its outputs before the compiler runs`,
+      ],
+      behavior = [
+        `The compiler does not run for the unit's first run`,
+        `The unit is accepted or rejected by the [[Verdict]] of [[Acceptance.accept]] of its request on its outputs in its directory, as after a run of the compiler, with every file of the listing as it is now as before and with no notes`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `[[Unit.reason]] of the unit is [[Reason.dependency]]`,
+        `The unit gate passes on its outputs before the compiler runs`,
+        `The unit is accepted`,
+      ],
+      behavior = [
+        `The unit is accepted on its unit gate`,
+        `[[Verdict.outputs]] of its verdict are [[Files.write]] back in its directory`,
+        `No verifier runs on the unit`,
+        `[[Verdict.sourceMaps]] of its verdict are recorded by [[Maps.record]] in its directory`,
+        `No review record file of the unit changes`,
+        `The unit is done in its copy, to merge in state [[UnitState.reviewed]]`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `[[Unit.reason]] of the unit is [[Reason.dependency]]`,
+        `The unit gate fails on its outputs before the compiler runs, or the unit is rejected after it passes`,
+      ],
+      behavior = [
+        `A building progress line says which command failed and its exit code, or that the unit was rejected`,
+        `The compiler runs on the unit as its first run, and the failure counts toward no retry`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `[[Unit.reason]] of the unit is [[Reason.dependency]]`,
+        `The unit's target has no line for the build operation or none for the test operation`,
+      ],
+      behavior = `The compiler runs on the unit as on any unit, and no command runs first`,
+    })
+    // Touched fix
+    .add({
+      situation = [
+        `compile without --accept`,
+        `elfie.json names a compiler`,
+        `[[Unit.reason]] of the unit is [[Reason.touched]]`,
+        `[[Request.foreignEdits]] of the request made for its first run is not empty, and [[ForeignEdit.kind]] of every one of them is [[ForeignEditKind.fix]]`,
+      ],
+      behavior = [
+        `The compiler does not run for the unit's first run`,
+        `The unit is accepted or rejected by the [[Verdict]] of [[Acceptance.accept]] of its request on its outputs in its directory, as after a run of the compiler, with every file of the listing as it is now as before and with no notes`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `A touched unit whose foreign edits are all fixes is accepted without a run of the compiler`,
+      ],
+      behavior = [
+        `[[Verdict.outputs]] of its verdict are [[Files.write]] back in its directory`,
+        `The unit gate runs`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `A touched unit whose foreign edits are all fixes is accepted without a run of the compiler, and its unit gate passes`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+      ],
+      behavior = `The unit is verified, as any unit is, with the records [[Reviews.reviewsOf]] gives, so that only the criteria and tests of the entities whose regions hold one of [[Request.foreignEdits]], and those no record carries, are reviewed`,
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `A touched unit whose foreign edits are all fixes is accepted without a run of the compiler, and its unit gate passes`,
+        `elfie.json names no verifier, or --no-verify is given`,
+      ],
+      behavior = [
+        `[[Verdict.sourceMaps]] of its verdict are recorded by [[Maps.record]] in its directory`,
+        `The unit is done in its copy, to merge in state [[UnitState.accepted]]`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `A touched unit whose foreign edits are all fixes is rejected without a run of the compiler, or its unit gate fails`,
+      ],
+      behavior = [
+        `The problems are printed`,
+        `The compiler runs on the unit as its first run, with the problems appended to [[Request.instructions]], and the failure counts toward no retry`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Unit.reason]] of a unit is [[Reason.touched]]`,
+        `One of [[Request.foreignEdits]] of its request is a stub`,
+      ],
+      behavior = `The compiler runs on the unit as on any unit`,
+    })
+    .add({
+      situation = `compile compares an output of a unit with [[SourceMap.text]] of its map`,
+      behavior = [
+        `The unit's own region text is computed as [[SourceMap]] defines it and hashed as SHA-256, as lowercase hex`,
+        `Both sides are read in the unit's directory: the output, and the unit's maps from its map file there, so maps re-derived by [[Acceptance.rederive]] before the comparison count`,
+      ],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Request.rewordedOnly]] of a unit's request is false, [[Unit.reason]] of it is neither [[Reason.dependency]] nor [[Reason.touched]]`,
+      ],
+      behavior = `The compiler runs on the unit as on any unit`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Request.rewordedOnly]] of a unit's first request is true, or [[Unit.reason]] of it is [[Reason.dependency]]`,
+        `An output of the unit, read in its directory before any of its markers is rewritten, has its own region text hash to other than [[SourceMap.text]] of its map, or [[Request.foreignEdits]] of its request is not empty`,
+      ],
+      behavior = `The compiler runs on the unit as on any unit, and no command runs first`,
+    });
+
+  // The unit gate
+  // Decision: after every accepted unit the whole workspace builds and its tests pass or fail only
+  // by reaching a stub, so no unit is ever compiled against code that does not build; a stub is
+  // what a unit writes into a later unit's code when its change would break it and a small fix
+  // would not do.
+  // Decision: lint counts against a unit only on its own lines, because a stub leaves the
+  // parameters of the body it replaced unused, and a linter that rejects unused parameters, as
+  // clippy with -D warnings does, would otherwise fail every unit after the one that stubbed, for
+  // code none of them wrote. A unit's own lines are what it alone answers for in its outputs, so a
+  // stub in another unit's output never fails it, and lines no unit's marker claims, such as a
+  // module declaration in a shared file, count against every unit that has that file as an output.
+  // The final gate lints everything, and no stub is left by then.
+  @acceptanceCriteria
+    .add({
+      situation = [`compile`, `The unit gate runs for a unit`],
+      behavior = `One building progress line for the unit is printed, then the target's build command, its test command with stubs allowed, and its lint command run in the unit's directory, in that order, each only once the one before it succeeded`,
+    })
+    .add({
+      situation = [`compile`, `The unit gate runs a command the target has no line for`],
+      behavior = `The command is skipped and counts as succeeded`,
+    })
+    .add({
+      situation = [`compile`, `The unit gate's build command or its test command fails`],
+      behavior = `The unit gate fails`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `A unit's own lines are the lines of the files of its [[Verdict.sourceMaps]] that lie in no region of another unit's marker, as the map files in the unit's directory give the other units' regions`,
+    })
+    .add({
+      situation = [`compile`, `A line of a command's output names a location`],
+      behavior = `The location is the path and the line number of the first text in the line that reads a path, a colon, and a line number, the path read relative to the directory the command ran in when a file is at that path there, and relative to the unit's directory otherwise`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The unit gate's lint command fails`,
+        `A line of its output names a location that is one of the unit's own lines`,
+      ],
+      behavior = `The unit gate fails`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The unit gate's lint command fails`,
+        `No line of its output names a location that is one of the unit's own lines`,
+      ],
+      behavior = `The lint counts as succeeded for the unit gate`,
+    })
+    .add({
+      situation = [`compile`, `The unit gate passes`],
+      behavior = `The building progress line's message says the gate passed`,
+    })
+    .add({
+      situation = [`compile`, `The unit gate fails`],
+      behavior = `A building progress line says which command failed and its exit code`,
+    })
+    .add({
+      situation = [`compile`, `The unit gate's build or test command fails`],
+      behavior = `The problem of the gate names the operation and the exit code, followed by every line of the command's output that names a location in a file of the target's [[Target.outputDirectory]]`,
+    })
+    .add({
+      situation = [`compile`, `The unit gate's lint command fails it`],
+      behavior = `The problem of the gate names the operation and the exit code, followed by every line of the command's output that names a location that is one of the unit's own lines`,
+    })
+    .add({
+      situation = `compile runs the build, test, lint, or format command of a target`,
+      behavior = [
+        `The command's line runs as elfie_build, elfie_test, elfie_lint, or elfie_format runs it given no filter and no scope: through the platform shell, as [[Process.stream]] runs a command, with no input, in [[Target.outputDirectory]] of the target under the directory it runs for`,
+        `Its environment sets RUN_SCRIPT to [[Target.scriptRunner]] of the target, or to the empty string when that is undefined, and sets TESTS and SCOPE to the empty string`,
+        `It and every process of its group are stopped 30 minutes after it started, if it has not ended`,
+        `It succeeds when its exit code is 0`,
+      ],
+    })
+    .add({
+      situation = `compile runs the test command of a target with stubs allowed`,
+      behavior = `Its environment sets ALLOW_STUBS to 1`,
+    })
+    .add({
+      situation = `compile runs the test command of a target with stubs not allowed`,
+      behavior = `Its environment sets ALLOW_STUBS to the empty string`,
+    });
+
+  // Verifying
+  // Decision: the verifier is a second agent that never writes, run after structural acceptance and
+  // the unit gate, with the source maps accept derived but before [[Maps.record]] records
+  // them, so that every criterion can be pointed at the region of output that claims to satisfy
+  // it and a unit the review rejects stays unrecorded; a compiler judging its own work is not a
+  // check, and a review that names no line of output is not evidence.
+  // Decision: a unit's review asks only about the criteria and tests whose verdict is not carried
+  // by its review records, and an empty review runs no verifier: the verdicts carried are those of
+  // code that has not changed since it was judged satisfied.
+  // Decision: the counts after a review are of what this review judged, so a person sees how much
+  // was reviewed; what was carried is counted apart.
+  @acceptanceCriteria
+    .add({
+      situation = [`compile`, `A unit is verified`],
+      behavior = `The unit's review request is [[Reviews.review]] of the plan, the unit, the source maps [[Acceptance.accept]] derived, the unit's directory, and the records [[Reviews.reviewsOf]] gives for the unit in the unit's directory`,
+    })
+    .add({
+      situation = [`compile`, `A unit is verified`, `[[ReviewRequest.asked]] of the unit's review request is not empty`],
+      behavior = `A verifying progress line is printed before the verifier runs on the unit`,
+    })
+    .add({
+      situation = [`compile`, `A unit is verified`, `[[ReviewRequest.asked]] of the unit's review request is not empty`],
+      behavior = [
+        `The verifier runs once for the unit, as [[Process.stream]] of the command elfie.json names under verifier`,
+        `Its input is [[ReviewRequest.instructions]] of the unit's review request`,
+        `Its directory is the unit's directory`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `A unit is verified`, `[[ReviewRequest.asked]] of the unit's review request is empty`],
+      behavior = [
+        `No verifier runs on the unit`,
+        `One reviewed progress line is printed, counting no reviews and the verdicts of [[ReviewRequest.carried]] as carried`,
+        `The source maps [[Acceptance.accept]] derived for the unit are recorded by [[Maps.record]] in its directory`,
+        `The unit is done in its copy, to merge in state [[UnitState.reviewed]]`,
+      ],
+    })
+    .add({
+      situation = `compile or verify runs the verifier on a unit or for the global review`,
+      behavior = `[[Process.Exit.stdout]] of the run, whole, is read by [[Findings.reviewOf]], with [[ReviewRequest.asked]] of its review request as asked and [[McpData.SessionRecord.reviews]] of what [[McpData.Host.close]] returned for its session as recorded`,
+    })
+    .add({
+      situation = [
+        `compile without --accept`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `A unit's source maps are recorded by [[Maps.record]] after it was verified`,
+      ],
+      behavior = `The unit's review records are recorded in its directory by [[Reviews.recordReviews]]: for each local criterion and test of the unit, sorted by id, the record made from the review of its id in the unit's last verifier run, else its record in [[ReviewRequest.carried]] of the unit's last review request, else none`,
+    })
+    .add({
+      situation = [`compile`, `--no-verify is given, or elfie.json names no verifier`],
+      behavior = `No review record file changes`,
+    })
+    .add({ situation = `compile with --accept`, behavior = `No review record file changes` })
+    .add({
+      situation = [`compile`, `The step is reviewed`],
+      behavior = `The counts of satisfied, violated, and unverifiable are of the reviews of the unit's last verifier run, and a verdict of [[ReviewRequest.carried]] is counted only as carried`,
+    })
+    .add({
+      situation = [`compile or verify`, `[[Findings.reviewOf]] reads the verifier's report on a unit`],
+      behavior = `[[ReviewReport.reviews]] is [[Files.write]] as [[Json.stringify]] of it in [[Json.Layout.readable]] to elfie-requests/<name>.reviews.json under the root, with <name> the unit's request name`,
+    })
+    .add({
+      situation = [`compile`, `[[Findings.reviewOf]] reads the verifier's report on a unit`],
+      behavior = `One reviewed progress line follows`,
+    })
+    .add({
+      situation = [`compile`, `A unit is verified`],
+      behavior = `The unit's map file changes only after its review holds no violated review and no unplaced violation, or after a review request that asked nothing`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The verifier's report on a unit holds no violated review`,
+        `[[ReviewReport.unplaced]] of it is empty`,
+      ],
+      behavior = [
+        `The source maps [[Acceptance.accept]] derived for the unit are recorded by [[Maps.record]] in its directory`,
+        `The unit is done in its copy, to merge in state [[UnitState.reviewed]]`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `The verifier's report on a unit holds an unverifiable review`],
+      behavior = `The unverifiable review never rejects the unit`,
+    })
+    .add({
+      situation = [`compile`, `The verifier's report on a unit holds a violated review`],
+      behavior = `The unit is rejected with one problem per violated review reading failure at, a space, [[Review.file]], a colon, [[Review.line]], a colon, a space, [[Review.note]], a space, and [[Review.evidence]] in parentheses`,
+    })
+    .add({
+      situation = [`compile`, `[[ReviewReport.unplaced]] of the verifier's report on a unit is not empty`],
+      behavior = `The unit is rejected with one problem per unplaced line reading failure at a criterion the verifier did not name, a colon, a space, the note of the line, a space, and its evidence in parentheses`,
+    })
+    .add({
+      situation = [`compile`, `The verifier's report on a unit holds a violated review or an unplaced violation`],
+      behavior = [`The problems are printed`, `The unit's state is [[UnitState.planned]] while it runs again`],
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The first verifier's report on a unit in the compile holds a violated review or an unplaced violation`,
+      ],
+      behavior = `The unit is run once more with the problems appended to [[Request.instructions]], even when it was already run once more for a rejected outcome`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A unit run once more because the verifier's report on it held a violated review or an unplaced violation is accepted by [[Acceptance.accept]] and passes its unit gate`,
+      ],
+      behavior = `The verifier is run on it once more, with [[Reviews.review]] of the plan, the unit, the source maps [[Acceptance.accept]] derived for its new outputs, the unit's directory, and records: none when the first run's report held an unplaced violation, and otherwise the records the first review request was made with, each review of the first run replacing the record of its id with the record made from it`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The second verifier's report on a unit in the compile holds a violated review or an unplaced violation`,
+      ],
+      behavior = `The unit is rejected after its retries, and its source maps are not recorded`,
+    })
+    .add({
+      situation = [`compile or verify`, `[[ReviewReport.missing]] of the verifier's report on a unit is not empty`],
+      behavior = `One line under its reviewed line names each missing id as not reviewed, and each counts as unverifiable in the counts`,
+    })
+    .add({
+      situation = [
+        `compile or verify`,
+        `The first run of the verifier on a unit ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
+      ],
+      behavior = `The verifier is run once more on the unit`,
+    })
+    .add({
+      situation = [
+        `compile or verify`,
+        `The verifier is run once more on a unit because its first run ended without every verdict`,
+      ],
+      behavior = `The review request of the second run is made as the first was, but with the records the first was made with, each review of the first run whose status is satisfied replacing the record of its id with the record made from it`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A run of the verifier on a unit ends with at least one review in [[ReviewReport.reviews]], and with [[ReviewReport.missing]] empty or with a line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED and [[Process.Exit.code]] other than -1`,
+        `[[ReviewReport.problems]] of the run is not empty`,
+      ],
+      behavior = `The problems are printed under its reviewed line`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `A run of the verifier on a unit ends with at least one review in [[ReviewReport.reviews]], and with [[ReviewReport.missing]] empty or with a line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED and [[Process.Exit.code]] other than -1`,
+        `[[ReviewReport.problems]] of the run is not empty`,
+      ],
+      behavior = `The run stands, and the verifier is not run again for its problems`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The second run of the verifier on a unit ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
+      ],
+      behavior = `Its problems are printed as a failed progress line`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The second run of the verifier on a unit ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
+      ],
+      behavior = `The unit is verified with the reviews parsed from that run, as if its report had been complete`,
+    })
+    .add({
+      situation = [`compile`, `--no-verify is given, or elfie.json names no verifier`],
+      behavior = [`No verifier runs`, `No reviews file is written`],
+    })
+    .add({
+      situation = [
+        `compile without --dry-run`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `A review record file under elfie-compile/reviews/<target> for a planned target belongs to no unit of the plan`,
+      ],
+      behavior = `The review record file is removed by [[Files.remove]] in the target's working directory before any unit runs`,
+    });
+
+  // The final gate
+  // Decision: the final gate is what the root holds to: no stub, the whole build, every test without
+  // stubs allowed, lint, and the format check, and every unit of the change set accepted and
+  // reviewed. A stub is left only when the unit whose code it sits in was never compiled again,
+  // which acceptance does not let a compile end with, so a stub found here is a defect to report,
+  // not a unit to run again.
+  // Decision: with --no-verify, or with no verifier named, nothing is reviewed and the outputs still
+  // reach the root, as before: the final gate then requires every unit accepted and none reviewed,
+  // and no global review runs.
+  // Decision: the final gate looks for stub lines, read as accept reads them, not for every line
+  // holding the stub marker, because a compiler's own tests and fixtures quote the marker inside
+  // strings; a stub line is a whole line, so a quoted one is never mistaken for a stub.
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `compile`,
+        `Every planned unit of every change set of the compile is accepted or reviewed`,
+        `The compile did not stop`,
+      ],
+      behavior = `The final gate runs on each change set, in the order of [[Workspace.targets]], each after one finalGate progress line for its target`,
+    })
+    .add({
+      situation = `The final gate runs on a change set`,
+      behavior = `Every line of a file of [[Files.list]] of the target's [[Target.outputDirectory]] in the copy, recursively skipping every directory named target, .git, or node_modules, that is a stub line is one problem naming the file's path relative to the copy and the line number`,
+    })
+    .add({
+      situation = `The final gate runs on a change set`,
+      behavior = `A stub line is a line that, with the white space before and after it removed, reads the stub line of the target's language, the value the setters of [[Target.declaration]] give stubLine, read as [[Target.markerComment]] is the value they give markerComment, with \{{unit}} and \{{reason}} as any text`,
+    })
+    .add({
+      situation = [
+        `The final gate runs on a change set`,
+        `No setter of [[Target.declaration]] of its target gives stubLine a value`,
+      ],
+      behavior = `No line is a stub line`,
+    })
+    .add({
+      situation = [`The final gate runs on a change set`, `No line of its outputs is a stub line`],
+      behavior = `The target's build, test, lint, and format commands run in the copy, in that order, the test command with stubs not allowed, each only once the one before it succeeded`,
+    })
+    .add({
+      situation = [`The final gate runs a command`, `The target has no line for it`],
+      behavior = `The command is skipped and counts as succeeded`,
+    })
+    .add({
+      situation = `A command the final gate runs fails`,
+      behavior = `It is one problem naming the operation and the exit code, followed by every line of the command's output that names a location in a file of the target's [[Target.outputDirectory]]`,
+    })
+    .add({
+      situation = [`The final gate runs on a change set`, `elfie.json names a verifier`, `--no-verify is not given`],
+      behavior = `Every unit of [[ChangeSet.units]] whose state is not [[UnitState.reviewed]] is one problem naming the unit`,
+    })
+    .add({
+      situation = [`The final gate runs on a change set`, `elfie.json names no verifier, or --no-verify is given`],
+      behavior = `Every unit of [[ChangeSet.units]] whose state is neither [[UnitState.accepted]] nor [[UnitState.reviewed]] is one problem naming the unit`,
+    })
+    .add({ situation = `The final gate on a change set has no problem`, behavior = `It passes` })
+    .add({
+      situation = `The final gate on a change set has a problem`,
+      behavior = [
+        `It fails, and its problems follow its finalGate line`,
+        `No final gate after it, no global review, and no merge runs`,
+        `The root takes no change set of the compile, and every change set is kept`,
+      ],
+    });
+
+  // Global review
+  // Decision: a global criterion or test is reviewed once for the whole program, after every final
+  // gate passed and before the root takes anything, because every unit may answer for it and no
+  // single unit's review sees them all.
+  // Decision: the global review is run in a copy, because the code it judges is what the root is
+  // about to take. With change sets of more than one target, it runs in the copy of the last of
+  // them, with every other change set's own files that differ from their base written into it
+  // first, so it reads every output of the compile in one directory.
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `compile`,
+        `Every final gate of the compile passed, or the compile planned no unit`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `A change set of the compile is to be merged, or the SHA-256 of the ids of [[Program.criteria]] and [[Program.tests]] of [[Plan.program]] differs from [[McpData.GlobalReview.requirements]] of the last [[McpData.GlobalReview]]`,
+      ],
+      behavior = `A globalVerifying progress line is printed before the verifier runs for the global review`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `Every final gate of the compile passed, or the compile planned no unit`,
+        `elfie.json names a verifier`,
+        `--no-verify is not given`,
+        `A change set of the compile is to be merged, or the SHA-256 of the ids of [[Program.criteria]] and [[Program.tests]] of [[Plan.program]] differs from [[McpData.GlobalReview.requirements]] of the last [[McpData.GlobalReview]]`,
+      ],
+      behavior = [
+        `The verifier runs once for the global review, as [[Process.stream]] of the command elfie.json names under verifier`,
+        `Its input is [[ReviewRequest.instructions]] of [[Reviews.globalReview]] of the plan and every source map: those the map files of each change set's copy hold for its units, and the recorded ones of every other unit`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `The verifier runs for the global review`, `The compile works one change set`],
+      behavior = `Its directory is that change set's copy`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `The verifier runs for the global review`,
+        `The compile works change sets of more than one target`,
+      ],
+      behavior = `Its directory is the copy of the change set whose target is last in [[Workspace.targets]] among them, into which every other change set's own files that differ from its base, were added, or were removed are written or removed first`,
+    })
+    .add({
+      situation = [`compile`, `The verifier runs for the global review`, `The compile works no change set`],
+      behavior = `Its directory is the root`,
+    })
+    .add({
+      situation = [`compile or verify`, `[[Findings.reviewOf]] reads the verifier's report on the global review`],
+      behavior = `A [[McpData.GlobalReview]] holding that report and the SHA-256 of the global ids reviewed is [[Files.write]] to elfie-requests/global.reviews.json under the root`,
+    })
+    .add({
+      situation = [`compile`, `[[Findings.reviewOf]] reads the verifier's report on the global review`],
+      behavior = `One globalReviewed progress line follows`,
+    })
+    .add({
+      situation = [`compile`, `A global review of the compile holds a violated review`],
+      behavior = `One problem per violated review is printed, reading failure at, a space, global, a colon, a space, [[Review.note]], a space, and [[Review.evidence]] in parentheses`,
+    })
+    .add({
+      situation = [`compile`, `A global review of the compile holds a violated review`],
+      behavior = `Every unit whose markers answered for a violated review is planned with reason [[Reason.violated]] in its target's change set, at its place in [[Plan.units]] order, its state [[UnitState.planned]], and every other unit of the change set keeps its state`,
+    })
+    .add({
+      situation = [`compile`, `The first global review of the compile holds a violated review`],
+      behavior = `The units it planned run again in the same compile, as any planned unit does, then the final gates run again, and then the global review runs once more`,
+    })
+    .add({
+      situation = [`compile`, `The second global review of the compile holds a violated review`],
+      behavior = [
+        `The compile stops`,
+        `The root takes no change set of the compile, and every change set is kept`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `The second global review of the compile holds a violated review`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = [`compile`, `The second global review of the compile holds a violated review`],
+      behavior = `The next compile plans the units whose markers answered for a violated review with reason violated`,
+    })
+    .add({
+      situation = [`compile`, `A global review holds no violated review`],
+      behavior = `The global review passes`,
+    })
+    .add({
+      situation = `No global criterion or test exists`,
+      behavior = [`No global review runs`, `elfie-requests/global.reviews.json is not written`],
+    });
+
+  // Merging
+  // Decision: the root takes every change set of a compile at once, after every final gate and the
+  // global review passed, so the root never holds part of a compile, and a file another hand
+  // changed in the root since the copy was made keeps that change.
+  @acceptanceCriteria
+    .add({
+      situation = [
+        `compile`,
+        `Every final gate of the compile passed`,
+        `The global review passed, or none runs`,
+      ],
+      behavior = `One merging progress line is printed for each change set, and then the root takes every change set of the compile`,
+    })
+    .add({
+      situation = `The root takes a change set`,
+      behavior = `Every one of its own files that differs from its base, was added, or was removed is merged into the root`,
+    })
+    .add({
+      situation = [`The root takes a change set`, `The root is a git repository`],
+      behavior = `A file the change set added is merged only when git would track it, as [[Process.run]] of git ls-files --others --exclude-standard lists it in the copy`,
+    })
+    .add({
+      situation = `The root takes a change set`,
+      behavior = `A path of the base counts as removed only when nothing is at that path in the copy`,
+    })
+    .add({
+      situation = [`A file is merged into the root`, `The root's file still holds what the base holds`],
+      behavior = `The root's file becomes the copy's, keeping whether it is executable, or is removed when the copy removed it`,
+    })
+    .add({
+      situation = [`A file is merged into the root`, `The root's file was changed since the base was taken`],
+      behavior = `The root's file holds the changes of both: the three-way merge of the root's file and the copy's against the base, as [[Process.run]] of git merge-file gives it`,
+    })
+    .add({
+      situation = `The root takes the change sets of a compile`,
+      behavior = `No file of the root changes until every file of every change set has merged without a conflict`,
+    })
+    .add({
+      situation = `A file of a change set cannot be merged into the root without a conflict`,
+      behavior = [
+        `No file of the root changes`,
+        `A problem naming the file follows the merging line`,
+        `Every change set is kept`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `The compile works change sets`],
+      behavior = `No map file and no review record file in the root changes but through the root taking a change set`,
+    })
+    .add({
+      situation = `The root took a change set`,
+      behavior = `Its base under elfie-compile/cache is not left, as its file and its copy are not`,
+    });
+
+  @test(
+    {
+      input = [
+        Invocation@like(
+          `compile --dry-run, with the root as a root with one target that global's targets hold and one file`,
+        ),
+      ],
+      expect = number@like(`0, after printing one unit with reason fresh`),
+    },
+    {
+      input = [Invocation@like(`compile --target wasm, with the root as a root with the one target rust`)],
+      expect = number@like(`2, after a usage message naming rust, with nothing compiled`),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a root with one target, def/a.lfy declaring A with a criterion on line 3, a compiler that writes an output with a marker for A and ends with ELFIE: DONE, and a verifier that writes one review of def/a.lfy line 3 for A with status violated, evidence crates/a/src/a.rs:4-6, and note returns 0 for an empty list, then ELFIE: REVIEWED`,
+        ),
+      ],
+      expect = number@like(
+        `1, after the problem failure at def/a.lfy:3: returns 0 for an empty list (crates/a/src/a.rs:4-6), the compiler run a second time with it, the unit rejected, the root unchanged, and the change set kept in elfie-compile/cache/changes/rust.json with a in state rejected`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a git root with one target rust, def holding a.lfy and b.lfy, both recorded in elfie-compile/maps/rust, a.lfy edited since, and a compiler and verifier that accept a`,
+        ),
+      ],
+      expect = number@like(
+        `0, after compiling a alone in a copy under elfie-compile/cache/changes/rust, with elfie-compile/maps/rust/a.json rewritten in the root once the copy was merged, b.json byte for byte as it was, and no change set left`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile --dry-run, with the root as a root with one target rust whose maps are all recorded and elfie-compile/cache deleted`,
+        ),
+      ],
+      expect = number@like(`0, after printing every unit as up to date`),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a git root with one target rust whose build and test command lines both exit 0, a compiler and a verifier that would each fail the test if run, def holding a.lfy using ./b and b.lfy, both recorded in elfie-compile/maps/rust, with the dependency hash a.json records for b differing from the hash of b's interface now`,
+        ),
+      ],
+      expect = number@like(
+        `0, after a building line for a and an accepted line, with neither the compiler nor the verifier run, a finalGate and a merging line, elfie-compile/maps/rust/a.json in the root recording b's interface hash as it is now, and no review record file changed`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a git root with one target rust whose build and test command lines both exit 0 and whose test line exits 0 with ALLOW_STUBS set when only stubs fail, def holding b.lfy and a.lfy using ./b, both recorded and a member added to a data of b.lfy since, which changes b's interface, a compiler whose run on b changes a function's signature and replaces the body of a's caller with a stub line naming b, and whose run on a writes the caller again, and a verifier that finds nothing violated`,
+        ),
+      ],
+      expect = number@like(
+        `0, after b merged and a stubbed line naming a, then a, which waited for b, compiled with reason dependency and its request listing b's stub, then a finalGate line with no problem, a merging line, and both units' outputs and maps in the root`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as the same root, after a compile that accepted and reviewed b and then stopped when a's compiler was blocked, with neither definition edited since`,
+        ),
+      ],
+      expect = number@like(
+        `0, after a resuming line keeping b and running a again, with no compiler run on b, then a's run, the final gate, and the merge`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a git root with one target rust whose build and test command lines exit 0 and whose lint command line exits 1 printing one warning at a line of b's output, def holding a.lfy and b.lfy, both recorded and a.lfy edited since, and a compiler and a verifier that accept a`,
+        ),
+      ],
+      expect = number@like(
+        `1, after a's building line saying its gate passed, a finalGate line with one problem naming the lint operation, its exit code 1, and the warning's line, the root unchanged, and the change set kept with a in state reviewed`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile --jobs 2, with the root as a git root with one target rust whose build and test command lines exit 0, def holding a.lfy, b.lfy, and c.lfy using ./a, all recorded, a.lfy, b.lfy, and c.lfy edited since in their fn bodies only, which leaves their interfaces as they were, and a compiler and a verifier that accept every unit`,
+        ),
+      ],
+      expect = number@like(
+        `0, after a and b started at once, with started lines reading 1 of 2 running and 2 of 2 running, then c, which waits for nothing since a's interface is the one c's outputs record, started once one of them was done, three merged lines in the order a, b, c, a finalGate line, and a merging line`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile --dry-run, with the root as a root with one target rust, def/a.lfy declaring A and def/b.lfy declaring f, which a.lfy declared when its outputs were recorded, src/a.rs holding a.lfy:A and two markers naming a.lfy:f`,
+        ),
+      ],
+      expect = number@like(
+        `0, after a line reading relocate rust f def/a.lfy into def/b.lfy 2 markers, then a line for a with reason changed and one for b with reason changed, and no file written`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as the same root as a git repository, with a compiler that changes nothing and ends with ELFIE: DONE, and a verifier that finds nothing violated, and a review record for f's criterion in a.json under elfie-compile/reviews/rust`,
+        ),
+      ],
+      expect = number@like(
+        `0, after a relocated line for rust counting one entity, two markers, and one review record, b's request saying f was relocated into it from def/a.lfy and its code is kept as it is, b's review carrying the verdict on f's criterion, and the root's src/a.rs naming def/b.lfy:f with elfie-compile/maps/rust/b.json and elfie-compile/reviews/rust/b.json written`,
+      ),
+    },
+  );
+}
+
+/// invocation: the command line, as parse read it, naming the verify command
+fn verify(invocation: Invocation): `Review generated outputs against their criteria and tests without compiling` => number {
+  // Decision: verify is compile without the compiler: the same plan, the same review request, the
+  // same verifier, so a person can ask for an opinion on outputs already recorded.
+  @acceptanceCriteria
+    .add({
+      situation = `verify`,
+      behavior = `The outputs reviewed are those of [[Relocated.sourceMaps]] of [[Acceptance.relocate]] of [[Generation.plan]] made from [[Maps.sourceMapsOf]] [[Loader.load]] of the root, with the root as its directory, and every plan verify makes is made from those maps`,
+    })
+    .add({
+      situation = `verify`,
+      behavior = `Nothing the relocation gives is written`,
+    })
+    .add({
+      situation = `verify`,
+      behavior = [
+        `Nothing is compiled`,
+        `No output is written`,
+        `Nothing under elfie-compile is recorded, moved, or removed`,
+      ],
+    })
+    .add({
+      situation = [`verify`, `A diagnostic of the loaded program is an error`],
+      behavior = `Every error diagnostic is printed`,
+    })
+    .add({
+      situation = [`verify`, `A diagnostic of the loaded program is an error`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = [`verify`, `No diagnostic of the loaded program is an error`, `Stems are given`],
+      behavior = `The units reviewed are those the stems given name, through [[Generation.plan]] made with every stem given as a requested unit`,
+    })
+    .add({
+      situation = [`verify`, `No diagnostic of the loaded program is an error`, `No stem is given`],
+      behavior = `Every unit whose [[Unit.outputs]] is not empty is reviewed, through [[Generation.plan]] made with all of them requested`,
+    })
+    .add({
+      situation = [`verify`, `[[Plan.problems]] is not empty`],
+      behavior = `[[Plan.problems]] is neither printed nor counted in the exit code, and the review goes on`,
+    })
+    .add({
+      situation = `verify with --target`,
+      behavior = `Only units of the target --target names are reviewed`,
+    })
+    .add({
+      situation = [`verify`, `A stem given names a unit whose [[Unit.outputs]] is empty`],
+      behavior = `The stem is printed as having nothing to review`,
+    })
+    .add({
+      situation = [`verify`, `A stem given names a unit whose [[Unit.outputs]] is empty`],
+      behavior = `The unit is not reviewed, and the exit code does not change for it`,
+    })
+    // Decision: verify never changes a review record, so what it asks about is what the last compile
+    // left unreviewed, and --full asks about everything.
+    .add({
+      situation = [`verify without --full`, `A stem is given, or --global is not given`],
+      behavior = `The review request of a unit is [[Reviews.review]] of the plan, the unit, the source maps, the root, and, for the unit of one of [[Relocated.reviews]] of verify's relocation, the records of that [[UnitReviews]], and otherwise the records [[Reviews.reviewsOf]] gives for the unit`,
+    })
+    .add({
+      situation = [`verify with --full`, `A stem is given, or --global is not given`],
+      behavior = `The review request of a unit is [[Reviews.review]] of the plan, the unit, the source maps, the root, and no records`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `A stem is given, or --global is not given`],
+      behavior = `The verifier runs on each requested unit whose review request has a [[ReviewRequest.asked]] that is not empty`,
+    })
+    .add({
+      situation = [
+        `verify`,
+        `elfie.json names a verifier`,
+        `A unit is requested`,
+        `[[ReviewRequest.asked]] of its review request is empty`,
+      ],
+      behavior = `No verifier runs on the unit, and its counts line counts no reviews`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `A stem is given, or --global is not given`],
+      behavior = `Units are reviewed one at a time, in [[Plan.units]] order`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `The verifier runs on a unit`],
+      behavior = [
+        `The run is one [[Process.stream]] of the command elfie.json names under verifier`,
+        `Its input is [[ReviewRequest.instructions]] of the unit's review request`,
+        `Its directory is the root`,
+      ],
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `No stem is given, or --global is given`],
+      behavior = `After any units are reviewed, the verifier runs once for the global review`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `The verifier runs for the global review`],
+      behavior = [
+        `The run is one [[Process.stream]] of the command elfie.json names under verifier`,
+        `Its input is [[ReviewRequest.instructions]] of [[Reviews.globalReview]] of the plan and the source maps`,
+        `Its directory is the root`,
+      ],
+    })
+    .add({ situation = [`verify with --global`, `No stem is given`], behavior = `No unit is reviewed` })
+    .add({ situation = `verify with --json`, behavior = `Each [[Review]] is one result` })
+    .add({
+      situation = `verify without --json`,
+      behavior = `Each review is printed as its status, a space, [[Review.file]], a colon, [[Review.line]], a space, [[Review.entity]], a colon, a space, and [[Review.note]]`,
+    })
+    .add({
+      situation = `verify without --json`,
+      behavior = `After each unit one line gives the counts of satisfied, violated, and unverifiable`,
+    })
+    .add({
+      situation = [`verify without --json`, `[[ReviewRequest.carried]] of a unit's review request is not empty`],
+      behavior = `Its counts line ends with a comma, a space, and [[Style.tally]] of the count of [[ReviewRequest.carried]] and the word carried in muted`,
+    })
+    .add({
+      situation = `verify`,
+      behavior = `A carried verdict is never printed as a review, and is counted only as carried`,
+    })
+    .add({
+      situation = `verify without --json`,
+      behavior = [
+        `A review's status is painted in [[Style.statusTone]] of it and padded with [[Style.padded]] to the longest status of [[ReviewStatus]]`,
+        `A review's file and line are painted subject`,
+        `A review's entity and note are plain`,
+      ],
+    })
+    .add({
+      situation = `verify without --json`,
+      behavior = `The counts line after each unit begins with [[Style.tally]] of the satisfied in success, the violated in failure, and the unverifiable in warning, separated by a comma and a space`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `A review is violated`],
+      behavior = `Returns [[ExitCode.problems]]`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names a verifier`, `The verifier could not be started`],
+      behavior = `Returns [[ExitCode.failure]]`,
+    })
+    .add({
+      situation = [
+        `verify`,
+        `elfie.json names a verifier`,
+        `No review is violated, and the verifier was started or no review request asked anything`,
+      ],
+      behavior = `Returns [[ExitCode.success]]`,
+    })
+    // Without a verifier, the review requests are for a verifier run by hand.
+    .add({
+      situation = [`verify`, `elfie.json names no verifier`],
+      behavior = `The review request of each requested unit is [[Files.write]] to elfie-requests/<name>.review.md under the root, with <name> the unit's request name`,
+    })
+    .add({
+      situation = [`verify`, `elfie.json names no verifier`],
+      behavior = `Returns [[ExitCode.success]]`,
+    });
+
+  @test(
+    {
+      input = [
+        Invocation@like(
+          `verify a, with the root as a root with one target, def/a.lfy declaring A with a criterion on line 3, the output for a recorded in elfie-compile/maps/rust/a.json, and a verifier that writes one review of def/a.lfy line 3 for A with status violated and note returns 0 for an empty list, then ELFIE: REVIEWED`,
+        ),
+      ],
+      expect = number@like(
+        `1, after printing violated def/a.lfy:3 A: returns 0 for an empty list, with no compiler run`,
+      ),
+    },
+  );
+}

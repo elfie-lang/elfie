@@ -1,0 +1,455 @@
+use "../generation/data";
+use "../generation/main" as Generation;
+use "../generation/accept" as Acceptance;
+use "../generation/changes" as Changes;
+use "../generation/maps" as Maps;
+use "../generation/request" as Requests;
+use "../generation/review" as Reviews;
+use "../generation/previous" as Recovery;
+use "../grammar/main" as Grammar;
+use "../model/data";
+use "../model/main" as Binder;
+use "../query/main" as Query;
+use "../workspace/data";
+use "./data";
+use "./traits";
+use "elfie/system/file" as Files;
+use "elfie/system/path";
+
+// Decision: the line below is the agent server's own contract for a diagnostic. The CLI states its
+// own line for check; the two surfaces are kept apart on purpose and happen to agree.
+/// file: a path relative to the root; every file when left out
+fn problems(session: Session, file?: string) is tool: `The problems of the program, or of one file: what the compiler, an editor, or a check would report` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `One line per [[Query.diagnosticsOf]] reading the file, a colon, the line, a colon, the column, a colon, a space, the stage, a space, the severity, a colon, a space, and the message`,
+    })
+    .add({
+      situation = `[[Query.diagnosticsOf]] gives no diagnostic for the program, or for [[file]] when it is given`,
+      behavior = `The text says no problems`,
+    });
+}
+
+/// name: an identifier, or an owner's identifier, a dot, and a member's name; a file path and a colon before it limits the search to that file
+fn find(session: Session, name: string) is tool: `Where things with a name are declared` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `One line per entity of [[Query.find]] reading the kind, the identifier, the file, and the line`,
+    })
+    .add({
+      situation = `An entity of [[Query.find]] for [[name]] has a definition`,
+      behavior = `Its line ends with the definition, after the kind, the identifier, the file, and the line`,
+    })
+    .add({ situation = `[[Query.find]] finds no entity for [[name]]`, behavior = `The text says so` })
+    .add({ situation = `[[Query.find]] finds no entity for [[name]]`, behavior = `The text suggests elfie_outline` });
+}
+
+/// name: as elfie_find takes it
+fn entity(session: Session, name: string) is tool: `Everything known about the things with a name: definition, type, documentation, traits, members, criteria, tests, references, and source` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `For each entity of [[Query.find]], in order: the fields of [[Query.hoverOf]] with a heading each; the identifier of each trait in [[Entity.traits]]; each member's name, definition, and type; each of [[Entity.tests]] as input and expectation; the count of [[Binder.usagesOf]] its symbol with the file and line of each; then [[Query.sourceOf]] in a fenced block`,
+    })
+    .add({
+      situation = `[[Query.find]] finds more than one entity for [[name]]`,
+      behavior = `Each is separated by a rule and headed by its file`,
+    });
+}
+
+/// name: as elfie_find takes it
+fn references(session: Session, name: string) is tool: `Every place things with a name are used` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `For each entity of [[Query.find]], one line per [[Binder.usagesOf]] its symbol reading the file, the line, the column, and the text of that line`,
+    });
+}
+
+/// file: a path relative to the root
+fn outline(session: Session, file: string) is tool: `The declarations of one file, nested as written` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Query.outlineOf]] as an indented list: two spaces per level, then the kind, the name, and the line`,
+    })
+    .add({
+      situation = `[[file]] is not in the program`,
+      behavior = `An error saying so and listing the files that are`,
+    });
+}
+
+fn grammar(session: Session) is tool: `The grammar of Elfie: every terminal and every rule as EBNF, for an agent writing or reading Elfie` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Grammar.terminalDocument]], a blank line, then [[Grammar.grammarDocument]]`,
+    });
+}
+
+// Decision: a hosted session shows the plan its compile made, because only the compile knows which
+// units were touched by the units accepted before them; a plan made again from the files could not
+// give a unit the reason touched.
+/// target: the identifier of one target; every target when left out
+fn units(session: Session, target?: string) is tool: `The units the compiler would produce, in the order they are compiled, and why each needs generating` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      situation = `[[Session.binding]] is undefined`,
+      behavior = `The plan shown is [[Generation.plan]] of the workspace with [[Maps.sourceMapsOf]] the workspace, and with the violated units of the last [[GlobalReview]] as its violated units`,
+    })
+    .add({
+      situation = `[[Session.binding]] is set`,
+      behavior = `The plan shown is [[Binding.plan]]`,
+    })
+    .add({
+      behavior = `The text lists the problems, then the moves, then the units in [[Plan.units]] order`,
+    })
+    .add({
+      behavior = `Each of [[Plan.problems]] is one line, as [[problems]] spells a diagnostic of stage generation and severity error at its node`,
+    })
+    .add({
+      behavior = `Each of [[Plan.moves]] is one line reading the word move, the target, the stem of [[Move.origin]], the word into, the stem of [[Move.into]], the identifiers of [[Move.entities]] in brackets, the word for, and [[Move.cause]]`,
+    })
+    .add({
+      behavior = `Each unit is one line reading the target, [[Unit.stem]], the reason or up to date, and the stems of its dependencies`,
+    })
+    .add({
+      situation = `[[target]] is set and is a known target`,
+      behavior = `Only that target's problems, moves, and units are listed`,
+    })
+    .add({
+      situation = `[[target]] is set and is not a known target`,
+      behavior = `An error naming the known targets`,
+    });
+}
+
+/// unit: the stem of a unit, as elfie_units lists it
+/// target: the identifier of the unit's target; the only target when left out
+fn request(session: Session, unit: string, target?: string) is tool: `The full request for one unit: what to produce, where, every criterion to satisfy, the edits other units made to its outputs, the later units it may edit, and how to report` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      situation = `[[Session.binding]] is undefined, or its [[Binding.role]] is verifier`,
+      behavior = `[[Request.instructions]] of [[Requests.request]] for the unit, with the existing outputs read from disk, no previous source, no foreign edits, and hosted false`,
+    })
+    .add({
+      situation = [
+        `[[Session.binding]] is set and its [[Binding.role]] is compiler`,
+        `The unit [[unit]] names is [[Binding.unit]]`,
+      ],
+      behavior = `[[Request.instructions]] of [[Binding.request]], the request the session's compiler run was given`,
+    })
+    .add({
+      situation = `No unit of the target has [[unit]] as its stem, or the target is ambiguous`,
+      behavior = `An error saying which`,
+    })
+    .add({
+      situation = [`[[Session.binding]] is set`, `The unit [[unit]] names is not [[Binding.unit]]`],
+      behavior = `An error saying the session acts only on its own unit, naming it or the global review, and no request`,
+    })
+    .add({
+      situation = `[[Plan.problems]] of the plan elfie_units shows is not empty`,
+      behavior = `An error listing each of [[Plan.problems]], and no request`,
+    });
+}
+
+/// unit: the stem of a unit, as elfie_units lists it
+/// target: the identifier of the unit's target; the only target when left out
+fn check(session: Session, unit: string, target?: string) is tool: `Whether the outputs on disk satisfy the request for one unit, and what is wrong when they do not` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[Acceptance.accept]] of the unit against its request and the files under [[Target.outputDirectory]] that carry a [[Marker]] for the unit's file, read from disk, with the source maps recorded for the target's other units as recorded, with every other file under [[Target.outputDirectory]], read from disk, as elsewhere, and with [[Session.touches]] as touches`,
+    })
+    .add({
+      situation = `[[Session.binding]] is set and its [[Binding.role]] is compiler`,
+      behavior = `[[Acceptance.accept]] is given [[Binding.before]] as before`,
+    })
+    .add({
+      situation = [
+        `[[Session.binding]] is set and its [[Binding.role]] is compiler`,
+        `The unit [[unit]] names is [[Binding.unit]]`,
+      ],
+      behavior = `Its request is [[Binding.request]]`,
+    })
+    .add({
+      situation = `[[Session.binding]] is undefined`,
+      behavior = `Its request is the one elfie_request gives for the unit`,
+    })
+    // Decision: a session that is not hosted knows no run, so it cannot tell another unit's code from
+    // what a run changed in it, and judges no foreign edit.
+    .add({
+      situation = `[[Session.binding]] is undefined`,
+      behavior = `[[Acceptance.accept]] is given no before`,
+    })
+    .add({
+      situation = `[[Acceptance.accept]] of the unit accepts it`,
+      behavior = `The text says so and lists the outputs`,
+    })
+    .add({
+      situation = [`[[Acceptance.accept]] of the unit accepts it`, `[[Verdict.foreignEdits]] is not empty`],
+      behavior = `After the outputs, the text gives one line per [[ForeignEdit]] of [[Verdict.foreignEdits]], in their order, reading its [[ForeignEdit.kind]], a space, in, a space, its [[ForeignEdit.owner]], a space, its [[ForeignEdit.path]], a colon, the [[Marker.outputLine]] of its [[ForeignEdit.region]], a space, and the lines it changes as [[ForeignEdit]] counts them`,
+    })
+    .add({
+      situation = `[[Acceptance.accept]] of the unit rejects it`,
+      behavior = `An error listing [[Verdict.problems]]`,
+    })
+    .add({
+      situation = [`[[Session.binding]] is set`, `The unit [[unit]] names is not [[Binding.unit]]`],
+      behavior = `An error saying the session acts only on its own unit, naming it, and nothing is checked`,
+    });
+}
+
+// Decision: the source maps the tools below read are [[Maps.sourceMapsOf]] the workspace, as
+// elfie_units reads them, so what a tool answers for an entity or an id is what the last acceptance
+// recorded in elfie-compile/maps. In a session [[host]] serves for a verifier, the source maps its
+// review was made with stand in for the recorded maps of those units, so the verifier reads the
+// outputs it is judging. In a session it serves for a compiler, the maps of its own unit and of the
+// units of its reach are read from the markers their output files hold now, so the compiler sees
+// the regions it has just edited where they are.
+// Decision: an output file named by its path, and every line elfie_search finds, are read with the
+// markers the file holds when the call arrives, read as acceptance reads them, because a compiler
+// that has just edited a file must see its regions where they are now, not where the last
+// acceptance recorded them. The markers are read mechanically, never guessed from the code.
+// Decision: what a caller wants of the regions is said by text: their code, or only where they are,
+// which outlines a file in a few lines however long it is.
+/// name: as elfie_find takes it, a requirement id, or the path of an output file relative to the root
+/// target: the identifier of one target; every target when left out
+/// text: whether each region's line is followed by its code; false gives only where the regions are, an outline of an output file
+fn output(session: Session, name: string, target?: string, text: boolean = true) is tool: `Where generated code is, with its text or without it: every region that came from one entity, that answers for one criterion or test, or that one output file holds` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `An output file is a file under [[Target.outputDirectory]] of a target, limited to [[target]] when it is set, whose [[Path.extension]] is among [[Target.extensions]] of that target, under [[Binding.directory]], or under [[Workspace.root]] when [[Session.binding]] is undefined`,
+    })
+    // Decision: build and version-control directories are never outputs, though a target's output
+    // directory may hold them; walking them would be slow and would find generated or vendored code.
+    .add({
+      behavior = `A file under a directory named target, .git, or node_modules, at any depth below [[Target.outputDirectory]], is no output file`,
+    })
+    .add({
+      situation = `[[name]] is not the path of an output file`,
+      behavior = `Every region is read from [[Maps.sourceMapsOf]] the workspace, limited to [[target]] when it is set`,
+    })
+    .add({
+      behavior = `Each region is a line reading the output path, a colon, [[Marker.outputLine]], a dash, [[Marker.end]], a space, and [[Marker.entity]]`,
+    })
+    .add({
+      situation = `The [[Marker]] of a region names a requirement`,
+      behavior = `The line of the region ends with [[Marker.requirement]], after [[Marker.entity]]`,
+    })
+    .add({
+      situation = `[[text]] is true`,
+      behavior = `The line of each region is followed by the [[Files.read]] text of those lines of the output, in a fenced block`,
+    })
+    .add({ situation = `[[text]] is false`, behavior = `No line of an output follows the line of a region` })
+    .add({
+      situation = `[[name]] is the path of an output file`,
+      behavior = `The regions are every [[Marker]] the file holds as [[Files.read]] reads it when the call arrives, read as [[Acceptance.accept]] reads them, in output order, with [[Marker.end]] derived as a source map derives it`,
+    })
+    .add({
+      situation = `[[name]] is the path of an output file`,
+      behavior = `A marker naming a file that is not in the program gives no region`,
+    })
+    .add({
+      situation = [
+        `[[name]] is not the path of an output file`,
+        `[[Maps.regionsOf]] for [[name]] and [[target]] gives a [[Marker]]`,
+      ],
+      behavior = `The regions are every [[Marker]] of [[Maps.regionsOf]] for [[name]] and [[target]]`,
+    })
+    .add({
+      situation = [
+        `[[name]] is not the path of an output file`,
+        `[[Maps.regionsOf]] for [[name]] and [[target]] gives no [[Marker]]`,
+        `[[name]] is the id of a criterion or test of the lowered program, local or global`,
+      ],
+      behavior = `The text of that criterion or test comes first, then the regions are every [[Marker]] whose [[Marker.requirement]] is [[name]], in source map then output order`,
+    })
+    .add({ situation = `No region is found for [[name]]`, behavior = `The text says nothing is generated for it` })
+    .add({
+      situation = `[[target]] is set and is not a known target`,
+      behavior = `An error naming the known targets`,
+    });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run whose target writes .rs files under src, where src/a.rs, 9 lines long, holds the marker // @lfy def/a.lfy:A on line 1 and the marker // @lfy def/a.lfy:f#f:f:9c0d on line 6, though its recorded source map, made before an edit, puts f on line 4`,
+        ),
+        `src/a.rs`,
+        undefined,
+        false,
+      ],
+      expect = ToolResult@like(`Not an error: two lines and nothing else, src/a.rs:1-5 A and src/a.rs:6-9 f f:f:9c0d`),
+    },
+  );
+}
+
+/// pattern: a regular expression, matched against each line of the outputs without its line break
+/// file: the path, relative to the root, of one output file or of a directory under an output directory, to search only under; every output when left out
+// Decision: the regular expressions are those of the Rust regex crate, the library the compiler
+// itself is written with: Perl-like classes and repetition, (?i) for a match without regard to
+// case, and no look-around or backreference, so every search ends in time linear in the text.
+// Decision: a search gives at most 200 lines, so one broad pattern cannot flood an agent's context,
+// and the count of what was left out says how much narrower the next one must be.
+fn search(session: Session, pattern: string, file?: string) is tool: `The lines of generated code that match a regular expression, each with where it is and the entity, and the criterion or test, of the region it is in` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The targets searched are the [[Unit.target]] of [[Binding.unit]] when [[Session.binding]] and its [[Binding.unit]] are set, and every target of [[Workspace.targets]] otherwise`,
+    })
+    .add({
+      behavior = `The files searched are every file, recursively, under [[Target.outputDirectory]] of a target searched, under [[Binding.directory]], or under [[Workspace.root]] when [[Session.binding]] is undefined, whose [[Path.extension]] is among [[Target.extensions]] of that target`,
+    })
+    .add({
+      situation = `[[file]] is given`,
+      behavior = `Only the files searched that are [[file]] or under it are searched`,
+    })
+    .add({
+      situation = `[[file]] is given and is neither a file searched nor a directory holding one`,
+      behavior = [
+        `An error saying [[file]] is not under an output directory of the session's targets`,
+        `Nothing is searched`,
+      ],
+    })
+    .add({ behavior = `Every file searched is read with [[Files.read]] when the call arrives` })
+    .add({ behavior = `[[pattern]] is read as a regular expression in the syntax of the Rust regex crate` })
+    .add({
+      situation = `[[pattern]] is not a regular expression in that syntax`,
+      behavior = [`An error carrying why it is not`, `Nothing is searched`],
+    })
+    .add({ behavior = `A line matches when [[pattern]] matches some part of it, without its line break` })
+    .add({
+      behavior = `The matching lines are given in the order of their paths relative to the root, compared by Unicode code point, then in line order`,
+    })
+    .add({
+      behavior = `Each matching line given is one line reading its path relative to the root, a colon, its line number, a space, its region between square brackets, a colon, a space, and the line's text`,
+    })
+    .add({
+      behavior = `The region of a line is the marker on the last line at or before it, in the file as read, that is read as a [[Marker]] as [[Acceptance.accept]] reads one and names a file of the program, spelled as the marker spells it after @lfy and a space`,
+    })
+    .add({
+      situation = `No line at or before a matching line is read as a [[Marker]] naming a file of the program`,
+      behavior = `Its region is a hyphen`,
+    })
+    .add({
+      situation = `A matching line's text is longer than 500 Unicode characters`,
+      behavior = `Only its first 500 Unicode characters are given, followed by … (U+2026)`,
+    })
+    .add({
+      situation = `More than 200 lines match`,
+      behavior = [
+        `Only the first 200 are given`,
+        `A last line gives the count of the matching lines left out and says that a file or a narrower pattern narrows the search`,
+      ],
+    })
+    .add({
+      situation = `No line matches`,
+      behavior = `The text says that no line of the files searched matches, with the count of the files searched`,
+    })
+    .add({ behavior = `Nothing is written` });
+
+  @test(
+    {
+      input = [
+        Session@like(
+          `Bound to a compiler run whose target writes .rs files under src, where src/a.rs holds the marker // @lfy def/a.lfy:f#f:f:9c0d on line 6 and reads fn helper() { on line 8, and src/b.rs holds no fn helper`,
+        ),
+        `fn helper[(]`,
+        undefined,
+      ],
+      expect = ToolResult@like(`Not an error: one line reading src/a.rs:8 [def/a.lfy:f#f:f:9c0d]: fn helper() {`),
+    },
+    {
+      input = [Session@like(`The same session`), `fn (`, undefined],
+      expect = ToolResult@like(`An error saying why fn ( is not a regular expression`),
+    },
+  );
+}
+
+/// file: the path of an output file, relative to the root
+/// line: a line of that file, counting from 1
+fn source(session: Session, file: string, line: number) is tool: `Where one line of generated code came from: the definition file, the entity, and its line` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `The [[Marker]] read is the one of the [[SourceMap]] whose [[SourceMap.output]] is [[file]] whose [[Marker.outputLine]] is at most [[line]] and whose [[Marker.end]] is at least [[line]]`,
+    })
+    .add({ behavior = `The first line of the text reads [[Marker.file]], a colon, and [[Marker.line]]` })
+    .add({
+      situation = `The [[Marker]] read names an entity`,
+      behavior = `The first line of the text ends with [[Marker.entity]]`,
+    })
+    .add({
+      situation = `The [[Marker]] read names a requirement`,
+      behavior = `[[Marker.requirement]] follows on the next line, then the text of that criterion or test, local or global, from the lowered program`,
+    })
+    .add({
+      situation = `No source map has [[file]] as its output, or [[line]] is before its first marker`,
+      behavior = `The text says no source map covers the line`,
+    });
+}
+
+/// unit: the stem of a unit, as elfie_units lists it
+/// target: the identifier of the unit's target; the first target in [[Workspace.targets]] order that has a unit with that stem when left out
+fn changes(session: Session, unit: string, target?: string) is tool: `What differs for each entity of a unit since its outputs were last accepted` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `One line per [[Change]] of [[Changes.changes]] of the unit with that stem, reading [[Change.entity]], [[Change.kind]], and [[Change.detail]]`,
+    })
+    .add({
+      behavior = `The previous source passed to [[Changes.changes]] is [[Recovery.previousOf]] of the program the plan was made from, the unit, and its [[Unit.outputs]]`,
+    })
+    .add({
+      situation = `[[Previous.hashMatched]] of that previous source is true`,
+      behavior = `The text first says the source the outputs were accepted from is not known, that the changes are against the latest revision with the same lowered code, and that their criterion and test changes may not be those since acceptance`,
+    })
+    .add({ situation = `[[Unit.outputs]] of the unit is empty`, behavior = `The text says no previous output` })
+    .add({
+      situation = [`The unit has outputs`, `[[Recovery.previousOf]] of the unit gives undefined`],
+      behavior = `The text says so first, then lists every entity as added, as [[Changes.changes]] gives them with undefined`,
+    })
+    .add({
+      situation = `[[Changes.changes]] of the unit gives no [[Change]]`,
+      behavior = `The text says no changes`,
+    })
+    .add({ situation = `No unit has that stem`, behavior = `An error saying so` })
+    .add({
+      situation = [`[[Session.binding]] is set`, `The unit [[unit]] names is not [[Binding.unit]]`],
+      behavior = `An error saying the session acts only on its own unit, naming it or the global review`,
+    })
+    .add({
+      situation = `[[target]] is set and is not a known target`,
+      behavior = `An error naming the known targets`,
+    });
+}
+
+/// unit: the stem of a unit, as elfie_units lists it
+/// target: the identifier of the unit's target; the only target when left out
+fn review(session: Session, unit: string, target?: string) is tool: `The full review request for one unit: every criterion and test with where the regions generated for its entities are, and how to report` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      situation = `[[Session.binding]] is undefined, or its [[Binding.role]] is compiler`,
+      behavior = `[[ReviewRequest.instructions]] of [[Reviews.review]] for the unit, with [[Maps.sourceMapsOf]] the workspace and no review records`,
+    })
+    .add({
+      situation = [
+        `[[Session.binding]] is set and its [[Binding.role]] is verifier`,
+        `The unit [[unit]] names is [[Binding.unit]]`,
+      ],
+      behavior = `[[ReviewRequest.instructions]] of [[Binding.review]], the review request the session's verifier was given`,
+    })
+    .add({
+      situation = `No unit of the target has [[unit]] as its stem, or the target is ambiguous`,
+      behavior = `An error saying which`,
+    })
+    .add({
+      situation = [`[[Session.binding]] is set`, `The unit [[unit]] names is not [[Binding.unit]]`],
+      behavior = `An error saying the session acts only on its own unit, naming it or the global review`,
+    })
+    .add({
+      situation = `[[Plan.problems]] of the plan elfie_units shows is not empty`,
+      behavior = `The review request is returned as for any plan, and [[Plan.problems]] is not mentioned`,
+    });
+}
+
+fn globalReview(session: Session) is tool: `The review request for every global criterion and test, once for the whole program, with where the regions that answer for each are` => ToolResult {
+  @acceptanceCriteria
+    .add({
+      behavior = `[[ReviewRequest.instructions]] of [[Reviews.globalReview]] of [[Generation.plan]] of the workspace and [[Maps.sourceMapsOf]] the workspace`,
+    })
+    .add({ situation = `No global criterion or test exists`, behavior = `The text says so` });
+}
