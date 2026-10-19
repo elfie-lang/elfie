@@ -858,7 +858,7 @@ impl Run {
     /// Recording one unit leaves every other map file byte for byte as it was, a co-owner's
     /// aside.
     // @lfy def/cli/compile.lfy:compile#compile:compile:55b0f231497b975a7352cc15265c4295dfcd3153f5a093823323dc778bae3913
-    // @lfy def/cli/compile.lfy:compile#compile:compile:9854e85deefe68148920771ac99fcfeab835dc084af3382a76328d6730b88e94
+    // @lfy def/cli/compile.lfy:compile#compile:compile:9270ba03cd467062d7f40463966ea73ac55cdf0e4605b8bd48bdfe7c02c4c8b4
     // @lfy def/cli/compile.lfy:compile#compile:compile:9bd25a5f6b8c34c93a1eaf15a24cb5c758bd7c99d5de4ce240d33957fd4364d5
     // @lfy def/cli/compile.lfy:compile#compile:compile:716c12d8173223d984bf23488c69bcafe1c34d0dfe121ff09b38ac8826ccee47
     pub(crate) fn record_maps(&mut self, unit: usize, maps: &[SourceMap], directory: &Path, reviewed: bool) {

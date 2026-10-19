@@ -88,18 +88,19 @@ pub fn outcome_of(report: &str, verdict: Option<Verdict>, submitted: Option<&Sub
             return outcome(kind, message.trim_end().to_string(), verdict); // @lfy def/generation/outcome.lfy:outcomeOf
         }
     }
-    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937
-    if verdict.is_none() && last.is_none() {
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:58629f7359bc27358dbb0541b2aca9ed992eaca62911c5cb881d8abeb1869bc8
+    // A verdict on outputs the compiler never reported on says nothing about the run.
+    if last.is_none() {
         return outcome(
             OutcomeKind::Failed,
-            "the compiler reported nothing".to_string(),
+            "the compiler reported nothing, so it may never have run".to_string(),
             verdict,
         );
     }
-    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:0c4bafe3144de961cd7e712166d94ab117aa3f9da5f055e814d7cedc962eac68
     if let Some(message) = rejection(&verdict) {
         return outcome(OutcomeKind::Rejected, message, verdict);
     }
-    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:5a42af17406855ef2b866b408df911d0f396a686c64bab7834298de466c148e4
     outcome(OutcomeKind::Accepted, String::new(), verdict)
 }

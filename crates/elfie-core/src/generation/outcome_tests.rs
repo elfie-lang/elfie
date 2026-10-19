@@ -70,10 +70,10 @@ fn a_report_ending_in_blocked_is_blocked_with_the_reason_and_every_line_after_it
 fn a_report_with_nothing_and_no_verdict_has_failed() {
     let outcome = outcome_of("", None, None);
     assert_eq!(outcome.kind, OutcomeKind::Failed);
-    assert_eq!(outcome.message, "the compiler reported nothing");
+    assert!(outcome.message.contains("the compiler reported nothing"));
     assert!(outcome.verdict.is_none());
     // Prose alone, with no line beginning with `ELFIE:`, has failed too.
-    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:1edf0a122c05d91b5dfac8a92f4c32674758885ed5053c211b8b5886f922a937
+    // @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:58629f7359bc27358dbb0541b2aca9ed992eaca62911c5cb881d8abeb1869bc8
     assert_eq!(
         outcome_of("I had a look around.", None, None).kind,
         OutcomeKind::Failed
@@ -82,19 +82,16 @@ fn a_report_with_nothing_and_no_verdict_has_failed() {
 
 /// A report that ended but left no verdict is accepted: the compiler said it was done,
 /// and no verdict says otherwise.
-// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:b4a17d8422b02f086dc8c04013002328a65203f409c8c1d96c56cfe8cbc8ec9c
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:5a42af17406855ef2b866b408df911d0f396a686c64bab7834298de466c148e4
 #[test]
 fn a_report_that_ended_with_no_verdict_is_accepted() {
     let outcome = outcome_of("ELFIE: DONE", None, None);
     assert_eq!(outcome.kind, OutcomeKind::Accepted);
     assert_eq!(outcome.message, "");
     assert!(outcome.verdict.is_none());
-    // A verdict with no `ELFIE:` line at all is accepted as well when it accepts.
-    let outcome = outcome_of("I wrote it.", Some(accepted_verdict()), None);
-    assert_eq!(outcome.kind, OutcomeKind::Accepted);
 }
 
-// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:82c1d1307ec0b8ac262e7870b5e82f5aa7bcfa982e792c756c1567c766581de1
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:0c4bafe3144de961cd7e712166d94ab117aa3f9da5f055e814d7cedc962eac68
 #[test]
 fn a_rejected_verdict_is_rejected_with_its_first_problem() {
     let rejected = rejected_verdict("the entity B has no marker");
@@ -178,4 +175,27 @@ fn a_submitted_done_with_no_verdict_has_failed() {
         "the compiler submitted done but the unit was not judged"
     );
     assert!(outcome.verdict.is_none());
+}
+
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:baaeaa638ceaf8aaf56e2a3d9f7c8d6b7b07dcab5412cb5545dac7efb3a30f4b
+#[test]
+fn a_report_with_no_elfie_line_has_failed_even_with_an_accepted_verdict() {
+    let outcome = outcome_of(
+        "Failed to authenticate: OAuth session expired",
+        Some(accepted_verdict()),
+        None,
+    );
+    assert_eq!(outcome.kind, OutcomeKind::Failed);
+    assert!(outcome.message.contains("the compiler reported nothing"));
+    assert_eq!(outcome.verdict, Some(accepted_verdict()));
+}
+
+// @lfy def/generation/outcome.lfy:outcomeOf#outcomeOf:outcomeOf:c060457377a1c2e51d798422346b2256901a4ab45a0984717a6d9d4401d3281d
+#[test]
+fn an_empty_report_has_failed_even_with_a_rejected_verdict() {
+    let rejected = rejected_verdict("no marker for B");
+    let outcome = outcome_of("", Some(rejected.clone()), None);
+    assert_eq!(outcome.kind, OutcomeKind::Failed);
+    assert!(outcome.message.contains("the compiler reported nothing"));
+    assert_eq!(outcome.verdict, Some(rejected));
 }

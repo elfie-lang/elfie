@@ -13,6 +13,14 @@ use crate::schedule::Verified;
 // @lfy def/cli/compile.lfy:compile#compile:compile:73c389b755f64b116aefe36d13a3dbbe224b401808c21b5c6e58de07a4b1f1d6
 pub(crate) const GLOBAL: &str = "global";
 
+/// The problem of a unit whose review judged nothing, after the verifier was run once more.
+// @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+pub(crate) const JUDGED_NOTHING: &str = "the verifier judged no criterion or test, so it may never have run";
+
+/// The problem of a global review that judged nothing, after the verifier was run once more.
+// @lfy def/cli/compile.lfy:compile#compile:compile:dc22575144099436dc0639cd5269bd62f70a82aac76862e80b2fe1a01368f278
+pub(crate) const JUDGED_NO_GLOBAL: &str = "the verifier judged no global criterion or test, so it may never have run";
+
 /// One problem per violated review: `failure at`, the file, a colon, the line, a colon, the
 /// note, and the evidence in parentheses.
 // @lfy def/cli/compile.lfy:compile#compile:compile:8533b0690caaa0d5a3703e6633b44fd6034ce112c1a2c32f151e384e973b8bdf
@@ -152,7 +160,7 @@ impl Run {
     /// With `settled`, only a review whose status is satisfied replaces a record: a run made
     /// again because it answered for too little carries what it did satisfy and nothing else.
     // @lfy def/cli/compile.lfy:compile#compile:compile:c3711c547c11411e55264eed71019f21008660209ec5348f9c940bbad6ddeb23
-    // @lfy def/cli/compile.lfy:compile#compile:compile:14202a700387b5a57301e7eb3beb6939ee17d21521f15fc7ad17f72e1bd21012
+    // @lfy def/cli/compile.lfy:compile#compile:compile:56c39a9875755484c591a4f634d23a6c67354e3c3d59774e3cd39191a98b0159
     pub(crate) fn carried_on(
         records: &[ReviewRecord],
         request: &ReviewRequest,
@@ -161,7 +169,7 @@ impl Run {
     ) -> Vec<ReviewRecord> {
         let mut out: Vec<ReviewRecord> = records.to_vec();
         for review in reviews {
-            // @lfy def/cli/compile.lfy:compile#compile:compile:14202a700387b5a57301e7eb3beb6939ee17d21521f15fc7ad17f72e1bd21012
+            // @lfy def/cli/compile.lfy:compile#compile:compile:56c39a9875755484c591a4f634d23a6c67354e3c3d59774e3cd39191a98b0159
             if settled && review.status != ReviewStatus::Satisfied {
                 continue;
             }
@@ -225,7 +233,7 @@ impl Run {
     /// carried, so there is nothing for a verifier to look at.
     // @lfy def/cli/compile.lfy:compile#compile:compile:70f1da8e3f20d07139294c2c514b6b9800db1030922bf13ff43f53df89919a4e
     // @lfy def/cli/compile.lfy:verify#verify:verify:4185b35d14b24c85bfd17b51dfbe20df36cada069c9fb42bf4e35263334a5d97
-    // @lfy def/cli/compile.lfy:compile#compile:compile:dbcb80625881c43a2f36b95af5c8519113c0f1736c3c3171e2e3f55e426bd6d7
+    // @lfy def/cli/compile.lfy:compile#compile:compile:069226a6550a754bc8c884f9e5419d834dd3e5b365dfc8ae19870a33c31aeda8
     #[expect(clippy::too_many_arguments, reason = "one review of a unit takes all of this")]
     pub(crate) fn review_unit(
         &mut self,
@@ -247,7 +255,7 @@ impl Run {
         // @lfy def/cli/compile.lfy:compile#compile:compile:14cbfe6603ade5c97b980e258fee2c6beaff3dce14dd1ea1d7e29c34507da39f
         // @lfy def/cli/compile.lfy:verify#verify:verify:1210eb92f28da423c86881acae7b44dcc7eb7346006e861a85cef47a910c5f8f
         if request.asked.is_empty() {
-            let verification = Verification { report: ReviewReport::default(), failed: false, request };
+            let verification = Verification { report: ReviewReport::default(), failed: false, nothing: false, request };
             self.remember(unit, &verification);
             return verification;
         }
@@ -263,18 +271,22 @@ impl Run {
         // @lfy def/cli/compile.lfy:compile#compile:compile:70f1da8e3f20d07139294c2c514b6b9800db1030922bf13ff43f53df89919a4e
         // @lfy def/cli/compile.lfy:compile#compile:compile:7f343c1256669da811796e2ffa76c4b0def02ea5161f3b27756047490353fd43
         let (exit, report, failed) = self.ask_verifier(runs, command, directory, unit, &request, maps, resuming);
-        let verification = if failed && !self.halted {
-            // The run ended without every verdict: it is run once more, asked as it was but
-            // carrying what it did satisfy.
-            // @lfy def/cli/compile.lfy:compile#compile:compile:dbcb80625881c43a2f36b95af5c8519113c0f1736c3c3171e2e3f55e426bd6d7
-            // @lfy def/cli/compile.lfy:compile#compile:compile:14202a700387b5a57301e7eb3beb6939ee17d21521f15fc7ad17f72e1bd21012
+        // @lfy def/cli/compile.lfy:compile#compile:compile:ad067a8cea8bbe37261ff336e3134ae00ff1ac76aadb41672d02580424e1d14e
+        let nothing = judged_nothing(&request.asked, &report);
+        let verification = if (failed || nothing) && !self.halted {
+            // The run ended without every verdict, or judged nothing: it is run once more,
+            // asked as it was but carrying what it did satisfy.
+            // @lfy def/cli/compile.lfy:compile#compile:compile:069226a6550a754bc8c884f9e5419d834dd3e5b365dfc8ae19870a33c31aeda8
+            // @lfy def/cli/compile.lfy:compile#compile:compile:56c39a9875755484c591a4f634d23a6c67354e3c3d59774e3cd39191a98b0159
             let carried = Run::carried_on(records, &request, &report.reviews, true);
             let again = self.review_request_of(unit, maps, directory, &carried);
             if again.asked.is_empty() {
-                // Nothing is left to ask: what the first run reported stands as it is.
-                // @lfy def/cli/compile.lfy:compile#compile:compile:4db6841d8a4555959bbe4c0ce1755f3815ad577d52bc801c77c3a370bc79872e
-                self.note_incomplete(&stem, &report, exit.code);
-                Verification { report, failed, request }
+                // Nothing is left to ask, so the first run satisfied something: what it
+                // reported stands as it is.
+                if failed {
+                    self.note_incomplete(&stem, &report, exit.code);
+                }
+                Verification { report, failed, nothing: false, request }
             } else {
                 // The verifier's run once more after a run that ended without every verdict is
                 // no resuming run.
@@ -284,14 +296,17 @@ impl Run {
                 // printed as a failed progress line, and what it did report is read as if it
                 // had been complete.
                 // @lfy def/cli/compile.lfy:compile#compile:compile:85f1d3ef649f3839f3e1f7f75cc2c0c880e5b1c1b9978b38bddb4b309b264f1b
-                // @lfy def/cli/compile.lfy:compile#compile:compile:4db6841d8a4555959bbe4c0ce1755f3815ad577d52bc801c77c3a370bc79872e
+                // @lfy def/cli/compile.lfy:compile#compile:compile:bf52cafec29a9db8e77143d40d141b52d0b4993f0623dcaa8a1d8b74f1fbbb6f
                 if failed {
                     self.note_incomplete(&stem, &report, exit.code);
                 }
-                Verification { report, failed, request: again }
+                // A run once more that judged nothing again is what the unit's review came to.
+                // @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+                let nothing = judged_nothing(&again.asked, &report);
+                Verification { report, failed, nothing, request: again }
             }
         } else {
-            Verification { report, failed, request }
+            Verification { report, failed, nothing, request }
         };
         // @lfy def/cli/compile.lfy:compile#compile:compile:15c52319c401850d74a412fdfeffa9885cf323b190149210e6e0a83cf4d62156
         self.write_reviews(unit, &verification.report.reviews);
@@ -346,7 +361,7 @@ impl Run {
     /// whole of its standard output read by `reviewOf` with the ids its review request asked
     /// about and the reviews it submitted through the agent server.
     // @lfy def/cli/compile.lfy:compile#compile:compile:42133b06924184d8399eb7aa96f210caf2e4dfcca35cbe9697330cdfb149bee5
-    // @lfy def/cli/compile.lfy:compile#compile:compile:dbcb80625881c43a2f36b95af5c8519113c0f1736c3c3171e2e3f55e426bd6d7
+    // @lfy def/cli/compile.lfy:compile#compile:compile:069226a6550a754bc8c884f9e5419d834dd3e5b365dfc8ae19870a33c31aeda8
     pub(crate) fn report_of(&self, exit: &Exit, asked: &[String]) -> (ReviewReport, bool) {
         // @lfy def/cli/compile.lfy:compile#compile:compile:42133b06924184d8399eb7aa96f210caf2e4dfcca35cbe9697330cdfb149bee5
         let mut report = generation::review_of(&exit.stdout, &self.program, asked, &exit.record.reviews);
@@ -380,7 +395,7 @@ impl Run {
     /// carried, each painted only when it is worth noticing.
     // @lfy def/cli/compile.lfy:compile#compile:compile:e043cf95bc9cd594a76db11930ff69d434f4eafa3b00576563e48b0caf192912
     // @lfy def/cli/compile.lfy:compile#compile:compile:a65958efbe042be49d8dfc6e93e58d1f6f3b8ea94ee65ea9df5a2c8e2d1ea43f
-    // @lfy def/cli/compile.lfy:compile#compile:compile:2980264ce3d1cc374ba5efe5189f297ea1edce70b8a4cffbc8e194f056d2131b
+    // @lfy def/cli/compile.lfy:compile#compile:compile:e4d7dce2ce849e06f7a0231074d85e92b7b6bf748bb3be937f7bb50a7b6cebad
     // @lfy def/cli/compile.lfy:compile#compile:compile:e53fbd4d8f8cab911011548853cc6a5424f1956917fc2d11c49399ff0acaa3cc
     #[expect(clippy::too_many_arguments, reason = "one verification of a unit takes all of this")]
     pub(crate) fn verify_unit(
@@ -438,9 +453,18 @@ impl Run {
         if !verification.failed {
             self.reporter.problems(&report.problems);
         }
+        // A review that judged nothing, after the verifier was run once more for it, rejects
+        // the unit after its retries, and its source maps are not recorded from it.
+        // @lfy def/cli/compile.lfy:compile#compile:compile:ad067a8cea8bbe37261ff336e3134ae00ff1ac76aadb41672d02580424e1d14e
+        // @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+        if verification.nothing {
+            let problems = vec![JUDGED_NOTHING.to_string()];
+            self.report_rejection(unit, &problems);
+            return Verified::JudgedNothing;
+        }
         // An unverifiable review is counted in the reviewed line and never rejects the unit.
-        // @lfy def/cli/compile.lfy:compile#compile:compile:2980264ce3d1cc374ba5efe5189f297ea1edce70b8a4cffbc8e194f056d2131b
-        // @lfy def/cli/compile.lfy:compile#compile:compile:9854e85deefe68148920771ac99fcfeab835dc084af3382a76328d6730b88e94
+        // @lfy def/cli/compile.lfy:compile#compile:compile:e4d7dce2ce849e06f7a0231074d85e92b7b6bf748bb3be937f7bb50a7b6cebad
+        // @lfy def/cli/compile.lfy:compile#compile:compile:9270ba03cd467062d7f40463966ea73ac55cdf0e4605b8bd48bdfe7c02c4c8b4
         let problems = violations_of(report);
         if problems.is_empty() {
             return Verified::Passed;
@@ -486,7 +510,7 @@ impl Run {
         // Its input is the global review request of the plan and every source map given.
         // @lfy def/cli/compile.lfy:compile#compile:compile:67b4fcdb83c0d4fb7760fbaab79b47962fe177863768224d0870c81726f1cc08
         let request = generation::global_review(&self.program, maps);
-        let report = self.ask_globally(&command, directory, &request, maps)?;
+        let (report, nothing) = self.ask_globally(&command, directory, &request, maps)?;
         let root = self.root();
         self.write_global_reviews(&root, &requirements, &report);
         // @lfy def/cli/compile.lfy:compile#compile:compile:5ba968cf4e110e45b045c0bebeafc56f21cb68fcd6d5e2652f7155b49bb57385
@@ -494,6 +518,16 @@ impl Run {
         self.reporter.report_counts(Step::GlobalReviewed, None, &counts, None);
         if !report.missing.is_empty() {
             self.reporter.reason(&missing_lines(&report));
+        }
+        // The verifier, run once more, judged nothing again: the global review does not pass,
+        // the compile stops with the code failure, and the root takes no change set.
+        // @lfy def/cli/compile.lfy:compile#compile:compile:e8209fbb177a23092c32e2cfcbde4c0841bb33e583db343c85431457c3ae1971
+        // @lfy def/cli/compile.lfy:compile#compile:compile:dc22575144099436dc0639cd5269bd62f70a82aac76862e80b2fe1a01368f278
+        // @lfy def/cli/compile.lfy:compile#compile:compile:1622278a64002a21539f7250b77ca1852b4d1cb431941304777f303368729eb9
+        if nothing {
+            self.reporter.problems(&[JUDGED_NO_GLOBAL.to_string()]);
+            self.worsen(ExitCode::Failure);
+            self.halted = true;
         }
         // One problem per violated review: failure at, a space, global, a colon, a space, the
         // note, and the evidence in parentheses.
@@ -535,6 +569,9 @@ impl Run {
     /// review request as its input and the directory given as its directory, with one hosted
     /// session bound to it, no unit, and the source maps that request was made with.
     ///
+    /// A run that judged nothing is run once more with the same review request, and whether
+    /// that run judged nothing too is given beside its report.
+    ///
     /// Nothing when the agent server could not be hosted: its failure is printed, the code is
     /// failure, and nothing more runs, so no review is read or written.
     // @lfy def/cli/compile.lfy:compile#compile:compile:eae2a79c9a6dc51a5daba684245211bdf83b66ea0d0b34fbdc86bb68df82a42d
@@ -547,28 +584,39 @@ impl Run {
         directory: &Path,
         request: &ReviewRequest,
         maps: &[SourceMap],
-    ) -> Option<ReviewReport> {
-        // A run for the global review is no resuming run.
-        // @lfy def/cli/compile.lfy:compile#compile:compile:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
-        let runs = Runs::new(self.agent.clone(), self.running.clone());
-        // @lfy def/cli/compile.lfy:compile#compile:compile:eae2a79c9a6dc51a5daba684245211bdf83b66ea0d0b34fbdc86bb68df82a42d
-        let binding = self.binding_of(Role::Verifier, None, directory, None, None, Some(request.clone()), maps.to_vec());
-        // @lfy def/cli/compile.lfy:compile#compile:compile:73c389b755f64b116aefe36d13a3dbbe224b401808c21b5c6e58de07a4b1f1d6
-        let exit = runs.run(command, directory, GLOBAL, &request.instructions, binding, false);
-        // The agent server could not be hosted: its failure is printed, no verifier runs
-        // after it, and the code is failure.
-        // @lfy def/cli/compile.lfy:compile#compile:compile:c98cf702185cba4a24169527abed59a142c455d479534531109ad7041e58476c
-        if self.agent.server.failed() {
-            self.hosting_failed(None, exit.stderr.trim());
-            return None;
+    ) -> Option<(ReviewReport, bool)> {
+        // @lfy def/cli/compile.lfy:compile#compile:compile:71fcb7057074d2d8930a4742e4ec5956ff4261db0f3f9781e288693c246892fe
+        let mut once_more = false;
+        loop {
+            // A run for the global review is no resuming run.
+            // @lfy def/cli/compile.lfy:compile#compile:compile:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
+            let runs = Runs::new(self.agent.clone(), self.running.clone());
+            // @lfy def/cli/compile.lfy:compile#compile:compile:eae2a79c9a6dc51a5daba684245211bdf83b66ea0d0b34fbdc86bb68df82a42d
+            let binding =
+                self.binding_of(Role::Verifier, None, directory, None, None, Some(request.clone()), maps.to_vec());
+            // @lfy def/cli/compile.lfy:compile#compile:compile:73c389b755f64b116aefe36d13a3dbbe224b401808c21b5c6e58de07a4b1f1d6
+            let exit = runs.run(command, directory, GLOBAL, &request.instructions, binding, false);
+            // The agent server could not be hosted: its failure is printed, no verifier runs
+            // after it, and the code is failure.
+            // @lfy def/cli/compile.lfy:compile#compile:compile:c98cf702185cba4a24169527abed59a142c455d479534531109ad7041e58476c
+            if self.agent.server.failed() {
+                self.hosting_failed(None, exit.stderr.trim());
+                return None;
+            }
+            // A report that ended without every verdict stands as it is, and what it misses
+            // is said.
+            let (report, failed) = self.report_of(&exit, &request.asked);
+            if failed {
+                self.note_incomplete(GLOBAL, &report, exit.code);
+            }
+            // A first run that judged nothing is run once more, with the same review request.
+            // @lfy def/cli/compile.lfy:compile#compile:compile:71fcb7057074d2d8930a4742e4ec5956ff4261db0f3f9781e288693c246892fe
+            let nothing = judged_nothing(&request.asked, &report);
+            if !nothing || once_more || self.halted {
+                return Some((report, nothing));
+            }
+            once_more = true;
         }
-        // The verifier runs once for the global review; a report that ended without every
-        // verdict stands as it is, and what it misses is said.
-        let (report, failed) = self.report_of(&exit, &request.asked);
-        if failed {
-            self.note_incomplete(GLOBAL, &report, exit.code);
-        }
-        Some(report)
     }
 
     /// The agent server could not be hosted: its failure is printed, as a failed progress line
@@ -613,6 +661,9 @@ impl Run {
 pub(crate) struct Verification {
     pub(crate) report: ReviewReport,
     pub(crate) failed: bool,
+    /// Whether the review judged nothing, after the verifier was run once more for it.
+    // @lfy def/cli/compile.lfy:compile#compile:compile:ad067a8cea8bbe37261ff336e3134ae00ff1ac76aadb41672d02580424e1d14e
+    pub(crate) nothing: bool,
     /// The review request the run was given, or the one that asked nothing.
     pub(crate) request: ReviewRequest,
 }
@@ -625,7 +676,7 @@ pub(crate) struct Verification {
 /// A run that answered for every id it was asked about stands as it is, whatever prose
 /// surrounds the answers and however it ended, and so does one that wrote the end line and
 /// ended well with some of them left over: what it left is counted as unverifiable.
-// @lfy def/cli/compile.lfy:compile#compile:compile:dbcb80625881c43a2f36b95af5c8519113c0f1736c3c3171e2e3f55e426bd6d7
+// @lfy def/cli/compile.lfy:compile#compile:compile:069226a6550a754bc8c884f9e5419d834dd3e5b365dfc8ae19870a33c31aeda8
 // @lfy def/cli/compile.lfy:compile#compile:compile:7fbd8e92981ac0bfb3a6651b7e7bf907ebdd945ef7a5649a3b4a8be0fe8c6fcb
 pub(crate) fn verifier_failed(exit: &Exit, report: &ReviewReport) -> bool {
     if report.reviews.is_empty() {
@@ -633,6 +684,18 @@ pub(crate) fn verifier_failed(exit: &Exit, report: &ReviewReport) -> bool {
     }
     let ended = exit.code != -1 && exit.stdout.lines().any(|line| line.trim() == REVIEWED);
     !report.missing.is_empty() && !ended
+}
+
+/// Whether a report judged nothing: its review request asked something, and no review of it
+/// is satisfied or violated, the ids it left unanswered counting as unverifiable.
+// @lfy def/cli/compile.lfy:compile#compile:compile:ad067a8cea8bbe37261ff336e3134ae00ff1ac76aadb41672d02580424e1d14e
+// @lfy def/cli/compile.lfy:compile#compile:compile:e8209fbb177a23092c32e2cfcbde4c0841bb33e583db343c85431457c3ae1971
+pub(crate) fn judged_nothing(asked: &[String], report: &ReviewReport) -> bool {
+    !asked.is_empty()
+        && !report
+            .reviews
+            .iter()
+            .any(|review| matches!(review.status, ReviewStatus::Satisfied | ReviewStatus::Violated))
 }
 
 /// The diagnostics a verify prints: the error ones alone.
@@ -768,6 +831,7 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
                 let verification =
                     run.review_unit(unit, &command, &root, false, &recorded, &records, &runs, false);
                 let carried = verification.request.carried.len();
+                let nothing = verification.nothing;
                 let report = verification.report;
                 // Every review printed, then the counts, then the id of every criterion and
                 // test the review left unanswered. A review request that asked nothing ran no
@@ -779,6 +843,12 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
                 // @lfy def/cli/compile.lfy:verify#verify:verify:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4
                 if counts_of(&report.reviews).1 > 0 {
                     run.worsen(ExitCode::Problems);
+                }
+                // @lfy def/cli/compile.lfy:verify#verify:verify:6d4d8db3bab0dd4d82a59c7dc2547b46353a9002b04afd2a5da7fbbdb27780a4
+                if nothing {
+                    let stem = run.stem(unit);
+                    print_judged_nothing(&stem, run.json, run.style.out);
+                    run.worsen(ExitCode::Failure);
                 }
             }
             // With no verifier named, the review request of each requested unit is written
@@ -797,7 +867,7 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
         // An agent server that could not be hosted has had its failure printed and made the
         // code failure, and gives no report to print.
         // @lfy def/cli/compile.lfy:compile#compile:compile:c98cf702185cba4a24169527abed59a142c455d479534531109ad7041e58476c
-        if let Some(report) = verify_globally(&mut run) {
+        if let Some((report, nothing)) = verify_globally(&mut run) {
             // A global review carries nothing: every global criterion and test is reviewed
             // once. Each id no review names is named as not reviewed and counts as
             // unverifiable.
@@ -807,6 +877,11 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
             if counts_of(&report.reviews).1 > 0 {
                 run.worsen(ExitCode::Problems);
             }
+            // @lfy def/cli/compile.lfy:verify#verify:verify:6d4d8db3bab0dd4d82a59c7dc2547b46353a9002b04afd2a5da7fbbdb27780a4
+            if nothing {
+                print_judged_nothing(GLOBAL, json, style.out);
+                run.worsen(ExitCode::Failure);
+            }
         }
     }
     // Every session of this verify is ended and the server stopped, after the last run has
@@ -815,20 +890,21 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
     run.agent.server.stop();
     // No review is violated and the verifier was started, or no review request asked
     // anything: the code is success; it could not be started: the code is failure.
-    // @lfy def/cli/compile.lfy:verify#verify:verify:c3a2ad3cc8b8443eed86ed501261573e2799abb00383db190b158541be935033
+    // @lfy def/cli/compile.lfy:verify#verify:verify:6d4d8db3bab0dd4d82a59c7dc2547b46353a9002b04afd2a5da7fbbdb27780a4
     // @lfy def/cli/compile.lfy:verify#verify:verify:f4d733d1c98fcb52efb7af2bcf5a54e5df115f3454b8c0ce42aa336de6dd2857
+    // @lfy def/cli/compile.lfy:verify#verify:verify:f2d78f4071faaadeeacb00370aa3cbb00eb85e817ac95d1cc9ec8c6a805f2857
     run.code
 }
 
 /// Every global criterion and test reviewed once for the verify command, in the root, with
 /// the recorded source maps; the review is written as a compile writes one.
 // @lfy def/cli/compile.lfy:verify#verify:verify:32387edd44a4cc7c91efe2a37b89320c59bfef52abddb28e5661c9df8f68b514
-pub(crate) fn verify_globally(run: &mut Run) -> Option<ReviewReport> {
+pub(crate) fn verify_globally(run: &mut Run) -> Option<(ReviewReport, bool)> {
     // No global criterion and no global test: no global review runs and no file is
     // written, here as in a compile.
     // @lfy def/cli/compile.lfy:compile#compile:compile:f033aae0b13c3e667e25d9d067a7b58b8f438e3b2854dcb127d56baca1010a38
     if run.program.criteria.is_empty() && run.program.tests.is_empty() {
-        return Some(ReviewReport::default());
+        return Some((ReviewReport::default(), false));
     }
     let command = run.verifier.clone()?;
     let root = run.root();
@@ -838,10 +914,21 @@ pub(crate) fn verify_globally(run: &mut Run) -> Option<ReviewReport> {
     let requirements = GlobalReview::requirements_of(&run.program);
     // An agent server that could not be hosted gives no report, and nothing is written.
     // @lfy def/cli/compile.lfy:compile#compile:compile:c98cf702185cba4a24169527abed59a142c455d479534531109ad7041e58476c
-    let report = run.ask_globally(&command, &root, &request, &maps)?;
+    let (report, nothing) = run.ask_globally(&command, &root, &request, &maps)?;
     // @lfy def/cli/compile.lfy:compile#compile:compile:033aa06dcbf3008dd1606e0361145d7bd0386bb1efe3b055336c5e754f6c7eeb
     run.write_global_reviews(&root, &requirements, &report);
-    Some(report)
+    Some((report, nothing))
+}
+
+/// The one line verify prints for a unit, or global, whose review judged nothing after the
+/// verifier was run once more for it.
+// @lfy def/cli/compile.lfy:verify#verify:verify:6d4d8db3bab0dd4d82a59c7dc2547b46353a9002b04afd2a5da7fbbdb27780a4
+pub(crate) fn print_judged_nothing(label: &str, json: bool, on: bool) {
+    if json {
+        println!("{}", serde_json::json!({ "stem": label, "message": JUDGED_NOTHING }));
+    } else {
+        println!("{}", paint(&format!("{label}: {JUDGED_NOTHING}"), Tone::Failure, on));
+    }
 }
 
 /// Every review printed as its status, a space, the file, a colon, the line, a space, the

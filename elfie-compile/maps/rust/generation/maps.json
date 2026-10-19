@@ -40,7 +40,7 @@
       "sourceMapsOf:sourceMapsOf:ede8434812c8a4f5743a0062976be24f2518397279ef2820986a6880aabf5940"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/generation/data.lfy": "d9304b1e8f6d9161c201596656581b2c87151501508ab4574e2a3e1f290d526f",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -48,7 +48,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-19T02:09:08Z",
+    "generated": "2026-10-19T16:16:34Z",
     "hash": "1a8328f1d83516d9e75ed1988528ed68182293e9e449fe9e10efdff5b3645364",
     "markers": [
       {
@@ -676,7 +676,7 @@
       "sourceMapsOf:sourceMapsOf:ede8434812c8a4f5743a0062976be24f2518397279ef2820986a6880aabf5940"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/generation/data.lfy": "d9304b1e8f6d9161c201596656581b2c87151501508ab4574e2a3e1f290d526f",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -684,7 +684,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-19T02:09:08Z",
+    "generated": "2026-10-19T16:16:34Z",
     "hash": "1a8328f1d83516d9e75ed1988528ed68182293e9e449fe9e10efdff5b3645364",
     "markers": [
       {
@@ -1330,7 +1330,7 @@
       "sourceMapsOf:sourceMapsOf:ede8434812c8a4f5743a0062976be24f2518397279ef2820986a6880aabf5940"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/generation/data.lfy": "d9304b1e8f6d9161c201596656581b2c87151501508ab4574e2a3e1f290d526f",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -1338,7 +1338,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-19T02:09:08Z",
+    "generated": "2026-10-19T16:16:34Z",
     "hash": "1a8328f1d83516d9e75ed1988528ed68182293e9e449fe9e10efdff5b3645364",
     "markers": [
       {
@@ -1840,7 +1840,7 @@
       "sourceMapsOf:sourceMapsOf:ede8434812c8a4f5743a0062976be24f2518397279ef2820986a6880aabf5940"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/generation/data.lfy": "d9304b1e8f6d9161c201596656581b2c87151501508ab4574e2a3e1f290d526f",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -1848,7 +1848,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-19T02:09:08Z",
+    "generated": "2026-10-19T16:16:34Z",
     "hash": "1a8328f1d83516d9e75ed1988528ed68182293e9e449fe9e10efdff5b3645364",
     "markers": [
       {
@@ -2359,7 +2359,7 @@
       "sourceMapsOf:sourceMapsOf:ede8434812c8a4f5743a0062976be24f2518397279ef2820986a6880aabf5940"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
+      "def/generation/data.lfy": "d9304b1e8f6d9161c201596656581b2c87151501508ab4574e2a3e1f290d526f",
       "def/grammar/traits.lfy": "869b7fa0e132d091045405a798e097208966f6b47ff887bcbcb62d07a4baf213",
       "def/interpret/data.lfy": "f3571179252671c975cec4de3012cbc9e3613d5a2e028bb8e2348795bede9e84",
       "def/lexer/data.lfy": "af38ea9837e14aaf76e2f89516673ae0c88f1382753f2159564b0d69bc5022b9",
@@ -2367,7 +2367,7 @@
       "def/parser/data.lfy": "2b591b2f69bb123052fd2f41f05e98d670eb7949d61a2df3d8dece9c95b9fedb",
       "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-19T02:09:08Z",
+    "generated": "2026-10-19T16:16:34Z",
     "hash": "1a8328f1d83516d9e75ed1988528ed68182293e9e449fe9e10efdff5b3645364",
     "markers": [
       {

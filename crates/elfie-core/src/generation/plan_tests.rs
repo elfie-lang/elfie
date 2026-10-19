@@ -964,12 +964,12 @@ fn a_units_requirements_are_its_entities_and_move_with_them() {
     assert!(ids(&moved.units[b_index]).is_empty());
 }
 
-// @lfy def/generation/data.lfy:Reach#Reach:Reach:0bb557a5ed670b6e434a85b29b6693859d060770f3fea536fc9604d46fd1402a
-/// The reach of `c` is empty while `b`, the one unit that uses it directly, records its
-/// interface as it is now; once `b` records another, it is `b` and the `a` that depends on
-/// `c` through `b`.
+// @lfy def/generation/data.lfy:Reach#Reach:Reach:ff348933ceb648c9d23dbc473954536137029600d6386cd50fe46337be163dd9
+/// The reach of `c` is `b`, the one unit that uses it directly, and the `a` that depends on
+/// `c` through `b`, both while `b` records `c`'s interface as it is now and once `b`
+/// records another.
 #[test]
-fn a_reach_is_empty_while_every_direct_dependent_records_the_interface_as_it_is() {
+fn a_reach_holds_every_dependent_whether_or_not_it_records_the_interface_as_it_is() {
     let fixture = Fixture::with_rust_target();
     fixture
         .write("def/c.lfy", "d C { $x = string; }\n")
@@ -981,7 +981,9 @@ fn a_reach_is_empty_while_every_direct_dependent_records_the_interface_as_it_is(
     let mut maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
     let current = plan_of(&program, &maps, &[], &[]);
     let (c, _) = unit_of(workspace, &current, "def/c.lfy");
-    assert!(Reach::of(workspace, &current, c).units.is_empty());
+    let (b, _) = unit_of(workspace, &current, "def/b.lfy");
+    let (a, _) = unit_of(workspace, &current, "def/a.lfy");
+    assert_eq!(Reach::of(workspace, &current, c).units, [b, a]);
 
     for map in maps.iter_mut().filter(|map| map.source == "def/b.lfy") {
         map.dependencies.values_mut().for_each(String::clear);

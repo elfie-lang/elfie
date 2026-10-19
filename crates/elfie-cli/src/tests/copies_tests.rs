@@ -234,7 +234,7 @@ const RAN_AND_FAILED: &str = "#!/bin/sh\ncat > /dev/null\necho ran >> '<notes>/r
 
 /// A verifier that finds nothing violated: it answers satisfied for every id the review
 /// request it reads names.
-// @lfy def/cli/compile.lfy:compile#compile:compile:9854e85deefe68148920771ac99fcfeab835dc084af3382a76328d6730b88e94
+// @lfy def/cli/compile.lfy:compile#compile:compile:9270ba03cd467062d7f40463966ea73ac55cdf0e4605b8bd48bdfe7c02c4c8b4
 const CONTENT: &str = "#!/bin/sh\necho \"$ELFIE_UNIT\" >> '<notes>/verified.txt'\nfor id in $(grep -o '[A-Za-z_]*:[A-Za-z_]*:[0-9a-f]\\{64\\}' | sort -u); do\n  printf '{\"id\":\"%s\",\"status\":\"satisfied\",\"evidence\":\"out\",\"note\":\"fine\"}\\n' \"$id\"\ndone\necho 'ELFIE: REVIEWED'\n";
 
 /// The hash a unit's map file records for one dependency of it.

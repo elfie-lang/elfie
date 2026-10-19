@@ -879,12 +879,16 @@ impl Run {
             // @lfy def/cli/compile.lfy:compile#compile:compile:2e4acb5558efbdd9e38f447b9d1f843cbed7458fa84833e158b3d50441db7334
             match self.verify_unit(unit, command, directory, &verdict.source_maps, &records, &runs, tries.resume_verifier) {
                 Verified::Passed => {
-                    // @lfy def/cli/compile.lfy:compile#compile:compile:9854e85deefe68148920771ac99fcfeab835dc084af3382a76328d6730b88e94
+                    // @lfy def/cli/compile.lfy:compile#compile:compile:9270ba03cd467062d7f40463966ea73ac55cdf0e4605b8bd48bdfe7c02c4c8b4
                     // @lfy def/cli/compile.lfy:compile#compile:compile:14cbfe6603ade5c97b980e258fee2c6beaff3dce14dd1ea1d7e29c34507da39f
                     self.record_maps(unit, &verdict.source_maps, directory, true);
                     return Ended::Done(UnitState::Reviewed, verdict.foreign_edits);
                 }
                 Verified::Stopped => return Ended::Stopped(Stop::Failed),
+                // A review that judged nothing twice rejects the unit after its retries, and its
+                // source maps are not recorded.
+                // @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+                Verified::JudgedNothing => return Ended::Stopped(Stop::Rejected),
                 Verified::Violated { problems, next } => {
                     // The unit stays planned in its change set while it runs again.
                     // @lfy def/cli/compile.lfy:compile#compile:compile:836ff964045c3fdf6d9f590423c540dcc1814918a94ca6164f5840c078d87342
@@ -1118,6 +1122,8 @@ impl Run {
                 None
             }
             Verified::Stopped => Some(Stop::Failed),
+            // @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+            Verified::JudgedNothing => Some(Stop::Rejected),
             // A violated review runs the unit again, as the first run of the compiler on it.
             // @lfy def/cli/compile.lfy:compile#compile:compile:ec0e37d5ec1e376b65aa90a57f20654ed0153dcd1c1cb0899bf5f1b988e4c2ce
             Verified::Violated { .. } => {
@@ -1334,12 +1340,16 @@ pub(crate) enum Attempt {
 // @lfy def/cli/compile.lfy:compile#compile:compile:e53fbd4d8f8cab911011548853cc6a5424f1956917fc2d11c49399ff0acaa3cc
 pub(crate) enum Verified {
     /// No violated review and no unplaced violation, or nothing asked.
-    // @lfy def/cli/compile.lfy:compile#compile:compile:9854e85deefe68148920771ac99fcfeab835dc084af3382a76328d6730b88e94
+    // @lfy def/cli/compile.lfy:compile#compile:compile:9270ba03cd467062d7f40463966ea73ac55cdf0e4605b8bd48bdfe7c02c4c8b4
     Passed,
     /// A violated review or an unplaced violation: the problems they make, and the records
     /// the review made once more is made with.
     // @lfy def/cli/compile.lfy:compile#compile:compile:c3711c547c11411e55264eed71019f21008660209ec5348f9c940bbad6ddeb23
     Violated { problems: Vec<String>, next: Vec<ReviewRecord> },
+    /// The review judged nothing, after the verifier was run once more for it: the unit is
+    /// rejected after its retries.
+    // @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+    JudgedNothing,
     /// The compile stopped while the verifier ran.
     Stopped,
 }

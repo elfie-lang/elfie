@@ -35,17 +35,14 @@ fn outcomeOf(report: string, verdict: Verdict | undefined, submitted?: Submissio
       behavior = `The kind is clarification and the message is [[Submission.message]] of [[submitted]]`,
     })
     .add({
-      situation = [
-        `[[submitted]] is undefined`,
-        `[[verdict]] is undefined and no line of [[report]] begins with ELFIE:`,
-      ],
-      behavior = `The kind is failed and the message says the compiler reported nothing`,
+      situation = [`[[submitted]] is undefined`, `No line of [[report]] begins with ELFIE:`],
+      behavior = `The kind is failed and the message says the compiler reported nothing, so it may never have run, whatever [[verdict]] is`,
     })
     .add({
       situation = [
         `[[submitted]] is undefined`,
         `[[verdict]] is rejected`,
-        `The last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+        `The last line of [[report]] that begins with ELFIE: reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
       ],
       behavior = `The kind is rejected and the message is the first problem of [[verdict]]`,
     })
@@ -53,8 +50,7 @@ fn outcomeOf(report: string, verdict: Verdict | undefined, submitted?: Submissio
       situation = [
         `[[submitted]] is undefined`,
         `[[verdict]] is undefined or accepted`,
-        `[[verdict]] is defined or some line of [[report]] begins with ELFIE:`,
-        `The last line of [[report]] that begins with ELFIE:, if there is one, reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
+        `The last line of [[report]] that begins with ELFIE: reads neither ELFIE: BLOCKED: nor ELFIE: CLARIFY:`,
       ],
       behavior = `The kind is accepted and the message is empty`,
     })
@@ -90,6 +86,14 @@ fn outcomeOf(report: string, verdict: Verdict | undefined, submitted?: Submissio
       expect = Outcome@like(`blocked with the reason`),
     },
     { input = [``, undefined], expect = Outcome@like(`failed`) },
+    {
+      input = [`Failed to authenticate: OAuth session expired`, Verdict@like(`accepted`)],
+      expect = Outcome@like(`failed, with a message saying the compiler reported nothing`),
+    },
+    {
+      input = [``, Verdict@like(`rejected, with the problem: no marker for B`)],
+      expect = Outcome@like(`failed, with a message saying the compiler reported nothing`),
+    },
     {
       input = [
         `I wrote it.\nELFIE: DONE`,

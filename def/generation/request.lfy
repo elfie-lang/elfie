@@ -93,7 +93,7 @@ fn request(
       behavior = `[[Request.foreignEdits]] is each of [[foreignEdits]] whose [[ForeignEdit.owner]] is [[Unit.stem]] of [[unit]] and whose [[ForeignEdit.path]] [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, in the order of [[foreignEdits]]`,
     })
     .add({
-      behavior = `[[Request.reach]] is read from [[Plan.units]] of [[plan]], their [[Unit.outputs]], and the hash of [[interfaceOf]] [[unit]], and never from their [[Unit.reason]]`,
+      behavior = `[[Request.reach]] is read from [[Plan.units]] of [[plan]] and their [[Unit.outputs]], and never from their [[Unit.reason]]`,
     })
     .add({
       behavior = `[[Request.relocated]] is each of [[relocations]] whose [[Relocation.target]] is [[Target.identifier]] of the unit's target and whose [[Relocation.into]] or [[Relocation.origin]] is the [[File.path]] of [[unit]], in the order of [[relocations]]`,
@@ -506,6 +506,18 @@ fn request(
       input = [
         Plan@like(
           `Two units of target rust with output directory src, b before a, a using b, each with outputs, src/b.rs and src/a.rs, and a's outputs recording for b the interface hash b has now`,
+        ),
+        Unit@like(`b`),
+        [Output@like(`src/b.rs`)],
+      ],
+      expect = Request@like(
+        `A reach whose units are a alone, although b's interface is the one a records, and a reach part listing a with src/a.rs`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `Two units of target rust with output directory src, a and b, neither using the other, each with outputs`,
         ),
         Unit@like(`b`),
         [Output@like(`src/b.rs`)],

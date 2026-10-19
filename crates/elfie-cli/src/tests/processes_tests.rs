@@ -388,8 +388,8 @@ fn a_review_record_file_of_no_unit_is_removed() {
 
 /// A verify whose review request asked nothing is success, as one whose verifier was started
 /// and violated nothing is.
-// @lfy def/cli/compile.lfy:verify#verify:verify:c3a2ad3cc8b8443eed86ed501261573e2799abb00383db190b158541be935033
 // @lfy def/cli/compile.lfy:verify#verify:verify:e66e42fc4344ab7898da31692b13cfa9d1621e6c695a0226fd0e42bb5522bdd4
+// @lfy def/cli/compile.lfy:verify#verify:verify:f2d78f4071faaadeeacb00370aa3cbb00eb85e817ac95d1cc9ec8c6a805f2857
 #[test]
 fn a_verify_that_asked_nothing_is_success() {
     let fixture = Fixture::new();

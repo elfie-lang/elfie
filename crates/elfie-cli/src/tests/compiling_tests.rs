@@ -5,7 +5,9 @@
 
 use super::*;
 use crate::compiling::loaded_diagnostics;
-use crate::reviewing::{error_diagnostics, missing_lines, not_reviewed, painted_review, problem_of};
+use crate::reviewing::{
+    JUDGED_NO_GLOBAL, JUDGED_NOTHING, error_diagnostics, missing_lines, not_reviewed, painted_review, problem_of,
+};
 use crate::running::Stop;
 use crate::schedule::Ended;
 
@@ -279,7 +281,7 @@ fn the_compiler_is_run_per_unit_in_its_change_set_and_its_report_is_read() {
             "compiler.sh",
             &noted(
                 &fixture,
-                "#!/bin/sh\ncat > '<notes>/instructions.txt'\nprintf '%s\\n' \"$ELFIE_UNIT\" \"$ELFIE\" \"[$ELFIE_COMMAND_TOOLS]\" \"$ELFIE_ROOT\" \"${ELFIE_BATCH-none}\" > '<notes>/environment.txt'\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\n",
+                "#!/bin/sh\ncat > '<notes>/instructions.txt'\nprintf '%s\\n' \"$ELFIE_UNIT\" \"$ELFIE\" \"[$ELFIE_COMMAND_TOOLS]\" \"$ELFIE_ROOT\" \"${ELFIE_BATCH-none}\" > '<notes>/environment.txt'\nmkdir -p \"$ELFIE_ROOT/out\"\nprintf '// @lfy def/a.lfy:1\\npub struct A {}\\n' > \"$ELFIE_ROOT/out/a.rs\"\necho done\necho 'ELFIE: DONE'\n",
             ),
         )
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
@@ -341,7 +343,7 @@ fn a_rejected_unit_is_run_once_more_and_a_blocked_one_writes_its_reason() {
     let fixture = Fixture::new();
     one_target(&fixture)
         .write("def/a.lfy", "d A: `An A` {}\n")
-        .write("compiler.sh", &noted(&fixture, "#!/bin/sh\ncat > /dev/null\necho 'attempt' >> '<notes>/attempts.txt'\n"))
+        .write("compiler.sh", &noted(&fixture, "#!/bin/sh\ncat > /dev/null\necho 'attempt' >> '<notes>/attempts.txt'\necho 'ELFIE: DONE'\n"))
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
     assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
     assert_eq!(fixture.read("attempts.txt").lines().count(), 2, "the unit is run once more");
@@ -399,7 +401,7 @@ fn a_command_that_cannot_run_is_a_failure() {
 // @lfy def/cli/compile.lfy:verify#verify:verify:15975ba21f2d3e58d9d76c89d6ee8744c310877b9334ab62dcb7dca472cae18d
 // @lfy def/cli/compile.lfy:compile#compile:compile:8533b0690caaa0d5a3703e6633b44fd6034ce112c1a2c32f151e384e973b8bdf
 // @lfy def/cli/compile.lfy:verify#verify:verify:0011d65e2e66e2fa6bffcf28bb68b59c7d3425bddda6fd61a196e714724e5195
-// @lfy def/cli/compile.lfy:compile#compile:compile:2980264ce3d1cc374ba5efe5189f297ea1edce70b8a4cffbc8e194f056d2131b
+// @lfy def/cli/compile.lfy:compile#compile:compile:e4d7dce2ce849e06f7a0231074d85e92b7b6bf748bb3be937f7bb50a7b6cebad
 // @lfy def/cli/compile.lfy:compile#compile:compile:97ca8a3e66805eba7104729c205da94cf64474677a3c53e056be523758150d9d
 #[test]
 fn a_review_is_printed_and_a_violated_one_becomes_a_problem() {
@@ -488,27 +490,25 @@ fn a_violated_review_sends_the_unit_back_and_then_rejects_it() {
     assert!(log.contains("    did not complete: a"), "{log}");
 }
 
-/// A verifier that answered for nothing it was asked about is run once more; its problems
-/// are then printed as a failed line and the unit is verified with the reviews parsed from
-/// that run as if its report had been complete. A run that answered for every id it was
-/// asked about stands as it is, however it ended.
-// @lfy def/cli/compile.lfy:compile#compile:compile:dbcb80625881c43a2f36b95af5c8519113c0f1736c3c3171e2e3f55e426bd6d7
+/// A verifier that answered for nothing it was asked about is run once more; when that run
+/// judged nothing too, its problems are printed as a failed line and the unit is rejected
+/// after its retries with one problem, its source maps not recorded. A run that answered for
+/// every id it was asked about stands as it is, however it ended.
+// @lfy def/cli/compile.lfy:compile#compile:compile:069226a6550a754bc8c884f9e5419d834dd3e5b365dfc8ae19870a33c31aeda8
 // @lfy def/cli/compile.lfy:compile#compile:compile:85f1d3ef649f3839f3e1f7f75cc2c0c880e5b1c1b9978b38bddb4b309b264f1b
-// @lfy def/cli/compile.lfy:compile#compile:compile:4db6841d8a4555959bbe4c0ce1755f3815ad577d52bc801c77c3a370bc79872e
 // @lfy def/cli/compile.lfy:compile#compile:compile:5a007ec86d1ce702345b9b34c99744c4d8993ccab14f803a47d7740f0c6efc9c
 #[test]
 fn a_verifier_whose_report_does_not_end_is_run_once_more() {
     let fixture = Fixture::new();
     a_compiler_and_a_verifier(&fixture, NOTHING_REVIEWED);
-    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
     assert_eq!(lines_of(&fixture, "verifications.txt"), 2, "the verifier ran twice");
     assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
     let log = fixture.read("elfie-requests/compile.log");
     // @lfy def/cli/compile.lfy:compile#compile:compile:85f1d3ef649f3839f3e1f7f75cc2c0c880e5b1c1b9978b38bddb4b309b264f1b
     assert!(log.contains("✗ failed"), "{log}");
-    // @lfy def/cli/compile.lfy:compile#compile:compile:4db6841d8a4555959bbe4c0ce1755f3815ad577d52bc801c77c3a370bc79872e
-    assert!(log.contains("0 satisfied, 0 violated, 1 unverifiable"), "{log}");
-    assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
+    assert!(log.contains(&format!("    - {JUDGED_NOTHING}")), "{log}");
+    assert!(!fixture.root.join("elfie-compile/maps/rust/a.json").exists(), "the maps were recorded");
     let stood = Fixture::new();
     a_compiler_and_a_verifier(&stood, UNENDED);
     assert_eq!(stood.run(&["compile"]), ExitCode::Success.code());
@@ -535,6 +535,134 @@ fn a_review_that_ended_stands_and_what_else_it_wrote_is_printed() {
     assert!(log.contains("1 satisfied, 0 violated, 0 unverifiable"), "{log}");
     assert!(log.contains("I also looked at the tests"), "{log}");
     assert!(!log.contains("✗ failed"), "{log}");
+}
+
+/// A verifier that fails to authenticate: it writes one line and exits 1, reporting no review.
+// @lfy def/cli/compile.lfy:compile
+const UNAUTHENTICATED: &str =
+    "#!/bin/sh\ncat > /dev/null\necho verify >> '<notes>/verifications.txt'\necho 'Failed to authenticate'\nexit 1\n";
+
+/// A verifier that judges nothing on its first run, and on its second satisfies the first id
+/// it is asked about and leaves the rest unanswered, with no end line.
+// @lfy def/cli/compile.lfy:compile
+const PARTLY_SECOND: &str = "#!/bin/sh\nids=$(grep -o '[A-Za-z_]*:[A-Za-z_]*:[0-9a-f]\\{64\\}' | sort -u)\necho verify >> '<notes>/verifications.txt'\nif [ \"$(wc -l < '<notes>/verifications.txt')\" -gt 1 ]; then\n  printf '{\"id\":\"%s\",\"status\":\"satisfied\",\"evidence\":\"out/a.rs:1-2\",\"note\":\"fine\"}\\n' \"$(echo \"$ids\" | head -n 1)\"\nfi\n";
+
+/// A verifier that fails to authenticate judges nothing; it is run once more, and when it
+/// judges nothing again the unit is rejected after its retries with one problem saying so,
+/// its source maps are not recorded, and the root is unchanged.
+// @lfy def/cli/compile.lfy:compile#compile:compile:d90e19909a54078d76c8105aabbf9a5877b2746c95224101d715f369b3c08494
+// @lfy def/cli/compile.lfy:compile#compile:compile:8f1872df4cfb3b3e6f7b79f292adea2969e9687eaa9362f21e4fe77a950e5ba4
+// @lfy def/cli/compile.lfy:compile#compile:compile:ad067a8cea8bbe37261ff336e3134ae00ff1ac76aadb41672d02580424e1d14e
+#[test]
+fn a_verifier_that_judged_nothing_twice_rejects_the_unit() {
+    let fixture = Fixture::new();
+    a_compiler_and_a_verifier(&fixture, UNAUTHENTICATED);
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+    assert_eq!(lines_of(&fixture, "verifications.txt"), 2, "the verifier ran twice");
+    assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
+    let log = fixture.read("elfie-requests/compile.log");
+    assert!(log.contains("✓ accepted"), "{log}");
+    assert!(log.contains(&format!("    - {JUDGED_NOTHING}")), "{log}");
+    assert!(log.contains("0 accepted, 1 rejected"), "{log}");
+    assert!(!fixture.root.join("elfie-compile/maps/rust/a.json").exists(), "the maps were recorded");
+    assert!(!fixture.root.join("out/a.rs").exists(), "the root took something");
+    let kept = ChangeSet::load(&fixture.root, "rust").expect("the change set is kept");
+    assert_eq!(kept.units[0].state, UnitState::Rejected);
+}
+
+/// A second run that ends without every verdict but judged something is read as if its
+/// report had been complete: the unit is reviewed with the reviews parsed from it.
+// @lfy def/cli/compile.lfy:compile#compile:compile:bf52cafec29a9db8e77143d40d141b52d0b4993f0623dcaa8a1d8b74f1fbbb6f
+#[test]
+fn a_second_run_that_judged_something_verifies_the_unit() {
+    let fixture = Fixture::new();
+    a_compiler_and_a_verifier(&fixture, PARTLY_SECOND);
+    fixture.write(
+        "def/a.lfy",
+        "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list` })\n    .add({ behavior = `Sorts the list` });\n}\n",
+    );
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    assert_eq!(lines_of(&fixture, "verifications.txt"), 2, "the verifier ran twice");
+    let log = fixture.read("elfie-requests/compile.log");
+    assert!(log.contains("✗ failed"), "{log}");
+    assert!(log.contains("1 satisfied, 0 violated, 1 unverifiable"), "{log}");
+    assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
+}
+
+/// A compiler that fails to authenticate reports nothing: it fails, is run once more, and
+/// fails again, so the unit is never accepted, no verifier runs, and the root is unchanged.
+// @lfy def/cli/compile.lfy:compile#compile:compile:3e79bdbe52420b78ef68250767b88fed09360014da666d4ef8b75eb78323a871
+#[test]
+fn a_compiler_that_reported_nothing_fails_twice() {
+    let fixture = Fixture::new();
+    a_compiler_and_a_verifier(&fixture, SATISFIED);
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    let before = fixture.read("out/a.rs");
+    fixture.write("def/a.lfy", "d A: `An A, edited` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts the list` });\n}\n");
+    fixture.write(
+        "compiler.sh",
+        &noted(&fixture, "#!/bin/sh\ncat > /dev/null\necho compile >> '<notes>/attempts.txt'\necho 'Failed to authenticate'\nexit 1\n"),
+    );
+    fs::remove_file(fixture.root.join("elfie-requests/compile.log")).unwrap();
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+    assert_eq!(lines_of(&fixture, "attempts.txt"), 3, "the compiler ran twice more");
+    assert_eq!(lines_of(&fixture, "verifications.txt"), 1, "a verifier ran");
+    let log = fixture.read("elfie-requests/compile.log");
+    let failed: Vec<&str> = log.lines().filter(|line| line.contains("✗ failed")).collect();
+    assert_eq!(failed.len(), 2, "{log}");
+    assert!(failed.iter().all(|line| line.contains("the compiler reported nothing")), "{log}");
+    assert!(!log.contains("✓ accepted"), "{log}");
+    assert_eq!(fixture.read("out/a.rs"), before);
+}
+
+/// A global review that judged nothing is run once more with the same review request; when
+/// it judges nothing again, one problem says so, the compile stops with the code failure, and
+/// the root takes no change set. Verify says so too, and ends with the code failure.
+// @lfy def/cli/compile.lfy:compile#compile:compile:71fcb7057074d2d8930a4742e4ec5956ff4261db0f3f9781e288693c246892fe
+// @lfy def/cli/compile.lfy:compile#compile:compile:dc22575144099436dc0639cd5269bd62f70a82aac76862e80b2fe1a01368f278
+// @lfy def/cli/compile.lfy:compile#compile:compile:1622278a64002a21539f7250b77ca1852b4d1cb431941304777f303368729eb9
+// @lfy def/cli/compile.lfy:compile#compile:compile:e8209fbb177a23092c32e2cfcbde4c0841bb33e583db343c85431457c3ae1971
+#[test]
+fn a_global_review_that_judged_nothing_twice_stops_the_compile() {
+    let fixture = Fixture::new();
+    with_a_global_criterion(&fixture, &branching_verifier("unverifiable", "satisfied"));
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Failure.code());
+    assert_eq!(fixture.read("verifications.txt"), "a\nglobal\nglobal\n");
+    let log = fixture.read("elfie-requests/compile.log");
+    assert!(log.contains(&format!("    - {JUDGED_NO_GLOBAL}")), "{log}");
+    assert!(!log.contains("▸ merging"), "{log}");
+    assert!(!fixture.root.join("out/a.rs").exists(), "the root took a change set");
+    assert!(ChangeSet::load(&fixture.root, "rust").is_some(), "the change set was not kept");
+    let (code, out, _) = fixture.printed(&["verify", "--global", "--color=never"]);
+    assert_eq!(code, ExitCode::Failure.code());
+    assert!(out.contains(&format!("global: {JUDGED_NOTHING}")), "{out}");
+    assert_eq!(fixture.read("verifications.txt"), "a\nglobal\nglobal\nglobal\nglobal\n");
+}
+
+/// Verify names a unit whose review judged nothing, after the verifier was run once more for
+/// it, and ends with the code failure.
+// @lfy def/cli/compile.lfy:verify#verify:verify:6d4d8db3bab0dd4d82a59c7dc2547b46353a9002b04afd2a5da7fbbdb27780a4
+#[test]
+fn verify_of_a_unit_that_judged_nothing_is_a_failure() {
+    let fixture = Fixture::new();
+    a_compiler_and_a_verifier(&fixture, SATISFIED);
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    write_verifier(&fixture, UNAUTHENTICATED);
+    let (code, out, _) = fixture.printed(&["verify", "a", "--full", "--color=never"]);
+    assert_eq!(code, ExitCode::Failure.code());
+    assert!(out.contains(&format!("a: {JUDGED_NOTHING}")), "{out}");
+    assert_eq!(lines_of(&fixture, "verifications.txt"), 3, "the verifier ran twice on a");
+}
+
+/// A global review that holds no violated review and satisfies something passes.
+// @lfy def/cli/compile.lfy:compile#compile:compile:33118ef91e83ccc906ceb521dc58ca5269a50860296c00d79f346c82a4a42dc6
+#[test]
+fn a_satisfied_global_review_passes() {
+    let fixture = Fixture::new();
+    with_a_global_criterion(&fixture, &branching_verifier("satisfied", "satisfied"));
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    assert!(fixture.read("elfie-requests/compile.log").contains("▸ merging"));
+    assert!(fixture.root.join("out/a.rs").exists(), "the root took no change set");
 }
 
 /// Every line of the verifier's output reaches the log, the lines it wrote to standard

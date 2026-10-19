@@ -579,11 +579,10 @@ pub const FIX_UNIT_LINES: usize = 40;
 // @lfy def/generation/data.lfy:Reach
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Reach {
-    /// Empty when every unit of the same target that depends on the unit directly and has
-    /// outputs records the hash of the unit's interface as it is now; otherwise every unit of
-    /// the same target that has outputs and depends on the unit, directly or through other
-    /// units, in [`Plan::units`] order, as indices into it; their outputs and regions are
-    /// those of their [`Unit::outputs`].
+    /// Every unit of the same target that has outputs and depends on the unit, directly or
+    /// through other units, in [`Plan::units`] order, as indices into it, whether or not the
+    /// unit's interface changed; their outputs and regions are those of their
+    /// [`Unit::outputs`].
     pub units: Vec<usize>, // @lfy def/generation/data.lfy:Reach.units
     /// The most lines a fix may change in one region.
     pub fix_lines: usize, // @lfy def/generation/data.lfy:Reach.fixLines
@@ -603,36 +602,18 @@ impl Reach {
         }
     }
 
-    /// The reach of the unit at `index` of `plan`, `workspace` being the workspace the plan
-    /// was made from: none when every direct dependent with outputs records the unit's
-    /// interface as it is now, and otherwise every unit of its target that has outputs and
-    /// depends on it, directly or through other units.
+    /// The reach of the unit at `index` of `plan`, the workspace being the one the plan was
+    /// made from: every unit of its target that has outputs and depends on it, directly or
+    /// through other units, whether or not the unit's interface changed.
     ///
     /// It reads the plan's units, their outputs, and the definitions alone, so what is
     /// planned changes nothing of it.
     // @lfy def/generation/data.lfy:Reach.units
     // @lfy def/generation/data.lfy:Reach#Reach:Reach:9fa35d3e58bd1c6985f920bf4d94049cd12b7b69531ce2e5a0b17cef22dd18e1
-    pub fn of(workspace: &Workspace, plan: &Plan, index: usize) -> Reach {
+    pub fn of(_workspace: &Workspace, plan: &Plan, index: usize) -> Reach {
         let unit = &plan.units[index];
         let target = unit.target;
         let same = |other: &Unit| other.target == target && !other.outputs.is_empty();
-        // @lfy def/generation/data.lfy:Reach#Reach:Reach:0bb557a5ed670b6e434a85b29b6693859d060770f3fea536fc9604d46fd1402a
-        let path = &workspace.files[unit.file].path;
-        let signature = super::interface_signature(workspace, unit);
-        let current = plan
-            .units
-            .iter()
-            .filter(|other| same(other) && other.dependencies.contains(&index))
-            .all(|other| {
-                other
-                    .outputs
-                    .iter()
-                    .all(|map| map.dependencies.get(path) == Some(&signature))
-            });
-        if current {
-            return Reach::new(Vec::new());
-        }
-        // @lfy def/generation/data.lfy:Reach.units
         let mut depends = vec![false; plan.units.len()];
         depends[index] = true;
         // A unit comes after its dependencies in `Plan::units`, but a pass repeated until
@@ -647,6 +628,9 @@ impl Reach {
                 }
             }
         }
+        // @lfy def/generation/data.lfy:Reach#Reach:Reach:ff348933ceb648c9d23dbc473954536137029600d6386cd50fe46337be163dd9
+        // Every dependent with outputs, whatever interface it records: a change of behaviour
+        // alone can stop a dependent's tests from passing.
         Reach::new(
             plan.units
                 .iter()

@@ -1506,6 +1506,7 @@ fn compile(invocation: Invocation): `Generate the outputs of the units that need
         `compile`,
         `The verifier's report on a unit holds no violated review`,
         `[[ReviewReport.unplaced]] of it is empty`,
+        `At least one review of it is satisfied`,
       ],
       behavior = [
         `The source maps [[Acceptance.accept]] derived for the unit are recorded by [[Maps.record]] in its directory`,
@@ -1513,8 +1514,20 @@ fn compile(invocation: Invocation): `Generate the outputs of the units that need
       ],
     })
     .add({
-      situation = [`compile`, `The verifier's report on a unit holds an unverifiable review`],
+      situation = [
+        `compile`,
+        `The verifier's report on a unit holds an unverifiable review`,
+        `Another review of the report is satisfied or violated`,
+      ],
       behavior = `The unverifiable review never rejects the unit`,
+    })
+    .add({
+      situation = [
+        `compile or verify`,
+        `[[ReviewRequest.asked]] of a unit's review request is not empty`,
+        `No review of the verifier's report on the unit is satisfied or violated, its missing ids counted as unverifiable`,
+      ],
+      behavior = `The report judged nothing: the unit is not reviewed by it, and its source maps are not recorded from it`,
     })
     .add({
       situation = [`compile`, `The verifier's report on a unit holds a violated review`],
@@ -1556,14 +1569,14 @@ fn compile(invocation: Invocation): `Generate the outputs of the units that need
     .add({
       situation = [
         `compile or verify`,
-        `The first run of the verifier on a unit ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
+        `The first run of the verifier on a unit ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1, or with a report that judged nothing`,
       ],
       behavior = `The verifier is run once more on the unit`,
     })
     .add({
       situation = [
         `compile or verify`,
-        `The verifier is run once more on a unit because its first run ended without every verdict`,
+        `The verifier is run once more on a unit because its first run ended without every verdict, or with a report that judged nothing`,
       ],
       behavior = `The review request of the second run is made as the first was, but with the records the first was made with, each review of the first run whose status is satisfied replacing the record of its id with the record made from it`,
     })
@@ -1594,8 +1607,16 @@ fn compile(invocation: Invocation): `Generate the outputs of the units that need
       situation = [
         `compile`,
         `The second run of the verifier on a unit ends with no review in [[ReviewReport.reviews]], or with an id in [[ReviewReport.missing]] and either no line of [[Process.Exit.stdout]] reading ELFIE: REVIEWED or [[Process.Exit.code]] -1`,
+        `At least one review of its report is satisfied or violated`,
       ],
       behavior = `The unit is verified with the reviews parsed from that run, as if its report had been complete`,
+    })
+    .add({
+      situation = [`compile`, `The second run of the verifier on a unit ends with a report that judged nothing`],
+      behavior = [
+        `The unit is rejected after its retries with one problem saying the verifier judged no criterion or test, so it may never have run`,
+        `Its source maps are not recorded`,
+      ],
     })
     .add({
       situation = [`compile`, `--no-verify is given, or elfie.json names no verifier`],
@@ -1761,8 +1782,32 @@ fn compile(invocation: Invocation): `Generate the outputs of the units that need
       behavior = `The next compile plans the units whose markers answered for a violated review with reason violated`,
     })
     .add({
-      situation = [`compile`, `A global review holds no violated review`],
+      situation = [`compile`, `A global review holds no violated review`, `At least one review of it is satisfied`],
       behavior = `The global review passes`,
+    })
+    .add({
+      situation = [
+        `compile or verify`,
+        `[[ReviewRequest.asked]] of the global review request is not empty`,
+        `No review of the verifier's report on the global review is satisfied or violated, its missing ids counted as unverifiable`,
+      ],
+      behavior = `The global review judged nothing, and it does not pass`,
+    })
+    .add({
+      situation = [`compile or verify`, `The first run of the verifier for a global review judged nothing`],
+      behavior = `The verifier runs once more for that global review, with the same review request`,
+    })
+    .add({
+      situation = [`compile`, `The verifier, run once more for a global review of the compile, judged nothing again`],
+      behavior = [
+        `One problem is printed saying the verifier judged no global criterion or test, so it may never have run`,
+        `The compile stops`,
+        `The root takes no change set of the compile, and every change set is kept`,
+      ],
+    })
+    .add({
+      situation = [`compile`, `The verifier, run once more for a global review of the compile, judged nothing again`],
+      behavior = `Returns [[ExitCode.failure]]`,
     })
     .add({
       situation = `No global criterion or test exists`,
@@ -1934,6 +1979,26 @@ fn compile(invocation: Invocation): `Generate the outputs of the units that need
         `0, after a relocated line for rust counting one entity, two markers, and one review record, b's request saying f was relocated into it from def/a.lfy and its code is kept as it is, b's review carrying the verdict on f's criterion, and the root's src/a.rs naming def/b.lfy:f with elfie-compile/maps/rust/b.json and elfie-compile/reviews/rust/b.json written`,
       ),
     },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a git root with one target rust whose build and test command lines exit 0, def holding a.lfy recorded and edited since, its outputs still satisfying acceptance as they are, and a compiler that prints Failed to authenticate and exits 1 without submitting an outcome or writing anything`,
+        ),
+      ],
+      expect = number@like(
+        `1, after two failed lines for a, each saying the compiler reported nothing, a never accepted, no verifier run, and the root unchanged`,
+      ),
+    },
+    {
+      input = [
+        Invocation@like(
+          `compile, with the root as a git root with one target rust whose build and test command lines exit 0, def holding a.lfy recorded and edited since, a compiler that accepts a, and a verifier that prints Failed to authenticate and exits 1 without reporting any review`,
+        ),
+      ],
+      expect = number@like(
+        `1, after a accepted, the verifier run twice on a, a rejected with a problem saying the verifier judged no criterion or test, a's source maps not recorded, and the root unchanged`,
+      ),
+    },
   );
 }
 
@@ -2079,7 +2144,20 @@ fn verify(invocation: Invocation): `Review generated outputs against their crite
       situation = [
         `verify`,
         `elfie.json names a verifier`,
+        `No review is violated`,
+        `A unit's review, or the global review, judged nothing after the verifier was run once more for it`,
+      ],
+      behavior = [
+        `One line names each unit, or global, whose review judged nothing and says the verifier judged no criterion or test, so it may never have run`,
+        `Returns [[ExitCode.failure]]`,
+      ],
+    })
+    .add({
+      situation = [
+        `verify`,
+        `elfie.json names a verifier`,
         `No review is violated, and the verifier was started or no review request asked anything`,
+        `No unit's review and no global review judged nothing`,
       ],
       behavior = `Returns [[ExitCode.success]]`,
     })

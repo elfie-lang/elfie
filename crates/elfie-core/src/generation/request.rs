@@ -231,7 +231,7 @@ pub fn request(
         .collect();
     // Every later unit of the target that has outputs, read from the plan's units and their
     // outputs alone, so what is planned changes nothing of it.
-    // @lfy def/generation/request.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    // @lfy def/generation/request.lfy:request#request:request:3fe3499800670559a48a3f228ba09e462416bfcd313e21d86ea7c91319ba2856
     let reach = Reach::of(workspace, plan, index);
     // One interface per dependency, each holding every entity of that dependency: what a
     // hosted compiler is given by name is the same interface a request read anywhere else

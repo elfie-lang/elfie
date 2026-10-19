@@ -48,7 +48,7 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     assert!(request.existing.is_empty());
     assert!(request.foreign_edits.is_empty());
     // a is the last unit, so the run may edit no other unit's code.
-    // @lfy def/generation/request.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    // @lfy def/generation/request.lfy:request#request:request:3fe3499800670559a48a3f228ba09e462416bfcd313e21d86ea7c91319ba2856
     assert!(request.reach.units.is_empty(), "{:?}", request.reach);
     // b is a's dependency, and so its interface.
     // @lfy def/generation/request.lfy:request
@@ -1184,7 +1184,7 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         Some(STUB_LINE)
     );
     let mut maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
-    // `a` was accepted against another interface of `b`, so `a` is in `b`'s reach.
+    // `a` was accepted against another interface of `b`; it is in `b`'s reach either way.
     for map in maps.iter_mut().filter(|map| map.source == "def/a.lfy") {
         map.dependencies.values_mut().for_each(String::clear);
     }
@@ -1198,7 +1198,7 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         text: "// old".to_string(),
     }];
     let request = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
-    // @lfy def/generation/request.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    // @lfy def/generation/request.lfy:request#request:request:3fe3499800670559a48a3f228ba09e462416bfcd313e21d86ea7c91319ba2856
     assert_eq!(request.reach.units, [a_index]);
     assert_eq!(request.reach.fix_lines, 10);
     assert_eq!(request.reach.fix_unit_lines, 40);
@@ -1254,11 +1254,37 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
 }
 
 /// Two units of one target, `b` before `a`, each with outputs, and `a`'s outputs recording
-/// `b`'s interface as it is now: the run for `b` edits the outputs of no other unit.
-// @lfy def/generation/request.lfy:request#request:request:73e6319604bfc6196c21282144e9a8d47993b05dcb4da344327511b46cd859c9
+/// `b`'s interface as it is now: the run for `b` may still edit `a`.
+// @lfy def/generation/request.lfy:request#request:request:66f471f534b8265d0adc45a52ce7926600b2d2962fb225fc455dc57359870ad3
 #[test]
-fn a_reach_is_empty_while_the_dependents_record_the_interface_as_it_is() {
+fn a_reach_holds_the_dependents_that_record_the_interface_as_it_is() {
     let fixture = a_and_b();
+    let program = fixture.program();
+    let workspace = program.workspace.clone();
+    assert_bound(&workspace);
+    let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    let plan = plan_of(&program, &maps, &[], &[]);
+    let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+    let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
+    let existing = [Output {
+        path: "src/b.rs".to_string(),
+        text: "// old".to_string(),
+    }];
+    let request = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
+    assert_eq!(request.reach.units, [a_index], "{:?}", request.reach);
+    let reach = part(&request.instructions, "## The reach of this run");
+    assert!(reach.contains("- `a`: `src/a.rs`"), "{reach}");
+}
+
+/// Two units of one target, neither using the other, each with outputs: the run for `b`
+/// edits the outputs of no other unit.
+// @lfy def/generation/request.lfy:request#request:request:b1385e5fd96b3a4de9f5ef6ec232692b32644fc1bcc085845d56609ec1426826
+#[test]
+fn a_reach_is_empty_without_dependents() {
+    let fixture = Fixture::with_rust_target();
+    fixture
+        .write("def/a.lfy", "d A { $x = string; }\n")
+        .write("def/b.lfy", "d B { $x = string; }\n");
     let program = fixture.program();
     let workspace = program.workspace.clone();
     assert_bound(&workspace);
