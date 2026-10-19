@@ -132,33 +132,6 @@ d SourceMap: `What one output file was generated from, recorded mechanically at 
     .add({
       behavior = `The unit's own region text of an output is the text of the regions of its own markers in that output, in output order, each region's lines with the marker comment a line carries, from [[Target.markerComment]] before @lfy to the end of the line, and any white space before it, removed, every line that is then empty left out, and each line followed by a line break, as [[ReviewRequest.hashes]] strips a region`,
     });
-
-  // Source at the last accepted generation
-  // Decision: lowered text leaves out criteria and tests, so a revision that only reworded a
-  // criterion lowers to the same hash as the one the outputs were accepted from. Matching the
-  // requirement ids as well keeps the reworded revision from being taken for the accepted one.
-  @acceptanceCriteria
-    .add({
-      behavior = `A revision of a unit's file is one its outputs were accepted from exactly when its lowered text hashes to [[SourceMap.hash]] of the unit's outputs and its local criterion and test ids, taken as [[SourceMap.requirements]] takes them, hash to [[SourceMap.requirements]] of the unit's outputs`,
-    })
-    .add({
-      situation = `[[SourceMap.answered]] of the unit's outputs is not empty`,
-      behavior = `Comparing a revision's local criterion and test ids, sorted, with [[SourceMap.answered]] gives the same answer as comparing their hash with [[SourceMap.requirements]]`,
-    })
-    .add({
-      behavior = `The source of a unit at its last accepted generation is its file as loaded when that is one its outputs were accepted from, and otherwise the most recent revision of its file that its outputs were accepted from`,
-    })
-    .add({
-      situation = `Neither a unit's file as loaded nor any revision of it is one its outputs were accepted from`,
-      behavior = `The source of the unit at its last accepted generation is not recoverable`,
-    })
-    // Decision: an old revision is lowered against the workspace as it is now, so a unit whose
-    // criteria come from a trait or a with block in another file may have no revision whose ids match.
-    // Its code can still be compared with the revision whose lowered text matches, while its criteria
-    // are known only by the ids recorded in [[SourceMap.answered]].
-    .add({
-      behavior = `A unit's hash-matched source is the most recent revision of its file whose lowered text hashes to [[SourceMap.hash]] of the unit's outputs, whatever its criteria and tests`,
-    });
 }
 
 d Unit: `The work the compiler does as one piece: one source file for one target, with any entities moved into it from other files` {
@@ -290,7 +263,7 @@ d Rewording: `A local criterion or test whose id changed since a unit's outputs 
 d Previous: `The source of a unit at its last accepted generation, or its hash-matched source, recovered once and lowered once` {
   $text: `The unit's file as it was, as written and never lowered` = string;
   $program: `The program lowered with the unit's file read as [[Previous.text]] and every other file as it is` = Program;
-  $hashMatched: `Whether it is only the unit's hash-matched source, as [[SourceMap]] defines one, because neither the unit's file as loaded nor any revision of it is its source at its last accepted generation` = boolean;
+  $hashMatched: `Whether it is only the unit's hash-matched source: the newest revision of its file whose lowered text hashes to [[SourceMap.hash]] of the unit's outputs whatever its criteria and tests, taken because neither the unit's file as loaded nor any revision of it is its source at its last accepted generation` = boolean;
 }
 
 d Relocation: `The code of one entity moved from the outputs of the unit of the file that declared it to the unit of the file that declares it now, by rewriting the markers that name it` {

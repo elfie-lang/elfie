@@ -219,8 +219,9 @@ pub struct Binding {
     // Decision: a unit is named by its index into the plan it belongs to, as
     // `Request::unit` names one, so the binding's unit is the request's.
     pub unit: Option<usize>, // @lfy def/mcp/data.lfy:Binding.unit
-    /// The absolute path of the directory the run is in: the copy of the root its change set
-    /// is worked in when it runs in one, the root otherwise.
+    /// The absolute path of the directory the run is in: the unit's own copy when it is worked
+    /// in a change set, the change set's copy for the global review or a kept unit verified on
+    /// resuming, the root otherwise.
     // Decision: the definition types `directory` as a string; it is kept as the `PathBuf`
     // the session's workspace root is read as, so every path of the workspace joins to it
     // directly, as `Workspace::root` is kept.
@@ -233,9 +234,9 @@ pub struct Binding {
     /// The request given to a compiler run as its input; `None` for a verifier run.
     pub request: Option<Request>, // @lfy def/mcp/data.lfy:Binding.request
     /// Every file of the output directory of the unit's target as it was in
-    /// [`Binding::directory`] before the unit's first compiler run of this compile since it
-    /// was last accepted in it, as acceptance is given it as the files before the run; `None`
-    /// for a verifier run.
+    /// [`Binding::directory`] before the unit's first compiler run since its copy was made, so
+    /// that a retry is measured against the same text, as acceptance is given it as the files
+    /// before the run; `None` for a verifier run.
     pub before: Option<Vec<Output>>, // @lfy def/mcp/data.lfy:Binding.before
     /// The review request given to a verifier run as its input; `None` for a compiler run.
     pub review: Option<ReviewRequest>, // @lfy def/mcp/data.lfy:Binding.review
@@ -490,6 +491,7 @@ mod tests {
                     .collect(),
             }],
             reason: None,
+            ..Default::default()
         }
     }
 

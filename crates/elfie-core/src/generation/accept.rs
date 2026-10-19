@@ -540,11 +540,12 @@ fn foreign_edits_of(
                 continue;
             }
             let owner_stem = &plan.units[owner].stem;
-            // @lfy def/generation/main.lfy:accept#accept:accept:53c90dd1d996650fcb1634a0be592968e6c75780aa224f1f9d8b2a2c55d7bf8d
+            // @lfy def/generation/main.lfy:accept#accept:accept:081354ab25d7caa23751b7750efc59d1d5c9ca9fc6b2197450de047cfee648f8
             if !request.reach.units.contains(&owner) {
                 problems.push(format!(
-                    "{path}:{first_line}: the line is in the code of {owner_stem}, which is not a \
-                     later unit, and only the code of a later unit is edited"
+                    "{path}:{first_line}: the line is in the code of {owner_stem}, which is not in \
+                     the reach of this run, and only the code of a unit in its reach, one that \
+                     depends on it, is edited"
                 ));
                 continue;
             }

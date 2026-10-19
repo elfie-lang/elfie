@@ -8,7 +8,7 @@ use crate::model::{Origin, Problem, SymbolKind};
 
 /// The same `path` names a different file in each workspace, because it is relative
 /// to that workspace's own root and to nothing else.
-// @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
+// @lfy def/workspace/main.lfy:change#change:change:df63956f559bae937bed195d25ca2e954442551cba18c878aede666dbc7b775e
 // @lfy def/workspace/main.lfy:change#change:change:015b076544c59f4f220ad0f374271f8dacad4e1c6547652db3ee068e71f97e13
 #[test]
 fn a_change_path_is_relative_to_the_root_of_its_workspace() {
@@ -71,7 +71,7 @@ fn a_change_adds_a_file_read_as_the_given_text() {
 
 // @lfy def/workspace/main.lfy:change#change:change:3b3d10266814a5ce8c55a7d3a7026b812efcc22038abd92aa59984eab0be26b4
 // @lfy def/workspace/main.lfy:change#change:change:483204a8915547a6e7a5c568902e1e48d573437c458b11e04b25176537ae9732
-// @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
+// @lfy def/workspace/main.lfy:change#change:change:df63956f559bae937bed195d25ca2e954442551cba18c878aede666dbc7b775e
 #[test]
 fn a_change_to_nothing_reads_the_file_from_disk_again() {
     let fixture = Fixture::empty();
@@ -114,7 +114,7 @@ fn a_change_to_nothing_with_no_file_on_disk_leaves_the_program() {
 }
 
 // @lfy def/workspace/main.lfy:change#change:change:ffba7bf1aadfe9658e1cc3606237a6f446338ee57a72c8a92ba0c5e9f12e2448
-// @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
+// @lfy def/workspace/main.lfy:change#change:change:df63956f559bae937bed195d25ca2e954442551cba18c878aede666dbc7b775e
 #[test]
 fn a_replacement_stands_until_the_same_path_is_given_again() {
     let fixture = Fixture::empty();
@@ -155,7 +155,12 @@ fn a_change_out_of_reach_gives_an_equal_workspace() {
         change(&loaded, "elsewhere/thing.lfy", Some("trait t { }")),
         loaded
     );
-    assert_eq!(change(&loaded, "def/notes.txt", Some("text")), loaded);
+    // A file under the source directory is in reach whatever it is, though one that is
+    // no source file changes nothing the program holds.
+    let notes = change(&loaded, "def/notes.txt", Some("text"));
+    assert_eq!(notes.files, loaded.files);
+    assert_eq!(notes.model, loaded.model);
+    assert_eq!(notes.problems, loaded.problems);
     assert_eq!(change(&loaded, "src/main.lfy", None), loaded);
     // A file a use resolves to is in reach wherever it lives.
     fixture
@@ -225,6 +230,22 @@ fn a_change_under_a_package_root_reaches_the_program() {
             .map(|package| changed.packages[package].identifier.as_str()),
         Some("p")
     );
+    // The `elfie.json` at a package root is under it too, and is read as it was replaced.
+    let exported = change(
+        &loaded,
+        "pkg/elfie.json",
+        Some(r#"{ "exports": { "ui": "./missing" } }"#),
+    );
+    assert_eq!(load_problems(&exported).len(), 1, "{:?}", exported.problems);
+    // @lfy def/workspace/main.lfy:change
+    let expected = {
+        fixture.write("pkg/elfie.json", r#"{ "exports": { "ui": "./missing" } }"#);
+        let expected = fixture.load();
+        std::fs::remove_file(fixture.root.join("pkg/elfie.json")).unwrap();
+        expected
+    };
+    assert_eq!(exported.packages, expected.packages);
+    assert_eq!(exported.problems, expected.problems);
     // The package `elfie` is a package of the program too.
     let changed = change(&loaded, "lib/extra.lfy", Some("trait inLibrary { }\n"));
     assert_ne!(changed, loaded);
@@ -344,7 +365,7 @@ fn a_change_reaches_every_file_it_must_and_leaves_the_rest_as_it_was() {
 /// source directory and a package root that only a replacement puts anything in are
 /// read as directories, so a change there gives what a load of a root holding that
 /// file on disk gives, and adds no problem of its own.
-// @lfy def/workspace/main.lfy:change#change:change:c6ba3fb62dabfc9865d520fcd05bbd995a1a53a7219263c2251afb188bbc8a8d
+// @lfy def/workspace/main.lfy:change#change:change:df63956f559bae937bed195d25ca2e954442551cba18c878aede666dbc7b775e
 #[test]
 fn a_replacement_stands_in_for_the_directory_that_would_hold_it() {
     // The source directory is not on disk at all.
@@ -393,4 +414,44 @@ fn a_replacement_stands_in_for_the_directory_that_would_hold_it() {
     assert_eq!(changed.files, expected.files);
     assert_eq!(changed.model, expected.model);
     assert_eq!(changed.problems, expected.problems);
+}
+
+/// A file the change does not name is not read from disk again: what was written to it on
+/// disk since the workspace was loaded stays out of the result, which keeps the tree and
+/// the symbols the file was loaded with.
+// @lfy def/workspace/main.lfy:change#change:change:3a02f7c1e8532b9162d270c483802b532300c09e983037425404b40e76aa6abe
+// @lfy def/workspace/main.lfy:change#change:change:5583beac856502d013626cdc61c460fe31e94f8ccc9f2edda38cc4ed544e2244
+#[test]
+fn a_change_reads_no_other_file_from_disk_again() {
+    let fixture = Fixture::empty();
+    fixture
+        .write("def/main.lfy", "d Main { }\n")
+        .write("def/other.lfy", "d Other { }\n");
+    let loaded = fixture.load();
+    fixture.write("def/other.lfy", "d Other { }\nd Added { }\n");
+    let changed = change(&loaded, "def/main.lfy", Some("// a comment\nd Main { }\n"));
+    let tree_of = |workspace: &Workspace, path: &str| {
+        workspace.model.sources[workspace.file(path).unwrap().source]
+            .tree
+            .clone()
+    };
+    assert_eq!(
+        tree_of(&changed, "def/other.lfy"),
+        tree_of(&loaded, "def/other.lfy")
+    );
+    assert_eq!(
+        changed.overlays.get("def/main.lfy").map(String::as_str),
+        Some("// a comment\nd Main { }\n")
+    );
+    let names = |workspace: &Workspace| -> Vec<String> {
+        workspace
+            .model
+            .symbols
+            .iter()
+            .map(|symbol| symbol.name.clone())
+            .collect()
+    };
+    assert!(names(&changed).iter().any(|name| name == "Other"));
+    assert!(!names(&changed).iter().any(|name| name == "Added"));
+    assert!(changed.problems.is_empty(), "{:?}", changed.problems);
 }

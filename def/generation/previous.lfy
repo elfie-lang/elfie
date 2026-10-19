@@ -24,8 +24,22 @@ fn previousOf(program: Program, unit: Unit, sourceMaps: SourceMap[]): `The sourc
     .add({
       behavior = `A text's ids are the local criterion and test ids of the unit's file in the program it is lowered in, taken as [[SourceMap.requirements]] takes them`,
     })
+    // Decision: lowered text leaves out criteria and tests, so a revision that only reworded a
+    // criterion lowers to the same hash as the one the outputs were accepted from. Matching the
+    // requirement ids as well keeps the reworded revision from being taken for the accepted one.
     .add({
-      behavior = `A text is the source at the last accepted generation when its lowered text hashes to [[SourceMap.hash]] and its ids hash to [[SourceMap.requirements]], as [[SourceMap]] defines one`,
+      behavior = `A text is the source at the last accepted generation when its lowered text hashes to [[SourceMap.hash]] and its ids hash to [[SourceMap.requirements]]`,
+    })
+    .add({
+      situation = `[[SourceMap.answered]] of the first of [[sourceMaps]] is not empty`,
+      behavior = `Comparing a text's ids, sorted, with [[SourceMap.answered]] gives the same answer as comparing their hash with [[SourceMap.requirements]]`,
+    })
+    // Decision: an old revision is lowered against the workspace as it is now, so a unit whose
+    // criteria come from a trait or a with block in another file may have no revision whose ids match.
+    // Its code can still be compared with the revision whose lowered text matches, while its criteria
+    // are known only by the ids recorded in [[SourceMap.answered]].
+    .add({
+      behavior = `The unit's hash-matched source is the newest revision of its file whose lowered text hashes to [[SourceMap.hash]], whatever its criteria and tests`,
     });
 
   // The working tree first

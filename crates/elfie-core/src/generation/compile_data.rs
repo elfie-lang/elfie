@@ -20,7 +20,7 @@ const LEGACY_MAPS: &str = "source-map.json";
 // because a verdict cannot be rebuilt from the definitions, the maps, and the outputs
 // without a verifier.
 // @lfy def/generation/main.lfy:reviewsOf
-const REVIEWS: &str = "elfie-compile/reviews";
+pub(super) const REVIEWS: &str = "elfie-compile/reviews";
 
 /// Every source map recorded for a workspace whose output still exists.
 ///
@@ -39,6 +39,17 @@ const REVIEWS: &str = "elfie-compile/reviews";
 // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
 // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:1dc22603643b17fad4874110ef09a3391b67d71c28a9f5b35a7dfa18438f3409
 pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<SourceMap> {
+    source_maps_under(workspace, &workspace.root, target)
+}
+
+/// [`source_maps_of`] with the map files, the legacy map files, and the outputs read under
+/// `root` rather than under the workspace root.
+// @lfy def/generation/main.lfy:sourceMapsOf
+pub(super) fn source_maps_under(
+    workspace: &Workspace,
+    root: &Path,
+    target: Option<&str>,
+) -> Vec<SourceMap> {
     let mut out: Vec<SourceMap> = Vec::new();
     // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:e3ab53d40653267f2e160d4a7f3251350dc8120cab5217a982112c74085d6a81
     for named in &workspace.targets {
@@ -50,13 +61,12 @@ pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<Source
             continue;
         }
         // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:48e0f71f7db0725ebe634eeac3dac1d913b250a6626d34b72282e59198837589
-        let folder = workspace.root.join(MAPS).join(&named.identifier);
+        let folder = root.join(MAPS).join(&named.identifier);
         let files = if folder.is_dir() {
             map_files(&folder) // @lfy def/generation/main.lfy:sourceMapsOf
         } else {
             // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:c968c8acaf4d38cdd8430f58ae5b09a27d1e2e6bd4ee8861bd63a620ddfd7a9c
-            let legacy = workspace
-                .root
+            let legacy = root
                 .join(&named.output_directory)
                 .join(LEGACY_MAPS);
             if legacy.is_file() {
@@ -78,7 +88,7 @@ pub fn source_maps_of(workspace: &Workspace, target: Option<&str>) -> Vec<Source
             for map in read_source_maps(&file) {
                 // A map whose output is gone says nothing about a unit that is up to date.
                 // @lfy def/generation/main.lfy:sourceMapsOf#sourceMapsOf:sourceMapsOf:777506c6ffecf859d5436778cd8e1997eef47cd57e5f8f41754058bbe3117d23
-                if workspace.root.join(&map.output).exists() {
+                if root.join(&map.output).exists() {
                     out.push(map);
                 }
             }
@@ -228,10 +238,8 @@ pub fn rederive(
     source_maps: &[SourceMap],
 ) -> Vec<SourceMap> {
     let workspace = &program.workspace;
-    let model = &workspace.model;
     let planned = &plan.units[unit];
     let target = &workspace.targets[planned.target];
-    let file = &workspace.files[planned.file];
     // @lfy def/generation/main.lfy:rederive#rederive:rederive:ab3fc93517c19e9574351a5b75cd5adfdb9863d5af006fbb2bf0cac32ef94646
     if source_maps.is_empty() {
         return source_maps.to_vec();
@@ -246,62 +254,35 @@ pub fn rederive(
         &mut paths,
     );
     paths.sort();
+    let files: Vec<Output> = paths
+        .into_iter()
+        .filter_map(|path| {
+            let text = std::fs::read_to_string(workspace.root.join(&path)).ok()?;
+            Some(Output { path, text })
+        })
+        .collect();
+    rederive_in(program, plan, unit, source_maps, &files)
+}
 
-    let named = named_entities(model, file.source, &planned.entities);
-    // The files whose markers this unit may name a line of, as acceptance claims them: its
-    // own, and the file of each entity moved into it.
-    // @lfy def/generation/main.lfy:rederive
-    let mut claimed: Vec<&str> = vec![&file.path];
-    for moved in plan.moves.iter().filter(|moved| moved.into == unit) {
-        let path = &workspace.files[plan.units[moved.origin].file].path;
-        if !claimed.contains(&path.as_str()) {
-            claimed.push(path);
-        }
+/// [`rederive`] with the files of the unit's target's output directory given, in path
+/// order, rather than read from the workspace root.
+// @lfy def/generation/main.lfy:rederive
+pub(super) fn rederive_in(
+    program: &Program,
+    plan: &Plan,
+    unit: usize,
+    source_maps: &[SourceMap],
+    files: &[Output],
+) -> Vec<SourceMap> {
+    let workspace = &program.workspace;
+    let planned = &plan.units[unit];
+    let target = &workspace.targets[planned.target];
+    let file = &workspace.files[planned.file];
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:ab3fc93517c19e9574351a5b75cd5adfdb9863d5af006fbb2bf0cac32ef94646
+    if source_maps.is_empty() {
+        return source_maps.to_vec();
     }
-    // Each file that holds a marker of this unit's own, with every marker of it that names a
-    // file of the program, read and derived as acceptance does and left as written.
-    // @lfy def/generation/main.lfy:rederive#rederive:rederive:33f6e3ae8b3a61bf5f205818bb8797ab2d0475dc7323d5212b3b38734b4ae594
-    // @lfy def/generation/main.lfy:rederive#rederive:rederive:de0c92c8e9054b77050411f99aab03406cef407c814ca97ee7ab8181bdebf960
-    let mut found: Vec<(String, Vec<Marker>)> = Vec::new();
-    for path in paths {
-        let Ok(text) = std::fs::read_to_string(workspace.root.join(&path)) else {
-            continue;
-        };
-        let output = Output {
-            path: path.clone(),
-            text,
-        };
-        // A problem acceptance would report is none of this: nothing here judges an output,
-        // it only reads where the regions are now.
-        let mut ignored: Vec<String> = Vec::new();
-        let markers: Vec<Marker> = parse_markers(&output.text)
-            .iter()
-            .filter_map(|marker| {
-                resolve_marker(
-                    workspace,
-                    file,
-                    &named,
-                    marker,
-                    &claimed,
-                    &output,
-                    &mut ignored,
-                )
-                // Left as written: acceptance renames a line marker to the declaration it
-                // falls in, but here only the line it derives is taken.
-                .map(|derived| Marker {
-                    entity: marker.entity.clone(),
-                    column: marker.column,
-                    ..derived
-                })
-            })
-            .collect();
-        if markers
-            .iter()
-            .any(|marker| is_own_marker(workspace, plan, unit, marker))
-        {
-            found.push((output.path, markers));
-        }
-    }
+    let found = own_files(program, plan, unit, files);
     // @lfy def/generation/main.lfy:rederive#rederive:rederive:ab3fc93517c19e9574351a5b75cd5adfdb9863d5af006fbb2bf0cac32ef94646
     if found.is_empty() {
         return source_maps.to_vec();
@@ -360,6 +341,71 @@ pub fn rederive(
         .collect()
 }
 
+/// Each of `files`, in their order, that holds a marker of the unit's own, with every marker
+/// of it that names a file of the program, read and derived as acceptance does and left as
+/// written.
+// @lfy def/generation/main.lfy:rederive#rederive:rederive:de0c92c8e9054b77050411f99aab03406cef407c814ca97ee7ab8181bdebf960
+pub(super) fn own_files(
+    program: &Program,
+    plan: &Plan,
+    unit: usize,
+    files: &[Output],
+) -> Vec<(String, Vec<Marker>)> {
+    let workspace = &program.workspace;
+    let model = &workspace.model;
+    let planned = &plan.units[unit];
+    let file = &workspace.files[planned.file];
+    let named = named_entities(model, file.source, &planned.entities);
+    // The files whose markers this unit may name a line of, as acceptance claims them: its
+    // own, and the file of each entity moved into it.
+    // @lfy def/generation/main.lfy:rederive
+    let mut claimed: Vec<&str> = vec![&file.path];
+    for moved in plan.moves.iter().filter(|moved| moved.into == unit) {
+        let path = &workspace.files[plan.units[moved.origin].file].path;
+        if !claimed.contains(&path.as_str()) {
+            claimed.push(path);
+        }
+    }
+    // Each file that holds a marker of this unit's own, with every marker of it that names a
+    // file of the program, read and derived as acceptance does and left as written.
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:33f6e3ae8b3a61bf5f205818bb8797ab2d0475dc7323d5212b3b38734b4ae594
+    // @lfy def/generation/main.lfy:rederive#rederive:rederive:de0c92c8e9054b77050411f99aab03406cef407c814ca97ee7ab8181bdebf960
+    let mut found: Vec<(String, Vec<Marker>)> = Vec::new();
+    for output in files {
+        // A problem acceptance would report is none of this: nothing here judges an output,
+        // it only reads where the regions are now.
+        let mut ignored: Vec<String> = Vec::new();
+        let markers: Vec<Marker> = parse_markers(&output.text)
+            .iter()
+            .filter_map(|marker| {
+                resolve_marker(
+                    workspace,
+                    file,
+                    &named,
+                    marker,
+                    &claimed,
+                    output,
+                    &mut ignored,
+                )
+                // Left as written: acceptance renames a line marker to the declaration it
+                // falls in, but here only the line it derives is taken.
+                .map(|derived| Marker {
+                    entity: marker.entity.clone(),
+                    column: marker.column,
+                    ..derived
+                })
+            })
+            .collect();
+        if markers
+            .iter()
+            .any(|marker| is_own_marker(workspace, plan, unit, marker))
+        {
+            found.push((output.path.clone(), markers));
+        }
+    }
+    found
+}
+
 /// Every file at or under one directory, as a path relative to the workspace root with `/`
 /// between the segments, in whatever order the directories give them.
 // @lfy def/generation/main.lfy:rederive
@@ -409,24 +455,7 @@ pub fn review_file(workspace: &Workspace, unit: &Unit) -> PathBuf {
 // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
 // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:1dc22603643b17fad4874110ef09a3391b67d71c28a9f5b35a7dfa18438f3409
 pub fn reviews_of(program: &Program, unit: &Unit) -> Vec<ReviewRecord> {
-    let path = review_file(&program.workspace, unit);
-    // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0aa4f9eaff20fee7bf263db985597b4d886a2ac762b47b1af1734107a9ac1503
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return Vec::new();
-    };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
-        return Vec::new();
-    };
-    let Some(items) = value.as_array() else {
-        return Vec::new();
-    };
-    let Some(records) = items
-        .iter()
-        .map(ReviewRecord::from_json)
-        .collect::<Option<Vec<ReviewRecord>>>()
-    else {
-        return Vec::new();
-    };
+    let records = read_review_records(&review_file(&program.workspace, unit));
     let local: HashSet<String> = unit
         .requirements(program)
         .iter()
@@ -438,6 +467,26 @@ pub fn reviews_of(program: &Program, unit: &Unit) -> Vec<ReviewRecord> {
         // @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0b41caebdc61220c67f088bc69f465267b2c9e2b36d07c52b02680bf6cb4724c
         .filter(|record| local.contains(&record.id))
         .collect()
+}
+
+/// Every record of one review record file, in the order it lists them, whatever their ids;
+/// none when it is missing, cannot be read, or is no JSON list of review records.
+// @lfy def/generation/main.lfy:reviewsOf#reviewsOf:reviewsOf:0aa4f9eaff20fee7bf263db985597b4d886a2ac762b47b1af1734107a9ac1503
+pub(super) fn read_review_records(path: &Path) -> Vec<ReviewRecord> {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return Vec::new();
+    };
+    let Some(items) = value.as_array() else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .map(ReviewRecord::from_json)
+        .collect::<Option<Vec<ReviewRecord>>>()
+        .unwrap_or_default()
 }
 
 /// Whether the review records of one unit are recorded in its review record file.

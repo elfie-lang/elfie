@@ -714,7 +714,7 @@ fn request_for(program: &Program, plan: &Plan, unit: usize) -> Request {
     // compiler's request and quotes the interfaces of its dependencies whole. The unit is
     // given no previous source, so no hash-matched one either, and no foreign edit.
     // @lfy def/mcp/main.lfy:request#request:request:baffffb532c00461b7b09f3370bae9624180e5c983807908f6791b256ad14b55
-    generation::request(program, plan, unit, &existing, None, false, false, &[])
+    generation::request(program, plan, unit, &existing, None, false, &[], &[])
 }
 
 /// One marker spelled as a marker line spells it after `@lfy` and a space.
@@ -967,7 +967,7 @@ global@targets.add(rust);
 
         /// Git run in the fixture's root, so that a test can make the root a repository and
         /// commit the source a unit's outputs are then accepted against.
-        // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+        // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
         fn git(&self, arguments: &[&str]) -> &Fixture {
             let status = Command::new("git")
                 .args(arguments)
@@ -1231,12 +1231,14 @@ global@targets.add(rust);
             .with_rust_target()
             .write("def/roles.lfy", STUBBED_ROLES)
             .write("def/a.lfy", "d A: `An A` { }\n")
-            .write("def/b.lfy", "d G: `A G` { }\nd H: `An H` { }\n")
-            .write("def/c.lfy", "d C: `A C` { }\n")
+            .write("def/b.lfy", "use \"./a\";\nd G: `A G` { }\nd H: `An H` { }\n")
+            .write("def/c.lfy", "use \"./a\";\nd C: `A C` { }\n")
             .write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A;\n")
             .write("out/b.rs", REACHED_B)
             .write("out/c.rs", "// @lfy def/c.lfy:C\npub struct C;\n");
         record_units(&fixture, &["a", "b", "c"]);
+        // `b` and `c` depend on `a` and were accepted against another interface of it.
+        fixture.write("def/a.lfy", "d A: `An A, changed` { }\n");
         let session = bound(&fixture, binding_of(&fixture, Role::Compiler, Some("a")));
         (fixture, session)
     }
@@ -1326,7 +1328,7 @@ global@targets.add(rust);
                 &[],
                 None,
                 true,
-                false,
+                &[],
                 &[],
             )),
             _ => None,
@@ -1439,10 +1441,14 @@ global@targets.add(rust);
             &planned.plan,
             index,
             &existing,
-            was,
+            was.map(|text| {
+                let matched = hash_matched.contains(&path.as_str());
+                generation::previous_of(planned.workspace(), &planned.plan.units[index], text, matched)
+            })
+            .as_ref(),
             true,
-            hash_matched.contains(&path.as_str()),
             foreign_edits,
+            &[],
         );
         let before = files_now(planned.workspace(), &planned.plan, index);
         bound(
@@ -1481,8 +1487,9 @@ global@targets.add(rust);
                     .map(|text| Output { path: map.output.clone(), text })
             })
             .collect();
+        let was = generation::previous_of(planned.workspace(), &plan.units[index], &was, false);
         let request =
-            generation::request(&planned.program, &plan, index, &existing, Some(&was), true, false, foreign_edits);
+            generation::request(&planned.program, &plan, index, &existing, Some(&was), true, foreign_edits, &[]);
         let before = files_now(planned.workspace(), &plan, index);
         bound(
             fixture,

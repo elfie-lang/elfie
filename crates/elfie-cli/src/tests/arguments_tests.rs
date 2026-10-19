@@ -5,7 +5,7 @@
 use super::*;
 
 // @lfy def/cli/main.lfy:parse#parse:parse:9950bf574b6e14800ed642db3dc3aa89927c17ef13574689ea665810703ae049
-// @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
+// @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
 #[test]
 fn check_with_no_arguments_parses() {
     let invocation = parse_arguments(&args(&["check"])).unwrap();
@@ -31,7 +31,7 @@ fn the_tree_flag_is_the_tree_command() {
     assert_eq!(parse_arguments(&args(&["--tree", "def/a.lfy", "--json"])).unwrap().command, Command::Tree);
 }
 
-// @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
+// @lfy def/cli/main.lfy:parse#parse:parse:5f3d8a6fb3ccffa0749573417617024cf2ac816e469eea41263c10278b25db02
 #[test]
 fn nothing_naming_a_command_is_help() {
     assert_eq!(parse_arguments(&args(&[])).unwrap().command, Command::Help);
@@ -43,15 +43,15 @@ fn nothing_naming_a_command_is_help() {
 
 /// An argument beginning with a single dash names no command: the first argument without a
 /// dash still does, and with none the command is help.
-// @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
-// @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
+// @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
+// @lfy def/cli/main.lfy:parse#parse:parse:5f3d8a6fb3ccffa0749573417617024cf2ac816e469eea41263c10278b25db02
 #[test]
 fn a_single_dash_argument_names_no_command() {
-    // @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
+    // @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
     let invocation = parse_arguments(&args(&["-x", "check"])).unwrap();
     assert_eq!(invocation.command, Command::Check);
     assert!(invocation.arguments.is_empty());
-    // @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
+    // @lfy def/cli/main.lfy:parse#parse:parse:5f3d8a6fb3ccffa0749573417617024cf2ac816e469eea41263c10278b25db02
     assert_eq!(parse_arguments(&args(&["-q"])).unwrap().command, Command::Help);
 }
 
@@ -63,13 +63,14 @@ fn an_unknown_command_is_a_usage_error() {
     assert!(error.contains("frobnicate"));
 }
 
-// @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
+// @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
 #[test]
 fn an_option_taking_a_value_as_the_last_argument_is_a_usage_error() {
     for (arguments, option) in [
         (args(&["check", "--root"]), "--root"),
         (args(&["--tree"]), "--tree"),
         (args(&["compile", "--target"]), "--target"),
+        (args(&["compile", "--jobs"]), "--jobs"),
     ] {
         let error = parse_arguments(&arguments).unwrap_err();
         assert!(error.contains(option), "{error}");
@@ -105,16 +106,52 @@ fn target_takes_the_value_that_follows_it() {
     assert_eq!(invocation.option("target"), Some("rust"));
 }
 
-/// No option but --root, --target, and --color takes the argument after it: --jobs is a flag
-/// like any other, and the argument after it is the command or positional.
-// @lfy def/cli/main.lfy:parse#parse:parse:3b63870b5bd8c3d705b3fe36f7d8df1123db22b57fa590663e84f4f4a1e59008
-// @lfy def/cli/main.lfy:parse#parse:parse:dcb7c2a03e1a5126afb2f4ffe2edf196cc6deae05a25ee2cecbf8b4666b2c8f8
+/// No option but --root, --tree, --target, --jobs, and --color takes the argument after it:
+/// any other option is a flag, and the argument after it is the command or positional.
+// @lfy def/cli/main.lfy:parse#parse:parse:233533aea4b9472e5d4e1d27500a3950212b9616536f3b46cf00ef040f59af88
+// @lfy def/cli/main.lfy:parse#parse:parse:2e73a4f8b63da86790f160a37ed9aa761be453dad91436a10b475b11625c450b
 #[test]
 fn an_option_written_bare_gives_true_and_takes_no_value() {
-    let invocation = parse_arguments(&args(&["compile", "--jobs", "lexer/main"])).unwrap();
-    assert!(invocation.flag("jobs"));
-    assert_eq!(invocation.option("jobs"), None);
+    let invocation = parse_arguments(&args(&["compile", "--all", "lexer/main"])).unwrap();
+    assert!(invocation.flag("all"));
+    assert_eq!(invocation.option("all"), None);
     assert_eq!(invocation.arguments, vec!["lexer/main".to_string()]);
+}
+
+/// --jobs takes the value that follows it, which is no positional argument.
+// @lfy def/cli/main.lfy:parse#parse:parse:a68f291425ca1fc7f28c32aa7cdc9158127b33b4b73f6bcc8842415bda02baca
+// @lfy def/cli/main.lfy:parse#parse:parse:abfabb6a971c58385dc2dcfa8dbe32f3a2a14269c471c65743fbfd57deec1615
+// @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
+#[test]
+fn jobs_takes_the_value_that_follows_it() {
+    let invocation = parse_arguments(&args(&["compile", "--jobs", "2"])).unwrap();
+    assert_eq!(invocation.command, Command::Compile);
+    assert_eq!(invocation.option("jobs"), Some("2"));
+    assert!(invocation.arguments.is_empty(), "{:?}", invocation.arguments);
+    // Written before the command, the value it takes does not name the command.
+    // @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
+    let invocation = parse_arguments(&args(&["--jobs", "3", "compile", "lexer/main"])).unwrap();
+    assert_eq!(invocation.command, Command::Compile);
+    assert_eq!(invocation.option("jobs"), Some("3"));
+    assert_eq!(invocation.arguments, vec!["lexer/main".to_string()]);
+}
+
+/// A --jobs value that is no whole number of at least 1, written in decimal digits, is a usage
+/// error, however it is written.
+// @lfy def/cli/main.lfy:parse#parse:parse:dc25d395e7a9d74532effc5ce433ad65909a37e7d0f2e8ad480c2ed9b7de8581
+// @lfy def/cli/main.lfy:parse#parse:parse:dbf0b9db8c348d21cd046133ce143cec46a21cb916cff4abe5976e762450d3d5
+#[test]
+fn a_jobs_value_that_is_no_whole_number_of_at_least_one_is_a_usage_message() {
+    // @lfy def/cli/main.lfy:parse#parse:parse:dc25d395e7a9d74532effc5ce433ad65909a37e7d0f2e8ad480c2ed9b7de8581
+    let error = parse_arguments(&args(&["compile", "--jobs=0"])).unwrap_err();
+    assert_eq!(error, "--jobs must be a whole number of at least 1");
+    for value in ["-1", "two", "1.5", "+2", " 2", ""] {
+        let error = parse_arguments(&args(&["compile", &format!("--jobs={value}")])).unwrap_err();
+        assert_eq!(error, "--jobs must be a whole number of at least 1", "{value:?}");
+    }
+    let error = parse_arguments(&args(&["compile", "--jobs", "lexer/main"])).unwrap_err();
+    assert_eq!(error, "--jobs must be a whole number of at least 1");
+    assert_eq!(parse_arguments(&args(&["compile", "--jobs=12"])).unwrap().option("jobs"), Some("12"));
 }
 
 // @lfy def/cli/main.lfy:parse#parse:parse:3645fdc7e4fa098477e08321e6ca15068b540b9c205c6dd4dddb5f68dba4d549
@@ -130,12 +167,13 @@ fn the_root_option_names_the_project_directory() {
     assert_eq!(Path::new(&parse_arguments(&args(&["check", "--root=here"])).unwrap().root), here);
 }
 
-// @lfy def/cli/main.lfy:parse#parse:parse:dd2b0b0390de36e5311e96979f200953effcf502ba2cd611c18f6bf2ac6c6545
+// @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
 #[test]
 fn what_names_neither_the_command_nor_an_option_value_is_positional() {
-    let invocation =
-        parse_arguments(&args(&["compile", "--dry-run", "--target", "rust", "--root", "/tmp", "lexer/main"]))
-            .unwrap();
+    let invocation = parse_arguments(&args(&[
+        "compile", "--dry-run", "--target", "rust", "--root", "/tmp", "--jobs", "2", "lexer/main",
+    ]))
+    .unwrap();
     assert!(invocation.flag("dry-run"));
     assert_eq!(invocation.arguments, vec!["lexer/main".to_string()]);
     // The value --color takes is no positional argument either.
@@ -206,7 +244,7 @@ fn a_color_value_that_names_no_choice_is_a_usage_message() {
 }
 
 // @lfy def/cli/main.lfy:parse#parse:parse:55cfb0320f82b73e9a6a9d2faa97a3dd41367a5d9e70a5b07f676b249b39fcc1
-// @lfy def/cli/main.lfy:parse#parse:parse:3b63870b5bd8c3d705b3fe36f7d8df1123db22b57fa590663e84f4f4a1e59008
+// @lfy def/cli/main.lfy:parse#parse:parse:233533aea4b9472e5d4e1d27500a3950212b9616536f3b46cf00ef040f59af88
 #[test]
 fn every_other_flag_never_takes_the_next_argument() {
     let invocation = parse_arguments(&args(&["--json", "check"])).unwrap();

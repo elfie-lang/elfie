@@ -18,13 +18,14 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use elfie_core::generation::{
-    self, ForeignEdit, ForeignEditKind, Marker, Move, Outcome, OutcomeKind, Output, Plan, REVIEWED, Reason, Request,
-    Review, ReviewRecord, ReviewReport, ReviewRequest, ReviewStatus, SourceMap, Unit, Verdict,
+    self, ForeignEdit, ForeignEditKind, Marker, Move, Outcome, OutcomeKind, Output, Plan, Previous, REVIEWED, Reason,
+    Relocated, Relocation, Request, Review, ReviewRecord, ReviewReport, ReviewRequest, ReviewStatus, SourceMap, Unit,
+    Verdict,
 };
 #[cfg(test)]
 use elfie_core::generation::{Submission, SubmittedOutcome};
 use elfie_core::grammar::GrammarRule as _;
-use elfie_core::interpret::{LoweredNode, Program, lower};
+use elfie_core::interpret::{LoweredNode, Program};
 use elfie_core::lexer::{Token, lex};
 use elfie_core::model::{EntityId, Operation, Problem};
 use elfie_core::parser::{Child, ErrorNode, Node, Tree, parse};
@@ -250,15 +251,21 @@ fn relative(root: &Path, path: &Path) -> String {
     path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")
 }
 
+/// How many units may run at once when --jobs is not given.
+// @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+const DEFAULT_JOBS: usize = 4;
+
 /// The global options help lists: how each is written and one line of what it does.
 // @lfy def/cli/main.lfy:main
-const OPTIONS: [(&str, &str); 14] = [
+const OPTIONS: [(&str, &str); 15] = [
     ("--root <dir>", "The project directory (default: the nearest elfie.json above the current directory)"),
     ("--json", "Print results as JSON lines"),
     ("--color <choice>", "When to color what is printed: auto, always, or never (default: auto)"),
     ("--strict", "check: fail on any warning, error, or stale unit"),
     ("--all", "compile: request every unit, up to date or not"),
     ("--target <name>", "compile, verify: only the target named"),
+    // @lfy def/cli/main.lfy:main#main:main:027934d626ca3e1baa3508e59ebe0c56b3748c5ce68a885ef8cb2c8c5f6efa53
+    ("--jobs <count>", "compile: how many units may run at once (default: 4)"),
     ("--dry-run", "compile: print the plan and generate nothing"),
     ("--accept", "compile: check the outputs already on disk instead of running the compiler"),
     ("--continue", "compile: keep running the units that do not depend on a stopped one"),
@@ -305,8 +312,8 @@ fn help_text(on: bool) -> String {
     // @lfy def/cli/main.lfy:main#main:main:b29d10711513010880a538943ed621a82080cb0005389669e1c52e6f00e8082d
     out.push_str(&paint("options:", Tone::Subject, on));
     out.push('\n');
-    // The global options, --no-verify, --continue, --strict, and --color among them.
-    // @lfy def/cli/main.lfy:main#main:main:0728ce2f53b2f4a9f3d567eeed29c11a42c55afb46303c1aa95b1d650d43fa97
+    // The global options, --jobs, --no-verify, --continue, --strict, and --color among them.
+    // @lfy def/cli/main.lfy:main#main:main:027934d626ca3e1baa3508e59ebe0c56b3748c5ce68a885ef8cb2c8c5f6efa53
     for (name, description) in OPTIONS {
         // @lfy def/cli/main.lfy:main#main:main:95aa9ed5f0f04989f4527492db6cc9507956c521b47e77a5c366d6f36a7f357e
         let name = padded(&paint(name, Tone::Active, on), column);
@@ -417,15 +424,19 @@ const ANSWER_HEADING: &str = "## The answer";
 
 /// Every step, so that the step column keeps one width for the whole compile.
 // @lfy def/cli/main.lfy:main
-const STEPS: [Step; 22] = [
+const STEPS: [Step; 26] = [
     Step::Planned,
     Step::Requesting,
     Step::Resuming,
     Step::Rewording,
+    Step::Relocated,
+    Step::Started,
     Step::Building,
     Step::Compiling,
     Step::Checking,
     Step::Accepted,
+    Step::Merged,
+    Step::Undone,
     Step::Rejected,
     Step::Verifying,
     Step::Reviewed,
@@ -455,7 +466,7 @@ const TIME_COLUMN: usize = 6;
 
 /// How many spaces a problem, a reason, or a question that follows a progress line is
 /// indented by.
-// @lfy def/cli/main.lfy:main#main:main:43f2aa5048680432b93b7802c6b6a48f5fcb659a985ce06c84d0358d44a2277d
+// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
 const INDENT: &str = "    ";
 
 /// The counts a reviewed, globalReviewed, or finished line reports: how many, what they
@@ -545,15 +556,19 @@ fn text_of(progress: &Progress, counts: Option<&Counts>, tone: Option<Tone>, on:
                 Step::Rejected | Step::Failed | Step::Blocked | Step::Clarification => {
                     paint(first, tone_of(progress.step), on)
                 }
-                // @lfy def/cli/main.lfy:main#main:main:cac671ef916cf1edbb8b62947dd501c6c757234968c18838c5d2fe0b80d7b8f1
+                // @lfy def/cli/main.lfy:main#main:main:fa43f8b6da9b3c369ebca761ab832f180a9bc8eb02b280dd2435250f4884c825
                 Step::Planned
                 | Step::Requesting
                 | Step::Resuming
                 | Step::Rewording
+                | Step::Relocated
+                | Step::Started
                 | Step::Building
                 | Step::Compiling
                 | Step::Checking
                 | Step::Accepted
+                | Step::Merged
+                | Step::Undone
                 | Step::Touched
                 | Step::Stubbed
                 | Step::Verifying
@@ -600,43 +615,72 @@ fn elapsed(start: SystemTime) -> f64 {
 /// Prints one [`Progress`] line per step as it happens and appends it to the log. Every line
 /// the log holds is the line as printed with colors off, so the log never holds an escape and
 /// its layout is the printed layout.
+///
+/// Every unit that runs at once prints through a clone of the one reporter of its compile, so
+/// the counts and whether a started line was printed yet are shared between them.
 // @lfy def/cli/main.lfy:main#main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e
+#[derive(Clone)]
 struct Reporter {
     json: bool,
     /// Whether each stream is painted; the log is written with nothing painted.
     // @lfy def/cli/main.lfy:main#main:main:3082965661f2495d1e5e9d8a2177fc2ca759320db1b83c7e7bc0605b9be65f3f
     style: Paint,
     started: SystemTime,
+    logs: Vec<PathBuf>,
+    /// What every clone of the reporter shares: the counter and whether a started line was
+    /// printed.
+    counter: Arc<Mutex<Counter>>,
+}
+
+/// The counter every progress line shows, and whether the compile printed a started line yet,
+/// so that every started line after the first one has an empty line before it.
+// @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+#[derive(Default)]
+struct Counter {
     total: usize,
     done: usize,
-    logs: Vec<PathBuf>,
-    /// The unit whose lines were printed last, so the first line of a unit after the first
-    /// unit has an empty line before it; `None` before the first unit and after a line that
-    /// concerns no one unit.
-    // @lfy def/cli/main.lfy:main#main:main:31af6bb87a3934bc20a54253f0d179629024bc125f346a901f867f63df0c0092
-    block: Option<String>,
-    /// Whether a unit's lines were printed yet.
-    // @lfy def/cli/main.lfy:main#main:main:31af6bb87a3934bc20a54253f0d179629024bc125f346a901f867f63df0c0092
+    // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
     begun: bool,
 }
 
 impl Reporter {
     // @lfy def/cli/main.lfy:main
     fn new(json: bool, style: Paint, total: usize, logs: Vec<PathBuf>) -> Reporter {
-        Reporter { json, style, started: SystemTime::now(), total, done: 0, logs, block: None, begun: false }
+        let counter = Counter { total, ..Counter::default() };
+        Reporter { json, style, started: SystemTime::now(), logs, counter: Arc::new(Mutex::new(counter)) }
+    }
+
+    /// The units merged so far and the units planned, as the counter shows them from the next
+    /// line on.
+    // @lfy def/cli/main.lfy:main#main:main:a8367555ef05292d4118872e01aece83edde2d5816e9e4c404840757608603d3
+    fn set_counts(&self, done: usize, total: usize) {
+        let mut counter = self.counter.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        counter.done = done;
+        counter.total = total;
+    }
+
+    /// The units planned, as the counter shows them.
+    fn total(&self) -> usize {
+        self.counter.lock().unwrap_or_else(std::sync::PoisonError::into_inner).total
+    }
+
+    /// The turn to print, held while a line and what follows it are printed together.
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    fn hold(&self) -> Turn {
+        turn()
     }
 
     /// One line for one step, printed and logged.
     // @lfy def/cli/main.lfy:main#main:main:ce3b9a1a98759c3ae080fd41207a076d4853acdb0f87c1f511632082039e8a3e
     // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
-    fn report(&mut self, step: Step, unit: Option<&str>, message: &str) {
+    fn report(&self, step: Step, unit: Option<&str>, message: &str) {
         self.emit(step, unit, message.to_string(), None, None);
     }
 
     /// One line whose message is the counts it reports, each painted only when it is worth
     /// noticing, then the text given after them.
     // @lfy def/cli/main.lfy:main
-    fn report_counts(&mut self, step: Step, unit: Option<&str>, counts: &Counts, tone: Option<Tone>) {
+    fn report_counts(&self, step: Step, unit: Option<&str>, counts: &Counts, tone: Option<Tone>) {
         // The message with --json holds the same words the counts are printed with.
         // @lfy def/cli/main.lfy:main#main:main:081257eb508c08a673bc5c569b3099485967e6b85b434c98d303c2de2d9958c5
         let message = counts_message(counts, false);
@@ -644,33 +688,35 @@ impl Reporter {
     }
 
     // @lfy def/cli/main.lfy:main
-    fn emit(&mut self, step: Step, unit: Option<&str>, message: String, counts: Option<&Counts>, tone: Option<Tone>) {
+    fn emit(&self, step: Step, unit: Option<&str>, message: String, counts: Option<&Counts>, tone: Option<Tone>) {
+        let _turn = self.hold();
+        let (done, total, apart) = {
+            let mut counter = self.counter.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            // An empty line before every started line after the first one, and before
+            // relocated, finalGate, globalVerifying, merging, and finished, so each reads as
+            // one block.
+            // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+            let apart = match step {
+                Step::Started => std::mem::replace(&mut counter.begun, true),
+                Step::Relocated | Step::FinalGate | Step::GlobalVerifying | Step::Merging | Step::Finished => true,
+                _ => false,
+            };
+            (counter.done, counter.total, apart)
+        };
         let progress = Progress {
             step,
             unit: unit.map(str::to_string),
-            done: self.done,
-            total: self.total,
+            done,
+            total,
             // @lfy def/cli/main.lfy:main#main:main:2ba85a50267062837687f356e2de2edec47dfcbaf012913034645e8c9586d86c
             elapsed: elapsed(self.started),
             message,
         };
-        // An empty line before the first line of a unit after the first unit, and before
-        // finalGate, globalVerifying, merging, and finished, so each reads as one block. A
-        // touched or stubbed line names the unit edited, which is not the unit whose lines it
-        // is printed among, so it begins no block.
-        // @lfy def/cli/main.lfy:main#main:main:31af6bb87a3934bc20a54253f0d179629024bc125f346a901f867f63df0c0092
-        let apart = matches!(step, Step::FinalGate | Step::GlobalVerifying | Step::Merging | Step::Finished);
-        let among = matches!(step, Step::Touched | Step::Stubbed);
-        let fresh = !among && unit.is_some() && unit != self.block.as_deref();
-        if !self.json && (apart || fresh && self.begun) {
+        // The empty line is printed and logged.
+        // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
+        if !self.json && apart {
             println!();
             self.append("");
-        }
-        if fresh {
-            self.block = unit.map(str::to_string);
-            self.begun = true;
-        } else if apart {
-            self.block = None;
         }
         // @lfy def/cli/main.lfy:main#main:main:bbad3c69582995a56ff9152a6a483894f2d276f7b0d0b4805da999767796b37e
         if self.json {
@@ -685,14 +731,33 @@ impl Reporter {
         }
     }
 
+    /// One line for one step with the problems that belong to it after it, printed in one
+    /// turn, so no line of another unit comes between them.
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    fn report_problems(&self, step: Step, unit: Option<&str>, message: &str, problems: &[String]) {
+        let _turn = self.hold();
+        self.report(step, unit, message);
+        self.problems(problems);
+    }
+
+    /// One line for one step with the reason or the question that belongs to it after it,
+    /// printed in one turn.
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    fn report_reason(&self, step: Step, unit: Option<&str>, message: &str, reason: &str) {
+        let _turn = self.hold();
+        self.report(step, unit, message);
+        self.reason(reason);
+    }
+
     /// The problems of a step, following the line they belong to: one per line, each indented
     /// four spaces, beginning with `-` and a space and painted failure. With --json nothing
     /// follows, since the whole of the message is in the [`Progress`].
-    // @lfy def/cli/main.lfy:main#main:main:43f2aa5048680432b93b7802c6b6a48f5fcb659a985ce06c84d0358d44a2277d
-    fn problems(&mut self, problems: &[String]) {
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    fn problems(&self, problems: &[String]) {
         if self.json {
             return;
         }
+        let _turn = self.hold();
         for problem in problems {
             // A problem that runs to several lines, as one followed by the lines of a
             // command's output does, has the dash before its first line alone.
@@ -707,11 +772,12 @@ impl Reporter {
 
     /// A reason or a question, following the line it belongs to: one line of text per line,
     /// each indented four spaces and painted warning.
-    // @lfy def/cli/main.lfy:main#main:main:43f2aa5048680432b93b7802c6b6a48f5fcb659a985ce06c84d0358d44a2277d
-    fn reason(&mut self, text: &str) {
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    fn reason(&self, text: &str) {
         if self.json {
             return;
         }
+        let _turn = self.hold();
         for line in text.lines() {
             // @lfy def/cli/main.lfy:main#main:main:f74f012b6abed1f12784b91dd8349a19d7a6b3e65f13f043f7bf8dc07929bc01
             println!("{INDENT}{}", paint(line, Tone::Warning, self.style.out));
@@ -725,6 +791,54 @@ impl Reporter {
     // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
     fn append(&self, text: &str) {
         append_to(&self.logs, text);
+    }
+}
+
+/// Which thread holds the turn to print, and how many times over it took it, so that a line
+/// and what follows it are printed in one turn and the same thread may take it again inside.
+// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+static TURN: Mutex<Option<(std::thread::ThreadId, usize)>> = Mutex::new(None);
+
+/// What a thread waiting for the turn is woken by.
+// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+static FREED: std::sync::Condvar = std::sync::Condvar::new();
+
+/// The turn to print, held until it is dropped.
+// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+struct Turn;
+
+/// The turn to print taken, once every other thread has given it up; a thread that holds it
+/// already takes it once more.
+// @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+fn turn() -> Turn {
+    let me = std::thread::current().id();
+    let mut held = TURN.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    loop {
+        match &mut *held {
+            None => {
+                *held = Some((me, 1));
+                return Turn;
+            }
+            Some((owner, depth)) if *owner == me => {
+                *depth += 1;
+                return Turn;
+            }
+            Some(_) => held = FREED.wait(held).unwrap_or_else(std::sync::PoisonError::into_inner),
+        }
+    }
+}
+
+impl Drop for Turn {
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    fn drop(&mut self) {
+        let mut held = TURN.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((_, depth)) = &mut *held {
+            *depth -= 1;
+            if *depth == 0 {
+                *held = None;
+                FREED.notify_all();
+            }
+        }
     }
 }
 
@@ -860,7 +974,7 @@ fn target_of<'w>(workspace: &'w Workspace, unit: &Unit) -> &'w str {
 /// units the last global review found violated.
 // @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
 fn violated_ids(root: &Path) -> BTreeSet<String> {
-    // @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     let Some(last) = GlobalReview::read(root) else {
         return BTreeSet::new();
     };
@@ -907,7 +1021,7 @@ fn plan_with(
     violated: &[String],
     foreign_edits: &[ForeignEdit],
 ) -> (Program, Plan) {
-    // @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     generation::plan(workspace::load(root), maps, requested, violated, foreign_edits)
 }
 
@@ -952,7 +1066,7 @@ fn planning_of(
         return planning;
     }
     let (program, plan) = planning.plan(root, &[]);
-    // @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     planning.violated = stems_answering(&program.workspace, &plan, violated, beside);
     // --all requests every unit.
     // @lfy def/cli/main.lfy:main#main:main:d3dedcdb2bf5414990bf22aff315b8514e496a3ede1fc23133fa128ee0b4ef9d
@@ -1394,7 +1508,7 @@ global@targets.add(rust);
 
     /// The review records of a project removed, so that a review of it carries nothing and
     /// every criterion and test is asked about again.
-    // @lfy def/cli/main.lfy:main#main:main:e589c1fc483c3f78252a097b7894875817fba5591db7ee8b3f20c193b5d5dbd9
+    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
     fn forget_reviews(fixture: &Fixture) {
         let _ = fs::remove_dir_all(fixture.root.join("elfie-compile/reviews"));
     }

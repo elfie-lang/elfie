@@ -2,11 +2,12 @@
 //! A workspace with one file read as something other than what is on disk, and what tells
 //! whether a path could reach the program at all.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use super::load::load_in;
 use super::*;
 use crate::model::{FileId, KnowledgeKind};
+use crate::parser::Tree;
 
 /// A workspace with one file read as something other than what is on disk.
 ///
@@ -14,8 +15,10 @@ use crate::model::{FileId, KnowledgeKind};
 /// and the result is a new `Workspace`. With `text` set the file at `path` is read as
 /// `text` instead of what is on disk; with `text` `None` it is read from disk again, and
 /// leaves the program when there is no file at `path` on disk. A replacement stands until
-/// the same `path` is given again. The result is what [`load`] of the same root gives when
-/// every file replaced this way holds what it was replaced with. A `path` that is neither
+/// the same `path` is given again. Every other file the workspace holds keeps the tree it
+/// holds and is not read from disk again, so while those files hold what they held when
+/// `workspace` was loaded, the result is what [`load`] of the same root gives when every
+/// file replaced this way holds what it was replaced with. A `path` that is neither
 /// under one of the source directories, nor under a package root, nor resolved to by a `Use` in the
 /// program, nor the source path a knowledge item of the program has gives back a workspace
 /// matching `workspace`.
@@ -53,31 +56,39 @@ pub fn change(workspace: &Workspace, path: &str, text: Option<&str>) -> Workspac
     // @lfy def/workspace/main.lfy:change#change:change:e311d9fc70a554b7e62c546f0b90a42eb09de3f1d36cda13a9570db511b0055a
     // @lfy def/workspace/main.lfy:change#change:change:950d3e129d266985048bd6b66cbd684cfe2e70c76f6aab48bf3a235e0c6e32e1
     // @lfy def/workspace/main.lfy:change#change:change:ac2779cfba6e5e3ab2117cc750fb9b75b08469978ef6c0e2f51a177e9b90102b
+    // Every file the workspace holds but the one at `path` keeps the tree it holds, and
+    // is not read from disk again; only the one at `path` is read anew.
+    let held: BTreeMap<String, Tree> = workspace
+        .model
+        .sources
+        .iter()
+        .filter(|source| source.path != path)
+        .map(|source| (source.path.clone(), source.tree.clone()))
+        .collect();
     // Targets and the problems they give are read from that model, so they are found
     // again with it.
     // @lfy def/workspace/main.lfy:change#change:change:38a2f13f3b49103a5a09f6fbd670f9d20830efb4c41dfdc038f1393bd72ccc10
-    load_in(&workspace.root, overlays, library) // @lfy def/workspace/main.lfy:change
+    load_in(&workspace.root, overlays, &held, library) // @lfy def/workspace/main.lfy:change
 }
 
-/// Whether a change at `path` could reach the program: the path is a source file under
-/// one of the source directories or under the root of a package in the program, a `Use` in the
+/// Whether a change at `path` could reach the program: the path is under one of the
+/// source directories or under the root of a package in the program, a `Use` in the
 /// program resolves to it, or it is the source path a knowledge item of the program has.
 // @lfy def/workspace/main.lfy:change#change:change:015b076544c59f4f220ad0f374271f8dacad4e1c6547652db3ee068e71f97e13
 fn in_reach(workspace: &Workspace, path: &str) -> bool {
     // These are the four places the criterion names, and nothing besides them puts a
     // path in reach: a path that is in none of them leaves the result matching the
-    // workspace it was given, replacements and all.
-    let is_source = is_source(path);
-    (is_source
-        && workspace
-            .source_directories
+    // workspace it was given, replacements and all. Any file under a source directory
+    // or a package root is in reach, whatever its extension, so that a package's
+    // `elfie.json` is read as it was replaced too.
+    workspace
+        .source_directories
+        .iter()
+        .any(|directory| under(path, &trim_directory(directory)))
+        || workspace
+            .packages
             .iter()
-            .any(|directory| under(path, &trim_directory(directory))))
-        || (is_source
-            && workspace
-                .packages
-                .iter()
-                .any(|package| under(path, &package.root)))
+            .any(|package| under(path, &package.root))
         || workspace
             .model
             .sources

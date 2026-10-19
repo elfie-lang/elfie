@@ -173,7 +173,7 @@ fn glyphOf(step: Step): `One character that marks a progress line's step` => str
   @acceptanceCriteria
     .add({ situation = `[[step]] is [[Step.planned]] or [[Step.finished]]`, behavior = `Returns ◆` })
     .add({
-      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.rewording]], or [[Step.checking]]`,
+      situation = `[[step]] is [[Step.requesting]], [[Step.resuming]], [[Step.relocated]], [[Step.rewording]], or [[Step.checking]]`,
       behavior = `Returns ·`,
     })
     .add({

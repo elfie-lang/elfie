@@ -471,7 +471,22 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = `compile`,
-      behavior = `The units generated are the planned units of [[Generation.plan]] made from [[Generation.sourceMapsOf]] the workspace, with the violated units of the last [[McpData.GlobalReview]] as its violated units and, as its foreign edits, those of [[ChangeSet.foreignEdits]] of the kept change set of each target it plans that were recorded since their owner was last accepted in it, as [[ChangeSet]] says`,
+      behavior = `The compile's relocation is [[Generation.relocate]] of [[Generation.plan]] made as the plan below is but from the source maps [[Generation.sourceMapsOf]] the workspace gives, with the root as its directory, called once, before any other plan is made`,
+    })
+    .add({
+      situation = `compile`,
+      behavior = `The units generated are the planned units of [[Generation.plan]] made from [[Relocated.sourceMaps]] of the compile's relocation, with the violated units of the last [[McpData.GlobalReview]] as its violated units and, as its foreign edits, those of [[ChangeSet.foreignEdits]] of the kept change set of each target it plans that were recorded since their owner was last accepted in it, as [[ChangeSet]] says`,
+    })
+    .add({
+      situation = [
+        `compile`,
+        `[[Relocated.relocations]] of the compile's relocation holds a relocation of a target the compile plans`,
+      ],
+      behavior = `One relocated progress line is printed for each such target, after the planned line, its message the target, then the counts of the entities relocated, the markers rewritten, and the review records moved, each with its word`,
+    })
+    .add({
+      situation = `compile with --target`,
+      behavior = `Only the relocations, outputs, source maps, and review records of the target --target names count among the compile's relocation`,
     })
     // Decision: a unit a kept change set accepted stays planned until the root takes the set, so a
     // compile whose units were requested by name can be resumed without naming them again, which
@@ -552,7 +567,23 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       situation = `compile with --dry-run`,
       behavior = `Each planned unit is printed on a line reading its target, [[Unit.stem]], its reason or up to date, and the stems of its dependencies, in [[Plan.units]] order`,
     })
-    .add({ situation = `compile with --dry-run`, behavior = `The move lines come first, then the unit lines` })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `Each of [[Relocated.relocations]] of the compile's relocation is printed as a relocate line: the word relocate, the target, [[Relocation.entity]], [[Relocation.origin]], the word into, [[Relocation.into]], and [[Relocation.markers]] with the word marker, or markers when it is not 1`,
+    })
+    .add({
+      situation = [`compile with --dry-run and without --json`, `A relocate line is printed`],
+      behavior = [
+        `The target and the words relocate and into are painted muted`,
+        `The two files are painted subject`,
+        `The entity and the count are plain`,
+      ],
+    })
+    .add({
+      situation = `compile with --dry-run`,
+      behavior = `The move lines come first, then the relocate lines, then the unit lines`,
+    })
+    .add({ situation = `compile with --dry-run`, behavior = `Nothing the compile's relocation gives is written` })
     .add({
       situation = `compile with --dry-run and without --json`,
       behavior = [
@@ -665,7 +696,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `That count and its word are [[Style.tally]] of them in muted`,
     })
     .add({
-      situation = [`compile`, `The step is resuming, finalGate, or merging`],
+      situation = [`compile`, `The step is resuming, relocated, finalGate, or merging`],
       behavior = `The message begins with the [[Target.identifier]] of the target whose change set it concerns`,
     })
     .add({
@@ -997,7 +1028,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       behavior = [
         `It, its copy, and its base are removed, and the target's change set is made new`,
-        `Before any unit runs, the plan is made again as if no change set were kept for the target, so no unit is planned as touched by its foreign edits`,
+        `Before any unit runs, the plan is made again from [[Relocated.sourceMaps]] of the compile's relocation as if no change set were kept for the target, so no unit is planned as touched by its foreign edits`,
       ],
     })
     .add({
@@ -1009,12 +1040,18 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       behavior = `It, its copy, and its base are removed`,
     })
     .add({
-      situation = [`compile`, `A unit of a change set is accepted by [[Generation.accept]] and passes its unit gate`],
+      situation = [`compile`, `A kept change set is resumed, or a change set is made new`],
       behavior = [
-        `Its state becomes [[UnitState.accepted]]`,
-        `Each of [[Verdict.foreignEdits]] of its verdict is appended to [[ChangeSet.foreignEdits]], in order`,
-        `Its [[ChangeSetUnit.edits]] becomes the count of [[ChangeSet.foreignEdits]] once they are appended`,
+        `Before its first unit starts, [[Generation.relocate]] of the plan the units are generated from, with the change set's copy as its directory, is called`,
+        `Each of [[Relocated.outputs]] it gives is [[Files.write]] at its path in the copy`,
+        `The maps of [[Relocated.sourceMaps]] of each unit whose maps it changed are recorded there by [[Generation.record]], given the workspace with the change set's copy as its root`,
+        `The records of each of [[Relocated.reviews]] are recorded there for its unit by [[Generation.recordReviews]], given the same workspace`,
+        `Every kept unit to verify is verified only once that is written`,
       ],
+    })
+    .add({
+      situation = [`compile`, `A kept change set is resumed, or a change set is made new`],
+      behavior = `Once the relocation is written and every kept unit to verify is verified, and before its first unit starts, the change set's start, elfie-compile/cache/changes/<target>/start under the root, is made new, holding at the same paths every one of the change set's own files as its copy holds them then; every unit's [[ChangeSetUnit.merged]] is then emptied, and elfie-compile/cache/changes/<target>/merged is removed`,
     })
     .add({
       situation = [
@@ -1433,12 +1470,20 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     })
     .add({
       situation = [`compile`, `elfie.json names no compiler`],
-      behavior = [`No change set is made, resumed, or removed`, `Returns [[ExitCode.success]]`],
+      behavior = [
+        `No change set is made, resumed, or removed`,
+        `Nothing the compile's relocation gives is written`,
+        `Returns [[ExitCode.success]]`,
+      ],
     })
     .add({ situation = `compile with --accept`, behavior = `No compiler is run` })
     .add({
       situation = `compile with --accept`,
       behavior = [`No change set is made, resumed, or removed`, `Every output is read and written in the root`],
+    })
+    .add({
+      situation = `compile with --accept`,
+      behavior = `Before any unit is checked, the compile's relocation is written in the root: each of [[Relocated.outputs]] is [[Files.write]] at its path, the maps of [[Relocated.sourceMaps]] of each unit a relocation moved code out of or into are recorded by [[Generation.record]], and the records of each of [[Relocated.reviews]] by [[Generation.recordReviews]]`,
     })
     .add({
       situation = `compile with --accept`,
@@ -2202,7 +2247,11 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
   @acceptanceCriteria
     .add({
       situation = `verify`,
-      behavior = `The outputs reviewed are those of [[Generation.sourceMapsOf]] [[Loader.load]] of the root`,
+      behavior = `The outputs reviewed are those of [[Relocated.sourceMaps]] of [[Generation.relocate]] of [[Generation.plan]] made from [[Generation.sourceMapsOf]] [[Loader.load]] of the root, with the root as its directory, and every plan verify makes is made from those maps`,
+    })
+    .add({
+      situation = `verify`,
+      behavior = `Nothing the relocation gives is written`,
     })
     .add({
       situation = `verify`,
@@ -2248,7 +2297,7 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
     // left unreviewed, and --full asks about everything.
     .add({
       situation = [`verify without --full`, `A stem is given, or --global is not given`],
-      behavior = `The review request of a unit is [[Generation.review]] of the plan, the unit, the source maps, the root, and the records [[Generation.reviewsOf]] gives for the unit`,
+      behavior = `The review request of a unit is [[Generation.review]] of the plan, the unit, the source maps, the root, and, for the unit of one of [[Relocated.reviews]] of verify's relocation, the records of that [[UnitReviews]], and otherwise the records [[Generation.reviewsOf]] gives for the unit`,
     })
     .add({
       situation = [`verify with --full`, `A stem is given, or --global is not given`],
@@ -2509,6 +2558,51 @@ fn main(arguments: string[]): `Run one command and return its exit code` => numb
       ],
       expect = number@like(
         `1, after a's building line saying its gate passed, a finalGate line with one problem naming the lint operation, its exit code 1, and the warning's line, the root unchanged, and the change set kept with a in state reviewed`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--jobs`,
+          `2`,
+          `--root`,
+          string@like(
+            `A git root with one target rust whose build and test command lines exit 0, def holding a.lfy, b.lfy, and c.lfy using ./a, all recorded, a.lfy, b.lfy, and c.lfy edited since in their fn bodies only, which leaves their interfaces as they were, and a compiler and a verifier that accept every unit`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after a and b started at once, with started lines reading 1 of 2 running and 2 of 2 running, then c, which waits for nothing since a's interface is the one c's outputs record, started once one of them was done, three merged lines in the order a, b, c, a finalGate line, and a merging line`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--dry-run`,
+          `--root`,
+          string@like(
+            `A root with one target rust, def/a.lfy declaring A and def/b.lfy declaring f, which a.lfy declared when its outputs were recorded, src/a.rs holding a.lfy:A and two markers naming a.lfy:f`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after a line reading relocate rust f def/a.lfy into def/b.lfy 2 markers, then a line for a with reason changed and one for b with reason changed, and no file written`,
+      ),
+    },
+    {
+      input = [
+        [
+          `compile`,
+          `--root`,
+          string@like(
+            `The same root as a git repository, with a compiler that changes nothing and ends with ELFIE: DONE, and a verifier that finds nothing violated, and a review record for f's criterion in a.json under elfie-compile/reviews/rust`,
+          ),
+        ],
+      ],
+      expect = number@like(
+        `0, after a relocated line for rust counting one entity, two markers, and one review record, b's request saying f was relocated into it from def/a.lfy and its code is kept as it is, b's review carrying the verdict on f's criterion, and the root's src/a.rs naming def/b.lfy:f with elfie-compile/maps/rust/b.json and elfie-compile/reviews/rust/b.json written`,
       ),
     },
   );

@@ -2,7 +2,16 @@
 //! Tests of `units`, `request`, `check`, and `changes`.
 
 use super::*;
-use crate::planning::{Recovered, move_line, previous_source, unit_of_stem};
+use crate::planning::{move_line, unit_of_stem};
+
+/// What `changes` recovers of the source the outputs of the unit with a stem were accepted
+/// from: its text, and whether it is only the hash-matched source.
+fn recovered_of(session: &Session, stem: &str) -> Option<(String, bool)> {
+    let planned = plan_of(session);
+    let index = unit_of_stem(planned.workspace(), &planned.plan, stem, None).unwrap();
+    let unit = &planned.plan.units[index];
+    generation::previous::previous_of(&planned.program, unit, &unit.outputs).map(|found| (found.text, found.hash_matched))
+}
 
 // The text lists the problems, then the moves, then the units; this project has neither a
 // problem nor a move, so it is the units alone.
@@ -121,13 +130,17 @@ fn check_of_a_compiler_run_judges_its_edits_to_later_units() {
 #[test]
 fn changes_reports_what_differs_since_the_outputs_were_accepted() {
     let fixture = accepted_project();
+    // The unit's file has changed since its outputs were accepted, and the root is no
+    // repository, so no previous source can be recovered: the text says so first, then
+    // every entity as added.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:4260318a5866f37c4f4c137011eee37c136720d68918bd04c5c7a652538dc6dc
+    fixture.write("def/b.lfy", "d B {}\nd C {}\n");
     let session = fixture.session();
-    // The unit has outputs and neither source can be recovered, since the root is no
-    // repository: the text says so first, then every entity as added.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
+    assert_eq!(recovered_of(&session, "b"), None);
     let text = changes(&session, "b", None).unwrap();
     assert!(text.starts_with("neither the source its outputs were accepted from nor"), "{text}");
     assert!(text.contains("\nB added "), "{text}");
+    assert!(text.contains("\nC added "), "{text}");
     // The target may be named, and names the same unit.
     // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
     assert_eq!(changes(&session, "b", Some("rust")).unwrap(), text);
@@ -151,7 +164,7 @@ fn changes_reports_what_differs_since_the_outputs_were_accepted() {
 /// that source is the previous text: the revision is found by the hash of its lowered
 /// text, which is what the source map records, and the entities added since are the
 /// only changes.
-// @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+// @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
 #[test]
 fn changes_recovers_the_previous_source_from_git() {
     let fixture = accepted_project();
@@ -171,22 +184,18 @@ fn changes_recovers_the_previous_source_from_git() {
     // The revision is found although the file on disk now carries a comment the
     // committed one did not, because it is matched by the hash of its lowered text and
     // a comment is not lowered.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
     fixture.write("def/b.lfy", "// a comment\nd B {}\nd C {}\n");
     let session = fixture.session();
     // What is passed on is that revision as git holds it, never lowered: `git show` of
     // the revision the map's hash names.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-    let planned = plan_of(&session);
-    let index = unit_of_stem(planned.workspace(), &planned.plan, "b", None).unwrap();
-    let recovered = previous_source(planned.workspace(), &planned.plan.units[index]);
-    assert!(matches!(recovered, Recovered::Accepted(_)), "the accepted source");
-    assert_eq!(recovered.text(), Some("d B {}\n"));
-    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    assert_eq!(recovered_of(&session, "b"), Some(("d B {}\n".to_string(), false)));
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
     let text = changes(&session, "b", None).unwrap();
     assert!(!text.contains("cannot be recovered"), "{text}");
     // `B` was declared in the recovered source, so only `C` is an addition.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
     assert!(!text.contains("B added"), "{text}");
     assert!(text.lines().any(|line| line.starts_with("C added ")), "{text}");
 }
@@ -225,7 +234,7 @@ fn commit(fixture: &Fixture, message: &str) {
 /// so the source the outputs were accepted from is the most recent revision whose
 /// criteria and tests are the ones the map records as answered, not merely the most
 /// recent one that lowers to the same code.
-// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+// @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
 #[test]
 fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
     let (fixture, accepted, _) = project_with_an_accepted_criterion();
@@ -233,7 +242,7 @@ fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
     commit(&fixture, "the accepted source");
     // A criterion reworded leaves the lowered code untouched, so the newer revision
     // lowers to the same code as the accepted one.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
     fixture.write("def/b.lfy", &accepted.replace("It answers", "It replies"));
     commit(&fixture, "reworded");
     let session = fixture.session();
@@ -244,11 +253,9 @@ fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
     assert_eq!(lowered, unit.outputs[0].hash, "both revisions lower to the accepted code");
     // The older revision is the one the outputs were accepted from, and it is given back
     // as git holds it, criteria and all.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-    let recovered = previous_source(planned.workspace(), unit);
-    assert!(matches!(recovered, Recovered::Accepted(_)), "the accepted source");
-    assert_eq!(recovered.text(), Some(accepted.as_str()));
-    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    assert_eq!(recovered_of(&session, "b"), Some((accepted.clone(), false)));
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
     let text = changes(&session, "b", None).unwrap();
     assert!(!text.contains("is not known"), "{text}");
     // What differs since is the rewording of that criterion, which is a change to `b`.
@@ -258,28 +265,24 @@ fn changes_recovers_the_revision_the_outputs_were_accepted_from() {
 /// Where no revision of the file holds the criteria and tests the map records, the
 /// latest revision that lowers to the same code stands in for the source the outputs
 /// were accepted from, and the text says what that means before anything else.
-// @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+// @lfy def/mcp/main.lfy:changes#changes:changes:3b2a8142ec9ed2bb1f80958fc3261c1d1b4be77c99faa3057b834d1224905c31
 #[test]
 fn changes_falls_back_to_the_latest_revision_with_the_same_lowered_code() {
     let (fixture, accepted, _) = project_with_an_accepted_criterion();
     // Only a later wording of the criterion was ever committed, so every revision lowers
     // to the accepted code and none of them answers for what the map records.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+    // @lfy def/mcp/main.lfy:changes#changes:changes:3b2a8142ec9ed2bb1f80958fc3261c1d1b4be77c99faa3057b834d1224905c31
     let reworded = accepted.replace("It answers", "It replies");
     fixture.write("def/b.lfy", &reworded);
     fixture.git(&["init", "--quiet"]);
     commit(&fixture, "a later wording");
     let session = fixture.session();
-    let planned = plan_of(&session);
-    let index = unit_of_stem(planned.workspace(), &planned.plan, "b", None).unwrap();
-    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
-    let recovered = previous_source(planned.workspace(), &planned.plan.units[index]);
-    assert!(matches!(recovered, Recovered::HashMatched(_)), "the hash-matched source");
-    assert_eq!(recovered.text(), Some(reworded.as_str()));
+    // @lfy def/mcp/main.lfy:changes#changes:changes:3b2a8142ec9ed2bb1f80958fc3261c1d1b4be77c99faa3057b834d1224905c31
+    assert_eq!(recovered_of(&session, "b"), Some((reworded.clone(), true)));
     // The text says so first: the source is not known, the changes are against the
     // latest revision with the same lowered code, and what they say of the criteria and
     // tests may not be what changed since the outputs were accepted.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
+    // @lfy def/mcp/main.lfy:changes#changes:changes:3b2a8142ec9ed2bb1f80958fc3261c1d1b4be77c99faa3057b834d1224905c31
     let text = changes(&session, "b", None).unwrap();
     let first = text.lines().next().unwrap();
     assert!(first.starts_with("the source its outputs were accepted from is not known"), "{text}");
@@ -301,7 +304,9 @@ fn changes_says_so_when_nothing_differs() {
     // differs.
     // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
     let text = fs::read_to_string(fixture.root.join("def/b.lfy")).unwrap();
-    assert!(generation::changes(&planned.program, &planned.plan.units[index], Some(&text)).is_empty());
+    let unit = &planned.plan.units[index];
+    let was = generation::previous_of(planned.workspace(), unit, &text, false);
+    assert!(generation::changes(&planned.program, unit, Some(&was)).is_empty());
 }
 
 /// A project for a target that one entity is built for and the entity it reaches is

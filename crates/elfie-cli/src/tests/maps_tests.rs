@@ -6,7 +6,7 @@
 use super::*;
 use crate::commands::{created_line, error_position, formatted_line, print_move, rule_name, token_lines, tree_lines};
 use crate::compiling::{legacy_targets, move_legacy_maps, move_text, unit_line};
-use crate::running::{lowered_of, own_region_text, previous_source};
+use crate::running::own_region_text;
 
 /// With --json tree and tokens print their results as JSON lines instead of text, one
 /// object per result.
@@ -379,66 +379,63 @@ fn a_deleted_cache_gives_the_same_plan() {
     assert_eq!(fixture.run(&["compile", "--dry-run"]), ExitCode::Success.code());
 }
 
-/// The previous text a request is given for a unit is the source its outputs were
-/// generated from as git holds it, never lowered, while the revision is recognized by the
-/// hash of its lowered text.
-// @lfy def/cli/main.lfy:main
+/// A unit's previous source is recovered once for it in the compile, by `previousOf` of the
+/// program the plan was made from, the unit, and its outputs, and the same one is given to
+/// every request made for it; its text is the source as written, never lowered.
+// @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+// @lfy def/cli/main.lfy:main#main:main:2b2ecf83e7e057bba8be8cefb6ab9f0de30c74dfba2269df5b9fb4915457dec3
 #[test]
-fn the_previous_source_is_the_revision_git_still_holds() {
+fn the_previous_source_is_recovered_once_and_given_to_every_request() {
     let fixture = Fixture::new();
     a_compiler_and_a_verifier(&fixture, SATISFIED);
-    // The unit is compiled and recorded, so its map holds the hash of the lowered text of
-    // def/a.lfy as it is now. @lfy def/cli/main.lfy:main
     assert_eq!(fixture.run(&["compile", "--no-verify"]), ExitCode::Success.code());
-    if !git(&fixture, &["init", "-q"]) {
-        return; // No git here: nothing is recoverable, and nothing to check.
-    }
-    git(&fixture, &["config", "user.email", "p@example.com"]);
-    git(&fixture, &["config", "user.name", "p"]);
-    git(&fixture, &["add", "def/a.lfy"]);
-    git(&fixture, &["commit", "-q", "-m", "a"]);
-    // The committed revision as git holds it, and its lowered text.
-    // @lfy def/cli/main.lfy:main
-    let workspace = workspace::load(&fixture.root);
     let raw = fixture.read("def/a.lfy");
-    let (lowered, requirements) = lowered_of(&workspace, "def/a.lfy", &raw).unwrap();
-    // Lowering drops the criteria, so the lowered text is not the raw source and a test
-    // cannot pass with either one in place of the other. @lfy def/cli/main.lfy:main
-    assert!(raw.contains("@acceptanceCriteria"), "{raw}");
+    let mut run = a_run(&fixture, &["compile"]);
+    let index = run.plan.units.iter().position(|unit| unit.stem == "a").unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+    run.recover(index);
+    let kept = run.previous[&index].clone().expect("a previous source");
+    assert!(!kept.hash_matched);
+    assert_eq!(kept.text, raw);
+    // The unit's file is edited after it was recovered: what is kept stays what it was.
+    fixture.write("def/a.lfy", "d A: `An A, edited` {}\n");
+    run.recover(index);
+    assert_eq!(run.previous[&index].as_ref().map(|found| found.text.clone()), Some(raw.clone()));
+    // Every request made for it is given that same one, lowered once to set beside the unit's
+    // own lowered text.
+    // @lfy def/cli/main.lfy:main#main:main:2b2ecf83e7e057bba8be8cefb6ab9f0de30c74dfba2269df5b9fb4915457dec3
+    let (request, accepted) = run.request_of(index, &fixture.root, true, &[]);
+    assert!(accepted);
+    let lowered = request.previous.clone().unwrap_or_default();
     assert!(!lowered.contains("@acceptanceCriteria"), "{lowered}");
-    // The revision is found by the hash of its lowered text, which is what the map holds.
-    // @lfy def/cli/main.lfy:main
-    let maps = generation::source_maps_of(&workspace, None);
-    drop(workspace);
-    let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new(), &[]);
-    let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
-    assert_eq!(generation::source_hash(&lowered), unit.outputs[0].hash);
-    // And by the ids of its criteria and tests, which the map holds beside the hash: a
-    // revision that lowers to the hash with other ids is only the hash-matched source.
-    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-    assert_eq!(requirements, unit.outputs[0].requirements);
-    // What comes back is that revision as git holds it, never lowered, and it is the
-    // source at the last accepted generation rather than only the hash-matched one.
-    // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-    // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
-    let found = previous_source(&program.workspace, unit).unwrap();
-    assert!(!found.hash_matched);
-    let previous = found.text;
-    assert_eq!(previous, raw);
-    // Which the request lowers itself, once, to set beside the unit's own lowered text; it is
-    // told the text is no hash-matched source.
-    // @lfy def/cli/main.lfy:main#main:main:83b85032f8cc7c8aef44ec14a0271ad64c1bafc4a130b693740a019f27be094d
-    let index = plan.units.iter().position(|unit| unit.stem == "a").unwrap();
-    let request = generation::request(&program, &plan, index, &[], Some(&previous), true, false, &[]);
-    assert_eq!(request.previous.as_deref(), Some(lowered.as_str()));
-    assert!(request.source.contains("d A"), "{}", request.source);
+    assert!(lowered.contains("d A"), "{lowered}");
+}
+
+/// A unit with no outputs, or every map of whose outputs the compile's relocation made for a
+/// unit with no map of its own, has no previous source.
+// @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+#[test]
+fn a_unit_with_no_outputs_of_its_own_has_no_previous_source() {
+    let fixture = Fixture::new();
+    one_target(&fixture).write("def/a.lfy", "d A: `An A` {}\n");
+    let mut run = a_run(&fixture, &["compile"]);
+    // @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+    run.recover(0);
+    assert!(run.previous[&0].is_none());
+    // Outputs whose every map the relocation made: none either.
+    fixture.write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A {}\n");
+    assert_eq!(fixture.run(&["compile", "--accept"]), ExitCode::Success.code());
+    let mut run = a_run(&fixture, &["compile"]);
+    run.relocated_only.insert(("rust".to_string(), "def/a.lfy".to_string()));
+    run.recover(0);
+    assert!(run.previous[&0].is_none());
 }
 
 /// A revision that lowers to the hash a unit's map holds but answers for other ids is the
 /// unit's hash-matched source rather than the source at its last accepted generation: it
 /// comes back marked as such, and a unit whose previous text is only that is never one
 /// whose markers are the whole of the work.
-// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
+// @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
 // @lfy def/cli/main.lfy:main#main:main:758fa1871b09f337b51e44d8a8f6104962caf305712f1929d105dc578aa66787
 // @lfy def/cli/main.lfy:main#main:main:2c9713a6d34075ba2ffe7490ad3a4f06a37c84997bec06ae56d74bec93a1522f
 // @lfy def/cli/main.lfy:main#main:main:5f08ae8ce4c83f4e1b7cc28af35e05f37af1782031238c3c21ed4a69cae58b08
@@ -470,18 +467,24 @@ fn a_revision_that_only_reworded_a_criterion_is_the_hash_matched_source() {
     let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
     // The committed revision lowers to the map's hash and answers for other ids, so it is
     // the hash-matched source and not the source at the last accepted generation.
-    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-    // @lfy def/cli/main.lfy:main#main:main:758fa1871b09f337b51e44d8a8f6104962caf305712f1929d105dc578aa66787
-    let found = previous_source(&program.workspace, unit).unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+    let found = generation::previous::previous_of(&program, unit, &unit.outputs).unwrap();
+    // The file as loaded is the source at the last accepted generation itself, so the
+    // committed revision is never reached; it is only reached once the file moves on.
+    assert!(!found.hash_matched);
+    fixture.write("def/a.lfy", "d A: `An A` {\n  @acceptanceCriteria\n    .add({ behavior = `Counts every item` });\n}\n");
+    let (program, plan) = planned(&fixture.root, &maps, &["a".to_string()], false, &BTreeSet::new(), &[]);
+    let unit = plan.units.iter().find(|unit| unit.stem == "a").unwrap();
+    let found = generation::previous::previous_of(&program, unit, &unit.outputs).unwrap();
     assert!(found.hash_matched);
     assert_eq!(found.text, committed);
-    // Given that path among the hash-matched, the request names no unit whose markers are
-    // the whole of the work.
+    // Given a hash-matched source, the request names no unit whose markers are the whole of
+    // the work.
     // @lfy def/cli/main.lfy:main#main:main:2c9713a6d34075ba2ffe7490ad3a4f06a37c84997bec06ae56d74bec93a1522f
     // @lfy def/cli/main.lfy:main#main:main:5f08ae8ce4c83f4e1b7cc28af35e05f37af1782031238c3c21ed4a69cae58b08
     let index = plan.units.iter().position(|unit| unit.stem == "a").unwrap();
-    // @lfy def/cli/main.lfy:main#main:main:f84461b876d5880346ff361b357e737563b84ff7463a37600f754210b77dc91f
-    let request = generation::request(&program, &plan, index, &[], Some(&found.text), true, true, &[]);
+    let was = generation::previous_of(&program.workspace, &plan.units[index], &committed, true);
+    let request = generation::request(&program, &plan, index, &[], Some(&was), true, &[], &[]);
     assert!(!request.reworded_only);
 }
 
@@ -539,7 +542,7 @@ fn a_shared_output(fixture: &Fixture) -> &Fixture {
 // @lfy def/cli/main.lfy:main#main:main:73b5383aed1ca86a8561196285ac24e93f2aa3b1cf5665ccb3c44c99c8bcfb1f
 // @lfy def/cli/main.lfy:main#main:main:8940bcdd4260c6e311e87a27ce3497056d6d8956860d16464a361158ed9f48da
 // @lfy def/cli/main.lfy:main#main:main:4f7cae6922d2fbb74f58a9c1f34d8e9565a2d72660e593819347a125257e342d
-// @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
+// @lfy def/cli/main.lfy:main#main:main:5a9f0a1a607bedde3d9614508a9e4477732de6ab40aa00c924024f8a13bded91
 #[test]
 fn a_co_owner_of_a_shared_output_has_its_maps_re_derived() {
     let fixture = Fixture::new();

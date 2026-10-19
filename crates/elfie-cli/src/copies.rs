@@ -462,14 +462,208 @@ pub(crate) fn merged(theirs: &[u8], base: &[u8], mine: &[u8], scratch: &Path) ->
 }
 
 /// A change set gone: its file under elfie-compile/cache, its copy, and its base, as when the
-/// root has taken it or nothing of it is to be kept.
+/// root has taken it or nothing of it is to be kept; its start and the copies of its units
+/// go with them.
 // @lfy def/cli/main.lfy:main#main:main:5d1e63160121bb44aeb91bd7d1f6eced00a1991447dd7d14e77ff2e4a4bf2f9a
 pub(crate) fn remove_change_set(root: &Path, set: &ChangeSet) -> io::Result<()> {
     // @lfy def/cli/main.lfy:main#main:main:5d1e63160121bb44aeb91bd7d1f6eced00a1991447dd7d14e77ff2e4a4bf2f9a
     set.remove(root)?;
     remove_directory(&copy_of(root, &set.target))?;
     remove_directory(&base_of(root, &set.target))?;
+    remove_directory(&start_of(root, &set.target))?;
+    remove_directory(&root.join(CHANGES).join(&set.target).join("units"))?;
     // The folder that held them goes too, once nothing is left in it.
     let _ = fs::remove_dir(root.join(CHANGES).join(&set.target));
     Ok(())
+}
+
+/// The start of a target's change set: `elfie-compile/cache/changes/<target>/start` under
+/// the root, holding the change set's own files as its copy held them before its first unit
+/// started in the compile.
+// @lfy def/cli/main.lfy:main#main:main:d469706755276e361e5ad9c3965b1dd65287850e7c3bdbc70bd70d9c453d4caa
+pub(crate) fn start_of(root: &Path, target: &str) -> PathBuf {
+    root.join(CHANGES).join(target).join("start")
+}
+
+/// Where what each unit's last merge wrote is kept: `elfie-compile/cache/changes/<target>/merged`
+/// under the root, beside the change set's copy.
+// @lfy def/cli/main.lfy:main#main:main:d469706755276e361e5ad9c3965b1dd65287850e7c3bdbc70bd70d9c453d4caa
+pub(crate) fn merges_of_target(root: &Path, target: &str) -> PathBuf {
+    root.join(CHANGES).join(target).join("merged")
+}
+
+/// The copy of one unit of a change set: `elfie-compile/cache/changes/<target>/units/<name>`
+/// under the root, with `<name>` the unit's request name.
+// @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+pub(crate) fn unit_copy_of(root: &Path, target: &str, stem: &str) -> PathBuf {
+    root.join(CHANGES).join(target).join("units").join(request_name(stem))
+}
+
+/// The change set's start made new: the directory at its path removed, then every one of the
+/// change set's own files as the copy holds it now, at the same path.
+// @lfy def/cli/main.lfy:main#main:main:d469706755276e361e5ad9c3965b1dd65287850e7c3bdbc70bd70d9c453d4caa
+pub(crate) fn make_start(root: &Path, copy: &Path, target: &Target) -> io::Result<()> {
+    let start = start_of(root, &target.identifier);
+    remove_directory(&start)?;
+    fs::create_dir_all(&start)?;
+    // @lfy def/cli/main.lfy:main#main:main:d469706755276e361e5ad9c3965b1dd65287850e7c3bdbc70bd70d9c453d4caa
+    for path in own_files(copy, target) {
+        copy_file(&copy.join(&path), &start.join(&path))?;
+    }
+    Ok(())
+}
+
+/// A path relative to a copy, its segments separated by slashes, under a directory.
+pub(crate) fn at_path(directory: &Path, path: &str) -> PathBuf {
+    path.split('/').filter(|segment| !segment.is_empty()).fold(directory.to_path_buf(), |at, segment| at.join(segment))
+}
+
+/// What a unit's copy held when it was made and whose merges it holds: so that its merge
+/// reads what it changed against what it was given, and so that its request is given the
+/// foreign edits of those units alone.
+// @lfy def/cli/main.lfy:main#main:main:2125687777aae924ecaa844b9ab21cf364a6cb1234b7ce57b7f6c3c0550d179e
+#[derive(Debug, Clone, Default)]
+pub(crate) struct UnitCopy {
+    /// Where the copy is.
+    // @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+    pub(crate) directory: PathBuf,
+    /// Every one of the change set's own files the copy held when it was made, by its path
+    /// relative to the copy.
+    // @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+    pub(crate) made: BTreeMap<String, Vec<u8>>,
+    /// The stems of the units whose merges the copy holds.
+    // @lfy def/cli/main.lfy:main#main:main:2125687777aae924ecaa844b9ab21cf364a6cb1234b7ce57b7f6c3c0550d179e
+    pub(crate) holds: BTreeSet<String>,
+}
+
+/// A unit's copy made at a path: the directory there removed first; then every file a new
+/// copy of the change set would hold but the change set's own files, copied from the root, and
+/// every one of the change set's own files as `own` holds them, the change set's start or its
+/// copy; and the `.git` file a copy of a git root holds.
+///
+/// What is copied depends on the root, `own`, and nothing else, so no order in which units
+/// started or finished changes what a copy holds.
+// @lfy def/cli/main.lfy:main#main:main:3de63e91d36a4914ecba5efb6db7e4b1c99793fe3707ad3fcd9f39dcfb2252af
+// @lfy def/cli/main.lfy:main#main:main:4f3ee5302864ac43e74b609edd4d32ee20f6d99060ed1e0babcc498c956098ff
+// @lfy def/cli/main.lfy:main#main:main:996c71654a860d590a6b9b7e973ff56b5ca9fa6ddf123e8172f04d1287cca3e4
+// @lfy def/cli/main.lfy:main#main:main:39478a22468516407804aed2553166dbbab86c075fc13792b787cbb941ddd5c7
+pub(crate) fn make_unit_copy(root: &Path, target: &Target, at: &Path, own: &Path) -> io::Result<()> {
+    // @lfy def/cli/main.lfy:main#main:main:996c71654a860d590a6b9b7e973ff56b5ca9fa6ddf123e8172f04d1287cca3e4
+    remove_directory(at)?;
+    fs::create_dir_all(at)?;
+    // @lfy def/cli/main.lfy:main#main:main:3de63e91d36a4914ecba5efb6db7e4b1c99793fe3707ad3fcd9f39dcfb2252af
+    for path in listing(root) {
+        if !is_own(&path, target) {
+            copy_file(&root.join(&path), &at.join(&path))?;
+        }
+    }
+    // @lfy def/cli/main.lfy:main#main:main:3de63e91d36a4914ecba5efb6db7e4b1c99793fe3707ad3fcd9f39dcfb2252af
+    // @lfy def/cli/main.lfy:main#main:main:4f3ee5302864ac43e74b609edd4d32ee20f6d99060ed1e0babcc498c956098ff
+    for path in own_files(own, target) {
+        copy_file(&own.join(&path), &at.join(&path))?;
+    }
+    // @lfy def/cli/main.lfy:main#main:main:8a305990c26ec5a21e609fca17bc010a769c49511853e849d7b5b29db5b1b906
+    if let Some(git) = git_directory(root) {
+        fs::write(at.join(GITFILE), format!("gitdir: {}\n", git.to_string_lossy()))?;
+    }
+    Ok(())
+}
+
+/// What a unit's last merge kept written into a copy: each path of `paths` as the merge kept
+/// it under `kept`, or removed from the copy when the merge kept nothing at that path.
+// @lfy def/cli/main.lfy:main#main:main:3de63e91d36a4914ecba5efb6db7e4b1c99793fe3707ad3fcd9f39dcfb2252af
+pub(crate) fn write_kept(kept: &Path, paths: &[String], copy: &Path) -> io::Result<()> {
+    for path in paths {
+        let from = at_path(kept, path);
+        let to = at_path(copy, path);
+        if from.is_file() {
+            copy_file(&from, &to)?;
+        } else {
+            match fs::remove_file(&to) {
+                Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
+                _ => {}
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Every one of the change set's own files a directory holds, as it holds them, by path.
+// @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+pub(crate) fn own_contents(directory: &Path, target: &Target) -> BTreeMap<String, Vec<u8>> {
+    own_files(directory, target)
+        .into_iter()
+        .filter_map(|path| fs::read(directory.join(&path)).ok().map(|held| (path, held)))
+        .collect()
+}
+
+/// Whether a path, relative to a copy, is one of the change set's own files under the
+/// target's output directory: neither a map file nor a review record file.
+// @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+pub(crate) fn is_output(path: &str, target: &Target) -> bool {
+    let maps = format!("{MAPS}/{}", target.identifier);
+    let reviews = format!("{REVIEWS}/{}", target.identifier);
+    is_own(path, target)
+        && !under(path, &[maps.as_str(), reviews.as_str()])
+        && crate::processes::within(path, &target.output_directory)
+}
+
+/// Every file under the target's output directory that a unit's copy holds otherwise than
+/// when the copy was made, or that was added or removed since, with what the copy holds for
+/// it now, nothing where it was removed, and the mode it is in, in path order.
+// @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+// @lfy def/cli/main.lfy:main#main:main:6e192fbbaa3d541cc1fa9490c15245bc628f83977d91727e7004d801f77b9104
+pub(crate) fn changed_in(copy: &UnitCopy, target: &Target) -> Changes {
+    let now = own_contents(&copy.directory, target);
+    let mut paths: BTreeSet<&String> = copy.made.keys().collect();
+    paths.extend(now.keys());
+    let mut changes: Changes = BTreeMap::new();
+    for path in paths {
+        if !is_output(path, target) {
+            continue;
+        }
+        let was = copy.made.get(path);
+        let text = now.get(path);
+        if was == text {
+            continue;
+        }
+        let mode = mode_of(&copy.directory.join(path));
+        changes.insert(path.clone(), Change { base: was.cloned(), text: text.cloned(), mode });
+    }
+    changes
+}
+
+/// What a file of a directory holds and the mode it is in, kept so that it can be put back:
+/// nothing when there is no file at that path.
+// @lfy def/cli/main.lfy:main#main:main:fd9b01ad05607a5a609c83192a3af14b8fadef545c84da493960eca8b0faef6d
+pub(crate) fn held_at(directory: &Path, path: &str) -> Option<(Vec<u8>, Option<u32>)> {
+    let at = directory.join(path);
+    fs::read(&at).ok().map(|held| (held, mode_of(&at)))
+}
+
+/// What files of a directory held, by path, each with the mode it was in, or nothing where no
+/// file was there, so that they can be put back.
+// @lfy def/cli/main.lfy:main#main:main:fd9b01ad05607a5a609c83192a3af14b8fadef545c84da493960eca8b0faef6d
+pub(crate) type Held = BTreeMap<String, Option<(Vec<u8>, Option<u32>)>>;
+
+/// Files of a directory put back as they were held: each written as it was, or removed where
+/// nothing was there.
+// @lfy def/cli/main.lfy:main#main:main:fd9b01ad05607a5a609c83192a3af14b8fadef545c84da493960eca8b0faef6d
+pub(crate) fn put_back(directory: &Path, held: &Held) {
+    for (path, was) in held {
+        let to = directory.join(path);
+        match was {
+            Some((text, mode)) => {
+                if let Some(parent) = to.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                if fs::write(&to, text).is_ok() {
+                    set_mode(&to, *mode);
+                }
+            }
+            None => {
+                let _ = fs::remove_file(&to);
+            }
+        }
+    }
 }

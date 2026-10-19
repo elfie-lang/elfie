@@ -42,22 +42,25 @@ const NETWORK: [&str; 2] = ["http://", "https://"]; // @lfy def/workspace/main.l
 // @lfy def/workspace/main.lfy:load
 pub fn load(root: &Path) -> Workspace {
     // @lfy def/workspace/main.lfy:load
-    load_in(root, BTreeMap::new(), None)
+    load_in(root, BTreeMap::new(), &BTreeMap::new(), None)
 }
 
 /// [`load`] with the files in `overlays` read as the text given there instead of what is
-/// on disk, and `built_in` standing for the copy of the library the compiler was built
-/// with when it is given.
+/// on disk, the files in `held` taken as the tree given there without being read at all,
+/// and `built_in` standing for the copy of the library the compiler was built with when
+/// it is given.
 // @lfy def/workspace/main.lfy:change
 // @lfy def/workspace/main.lfy:load
 pub(super) fn load_in(
     root: &Path,
     overlays: BTreeMap<String, String>,
+    held: &BTreeMap<String, Tree>,
     built_in: Option<String>,
 ) -> Workspace {
     let mut loader = Loader {
         root,
         overlays: &overlays,
+        held,
         problems: Vec::new(),
         use_problems: Vec::new(),
     };
@@ -354,6 +357,11 @@ fn export_of<'c, 'r>(
 struct Loader<'a> {
     root: &'a Path,
     overlays: &'a BTreeMap<String, String>,
+    /// The files a workspace already holds, by path, each with the tree it holds: such a
+    /// file is never read from disk again, and stands in for one on disk as a replaced
+    /// file does.
+    // @lfy def/workspace/main.lfy:change
+    held: &'a BTreeMap<String, Tree>,
     problems: Vec<LoadProblem>,
     /// Every problem at a `Use`, in the order it arose, waiting for the model to give it
     /// a node.
@@ -386,16 +394,22 @@ impl Loader<'_> {
         });
     }
 
-    /// Whether the file at a path can be read: it is replaced, or it is on disk.
-    fn exists(&self, path: &str) -> bool {
-        self.overlays.contains_key(path) || self.root.join(path).is_file()
+    /// Whether a path is replaced or held, and so stands for a file whatever is on disk.
+    // @lfy def/workspace/main.lfy:change
+    fn standing(&self, path: &str) -> bool {
+        self.overlays.contains_key(path) || self.held.contains_key(path)
     }
 
-    /// Whether anything at all is at a path: a replaced file, or a file or a directory on
-    /// disk. `FileSystem.exists` of a knowledge source, which may name either.
+    /// Whether the file at a path can be read: it is replaced or held, or it is on disk.
+    fn exists(&self, path: &str) -> bool {
+        self.standing(path) || self.root.join(path).is_file()
+    }
+
+    /// Whether anything at all is at a path: a replaced or held file, or a file or a
+    /// directory on disk. `FileSystem.exists` of a knowledge source, which may name either.
     // @lfy def/workspace/main.lfy:load
     fn anything_at(&self, path: &str) -> bool {
-        self.overlays.contains_key(path) || self.root.join(path).exists()
+        self.standing(path) || self.root.join(path).exists()
     }
 
     /// Whether a directory is on disk, and so has files of its own to walk.
@@ -415,7 +429,12 @@ impl Loader<'_> {
     /// a root holding that file would give, directory checks and all.
     // @lfy def/workspace/main.lfy:change
     fn directory(&self, directory: &str) -> bool {
-        self.on_disk(directory) || self.overlays.keys().any(|path| under(path, directory))
+        self.on_disk(directory)
+            || self
+                .overlays
+                .keys()
+                .chain(self.held.keys())
+                .any(|path| under(path, directory))
     }
 
     /// The text of the file at a path: what it is replaced with, or what is on disk.
@@ -655,7 +674,7 @@ impl Loader<'_> {
         if self.on_disk(directory) {
             self.walk(directory, &mut out);
         }
-        for path in self.overlays.keys() {
+        for path in self.overlays.keys().chain(self.held.keys()) {
             if is_source(path) && under(path, directory) {
                 out.insert(path.clone());
             }
@@ -786,26 +805,32 @@ impl Loader<'_> {
             tree: None,
             uses,
         };
-        // @lfy def/workspace/main.lfy:load#load:load:36d73adceb24794b868cfec5c1c2f1bb0befd1aee1a502407f8158d70d49ee14
-        let text = match self.read(path) {
-            Ok(text) => text,
-            Err(error) => {
-                self.problem(Some(path), format!("cannot be read: {error}"));
-                return unread(Vec::new());
-            }
+        // A file the workspace already holds keeps the tree it holds, unread.
+        // @lfy def/workspace/main.lfy:change#change:change:3a02f7c1e8532b9162d270c483802b532300c09e983037425404b40e76aa6abe
+        let tree = if let Some(tree) = self.held.get(path) {
+            tree.clone()
+        } else {
+            // @lfy def/workspace/main.lfy:load#load:load:36d73adceb24794b868cfec5c1c2f1bb0befd1aee1a502407f8158d70d49ee14
+            let text = match self.read(path) {
+                Ok(text) => text,
+                Err(error) => {
+                    self.problem(Some(path), format!("cannot be read: {error}"));
+                    return unread(Vec::new());
+                }
+            };
+            let tokens = match lex(&text, Some(path)) {
+                Ok(tokens) => tokens,
+                // Decision: the definition only names a file that cannot be read. A file whose
+                // text `Lexer.lex` refuses cannot be turned into a `File` either, so it is
+                // left out of the program the same way.
+                // @lfy def/workspace/main.lfy:load
+                Err(error) => {
+                    self.problem(Some(path), format!("cannot be lexed: {error}"));
+                    return unread(Vec::new());
+                }
+            };
+            parse(tokens, None)
         };
-        let tokens = match lex(&text, Some(path)) {
-            Ok(tokens) => tokens,
-            // Decision: the definition only names a file that cannot be read. A file whose
-            // text `Lexer.lex` refuses cannot be turned into a `File` either, so it is
-            // left out of the program the same way.
-            // @lfy def/workspace/main.lfy:load
-            Err(error) => {
-                self.problem(Some(path), format!("cannot be lexed: {error}"));
-                return unread(Vec::new());
-            }
-        };
-        let tree = parse(tokens, None);
         let mut uses = Vec::new();
         for node in tree.root.descendants() {
             if !node.is(Statement::Use) {

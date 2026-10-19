@@ -159,12 +159,95 @@ pub(crate) fn move_json(workspace: &Workspace, plan: &Plan, moved: &Move) -> ser
     })
 }
 
-/// The moves, then each unit as `elfie_units` lists it, in plan order, and nothing generated.
+/// One of [`Relocated::relocations`] as a dry run prints it: the word relocate, the target,
+/// the entity, the file it left, the word into, the file it is in now, and the count of
+/// markers rewritten with the word marker, or markers when it is not 1.
+///
+/// Painted, the target and the words relocate and into are muted, the two files are subject,
+/// and the entity and the count are plain; the words and their order stay as they are either
+/// way.
+// @lfy def/cli/main.lfy:main#main:main:5042efb3c946c5366ff884b941565a037c3850a2204c27eacb2e1b0695372035
+// @lfy def/cli/main.lfy:main#main:main:57f98e0f79a657eab8206e1ac47bf236e459d925b355f7534fc575b98b968a1b
+pub(crate) fn relocate_text(relocation: &Relocation, on: bool) -> String {
+    let word = if relocation.markers == 1 { "marker" } else { "markers" };
+    // @lfy def/cli/main.lfy:main#main:main:57f98e0f79a657eab8206e1ac47bf236e459d925b355f7534fc575b98b968a1b
+    format!(
+        "{} {} {} {} {} {} {} {word}",
+        paint("relocate", Tone::Muted, on),
+        paint(&relocation.target, Tone::Muted, on),
+        relocation.entity,
+        paint(&relocation.origin, Tone::Subject, on),
+        paint("into", Tone::Muted, on),
+        paint(&relocation.into, Tone::Subject, on),
+        relocation.markers
+    )
+}
+
+/// One of [`Relocated::relocations`] as the one result --json prints for it.
+// @lfy def/cli/main.lfy:main#main:main:5042efb3c946c5366ff884b941565a037c3850a2204c27eacb2e1b0695372035
+// @lfy def/cli/main.lfy:main#main:main:506eab00d30b7bdabeedfaa49835ffb31dd39d992da62dd3f70f8d67b08034d2
+pub(crate) fn relocate_json(relocation: &Relocation) -> serde_json::Value {
+    serde_json::json!({
+        "relocate": relocation.entity,
+        "target": relocation.target,
+        "origin": relocation.origin,
+        "into": relocation.into,
+        "markers": relocation.markers,
+    })
+}
+
+/// What relocating gives kept to the target --target names, when it is given: its
+/// relocations, the outputs under its output directory, its source maps, and its review
+/// records.
+// @lfy def/cli/main.lfy:main#main:main:1ebd8b096a857a724b950c4f2608560cb59aee8ee82e454e4f2c9b4fb61f7c5e
+pub(crate) fn scoped(relocated: Relocated, workspace: &Workspace, target: Option<&str>) -> Relocated {
+    let Some(name) = target else { return relocated };
+    let directory = workspace
+        .targets
+        .iter()
+        .find(|named| named.identifier == name)
+        .map(|named| named.output_directory.clone())
+        .unwrap_or_default();
+    // @lfy def/cli/main.lfy:main#main:main:1ebd8b096a857a724b950c4f2608560cb59aee8ee82e454e4f2c9b4fb61f7c5e
+    Relocated {
+        relocations: relocated.relocations.into_iter().filter(|relocation| relocation.target == name).collect(),
+        outputs: relocated
+            .outputs
+            .into_iter()
+            .filter(|output| crate::processes::within(&output.path, &directory))
+            .collect(),
+        source_maps: relocated.source_maps.into_iter().filter(|map| map.target == name).collect(),
+        reviews: relocated.reviews.into_iter().filter(|reviews| reviews.target == name).collect(),
+    }
+}
+
+/// The target and the source file of each unit every map of whose outputs the relocation
+/// made, the unit having had no map of its own among the maps it was read from.
+// @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+pub(crate) fn relocated_only(maps: &[SourceMap], relocated: &Relocated) -> BTreeSet<(String, String)> {
+    relocated
+        .source_maps
+        .iter()
+        .map(|map| (map.target.clone(), map.source.clone()))
+        .filter(|(target, source)| !maps.iter().any(|map| &map.target == target && &map.source == source))
+        .collect()
+}
+
+/// The moves, then the relocations, then each unit as `elfie_units` lists it, in plan order,
+/// and nothing generated: nothing the relocation gives is written either.
 // @lfy def/cli/main.lfy:main#main:main:1158ef5598e98842590c9c237df6cac12c9a46afcab7fb2c9828e80e76f88f9b
 // @lfy def/cli/main.lfy:main#main:main:2e8045c1f86a83462e1d79b1bdf98da4979fc1d0edf4301ad3cf8b989dc12004
-pub(crate) fn dry_run(workspace: &Workspace, plan: &Plan, target: Option<&str>, json: bool, on: bool) -> ExitCode {
-    // The move lines come first, then the unit lines.
-    // @lfy def/cli/main.lfy:main#main:main:6f6040dce5cd8795a5f7ec20988859e3818ade0692c1f16e285030e3793158ce
+// @lfy def/cli/main.lfy:main#main:main:5d97ccabe3f421ec1dcd897744e41b146dc2b9c49e9b10c2749b0b64f809346a
+pub(crate) fn dry_run(
+    workspace: &Workspace,
+    plan: &Plan,
+    relocated: &Relocated,
+    target: Option<&str>,
+    json: bool,
+    on: bool,
+) -> ExitCode {
+    // The move lines come first, then the relocate lines, then the unit lines.
+    // @lfy def/cli/main.lfy:main#main:main:3fba4385c7b8b84625d1b60c07fcd93cf8655fa31717ba399f3623d31b803900
     // @lfy def/cli/main.lfy:main#main:main:0f5a7a1258a11b49d77120109972e47f61867f0f8fe2d59078aa9bfa4ffb1849
     for moved in &plan.moves {
         let origin = &plan.units[moved.origin];
@@ -177,6 +260,17 @@ pub(crate) fn dry_run(workspace: &Workspace, plan: &Plan, target: Option<&str>, 
         } else {
             // @lfy def/cli/main.lfy:main#main:main:d76dbb95b25d73fb984ddecdb07366d73e2c932574c9a94208ad9df30c8d8933
             println!("{}", move_text(workspace, plan, moved, on));
+        }
+    }
+    // @lfy def/cli/main.lfy:main#main:main:5042efb3c946c5366ff884b941565a037c3850a2204c27eacb2e1b0695372035
+    // @lfy def/cli/main.lfy:main#main:main:3fba4385c7b8b84625d1b60c07fcd93cf8655fa31717ba399f3623d31b803900
+    for relocation in &relocated.relocations {
+        if json {
+            // @lfy def/cli/main.lfy:main#main:main:506eab00d30b7bdabeedfaa49835ffb31dd39d992da62dd3f70f8d67b08034d2
+            println!("{}", relocate_json(relocation));
+        } else {
+            // @lfy def/cli/main.lfy:main#main:main:57f98e0f79a657eab8206e1ac47bf236e459d925b355f7534fc575b98b968a1b
+            println!("{}", relocate_text(relocation, on));
         }
     }
     // Each planned unit, in plan order.
@@ -282,7 +376,7 @@ pub(crate) fn print_loaded_diagnostics(workspace: &Workspace, json: bool, on: bo
 
 /// The change sets kept for the targets in scope of --target, by target, as their files
 /// under elfie-compile/cache hold them.
-// @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+// @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
 pub(crate) fn kept_sets(workspace: &Workspace, target: Option<&str>) -> BTreeMap<String, ChangeSet> {
     workspace
         .targets
@@ -308,7 +402,7 @@ pub(crate) fn maps_of_copies(sets: &BTreeMap<String, ChangeSet>) -> Vec<SourceMa
 
 /// The foreign edits of every change set given that were recorded since their owner was last
 /// accepted in it, as `ChangeSet` says.
-// @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+// @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
 pub(crate) fn edits_of(sets: &BTreeMap<String, ChangeSet>) -> Vec<ForeignEdit> {
     sets.values().flat_map(|set| set.recorded_since().into_iter().cloned()).collect()
 }
@@ -336,9 +430,9 @@ pub(crate) fn keep_kept_units(program: &Program, plan: &mut Plan, sets: &BTreeMa
     }
 }
 
-/// Plans the units, works each in its target's change set, one at a time in plan order,
-/// passes each change set through its final gate, reviews the global criteria and tests, and
-/// hands the root every change set at once.
+/// Plans the units, works each in a copy of its own and merges it into its target's change
+/// set, as many at once as --jobs lets, passes each change set through its final gate,
+/// reviews the global criteria and tests, and hands the root every change set at once.
 // @lfy def/cli/main.lfy:main
 pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     let root = Path::new(&invocation.root);
@@ -366,16 +460,32 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     let legacy = legacy_targets(&workspace, target.as_deref());
     // The plan's foreign edits are those of the kept change set of each target it plans
     // recorded since their owner was last accepted in it.
-    // @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     let mut kept = kept_sets(&workspace, target.as_deref());
     drop(workspace);
-    // The units the last global review found violated, and the stems requested.
-    // @lfy def/cli/main.lfy:main#main:main:9d0bd11ce59be491afea477895117cdf91dcd8e310ea42fdbc2f7cf64e91440a
+    // The compile's relocation: relocate of the plan made as the plan below is, but from the
+    // source maps the workspace gives, with the root as its directory, called once and before
+    // any other plan is made. With --target only what it gives of that target counts.
+    // @lfy def/cli/main.lfy:main#main:main:5d6df01b0f3354244fc5d97c42c4e27b3716575285680648fb33ee184d7044f5
+    // @lfy def/cli/main.lfy:main#main:main:1ebd8b096a857a724b950c4f2608560cb59aee8ee82e454e4f2c9b4fb61f7c5e
+    let (first, before) = plan_with(root, &maps, &invocation.arguments, &[], &edits_of(&kept));
+    let relocated =
+        scoped(generation::relocate(&first, &before, Some(root)), &first.workspace, target.as_deref());
+    drop((first, before));
+    // The units generated are those of the plan made from the relocated source maps, with the
+    // units the last global review found violated, and the stems requested.
+    // @lfy def/cli/main.lfy:main#main:main:db9055e3c9db5499ef9db628c8352be669b3c2eb83fc5533541757772f6fae75
     // A unit whose change set the root never took has its markers in the kept copy.
     // @lfy def/cli/main.lfy:main#main:main:4def42b297ccd56ad7dacce3f7bd8d7b36e18397d3d99e4b2f198aa3ea0f16c8
     let beside = maps_of_copies(&kept);
-    let planning =
-        planning_of(root, &maps, &invocation.arguments, invocation.flag("all"), &violated_ids(root), &beside);
+    let planning = planning_of(
+        root,
+        &relocated.source_maps,
+        &invocation.arguments,
+        invocation.flag("all"),
+        &violated_ids(root),
+        &beside,
+    );
     let (mut program, mut plan) = planning.plan(root, &edits_of(&kept));
     // @lfy def/cli/main.lfy:main#main:main:7ddc3a3c56212d70e81bbe0dc295510b33a966489a029c6a5c3c3a0907c4b225
     keep_kept_units(&program, &mut plan, &kept, &planning.requested);
@@ -388,7 +498,7 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     let cycles = !plan.problems.is_empty();
     // @lfy def/cli/main.lfy:main#main:main:1158ef5598e98842590c9c237df6cac12c9a46afcab7fb2c9828e80e76f88f9b
     if invocation.flag("dry-run") {
-        let code = dry_run(&program.workspace, &plan, target.as_deref(), json, style.out);
+        let code = dry_run(&program.workspace, &plan, &relocated, target.as_deref(), json, style.out);
         return if cycles { ExitCode::Problems } else { code };
     }
     // Nothing is generated, and the code is problems.
@@ -401,13 +511,13 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     let accept_only = invocation.flag("accept");
     // A target's planned units are worked in a change set only when a compiler runs on them.
     // @lfy def/cli/main.lfy:main#main:main:52dc0204d72665f32b60eef1095ce6a73d89469226840fd8606ff7d622cc4745
-    // @lfy def/cli/main.lfy:main#main:main:8e41635d0589432509b33f63d40f548aac888e27e3d6c6684b073f1ed289e048
+    // @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
     // @lfy def/cli/main.lfy:main#main:main:0440d8388eff8352220c16c7b7cbcac23c06b46e2e0c8882f55b1629dc83a76a
     let works = compiler.is_some() && !accept_only;
     // A kept change set none of whose units would keep its state is removed, with its copy
-    // and its base, and the plan is made again as if it were not kept, so no unit is planned
-    // as touched by its foreign edits.
-    // @lfy def/cli/main.lfy:main#main:main:09f6b1c5d22da986bdead36ca45fef906f4eea009db0fdfed80f4edc471c18cf
+    // and its base, and the plan is made again from the relocated source maps as if it were
+    // not kept, so no unit is planned as touched by its foreign edits.
+    // @lfy def/cli/main.lfy:main#main:main:ec2256238e3a7d159a6c973c504ea6c464150e9afdae860ee76850d8941cb16c
     if works {
         let gone = discarded(&program, &plan, &kept, &planning.requested, invocation.flag("all"));
         if !gone.is_empty() {
@@ -424,13 +534,17 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     }
     let reporter = Reporter::new(json, style, 0, log_paths(root));
     let mut run = Run::new(program, plan, planning, reporter, invocation);
+    // @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+    run.relocated_only = relocated_only(&maps, &relocated);
+    // @lfy def/cli/main.lfy:main#main:main:2b2ecf83e7e057bba8be8cefb6ab9f0de30c74dfba2269df5b9fb4915457dec3
+    run.relocation = relocated;
     run.count_done();
     // The first progress line of a compile is planned, counting the units planned and the
     // moves, whether anything was planned or not, so that a compile with nothing to do still
     // reads as one run.
     // @lfy def/cli/main.lfy:main#main:main:3b7ff1cb8c57ebc94c72273c9e46802fa9a2881815174d5e72e44b93e5ad00ea
     // @lfy def/cli/main.lfy:main#main:main:016ab6d6e7fb03c113d8693d81ea927c68a7ee23a2750efeff879652d9859d00
-    let total = run.reporter.total;
+    let total = run.reporter.total();
     let planned = format!("{total} units planned, {} moves", run.plan.moves.len());
     run.reporter.report(Step::Planned, None, &planned);
     // The move lines follow the planned line, each indented four spaces; with --json each
@@ -452,6 +566,10 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
             run.reporter.append(&format!("{INDENT}{plain}"));
         }
     }
+    // One relocated line for each target the compile plans that the relocation moved code of,
+    // after the planned line and its move lines.
+    // @lfy def/cli/main.lfy:main#main:main:be6f670ec86351b9c898da8d21d0741aadee997be9c0c07bfeb4504ac8af962c
+    run.report_relocations();
     // @lfy def/cli/main.lfy:main#main:main:5b05d045fbdda6a51d4ac309b97ddac4c12d0a0e967117d6973df4878cc1bc96
     if total == 0 && !json {
         println!("{}", paint("every unit is up to date", Tone::Success, style.out));
@@ -468,10 +586,21 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
     run.tidy(&legacy);
     match (&compiler, accept_only) {
         // @lfy def/cli/main.lfy:main#main:main:c51341f34278d51ccda0b1a75908b211f46b7db736525ed29c88351db922c346
-        (_, true) => run.accept_on_disk(),
+        // @lfy def/cli/main.lfy:main#main:main:a87e6feb2af9174de24eb013445fc65fd1cbd84a5cba0be05f3f5bef1112948b
+        (_, true) => {
+            let root = run.root();
+            let relocated = run.relocation.clone();
+            run.write_relocation(&root, &relocated);
+            run.accept_on_disk();
+        }
+        // Nothing the relocation gives is written without a compiler.
         // @lfy def/cli/main.lfy:main#main:main:eb05a9c865b9fa479acd09d73ff8b30990a3dd3ad4103e9167e78b449284d554
+        // @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
         (None, false) => run.write_requests(),
-        (Some(command), false) => run.run_units(command),
+        (Some(command), false) => {
+            run.ready_change_sets(command);
+            run.run_units(command);
+        }
     }
     run.close_the_compile();
     // Every session of this compile is ended and the server stopped, after the last run has
@@ -493,7 +622,7 @@ pub(crate) fn compile(invocation: &Invocation) -> ExitCode {
 /// The targets whose kept change set no unit of would keep its state, as `ChangeSet` says,
 /// a unit a stem given as an argument, or --all, requests running again as one whose
 /// definitions changed.
-// @lfy def/cli/main.lfy:main#main:main:09f6b1c5d22da986bdead36ca45fef906f4eea009db0fdfed80f4edc471c18cf
+// @lfy def/cli/main.lfy:main#main:main:ec2256238e3a7d159a6c973c504ea6c464150e9afdae860ee76850d8941cb16c
 // @lfy def/cli/main.lfy:main#main:main:3ac75787bb8128ea850e5a2f38fe77bd7b84d3e981ba0b5b14f2e95f74b18288
 pub(crate) fn discarded(
     program: &Program,
@@ -506,7 +635,7 @@ pub(crate) fn discarded(
     for (name, set) in kept {
         let now = units_now(program, plan, name, requested, all);
         // A change set whose copy is gone keeps nothing either.
-        // @lfy def/cli/main.lfy:main#main:main:09f6b1c5d22da986bdead36ca45fef906f4eea009db0fdfed80f4edc471c18cf
+        // @lfy def/cli/main.lfy:main#main:main:ec2256238e3a7d159a6c973c504ea6c464150e9afdae860ee76850d8941cb16c
         if now.is_empty() || set.kept(&now) == 0 || !Path::new(&set.directory).is_dir() {
             gone.push(name.clone());
         }
@@ -579,7 +708,7 @@ impl Run {
                     let keeps = set.units.iter().filter(|unit| unit.state.is_done()).count();
                     let again = set.units.len() - keeps;
                     // @lfy def/cli/main.lfy:main#main:main:54faac0351075e5f797a3b89b57d4af904f0f8a00cf097ab716767e08566ab00
-                    // @lfy def/cli/main.lfy:main#main:main:00df31733dc8abc2a9ca2d729506a5db63fa35efbe5f336a206eb3a9647be77e
+                    // @lfy def/cli/main.lfy:main#main:main:b6e79b3ca5fa492391881efa95a4994ac3f869e7623e0954b6788a6bc1a06e2a
                     let message = format!("{}: {keeps} units kept, {again} run again", named.identifier);
                     self.reporter.report(Step::Resuming, None, &message);
                     set
@@ -667,6 +796,203 @@ impl Run {
         }
     }
 
+    /// One relocated progress line for each target the compile plans whose code the compile's
+    /// relocation moved: the target, then the counts of the entities relocated, the markers
+    /// rewritten, and the review records moved, each with its word.
+    // @lfy def/cli/main.lfy:main#main:main:be6f670ec86351b9c898da8d21d0741aadee997be9c0c07bfeb4504ac8af962c
+    // @lfy def/cli/main.lfy:main#main:main:b6e79b3ca5fa492391881efa95a4994ac3f869e7623e0954b6788a6bc1a06e2a
+    pub(crate) fn report_relocations(&mut self) {
+        let planned: BTreeSet<String> =
+            self.planned_units().iter().map(|&unit| self.target_of_unit(unit).identifier.clone()).collect();
+        let targets: Vec<String> = self.workspace().targets.iter().map(|named| named.identifier.clone()).collect();
+        for name in targets {
+            let relocations: Vec<&Relocation> =
+                self.relocation.relocations.iter().filter(|relocation| relocation.target == name).collect();
+            if relocations.is_empty() || !planned.contains(&name) {
+                continue;
+            }
+            let markers: usize = relocations.iter().map(|relocation| relocation.markers).sum();
+            let records = self.records_moved(&name);
+            let counted = |count: usize, one: &str, many: &str| format!("{count} {}", if count == 1 { one } else { many });
+            // @lfy def/cli/main.lfy:main#main:main:be6f670ec86351b9c898da8d21d0741aadee997be9c0c07bfeb4504ac8af962c
+            let message = format!(
+                "{name}: {}, {}, {}",
+                counted(relocations.len(), "entity", "entities"),
+                counted(markers, "marker", "markers"),
+                counted(records, "review record", "review records")
+            );
+            self.reporter.report(Step::Relocated, None, &message);
+        }
+    }
+
+    /// How many review records the compile's relocation moved for a target: those of its
+    /// [`Relocated::reviews`] that the review record file of their unit does not hold for it
+    /// now.
+    // @lfy def/cli/main.lfy:main#main:main:be6f670ec86351b9c898da8d21d0741aadee997be9c0c07bfeb4504ac8af962c
+    pub(crate) fn records_moved(&self, target: &str) -> usize {
+        let mut moved = 0;
+        for reviews in self.relocation.reviews.iter().filter(|reviews| reviews.target == target) {
+            let Some(unit) = self
+                .plan
+                .units
+                .iter()
+                .find(|unit| unit.stem == reviews.stem && self.workspace().targets[unit.target].identifier == target)
+            else {
+                continue;
+            };
+            let held: BTreeSet<String> =
+                generation::reviews_of(&self.program, unit).into_iter().map(|record| record.id).collect();
+            moved += reviews.records.iter().filter(|record| !held.contains(&record.id)).count();
+        }
+        moved
+    }
+
+    /// What a relocation gives written in a directory, the root or a change set's copy: each
+    /// of its outputs at its path there, the maps of each unit whose maps it changed recorded
+    /// there by `record`, and the records of each of its reviews recorded there for its unit by
+    /// `recordReviews`, both given the workspace with that directory as its root.
+    // @lfy def/cli/main.lfy:main#main:main:56f0e92efcae2aa29056b323f26d89a551242862fc55f1b85a0c3fc607c66f75
+    // @lfy def/cli/main.lfy:main#main:main:a87e6feb2af9174de24eb013445fc65fd1cbd84a5cba0be05f3f5bef1112948b
+    pub(crate) fn write_relocation(&mut self, directory: &Path, relocated: &Relocated) {
+        // @lfy def/cli/main.lfy:main#main:main:56f0e92efcae2aa29056b323f26d89a551242862fc55f1b85a0c3fc607c66f75
+        for output in &relocated.outputs {
+            let path = directory.join(&output.path);
+            // @lfy def/cli/main.lfy:main#main:main:97749da3fde520bf9fb6a1d4a7f1782131dc4eea08223f3ea0036e11724b6e42
+            let written = path.parent().map_or(Ok(()), fs::create_dir_all).and_then(|()| fs::write(&path, &output.text));
+            if let Err(error) = written {
+                complain(self.style.err, Some(&output.path), &error.to_string());
+                self.worsen(ExitCode::Failure);
+            }
+        }
+        let plan = self.plan.clone();
+        // The maps of each unit whose maps the relocation changed.
+        // @lfy def/cli/main.lfy:main#main:main:56f0e92efcae2aa29056b323f26d89a551242862fc55f1b85a0c3fc607c66f75
+        // @lfy def/cli/main.lfy:main#main:main:a87e6feb2af9174de24eb013445fc65fd1cbd84a5cba0be05f3f5bef1112948b
+        for unit in 0..plan.units.len() {
+            let target = self.target_of_unit(unit).identifier.clone();
+            if self.target.as_deref().is_some_and(|named| named != target) {
+                continue;
+            }
+            let source = self.workspace().files[plan.units[unit].file].path.clone();
+            let now: Vec<SourceMap> = relocated
+                .source_maps
+                .iter()
+                .filter(|map| map.target == target && map.source == source)
+                .cloned()
+                .collect();
+            if now.is_empty() || now == self.maps_in(unit, directory) {
+                continue;
+            }
+            let program = self.program_at(directory);
+            if !generation::record(&program.workspace, &plan.units[unit], &now) {
+                let path = generation::map_file(&program.workspace, &plan.units[unit]).display().to_string();
+                complain(self.style.err, Some(&path), "could not be written");
+                self.worsen(ExitCode::Failure);
+            }
+        }
+        // The records of each of its reviews, for its unit.
+        // @lfy def/cli/main.lfy:main#main:main:56f0e92efcae2aa29056b323f26d89a551242862fc55f1b85a0c3fc607c66f75
+        // @lfy def/cli/main.lfy:main#main:main:a87e6feb2af9174de24eb013445fc65fd1cbd84a5cba0be05f3f5bef1112948b
+        for reviews in &relocated.reviews {
+            let Some(unit) = plan
+                .units
+                .iter()
+                .position(|unit| unit.stem == reviews.stem && self.workspace().targets[unit.target].identifier == reviews.target)
+            else {
+                continue;
+            };
+            let program = self.program_at(directory);
+            if !generation::record_reviews(&program.workspace, &plan.units[unit], &reviews.records) {
+                let path = generation::review_file(&program.workspace, &plan.units[unit]).display().to_string();
+                complain(self.style.err, Some(&path), "could not be written");
+                self.worsen(ExitCode::Failure);
+            }
+        }
+    }
+
+    /// Every change set of the compile readied before its first unit starts: the relocation
+    /// of the plan the units are generated from, with its copy as the directory, written there;
+    /// every unit it keeps accepted verified there, when a verifier is to review; then its
+    /// start made new from its own files as its copy holds them, every unit's record of what
+    /// its last merge wrote emptied, and what those merges kept removed. The units the compile
+    /// runs are then those of its first plan, each waiting for the units its plan gives it.
+    // @lfy def/cli/main.lfy:main#main:main:56f0e92efcae2aa29056b323f26d89a551242862fc55f1b85a0c3fc607c66f75
+    // @lfy def/cli/main.lfy:main#main:main:e6f63c4110436ce781da7a0d7e40aa3ae7cd30fdadbe53ba4e4743073c700a40
+    // @lfy def/cli/main.lfy:main#main:main:d469706755276e361e5ad9c3965b1dd65287850e7c3bdbc70bd70d9c453d4caa
+    // @lfy def/cli/main.lfy:main#main:main:42d392d488315c356a8aec4d1df3e5316914fd7797f15f57772a074b0e121165
+    // @lfy def/cli/main.lfy:main#main:main:8cf4943ef6637dd81797621b8abc048edcc7781a4f19546fbe99863339043826
+    pub(crate) fn ready_change_sets(&mut self, command: &str) {
+        let root = self.root();
+        let targets: Vec<Target> = self.program.workspace.targets.clone();
+        for named in &targets {
+            let Some(copy) = self.sets.get(&named.identifier).map(|set| PathBuf::from(&set.directory)) else { continue };
+            // The relocation of the plan the units are generated from, in the copy.
+            // @lfy def/cli/main.lfy:main#main:main:56f0e92efcae2aa29056b323f26d89a551242862fc55f1b85a0c3fc607c66f75
+            let plan = self.plan.clone();
+            let found = generation::relocate(self.program_at(&copy), &plan, Some(&copy));
+            let relocated = scoped(found, &self.program.workspace, Some(&named.identifier));
+            self.write_relocation(&copy, &relocated);
+            // Every unit it keeps accepted verified in its copy, once the relocation is written
+            // and before any of its units starts.
+            // @lfy def/cli/main.lfy:main#main:main:e6f63c4110436ce781da7a0d7e40aa3ae7cd30fdadbe53ba4e4743073c700a40
+            if self.verifies() {
+                let kept: Vec<usize> = self
+                    .planned_units()
+                    .into_iter()
+                    .filter(|&unit| self.target_of_unit(unit).identifier == named.identifier)
+                    .filter(|&unit| self.state_of(unit) == UnitState::Accepted)
+                    .collect();
+                for unit in kept {
+                    if self.halted {
+                        return;
+                    }
+                    if let Some(stop) = self.verify_kept(unit, command) {
+                        self.stopped_unit(unit, stop);
+                    }
+                }
+            }
+            if self.halted {
+                return;
+            }
+            // Its start, made new, holding its own files as its copy holds them now; every
+            // unit's record of its last merge emptied, and what those merges kept removed.
+            // @lfy def/cli/main.lfy:main#main:main:d469706755276e361e5ad9c3965b1dd65287850e7c3bdbc70bd70d9c453d4caa
+            if let Err(error) = crate::copies::make_start(&root, &copy, named) {
+                complain(self.style.err, Some(&copy.display().to_string()), &error.to_string());
+                self.worsen(ExitCode::Failure);
+                self.halted = true;
+                return;
+            }
+            if let Some(set) = self.sets.get_mut(&named.identifier) {
+                for held in &mut set.units {
+                    held.merged.clear();
+                }
+            }
+            let _ = crate::copies::remove_directory(&crate::copies::merges_of_target(&root, &named.identifier));
+            self.save(&named.identifier);
+        }
+        // A unit a kept change set holds accepted or reviewed counts as merged; every other
+        // unit is of the compile's first plan, waiting for the units of its waitsFor.
+        // @lfy def/cli/main.lfy:main#main:main:42d392d488315c356a8aec4d1df3e5316914fd7797f15f57772a074b0e121165
+        // @lfy def/cli/main.lfy:main#main:main:8cf4943ef6637dd81797621b8abc048edcc7781a4f19546fbe99863339043826
+        for unit in self.planned_units() {
+            if self.set_of(unit).is_none() {
+                continue;
+            }
+            if self.state_of(unit).is_done() {
+                self.schedule.merged.insert(unit);
+                self.schedule.at_start.insert(self.stem(unit));
+                continue;
+            }
+            let waits: Vec<usize> = self.plan.units[unit]
+                .waits_for
+                .iter()
+                .filter_map(|stem| self.plan.units.iter().position(|other| &other.stem == stem && other.target == self.plan.units[unit].target))
+                .collect();
+            self.schedule.first.insert(unit, waits);
+        }
+    }
+
     /// The request of each planned unit, made for no hosted session from the root, written
     /// to `elfie-requests/<name>.md` under the root for a compiler run by hand.
     // @lfy def/cli/main.lfy:main#main:main:eb05a9c865b9fa479acd09d73ff8b30990a3dd3ad4103e9167e78b449284d554
@@ -674,6 +1000,8 @@ impl Run {
         let root = self.root();
         for unit in self.planned_units() {
             let stem = self.stem(unit);
+            // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+            self.recover(unit);
             let reason = self.plan.units[unit].reason.map_or_else(|| "up to date".to_string(), |r| r.as_str().to_string());
             self.reporter.report(Step::Requesting, Some(&stem), &reason);
             // @lfy def/cli/main.lfy:main#main:main:eb05a9c865b9fa479acd09d73ff8b30990a3dd3ad4103e9167e78b449284d554
@@ -702,9 +1030,12 @@ impl Run {
         let root = self.root();
         for unit in self.planned_units() {
             let stem = self.stem(unit);
+            // Its previous source is recovered once, before anything else is done for it.
+            // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+            self.recover(unit);
             // Before its outputs are checked, the markers of its reworded criteria and tests
             // name the ids they have now, written at their paths in the root.
-            // @lfy def/cli/main.lfy:main#main:main:561bd7cbbedaf15b591306a1bda08fd34f7da689d466b406d196bcf906444f7d
+            // @lfy def/cli/main.lfy:main#main:main:5731809a4610bdcc66b727d15eee1aa0e72029842df8f2e0414f6d054e2ea8c0
             self.reword_outputs(unit, &root);
             // Nothing reads these instructions: with --accept no compiler is run and no
             // session is hosted, so the request is for no hosted session.
@@ -797,7 +1128,7 @@ impl Run {
             // A compile that runs no compiler, with none named or with --accept, makes no
             // change set and runs no unit again: the violated review fails it, and the next
             // compile plans those units with reason violated.
-            // @lfy def/cli/main.lfy:main#main:main:8e41635d0589432509b33f63d40f548aac888e27e3d6c6684b073f1ed289e048
+            // @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
             // @lfy def/cli/main.lfy:main#main:main:0440d8388eff8352220c16c7b7cbcac23c06b46e2e0c8882f55b1629dc83a76a
             // @lfy def/cli/main.lfy:main#main:main:c51341f34278d51ccda0b1a75908b211f46b7db736525ed29c88351db922c346
             let command = match &self.compiler {
@@ -851,6 +1182,9 @@ impl Run {
                 let Some(set) = self.new_change_set(&named, Vec::new()) else { continue };
                 self.sets.insert(name.clone(), set);
             }
+            // A unit the global review planned is planned during the compile.
+            // @lfy def/cli/main.lfy:main#main:main:9fb81fa1507e767993a4d11085badfdfe00d34fe56bfd3c332d91cc5d3215da5
+            self.schedule.again.insert(index);
             let Some(set) = self.sets.get_mut(&name) else { continue };
             match set.units.iter().position(|held| held.stem == stem) {
                 Some(place) => {
@@ -883,7 +1217,7 @@ impl Run {
             if !self.sets.contains_key(&named.identifier) {
                 continue;
             }
-            // @lfy def/cli/main.lfy:main#main:main:00df31733dc8abc2a9ca2d729506a5db63fa35efbe5f336a206eb3a9647be77e
+            // @lfy def/cli/main.lfy:main#main:main:b6e79b3ca5fa492391881efa95a4994ac3f869e7623e0954b6788a6bc1a06e2a
             self.reporter.report(Step::FinalGate, None, &named.identifier);
             let problems = self.final_gate(named);
             // @lfy def/cli/main.lfy:main#main:main:10903918821d4be8e7337ec0cd731a8dcac0f86cf39d669061103d9aa1c4f974
@@ -891,7 +1225,8 @@ impl Run {
                 continue;
             }
             // It fails: its problems follow its line, no final gate after it, no global
-            // review, and no merge runs, and every change set is kept.
+            // review, and no merge runs, and every change set is kept. No unit runs while the
+            // final gates do, so nothing comes between the line and its problems.
             // @lfy def/cli/main.lfy:main#main:main:3d56bbbdda35f1bdb3f31f4a0bcb7a611efd511b697c7deed056bda76554bac2
             self.reporter.problems(&problems);
             self.gate_failed = true;
@@ -1087,7 +1422,7 @@ impl Run {
         for named in &targets {
             let Some(set) = self.sets.get(&named.identifier) else { continue };
             // @lfy def/cli/main.lfy:main#main:main:d65259b76766c2e72bd7a2d4077d7121611026a93aacf0a91ba6d86e97ddbe6d
-            // @lfy def/cli/main.lfy:main#main:main:00df31733dc8abc2a9ca2d729506a5db63fa35efbe5f336a206eb3a9647be77e
+            // @lfy def/cli/main.lfy:main#main:main:b6e79b3ca5fa492391881efa95a4994ac3f869e7623e0954b6788a6bc1a06e2a
             let directory = set.directory.clone();
             self.reporter.report(Step::Merging, None, &named.identifier);
             every.push(changes_of(&root, Path::new(&directory), named));

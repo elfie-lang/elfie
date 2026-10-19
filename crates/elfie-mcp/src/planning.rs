@@ -58,8 +58,8 @@ fn problem_targets<'w>(workspace: &'w Workspace, plan: &Plan, problem: &Problem)
         .collect()
 }
 
-/// The units the compiler would produce, in the order they are compiled one at a time, and
-/// why each needs generating: the problems, then the moves, then the units.
+/// The units the compiler would produce, in the order they are compiled, and why each
+/// needs generating: the problems, then the moves, then the units.
 // @lfy def/mcp/main.lfy:units#units:units:920638da45d13abf0859774d9b78a3a3087c59fed19e9fe90e97b355194204b6
 pub fn units(session: &Session, target: Option<&str>) -> Result<String, String> {
     check_target(&session.workspace, target)?;
@@ -252,129 +252,6 @@ pub(crate) fn unit_of_stem(workspace: &Workspace, plan: &Plan, stem: &str, targe
     })
 }
 
-/// What was recovered of the source one unit's outputs were accepted from.
-// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-pub(crate) enum Recovered {
-    /// The source its outputs were accepted from.
-    Accepted(String),
-    /// Only the latest revision of its file whose lowered code is the one the outputs were
-    /// accepted from, which says nothing about which criteria and tests they answered for.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
-    HashMatched(String),
-    /// Neither.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
-    Nothing,
-}
-
-impl Recovered {
-    /// The previous text to pass to `generation::changes`: the revision as git holds it,
-    /// never lowered, and nothing when neither source could be recovered.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-    pub(crate) fn text(&self) -> Option<&str> {
-        match self {
-            Recovered::Accepted(text) | Recovered::HashMatched(text) => Some(text),
-            // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
-            Recovered::Nothing => None,
-        }
-    }
-}
-
-/// What one git command wrote to standard output, run in the workspace root; `None` when it
-/// could not be run or did not succeed, as it does not in a root that is no repository.
-// @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-fn git(root: &Path, args: &[&str]) -> Option<String> {
-    let run = Command::new("git")
-        .args(args)
-        .current_dir(root)
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if !run.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&run.stdout).into_owned())
-}
-
-/// One revision of a unit's file, planned as the workspace would plan it with that revision
-/// in place: the program lowered from it, the plan, and the unit of the same stem for the
-/// same target.
-///
-/// The revision is bound through the loader and lowered the way `generation::changes` binds
-/// a previous text, and planned so that what the file declared then is gathered into a unit
-/// the same way, which is what a source map holds the hash and the answered ids of.
-// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-fn planned_before(workspace: &Workspace, unit: &Unit, text: &str) -> Option<(Program, Plan, usize)> {
-    let path = workspace.files[unit.file].path.clone();
-    let identifier = workspace.targets[unit.target].identifier.clone();
-    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-    let (program, plan) = generation::plan(workspace::change(workspace, &path, Some(text)), &[], &[], &[], &[]);
-    let index = (0..plan.units.len()).find(|&index| {
-        plan.units[index].stem == unit.stem
-            && program.workspace.targets[plan.units[index].target].identifier == identifier
-    })?;
-    Some((program, plan, index))
-}
-
-/// What can be recovered of the source at the unit's last accepted generation, as the
-/// command line recovers it: through git when the root is a repository and the unit's source
-/// is in it, reading the revisions of the file from the most recent back.
-///
-/// What is given back is a revision as git holds it, never lowered, because that is what
-/// `generation::changes` takes; a revision is *recognized* by lowering, since the map holds
-/// the hash of the lowered text rather than of the file's bytes, so a revision differing only
-/// in a comment lowers to the same code. Lowered code is not enough on its own: a criterion
-/// reworded leaves it untouched, so the revision the outputs were accepted from is the one
-/// that also has the ids the map records as answered, and where no revision has them the
-/// latest one with the same lowered code is all there is.
-// @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-// @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-pub(crate) fn previous_source(workspace: &Workspace, unit: &Unit) -> Recovered {
-    let Some(map) = unit.outputs.first() else { return Recovered::Nothing };
-    let file = workspace.files[unit.file].path.clone();
-    // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
-    // Every revision of the file, from the most recent back, with no count to cut the search
-    // short: the revision the outputs were accepted from is recognized however old it is.
-    // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-    let Some(log) = git(&workspace.root, &["log", "--format=%H", "--", &file]) else {
-        return Recovered::Nothing;
-    };
-    let mut matched: Option<String> = None;
-    for revision in log.lines() {
-        let Some(text) = git(&workspace.root, &["show", &format!("{revision}:{file}")]) else { continue };
-        let Some((program, plan, index)) = planned_before(workspace, unit, &text) else { continue };
-        let before = &plan.units[index];
-        if generation::source_hash(&program.files[before.lowered].text) != map.hash {
-            continue;
-        }
-        // The most recent revision whose lowered code is the one the outputs were accepted
-        // from; it stands in only if none of them is the source they were accepted from.
-        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
-        if matched.is_none() {
-            matched = Some(text.clone());
-        }
-        // A source map records the ids of the unit's local criteria and tests as they were
-        // when its outputs were accepted, as their hash: sorted and joined by line breaks.
-        // The revision they were accepted from is the one whose ids hash to it. A map
-        // written before that was recorded holds no hash at all, and then no revision is
-        // recognized as that source.
-        // @lfy def/mcp/main.lfy:changes#changes:changes:56177984bed3a3685a94d23b96a8f9cbc1f37f2aae411cc9a9e89a6839bcab09
-        let mut ids: Vec<String> = before
-            .requirements(&program)
-            .iter()
-            .map(|requirement| requirement.id().to_string())
-            .collect();
-        ids.sort();
-        if !map.requirements.is_empty() && generation::source_hash(&ids.join("\n")) == map.requirements {
-            return Recovered::Accepted(text);
-        }
-    }
-    // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
-    match matched {
-        Some(text) => Recovered::HashMatched(text),
-        None => Recovered::Nothing,
-    }
-}
-
 /// What differs for each entity of a unit since its outputs were last accepted.
 // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
 pub fn changes(session: &Session, unit: &str, target: Option<&str>) -> Result<String, String> {
@@ -388,23 +265,26 @@ pub fn changes(session: &Session, unit: &str, target: Option<&str>) -> Result<St
     if of_stem.outputs.is_empty() {
         return Ok(format!("no previous output for {unit}; nothing has been accepted for it yet")); // @lfy def/mcp/main.lfy:changes#changes:changes:413343511b79d06a29fa38852b4bf26d600fdb0e411965a13d3190ca9375546e
     }
-    let recovered = previous_source(workspace, of_stem); // @lfy def/mcp/main.lfy:changes#changes:changes:6fdf72883c3fb05ab2a58a8325708fe690fc56fcfe75d909abff5f56efdb18e1
+    // The source the outputs were accepted from, recovered once from the program the plan
+    // was made from and lowered once, as `generation::changes` takes it.
+    // @lfy def/mcp/main.lfy:changes#changes:changes:14630f3406a2999717caf5983b099933410220ba4a416d9af55af3a42243bc54
+    let previous = generation::previous::previous_of(&planned.program, of_stem, &of_stem.outputs);
     let mut text = String::new();
-    match &recovered {
-        Recovered::Accepted(_) => {}
-        // @lfy def/mcp/main.lfy:changes#changes:changes:ae710bf66643404415b338248d178927e1ce5abd1905f360bf7bfb0ec58ef93a
-        Recovered::HashMatched(_) => text.push_str(
+    match &previous {
+        Some(found) if !found.hash_matched => {}
+        // @lfy def/mcp/main.lfy:changes#changes:changes:3b2a8142ec9ed2bb1f80958fc3261c1d1b4be77c99faa3057b834d1224905c31
+        Some(_) => text.push_str(
             "the source its outputs were accepted from is not known; the changes below are against \
              the latest revision of its file with the same lowered code, so the criteria and tests \
              they report as changed may not be those that changed since its outputs were accepted\n",
         ),
-        // @lfy def/mcp/main.lfy:changes#changes:changes:0ee7a53de30f39d09aac719e1777c20ac77f3790000eab2781f26813b23a5bc8
-        Recovered::Nothing => text.push_str(
+        // @lfy def/mcp/main.lfy:changes#changes:changes:4260318a5866f37c4f4c137011eee37c136720d68918bd04c5c7a652538dc6dc
+        None => text.push_str(
             "neither the source its outputs were accepted from nor a revision of its file with the \
              same lowered code can be recovered; every entity is listed as added\n",
         ),
     }
-    let found = generation::changes(&planned.program, of_stem, recovered.text()); // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
+    let found = generation::changes(&planned.program, of_stem, previous.as_ref()); // @lfy def/mcp/main.lfy:changes#changes:changes:21683ec505359b2effe3c7d8bc5d8fbcc63e581f01406ec3948d214f74916b65
     if found.is_empty() {
         // @lfy def/mcp/main.lfy:changes#changes:changes:35a395b2402b76e8ae9d6c636a82478d28714ed6e6459fe96e70847ff73470a4
         text.push_str(&format!("no changes in {unit} since its outputs were accepted"));

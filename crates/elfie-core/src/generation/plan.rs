@@ -163,6 +163,7 @@ pub fn plan(
                     .cloned()
                     .collect(),
                 reason: None,
+                ..Default::default()
             });
         }
         // @lfy def/generation/main.lfy:plan
@@ -194,6 +195,14 @@ pub fn plan(
             violated,
             foreign_edits,
         );
+    }
+
+    // What each unit waits for: a planned dependency whose interface its outputs were not
+    // built against, decided here from the plan's inputs alone, before anything runs.
+    // @lfy def/generation/main.lfy:plan#plan:plan:c2229d61da36786fb956566e0a4cf66b0718581f2bab747a4c283843d9731ae9
+    for index in 0..units.len() {
+        let waits_for = waits_for(workspace, &units, &signatures, index);
+        units[index].waits_for = waits_for;
     }
 
     // @lfy def/generation/main.lfy:plan
@@ -761,6 +770,32 @@ fn reason_of(
     }
     // @lfy def/generation/main.lfy:plan#plan:plan:7a17629eb3328ce3cf525013ad345faa5489677d183c8f7cbad514605bd1cb76
     None
+}
+
+/// `Unit.waitsFor`: the stem of each dependency of the unit at `index` that is planned and
+/// either has no outputs or has an interface the unit's outputs do not record as it is now,
+/// in [`Plan::units`] order, each once. Only dependencies are looked at.
+// @lfy def/generation/main.lfy:plan#plan:plan:31c457df741c2719c0a7f8d2dc157358d9fab2475b093ca0ca0d1f86dd934f6c
+// @lfy def/generation/main.lfy:plan#plan:plan:956249620cd183947378acbb9833c10277b3327a5b0dbd8a4461647608785c76
+fn waits_for(workspace: &Workspace, units: &[Unit], signatures: &[String], index: usize) -> Vec<String> {
+    let unit = &units[index];
+    (0..units.len())
+        .filter(|dependency| unit.dependencies.contains(dependency))
+        .filter(|&dependency| {
+            let other = &units[dependency];
+            if other.reason.is_none() {
+                return false;
+            }
+            let path = &workspace.files[other.file].path;
+            other.outputs.is_empty()
+                || unit.outputs.is_empty()
+                || unit
+                    .outputs
+                    .iter()
+                    .any(|output| output.dependencies.get(path) != Some(&signatures[dependency]))
+        })
+        .map(|dependency| units[dependency].stem.clone())
+        .collect()
 }
 
 /// `Unit.text`: the text of the unit's lowered file without the code of the entities moved

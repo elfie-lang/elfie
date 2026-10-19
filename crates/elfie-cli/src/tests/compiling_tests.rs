@@ -7,7 +7,7 @@ use super::*;
 use crate::compiling::loaded_diagnostics;
 use crate::reviewing::{error_diagnostics, missing_lines, not_reviewed, painted_review, problem_of};
 use crate::running::Stop;
-use crate::schedule::{Ended, Snapshot};
+use crate::schedule::Ended;
 
 /// Compile prints the errors and returns problems rather than handing the compiler a
 /// program with problems.
@@ -51,7 +51,7 @@ fn compile_prints_every_loaded_diagnostic_and_verify_only_the_errors() {
 /// compiler run by hand, in no hosted session, so it names none of the tools a session
 /// offers; no change set is made.
 // @lfy def/cli/main.lfy:main#main:main:eb05a9c865b9fa479acd09d73ff8b30990a3dd3ad4103e9167e78b449284d554
-// @lfy def/cli/main.lfy:main#main:main:8e41635d0589432509b33f63d40f548aac888e27e3d6c6684b073f1ed289e048
+// @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
 #[test]
 fn a_project_with_no_compiler_writes_the_requests() {
     let fixture = Fixture::new();
@@ -67,7 +67,7 @@ fn a_project_with_no_compiler_writes_the_requests() {
     assert!(!instructions.contains("elfie_task"), "{instructions}");
     assert!(!instructions.contains("elfie_submit"), "{instructions}");
     // No change set is made.
-    // @lfy def/cli/main.lfy:main#main:main:8e41635d0589432509b33f63d40f548aac888e27e3d6c6684b073f1ed289e048
+    // @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
     assert!(!fixture.root.join("elfie-compile/cache/changes").exists());
     // Every progress line is appended to the log, as printed with colors off.
     // @lfy def/cli/main.lfy:main#main:main:19bf885943ca638eedeb6dd907ab4cbe264301f81b3b1bc8f82658eb6a31f2b9
@@ -96,7 +96,7 @@ fn a_project_with_no_compiler_writes_the_requests() {
 // @lfy def/cli/main.lfy:main#main:main:e6a992a863aebc985eeb11dd2cef62220e5e7590ea2500babb4124684929657c
 // @lfy def/cli/main.lfy:main#main:main:679737b9c65e8c1627af4566b3a9f5d490c8790929b3f394353619a617003c6e
 // @lfy def/cli/main.lfy:main#main:main:c164c51236df72a93cac3a3c7bcc44ec0848586ed13d2f9add36192db3bc1999
-// @lfy def/cli/main.lfy:main#main:main:cac671ef916cf1edbb8b62947dd501c6c757234968c18838c5d2fe0b80d7b8f1
+// @lfy def/cli/main.lfy:main#main:main:fa43f8b6da9b3c369ebca761ab832f180a9bc8eb02b280dd2435250f4884c825
 #[test]
 fn a_progress_line_carries_the_step_the_counts_and_the_elapsed_seconds() {
     let progress = Progress {
@@ -143,10 +143,20 @@ fn a_progress_line_carries_the_step_the_counts_and_the_elapsed_seconds() {
     // A rejection's message is painted in the step's tone, and a step that is none of
     // rejected, failed, blocked, or clarification is plain, touched and merging among them.
     // @lfy def/cli/main.lfy:main#main:main:c164c51236df72a93cac3a3c7bcc44ec0848586ed13d2f9add36192db3bc1999
-    // @lfy def/cli/main.lfy:main#main:main:cac671ef916cf1edbb8b62947dd501c6c757234968c18838c5d2fe0b80d7b8f1
+    // @lfy def/cli/main.lfy:main#main:main:fa43f8b6da9b3c369ebca761ab832f180a9bc8eb02b280dd2435250f4884c825
     let rejected = Progress { step: Step::Rejected, ..progress.clone() };
     assert!(text_of(&rejected, None, None, true).ends_with(&paint("3 outputs", Tone::Failure, true)));
-    for step in [Step::Accepted, Step::Touched, Step::Stubbed, Step::FinalGate, Step::Merging] {
+    for step in [
+        Step::Accepted,
+        Step::Touched,
+        Step::Stubbed,
+        Step::FinalGate,
+        Step::Merging,
+        Step::Relocated,
+        Step::Started,
+        Step::Merged,
+        Step::Undone,
+    ] {
         let plain = Progress { step, ..progress.clone() };
         assert!(text_of(&plain, None, None, true).ends_with("3 outputs"), "{step:?}");
     }
@@ -283,9 +293,9 @@ fn the_compiler_is_run_per_unit_in_its_change_set_and_its_report_is_read() {
     // @lfy def/cli/main.lfy:main#main:main:68d7f7104e4c1d779c0c94bfc97e19bb4af58091b1995f477d4af9494dc91e7e
     assert_eq!(lines[1], std::env::current_exe().unwrap().to_string_lossy());
     assert_eq!(lines[2], "[]");
-    // ELFIE_ROOT is the directory it runs in: the change set's copy, an absolute path.
-    // @lfy def/cli/main.lfy:main#main:main:46046c83c1cfa40ed79495fde1ef0777d6db2402a03b330c3064d14c34546303
-    assert!(lines[3].ends_with("elfie-compile/cache/changes/rust/copy"), "{environment}");
+    // ELFIE_ROOT is the directory it runs in: the unit's own copy, an absolute path.
+    // @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+    assert!(lines[3].ends_with("elfie-compile/cache/changes/rust/units/a"), "{environment}");
     assert!(Path::new(lines[3]).is_absolute(), "{environment}");
     // Nothing of a batch is in its environment any more.
     assert_eq!(lines[4], "none");
@@ -311,7 +321,7 @@ fn the_compiler_is_run_per_unit_in_its_change_set_and_its_report_is_read() {
     // A final gate and a merging line, each naming the target and each a block of its own.
     // @lfy def/cli/main.lfy:main#main:main:f2d95b937709d596c90877c72c560452b08ca12e639e6792b8be4919cd63a3f9
     // @lfy def/cli/main.lfy:main#main:main:d65259b76766c2e72bd7a2d4077d7121611026a93aacf0a91ba6d86e97ddbe6d
-    // @lfy def/cli/main.lfy:main#main:main:31af6bb87a3934bc20a54253f0d179629024bc125f346a901f867f63df0c0092
+    // @lfy def/cli/main.lfy:main#main:main:4630171e9007878ed9f3e54a7018754522e39bd151c749a09d46ba54f64b0a3e
     assert!(log.lines().any(|line| line.contains("▸ finalGate") && line.ends_with("rust")), "{log}");
     assert!(log.lines().any(|line| line.contains("▸ merging") && line.ends_with("rust")), "{log}");
     assert!(log.contains("\n\n[1/1]"), "{log}");
@@ -341,7 +351,7 @@ fn a_rejected_unit_is_run_once_more_and_a_blocked_one_writes_its_reason() {
     assert_eq!(kept.units[0].state, UnitState::Rejected);
     // A blocked unit writes its reason and stays planned.
     // @lfy def/cli/main.lfy:main#main:main:74e6415c7697aa2dadc0187f18f8dd99e61e0fa3c25ecb74732fc6daf9edd323
-    // @lfy def/cli/main.lfy:main#main:main:70167f02b1744682fa98c82bc866d02abc4a28f12d8b3ca9758aa2d5e669641d
+    // @lfy def/cli/main.lfy:main#main:main:654d815adda3e49a4d09b56d2ccda6d531ddada64a727f523fcd7ed1b5ff4b9b
     fixture.write("compiler.sh", "#!/bin/sh\ncat > /dev/null\necho 'ELFIE: BLOCKED: def/a.lfy says nothing'\n");
     assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
     let blocked = fixture.read("elfie-requests/a.blocked.md");
@@ -373,11 +383,11 @@ fn a_command_that_cannot_run_is_a_failure() {
     let nowhere = PathBuf::from("/no/such/directory");
     // @lfy def/cli/main.lfy:main#main:main:3ac90f9999308a6d63417d712d756867c10bc89fc52537afa640a0e82a6f5ba2
     assert_eq!(run.work_unit(0, "true", &nowhere), Ended::Stopped(Stop::Failed));
-    run.stopped_unit(0, Stop::Failed, &Snapshot::new());
+    run.stopped_unit(0, Stop::Failed);
     assert_eq!(run.code, ExitCode::Failure);
     assert_eq!(run.failed, 1);
     // Without --continue the compile stops there.
-    // @lfy def/cli/main.lfy:main#main:main:c1e8fec574c59c5e1bad63913eed21885e232f0b8264e71cda5d800113f8f466
+    // @lfy def/cli/main.lfy:main#main:main:9051d3b21e94dd454bcd1cc00024dba85e18ea05da69961602354cc8d1b436bc
     assert!(run.halted);
     run.agent.server.stop();
 }
@@ -467,11 +477,12 @@ fn a_violated_review_sends_the_unit_back_and_then_rejects_it() {
         serde_json::from_str(&fixture.read("elfie-compile/cache/changes/rust.json")).expect("the change set is kept");
     assert_eq!(kept["units"][0]["stem"], "a");
     assert_eq!(kept["units"][0]["state"], "rejected");
-    // What its outputs held before they were put back is written under elfie-requests.
-    // @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
+    // What its copy changed is written under elfie-requests, and nothing of it is merged into
+    // the change set's copy.
+    // @lfy def/cli/main.lfy:main#main:main:6e192fbbaa3d541cc1fa9490c15245bc628f83977d91727e7004d801f77b9104
     assert!(fixture.read("elfie-requests/a.rejected/out/a.rs").contains("pub struct A"));
     let copy = crate::copies::copy_of(&fixture.root, "rust");
-    assert!(!copy.join("out/a.rs").exists(), "the copy's output was not put back");
+    assert!(!copy.join("out/a.rs").exists(), "the unit's copy was merged");
     // The finished line lists the unit that did not complete.
     // @lfy def/cli/main.lfy:main#main:main:284d09f3b4a49da7c8306079f44a6a97f2de5d712f9c7306fcf43a6d5fac53b9
     assert!(log.contains("    did not complete: a"), "{log}");
@@ -552,7 +563,7 @@ fn every_line_the_verifier_wrote_reaches_the_log() {
 /// With --no-verify no verifier runs, nothing is reviewed, no reviews file is written, and
 /// the unit is done and its source maps recorded when it is accepted.
 // @lfy def/cli/main.lfy:main#main:main:dfb6407e51bd4f65d463919d8814abd45313c5c1939bb539e6352a60cf287078
-// @lfy def/cli/main.lfy:main#main:main:6b0a3b7ef1ed03adae1066e2bb21b9ada933d5808f1039dce913c2635f24308d
+// @lfy def/cli/main.lfy:main#main:main:581f8ca189aaf93dbb2a251ac39e808b7454c0cc223e94b9a5369e0dafdff965
 #[test]
 fn no_verify_runs_no_verifier() {
     let fixture = Fixture::new();
@@ -561,7 +572,7 @@ fn no_verify_runs_no_verifier() {
     assert_eq!(lines_of(&fixture, "attempts.txt"), 1, "the compiler ran once");
     assert!(!fixture.root.join("verifications.txt").exists(), "no verifier ran");
     assert!(!fixture.root.join("elfie-requests/a.reviews.json").exists(), "nothing is reviewed");
-    // @lfy def/cli/main.lfy:main#main:main:6b0a3b7ef1ed03adae1066e2bb21b9ada933d5808f1039dce913c2635f24308d
+    // @lfy def/cli/main.lfy:main#main:main:581f8ca189aaf93dbb2a251ac39e808b7454c0cc223e94b9a5369e0dafdff965
     assert!(fixture.read("elfie-compile/maps/rust/a.json").contains("\"out/a.rs\""));
     let plain = Fixture::new();
     a_compiler_and_a_verifier(&plain, VIOLATED).write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]));
@@ -571,7 +582,7 @@ fn no_verify_runs_no_verifier() {
 }
 
 /// Verify runs the verifier on the outputs already recorded and compiles nothing.
-// @lfy def/cli/main.lfy:main#main:main:37d72b3d77ba44131f58978f7f86e78a53b525f1f2ea28140bd3adeb3c4d2343
+// @lfy def/cli/main.lfy:main#main:main:9be4e81258e22e19acf69f47a1596d768be373b4b174afaf55ada0ec8fbae195
 // @lfy def/cli/main.lfy:main#main:main:64bc2fc6236a9783f1939c6823437a0fee24fced7f789dc76b7dd418a1260f99
 // @lfy def/cli/main.lfy:main#main:main:f6ecc4facc68022e7002a7e92ab9ba501e6cdd6242d9d87adb8b05ae09c3533f
 #[test]
@@ -692,10 +703,15 @@ fn a_global_criterion_is_reviewed_once_after_every_unit() {
     // to global for the second.
     // @lfy def/cli/main.lfy:main#main:main:73c389b755f64b116aefe36d13a3dbbe224b401808c21b5c6e58de07a4b1f1d6
     assert_eq!(fixture.read("verifications.txt"), "a\nglobal\n");
-    // Both ran in the change set's copy.
+    // The unit's verifier ran in the unit's own copy, and the global review in the change
+    // set's copy.
     // @lfy def/cli/main.lfy:main#main:main:14716d93e16448c0464d1b36613a20d644d039670aec988719076afec4cd8213
+    // @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
     for line in fixture.read("where.txt").lines() {
-        assert!(line.ends_with("elfie-compile/cache/changes/rust/copy"), "{line}");
+        match line.split_once('=') {
+            Some(("global", at)) => assert!(at.ends_with("elfie-compile/cache/changes/rust/copy"), "{line}"),
+            _ => assert!(line.ends_with("elfie-compile/cache/changes/rust/units/a"), "{line}"),
+        }
     }
     let log = fixture.read("elfie-requests/compile.log");
     assert!(log.contains("▸ globalVerifying"), "{log}");
@@ -778,7 +794,7 @@ fn a_violated_global_review_plans_its_units_once_more() {
 /// A violated global review in a compile that runs no compiler, because none is named or
 /// because of --accept, makes no change set and runs no compiler: the code is problems, and
 /// the next compile plans the unit with reason violated.
-// @lfy def/cli/main.lfy:main#main:main:8e41635d0589432509b33f63d40f548aac888e27e3d6c6684b073f1ed289e048
+// @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
 // @lfy def/cli/main.lfy:main#main:main:0440d8388eff8352220c16c7b7cbcac23c06b46e2e0c8882f55b1629dc83a76a
 // @lfy def/cli/main.lfy:main#main:main:c51341f34278d51ccda0b1a75908b211f46b7db736525ed29c88351db922c346
 // @lfy def/cli/main.lfy:main#main:main:3d1e2128231c0dd4a623216ed6845b9bfdce55b3a624742046eb528f6cff68dd
@@ -795,7 +811,7 @@ fn a_violated_global_review_without_a_compiler_makes_no_change_set() {
     let made = || ChangeSet::load(&fixture.root, "rust").is_some() || fixture.root.join("elfie-compile/cache/changes/rust").exists();
     assert!(!made(), "a change set was made");
     // No compiler named, and the global review forgotten so that it runs again.
-    // @lfy def/cli/main.lfy:main#main:main:8e41635d0589432509b33f63d40f548aac888e27e3d6c6684b073f1ed289e048
+    // @lfy def/cli/main.lfy:main#main:main:d5f565b191777716fd8e847870720c599c23591f1d959c0cb67397a6770f7536
     fs::remove_file(fixture.root.join("elfie-requests/global.reviews.json")).unwrap();
     fixture.write("elfie.json", &manifest(&[("verifier", "sh verifier.sh")]));
     assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());

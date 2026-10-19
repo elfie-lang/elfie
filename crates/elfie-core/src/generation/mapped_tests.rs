@@ -3,6 +3,11 @@
 
 use super::*;
 
+/// A unit's file as it was, as the source at its last accepted generation.
+fn was_of(program: &Program, unit: &Unit, text: &str) -> Previous {
+    previous_of(&program.workspace, unit, text, false)
+}
+
 /// Every region of an owner, and of every member of it, in source map then output
 /// order.
 // @lfy def/generation/main.lfy:regionsOf#regionsOf:regionsOf:ece2f51d1b6914f38fa307ff237a3db1a0f4f406773b246af49015c4d809a5ff
@@ -151,18 +156,18 @@ fn a_moved_entity_is_reported_for_the_file_that_declares_it() {
     // Against its own text, neither side differs: both are read as the file's.
     // @lfy def/generation/main.lfy:changes
     let text = "use \"./b\";\n\nd A {\n  $b = B;\n}\n\nd C {\n  $x = string;\n}\n";
-    assert_eq!(changes(&program, a, Some(text)), []);
+    assert_eq!(changes(&program, a, Some(&was_of(&program, a, text))), []);
     // `C` was not in the file then and is now, so it is an addition of `def/a.lfy`
     // although the unit of `def/b.lfy` is what compiles it.
     // @lfy def/generation/main.lfy:changes
     let without = "use \"./b\";\n\nd A {\n  $b = B;\n}\n";
     assert_eq!(
-        change_kinds(&changes(&program, a, Some(without))),
+        change_kinds(&changes(&program, a, Some(&was_of(&program, a, without)))),
         [("C", ChangeKind::Added), ("C.x", ChangeKind::Added)]
     );
 }
 
-// @lfy def/generation/main.lfy:changes#changes:changes:2d464e60a8872ef956aa7879f05ba6a1cf0508a0690ad19ff5d73f1c8840fd51
+// @lfy def/generation/main.lfy:changes#changes:changes:3791e585b4944884871fe1f5614790ca511366b450e5e6e8521c6f2846d369dc
 #[test]
 fn a_new_definition_and_a_new_parameter_are_a_definition_and_a_signature() {
     let fixture = Fixture::with_rust_target();
@@ -178,7 +183,7 @@ fn a_new_definition_and_a_new_parameter_are_a_definition_and_a_signature() {
     let previous = "d A: `a value` {\n  $x = string;\n}\n\nfn f(x: string): `Does it` => string {\n  @acceptanceCriteria.add({ behavior = `it does` });\n}\n";
     // The file as it was is bound through the loader, never diffed line by line.
     // @lfy def/generation/main.lfy:changes
-    let changes = changes(&program, unit,Some(previous));
+    let changes = changes(&program, unit, Some(&was_of(&program, unit, previous)));
     // A differing definition is one change, a differing parameter list another.
     // @lfy def/generation/main.lfy:changes#changes:changes:31cbf0fb17f9e9a9897caeed410e96022754fa49a032c9c654cd1f04ea0915be
     assert_eq!(
@@ -198,7 +203,7 @@ fn a_new_definition_and_a_new_parameter_are_a_definition_and_a_signature() {
 /// A removed entity comes after the last entity that preceded it before and is still
 /// declared, a member is compared as an entity of its own under its owner, and the
 /// detail of a change of criteria names the count before and the count now.
-// @lfy def/generation/main.lfy:changes#changes:changes:1c9565b23d23c4d3bcbb3fe6534631ef1946f8869e3f178f425b4e12595f3e0b
+// @lfy def/generation/main.lfy:changes#changes:changes:b8322435556e3d5a9190227f2f30fa5f015637479f715568c831680766057374
 // @lfy def/generation/main.lfy:changes#changes:changes:f54761e4898e7ebd66aacb630307ee416935a1052c402126c3c712e2eb632c2a
 #[test]
 fn a_removed_entity_a_removed_member_and_a_new_criterion_are_read_in_file_order() {
@@ -215,7 +220,7 @@ fn a_removed_entity_a_removed_member_and_a_new_criterion_are_read_in_file_order(
     let previous = "d A;\n\nfn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n\nd B {\n  $x = string;\n  $old = number;\n}\n";
     // A name declared before and not now is a removal.
     // @lfy def/generation/main.lfy:changes#changes:changes:577fb23d0eeb277ec3536077bd65e3bae93b79dd0d4651bf34d0baf4721efb72
-    let changes = changes(&program, unit,Some(previous));
+    let changes = changes(&program, unit, Some(&was_of(&program, unit, previous)));
     // The changes of entities declared now follow the order of the unit's entities; `A`
     // was first before and nothing that preceded it is still declared, so its removal is
     // first, and `B.old`, whose predecessor `f` is still declared, comes after `f`.
@@ -244,7 +249,7 @@ fn a_removed_entity_a_removed_member_and_a_new_criterion_are_read_in_file_order(
 
 /// A criterion whose text changed keeps its place and takes a new id, so the detail of
 /// the change calls the pair reworded; a test's is read the same way.
-// @lfy def/generation/main.lfy:changes#changes:changes:50c1ea7f8d6a011259fc7a78f0cc7c039969c689c7e9b36031eaa1c4a2e2ac63
+// @lfy def/generation/main.lfy:changes#changes:changes:6891268a9659ad20dca9b323602181d3124feb53ffd4dfa37f3b0318acd1f431
 #[test]
 fn a_criterion_reworded_in_place_is_called_reworded() {
     let fixture = Fixture::with_rust_target();
@@ -261,7 +266,7 @@ fn a_criterion_reworded_in_place_is_called_reworded() {
     // The ids of the local tests differ, so there is a change of tests too, after the
     // change of criteria, in the order ChangeKind declares them.
     // @lfy def/generation/main.lfy:changes#changes:changes:b93a6681e63ab930b2883e00f1b5abaf044b41b09124728fe0ca10c6e6b45916
-    let changes = changes(&program, unit, Some(previous));
+    let changes = changes(&program, unit, Some(&was_of(&program, unit, previous)));
     assert_eq!(
         change_kinds(&changes),
         [("f", ChangeKind::Criteria), ("f", ChangeKind::Tests)],
@@ -290,7 +295,7 @@ fn a_criterion_reworded_in_place_is_called_reworded() {
 /// A criterion added before the ones the file had leaves every later criterion standing
 /// where another one stood, so counting from the first pairs nothing: each id is named
 /// added or removed on its own.
-// @lfy def/generation/main.lfy:changes#changes:changes:04f91148f0aa55ad8aeb5b1e28ce9d809e265016e9e0207a1c1c2a8a70a14f95
+// @lfy def/generation/main.lfy:changes#changes:changes:00d9489a8db24acba12d98b63157a346e7e00cb9b355ea6097eb40e66ca64a35
 #[test]
 fn a_criterion_added_before_the_others_rewords_nothing() {
     let fixture = Fixture::with_rust_target();
@@ -306,7 +311,7 @@ fn a_criterion_added_before_the_others_rewords_nothing() {
     let plan = plan_of(&program, &[], &[], &[]);
     let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
     let previous = "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n";
-    let changes = changes(&program, unit, Some(previous));
+    let changes = changes(&program, unit, Some(&was_of(&program, unit, previous)));
     assert_eq!(
         change_kinds(&changes),
         [("f", ChangeKind::Criteria)],
@@ -327,7 +332,7 @@ fn a_criterion_added_before_the_others_rewords_nothing() {
 /// A file whose entities read the same after the two declarations swap places, a comment
 /// moves, and the indentation changes gives no change at all; a statement of a written
 /// body gives one.
-// @lfy def/generation/main.lfy:changes#changes:changes:ef493f153deb6dbaac3835bfc84dae2266cdd2d04f5c990f3aae5db76de2424e
+// @lfy def/generation/main.lfy:changes#changes:changes:93f52cd0e0ce04d9062d9e885e5b648f9f86cee95b356b60abddfb555d0721b8
 // @lfy def/generation/main.lfy:changes#changes:changes:d7b590dfd89c646eecf798bdafc911cd87dc2b66f0c3bc1e3cb916051b5fa6f8
 #[test]
 fn whitespace_and_comments_give_no_change_and_a_new_statement_is_a_body() {
@@ -346,12 +351,12 @@ fn whitespace_and_comments_give_no_change_and_a_new_statement_is_a_body() {
     // @lfy def/generation/main.lfy:changes
     let same = "function g(x: number): `Doubles` -> number {\n    return x * 2;\n}\n\n\
                 // a comment, somewhere else now\nd A {\n\n  $x   = string;\n}\n";
-    assert!(changes(&program, unit, Some(same)).is_empty());
+    assert!(changes(&program, unit, Some(&was_of(&program, unit, same))).is_empty());
     // The tokens of the declaring node differ once everything read apart from the body is
     // left out, so there is one change of body.
     // @lfy def/generation/main.lfy:changes#changes:changes:d5f5fa3f7e3377735cb0315378b2cf53df8b6751fbf3bbc207d6a162992f2b14
     let other = "d A {\n  $x = string;\n}\n\nfunction g(x: number): `Doubles` -> number {\n  return x * 3;\n}\n";
-    let changes = changes(&program, unit,Some(other));
+    let changes = changes(&program, unit, Some(&was_of(&program, unit, other)));
     assert_eq!(change_kinds(&changes), [("g", ChangeKind::Body)], "{changes:?}");
 }
 
@@ -368,7 +373,7 @@ fn a_name_on_both_sides_gives_one_change_per_kind_that_differs() {
     let plan = plan_of(&program, &[], &[], &[]);
     let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
     let previous = "d A {\n  $x: `two` = number;\n}\n";
-    let changes = changes(&program, unit, Some(previous));
+    let changes = changes(&program, unit, Some(&was_of(&program, unit, previous)));
     // The definition comes before the declared type, as `ChangeKind` declares them.
     // @lfy def/generation/main.lfy:changes#changes:changes:3a27812b418c50e70dd8f17ab011cf87210b1245f5064b7fcb22af71ebd740ba
     assert_eq!(
@@ -389,7 +394,7 @@ fn a_name_on_both_sides_gives_one_change_per_kind_that_differs() {
 
 /// A criterion and a test each reworded in place give one rewording apiece, the
 /// criterion's before the test's, each with the id it replaces and what that one said.
-// @lfy def/generation/main.lfy:reworded#reworded:reworded:ae7e96a4afd52516a7f472423ea91c10b39bdddaaa74c711bebe31ca89cb2022
+// @lfy def/generation/main.lfy:reworded#reworded:reworded:68878b2995d85f0a7a97abdb144a76a90722cf03aa68adf08fad7a2a1b8b0f72
 #[test]
 fn a_criterion_and_a_test_reworded_in_place_are_paired_with_what_they_replace() {
     let fixture = Fixture::with_rust_target();
@@ -408,7 +413,7 @@ fn a_criterion_and_a_test_reworded_in_place_are_paired_with_what_they_replace() 
     // One pair per change that calls a pair reworded, in the order of those changes:
     // the criteria of `f`, then the tests of `B`.
     // @lfy def/generation/main.lfy:reworded#reworded:reworded:af54e4c28fb74d4c2fa75b4d1a8399d931aa52c592d5f16bd59ab25cc730a812
-    let rewordings = reworded(&program, unit, was);
+    let rewordings = reworded(&program, unit, &was_of(&program, unit, was));
     assert_eq!(rewordings.len(), 2, "{rewordings:?}");
     // The id it has now and the id it had, read off the two lowerings.
     // @lfy def/generation/main.lfy:reworded#reworded:reworded:68b8e0096a61b2d00deb8e85b9cff1e55e3c804dbb2f9e01870cd1526955b171
@@ -423,17 +428,17 @@ fn a_criterion_and_a_test_reworded_in_place_are_paired_with_what_they_replace() 
     assert!(!held.contains(&rewordings[1].replaces), "{rewordings:?}");
     // The text is what the removed one said, as a removed requirement spells it: a
     // criterion's text for a criterion, an input and an expectation for a test.
-    // @lfy def/generation/main.lfy:reworded#reworded:reworded:ab9d9179b73829cca9561b30789c1b03552c81e265ab5a4d78144f07c0548724
+    // @lfy def/generation/main.lfy:reworded#reworded:reworded:2f1cf2b33aaff46609462adfbaa4694777c741613a70a5ec0912b0a967cb69da
     assert_eq!(rewordings[0].text, "two");
     assert_eq!(rewordings[1].text, "Input `1` gives ``first``");
     // Nothing is written: the file as it is, and the file as it was, are only read.
-    // @lfy def/generation/main.lfy:reworded#reworded:reworded:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
+    // @lfy def/generation/main.lfy:reworded#reworded:reworded:ddbdcd5e429486d18ddb68f37de72b7e4f0a6da2b4f0a61f901c41b98bb3774e
     assert_eq!(fs::read_to_string(fixture.root.join("def/a.lfy")).unwrap(), now);
 }
 
 /// Criteria whose ids differ because one was dropped and another added elsewhere, rather
 /// than because a text changed in place, give no rewording at all.
-// @lfy def/generation/main.lfy:reworded#reworded:reworded:b68735147b4caf0d742a4450cf54f0b22d08806f8ac2e8463f0605987192d59c
+// @lfy def/generation/main.lfy:reworded#reworded:reworded:2bbd3e1025871c6f4ebce1b046c1a171d51c87601fcd236e8868f5c7bede62d9
 #[test]
 fn criteria_that_only_changed_places_give_no_rewording() {
     let fixture = Fixture::with_rust_target();
@@ -447,7 +452,7 @@ fn criteria_that_only_changed_places_give_no_rewording() {
     let plan = plan_of(&program, &[], &[], &[]);
     let (_, unit) = unit_of(&workspace, &plan, "def/a.lfy");
     let was = "fn f(): `Does it` => string {\n  @acceptanceCriteria\n    .add({ behavior = `one` })\n    .add({ behavior = `two` });\n}\n";
-    assert_eq!(reworded(&program, unit, was), []);
+    assert_eq!(reworded(&program, unit, &was_of(&program, unit, was)), []);
 }
 
 /// Every marker of the unit's own file that names an id being replaced is rewritten in

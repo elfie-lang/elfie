@@ -52,7 +52,7 @@ fn the_elfie_package_gives_no_unit_even_though_global_holds_the_target() {
     assert_eq!(names(&workspace, &plan.units[0].entities), ["A"]);
 }
 
-// @lfy def/generation/main.lfy:plan#plan:plan:b79ae83d919d87b8fdaf2ae3bcc9981fd848e1ac1aa4ddbb4f96b1a7c21ec2cc
+// @lfy def/generation/main.lfy:plan#plan:plan:1a509c46b0636cd955862b295b7f4c01b598fc6f27ca86229cde2edb02643bd8
 #[test]
 fn two_files_give_two_fresh_units_with_b_before_a() {
     let fixture = a_and_b();
@@ -70,6 +70,10 @@ fn two_files_give_two_fresh_units_with_b_before_a() {
     // @lfy def/generation/main.lfy:plan
     assert_eq!(a.dependencies, [b_index]);
     assert!(b.dependencies.is_empty());
+    // `a` has no outputs recording `b`'s interface, and `b` is planned, so `a` waits for it.
+    // @lfy def/generation/main.lfy:plan#plan:plan:31c457df741c2719c0a7f8d2dc157358d9fab2475b093ca0ca0d1f86dd934f6c
+    assert_eq!(a.waits_for, ["b"]);
+    assert!(b.waits_for.is_empty());
     // Neither unit has an output recorded, so each is fresh.
     // @lfy def/generation/main.lfy:plan#plan:plan:01751bca4d2165839842ab83d64cf2cab13330a74b283b7c2cf83fd8513371c3
     assert_eq!(a.reason, Some(Reason::Fresh));
@@ -175,6 +179,55 @@ fn a_member_added_to_a_dependency_plans_its_dependent_too() {
     assert_eq!(a.reason, Some(Reason::Dependency));
     let planned: Vec<usize> = plan.planned().map(|(index, _)| index).collect();
     assert_eq!(planned, [b_index, a_index]);
+}
+
+/// `a` uses `b` and `c`; `b` gained a member since the maps were recorded and `c` is
+/// requested. `a` waits for `b` alone, whose interface its outputs record as it was, and not
+/// for `c`, whose interface they record as it is.
+// @lfy def/generation/main.lfy:plan#plan:plan:bc10da8c66c338f8ad59f1af3472eabb29b649aaaaa3af389b1d9a175e4ad5d8
+#[test]
+fn a_unit_waits_only_for_a_planned_dependency_whose_interface_it_does_not_record() {
+    let fixture = Fixture::with_rust_target();
+    fixture
+        .write("def/b.lfy", "d B { $x = string; }\n")
+        .write("def/c.lfy", "d C { $x = string; }\n")
+        .write(
+            "def/a.lfy",
+            "use \"./b\";\nuse \"./c\";\n\nd A {\n  $b = B;\n  $c = C;\n}\n",
+        );
+    let old = fixture.program();
+    assert_bound(&old.workspace);
+    let maps = current_maps(&old, &plan_of(&old, &[], &[], &[]));
+
+    fixture.write("def/b.lfy", "d B {\n  $x = string;\n  $y = number;\n}\n");
+    let program = fixture.program();
+    let workspace = program.workspace.clone();
+    assert_bound(&workspace);
+    let plan = plan_of(&program, &maps, &["c".to_string()], &[]);
+    let (b_index, b) = unit_of(&workspace, &plan, "def/b.lfy");
+    let (c_index, c) = unit_of(&workspace, &plan, "def/c.lfy");
+    let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
+    assert_eq!(b.reason, Some(Reason::Changed));
+    assert_eq!(c.reason, Some(Reason::Requested));
+    assert_eq!(a.reason, Some(Reason::Dependency));
+    assert!(b_index < a_index && c_index < a_index);
+    // @lfy def/generation/main.lfy:plan#plan:plan:31c457df741c2719c0a7f8d2dc157358d9fab2475b093ca0ca0d1f86dd934f6c
+    assert_eq!(a.waits_for, ["b"]);
+    assert!(b.waits_for.is_empty());
+    assert!(c.waits_for.is_empty());
+    // Only dependencies are waited for.
+    // @lfy def/generation/main.lfy:plan#plan:plan:956249620cd183947378acbb9833c10277b3327a5b0dbd8a4461647608785c76
+    for unit in &plan.units {
+        for stem in &unit.waits_for {
+            assert!(
+                unit.dependencies.iter().any(|&d| &plan.units[d].stem == stem),
+                "{unit:?}"
+            );
+        }
+    }
+    // The same inputs give the same waits, before anything runs.
+    // @lfy def/generation/main.lfy:plan#plan:plan:c2229d61da36786fb956566e0a4cf66b0718581f2bab747a4c283843d9731ae9
+    assert_eq!(plan_of(&program, &maps, &["c".to_string()], &[]), plan);
 }
 
 /// A target no entity, no file, and not `global` holds among its targets gives no unit.
@@ -812,7 +865,7 @@ fn an_entity_with_no_lowered_node_is_in_no_unit() {
     assert_eq!(program.files[unit.lowered].file, unit.file);
     assert_eq!(
         program.files[unit.lowered].text,
-        request(&program, &plan, index, &[], None, false, false, &[]).source
+        request(&program, &plan, index, &[], None, false, &[], &[]).source
     );
 }
 
@@ -849,7 +902,7 @@ fn a_new_criterion_plans_the_unit_for_its_requirements() {
     assert_ne!(map.requirements, requirements_hash(&program, b));
     // The unit's own section says its code is unchanged and that its criteria or tests
     // differ. @lfy def/generation/main.lfy:request
-    let request = request(&program, &plan, b_index, &[], None, false, false, &[]);
+    let request = request(&program, &plan, b_index, &[], None, false, &[], &[]);
     assert!(
         request
             .instructions
@@ -909,6 +962,48 @@ fn a_units_requirements_are_its_entities_and_move_with_them() {
     });
     assert_eq!(ids(&moved.units[a_index]), b_ids);
     assert!(ids(&moved.units[b_index]).is_empty());
+}
+
+// @lfy def/generation/data.lfy:Reach#Reach:Reach:0bb557a5ed670b6e434a85b29b6693859d060770f3fea536fc9604d46fd1402a
+/// The reach of `c` is empty while `b`, the one unit that uses it directly, records its
+/// interface as it is now; once `b` records another, it is `b` and the `a` that depends on
+/// `c` through `b`.
+#[test]
+fn a_reach_is_empty_while_every_direct_dependent_records_the_interface_as_it_is() {
+    let fixture = Fixture::with_rust_target();
+    fixture
+        .write("def/c.lfy", "d C { $x = string; }\n")
+        .write("def/b.lfy", "use \"./c\";\n\nd B { $c = C; }\n")
+        .write("def/a.lfy", "use \"./b\";\n\nd A { $b = B; }\n");
+    let program = fixture.program();
+    let workspace = &program.workspace;
+    assert_bound(workspace);
+    let mut maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    let current = plan_of(&program, &maps, &[], &[]);
+    let (c, _) = unit_of(workspace, &current, "def/c.lfy");
+    assert!(Reach::of(workspace, &current, c).units.is_empty());
+
+    for map in maps.iter_mut().filter(|map| map.source == "def/b.lfy") {
+        map.dependencies.values_mut().for_each(String::clear);
+    }
+    let stale = plan_of(&program, &maps, &[], &[]);
+    let (c, _) = unit_of(workspace, &stale, "def/c.lfy");
+    let (b, _) = unit_of(workspace, &stale, "def/b.lfy");
+    let (a, _) = unit_of(workspace, &stale, "def/a.lfy");
+    let reach = Reach::of(workspace, &stale, c);
+    assert_eq!(reach.units, [b, a]);
+
+    // @lfy def/generation/data.lfy:Reach#Reach:Reach:9fa35d3e58bd1c6985f920bf4d94049cd12b7b69531ce2e5a0b17cef22dd18e1
+    // Which units are planned changes nothing of either reach.
+    for plan in [&current, &stale] {
+        let mut none = plan.clone();
+        none.units.iter_mut().for_each(|unit| unit.reason = None);
+        let mut every = plan.clone();
+        every.units.iter_mut().for_each(|unit| unit.reason = Some(Reason::Requested));
+        let reach = Reach::of(workspace, plan, c);
+        assert_eq!(Reach::of(workspace, &none, c), reach);
+        assert_eq!(Reach::of(workspace, &every, c), reach);
+    }
 }
 
 /// A stem the last global review found violated plans its unit again, and a request

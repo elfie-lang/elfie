@@ -36,10 +36,14 @@ pub(crate) struct Running {
     /// The number the next group to start takes.
     // @lfy def/cli/main.lfy:main#main:main:da791c98fbedcf3fb13fe11ba3a9b7a6af2de1cacab56f35de534f60c8208f32
     next: Mutex<u64>,
+    /// Whether the compile stopped, so that nothing starts after it did.
+    // @lfy def/cli/main.lfy:main#main:main:51b22c76c1410a187c0f287178a9ecb28048b54a983754ad873fa703eb7809a3
+    stopped: std::sync::atomic::AtomicBool,
 }
 
 impl Running {
-    /// One group remembered while it runs, forgotten when the handle is dropped.
+    /// One group remembered while it runs, forgotten when the handle is dropped; one that
+    /// starts once the compile stopped is stopped at once.
     // @lfy def/cli/main.lfy:main#main:main:da791c98fbedcf3fb13fe11ba3a9b7a6af2de1cacab56f35de534f60c8208f32
     pub(crate) fn started(&self, leader: u32) -> Group<'_> {
         let at = {
@@ -49,12 +53,24 @@ impl Running {
             at
         };
         self.groups.lock().unwrap_or_else(std::sync::PoisonError::into_inner).insert(at, leader);
+        // @lfy def/cli/main.lfy:main#main:main:da791c98fbedcf3fb13fe11ba3a9b7a6af2de1cacab56f35de534f60c8208f32
+        if self.is_stopped() {
+            stop_group(leader);
+        }
         Group { running: self, at }
     }
 
-    /// Every group still running stopped, with every process of each.
+    /// Whether the compile stopped.
+    // @lfy def/cli/main.lfy:main#main:main:51b22c76c1410a187c0f287178a9ecb28048b54a983754ad873fa703eb7809a3
+    pub(crate) fn is_stopped(&self) -> bool {
+        self.stopped.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Every group still running stopped, with every process of each, and nothing started
+    /// after that.
     // @lfy def/cli/main.lfy:main#main:main:da791c98fbedcf3fb13fe11ba3a9b7a6af2de1cacab56f35de534f60c8208f32
     pub(crate) fn stop(&self) {
+        self.stopped.store(true, std::sync::atomic::Ordering::SeqCst);
         let leaders: Vec<u32> = {
             let groups = self.groups.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             groups.values().copied().collect()
@@ -93,7 +109,7 @@ impl Drop for Group<'_> {
 /// after it was accepted, touched by another unit or planned by the global review, begins a
 /// new chain, since this is made afresh each time the unit starts.
 // @lfy def/cli/main.lfy:main#main:main:7f343c1256669da811796e2ffa76c4b0def02ea5161f3b27756047490353fd43
-// @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+// @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
 #[derive(Default)]
 pub(crate) struct Resuming {
     /// The session the compiler's runs on the unit go on from.
@@ -216,6 +232,10 @@ pub(crate) fn watch<R: io::Read + Send + 'static>(
             // stream, so a line of the other stream never mixes into it.
             // @lfy def/cli/main.lfy:main#main:main:2e0dbfd080f3b449aa5c3bcb1573c50971d381975307a1b40917dd84d98a4a42
             // @lfy def/cli/main.lfy:main#main:main:aa66eb73d63beed141bc36accf7ad7dd3920fb56c5500f6e4295a50ad7ba7b37
+            // A line waits for the turn to print, so it never comes between a progress line of
+            // another unit and what follows it.
+            // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+            let _turn = turn();
             if to_stdout {
                 println!("{prefix}{line}");
             } else {
@@ -452,6 +472,17 @@ impl Agent {
     ) -> Exit {
         let role = binding.role;
         let what = word_of(role);
+        // Once the compile stopped, nothing more is started.
+        // @lfy def/cli/main.lfy:main#main:main:51b22c76c1410a187c0f287178a9ecb28048b54a983754ad873fa703eb7809a3
+        if running.is_some_and(Running::is_stopped) {
+            return Exit {
+                code: -1,
+                stdout: String::new(),
+                stderr: "the compile stopped".to_string(),
+                record: SessionRecord::default(),
+                session: String::new(),
+            };
+        }
         // An agent session id new for the run, read from the secure random source; a source
         // that cannot be read is a run that could not be set up.
         // @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
@@ -524,11 +555,11 @@ impl Agent {
         // unit before it; every other run has no ELFIE_RESUME at all, whatever the
         // environment the command was started in held.
         // @lfy def/cli/main.lfy:main#main:main:7f343c1256669da811796e2ffa76c4b0def02ea5161f3b27756047490353fd43
-        // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+        // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
         match resume {
             // @lfy def/cli/main.lfy:main#main:main:7f343c1256669da811796e2ffa76c4b0def02ea5161f3b27756047490353fd43
             Some(before) => spawning.env(RESUME, before),
-            // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+            // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
             None => spawning.env_remove(RESUME),
         };
         // The run leads a process group of its own, so that stopping it stops everything it
@@ -624,7 +655,7 @@ impl Runs {
     /// session of that role's run on the unit before it, and every run is remembered while it
     /// runs so that stopping the compile stops it.
     // @lfy def/cli/main.lfy:main#main:main:7f343c1256669da811796e2ffa76c4b0def02ea5161f3b27756047490353fd43
-    // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+    // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
     pub(crate) fn run(
         &self,
         command: &str,
@@ -638,7 +669,7 @@ impl Runs {
         // A resuming run goes on from the session of that role's run on the unit before it;
         // every other run carries none.
         // @lfy def/cli/main.lfy:main#main:main:7f343c1256669da811796e2ffa76c4b0def02ea5161f3b27756047490353fd43
-        // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+        // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
         let resume = if resuming {
             let held = self.resuming.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             held.of(role).map(str::to_string)
@@ -761,6 +792,11 @@ pub(crate) fn run_target_command(
 ) -> Option<Ran> {
     // @lfy def/cli/main.lfy:main#main:main:2693766a523314183e6282316ef0592ed35595e8a47c47ed91606d938be00563
     let line = line_for(target, operation)?;
+    // Once the compile stopped, nothing more is started, and what this would give is ignored.
+    // @lfy def/cli/main.lfy:main#main:main:51b22c76c1410a187c0f287178a9ecb28048b54a983754ad873fa703eb7809a3
+    if running.is_some_and(Running::is_stopped) {
+        return Some(Ran { code: -1, lines: vec!["the compile stopped".to_string()], started: true });
+    }
     // The command runs in the target's output directory under the directory it runs for.
     // @lfy def/cli/main.lfy:main#main:main:2122ce59b6ca33af5e18c265f0334204d7ceb9807440dcaae456e418da206c9d
     let within = directory.join(&target.output_directory);

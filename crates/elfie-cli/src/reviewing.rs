@@ -84,7 +84,7 @@ impl Run {
     // @lfy def/cli/main.lfy:main#main:main:4433e487958c0421f6e9121d7dec547034bf56c187a29d2478a9f228caba4eb4
     pub(crate) fn write_review_request(&mut self, unit: usize) {
         let root = self.root();
-        let records = self.records_of(unit, &root);
+        let records = self.verify_records(unit, &root);
         let maps = self.maps.clone();
         let request = self.review_request_of(unit, &maps, &root, &records);
         let stem = self.stem(unit);
@@ -101,7 +101,6 @@ impl Run {
     /// With --full nothing is carried, so every criterion and test of the unit is reviewed
     /// again.
     // @lfy def/cli/main.lfy:main#main:main:974936f3c3946711196e8a624f7b7a1eef10cd5508bc5dc018f39ef22112a2df
-    // @lfy def/cli/main.lfy:main#main:main:e589c1fc483c3f78252a097b7894875817fba5591db7ee8b3f20c193b5d5dbd9
     // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
     pub(crate) fn records_of(&mut self, unit: usize, directory: &Path) -> Vec<ReviewRecord> {
         // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
@@ -113,10 +112,28 @@ impl Run {
         generation::reviews_of(self.program_at(directory), &planned)
     }
 
+    /// What verify reviews a unit with: for the unit of one of the review records verify's
+    /// relocation gives, the records of that unit's, which nothing is written of; otherwise what
+    /// `reviewsOf` gives for it; and nothing at all with --full.
+    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
+    // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
+    pub(crate) fn verify_records(&mut self, unit: usize, directory: &Path) -> Vec<ReviewRecord> {
+        if self.full {
+            return Vec::new();
+        }
+        let target = self.target_of_unit(unit).identifier.clone();
+        let stem = self.stem(unit);
+        // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
+        match self.relocation.reviews.iter().find(|reviews| reviews.target == target && reviews.stem == stem) {
+            Some(reviews) => reviews.records.clone(),
+            None => self.records_of(unit, directory),
+        }
+    }
+
     /// What a verifier is handed for one unit: the plan, the unit, the source maps it is
     /// pointed at, the directory its outputs were written in, and its records.
     // @lfy def/cli/main.lfy:main#main:main:974936f3c3946711196e8a624f7b7a1eef10cd5508bc5dc018f39ef22112a2df
-    // @lfy def/cli/main.lfy:main#main:main:e589c1fc483c3f78252a097b7894875817fba5591db7ee8b3f20c193b5d5dbd9
+    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
     pub(crate) fn review_request_of(
         &self,
         unit: usize,
@@ -189,7 +206,7 @@ impl Run {
             }
         }
         let program = self.program_at(directory);
-        // @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
+        // @lfy def/cli/main.lfy:main#main:main:5a9f0a1a607bedde3d9614508a9e4477732de6ab40aa00c924024f8a13bded91
         let written = generation::record_reviews(&program.workspace, &planned, &records);
         let path = generation::review_file(&program.workspace, &planned).display().to_string();
         if !written {
@@ -227,7 +244,7 @@ impl Run {
         // @lfy def/cli/main.lfy:main#main:main:974936f3c3946711196e8a624f7b7a1eef10cd5508bc5dc018f39ef22112a2df
         let request = self.review_request_of(unit, maps, directory, records);
         // A review request that asks about nothing runs no verifier at all.
-        // @lfy def/cli/main.lfy:main#main:main:05ac6304717835d69bb7abd060fff0483ab8c7456278a979ecf81e49535f9b01
+        // @lfy def/cli/main.lfy:main#main:main:937db8c6bb813375099d24ebd48ddb13a787a6635026cf49e3a09e1bd48b369f
         // @lfy def/cli/main.lfy:main#main:main:1210eb92f28da423c86881acae7b44dcc7eb7346006e861a85cef47a910c5f8f
         if request.asked.is_empty() {
             let verification = Verification { report: ReviewReport::default(), failed: false, request };
@@ -261,7 +278,7 @@ impl Run {
             } else {
                 // The verifier's run once more after a run that ended without every verdict is
                 // no resuming run.
-                // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+                // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
                 let (exit, report, failed) = self.ask_verifier(runs, command, directory, unit, &again, maps, false);
                 // A run made once more that ends without every verdict too has its problems
                 // printed as a failed progress line, and what it did report is read as if it
@@ -347,8 +364,8 @@ impl Run {
         let problems = report.problems.clone();
         // @lfy def/cli/main.lfy:main#main:main:85f1d3ef649f3839f3e1f7f75cc2c0c880e5b1c1b9978b38bddb4b309b264f1b
         let unit = (label != GLOBAL).then_some(label);
-        self.reporter.report(Step::Failed, unit, &problems.join("\n"));
-        self.reporter.problems(&problems);
+        // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+        self.reporter.report_problems(Step::Failed, unit, &problems.join("\n"), &problems);
         if code == -1 {
             self.worsen(ExitCode::Failure);
         }
@@ -395,11 +412,15 @@ impl Run {
         // @lfy def/cli/main.lfy:main#main:main:0ae375c1084691369dda163c81e2e1f335de4780dfb63290fe31e727ca79fec3
         // @lfy def/cli/main.lfy:main#main:main:79aeca787363a11f87e229a581c29dfcab7548d25cd5e7e3018983a54dbcb14d
         // @lfy def/cli/main.lfy:main#main:main:42cb7931abf1b1cbc69474e94e4981f4280630610c6622305d2f9ce3dab316d1
-        // @lfy def/cli/main.lfy:main#main:main:05ac6304717835d69bb7abd060fff0483ab8c7456278a979ecf81e49535f9b01
+        // @lfy def/cli/main.lfy:main#main:main:937db8c6bb813375099d24ebd48ddb13a787a6635026cf49e3a09e1bd48b369f
         let counts = counts_with_carried(&report.reviews, report.missing.len(), carried);
+        // The reviewed line and everything that follows it are printed in one turn, so no line
+        // of another unit comes between them.
+        // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+        let _turn = self.reporter.hold();
         self.reporter.report_counts(Step::Reviewed, Some(&stem), &counts, None);
         // Nothing was asked: nothing was reviewed, so nothing was violated either.
-        // @lfy def/cli/main.lfy:main#main:main:05ac6304717835d69bb7abd060fff0483ab8c7456278a979ecf81e49535f9b01
+        // @lfy def/cli/main.lfy:main#main:main:937db8c6bb813375099d24ebd48ddb13a787a6635026cf49e3a09e1bd48b369f
         if verification.request.asked.is_empty() {
             return Verified::Passed;
         }
@@ -419,7 +440,7 @@ impl Run {
         }
         // An unverifiable review is counted in the reviewed line and never rejects the unit.
         // @lfy def/cli/main.lfy:main#main:main:2980264ce3d1cc374ba5efe5189f297ea1edce70b8a4cffbc8e194f056d2131b
-        // @lfy def/cli/main.lfy:main#main:main:a9a35de62ed7e8af9e763d1d17f62b520074b0ff62f6d127c8a757f06b3d2654
+        // @lfy def/cli/main.lfy:main#main:main:1a380544042dc2a265daa89f48fba57d42b2227401fa8e393f68af08ae06fc21
         let problems = violations_of(report);
         if problems.is_empty() {
             return Verified::Passed;
@@ -528,7 +549,7 @@ impl Run {
         maps: &[SourceMap],
     ) -> Option<ReviewReport> {
         // A run for the global review is no resuming run.
-        // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+        // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
         let runs = Runs::new(self.agent.clone(), self.running.clone());
         let mut last = ReviewReport::default();
         for attempt in 1..=2 {
@@ -560,8 +581,7 @@ impl Run {
     /// verifier runs after it.
     // @lfy def/cli/main.lfy:main#main:main:c98cf702185cba4a24169527abed59a142c455d479534531109ad7041e58476c
     pub(crate) fn hosting_failed(&mut self, unit: Option<&str>, message: &str) {
-        self.reporter.report(Step::Failed, unit, message);
-        self.reporter.problems(&[message.to_string()]);
+        self.reporter.report_problems(Step::Failed, unit, message, &[message.to_string()]);
         complain(self.style.err, None, message);
         self.worsen(ExitCode::Failure);
         self.halted = true;
@@ -639,9 +659,10 @@ pub(crate) fn print_errors(workspace: &Workspace, json: bool, on: bool) -> bool 
 /// Verify is compile without the compiler: the same plan, the same review request, the same
 /// verifier, so a person can ask for an opinion on outputs already recorded. Nothing is
 /// compiled, no output is written, and nothing under elfie-compile is recorded, moved, or
-/// removed.
+/// removed; what relocating the outputs gives is read and never written.
 // @lfy def/cli/main.lfy:main#main:main:64bc2fc6236a9783f1939c6823437a0fee24fced7f789dc76b7dd418a1260f99
-// @lfy def/cli/main.lfy:main#main:main:37d72b3d77ba44131f58978f7f86e78a53b525f1f2ea28140bd3adeb3c4d2343
+// @lfy def/cli/main.lfy:main#main:main:9be4e81258e22e19acf69f47a1596d768be373b4b174afaf55ada0ec8fbae195
+// @lfy def/cli/main.lfy:main#main:main:abb5794d626f24032c066316c918b8b21a401336dac8fa0f1f415ec179aabd6a
 pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
     let root = Path::new(&invocation.root);
     let workspace = workspace::load(root);
@@ -657,10 +678,18 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
         Ok(target) => target,
         Err(code) => return code,
     };
-    // The outputs reviewed are those of the source maps of the workspace, only read.
-    // @lfy def/cli/main.lfy:main#main:main:37d72b3d77ba44131f58978f7f86e78a53b525f1f2ea28140bd3adeb3c4d2343
-    let maps = generation::source_maps_of(&workspace, target.as_deref());
+    // The outputs reviewed are those of the source maps relocating the plan made from the
+    // source maps of the workspace gives, with the root as its directory; nothing it gives is
+    // written, and every plan verify makes is made from those maps.
+    // @lfy def/cli/main.lfy:main#main:main:9be4e81258e22e19acf69f47a1596d768be373b4b174afaf55ada0ec8fbae195
+    // @lfy def/cli/main.lfy:main#main:main:abb5794d626f24032c066316c918b8b21a401336dac8fa0f1f415ec179aabd6a
+    let recorded = generation::source_maps_of(&workspace, target.as_deref());
     drop(workspace);
+    let (first, before) = plan_with(root, &recorded, &[], &[], &[]);
+    let relocated =
+        crate::compiling::scoped(generation::relocate(&first, &before, Some(root)), &first.workspace, target.as_deref());
+    drop((first, before));
+    let maps = relocated.source_maps.clone();
     // Plan.problems is neither printed nor counted in the exit code here, and the review goes
     // on: a person asked for an opinion on what is recorded, not for a build.
     // @lfy def/cli/main.lfy:main#main:main:304ed515dfa3121d80f29c65da75d99d67be3708e1f5c3c46961a2dbbbc46322
@@ -719,6 +748,8 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
     };
     let reporter = Reporter::new(json, style, units.len(), log_paths(root));
     let mut run = Run::new(program, plan, planning, reporter, invocation);
+    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
+    run.relocation = relocated;
     // Units are reviewed one at a time, in plan order, in the root.
     // @lfy def/cli/main.lfy:main#main:main:5ae62b936ea6ca73ed12ba186677c8460636fef0ec96946d8e147e49a205d24f
     for unit in units {
@@ -730,14 +761,14 @@ pub(crate) fn verify(invocation: &Invocation) -> ExitCode {
             // @lfy def/cli/main.lfy:main#main:main:4185b35d14b24c85bfd17b51dfbe20df36cada069c9fb42bf4e35263334a5d97
             Some(command) => {
                 let root = run.root();
-                // What the unit's review carries: what it was last reviewed as, and nothing at
-                // all with --full.
-                // @lfy def/cli/main.lfy:main#main:main:e589c1fc483c3f78252a097b7894875817fba5591db7ee8b3f20c193b5d5dbd9
+                // What the unit's review carries: what verify's relocation moved for it, or
+                // what it was last reviewed as, and nothing at all with --full.
+                // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
                 // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
-                let records = run.records_of(unit, &root);
+                let records = run.verify_records(unit, &root);
                 let recorded = run.maps.clone();
                 // A verify's run of the verifier is a first run, so it goes on from nothing.
-                // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+                // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
                 let runs = Runs::new(run.agent.clone(), run.running.clone());
                 let verification =
                     run.review_unit(unit, &command, &root, false, &recorded, &records, &runs, false);

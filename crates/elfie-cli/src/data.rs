@@ -129,10 +129,14 @@ pub enum Step {
     Requesting,      // @lfy def/cli/data.lfy:Step.requesting
     Resuming,        // @lfy def/cli/data.lfy:Step.resuming
     Rewording,       // @lfy def/cli/data.lfy:Step.rewording
+    Relocated,       // @lfy def/cli/data.lfy:Step.relocated
+    Started,         // @lfy def/cli/data.lfy:Step.started
     Building,        // @lfy def/cli/data.lfy:Step.building
     Compiling,       // @lfy def/cli/data.lfy:Step.compiling
     Checking,        // @lfy def/cli/data.lfy:Step.checking
     Accepted,        // @lfy def/cli/data.lfy:Step.accepted
+    Merged,          // @lfy def/cli/data.lfy:Step.merged
+    Undone,          // @lfy def/cli/data.lfy:Step.undone
     Rejected,        // @lfy def/cli/data.lfy:Step.rejected
     Verifying,       // @lfy def/cli/data.lfy:Step.verifying
     Reviewed,        // @lfy def/cli/data.lfy:Step.reviewed
@@ -157,10 +161,14 @@ impl Step {
             Step::Requesting => "requesting",
             Step::Resuming => "resuming",
             Step::Rewording => "rewording",
+            Step::Relocated => "relocated",
+            Step::Started => "started",
             Step::Building => "building",
             Step::Compiling => "compiling",
             Step::Checking => "checking",
             Step::Accepted => "accepted",
+            Step::Merged => "merged",
+            Step::Undone => "undone",
             Step::Rejected => "rejected",
             Step::Verifying => "verifying",
             Step::Reviewed => "reviewed",
@@ -190,13 +198,27 @@ impl Step {
             Step::Rewording => {
                 "the markers of a unit's reworded criteria and tests were rewritten to their new ids"
             }
+            Step::Relocated => {
+                "the markers of entities that moved to another file were rewritten to name it, \
+                 with their source maps and review records"
+            }
+            Step::Started => "a unit's copy is made and its run begins",
             Step::Building => {
                 "the target's build and test commands are running for a unit, in place of the \
                  compiler or as the gate after its acceptance"
             }
             Step::Compiling => "the compiler is running on a unit",
             Step::Checking => "the outputs of a unit are being checked",
-            Step::Accepted => "a unit was accepted and recorded in the change set",
+            Step::Accepted => "a unit was accepted in its copy",
+            Step::Merged => {
+                "a unit's work was merged into its change set, and the change set's build and \
+                 tests passed after it"
+            }
+            Step::Undone => {
+                "a unit's merge was undone, because the change set's build or tests failed after \
+                 it or a unit merged since its copy was made changed a region it wrote, and it \
+                 runs again in a new copy"
+            }
             Step::Rejected => "a unit was rejected",
             Step::Verifying => "the verifier is running on a unit that was accepted",
             Step::Reviewed => "the verifier reviewed a unit, or every verdict on it was carried",
@@ -209,11 +231,11 @@ impl Step {
             Step::Clarification => "the compiler asked a question",
             Step::Failed => "the compiler command failed",
             Step::Touched => {
-                "an accepted unit fixed code inside the regions of a later unit, which is planned \
+                "a merged unit fixed code inside the regions of a later unit, which is planned \
                  as touched"
             }
             Step::Stubbed => {
-                "an accepted unit replaced code inside the regions of a later unit with stubs, \
+                "a merged unit replaced code inside the regions of a later unit with stubs, \
                  and that unit is planned as touched"
             }
             Step::FinalGate => {
@@ -232,10 +254,11 @@ pub struct Progress {
     /// What is happening.
     pub step: Step, // @lfy def/cli/data.lfy:Progress.step
     /// The unit it concerns: for `Touched` and `Stubbed`, the unit edited; `None` for a step
-    /// that concerns no one unit, such as `Planned`, `FinalGate`, `Merging`,
+    /// that concerns no one unit, such as `Planned`, `Relocated`, `FinalGate`, `Merging`,
     /// `GlobalVerifying`, `GlobalReviewed`, and `Finished`.
     pub unit: Option<String>, // @lfy def/cli/data.lfy:Progress.unit
-    /// Units accepted so far.
+    /// Units merged into their change set so far, in state [`UnitState::Accepted`] or
+    /// [`UnitState::Reviewed`], units kept from a resumed change set included.
     pub done: usize, // @lfy def/cli/data.lfy:Progress.done
     /// Units planned.
     pub total: usize, // @lfy def/cli/data.lfy:Progress.total
@@ -244,9 +267,11 @@ pub struct Progress {
     pub elapsed: f64, // @lfy def/cli/data.lfy:Progress.elapsed
     /// The detail: the reason a unit is planned, a problem, a question, the counts of
     /// the plan, for `Touched` and `Stubbed` the unit whose run made the edits and their
-    /// notes, or for `Reviewed` and `GlobalReviewed` the counts of satisfied, violated, and
-    /// unverifiable reviews, in that order, then for `Reviewed` the count of verdicts carried
-    /// when there are any.
+    /// notes, for `Started` how many units are running and the most that may, for `Merged` the
+    /// count of files written or removed, for `Undone` why it was undone, for `Relocated` the
+    /// counts of entities, markers, and review records moved, or for `Reviewed` and
+    /// `GlobalReviewed` the counts of satisfied, violated, and unverifiable reviews, in that
+    /// order, then for `Reviewed` the count of verdicts carried when there are any.
     pub message: String, // @lfy def/cli/data.lfy:Progress.message
 }
 
@@ -305,6 +330,9 @@ pub struct ChangeSetUnit {
     /// How many foreign edits [`ChangeSet::foreign_edits`] held when the unit was last
     /// accepted in the change set; 0 when it never was; kept while it is planned again.
     pub edits: usize, // @lfy def/cli/data.lfy:ChangeSetUnit.edits
+    /// The paths, relative to the copy, of the change set's own files the unit's last merge
+    /// wrote or removed, in path order; empty while it never merged.
+    pub merged: Vec<String>, // @lfy def/cli/data.lfy:ChangeSetUnit.merged
 }
 
 impl ChangeSetUnit {
@@ -318,6 +346,7 @@ impl ChangeSetUnit {
             hash: hash.to_string(),
             requirements: requirements.to_string(),
             edits: 0,
+            merged: Vec::new(),
         }
     }
 
@@ -329,6 +358,7 @@ impl ChangeSetUnit {
             "hash": self.hash,
             "requirements": self.requirements,
             "edits": self.edits,
+            "merged": self.merged,
         })
     }
 
@@ -341,12 +371,21 @@ impl ChangeSetUnit {
             hash: object.get("hash")?.as_str()?.to_string(),
             requirements: object.get("requirements")?.as_str()?.to_string(),
             edits: usize::try_from(object.get("edits")?.as_u64()?).ok()?,
+            // A file written before units recorded their merges holds none.
+            merged: match object.get("merged") {
+                None => Vec::new(),
+                Some(paths) => paths
+                    .as_array()?
+                    .iter()
+                    .map(|path| path.as_str().map(str::to_string))
+                    .collect::<Option<Vec<_>>>()?,
+            },
         })
     }
 }
 
-/// Every planned unit of one compile for one target, worked in one copy of the root that the
-/// root takes only when the whole compile is done.
+/// Every planned unit of one compile for one target, each worked in a copy of its own and merged
+/// into one copy of the root that the root takes only when the whole compile is done.
 // Decision: a change set is kept on disk between compiles, so a compile that stops loses no unit
 // accepted under definitions that have not changed since.
 // @lfy def/cli/data.lfy:ChangeSet
@@ -358,8 +397,8 @@ pub struct ChangeSet {
     pub directory: String, // @lfy def/cli/data.lfy:ChangeSet.directory
     /// One per planned unit, in plan order, a unit planned because it was touched included.
     pub units: Vec<ChangeSetUnit>, // @lfy def/cli/data.lfy:ChangeSet.units
-    /// Every foreign edit an accepted unit of the change set made, in the order they were
-    /// accepted. Only [`ChangeSet::accept`] adds to it.
+    /// Every foreign edit a unit of the change set made, recorded when the unit was accepted
+    /// in it, in the order their units were accepted. Only [`ChangeSet::accept`] adds to it.
     pub foreign_edits: Vec<ForeignEdit>, // @lfy def/cli/data.lfy:ChangeSet.foreignEdits
 }
 
@@ -423,16 +462,55 @@ impl ChangeSet {
         ChangeSet::from_json(&value).filter(|set| set.target == target)
     }
 
-    /// Removes the change set's file under elfie-compile/cache and its copy, as when the root
-    /// takes it. What is already gone is no error.
+    /// Removes the change set's file under elfie-compile/cache, what its units' merges kept
+    /// there, and its copy, as when the root takes it. What is already gone is no error.
     // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:d9f289811c4e43fa3bb96a1b1a7d01f546422d23b339e148ae7b61176238bef6
     pub fn remove(&self, root: &Path) -> std::io::Result<()> {
-        let gone = |result: std::io::Result<()>| match result {
-            Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error),
-            _ => Ok(()),
-        };
         gone(std::fs::remove_file(ChangeSet::file(root, &self.target)))?;
+        gone(std::fs::remove_dir_all(ChangeSet::merges(root, &self.target)))?;
         gone(std::fs::remove_dir_all(Path::new(&self.directory)))
+    }
+
+    /// elfie-compile/cache/changes/<target>/merged under the root: where what each unit's
+    /// last merge wrote is kept.
+    fn merges(root: &Path, target: &str) -> PathBuf {
+        root.join("elfie-compile").join("cache").join("changes").join(target).join("merged")
+    }
+
+    /// elfie-compile/cache/changes/<target>/merged/<name> under the root, with `name` the
+    /// unit's request name: where what that unit's last merge wrote is kept.
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108
+    pub fn merged_directory(root: &Path, target: &str, name: &str) -> PathBuf {
+        ChangeSet::merges(root, target).join(name)
+    }
+
+    /// Records a merge of the unit at `index` into the change set's copy, just after it: its
+    /// [`ChangeSetUnit::merged`] becomes `paths`, the paths relative to the copy of the files
+    /// the merge wrote or removed, in path order, and what an earlier merge of it kept under
+    /// [`ChangeSet::merged_directory`] is replaced by each of those paths the copy holds now,
+    /// at that path, as the copy holds it. A path the merge removed is not kept.
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:ff350bee6b6a6f47334a809bc05ff72b35216d8561461a74d60a36dd6fb10a89
+    pub fn merge(&mut self, root: &Path, index: usize, name: &str, mut paths: Vec<String>) -> std::io::Result<()> {
+        paths.sort();
+        paths.dedup();
+        let kept = ChangeSet::merged_directory(root, &self.target, name);
+        gone(std::fs::remove_dir_all(&kept))?;
+        let copy = Path::new(&self.directory);
+        for path in &paths {
+            let held = match std::fs::read(under(copy, path)) {
+                Ok(held) => held,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(error) => return Err(error),
+            };
+            let to = under(&kept, path);
+            if let Some(parent) = to.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(to, held)?;
+        }
+        self.units[index].merged = paths;
+        Ok(())
     }
 
     /// The place in `now`, the units planned now in plan order with the hash and requirements
@@ -455,33 +533,31 @@ impl ChangeSet {
 
     /// Takes the change set up again for the units planned now: every unit before
     /// [`ChangeSet::kept`] keeps its state, and that unit and every unit after it is the one
-    /// planned now at its place, planned again, with the [`ChangeSetUnit::edits`] it had when
-    /// it was in the change set. [`ChangeSet::foreign_edits`] stays as it was. Returns the
-    /// place of the unit that runs next, the first that is neither accepted nor reviewed;
-    /// `None` when every unit is.
-    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:6b29187de3d79dc587549407b8213f3a4844ef711b59317cbd20c8d1a09e4808
+    /// planned now at its place, planned again, with the [`ChangeSetUnit::edits`] and
+    /// [`ChangeSetUnit::merged`] it had when it was in the change set.
+    /// [`ChangeSet::foreign_edits`] stays as it was. Returns the places of every unit that
+    /// runs, each that is neither accepted nor reviewed, in order; the compile starts them as
+    /// it schedules them, and none when every unit is done.
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:968261c102d71e1bf981693b0997819cdc1645a386c5211b2df4a97bea1def5d
     // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c
     // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f
     // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c
-    pub fn resume(&mut self, now: &[ChangeSetUnit]) -> Option<usize> {
+    pub fn resume(&mut self, now: &[ChangeSetUnit]) -> Vec<usize> {
         let kept = self.kept(now);
         let again = now[kept..].iter().map(|planned| {
-            let edits = self
-                .units
-                .iter()
-                .find(|unit| unit.stem == planned.stem)
-                .map_or(0, |unit| unit.edits);
+            let before = self.units.iter().find(|unit| unit.stem == planned.stem);
             ChangeSetUnit {
                 state: UnitState::Planned,
                 hash: String::new(),
                 requirements: String::new(),
-                edits,
+                edits: before.map_or(0, |unit| unit.edits),
+                merged: before.map(|unit| unit.merged.clone()).unwrap_or_default(),
                 ..planned.clone()
             }
         });
         let units: Vec<ChangeSetUnit> = self.units[..kept].iter().cloned().chain(again).collect();
         self.units = units;
-        self.units.iter().position(|unit| !unit.state.is_done())
+        (0..self.units.len()).filter(|&place| !self.units[place].state.is_done()).collect()
     }
 
     /// Records the unit at `index` as accepted with the hash and requirements it has now, and
@@ -534,6 +610,20 @@ impl ChangeSet {
             .map(|(_, edit)| edit)
             .collect()
     }
+}
+
+/// What is already gone is no error.
+// @lfy def/cli/data.lfy:ChangeSet
+fn gone(result: std::io::Result<()>) -> std::io::Result<()> {
+    match result {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error),
+        _ => Ok(()),
+    }
+}
+
+/// A path relative to a directory, its segments separated by slashes, under that directory.
+fn under(directory: &Path, path: &str) -> PathBuf {
+    path.split('/').filter(|segment| !segment.is_empty()).fold(directory.to_path_buf(), |at, segment| at.join(segment))
 }
 
 // @lfy def/cli/data.lfy:ChangeSetUnit.reason
@@ -681,9 +771,9 @@ mod tests {
         std::fs::remove_dir_all(&root).unwrap();
     }
 
-    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:6b29187de3d79dc587549407b8213f3a4844ef711b59317cbd20c8d1a09e4808
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:968261c102d71e1bf981693b0997819cdc1645a386c5211b2df4a97bea1def5d
     #[test]
-    fn change_set_resumes_at_the_first_unit_not_done() {
+    fn change_set_resumes_with_every_unit_not_done() {
         let mut kept = set(vec![
             accepted("a", "ha"),
             ChangeSetUnit { state: UnitState::Reviewed, ..accepted("b", "hb") },
@@ -698,7 +788,7 @@ mod tests {
             ChangeSetUnit::planned("d", Reason::Fresh, "hd", "r"),
         ];
         assert_eq!(kept.kept(&now), 4);
-        assert_eq!(kept.resume(&now), Some(2));
+        assert_eq!(kept.resume(&now), [2, 3]);
         assert_eq!(kept.units, before);
     }
 
@@ -711,7 +801,7 @@ mod tests {
             ChangeSetUnit::planned("b", Reason::Changed, "hb", "other"),
             ChangeSetUnit::planned("c", Reason::Changed, "hc", "r"),
         ];
-        assert_eq!(kept.resume(&now), Some(1));
+        assert_eq!(kept.resume(&now), [1, 2]);
         assert_eq!(kept.units[0], accepted("a", "ha"));
         assert!(kept.units[1..].iter().all(|unit| unit.state == UnitState::Planned));
         assert_eq!(kept.units.iter().map(|u| u.stem.as_str()).collect::<Vec<_>>(), ["a", "b", "c"]);
@@ -727,7 +817,7 @@ mod tests {
             ChangeSetUnit::planned("b", Reason::Changed, "hb", "r"),
             ChangeSetUnit::planned("c", Reason::Changed, "hc", "r"),
         ];
-        assert_eq!(kept.resume(&now), Some(1));
+        assert_eq!(kept.resume(&now), [1, 2, 3]);
         assert_eq!(kept.units[0], accepted("a", "ha"));
         assert_eq!(kept.units.iter().map(|u| u.stem.as_str()).collect::<Vec<_>>(), ["a", "x", "b", "c"]);
         assert!(kept.units[1..].iter().all(|unit| unit.state == UnitState::Planned));
@@ -743,7 +833,7 @@ mod tests {
             ChangeSetUnit::planned("a", Reason::Changed, "changed", "r"),
             ChangeSetUnit::planned("b", Reason::Touched, "hb", "r"),
         ];
-        assert_eq!(kept.resume(&now), Some(0));
+        assert_eq!(kept.resume(&now), [0, 1]);
         assert_eq!(kept.units[0].edits, 1);
         kept.accept(0, "changed", "r", vec![edit("a", "b", "second")]);
         let notes: Vec<&str> = kept.foreign_edits.iter().map(|e| e.note.as_str()).collect();
@@ -775,5 +865,46 @@ mod tests {
         assert_eq!(notes(kept.edits_since("c")), Vec::<String>::new());
         assert_eq!(notes(kept.edits_since("z")), Vec::<String>::new());
         assert_eq!(notes(kept.recorded_since()), ["4"]);
+    }
+
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108
+    #[test]
+    fn change_set_keeps_what_a_merge_wrote() {
+        let root = scratch("merged");
+        let copy = root.join("copy");
+        std::fs::create_dir_all(copy.join("src")).unwrap();
+        std::fs::write(copy.join("src").join("a.rs"), "a").unwrap();
+        let mut kept = ChangeSet { directory: copy.to_string_lossy().into_owned(), ..set(vec![accepted("x/a", "h")]) };
+        let paths = vec!["src/gone.rs".to_string(), "src/a.rs".to_string()];
+        kept.merge(&root, 0, "x-a", paths).unwrap();
+        assert_eq!(kept.units[0].merged, ["src/a.rs", "src/gone.rs"]);
+        let place = root.join("elfie-compile").join("cache").join("changes").join("rust").join("merged").join("x-a");
+        assert_eq!(ChangeSet::merged_directory(&root, "rust", "x-a"), place);
+        assert_eq!(std::fs::read_to_string(place.join("src").join("a.rs")).unwrap(), "a");
+        assert!(!place.join("src").join("gone.rs").exists());
+        kept.save(&root).unwrap();
+        assert_eq!(ChangeSet::load(&root, "rust"), Some(kept.clone()));
+        kept.remove(&root).unwrap();
+        assert!(!place.exists());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    // @lfy def/cli/data.lfy:ChangeSet#ChangeSet:ChangeSet:ff350bee6b6a6f47334a809bc05ff72b35216d8561461a74d60a36dd6fb10a89
+    #[test]
+    fn change_set_merge_again_replaces_what_was_kept() {
+        let root = scratch("merged-again");
+        let copy = root.join("copy");
+        std::fs::create_dir_all(&copy).unwrap();
+        std::fs::write(copy.join("a.rs"), "a").unwrap();
+        std::fs::write(copy.join("b.rs"), "b").unwrap();
+        let mut kept = ChangeSet { directory: copy.to_string_lossy().into_owned(), ..set(vec![accepted("a", "h")]) };
+        kept.merge(&root, 0, "a", vec!["a.rs".to_string()]).unwrap();
+        std::fs::write(copy.join("b.rs"), "b again").unwrap();
+        kept.merge(&root, 0, "a", vec!["b.rs".to_string()]).unwrap();
+        let place = ChangeSet::merged_directory(&root, "rust", "a");
+        assert!(!place.join("a.rs").exists());
+        assert_eq!(std::fs::read_to_string(place.join("b.rs")).unwrap(), "b again");
+        assert_eq!(kept.units[0].merged, ["b.rs"]);
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }

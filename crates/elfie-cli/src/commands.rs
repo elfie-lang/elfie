@@ -44,7 +44,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 command = Some(Command::Tree);
             } else if i + 1 == arguments.len() && forced.is_none() {
                 // The last argument with nothing after it to take: the option is named back.
-                // @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
+                // @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
                 return Err("--tree needs a file".to_string());
             }
             i += 1;
@@ -66,7 +66,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 }
                 // The last argument with no directory after it to take: the option is named
                 // back, unless --help, -h, or --version has already named the command.
-                // @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
+                // @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
                 None if forced.is_none() => return Err("--root needs a directory".to_string()),
                 None => i += 1,
             }
@@ -105,24 +105,25 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 i += 1;
                 continue;
             } else if OPTIONS_WITH_VALUES.contains(&name) {
-                // --target is the option besides --root that takes a following value, and the
-                // option target gives it.
+                // --target and --jobs are the options besides --root that take a following
+                // value, and the option of each name gives it.
                 // @lfy def/cli/main.lfy:parse#parse:parse:d430b5e6a7470398614d725eafdc05b807ff1820689bae58a91114f9b344c530
+                // @lfy def/cli/main.lfy:parse#parse:parse:abfabb6a971c58385dc2dcfa8dbe32f3a2a14269c471c65743fbfd57deec1615
                 if let Some(value) = arguments.get(i + 1) {
                     options.insert(name.to_string(), Some(value.clone()));
                     i += 1;
                 } else if forced.is_none() {
                     // The last argument with nothing after it to take: the option is named
                     // back, unless --help, -h, or --version has already named the command.
-                    // @lfy def/cli/main.lfy:parse#parse:parse:f02fa71e7da3224799ef529967d655bc2283a6e888528c149468713605888a18
+                    // @lfy def/cli/main.lfy:parse#parse:parse:3e415cc8c432995a2f20132ebe9faa1a51e783fa11b13cdc472e6a3089c09986
                     return Err(format!("--{name} needs a value"));
                 }
             } else {
                 // Every other option written with no equals sign is a flag and gives true,
                 // never taking the next argument, so --json check still names the check
                 // command.
-                // @lfy def/cli/main.lfy:parse#parse:parse:3b63870b5bd8c3d705b3fe36f7d8df1123db22b57fa590663e84f4f4a1e59008
-                // @lfy def/cli/main.lfy:parse#parse:parse:dcb7c2a03e1a5126afb2f4ffe2edf196cc6deae05a25ee2cecbf8b4666b2c8f8
+                // @lfy def/cli/main.lfy:parse#parse:parse:233533aea4b9472e5d4e1d27500a3950212b9616536f3b46cf00ef040f59af88
+                // @lfy def/cli/main.lfy:parse#parse:parse:2e73a4f8b63da86790f160a37ed9aa761be453dad91436a10b475b11625c450b
                 options.insert(name.to_string(), None);
             }
             i += 1;
@@ -131,14 +132,14 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
         // Any other argument beginning with a single dash is neither an option, nor the
         // command, nor positional, so the first argument without a dash still names the
         // command and one holding none spells help.
-        // @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
-        // @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
+        // @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
+        // @lfy def/cli/main.lfy:parse#parse:parse:5f3d8a6fb3ccffa0749573417617024cf2ac816e469eea41263c10278b25db02
         if argument.starts_with('-') {
             i += 1;
             continue;
         }
         // The first argument that does not begin with a dash names the command.
-        // @lfy def/cli/main.lfy:parse#parse:parse:18a414d2a0d543bdb98172cdb41626091e3c89ed51f6a659e96ca784ab8a7499
+        // @lfy def/cli/main.lfy:parse#parse:parse:3874a32a6a9ce574d2416d5c0171397b2a5a6f3c2857cb5d98d62c92e1a25770
         if command.is_none() && forced.is_none() {
             match Command::lookup(argument) {
                 Some(found) => command = Some(found),
@@ -146,12 +147,20 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
                 None => return Err(format!("{argument} is not a command")),
             }
         } else {
-            // Every other one, the value --root, --target, or --color took aside, is
+            // Every other one, the value --root, --target, --jobs, or --color took aside, is
             // positional.
-            // @lfy def/cli/main.lfy:parse#parse:parse:dd2b0b0390de36e5311e96979f200953effcf502ba2cd611c18f6bf2ac6c6545
+            // @lfy def/cli/main.lfy:parse#parse:parse:7473c896dd710a7b0dcccc8450958126fa8e9c70c04172f551e9a551ff75afa3
             positional.push(argument.clone());
         }
         i += 1;
+    }
+    // A value of jobs that is not a whole number of at least 1, written in decimal digits, is a
+    // usage error, however it was written.
+    // @lfy def/cli/main.lfy:parse#parse:parse:dbf0b9db8c348d21cd046133ce143cec46a21cb916cff4abe5976e762450d3d5
+    if let Some(Some(value)) = options.get(JOBS)
+        && jobs_of(value).is_none()
+    {
+        return Err(JOBS_USAGE.to_string());
     }
     // With --help, -h, or --version among the arguments the invocation has no positional
     // arguments.
@@ -161,7 +170,7 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
     }
     // Nothing that does not begin with a dash names a command, no --version is given, and no
     // option that takes a value was the last argument: the command is help.
-    // @lfy def/cli/main.lfy:parse#parse:parse:6a504086755823febb0f5ac3bc59d3026a9663641ef622aa1db6e0c47626d459
+    // @lfy def/cli/main.lfy:parse#parse:parse:5f3d8a6fb3ccffa0749573417617024cf2ac816e469eea41263c10278b25db02
     Ok(Invocation {
         command: command.unwrap_or(Command::Help),
         root: find_root(root.as_deref()),
@@ -170,11 +179,31 @@ pub fn parse_arguments(arguments: &[String]) -> Result<Invocation, String> {
     })
 }
 
-/// Options that take a value written as the next argument: --target is the one option
-/// besides --root that takes a following value unconditionally, and --color takes one only
-/// when it names a [`ColorChoice`].
+/// Options that take a value written as the next argument: --target and --jobs are the
+/// options besides --root that take a following value unconditionally, and --color takes one
+/// only when it names a [`ColorChoice`].
 // @lfy def/cli/main.lfy:parse
-pub(crate) const OPTIONS_WITH_VALUES: [&str; 1] = ["target"];
+pub(crate) const OPTIONS_WITH_VALUES: [&str; 2] = ["target", JOBS];
+
+/// The option that says how many units may run at once.
+// @lfy def/cli/main.lfy:parse#parse:parse:abfabb6a971c58385dc2dcfa8dbe32f3a2a14269c471c65743fbfd57deec1615
+pub(crate) const JOBS: &str = "jobs";
+
+/// What a --jobs value that is no whole number of at least 1 is answered with.
+// @lfy def/cli/main.lfy:parse#parse:parse:dbf0b9db8c348d21cd046133ce143cec46a21cb916cff4abe5976e762450d3d5
+pub(crate) const JOBS_USAGE: &str = "--jobs must be a whole number of at least 1";
+
+/// How many units may run at once, read from a --jobs value: a whole number of at least 1,
+/// written in decimal digits alone; nothing for any other text. A number too large to count
+/// is as many as can be counted.
+// @lfy def/cli/main.lfy:parse#parse:parse:dbf0b9db8c348d21cd046133ce143cec46a21cb916cff4abe5976e762450d3d5
+pub(crate) fn jobs_of(value: &str) -> Option<usize> {
+    if value.is_empty() || !value.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let count = value.parse::<usize>().unwrap_or(usize::MAX);
+    (count >= 1).then_some(count)
+}
 
 /// What a --color value that is no [`ColorChoice`] is answered with.
 // @lfy def/cli/main.lfy:parse

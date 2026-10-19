@@ -13,9 +13,11 @@ fn a_usage_error_returns_the_usage_code() {
 }
 
 /// Help prints every command of [`Command`], verify among them, with one line of
-/// description and the global options, --json, --root, --target, --no-verify, --continue,
-/// --strict, and --color among them, and version prints the version; both return success.
+/// description and the global options, --json, --root, --target, --jobs, --no-verify,
+/// --continue, --strict, and --color among them, and version prints the version; both return
+/// success.
 // @lfy def/cli/main.lfy:main#main:main:6f0073ceecb972e98aae5b1618d058d12e3264a00f6faa1982ea18e0ca49ac39
+// @lfy def/cli/main.lfy:main#main:main:027934d626ca3e1baa3508e59ebe0c56b3748c5ce68a885ef8cb2c8c5f6efa53
 #[test]
 fn help_and_version_return_success() {
     let text = help_text(false);
@@ -25,15 +27,21 @@ fn help_and_version_return_success() {
         assert!(text.contains(command.description()), "{text}");
     }
     assert!(text.contains(Command::Verify.value()), "{text}");
-    // @lfy def/cli/main.lfy:main#main:main:0728ce2f53b2f4a9f3d567eeed29c11a42c55afb46303c1aa95b1d650d43fa97
-    for option in
-        ["--root", "--json", "--target", "--no-verify", "--continue", "--strict", "--color", "--help, -h", "--version"]
-    {
+    // @lfy def/cli/main.lfy:main#main:main:027934d626ca3e1baa3508e59ebe0c56b3748c5ce68a885ef8cb2c8c5f6efa53
+    for option in [
+        "--root",
+        "--json",
+        "--target",
+        "--jobs",
+        "--no-verify",
+        "--continue",
+        "--strict",
+        "--color",
+        "--help, -h",
+        "--version",
+    ] {
         assert!(text.contains(option), "{option} is missing from {text}");
     }
-    // --jobs is no option any more: units run one at a time.
-    // @lfy def/cli/main.lfy:main#main:main:0728ce2f53b2f4a9f3d567eeed29c11a42c55afb46303c1aa95b1d650d43fa97
-    assert!(!text.contains("--jobs"), "{text}");
     // Every description starts in the same column, painted or not.
     // @lfy def/cli/main.lfy:main
     let painted = help_text(true);

@@ -72,7 +72,7 @@ fn an_agent(root: &Path, hosted: Result<Host, String>) -> Agent {
 // @lfy def/cli/main.lfy:main#main:main:b4fcd8255dc77a6812ba729d68dac80c3c551fa5f203c2d68df2bab37b05ee57
 // @lfy def/cli/main.lfy:main#main:main:d5aa2bf16f2da120b4d37b7d66b8856800a80b580034d60d8ee7a8967d232f02
 // @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
-// @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+// @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
 // @lfy def/cli/main.lfy:main#main:main:77f1f3a8ea3c2d7f433ee642b0418c00d1ce2b7dd1dca0106b299cb12959c12b
 #[test]
 fn a_run_of_an_agent_works_through_one_hosted_session() {
@@ -123,7 +123,7 @@ fn a_run_of_an_agent_works_through_one_hosted_session() {
     // @lfy def/cli/main.lfy:main#main:main:3bba760addbbe89f0bc597ff49d70e040b3328497641cb4a22a68f53d4b68585
     assert_eq!(written[2], exit.session, "the run was told its own session id");
     assert!(is_a_uuid(&exit.session), "{} is no version 4 UUID", exit.session);
-    // @lfy def/cli/main.lfy:main#main:main:631eb66f63680435474026b050f06277c5eee4e5b444e767c71386bdbb3c3118
+    // @lfy def/cli/main.lfy:main#main:main:9e092cdf07f0cd7a1468317b2e75bb10ee5513015372fa964ca1fdff2d436dba
     assert_eq!(written[3], "none", "ELFIE_RESUME was in the environment");
     // @lfy def/cli/main.lfy:main#main:main:7522539013e41173fe7dcc12bb506b34925d3a1de610ef78fe9a1db5ea960f10
     assert_eq!(written[4], "cli/main");
@@ -303,7 +303,7 @@ fn a_reviewed_line_counts_the_carried_verdicts_last() {
 /// asks about them again.
 // @lfy def/cli/main.lfy:main#main:main:05ecd897c6044e88ca2bad408d90091093bb8d358a4cb29d412daaab6695e86c
 // @lfy def/cli/main.lfy:main#main:main:974936f3c3946711196e8a624f7b7a1eef10cd5508bc5dc018f39ef22112a2df
-// @lfy def/cli/main.lfy:main#main:main:e589c1fc483c3f78252a097b7894875817fba5591db7ee8b3f20c193b5d5dbd9
+// @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
 // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
 // @lfy def/cli/main.lfy:main#main:main:1210eb92f28da423c86881acae7b44dcc7eb7346006e861a85cef47a910c5f8f
 #[test]
@@ -321,7 +321,7 @@ fn a_settled_verdict_is_carried_and_asks_no_verifier() {
     // @lfy def/cli/main.lfy:main#main:main:8b2d4cb145c85977997b07a3824a4854f7eecccbcae9af2711ec792f26fdb7a9
     assert_eq!(fixture.run(&["verify", "a", "--full"]), ExitCode::Success.code());
     assert_eq!(lines_of(&fixture, "verifications.txt"), 2, "the verifier did not run again");
-    // @lfy def/cli/main.lfy:main#main:main:e589c1fc483c3f78252a097b7894875817fba5591db7ee8b3f20c193b5d5dbd9
+    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
     let mut run = a_run(&fixture, &["verify"]);
     let maps = generation::source_maps_of(&run.program.workspace, None);
     let root = fixture.root.clone();

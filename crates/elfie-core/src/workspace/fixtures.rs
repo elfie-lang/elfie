@@ -163,7 +163,12 @@ impl Fixture {
     /// copy the compiler was built with.
     // @lfy def/workspace/main.lfy:load
     pub(super) fn load(&self) -> Workspace {
-        load_in(&self.root, BTreeMap::new(), Some(LIBRARY_ROOT.to_string()))
+        load_in(
+            &self.root,
+            BTreeMap::new(),
+            &BTreeMap::new(),
+            Some(LIBRARY_ROOT.to_string()),
+        )
     }
 }
 
@@ -177,7 +182,7 @@ impl Drop for Fixture {
 /// compiler was built with.
 // @lfy def/workspace/main.lfy:load
 pub(super) fn load_built_in(root: &Path) -> Workspace {
-    load_in(root, BTreeMap::new(), None)
+    load_in(root, BTreeMap::new(), &BTreeMap::new(), None)
 }
 
 /// Whether a file came from the package `elfie`.

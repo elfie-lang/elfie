@@ -1,19 +1,17 @@
 // @lfy def/cli/main.lfy:main
-//! Tests of the order units run in, what stops a compile or skips a unit, the locations a
-//! command's output names, the unit gate and the final gate, and what an accepted unit's
-//! foreign edits do to the units after it.
+//! Tests of the order units start and merge in, the copy each runs in, what stops a compile or
+//! skips a unit, the locations a command's output names, the unit gate and the final gate,
+//! what a merge writes or undoes, and what a merged unit's foreign edits do to the units
+//! after it.
 
 use super::*;
 use crate::compiling::{is_stub_line, keep_kept_units};
-use crate::copies::make_copy;
-use crate::running::Run;
+use crate::copies::{UnitCopy, make_copy, make_start, make_unit_copy, own_contents, start_of, unit_copy_of};
 use crate::processes::{located, location_in, within};
-use crate::running::Stop;
-use crate::schedule::snapshot_of;
+use crate::running::{Run, Stop};
 
-/// Three independent units and a compiler writing each one's output, so that they run one at
-/// a time, in plan order.
-// @lfy def/cli/main.lfy:main#main:main:de26823f65cede55489b74aa666da89098e28a63c56aff633a4c046e0170b4a1
+/// Three independent units and a compiler writing each one's output.
+// @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
 fn three_units(fixture: &Fixture) -> &Fixture {
     one_target(fixture)
         .write("def/a.lfy", "d A {}\n")
@@ -23,32 +21,71 @@ fn three_units(fixture: &Fixture) -> &Fixture {
         .write("elfie.json", &manifest(&[("compiler", "sh compiler.sh")]))
 }
 
-/// Units run one at a time, in plan order, each once every unit before it is done.
-// @lfy def/cli/main.lfy:main#main:main:de26823f65cede55489b74aa666da89098e28a63c56aff633a4c046e0170b4a1
-// @lfy def/cli/main.lfy:main#main:main:d6af6f4d3977a8dd794735d5f4d494c25c55465c8422412f7c2a41ef0f2ce483
+/// With one unit allowed to run at a time, the earliest ready unit in plan order starts
+/// first, so the units run in plan order; every one of them merges into the one change set,
+/// which the root takes.
+// @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+// @lfy def/cli/main.lfy:main#main:main:7ca8d55384b2971cfabab5ffdce367c3faadb58b56ff385b0a2860676eae5360
 // @lfy def/cli/main.lfy:main#main:main:52dc0204d72665f32b60eef1095ce6a73d89469226840fd8606ff7d622cc4745
 #[test]
-fn units_run_one_at_a_time_in_plan_order() {
+fn with_one_job_units_run_in_plan_order() {
     let fixture = Fixture::new();
     three_units(&fixture);
     let (_, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     let order: Vec<String> = plan.units.iter().map(|unit| format!("{}\n", unit.stem)).collect();
-    // @lfy def/cli/main.lfy:main#main:main:de26823f65cede55489b74aa666da89098e28a63c56aff633a4c046e0170b4a1
-    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    // @lfy def/cli/main.lfy:main#main:main:7ca8d55384b2971cfabab5ffdce367c3faadb58b56ff385b0a2860676eae5360
+    assert_eq!(fixture.run(&["compile", "--jobs", "1"]), ExitCode::Success.code());
     assert_eq!(fixture.read("attempts.txt"), order.concat());
-    // Every one of them was in the one change set the compile worked, which the root took.
+    // At most one ran at once: every started line says so.
+    // @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+    let log = fixture.read("elfie-requests/compile.log");
+    let started: Vec<&str> = log.lines().filter(|line| line.contains("▸ started")).collect();
+    assert_eq!(started.len(), 3, "{log}");
+    assert!(started.iter().all(|line| line.ends_with("1 of 1 running")), "{log}");
+    // Every one of them was merged into the one change set the compile worked, which the root
+    // took.
     // @lfy def/cli/main.lfy:main#main:main:52dc0204d72665f32b60eef1095ce6a73d89469226840fd8606ff7d622cc4745
     for stem in ["a", "b", "c"] {
         assert!(fixture.root.join(format!("out/{stem}.rs")).is_file(), "{stem} did not reach the root");
     }
 }
 
-/// Without --continue a unit that stops stops the compile: no unit runs after it. With
-/// --continue every unit depending on it is skipped and every other one still runs; either
-/// way no final gate runs and the change set is kept.
-// @lfy def/cli/main.lfy:main#main:main:c1e8fec574c59c5e1bad63913eed21885e232f0b8264e71cda5d800113f8f466
+/// With the default, up to four units run at once: three units that wait for nothing all
+/// start before any of them is done, and they merge in plan order.
+// @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+// @lfy def/cli/main.lfy:main#main:main:932f229a081364bb85c06954c07796f035ea0cd10a0285dc8a983a60bbe1fcc8
+// @lfy def/cli/main.lfy:main#main:main:acabbfb20c858bf034438b84b716e4a6a9d443d7c7d563d0e3fae30099d78448
+// @lfy def/cli/main.lfy:main#main:main:77eb0c2c3b5559ce6700a2a65f66921a86b34f2759727cb081ba2ffcc3450fa0
+#[test]
+fn units_that_wait_for_nothing_run_at_once_and_merge_in_order() {
+    let fixture = Fixture::new();
+    three_units(&fixture);
+    let (_, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
+    let order: Vec<&str> = plan.units.iter().map(|unit| unit.stem.as_str()).collect();
+    assert_eq!(fixture.run(&["compile"]), ExitCode::Success.code());
+    let log = fixture.read("elfie-requests/compile.log");
+    // @lfy def/cli/main.lfy:main#main:main:932f229a081364bb85c06954c07796f035ea0cd10a0285dc8a983a60bbe1fcc8
+    let started: Vec<&str> = log.lines().filter(|line| line.contains("▸ started")).collect();
+    assert!(started[0].ends_with("1 of 4 running") && started[2].ends_with("3 of 4 running"), "{log}");
+    // @lfy def/cli/main.lfy:main#main:main:acabbfb20c858bf034438b84b716e4a6a9d443d7c7d563d0e3fae30099d78448
+    let merged: Vec<&str> = log
+        .lines()
+        .filter(|line| line.contains("✓ merged"))
+        .filter_map(|line| order.iter().copied().find(|stem| line.contains(&format!("  {stem}  "))))
+        .collect();
+    assert_eq!(merged, order, "{log}");
+    // @lfy def/cli/main.lfy:main#main:main:77eb0c2c3b5559ce6700a2a65f66921a86b34f2759727cb081ba2ffcc3450fa0
+    assert!(log.lines().any(|line| line.contains("✓ merged") && line.ends_with("2 files")), "{log}");
+    // The only building lines are the two of each unit's own gate.
+    assert_eq!(log.lines().filter(|line| line.contains("▸ building")).count(), 6, "{log}");
+}
+
+/// Without --continue a unit that stops stops the compile: no unit starts after it. With
+/// --continue every unit depending on it is skipped and every other one still runs and
+/// merges; either way no final gate runs and the change set is kept.
+// @lfy def/cli/main.lfy:main#main:main:9051d3b21e94dd454bcd1cc00024dba85e18ea05da69961602354cc8d1b436bc
 // @lfy def/cli/main.lfy:main#main:main:983a29cf93655951616c5c562ff1c6178966fa0f7acb433740f541446615af08
-// @lfy def/cli/main.lfy:main#main:main:b298aad200f8b11abdc3d923f5d89a20461d9597ab75a2a1ecf41d1410a4150a
+// @lfy def/cli/main.lfy:main#main:main:89552d50e7102f22cda0a0d893e8e711ee7287db9662f10df24991eada8a1d3e
 // @lfy def/cli/main.lfy:main#main:main:85a283dc1f225f02956fbed8a23688bb8b6f297fdc8bea08fed48d08fd0de9b5
 // @lfy def/cli/main.lfy:main#main:main:51b22c76c1410a187c0f287178a9ecb28048b54a983754ad873fa703eb7809a3
 #[test]
@@ -72,9 +109,9 @@ fn a_stopped_unit_stops_the_compile_or_skips_what_depends_on_it() {
     let (_, plan) = plan_with(&fixture.root, &[], &[], &[], &[]);
     let place = |stem: &str| plan.units.iter().position(|unit| unit.stem == stem).unwrap();
     assert!(place("b") < place("a"), "a depends on b");
-    // Without --continue nothing runs after b.
-    // @lfy def/cli/main.lfy:main#main:main:c1e8fec574c59c5e1bad63913eed21885e232f0b8264e71cda5d800113f8f466
-    assert_eq!(fixture.run(&["compile"]), ExitCode::Problems.code());
+    // Without --continue nothing starts after b, one unit running at a time.
+    // @lfy def/cli/main.lfy:main#main:main:9051d3b21e94dd454bcd1cc00024dba85e18ea05da69961602354cc8d1b436bc
+    assert_eq!(fixture.run(&["compile", "--jobs", "1"]), ExitCode::Problems.code());
     let ran: Vec<String> = fixture.read("attempts.txt").lines().map(str::to_string).collect();
     let after_b: Vec<&String> = ran.iter().skip_while(|stem| *stem != "b").skip(1).collect();
     assert!(after_b.is_empty(), "{ran:?}");
@@ -82,9 +119,9 @@ fn a_stopped_unit_stops_the_compile_or_skips_what_depends_on_it() {
     // @lfy def/cli/main.lfy:main#main:main:85a283dc1f225f02956fbed8a23688bb8b6f297fdc8bea08fed48d08fd0de9b5
     assert!(!log.contains("finalGate"), "{log}");
     assert!(ChangeSet::load(&fixture.root, "rust").is_some());
-    // With --continue a is skipped, its state planned, and c runs.
+    // With --continue a is skipped, its state planned, and c runs and merges.
     // @lfy def/cli/main.lfy:main#main:main:983a29cf93655951616c5c562ff1c6178966fa0f7acb433740f541446615af08
-    // @lfy def/cli/main.lfy:main#main:main:b298aad200f8b11abdc3d923f5d89a20461d9597ab75a2a1ecf41d1410a4150a
+    // @lfy def/cli/main.lfy:main#main:main:89552d50e7102f22cda0a0d893e8e711ee7287db9662f10df24991eada8a1d3e
     fixture.write("attempts.txt", "");
     assert_eq!(fixture.run(&["compile", "--continue"]), ExitCode::Problems.code());
     let ran = fixture.read("attempts.txt");
@@ -278,51 +315,119 @@ fn a_stub_line_reads_the_stub_line_with_any_unit_and_reason() {
     assert!(!is_stub_line("panic!()", "panic!(1)"));
 }
 
-/// The files a unit that stops is put back to are those before its first run in the compile,
-/// however often it runs again after that.
-// @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
-#[test]
-fn a_unit_is_put_back_to_before_its_first_run() {
-    let fixture = Fixture::new();
-    one_target(&fixture).write("def/a.lfy", "d A {}\n").write("out/a.rs", "// @lfy def/a.lfy:A\nfirst\n");
-    let mut run = a_run(&fixture, &["compile"]);
-    let root = fixture.root.clone();
-    let first = run.first_snapshot(0, &root);
-    fixture.write("out/a.rs", "// @lfy def/a.lfy:A\nsecond\n");
-    // @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
-    assert_eq!(run.first_snapshot(0, &root), first);
-    assert_eq!(first["out/a.rs"], b"// @lfy def/a.lfy:A\nfirst\n".to_vec());
-}
-
-/// A unit that stops without being accepted has the files of its output directory put back
-/// as they were before its first run, the files added since removed, and what they held
-/// written under `elfie-requests/<name>.rejected`.
-// @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
-#[test]
-fn a_stopped_unit_puts_its_files_back() {
-    let fixture = Fixture::new();
-    one_target(&fixture).write("def/a.lfy", "d A {}\n").write("out/a.rs", "// @lfy def/a.lfy:A\nold\n");
-    let mut run = a_run(&fixture, &["compile", "--continue"]);
+/// A run of a project whose units are `a` and `c`, with a change set made for them whose start
+/// is made, each unit planned in it, and the copy and the target given back.
+// @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+fn a_set_of_two(fixture: &Fixture, roles: &str, arguments: &[&str]) -> (Run, Target, PathBuf) {
+    library(fixture)
+        .write("def/roles.lfy", roles)
+        .write("def/targets.lfy", TARGETS)
+        .write("def/a.lfy", "d A {}\n")
+        .write("def/c.lfy", "d C {}\n")
+        .write("out/a.rs", "// @lfy def/a.lfy:A\npub struct A {}\n")
+        .write("out/c.rs", "// @lfy def/c.lfy:C\npub struct C {}\n");
+    assert_eq!(fixture.run(&["compile", "--accept"]), ExitCode::Success.code());
+    let mut run = a_run(fixture, arguments);
     let target = run.program.workspace.targets[0].clone();
     let copy = make_copy(&fixture.root, &target).unwrap();
+    make_start(&fixture.root, &copy, &target).unwrap();
     run.sets.insert(
         "rust".to_string(),
         ChangeSet {
             target: "rust".to_string(),
             directory: copy.to_string_lossy().into_owned(),
-            units: vec![ChangeSetUnit::planned("a", Reason::Fresh, "", "")],
+            units: vec![
+                ChangeSetUnit::planned("a", Reason::Changed, "", ""),
+                ChangeSetUnit::planned("c", Reason::Changed, "", ""),
+            ],
             foreign_edits: Vec::new(),
         },
     );
-    let snapshot = snapshot_of(&target, &copy);
-    fs::write(copy.join("out/a.rs"), "// @lfy def/a.lfy:A\nnew\n").unwrap();
-    fs::write(copy.join("out/extra.rs"), "added\n").unwrap();
-    // @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
-    run.stopped_unit(0, Stop::Rejected, &snapshot);
-    assert_eq!(fs::read_to_string(copy.join("out/a.rs")).unwrap(), "// @lfy def/a.lfy:A\nold\n");
-    assert!(!copy.join("out/extra.rs").exists());
+    (run, target, copy)
+}
+
+/// A unit's copy of the compile's first plan holds every file a new copy would hold, the
+/// change set's own files as its start holds them, and the merges of the units it waits for
+/// that merged since the start was made; nothing else that merged, whatever the order units
+/// started or finished in. A directory at its path is removed first. A copy made as the
+/// change set's copy stands holds that copy's own files, and the merge of every unit merged.
+// @lfy def/cli/main.lfy:main#main:main:3de63e91d36a4914ecba5efb6db7e4b1c99793fe3707ad3fcd9f39dcfb2252af
+// @lfy def/cli/main.lfy:main#main:main:39478a22468516407804aed2553166dbbab86c075fc13792b787cbb941ddd5c7
+// @lfy def/cli/main.lfy:main#main:main:996c71654a860d590a6b9b7e973ff56b5ca9fa6ddf123e8172f04d1287cca3e4
+// @lfy def/cli/main.lfy:main#main:main:4f3ee5302864ac43e74b609edd4d32ee20f6d99060ed1e0babcc498c956098ff
+// @lfy def/cli/main.lfy:main#main:main:2125687777aae924ecaa844b9ab21cf364a6cb1234b7ce57b7f6c3c0550d179e
+// @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+#[test]
+fn a_units_copy_holds_the_start_and_the_merges_it_waits_for() {
+    let fixture = Fixture::new();
+    let (mut run, target, copy) = a_set_of_two(&fixture, ROLES, &["compile"]);
+    let place = |run: &Run, stem: &str| run.plan.units.iter().position(|unit| unit.stem == stem).unwrap();
+    let (a, c) = (place(&run, "a"), place(&run, "c"));
+    // a merged since the start, writing out/a.rs, and c waits for it.
+    fs::write(copy.join("out/a.rs"), "// @lfy def/a.lfy:A\npub struct A(u8);\n").unwrap();
+    run.sets.get_mut("rust").unwrap().merge(&fixture.root, 0, "a", vec!["out/a.rs".to_string()]).unwrap();
+    run.sets.get_mut("rust").unwrap().units[0].state = UnitState::Accepted;
+    run.schedule.since_start.insert(a);
+    run.schedule.merged.insert(a);
+    run.schedule.first.insert(a, Vec::new());
+    run.schedule.first.insert(c, vec![a]);
+    // The change set's copy moves on past what a merged; c's copy is made from the start.
+    fs::write(copy.join("out/a.rs"), "// @lfy def/a.lfy:A\npub struct A(u16);\n").unwrap();
+    let at = unit_copy_of(&fixture.root, "rust", "c");
+    // @lfy def/cli/main.lfy:main#main:main:996c71654a860d590a6b9b7e973ff56b5ca9fa6ddf123e8172f04d1287cca3e4
+    fs::create_dir_all(&at).unwrap();
+    fs::write(at.join("stale.txt"), "old\n").unwrap();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    // A command that leaves the copy as it was, so that it can be read once the run returns.
+    run.start_unit(c, "true", &sender);
+    let returned = receiver.recv().unwrap();
+    assert_eq!(returned.unit, c);
+    // @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+    assert!(at.ends_with("elfie-compile/cache/changes/rust/units/c"), "{at:?}");
+    let held: &UnitCopy = &run.schedule.copies[&c];
+    // @lfy def/cli/main.lfy:main#main:main:996c71654a860d590a6b9b7e973ff56b5ca9fa6ddf123e8172f04d1287cca3e4
+    assert!(!at.join("stale.txt").exists());
+    // @lfy def/cli/main.lfy:main#main:main:3de63e91d36a4914ecba5efb6db7e4b1c99793fe3707ad3fcd9f39dcfb2252af
+    // @lfy def/cli/main.lfy:main#main:main:39478a22468516407804aed2553166dbbab86c075fc13792b787cbb941ddd5c7
+    assert_eq!(held.made["out/a.rs"], b"// @lfy def/a.lfy:A\npub struct A(u8);\n".to_vec());
+    assert_eq!(held.made["out/c.rs"], fs::read(start_of(&fixture.root, "rust").join("out/c.rs")).unwrap());
+    assert!(at.join("def/c.lfy").is_file(), "a file of the root is missing");
+    // @lfy def/cli/main.lfy:main#main:main:2125687777aae924ecaa844b9ab21cf364a6cb1234b7ce57b7f6c3c0550d179e
+    assert!(held.holds.contains("a"), "{:?}", held.holds);
+    // A copy made as the change set's copy stands holds its own files as that copy holds them.
+    // @lfy def/cli/main.lfy:main#main:main:4f3ee5302864ac43e74b609edd4d32ee20f6d99060ed1e0babcc498c956098ff
+    let again = unit_copy_of(&fixture.root, "rust", "x");
+    make_unit_copy(&fixture.root, &target, &again, &copy).unwrap();
+    assert_eq!(own_contents(&again, &target)["out/a.rs"], b"// @lfy def/a.lfy:A\npub struct A(u16);\n".to_vec());
+    run.remove_every_copy();
+    assert!(!at.exists(), "the copy is left");
+    run.agent.server.stop();
+}
+
+/// A unit that stops without being accepted merges nothing of its copy: every file of its
+/// output directory that its copy holds otherwise than when it was made, or added since, is
+/// written under `elfie-requests/<name>.rejected`, the change set's copy is left as it was,
+/// and the unit's copy is removed.
+// @lfy def/cli/main.lfy:main#main:main:6e192fbbaa3d541cc1fa9490c15245bc628f83977d91727e7004d801f77b9104
+// @lfy def/cli/main.lfy:main#main:main:0954f463a673ef9da817b979310906a5a5009931bd64cc4941c7822e82a8d017
+// @lfy def/cli/main.lfy:main#main:main:38e29db3efde6fef8e4f2e633ff44b5dee097d14f8bbbe3735b12b4a79baeb5c
+#[test]
+fn a_stopped_unit_keeps_what_its_copy_changed_and_merges_nothing() {
+    let fixture = Fixture::new();
+    let (mut run, target, copy) = a_set_of_two(&fixture, ROLES, &["compile", "--continue"]);
+    let at = unit_copy_of(&fixture.root, "rust", "a");
+    make_unit_copy(&fixture.root, &target, &at, &copy).unwrap();
+    run.schedule.copies.insert(0, UnitCopy { made: own_contents(&at, &target), directory: at.clone(), holds: BTreeSet::new() });
+    fs::write(at.join("out/a.rs"), "// @lfy def/a.lfy:A\nnew\n").unwrap();
+    fs::write(at.join("out/extra.rs"), "added\n").unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:6e192fbbaa3d541cc1fa9490c15245bc628f83977d91727e7004d801f77b9104
+    run.stopped_unit(0, Stop::Rejected);
     assert_eq!(fixture.read("elfie-requests/a.rejected/out/a.rs"), "// @lfy def/a.lfy:A\nnew\n");
     assert_eq!(fixture.read("elfie-requests/a.rejected/out/extra.rs"), "added\n");
+    assert!(fs::read_to_string(copy.join("out/a.rs")).unwrap().contains("pub struct A {}"));
+    assert!(!copy.join("out/extra.rs").exists());
+    // @lfy def/cli/main.lfy:main#main:main:38e29db3efde6fef8e4f2e633ff44b5dee097d14f8bbbe3735b12b4a79baeb5c
+    assert!(!at.exists(), "the copy is left");
     // Its state is rejected, written at once, and with --continue the compile goes on.
     // @lfy def/cli/main.lfy:main#main:main:0954f463a673ef9da817b979310906a5a5009931bd64cc4941c7822e82a8d017
     // @lfy def/cli/main.lfy:main#main:main:3d654e560f2e1144270b416e60c71b73f41429d32f691bba2f8f6fab0038bd7a
@@ -330,11 +435,117 @@ fn a_stopped_unit_puts_its_files_back() {
     assert!(!run.halted);
 }
 
+/// A unit's copy for merging, made from the change set's copy as it stands, with its output
+/// rewritten as given and its maps recorded there.
+// @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+fn a_unit_done_in_its_copy(fixture: &Fixture, run: &mut Run, target: &Target, copy: &Path, unit: usize, text: &str) -> PathBuf {
+    let stem = run.stem(unit);
+    let at = unit_copy_of(&fixture.root, "rust", &stem);
+    make_unit_copy(&fixture.root, target, &at, copy).unwrap();
+    run.schedule.copies.insert(unit, UnitCopy { made: own_contents(&at, target), directory: at.clone(), holds: BTreeSet::new() });
+    fs::write(at.join(format!("out/{stem}.rs")), text).unwrap();
+    at
+}
+
+/// A unit's merge writes the files its copy changed into the change set's copy, three ways
+/// where the change set's copy changed them too, writes its map file as its copy holds it,
+/// and records the unit as accepted with what the merge wrote; a merge that wrote an output
+/// runs the build, and no command runs after a merge that wrote none.
+// @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+// @lfy def/cli/main.lfy:main#main:main:dd602ad17aa5add15d7e0b72130ebaa6955e268ab8b31ac9d2c28c819c36a028
+// @lfy def/cli/main.lfy:main#main:main:22080e6a38f1ffe8a23fa06d6bcdf9cb0c9ecf38a13a4452633d5124bdfdb4fa
+// @lfy def/cli/main.lfy:main#main:main:55e0af72225acb1c6b134a3811478ff630be96bdc40d1f40970151a84cb1eada
+// @lfy def/cli/main.lfy:main#main:main:e97aeb05e9fe84cdc671d0ff5fc5ad164bbca228900888f23cc6a7beedcdb985
+// @lfy def/cli/main.lfy:main#main:main:440bee8e71d6f1c2ae85585e6d67504b3322b68096a7a0167d6acade8f10fde8
+#[test]
+fn a_merge_writes_what_the_copy_changed_and_accepts_the_unit() {
+    let fixture = Fixture::new();
+    let (mut run, target, copy) = a_set_of_two(&fixture, &stub_roles(""), &["compile", "--no-verify"]);
+    let at = a_unit_done_in_its_copy(&fixture, &mut run, &target, &copy, 0, "// @lfy def/a.lfy:A\npub struct A(u8);\n");
+    // The map file the unit's copy holds, as its run recorded it there.
+    fs::write(at.join("elfie-compile/maps/rust/a.json"), "[]\n").unwrap();
+    // @lfy def/cli/main.lfy:main#main:main:89c7d76425815427ea012671f3b4f7dddc0031ff70cc737c12eebf4300797c95
+    run.merge_unit(0, UnitState::Accepted, Vec::new());
+    assert!(fs::read_to_string(copy.join("out/a.rs")).unwrap().contains("A(u8)"));
+    // @lfy def/cli/main.lfy:main#main:main:22080e6a38f1ffe8a23fa06d6bcdf9cb0c9ecf38a13a4452633d5124bdfdb4fa
+    assert_eq!(fs::read_to_string(copy.join("elfie-compile/maps/rust/a.json")).unwrap(), "[]\n");
+    // @lfy def/cli/main.lfy:main#main:main:e97aeb05e9fe84cdc671d0ff5fc5ad164bbca228900888f23cc6a7beedcdb985
+    assert!(copy.join("out/built.txt").is_file(), "the build did not run after the merge");
+    // @lfy def/cli/main.lfy:main#main:main:55e0af72225acb1c6b134a3811478ff630be96bdc40d1f40970151a84cb1eada
+    let set = run.sets["rust"].clone();
+    assert_eq!(set.units[0].state, UnitState::Accepted);
+    assert_eq!(set.units[0].merged, ["elfie-compile/maps/rust/a.json", "out/a.rs"]);
+    assert!(!at.exists(), "the copy is left");
+    // The change set's copy changed c.rs elsewhere since c's copy was made: both changes are
+    // kept, as the three-way merge gives them.
+    // @lfy def/cli/main.lfy:main#main:main:dd602ad17aa5add15d7e0b72130ebaa6955e268ab8b31ac9d2c28c819c36a028
+    fs::write(copy.join("out/c.rs"), "// @lfy def/c.lfy:C\npub struct C {}\n").unwrap();
+    let at = a_unit_done_in_its_copy(&fixture, &mut run, &target, &copy, 1, "// @lfy def/c.lfy:C\npub struct C {}\n// more\n");
+    fs::write(copy.join("out/c.rs"), "// first\n// @lfy def/c.lfy:C\npub struct C {}\n").unwrap();
+    fs::remove_file(copy.join("out/built.txt")).unwrap();
+    run.merge_unit(1, UnitState::Accepted, Vec::new());
+    assert_eq!(fs::read_to_string(copy.join("out/c.rs")).unwrap(), "// first\n// @lfy def/c.lfy:C\npub struct C {}\n// more\n");
+    assert!(!at.exists());
+    // A merge that wrote no output runs no command.
+    // @lfy def/cli/main.lfy:main#main:main:440bee8e71d6f1c2ae85585e6d67504b3322b68096a7a0167d6acade8f10fde8
+    fs::remove_file(copy.join("out/built.txt")).unwrap();
+    run.sets.get_mut("rust").unwrap().units[0].state = UnitState::Planned;
+    let text = fs::read_to_string(copy.join("out/a.rs")).unwrap();
+    a_unit_done_in_its_copy(&fixture, &mut run, &target, &copy, 0, &text);
+    run.merge_unit(0, UnitState::Accepted, Vec::new());
+    assert!(!copy.join("out/built.txt").exists(), "a command ran after a merge that wrote nothing");
+}
+
+/// A merge whose build fails is undone: every file it wrote holds what it held before, and
+/// nothing is recorded; the unit runs again from a copy of the change set's copy as it stands.
+/// A merge undone twice in a row stops the unit, planned, with the reason as its problem. A
+/// region of the unit's own that another unit changed since its copy was made undoes it too,
+/// with nothing written.
+// @lfy def/cli/main.lfy:main#main:main:fd9b01ad05607a5a609c83192a3af14b8fadef545c84da493960eca8b0faef6d
+// @lfy def/cli/main.lfy:main#main:main:a758d1de98247fd21db6f348f4b6ad304727df53a1f2655c9c1794be92ac7fc5
+// @lfy def/cli/main.lfy:main#main:main:ee6f110a6e8a80fe7f058125db6f1cd190ee42098edb6f0deaed19ccf0a70a19
+// @lfy def/cli/main.lfy:main#main:main:654d815adda3e49a4d09b56d2ccda6d531ddada64a727f523fcd7ed1b5ff4b9b
+// @lfy def/cli/main.lfy:main#main:main:d67feda78f528338c7b27d494e8089387777160911a29fc46173c99bfa1b08fd
+#[test]
+fn a_merge_that_fails_its_build_is_undone() {
+    let fixture = Fixture::new();
+    let roles = "trait lang extends targetLanguage: `Rust` {\n  .fileExtension = \"rs\";\n  .markerComment = \"//\";\n}\n\
+                 trait flat extends targetLayout: `One file per unit` { }\n\
+                 trait cargo extends targetEcosystem: `Crates` {\n  .ecosystem = \"cargo\";\n  @commands\n    \
+                 .add({ operation = Operation.build, line = \"exit 3\" });\n}\n";
+    let (mut run, target, copy) = a_set_of_two(&fixture, roles, &["compile", "--no-verify", "--continue"]);
+    let was = fs::read_to_string(copy.join("out/a.rs")).unwrap();
+    a_unit_done_in_its_copy(&fixture, &mut run, &target, &copy, 0, "// @lfy def/a.lfy:A\npub struct A(u8);\n");
+    // @lfy def/cli/main.lfy:main#main:main:fd9b01ad05607a5a609c83192a3af14b8fadef545c84da493960eca8b0faef6d
+    run.merge_unit(0, UnitState::Accepted, Vec::new());
+    assert_eq!(fs::read_to_string(copy.join("out/a.rs")).unwrap(), was);
+    assert_eq!(run.sets["rust"].units[0].state, UnitState::Planned);
+    // @lfy def/cli/main.lfy:main#main:main:a758d1de98247fd21db6f348f4b6ad304727df53a1f2655c9c1794be92ac7fc5
+    assert!(run.schedule.again.contains(&0) && run.schedule.undone.contains(&0));
+    assert!(!run.stopped.contains(&0));
+    // Undone a second time in a row: the unit stops, its state planned.
+    // @lfy def/cli/main.lfy:main#main:main:ee6f110a6e8a80fe7f058125db6f1cd190ee42098edb6f0deaed19ccf0a70a19
+    // @lfy def/cli/main.lfy:main#main:main:654d815adda3e49a4d09b56d2ccda6d531ddada64a727f523fcd7ed1b5ff4b9b
+    a_unit_done_in_its_copy(&fixture, &mut run, &target, &copy, 0, "// @lfy def/a.lfy:A\npub struct A(u8);\n");
+    run.merge_unit(0, UnitState::Accepted, Vec::new());
+    assert!(run.stopped.contains(&0));
+    assert_eq!(run.sets["rust"].units[0].state, UnitState::Planned);
+    assert_eq!(run.failed, 1);
+    // c's own region changed in the change set's copy since its copy was made: undone, and
+    // nothing of it written.
+    // @lfy def/cli/main.lfy:main#main:main:d67feda78f528338c7b27d494e8089387777160911a29fc46173c99bfa1b08fd
+    a_unit_done_in_its_copy(&fixture, &mut run, &target, &copy, 1, "// @lfy def/c.lfy:C\npub struct C(u8);\n");
+    fs::write(copy.join("out/c.rs"), "// @lfy def/c.lfy:C\npub struct C(u16);\n").unwrap();
+    run.merge_unit(1, UnitState::Accepted, Vec::new());
+    assert_eq!(fs::read_to_string(copy.join("out/c.rs")).unwrap(), "// @lfy def/c.lfy:C\npub struct C(u16);\n");
+    assert!(run.schedule.undone.contains(&1));
+}
+
 /// A foreign edit recorded for a unit not yet in the change set has it join the change set
 /// at its place in plan order, as touched; one for a unit already accepted plans it again.
 // @lfy def/cli/main.lfy:main#main:main:eeb6eb51ce2fa61105a263d0328d2874ebfc0bc3ced175501ee78c99422ed3ec
 // @lfy def/cli/main.lfy:main#main:main:832c4ab9f9106d5819645657a00f8b70a71f5d25244ab1212be34cffa6e9bbd1
-// @lfy def/cli/main.lfy:main#main:main:1effb63cfadc95b40e6ebdc615397f053aaa2c7015afe87022399dbfda5f1f7a
+// @lfy def/cli/main.lfy:main#main:main:55e0af72225acb1c6b134a3811478ff630be96bdc40d1f40970151a84cb1eada
 // @lfy def/cli/main.lfy:main#main:main:186f5bf02a1197f42b15d46a728b008732f742e22b0a3360bbff586dc9f0dcab
 #[test]
 fn a_foreign_edit_plans_its_owner() {
@@ -369,10 +580,10 @@ fn a_foreign_edit_plans_its_owner() {
         after: vec!["pub struct C(u8);".to_string()],
         note: "C holds a number".to_string(),
     };
-    // @lfy def/cli/main.lfy:main#main:main:1effb63cfadc95b40e6ebdc615397f053aaa2c7015afe87022399dbfda5f1f7a
-    run.accept_in_set(a, vec![edit]);
+    // @lfy def/cli/main.lfy:main#main:main:55e0af72225acb1c6b134a3811478ff630be96bdc40d1f40970151a84cb1eada
+    run.accept_merged(a, UnitState::Accepted, vec![edit], Vec::new());
     let set = run.sets["rust"].clone();
-    // @lfy def/cli/main.lfy:main#main:main:1effb63cfadc95b40e6ebdc615397f053aaa2c7015afe87022399dbfda5f1f7a
+    // @lfy def/cli/main.lfy:main#main:main:55e0af72225acb1c6b134a3811478ff630be96bdc40d1f40970151a84cb1eada
     assert_eq!(set.units[0].state, UnitState::Accepted);
     assert_eq!(set.units[0].edits, 1);
     assert_eq!(set.foreign_edits.len(), 1);
@@ -388,15 +599,16 @@ fn a_foreign_edit_plans_its_owner() {
     // @lfy def/cli/main.lfy:main#main:main:832c4ab9f9106d5819645657a00f8b70a71f5d25244ab1212be34cffa6e9bbd1
     run.sets.get_mut("rust").unwrap().units[1].state = UnitState::Reviewed;
     let again = ForeignEdit { note: "once more".to_string(), ..run.sets["rust"].foreign_edits[0].clone() };
-    run.accept_in_set(a, vec![again]);
+    run.accept_merged(a, UnitState::Accepted, vec![again], Vec::new());
     assert_eq!(run.sets["rust"].units[1].state, UnitState::Planned);
     assert_eq!(run.sets["rust"].foreign_edits.len(), 2);
 }
 
-/// An owner before the accepted unit in plan order, planned again by its foreign edit, is a
-/// unit still to run before it, which the compile goes back to before any unit after it.
+/// An owner before the merged unit in plan order, planned again by its foreign edit, is
+/// planned during the compile: it starts once every planned unit before it has merged, been
+/// skipped, or stopped, and every unit after it waits for it to merge.
 // @lfy def/cli/main.lfy:main#main:main:832c4ab9f9106d5819645657a00f8b70a71f5d25244ab1212be34cffa6e9bbd1
-// @lfy def/cli/main.lfy:main#main:main:d6af6f4d3977a8dd794735d5f4d494c25c55465c8422412f7c2a41ef0f2ce483
+// @lfy def/cli/main.lfy:main#main:main:9fb81fa1507e767993a4d11085badfdfe00d34fe56bfd3c332d91cc5d3215da5
 #[test]
 fn an_earlier_owner_planned_again_is_waited_for() {
     let fixture = Fixture::new();
@@ -416,8 +628,7 @@ fn an_earlier_owner_planned_again_is_waited_for() {
         "rust".to_string(),
         ChangeSet { target: "rust".to_string(), directory: fixture.path(), units, foreign_edits: Vec::new() },
     );
-    let before = run.waiting_before(c);
-    assert!(before.is_empty(), "{before:?}");
+    assert!(run.settled_before(c));
     let edit = ForeignEdit {
         by: "c".to_string(),
         owner: "a".to_string(),
@@ -429,8 +640,11 @@ fn an_earlier_owner_planned_again_is_waited_for() {
         note: "A holds a number".to_string(),
     };
     // @lfy def/cli/main.lfy:main#main:main:832c4ab9f9106d5819645657a00f8b70a71f5d25244ab1212be34cffa6e9bbd1
-    run.accept_in_set(c, vec![edit]);
-    assert_eq!(run.waiting_before(c).into_iter().collect::<Vec<_>>(), vec![a]);
+    run.accept_merged(c, UnitState::Accepted, vec![edit], Vec::new());
+    // @lfy def/cli/main.lfy:main#main:main:9fb81fa1507e767993a4d11085badfdfe00d34fe56bfd3c332d91cc5d3215da5
+    assert!(run.schedule.again.contains(&a));
+    assert!(run.waiting(a) && run.ready(a));
+    assert!(!run.settled_before(c), "c would not wait for a");
 }
 
 /// A unit a kept change set accepted, with the hash and requirements it has now, is planned

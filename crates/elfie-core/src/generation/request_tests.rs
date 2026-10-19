@@ -26,7 +26,7 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     let plan = plan_of(&program, &[], &[], &[]);
     let (a_index, a) = unit_of(&workspace, &plan, "def/a.lfy");
     let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
-    let request = request(&program, &plan, a_index, &[], None, false, false, &[]);
+    let request = request(&program, &plan, a_index, &[], None, false, &[], &[]);
     // @lfy def/generation/main.lfy:request#request:request:959d0fbacdba0aea498605d429f4ef8f02ed09ff514957b1eb5c5d9cd0244bf9
     assert_eq!(request.unit, a_index);
     // The source is the lowered text of the unit's file, and the requirements its local
@@ -48,7 +48,7 @@ fn a_request_names_the_target_and_the_unit_and_quotes_its_entities() {
     assert!(request.existing.is_empty());
     assert!(request.foreign_edits.is_empty());
     // a is the last unit, so the run may edit no other unit's code.
-    // @lfy def/generation/main.lfy:request#request:request:3fe3499800670559a48a3f228ba09e462416bfcd313e21d86ea7c91319ba2856
+    // @lfy def/generation/main.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
     assert!(request.reach.units.is_empty(), "{:?}", request.reach);
     // b is a's dependency, and so its interface.
     // @lfy def/generation/main.lfy:request
@@ -218,7 +218,7 @@ fn every_part_before_the_interfaces_is_the_same_for_every_unit() {
     for hosted in [false, true] {
         let heads: Vec<String> = (0..plan.units.len())
             .map(|index| {
-                let text = request(&program, &plan, index, &[], None, hosted, false, &[])
+                let text = request(&program, &plan, index, &[], None, hosted, &[], &[])
                     .instructions;
                 let at = text.find("## Interfaces").expect("an interfaces part");
                 text[..at].to_string()
@@ -240,7 +240,7 @@ fn a_request_quotes_every_criterion_and_test_of_an_entity() {
     assert_bound(&workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let (b_index, unit) = unit_of(&workspace, &plan, "def/b.lfy");
-    let request = request(&program, &plan, b_index, &[], None, false, false, &[]);
+    let request = request(&program, &plan, b_index, &[], None, false, &[], &[]);
     // The requirements hold every local criterion and test of the file, each with its
     // id: one criterion and one test, both of `make`.
     // @lfy def/generation/main.lfy:request
@@ -296,7 +296,7 @@ fn a_request_holds_every_global_criterion_once_with_its_id() {
     let program = fixture.program();
     assert_bound(&program.workspace);
     let plan = plan_of(&program, &[], &[], &[]);
-    let request = request(&program, &plan, 0, &[], None, false, false, &[]);
+    let request = request(&program, &plan, 0, &[], None, false, &[], &[]);
     // @lfy def/generation/main.lfy:request
     assert_eq!(
         request
@@ -388,7 +388,7 @@ fn the_guidance_is_the_declarations_criteria_then_its_layers_then_what_they_exte
     );
     let plan = plan_of(&program, &[], &[], &[]);
     assert_eq!(plan.units.len(), 1, "{:?}", plan.units);
-    let request = request(&program, &plan, 0, &[], None, false, false, &[]);
+    let request = request(&program, &plan, 0, &[], None, false, &[], &[]);
     let behaviors: Vec<String> = request
         .guidance
         .iter()
@@ -456,7 +456,7 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     assert_bound(&workspace);
     let plan = plan_of(&program, &[], &[], &[]);
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
-    let request = request(&program, &plan, a_index, &[], None, false, false, &[]);
+    let request = request(&program, &plan, a_index, &[], None, false, &[], &[]);
     // Each item once, in the order the request gathers them.
     // @lfy def/generation/main.lfy:request
     assert_eq!(
@@ -483,11 +483,11 @@ fn the_knowledge_is_quoted_named_resolved_or_called_by_its_kind() {
     let unit_part = part(text, "## Knowledge of the unit");
     // A reference whose quote is true is quoted in full, from its source joined to the
     // root of the project its contributor is declared in.
-    // @lfy def/generation/main.lfy:request#request:request:f64fa963c69a9e30aa2c190c595acdbb6221274d050a5a8533b9cf9291684155
+    // @lfy def/generation/main.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
     assert!(unit_part.contains("From `docs/style.md`:"), "{text}");
     assert!(unit_part.contains("Two spaces, never a tab."), "{text}");
     // One whose quote is left out is named, to be read first.
-    // @lfy def/generation/main.lfy:request#request:request:737e4198f2f6bddc790512ae099b13648ed59405ba19506fb0abff20748ec530
+    // @lfy def/generation/main.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
     assert!(
         unit_part.contains(
             "- the shape of a module: read `docs/shape.md` before writing anything it covers."
@@ -524,7 +524,7 @@ fn a_dependency_is_an_interface_with_its_outputs_and_entities() {
     let plan = plan_of(&program, &maps, &["a".to_string()], &[]);
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
     let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
-    let request = request(&program, &plan, a_index, &[], None, false, false, &[]);
+    let request = request(&program, &plan, a_index, &[], None, false, &[], &[]);
     assert_eq!(request.interfaces.len(), 1);
     assert_eq!(request.interfaces[0].unit, b_index);
     assert_eq!(request.interfaces[0].outputs, ["src/b.rs"]);
@@ -561,7 +561,7 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
     let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
     let plan = plan_of(&program, &maps, &["a".to_string()], &[]);
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
-    let request = request(&program, &plan, a_index, &[], None, true, false, &[]);
+    let request = request(&program, &plan, a_index, &[], None, true, &[], &[]);
     // Hosted or not, the request holds every entity of the dependency.
     // @lfy def/generation/main.lfy:request#request:request:5eb8b7bd8df8b28d5af1e781560a38611e0b664872e17a14d9c2e7352a7798cf
     assert_eq!(
@@ -610,7 +610,7 @@ fn a_hosted_request_names_its_interfaces_and_the_tools_of_its_session() {
     // session's own tools.
     // @lfy def/generation/main.lfy:request#request:request:1530126fe56400a7920d4c5c53eb10a8785a3ed3921d00bc2814a0452615fd57
     let text =
-        super::request(&program, &plan, a_index, &[], None, false, false, &[]).instructions;
+        super::request(&program, &plan, a_index, &[], None, false, &[], &[]).instructions;
     assert!(text.contains("### `def/b.lfy`"), "{text}");
     assert!(text.contains("- `B` (data: DataDeclaration): A b"), "{text}");
     for tool in ["elfie_dependency", "elfie_task", "elfie_mark", "elfie_reach", "elfie_submit"] {
@@ -628,7 +628,7 @@ fn the_commands_part_says_which_tool_runs_an_operation_and_what_narrows_it() {
     let program = fixture.program();
     assert_bound(&program.workspace);
     let plan = plan_of(&program, &[], &[], &[]);
-    let text = request(&program, &plan, 0, &[], None, false, false, &[]).instructions;
+    let text = request(&program, &plan, 0, &[], None, false, &[], &[]).instructions;
     let commands = part(&text, "## Commands");
     for piece in [
         "Where the agent server offers `elfie_build`, `elfie_test`, `elfie_lint`, or \
@@ -686,7 +686,7 @@ fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
     let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
 
     // In the request of `def/b.lfy`, which `C` moved into.
-    let into = request(&program, &plan, b_index, &[], None, false, false, &[]);
+    let into = request(&program, &plan, b_index, &[], None, false, &[], &[]);
     let text = &into.instructions;
     assert!(
         text.contains("- `C` from `def/a.lfy`, because of `B.c`."),
@@ -704,7 +704,7 @@ fn the_section_of_a_unit_says_what_moved_into_it_and_out_of_it() {
     assert!(into.source.contains("d C"), "{}", into.source);
 
     // In the request of `def/a.lfy`, which `C` moved out of.
-    let out = request(&program, &plan, a_index, &[], None, false, false, &[]);
+    let out = request(&program, &plan, a_index, &[], None, false, &[], &[]);
     let text = &out.instructions;
     assert!(
         text.contains("- `C` in the unit `b` (`def/b.lfy`)."),
@@ -743,16 +743,17 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
             text: "// other".to_string(),
         },
     ];
-    // The text as written, which the request lowers itself.
-    let previous = "use \"./b\";\n\nd A: `An a` {\n  $b = B;\n}\n";
+    // The text as written, lowered once when it is recovered.
+    let text = "use \"./b\";\n\nd A: `An a` {\n  $b = B;\n}\n";
+    let previous = previous_of(&workspace, &plan.units[a_index], text, false);
     let with_previous = request(
         &program,
         &plan,
         a_index,
         &existing,
-        Some(previous),
+        Some(&previous),
         false,
-        false,
+        &[],
         &[],
     );
     assert_eq!(with_previous.existing.len(), 1);
@@ -762,14 +763,10 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     // @lfy def/generation/main.lfy:request#request:request:f716d0d680ccdf61f0d7552cc5067d5a325199077fe3d5d7280c889ed2df6c4b
     let was = with_previous.previous.clone().expect("a previous source");
     assert_ne!(was, with_previous.source);
-    // It is what lowering the file as it was gives: here the same file but for the
+    // It is the file as it was in the program of `previous`: here the same file but for the
     // documentation comment the current one carries.
-    // @lfy def/generation/main.lfy:request#request:request:816fbafee677832fddf90f3da69f4b66d0488aa66ef4192fb50ebce3e1fd527d
-    let lowered = crate::interpret::lower(crate::workspace::change(
-        &workspace,
-        "def/a.lfy",
-        Some(previous),
-    ));
+    // @lfy def/generation/main.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
+    let lowered = &previous.program;
     let index = lowered
         .workspace
         .files
@@ -787,7 +784,7 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
     // Only what the difference, the marked criteria and tests, the foreign edits, and a
     // split the guidance requires call for changes; names, structure, and the markers of
     // unchanged items are otherwise kept.
-    // @lfy def/generation/main.lfy:request#request:request:49dec1e77860c6eec5de0ebfc0908544ab6d6ecfae3b4877fa2277bf38fd33c2
+    // @lfy def/generation/main.lfy:request#request:request:b328124ea1eb5cbf654b1744945d6267f6201a13dbdbf58b20e83731c97b1cf1
     for piece in [
         "Keep the markers of unchanged items.",
         "Keep names and structure, except that a module the \
@@ -795,7 +792,8 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
          that split is the one change of structure allowed, and it keeps every name other units \
          use.",
         "the criteria and tests marked new, reworded, or removed, the foreign edits, and a split \
-         the target's guidance requires, require.",
+         the target's guidance requires, require, and keep the code of an entity relocated into \
+         the unit.",
     ] {
         assert!(existing_part.contains(piece), "{piece} is missing:\n{text}");
     }
@@ -818,7 +816,7 @@ fn existing_outputs_are_kept_only_where_they_are_among_the_units_outputs() {
 
     // With no previous source, the existing outputs are reconciled with the unit's source.
     // @lfy def/generation/main.lfy:request#request:request:f56fdcbd147d90b70d21fc0a3ca55daee274a966874753ec15588bbcb77df8c2
-    let without = request(&program, &plan, a_index, &existing, None, false, false, &[]);
+    let without = request(&program, &plan, a_index, &existing, None, false, &[], &[]);
     assert!(
         without
             .instructions
@@ -848,7 +846,7 @@ fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
         path: "src/b.rs".to_string(),
         text: "// old".to_string(),
     }];
-    let unknown = request(&program, &plan, b_index, &existing, None, false, false, &[]);
+    let unknown = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
     assert_eq!(unknown.answered, None);
     assert!(
         unknown
@@ -859,7 +857,7 @@ fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
     );
     // The file as it was says which ids the outputs were generated against.
     // @lfy def/generation/main.lfy:request#request:request:c0f16d7718690de14a23abb41bfc4969ec02c0d005d99bc9c10b079f30ed8856
-    let known = request(&program, &plan, b_index, &existing, Some(B), false, false, &[]);
+    let known = request(&program, &plan, b_index, &existing, Some(&previous_of(&workspace, b, B, false)), false, &[], &[]);
     let ids: Vec<String> = b
         .requirements(&program)
         .iter()
@@ -876,7 +874,7 @@ fn a_unit_whose_outputs_answered_nothing_is_read_against_every_criterion() {
 /// A unit whose lowered code is unchanged but whose criteria differ: its section says so,
 /// each criterion the outputs did not answer for is marked new, and each one the unit no
 /// longer has is listed under a heading of its own with its text.
-// @lfy def/generation/main.lfy:request#request:request:510db0b077303aad0e00dc82c6b846d584f16e9e4460180873eba965900e021d
+// @lfy def/generation/main.lfy:request#request:request:89ad0cbeb59e818fc04cdcb22b2d08c7e77528505863ee85d3cc5a1f11ce8834
 #[test]
 fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone() {
     let fixture = a_and_b();
@@ -920,7 +918,7 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
         path: "src/b.rs".to_string(),
         text: "// old".to_string(),
     }];
-    let request = request(&program, &plan, b_index, &existing, Some(&was), false, false, &[]);
+    let request = request(&program, &plan, b_index, &existing, Some(&previous_of(&workspace, b, &was, false)), false, &[], &[]);
 
     // What the outputs answered for is what the map file recorded.
     // @lfy def/generation/main.lfy:request#request:request:54d1c80b3d1e38ff7f2e58e0cce13959161756838579cc4936f7e34c3efcffab
@@ -929,8 +927,8 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
     assert_eq!(request.answered, Some(sorted));
     // The one criterion the unit no longer has, with the id it had, its place in the file
     // as it was, and what it said.
-    // @lfy def/generation/main.lfy:request#request:request:58e21a4c2c020a958a277eeb8c36e5eefab75e4338a11c31f253ec773eddf2b4
-    // @lfy def/generation/main.lfy:request#request:request:1b7315cf290fcd29e9e15f54bd98742f52b2943246c4cb0414ed750188b9e3da
+    // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+    // @lfy def/generation/main.lfy:request#request:request:a5c47f2c55a69433503b4e3695c342527d245e9af1cf95c78e340d2dafe6c4d9
     let gone = request.removed.clone().expect("what was removed");
     assert_eq!(gone.len(), 1, "{gone:?}");
     assert!(before.contains(&gone[0].id), "{gone:?} {before:?}");
@@ -992,7 +990,7 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
     );
     // No criterion of the unit stands where one the outputs answered for stood, so
     // nothing was reworded, and the unit asks for more than its markers being moved.
-    // @lfy def/generation/main.lfy:request#request:request:7616f4f7b1e0930f9fb2070e7443e11f39ff23318405931148a98d70d772f4a1
+    // @lfy def/generation/main.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
     // @lfy def/generation/main.lfy:request#request:request:dcfedcbc95ad64785427d7952c0d6e5a4a7223f1d42d34620e4d3fb6a1330099
     assert_eq!(request.reworded, Some(Vec::new()));
     assert!(!request.reworded_only);
@@ -1002,7 +1000,7 @@ fn a_unit_planned_for_its_requirements_marks_what_is_new_and_lists_what_is_gone(
 /// A unit whose one criterion was reworded in place: it is marked reworded rather than
 /// new, the id and the text it replaces follow it, nothing is listed as removed, and the
 /// unit is one whose outputs differ only in that id.
-// @lfy def/generation/main.lfy:request#request:request:0e580710590d1376564662075d856da231b3b3fca48bccaab37b3985cbfd85fe
+// @lfy def/generation/main.lfy:request#request:request:133df1c813c8ebae8251e76c3ffc895f78fd5c0d71b3437e2975bc3a0cbf30d6
 #[test]
 fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replaces() {
     let fixture = a_and_b();
@@ -1045,11 +1043,11 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
         path: "src/b.rs".to_string(),
         text: "// old".to_string(),
     }];
-    let request = request(&program, &plan, b_index, &existing, Some(&was), false, false, &[]);
+    let request = request(&program, &plan, b_index, &existing, Some(&previous_of(&workspace, b, &was, false)), false, &[], &[]);
 
     // One rewording: the id the unit has now, the id it replaces, and what that one
     // said, taken from the lowering of the file as it was.
-    // @lfy def/generation/main.lfy:request#request:request:7616f4f7b1e0930f9fb2070e7443e11f39ff23318405931148a98d70d772f4a1
+    // @lfy def/generation/main.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
     let rewordings = request.reworded.clone().expect("what was reworded");
     assert_eq!(rewordings.len(), 1, "{rewordings:?}");
     assert_eq!(rewordings[0].replaces, replaced);
@@ -1062,10 +1060,10 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
         .expect("the second criterion of the unit");
     assert_eq!(rewordings[0].id, reworded);
     // What was reworded is not gone, so nothing is listed as removed.
-    // @lfy def/generation/main.lfy:request#request:request:58e21a4c2c020a958a277eeb8c36e5eefab75e4338a11c31f253ec773eddf2b4
+    // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
     assert_eq!(request.removed, Some(Vec::new()));
     // Nothing but that id differs from what the outputs were generated against.
-    // @lfy def/generation/main.lfy:request#request:request:8ce7bd9048dfd7f8f51bed7605af14f226e8eddbbd5ead98bdabf266257f0593
+    // @lfy def/generation/main.lfy:request#request:request:618fbef70b317544c9a741f5feeab781cc4c29251a1c0cf07a08fcd52b4021bf
     assert!(request.reworded_only);
 
     let text = &request.instructions;
@@ -1101,7 +1099,7 @@ fn a_unit_whose_criterion_was_reworded_in_place_marks_it_and_says_what_it_replac
 /// its, what is gone is read off the recorded ids alone — with neither a place nor a text,
 /// which the instructions say — and the unit is not one whose markers are the whole of the
 /// work.
-// @lfy def/generation/main.lfy:request#request:request:0b32b60961a7f41d79de0c88090a4493d3a19edcbf8503cf51b580c2215e0ab7
+// @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
 // @lfy def/generation/main.lfy:request#request:request:fad31483b1a56330cc1438cb3020ce5c42a81a5a92c5eb382ce0929be2df4eaa
 #[test]
 fn a_hash_matched_source_gives_the_recorded_ids_alone() {
@@ -1142,7 +1140,7 @@ fn a_hash_matched_source_gives_the_recorded_ids_alone() {
         path: "src/b.rs".to_string(),
         text: "// old".to_string(),
     }];
-    let request = request(&program, &plan, b_index, &existing, Some(&was), false, true, &[]);
+    let request = request(&program, &plan, b_index, &existing, Some(&previous_of(&workspace, b, &was, true)), false, &[], &[]);
 
     assert_eq!(request.reworded, Some(Vec::new()));
     // The ids the maps recorded that the unit no longer has, in id order, with neither a
@@ -1167,7 +1165,7 @@ fn a_hash_matched_source_gives_the_recorded_ids_alone() {
 /// Three units of one target, `c`, then `b`, then `a`, each with outputs: the run for `b`
 /// may edit `a` alone, within the fix cap, and the stubs part gives the stub line the
 /// target's language sets as written.
-// @lfy def/generation/main.lfy:request#request:request:5a101016477ddbe40d668801c89f3e2c767b1452a4cef6511655c2b5f91666ba
+// @lfy def/generation/main.lfy:request#request:request:afaca936b77600cb1fab069e2aa1fad374a01236f2307eaffec71b2b81e7f7e2
 #[test]
 fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
     let fixture = Fixture::with_rust_target();
@@ -1185,7 +1183,11 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         stub_line_of(&workspace.model, &workspace.targets[0]).as_deref(),
         Some(STUB_LINE)
     );
-    let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    let mut maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    // `a` was accepted against another interface of `b`, so `a` is in `b`'s reach.
+    for map in maps.iter_mut().filter(|map| map.source == "def/a.lfy") {
+        map.dependencies.values_mut().for_each(String::clear);
+    }
     let plan = plan_of(&program, &maps, &[], &[]);
     let stems: Vec<&str> = plan.units.iter().map(|unit| unit.stem.as_str()).collect();
     assert_eq!(stems, ["c", "b", "a"]);
@@ -1195,8 +1197,8 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
         path: "src/b.rs".to_string(),
         text: "// old".to_string(),
     }];
-    let request = request(&program, &plan, b_index, &existing, None, false, false, &[]);
-    // @lfy def/generation/main.lfy:request#request:request:3fe3499800670559a48a3f228ba09e462416bfcd313e21d86ea7c91319ba2856
+    let request = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
+    // @lfy def/generation/main.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
     assert_eq!(request.reach.units, [a_index]);
     assert_eq!(request.reach.fix_lines, 10);
     assert_eq!(request.reach.fix_unit_lines, 40);
@@ -1251,9 +1253,124 @@ fn the_reach_of_a_run_is_every_later_unit_with_outputs() {
     assert!(stubs.contains("rejects the run"), "{text}");
 }
 
+/// Two units of one target, `b` before `a`, each with outputs, and `a`'s outputs recording
+/// `b`'s interface as it is now: the run for `b` edits the outputs of no other unit.
+// @lfy def/generation/main.lfy:request#request:request:73e6319604bfc6196c21282144e9a8d47993b05dcb4da344327511b46cd859c9
+#[test]
+fn a_reach_is_empty_while_the_dependents_record_the_interface_as_it_is() {
+    let fixture = a_and_b();
+    let program = fixture.program();
+    let workspace = program.workspace.clone();
+    assert_bound(&workspace);
+    let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    let plan = plan_of(&program, &maps, &[], &[]);
+    let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
+    let existing = [Output {
+        path: "src/b.rs".to_string(),
+        text: "// old".to_string(),
+    }];
+    let request = request(&program, &plan, b_index, &existing, None, false, &[], &[]);
+    assert!(request.reach.units.is_empty(), "{:?}", request.reach);
+    // @lfy def/generation/main.lfy:request#request:request:1fe812f0a1e93e2969e57f613ae31f818a433b471cecffbd6f97146481273ba3
+    let reach = part(&request.instructions, "## The reach of this run");
+    assert!(reach.contains("This run edits the outputs of no other unit."), "{reach}");
+}
+
+/// The relocations of the unit's target into the unit's file are kept, and its section
+/// says what was relocated into it, from where, and that its code is kept as it is.
+// @lfy def/generation/main.lfy:request#request:request:5cb380316e5d90750f1423c2e622008b8022c1a1cd944773215b87c29370e352
+#[test]
+fn a_request_gives_the_relocations_into_the_unit_for_its_target() {
+    let fixture = Fixture::with_rust_target();
+    fixture
+        .write("def/a.lfy", "d A { $x = string; }\n")
+        .write("def/b.lfy", &format!("d B {{ $x = string; }}\n\n{RELOCATED_F}"));
+    let program = fixture.program();
+    let workspace = program.workspace.clone();
+    assert_bound(&workspace);
+    let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    let plan = plan_of(&program, &maps, &[], &[]);
+    let (b_index, _) = unit_of(&workspace, &plan, "def/b.lfy");
+    let of_f = Relocation {
+        target: "rust".to_string(),
+        entity: "f".to_string(),
+        origin: "def/a.lfy".to_string(),
+        into: "def/b.lfy".to_string(),
+        markers: 3,
+    };
+    let of_g = Relocation {
+        target: "go".to_string(),
+        entity: "g".to_string(),
+        ..of_f.clone()
+    };
+    let existing = [Output {
+        path: "src/b.rs".to_string(),
+        text: "// @lfy def/b.lfy:B\n".to_string(),
+    }];
+    let request = request(
+        &program,
+        &plan,
+        b_index,
+        &existing,
+        None,
+        false,
+        &[],
+        &[of_f.clone(), of_g],
+    );
+    // @lfy def/generation/main.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
+    assert_eq!(request.relocated, [of_f]);
+    let text = &request.instructions;
+    let unit_part = part(text, "## The unit to compile");
+    // @lfy def/generation/main.lfy:request#request:request:8ef7cabaa1ffd44e92776ee0d9dcb63c0fc0f45c81a6d02e6e4a581fa179daad
+    assert!(unit_part.contains("relocated into this unit"), "{text}");
+    assert!(unit_part.contains("- `f` from `def/a.lfy`."), "{text}");
+    assert!(unit_part.contains("Keep it as it is"), "{text}");
+    assert!(!unit_part.contains("`g`"), "{text}");
+    assert!(!unit_part.contains("relocated out of this unit"), "{text}");
+
+    // Seen from `a`, the same relocation took `f` out of it.
+    // @lfy def/generation/main.lfy:request#request:request:b061d31417b089c8b88fe3fcd63a32d6608ce44a82cd1e7b845e3bd2daa5e079
+    let (a_index, _) = unit_of(&workspace, &plan, "def/a.lfy");
+    let relocation = request_relocated(&program, &plan, a_index);
+    let unit_part = part(&relocation, "## The unit to compile");
+    assert!(unit_part.contains("relocated out of this unit"), "{relocation}");
+    assert!(unit_part.contains("- `f` into `def/b.lfy`."), "{relocation}");
+    assert!(unit_part.contains("neither write it again nor remove it"), "{relocation}");
+
+    // `a` as it was declared `f` with its criterion; relocated out, it was not removed.
+    // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+    let was = format!("d A {{ $x = string; }}\n\n{RELOCATED_F}");
+    let previous = previous_of(&workspace, &plan.units[a_index], &was, false);
+    let moved = Relocation {
+        markers: 1,
+        ..request.relocated[0].clone()
+    };
+    let with = super::request(&program, &plan, a_index, &[], Some(&previous), false, &[], &[moved]);
+    assert_eq!(with.removed, Some(Vec::new()));
+    let without = super::request(&program, &plan, a_index, &[], Some(&previous), false, &[], &[]);
+    assert_eq!(without.removed.map(|gone| gone.len()), Some(1));
+}
+
+/// A fn `f` with one criterion, declared by `def/b.lfy` after its relocation.
+const RELOCATED_F: &str =
+    "fn f(): `Does f` => string {\n  @acceptanceCriteria.add({ behavior = `it does` });\n}\n";
+
+/// The instructions of the request for one unit given the relocation of `f` from
+/// `def/a.lfy` into `def/b.lfy`.
+fn request_relocated(program: &Program, plan: &Plan, index: usize) -> String {
+    let of_f = Relocation {
+        target: "rust".to_string(),
+        entity: "f".to_string(),
+        origin: "def/a.lfy".to_string(),
+        into: "def/b.lfy".to_string(),
+        markers: 1,
+    };
+    request(program, plan, index, &[], None, false, &[], &[of_f]).instructions
+}
+
 /// The foreign edits the unit owns, in the order they were made, each with who made it,
 /// its kind, where, its region's marker, its note, and its lines before and after.
-// @lfy def/generation/main.lfy:request#request:request:3ad69cb145f65b3a03dbdf3d50854ec2941d4ce224b7946ca2f1b572362551d0
+// @lfy def/generation/main.lfy:request#request:request:effb4fa4084f20517052db1f796f18b41025c08d8283ccee67d3f632a70992ad
 #[test]
 fn a_request_gives_the_foreign_edits_the_unit_owns() {
     let fixture = a_and_b();
@@ -1294,8 +1411,8 @@ fn a_request_gives_the_foreign_edits_the_unit_owns() {
         &existing,
         None,
         false,
-        false,
         &[stub.clone(), elsewhere],
+        &[],
     );
     // @lfy def/generation/main.lfy:request#request:request:56b3e8ed8845880a5efc54ee766d63a577e1be64b2614849b89bca97e2254907
     assert_eq!(request.foreign_edits, [stub]);

@@ -25,27 +25,26 @@ use super::*;
 /// unit no longer has at all is removed. A unit nothing else differs for has
 /// `reworded_only` set, so a caller may move its markers and ask no compiler at all.
 ///
-/// `unit` is the unit's index in [`Plan::units`]. `previous` is the text of the unit's file
-/// when its outputs were last accepted, as written, and `None` when not known. `hosted` is
-/// whether the compiler reading the request runs in a compiler session of the
-/// compile-hosted agent server, which offers `elfie_task`, `elfie_dependency`,
-/// `elfie_mark`, `elfie_reach`, `elfie_touch`, and `elfie_submit`.
+/// `unit` is the unit's index in [`Plan::units`]. `previous` is the unit's source at its last
+/// accepted generation, or its hash-matched source, recovered and lowered once for the
+/// compile, and `None` when not known; the file as it was is read from its program, and
+/// nothing is lowered or bound here. `hosted` is whether the compiler reading the request
+/// runs in a compiler session of the compile-hosted agent server, which offers `elfie_task`,
+/// `elfie_dependency`, `elfie_mark`, `elfie_reach`, `elfie_touch`, and `elfie_submit`.
 ///
-/// `hash_matched` is whether `previous` is the unit's hash-matched source rather than the
-/// source its outputs were accepted from. Such a text lowers to the same code and says
+/// Where [`Previous::hash_matched`] is set, `previous` lowers to the same code and says
 /// nothing about what the outputs answered for, so nothing of it is read as a rewording,
 /// what was dropped is read off the recorded ids alone — with neither a place nor a text,
 /// which that revision does not hold — and the unit is never one whose markers are the whole
 /// of the work.
 ///
 /// `foreign_edits` are the edits the change set records since the unit was last accepted in
-/// it; only those the unit owns are kept.
+/// it; only those the unit owns are kept. `relocations` are the relocations of this compile;
+/// only those of the unit's target into or out of its file are kept, and a criterion or test
+/// of an entity relocated out of the unit is never read as removed from it.
 // Decision: the definition passes the plan and the unit; a plan here does not own its
 // workspace or the program lowered from it, so the program is an extra first parameter, and
 // the unit is named by its index in `Plan::units`, as `Request::unit` names it.
-// Decision: the request is handed the source as written and lowers it itself, as `changes`
-// does, because lowered text holds no criteria, and the criteria are what a compiler most
-// needs compared.
 // Decision: the caller says whether the request is for a hosted compiler session, because
 // only the caller knows; a hosted compiler pulls an interface when it needs one, so its
 // request names the interfaces instead of quoting them, while a request read anywhere else
@@ -60,10 +59,10 @@ pub fn request(
     plan: &Plan,
     unit: usize,
     existing: &[Output],
-    previous: Option<&str>,
+    previous: Option<&Previous>,
     hosted: bool,
-    hash_matched: bool,
     foreign_edits: &[ForeignEdit],
+    relocations: &[Relocation],
 ) -> Request {
     let workspace = &program.workspace;
     let model = &workspace.model;
@@ -71,15 +70,28 @@ pub fn request(
     let unit = &plan.units[index];
     let target = &workspace.targets[unit.target];
     let path = &workspace.files[unit.file].path;
+    let hash_matched = previous.is_some_and(|previous| previous.hash_matched);
 
     // @lfy def/generation/main.lfy:request
     let requirements: Vec<Requirement> = unit.requirements(program);
     let held = |id: &str| requirements.iter().any(|requirement| requirement.id() == id);
-    // The unit's file as it was when its outputs were accepted, lowered the way its file is
-    // lowered now.
-    // @lfy def/generation/main.lfy:request#request:request:816fbafee677832fddf90f3da69f4b66d0488aa66ef4192fb50ebce3e1fd527d
+    // The relocations of the unit's target into or out of the unit's file, in their order.
+    // @lfy def/generation/main.lfy:request#request:request:baefb33ae471c0311341c5c3310f02f9c51e8e565478bef7cc9d5d2373b98ed9
+    let relocated: Vec<Relocation> = relocations
+        .iter()
+        .filter(|relocation| relocation.target == target.identifier)
+        .filter(|relocation| &relocation.into == path || &relocation.origin == path)
+        .cloned()
+        .collect();
+    // The ids of the local criteria and tests of the entities relocated out of the unit: they
+    // are the unit's they moved to now, and were never dropped.
+    let relocated_out = relocated_out_ids(program, &relocated, path);
+    let kept = |id: &str| held(id) || relocated_out.iter().any(|out| out == id);
+    // The unit's file as it was when its outputs were accepted, as the program of `previous`
+    // holds it, lowered once already.
+    // @lfy def/generation/main.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
     let was: Option<(String, Vec<RemovedRequirement>)> =
-        previous.and_then(|text| file_as_it_was(program, path, text));
+        previous.and_then(|previous| file_as_it_was(previous, path));
     // The lowered text the unit's outputs were generated from, which the instructions read
     // against the lowered text of the unit now.
     // @lfy def/generation/main.lfy:request#request:request:f716d0d680ccdf61f0d7552cc5067d5a325199077fe3d5d7280c889ed2df6c4b
@@ -106,33 +118,34 @@ pub fn request(
     // against: the same place among its entity's criteria or tests, another text, and so
     // another id. What was reworded is not gone, so it is kept apart from what is.
     // @lfy def/generation/data.lfy:Request.reworded
-    let rewordings: Option<Vec<Rewording>> = previous.map(|text| {
-        if hash_matched {
+    let rewordings: Option<Vec<Rewording>> = previous.map(|previous| {
+        if previous.hash_matched {
             // A hash-matched source is some other revision of the file that lowers to the
             // same code; where its criteria stood says nothing about what the outputs were
             // accepted against, so none of them is read as a rewording.
-            // @lfy def/generation/main.lfy:request#request:request:0b32b60961a7f41d79de0c88090a4493d3a19edcbf8503cf51b580c2215e0ab7
+            // @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
             Vec::new()
         } else {
-            // @lfy def/generation/main.lfy:request#request:request:7616f4f7b1e0930f9fb2070e7443e11f39ff23318405931148a98d70d772f4a1
-            reworded(program, unit, text)
+            // @lfy def/generation/main.lfy:request#request:request:1bbc3e20f97e92fee0189ae3e16375c6bd09e15bfead3354e88ceee02de45da1
+            reworded(program, unit, previous)
         }
     });
     // Each criterion and test of the file as it was that the unit no longer has and that
-    // none of its own rewords: what a compiler reading the existing code needs in order to
-    // tell code that answers for nothing any more from code that still answers.
+    // none of its own rewords, and that no entity relocated out of the unit holds now: what a
+    // compiler reading the existing code needs in order to tell code that answers for nothing
+    // any more from code that still answers.
     // @lfy def/generation/data.lfy:Request.removed
     let removed: Option<Vec<RemovedRequirement>> = previous.map(|_| {
         if hash_matched {
             // A hash-matched source holds another revision's criteria and tests, so what the
             // outputs answered for is only what their maps recorded: the ids alone, in id
             // order, with neither the place nor the text that revision does not hold.
-            // @lfy def/generation/main.lfy:request#request:request:0b32b60961a7f41d79de0c88090a4493d3a19edcbf8503cf51b580c2215e0ab7
+            // @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
             let mut gone: Vec<RemovedRequirement> = answered
                 .as_deref()
                 .unwrap_or_default()
                 .iter()
-                .filter(|id| !held(id))
+                .filter(|id| !kept(id))
                 .map(|id| RemovedRequirement {
                     id: id.clone(),
                     place: String::new(),
@@ -143,13 +156,13 @@ pub fn request(
             return gone;
         }
         // In the order the file as it was gives them.
-        // @lfy def/generation/main.lfy:request#request:request:58e21a4c2c020a958a277eeb8c36e5eefab75e4338a11c31f253ec773eddf2b4
+        // @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
         let rewords = rewordings.as_deref().unwrap_or_default();
         was.as_ref()
             .map(|(_, before)| {
                 before
                     .iter()
-                    .filter(|requirement| !held(&requirement.id))
+                    .filter(|requirement| !kept(&requirement.id))
                     .filter(|requirement| {
                         !rewords
                             .iter()
@@ -166,7 +179,7 @@ pub fn request(
     // its markers is then the whole of the work, which the caller may do without the
     // compiler; anywhere any of that does not hold, it is not.
     // @lfy def/generation/data.lfy:Request.rewordedOnly
-    // @lfy def/generation/main.lfy:request#request:request:8ce7bd9048dfd7f8f51bed7605af14f226e8eddbbd5ead98bdabf266257f0593
+    // @lfy def/generation/main.lfy:request#request:request:618fbef70b317544c9a741f5feeab781cc4c29251a1c0cf07a08fcd52b4021bf
     // @lfy def/generation/main.lfy:request#request:request:dcfedcbc95ad64785427d7952c0d6e5a4a7223f1d42d34620e4d3fb6a1330099
     let reworded_only = {
         let rewords = rewordings.as_deref().unwrap_or_default();
@@ -218,8 +231,8 @@ pub fn request(
         .collect();
     // Every later unit of the target that has outputs, read from the plan's units and their
     // outputs alone, so what is planned changes nothing of it.
-    // @lfy def/generation/main.lfy:request#request:request:3fe3499800670559a48a3f228ba09e462416bfcd313e21d86ea7c91319ba2856
-    let reach = Reach::of(plan, index);
+    // @lfy def/generation/main.lfy:request#request:request:78998a2cc11aaa848bd3cfc62653454eced252200bec2034871a1e4dc4620542
+    let reach = Reach::of(workspace, plan, index);
     // One interface per dependency, each holding every entity of that dependency: what a
     // hosted compiler is given by name is the same interface a request read anywhere else
     // quotes whole, so the request carries no less for being hosted.
@@ -284,6 +297,7 @@ pub fn request(
             existing: &existing,
             foreign_edits: &foreign_edits,
             reach: &reach,
+            relocated: &relocated,
             interfaces: &interfaces,
             guidance: &guidance,
             native_dependencies: &native_dependencies,
@@ -307,12 +321,49 @@ pub fn request(
         existing,
         foreign_edits,
         reach,
+        relocated,
         interfaces,
         guidance,
         native_dependencies,
         knowledge,
         commands,
     }
+}
+
+/// The ids of the local criteria and tests of every entity relocated out of the unit whose
+/// file is `path`, and of its members: those the entity holds in the file it was relocated
+/// into, as the program declares it now.
+// @lfy def/generation/main.lfy:request#request:request:b2ab29be7b2169db89a7489284493604f2ee49d92690fa210f16b75d5e7c5429
+// @lfy def/generation/main.lfy:request#request:request:eede918b144fb03a48f104a6350f51f5f036aeb6eb782ff28118a888e72e8fab
+fn relocated_out_ids(program: &Program, relocated: &[Relocation], path: &str) -> Vec<String> {
+    let model = &program.workspace.model;
+    let mut out: Vec<String> = Vec::new();
+    for relocation in relocated.iter().filter(|relocation| relocation.origin == path) {
+        let Some(index) = program
+            .workspace
+            .files
+            .iter()
+            .position(|file| file.path == relocation.into)
+        else {
+            continue;
+        };
+        let mut nodes = Vec::new();
+        lowered_nodes(&program.files[index].root, &mut nodes);
+        for node in nodes {
+            let Some(entity) = node.entity else { continue };
+            if qualified_name(model, entity) != relocation.entity {
+                continue;
+            }
+            // The entity's node and every node within it, which are its members.
+            let mut within = Vec::new();
+            lowered_nodes(node, &mut within);
+            for inner in within {
+                out.extend(inner.criteria.iter().map(|criterion| criterion.id.clone()));
+                out.extend(inner.tests.iter().map(|test| test.id.clone()));
+            }
+        }
+    }
+    out
 }
 
 /// What the instructions quote, gathered before they are written.
@@ -329,6 +380,7 @@ struct Quoted<'r> {
     existing: &'r BTreeMap<String, String>,
     foreign_edits: &'r [ForeignEdit],
     reach: &'r Reach,
+    relocated: &'r [Relocation],
     interfaces: &'r [Interface],
     guidance: &'r [Criterion],
     native_dependencies: &'r [NativeDependency],
@@ -904,6 +956,7 @@ fn write_unit(out: &mut String, program: &Program, plan: &Plan, index: usize, qu
         out.push_str("The unit has no entities.\n\n");
     }
     write_moves(out, workspace, plan, index);
+    write_relocations(out, &file.path, quoted.relocated);
     // Each entity's lowered code, and then, apart from the code, its local criteria and
     // tests, each on its own line with its id.
     // @lfy def/generation/main.lfy:request#request:request:53047b9ea4a7fce9d7173c9b614c2c73247779aa5d5245a9720c351789d608c1
@@ -1017,14 +1070,15 @@ fn write_existing(out: &mut String, quoted: &Quoted<'_>) {
     for path in quoted.existing.keys() {
         let _ = writeln!(out, "- `{path}`");
     }
-    // @lfy def/generation/main.lfy:request#request:request:49dec1e77860c6eec5de0ebfc0908544ab6d6ecfae3b4877fa2277bf38fd33c2
+    // @lfy def/generation/main.lfy:request#request:request:b328124ea1eb5cbf654b1744945d6267f6201a13dbdbf58b20e83731c97b1cf1
     out.push_str(
         "\nChange only what the difference between the previous source and the current source, the \
          criteria and tests marked new, reworded, or removed, the foreign edits, and a split the \
-         target's guidance requires, require. Keep names and structure, except that a module the \
-         target's guidance says to split gains submodule files and has its code moved into them: \
-         that split is the one change of structure allowed, and it keeps every name other units \
-         use. Keep the markers of unchanged items.\n",
+         target's guidance requires, require, and keep the code of an entity relocated into the \
+         unit. Keep names and structure, except that a module the target's guidance says to split \
+         gains submodule files and has its code moved into them: that split is the one change of \
+         structure allowed, and it keeps every name other units use. Keep the markers of \
+         unchanged items.\n",
     );
     match quoted.previous {
         // @lfy def/generation/main.lfy:request#request:request:921f0ecc9962f3241a69e55b5e8db934f9a538bdb6ba94b75df67399bf4e7dcf
@@ -1119,14 +1173,15 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowl
                 let _ = writeln!(out, "- {}: read {named} as Elfie.", item.topic);
             }
             KnowledgeKind::Reference | KnowledgeKind::Example => {
+                // @lfy def/generation/main.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
                 let path = under_root(&knowledge_root(workspace, item), &item.source);
                 if item.quote == Some(true) {
-                    // @lfy def/generation/main.lfy:request#request:request:f64fa963c69a9e30aa2c190c595acdbb6221274d050a5a8533b9cf9291684155
+                    // @lfy def/generation/main.lfy:request#request:request:c08c09e6b0039e6d48af43ad1c7e16111ea4c541b7b9968bfd3cbce3dcbf93cc
                     let text = std::fs::read_to_string(workspace.root.join(&path))
                         .unwrap_or_else(|error| format!("(`{path}` could not be read: {error})"));
                     quoted.push((item.topic.clone(), path, text));
                 } else {
-                    // @lfy def/generation/main.lfy:request#request:request:737e4198f2f6bddc790512ae099b13648ed59405ba19506fb0abff20748ec530
+                    // @lfy def/generation/main.lfy:request#request:request:4dcb0da9fd03a1602667b395e3dbb573d050278d678ebb597d4e2aba063f5b60
                     let _ = writeln!(
                         out,
                         "- {}: read `{path}` before writing anything it covers.",
@@ -1150,6 +1205,7 @@ fn write_knowledge(out: &mut String, workspace: &Workspace, heading: &str, knowl
 /// file its contributor is declared in, and the project's own root when that file is the
 /// project's own.
 // @lfy def/generation/main.lfy:request
+// @lfy def/generation/main.lfy:request#request:request:d46053a0a71b8d37eb5512c2a9339bc781ffe4a13dfa900ce87d5b17dc1749cd
 fn knowledge_root(workspace: &Workspace, item: &Knowledge) -> String {
     workspace.model.entities[item.contributor]
         .file
@@ -1335,6 +1391,45 @@ fn write_moves(out: &mut String, workspace: &Workspace, plan: &Plan, index: usiz
     }
 }
 
+/// What was relocated into and out of the unit whose file is `path`, in its section: which
+/// entities, from or into which file, and what becomes of their code.
+// @lfy def/generation/main.lfy:request
+fn write_relocations(out: &mut String, path: &str, relocated: &[Relocation]) {
+    let into: Vec<&Relocation> = relocated
+        .iter()
+        .filter(|relocation| relocation.into == path)
+        .collect();
+    if !into.is_empty() {
+        // @lfy def/generation/main.lfy:request#request:request:8ef7cabaa1ffd44e92776ee0d9dcb63c0fc0f45c81a6d02e6e4a581fa179daad
+        out.push_str(
+            "These entities were relocated into this unit, since this unit's file declares them now. \
+             Their code is already in this unit's outputs, under markers that now name this unit's \
+             file. Keep it as it is, and change it only where what this unit asks differs from what \
+             it does.\n",
+        );
+        for relocation in into {
+            let _ = writeln!(out, "- `{}` from `{}`.", relocation.entity, relocation.origin);
+        }
+        out.push('\n');
+    }
+    let outward: Vec<&Relocation> = relocated
+        .iter()
+        .filter(|relocation| relocation.origin == path)
+        .collect();
+    if !outward.is_empty() {
+        // @lfy def/generation/main.lfy:request#request:request:b061d31417b089c8b88fe3fcd63a32d6608ce44a82cd1e7b845e3bd2daa5e079
+        out.push_str(
+            "These entities were relocated out of this unit, since another file declares them now. \
+             Their code is the code of the unit of that file now: neither write it again nor remove \
+             it.\n",
+        );
+        for relocation in outward {
+            let _ = writeln!(out, "- `{}` into `{}`.", relocation.entity, relocation.into);
+        }
+        out.push('\n');
+    }
+}
+
 /// One entity of a unit: its name, its kind, its definition, its type, its lowered code,
 /// and then, apart from the code, its local criteria and tests, each on its own line with
 /// its id.
@@ -1509,24 +1604,14 @@ fn declared_requirements(program: &Program, lowered: usize, entity: EntityId) ->
 /// and each of its local criteria and tests as the id, the place, and the text a
 /// [`RemovedRequirement`] holds, in the order it gives them.
 ///
-/// The text as written is bound through [`change`](crate::workspace::change) and lowered, so
-/// the text that comes back is the lowered text a request carries for the file now and the
-/// two can be read side by side, and the ids come out spelled as the unit's own are. The
-/// place and the text of each criterion and test are taken here rather than kept as a node
-/// to read later, because the origin of a criterion belongs to this lowering, which is gone
-/// once the text has been read off it. `None` when the workspace holds no file at that path.
-// @lfy def/generation/main.lfy:request#request:request:816fbafee677832fddf90f3da69f4b66d0488aa66ef4192fb50ebce3e1fd527d
-// @lfy def/generation/main.lfy:request#request:request:1b7315cf290fcd29e9e15f54bd98742f52b2943246c4cb0414ed750188b9e3da
-fn file_as_it_was(
-    program: &Program,
-    path: &str,
-    text: &str,
-) -> Option<(String, Vec<RemovedRequirement>)> {
-    let before = crate::interpret::lower(crate::workspace::change(
-        &program.workspace,
-        path,
-        Some(text),
-    ));
+/// The file is the one at `path` in [`Previous::program`], lowered once when it was
+/// recovered, so nothing is lowered or bound here; its text is the lowered text a request
+/// carries for the file now and the two can be read side by side, and the ids come out
+/// spelled as the unit's own are. `None` when that program holds no file at that path.
+// @lfy def/generation/main.lfy:request#request:request:79b8e2cfc5abf587f5ee588823cd91a2bc93bca07e5e13d1723444029d15b27f
+// @lfy def/generation/main.lfy:request#request:request:a5c47f2c55a69433503b4e3695c342527d245e9af1cf95c78e340d2dafe6c4d9
+fn file_as_it_was(previous: &Previous, path: &str) -> Option<(String, Vec<RemovedRequirement>)> {
+    let before = &previous.program;
     let index = before
         .workspace
         .files

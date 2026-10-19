@@ -3,20 +3,23 @@
     "answered": [
       "ChangeSet:ChangeSet:115db6923c273f848db7bd842f876ae3f28a068b801bb4956b81311fdb961444",
       "ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c",
-      "ChangeSet:ChangeSet:6b29187de3d79dc587549407b8213f3a4844ef711b59317cbd20c8d1a09e4808",
       "ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c",
+      "ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108",
       "ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f",
+      "ChangeSet:ChangeSet:90a79a3cf47dd8a5010f9b326fa596b085d3ec6f697f1922227a63755e2d3c44",
+      "ChangeSet:ChangeSet:968261c102d71e1bf981693b0997819cdc1645a386c5211b2df4a97bea1def5d",
       "ChangeSet:ChangeSet:b655fcdcd7a4f6bc06eb2f5919bbd30b6986babf7942787f32a4b93cb22f3ef2",
       "ChangeSet:ChangeSet:d9f289811c4e43fa3bb96a1b1a7d01f546422d23b339e148ae7b61176238bef6",
       "ChangeSet:ChangeSet:da099811d2a1e35b89a470128465e0c875995f7a6184fd85c63c02ccd2817239",
-      "ChangeSet:ChangeSet:e3f9c542851859c9bb86eee22b99337db1e0fb4cc60d7e58f3ff554e5d6ea747"
+      "ChangeSet:ChangeSet:e3f9c542851859c9bb86eee22b99337db1e0fb4cc60d7e58f3ff554e5d6ea747",
+      "ChangeSet:ChangeSet:ff350bee6b6a6f47334a809bc05ff72b35216d8561461a74d60a36dd6fb10a89"
     ],
     "dependencies": {
-      "def/generation/data.lfy": "aae8918ca70ff491e953c266c04e7563daf0dec12af47d81bd2bce28b5fe03f6",
+      "def/generation/data.lfy": "4c26420e90303d4726756955c96c34a71293e17c1ea0346231cba00df7403f30",
       "def/workspace/data.lfy": "e83f90c747b03e1dd3908ddf898cb21fc3f66b905af9293ca4352192c2fd0fd6"
     },
-    "generated": "2026-10-17T20:15:03Z",
-    "hash": "458afbb430ff6a2644c21fa9ca16934e1c55b0a59d6b91b6069e753b4bfa2407",
+    "generated": "2026-10-18T20:37:43Z",
+    "hash": "16eeb3c3df9e7987cc821c469e20ae2a68c62d25efa087374f81cd4db778e166",
     "markers": [
       {
         "column": null,
@@ -239,7 +242,7 @@
         "end": 129,
         "entity": "Step.requesting",
         "file": "def/cli/data.lfy",
-        "line": 39,
+        "line": 41,
         "outputLine": 129,
         "requirement": null
       },
@@ -257,32 +260,32 @@
         "end": 131,
         "entity": "Step.rewording",
         "file": "def/cli/data.lfy",
-        "line": 40,
+        "line": 42,
         "outputLine": 131,
         "requirement": null
       },
       {
         "column": null,
         "end": 132,
-        "entity": "Step.building",
+        "entity": "Step.relocated",
         "file": "def/cli/data.lfy",
-        "line": 41,
+        "line": 39,
         "outputLine": 132,
         "requirement": null
       },
       {
         "column": null,
         "end": 133,
-        "entity": "Step.compiling",
+        "entity": "Step.started",
         "file": "def/cli/data.lfy",
-        "line": 42,
+        "line": 40,
         "outputLine": 133,
         "requirement": null
       },
       {
         "column": null,
         "end": 134,
-        "entity": "Step.checking",
+        "entity": "Step.building",
         "file": "def/cli/data.lfy",
         "line": 43,
         "outputLine": 134,
@@ -291,7 +294,7 @@
       {
         "column": null,
         "end": 135,
-        "entity": "Step.accepted",
+        "entity": "Step.compiling",
         "file": "def/cli/data.lfy",
         "line": 44,
         "outputLine": 135,
@@ -300,7 +303,7 @@
       {
         "column": null,
         "end": 136,
-        "entity": "Step.rejected",
+        "entity": "Step.checking",
         "file": "def/cli/data.lfy",
         "line": 45,
         "outputLine": 136,
@@ -309,576 +312,675 @@
       {
         "column": null,
         "end": 137,
-        "entity": "Step.verifying",
+        "entity": "Step.accepted",
         "file": "def/cli/data.lfy",
-        "line": 48,
+        "line": 46,
         "outputLine": 137,
         "requirement": null
       },
       {
         "column": null,
         "end": 138,
-        "entity": "Step.reviewed",
+        "entity": "Step.merged",
         "file": "def/cli/data.lfy",
-        "line": 49,
+        "line": 52,
         "outputLine": 138,
         "requirement": null
       },
       {
         "column": null,
         "end": 139,
-        "entity": "Step.globalVerifying",
+        "entity": "Step.undone",
         "file": "def/cli/data.lfy",
-        "line": 50,
+        "line": 53,
         "outputLine": 139,
         "requirement": null
       },
       {
         "column": null,
         "end": 140,
-        "entity": "Step.globalReviewed",
+        "entity": "Step.rejected",
         "file": "def/cli/data.lfy",
-        "line": 51,
+        "line": 47,
         "outputLine": 140,
         "requirement": null
       },
       {
         "column": null,
         "end": 141,
-        "entity": "Step.retrying",
+        "entity": "Step.verifying",
         "file": "def/cli/data.lfy",
-        "line": 54,
+        "line": 50,
         "outputLine": 141,
         "requirement": null
       },
       {
         "column": null,
         "end": 142,
-        "entity": "Step.blocked",
+        "entity": "Step.reviewed",
         "file": "def/cli/data.lfy",
-        "line": 55,
+        "line": 51,
         "outputLine": 142,
         "requirement": null
       },
       {
         "column": null,
         "end": 143,
-        "entity": "Step.clarification",
+        "entity": "Step.globalVerifying",
         "file": "def/cli/data.lfy",
-        "line": 56,
+        "line": 54,
         "outputLine": 143,
         "requirement": null
       },
       {
         "column": null,
         "end": 144,
-        "entity": "Step.failed",
+        "entity": "Step.globalReviewed",
         "file": "def/cli/data.lfy",
-        "line": 57,
+        "line": 55,
         "outputLine": 144,
         "requirement": null
       },
       {
         "column": null,
         "end": 145,
-        "entity": "Step.touched",
+        "entity": "Step.retrying",
         "file": "def/cli/data.lfy",
-        "line": 46,
+        "line": 58,
         "outputLine": 145,
         "requirement": null
       },
       {
         "column": null,
         "end": 146,
-        "entity": "Step.stubbed",
+        "entity": "Step.blocked",
         "file": "def/cli/data.lfy",
-        "line": 47,
+        "line": 59,
         "outputLine": 146,
         "requirement": null
       },
       {
         "column": null,
         "end": 147,
-        "entity": "Step.finalGate",
+        "entity": "Step.clarification",
         "file": "def/cli/data.lfy",
-        "line": 52,
+        "line": 60,
         "outputLine": 147,
         "requirement": null
       },
       {
         "column": null,
         "end": 148,
-        "entity": "Step.merging",
+        "entity": "Step.failed",
         "file": "def/cli/data.lfy",
-        "line": 53,
+        "line": 61,
         "outputLine": 148,
         "requirement": null
       },
       {
         "column": null,
-        "end": 228,
-        "entity": "Step.finished",
+        "end": 149,
+        "entity": "Step.touched",
         "file": "def/cli/data.lfy",
-        "line": 58,
+        "line": 48,
         "outputLine": 149,
         "requirement": null
       },
       {
         "column": null,
-        "end": 232,
-        "entity": "Progress",
+        "end": 150,
+        "entity": "Step.stubbed",
         "file": "def/cli/data.lfy",
-        "line": 61,
-        "outputLine": 229,
+        "line": 49,
+        "outputLine": 150,
         "requirement": null
       },
       {
         "column": null,
-        "end": 236,
-        "entity": "Progress.step",
+        "end": 151,
+        "entity": "Step.finalGate",
+        "file": "def/cli/data.lfy",
+        "line": 56,
+        "outputLine": 151,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 152,
+        "entity": "Step.merging",
+        "file": "def/cli/data.lfy",
+        "line": 57,
+        "outputLine": 152,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 250,
+        "entity": "Step.finished",
         "file": "def/cli/data.lfy",
         "line": 62,
-        "outputLine": 233,
+        "outputLine": 153,
         "requirement": null
       },
       {
         "column": null,
-        "end": 238,
-        "entity": "Progress.unit",
-        "file": "def/cli/data.lfy",
-        "line": 63,
-        "outputLine": 237,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 240,
-        "entity": "Progress.done",
-        "file": "def/cli/data.lfy",
-        "line": 64,
-        "outputLine": 239,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 243,
-        "entity": "Progress.total",
+        "end": 254,
+        "entity": "Progress",
         "file": "def/cli/data.lfy",
         "line": 65,
-        "outputLine": 241,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 249,
-        "entity": "Progress.elapsed",
-        "file": "def/cli/data.lfy",
-        "line": 66,
-        "outputLine": 244,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 253,
-        "entity": "Progress.message",
-        "file": "def/cli/data.lfy",
-        "line": 67,
-        "outputLine": 250,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 256,
-        "entity": "UnitState",
-        "file": "def/cli/data.lfy",
-        "line": 70,
-        "outputLine": 254,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 257,
-        "entity": "UnitState.planned",
-        "file": "def/cli/data.lfy",
-        "line": 71,
-        "outputLine": 257,
+        "outputLine": 251,
         "requirement": null
       },
       {
         "column": null,
         "end": 258,
-        "entity": "UnitState.accepted",
+        "entity": "Progress.step",
         "file": "def/cli/data.lfy",
-        "line": 72,
-        "outputLine": 258,
+        "line": 66,
+        "outputLine": 255,
         "requirement": null
       },
       {
         "column": null,
-        "end": 259,
-        "entity": "UnitState.reviewed",
+        "end": 261,
+        "entity": "Progress.unit",
         "file": "def/cli/data.lfy",
-        "line": 73,
+        "line": 67,
         "outputLine": 259,
         "requirement": null
       },
       {
         "column": null,
-        "end": 287,
-        "entity": "UnitState.rejected",
+        "end": 263,
+        "entity": "Progress.done",
+        "file": "def/cli/data.lfy",
+        "line": 68,
+        "outputLine": 262,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 266,
+        "entity": "Progress.total",
+        "file": "def/cli/data.lfy",
+        "line": 69,
+        "outputLine": 264,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 274,
+        "entity": "Progress.elapsed",
+        "file": "def/cli/data.lfy",
+        "line": 70,
+        "outputLine": 267,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 278,
+        "entity": "Progress.message",
+        "file": "def/cli/data.lfy",
+        "line": 71,
+        "outputLine": 275,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 281,
+        "entity": "UnitState",
         "file": "def/cli/data.lfy",
         "line": 74,
-        "outputLine": 260,
+        "outputLine": 279,
         "requirement": null
       },
       {
         "column": null,
-        "end": 291,
-        "entity": "ChangeSetUnit",
+        "end": 282,
+        "entity": "UnitState.planned",
+        "file": "def/cli/data.lfy",
+        "line": 75,
+        "outputLine": 282,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 283,
+        "entity": "UnitState.accepted",
+        "file": "def/cli/data.lfy",
+        "line": 76,
+        "outputLine": 283,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 284,
+        "entity": "UnitState.reviewed",
         "file": "def/cli/data.lfy",
         "line": 77,
-        "outputLine": 288,
+        "outputLine": 284,
         "requirement": null
       },
       {
         "column": null,
-        "end": 293,
-        "entity": "ChangeSetUnit.stem",
+        "end": 312,
+        "entity": "UnitState.rejected",
         "file": "def/cli/data.lfy",
         "line": 78,
-        "outputLine": 292,
+        "outputLine": 285,
         "requirement": null
       },
       {
         "column": null,
-        "end": 295,
-        "entity": "ChangeSetUnit.reason",
-        "file": "def/cli/data.lfy",
-        "line": 79,
-        "outputLine": 294,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 299,
-        "entity": "ChangeSetUnit.state",
-        "file": "def/cli/data.lfy",
-        "line": 80,
-        "outputLine": 296,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 303,
-        "entity": "ChangeSetUnit.hash",
+        "end": 316,
+        "entity": "ChangeSetUnit",
         "file": "def/cli/data.lfy",
         "line": 81,
-        "outputLine": 300,
+        "outputLine": 313,
         "requirement": null
       },
       {
         "column": null,
-        "end": 306,
-        "entity": "ChangeSetUnit.requirements",
+        "end": 318,
+        "entity": "ChangeSetUnit.stem",
         "file": "def/cli/data.lfy",
         "line": 82,
-        "outputLine": 304,
+        "outputLine": 317,
         "requirement": null
       },
       {
         "column": null,
-        "end": 351,
-        "entity": "ChangeSetUnit.edits",
+        "end": 320,
+        "entity": "ChangeSetUnit.reason",
+        "file": "def/cli/data.lfy",
+        "line": 83,
+        "outputLine": 319,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 324,
+        "entity": "ChangeSetUnit.state",
+        "file": "def/cli/data.lfy",
+        "line": 84,
+        "outputLine": 321,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 328,
+        "entity": "ChangeSetUnit.hash",
+        "file": "def/cli/data.lfy",
+        "line": 85,
+        "outputLine": 325,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 331,
+        "entity": "ChangeSetUnit.requirements",
         "file": "def/cli/data.lfy",
         "line": 86,
-        "outputLine": 307,
+        "outputLine": 329,
         "requirement": null
       },
       {
         "column": null,
-        "end": 355,
-        "entity": "ChangeSet",
+        "end": 334,
+        "entity": "ChangeSetUnit.edits",
+        "file": "def/cli/data.lfy",
+        "line": 90,
+        "outputLine": 332,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 390,
+        "entity": "ChangeSetUnit.merged",
         "file": "def/cli/data.lfy",
         "line": 91,
-        "outputLine": 352,
+        "outputLine": 335,
         "requirement": null
       },
       {
         "column": null,
-        "end": 357,
+        "end": 394,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 391,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 396,
         "entity": "ChangeSet.target",
         "file": "def/cli/data.lfy",
-        "line": 92,
-        "outputLine": 356,
+        "line": 97,
+        "outputLine": 395,
         "requirement": null
       },
       {
         "column": null,
-        "end": 359,
+        "end": 398,
         "entity": "ChangeSet.directory",
         "file": "def/cli/data.lfy",
-        "line": 93,
-        "outputLine": 358,
+        "line": 98,
+        "outputLine": 397,
         "requirement": null
       },
       {
         "column": null,
-        "end": 362,
+        "end": 401,
         "entity": "ChangeSet.units",
         "file": "def/cli/data.lfy",
-        "line": 94,
-        "outputLine": 360,
+        "line": 99,
+        "outputLine": 399,
         "requirement": null
       },
       {
         "column": null,
-        "end": 367,
+        "end": 406,
         "entity": "ChangeSet.foreignEdits",
         "file": "def/cli/data.lfy",
-        "line": 95,
-        "outputLine": 363,
+        "line": 100,
+        "outputLine": 402,
         "requirement": null
       },
       {
         "column": null,
-        "end": 407,
+        "end": 446,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 368,
+        "line": 96,
+        "outputLine": 407,
         "requirement": "ChangeSet:ChangeSet:b655fcdcd7a4f6bc06eb2f5919bbd30b6986babf7942787f32a4b93cb22f3ef2"
       },
       {
         "column": null,
-        "end": 408,
+        "end": 447,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 408,
+        "line": 96,
+        "outputLine": 447,
         "requirement": "ChangeSet:ChangeSet:b655fcdcd7a4f6bc06eb2f5919bbd30b6986babf7942787f32a4b93cb22f3ef2"
       },
       {
         "column": null,
-        "end": 427,
+        "end": 466,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 409,
+        "line": 96,
+        "outputLine": 448,
         "requirement": "ChangeSet:ChangeSet:da099811d2a1e35b89a470128465e0c875995f7a6184fd85c63c02ccd2817239"
       },
       {
         "column": null,
-        "end": 441,
+        "end": 481,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 428,
+        "line": 96,
+        "outputLine": 467,
         "requirement": "ChangeSet:ChangeSet:d9f289811c4e43fa3bb96a1b1a7d01f546422d23b339e148ae7b61176238bef6"
       },
       {
         "column": null,
-        "end": 442,
+        "end": 491,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 442,
-        "requirement": "ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c"
+        "line": 96,
+        "outputLine": 482,
+        "requirement": "ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108"
       },
       {
         "column": null,
-        "end": 461,
+        "end": 492,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 443,
-        "requirement": "ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f"
+        "line": 96,
+        "outputLine": 492,
+        "requirement": "ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108"
       },
       {
         "column": null,
-        "end": 462,
+        "end": 519,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 462,
-        "requirement": "ChangeSet:ChangeSet:6b29187de3d79dc587549407b8213f3a4844ef711b59317cbd20c8d1a09e4808"
-      },
-      {
-        "column": null,
-        "end": 463,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 463,
-        "requirement": "ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c"
-      },
-      {
-        "column": null,
-        "end": 464,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 464,
-        "requirement": "ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f"
-      },
-      {
-        "column": null,
-        "end": 489,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 465,
-        "requirement": "ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c"
-      },
-      {
-        "column": null,
-        "end": 490,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 490,
-        "requirement": "ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c"
-      },
-      {
-        "column": null,
-        "end": 504,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 491,
-        "requirement": "ChangeSet:ChangeSet:e3f9c542851859c9bb86eee22b99337db1e0fb4cc60d7e58f3ff554e5d6ea747"
+        "line": 96,
+        "outputLine": 493,
+        "requirement": "ChangeSet:ChangeSet:ff350bee6b6a6f47334a809bc05ff72b35216d8561461a74d60a36dd6fb10a89"
       },
       {
         "column": null,
         "end": 520,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 505,
-        "requirement": "ChangeSet:ChangeSet:115db6923c273f848db7bd842f876ae3f28a068b801bb4956b81311fdb961444"
-      },
-      {
-        "column": null,
-        "end": 538,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 521,
-        "requirement": "ChangeSet:ChangeSet:115db6923c273f848db7bd842f876ae3f28a068b801bb4956b81311fdb961444"
-      },
-      {
-        "column": null,
-        "end": 553,
-        "entity": "ChangeSetUnit.reason",
-        "file": "def/cli/data.lfy",
-        "line": 79,
-        "outputLine": 539,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 589,
-        "entity": "ChangeSet.foreignEdits",
-        "file": "def/cli/data.lfy",
-        "line": 95,
-        "outputLine": 554,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 638,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 590,
-        "requirement": null
-      },
-      {
-        "column": null,
-        "end": 654,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 639,
-        "requirement": "ChangeSet:ChangeSet:b655fcdcd7a4f6bc06eb2f5919bbd30b6986babf7942787f32a4b93cb22f3ef2"
-      },
-      {
-        "column": null,
-        "end": 670,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 655,
-        "requirement": "ChangeSet:ChangeSet:d9f289811c4e43fa3bb96a1b1a7d01f546422d23b339e148ae7b61176238bef6"
-      },
-      {
-        "column": null,
-        "end": 683,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 671,
-        "requirement": "ChangeSet:ChangeSet:da099811d2a1e35b89a470128465e0c875995f7a6184fd85c63c02ccd2817239"
-      },
-      {
-        "column": null,
-        "end": 704,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 684,
-        "requirement": "ChangeSet:ChangeSet:6b29187de3d79dc587549407b8213f3a4844ef711b59317cbd20c8d1a09e4808"
-      },
-      {
-        "column": null,
-        "end": 719,
-        "entity": "ChangeSet",
-        "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 705,
+        "line": 96,
+        "outputLine": 520,
         "requirement": "ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c"
       },
       {
         "column": null,
-        "end": 736,
+        "end": 540,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 720,
+        "line": 96,
+        "outputLine": 521,
         "requirement": "ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f"
       },
       {
         "column": null,
-        "end": 753,
+        "end": 541,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 737,
+        "line": 96,
+        "outputLine": 541,
+        "requirement": "ChangeSet:ChangeSet:968261c102d71e1bf981693b0997819cdc1645a386c5211b2df4a97bea1def5d"
+      },
+      {
+        "column": null,
+        "end": 542,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 542,
+        "requirement": "ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c"
+      },
+      {
+        "column": null,
+        "end": 543,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 543,
+        "requirement": "ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f"
+      },
+      {
+        "column": null,
+        "end": 565,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 544,
         "requirement": "ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c"
       },
       {
         "column": null,
-        "end": 765,
+        "end": 566,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 754,
+        "line": 96,
+        "outputLine": 566,
+        "requirement": "ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c"
+      },
+      {
+        "column": null,
+        "end": 580,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 567,
         "requirement": "ChangeSet:ChangeSet:e3f9c542851859c9bb86eee22b99337db1e0fb4cc60d7e58f3ff554e5d6ea747"
       },
       {
         "column": null,
-        "end": 779,
+        "end": 596,
         "entity": "ChangeSet",
         "file": "def/cli/data.lfy",
-        "line": 91,
-        "outputLine": 766,
+        "line": 96,
+        "outputLine": 581,
         "requirement": "ChangeSet:ChangeSet:115db6923c273f848db7bd842f876ae3f28a068b801bb4956b81311fdb961444"
+      },
+      {
+        "column": null,
+        "end": 615,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 597,
+        "requirement": "ChangeSet:ChangeSet:115db6923c273f848db7bd842f876ae3f28a068b801bb4956b81311fdb961444"
+      },
+      {
+        "column": null,
+        "end": 628,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 616,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 643,
+        "entity": "ChangeSetUnit.reason",
+        "file": "def/cli/data.lfy",
+        "line": 83,
+        "outputLine": 629,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 679,
+        "entity": "ChangeSet.foreignEdits",
+        "file": "def/cli/data.lfy",
+        "line": 100,
+        "outputLine": 644,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 728,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 680,
+        "requirement": null
+      },
+      {
+        "column": null,
+        "end": 744,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 729,
+        "requirement": "ChangeSet:ChangeSet:b655fcdcd7a4f6bc06eb2f5919bbd30b6986babf7942787f32a4b93cb22f3ef2"
+      },
+      {
+        "column": null,
+        "end": 760,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 745,
+        "requirement": "ChangeSet:ChangeSet:d9f289811c4e43fa3bb96a1b1a7d01f546422d23b339e148ae7b61176238bef6"
+      },
+      {
+        "column": null,
+        "end": 773,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 761,
+        "requirement": "ChangeSet:ChangeSet:da099811d2a1e35b89a470128465e0c875995f7a6184fd85c63c02ccd2817239"
+      },
+      {
+        "column": null,
+        "end": 794,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 774,
+        "requirement": "ChangeSet:ChangeSet:968261c102d71e1bf981693b0997819cdc1645a386c5211b2df4a97bea1def5d"
+      },
+      {
+        "column": null,
+        "end": 809,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 795,
+        "requirement": "ChangeSet:ChangeSet:77db4241a1867889bf369abe1c66f13af671b71c6c32b2e8966e9283f545fe1c"
+      },
+      {
+        "column": null,
+        "end": 826,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 810,
+        "requirement": "ChangeSet:ChangeSet:8983cc59f8e506396e449579c05ad935909c8115eac5061aefda6fb014c41a2f"
+      },
+      {
+        "column": null,
+        "end": 843,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 827,
+        "requirement": "ChangeSet:ChangeSet:4f28781169f9b118953b17a5d1d2ef6b7936745d29530f30e2ad02d7ec23644c"
+      },
+      {
+        "column": null,
+        "end": 855,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 844,
+        "requirement": "ChangeSet:ChangeSet:e3f9c542851859c9bb86eee22b99337db1e0fb4cc60d7e58f3ff554e5d6ea747"
+      },
+      {
+        "column": null,
+        "end": 869,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 856,
+        "requirement": "ChangeSet:ChangeSet:115db6923c273f848db7bd842f876ae3f28a068b801bb4956b81311fdb961444"
+      },
+      {
+        "column": null,
+        "end": 891,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 870,
+        "requirement": "ChangeSet:ChangeSet:8182a512a160a8c442b28dba65f6bd481f40b0b72bd1c0e4c2f7709f019e7108"
+      },
+      {
+        "column": null,
+        "end": 910,
+        "entity": "ChangeSet",
+        "file": "def/cli/data.lfy",
+        "line": 96,
+        "outputLine": 892,
+        "requirement": "ChangeSet:ChangeSet:ff350bee6b6a6f47334a809bc05ff72b35216d8561461a74d60a36dd6fb10a89"
       }
     ],
     "output": "crates/elfie-cli/src/data.rs",
-    "requirements": "b025975303db69db639a23b6c5539f4c2ceceab492f3dd0b4977af8e9a6b55e1",
-    "signature": "d1760778380cde36f431ae57db3df100a9e784ec0d70d13808a1282ee95d5ea4",
+    "requirements": "3a94f63d76489395674ef52f255d68ed5b1142fb366f36a94ba47471789f7c94",
+    "signature": "034d7ff21e16b3acc70b15f838a0b54844732c00a3434ad17394c90dcaba0411",
     "source": "def/cli/data.lfy",
     "target": "rust",
-    "text": "1cb78c897b9c9f6492a70236d9843548d0b237cd1fcac747bd36ffdcb93f14ce"
+    "text": "c9bc499c1407b4bc033e35fd5bd9d38304a8fa28e5f1d427a4f7ebd8b64c7026"
   }
 ]

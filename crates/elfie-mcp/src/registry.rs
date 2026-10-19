@@ -176,10 +176,10 @@ pub fn tools() -> Vec<Registered> {
         // @lfy def/mcp/main.lfy:units#units:tool:2ac75ac99fe508b7a8c4a2d27aca12fd9d96cccf9950c3f94cce20f1da99655b
         // @lfy def/mcp/main.lfy:units#units:tool:11b09db1a7752a1e56b444520139ac0f584b54714e72d5b267322c54277ecfb4
         // @lfy def/mcp/main.lfy:units#units:tool:9d5a244e3de0666f68b9af569acc4864151e7fd8a5d48f7cfcc6bcabad9e2670
-        // @lfy def/mcp/main.lfy:units#units:tool:594ff2692d18f9b5f8195747d1179a5a9f5d9d17533c0c96b439f6786d814d46
+        // @lfy def/mcp/main.lfy:units#units:tool:83745c8817de95a9ccf14eeacbaffaeedde2a6b3dd6b882eb51189198589436a
         Registered::new(
             "units",
-            "The units the compiler would produce, in the order they are compiled one at a time, and why each needs generating",
+            "The units the compiler would produce, in the order they are compiled, and why each needs generating",
             // @lfy def/mcp/main.lfy:units#units:tool:9e4e0920c3a77f7c24ca79866264ca5ea4507712f18a471af4347d4632455852
             vec![
                 // @lfy def/mcp/main.lfy:units#units:tool:4f77f81c4f6b8f1b069afb12ae98bb421ef8b1aeafd78e6382ba0c3bc37144a9

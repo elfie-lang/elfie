@@ -251,15 +251,19 @@ pub fn duration(seconds: f64) -> String {
 // @lfy def/cli/style.lfy:toneOf
 pub fn tone_of(step: Step) -> Tone {
     match step {
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2
-        Step::Accepted | Step::Reviewed | Step::GlobalReviewed => Tone::Success,
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:972c80f035f3bc6703b93bce30b51744ec94bf0987488bd03c22bd57f0593ea1
+        Step::Accepted | Step::Reviewed | Step::Merged | Step::GlobalReviewed => Tone::Success,
         // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:7a3092b23685652356ef40136c995e18bdcb5ef3b54278d351b792cab9d62fbf
         Step::Rejected | Step::Failed => Tone::Failure,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:869319a211dcbda7c5efe3baa1c2eb98236d9b87f4e84843d558d31bcb48142e
-        Step::Touched | Step::Stubbed | Step::Retrying | Step::Blocked | Step::Clarification => Tone::Warning,
-        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:07b07eb2cf0d9aa48b2a89377b137937e6ad3957985930ee5f63866c2123ad73
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:43a01238d78e009d831e15472c8fecf2a6c77026e5f464e4a76ff30e09704b22
+        Step::Touched | Step::Stubbed | Step::Retrying | Step::Undone | Step::Blocked | Step::Clarification => {
+            Tone::Warning
+        }
+        // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:842e69696e0cc80aa29d2a1bbb38fc9ab229947c878b47e0b68164f98f30aa46
         Step::Requesting
         | Step::Resuming
+        | Step::Relocated
+        | Step::Started
         | Step::Rewording
         | Step::Building
         | Step::Compiling
@@ -281,25 +285,26 @@ pub fn glyph_of(step: Step) -> &'static str {
     match step {
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:fac01e3084be271eaea56a78e97d67e2f31975cd28b771f7b373a1b8f8eea90a
         Step::Planned | Step::Finished => "◆",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32
-        Step::Requesting | Step::Resuming | Step::Rewording | Step::Checking => "·",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:88a5022f3d4116425f888971694d61de37210463a81c64a6265086c23d42fff7
-        Step::Building
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ca3ce6724ba3d007f694a95afc4fd6b3ff0231cbf0e7c8ca8e2719a371aa5876
+        Step::Requesting | Step::Resuming | Step::Relocated | Step::Rewording | Step::Checking => "·",
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:834c8102d686988039c29321e6138ce3e53b43e1e1a5934976ad2a1c4118d139
+        Step::Started
+        | Step::Building
         | Step::Compiling
         | Step::Verifying
         | Step::GlobalVerifying
         | Step::FinalGate
         | Step::Merging => "▸",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b
-        Step::Accepted | Step::Reviewed | Step::GlobalReviewed => "✓",
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:7ba0eaadbcbd83b254658d5dbf35be911598a84c800f9ded6e518379216a9919
+        Step::Accepted | Step::Reviewed | Step::Merged | Step::GlobalReviewed => "✓",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2469217fa6b8df9b0a1aebc6d1249afceada2fd0f1ca56a99cdba48503f1094c
         Step::Rejected | Step::Failed => "✗",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:1c2c367ec30ab165c3232e2e9eeba1b807605a3aea2d98a01c83084e33539f68
         Step::Touched => "✎",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:6e053fb3f3135ac97cf1465c89bbe75a589870bd0df5aa26c4dd86842610c70d
         Step::Stubbed => "○",
-        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320
-        Step::Retrying => "↻",
+        // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:4ced2f05657b9ffbadefd96026dd4b97acc62dcdda17539bbdf89cd9fa3ca17c
+        Step::Retrying | Step::Undone => "↻",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e
         Step::Blocked => "■",
         // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da
@@ -580,12 +585,19 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:26e771016ac5d78412265b6ce2f642e945bad5ab4c390694540e314c9e2db6d3
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:33d16f51d4f7e0f1313af940eb24f998e72c3e80eceda6b9abf5a2cb3fa138f2
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:972c80f035f3bc6703b93bce30b51744ec94bf0987488bd03c22bd57f0593ea1
     #[test]
     fn accepted_reviewed_and_global_reviewed_are_success() {
         assert_eq!(tone_of(Step::Accepted), Tone::Success);
         assert_eq!(tone_of(Step::Reviewed), Tone::Success);
+        assert_eq!(tone_of(Step::Merged), Tone::Success);
         assert_eq!(tone_of(Step::GlobalReviewed), Tone::Success);
+    }
+
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:67b2330e1b2afc0e6a6d1e741b1bfd5a8403efe388ce23cf0428330b8b2cff24
+    #[test]
+    fn merged_is_success() {
+        assert_eq!(tone_of(Step::Merged), Tone::Success);
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:398ba084d601d05be00d95e4cb7fa05f7d4b9d5b77ada16eaee2e88e9ecb9258
@@ -597,7 +609,7 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:64ef0ccf8dc53c748db7e22025891b0e5700055323e7c72d20738955e09a9822
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:869319a211dcbda7c5efe3baa1c2eb98236d9b87f4e84843d558d31bcb48142e
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:43a01238d78e009d831e15472c8fecf2a6c77026e5f464e4a76ff30e09704b22
     #[test]
     fn retrying_blocked_and_clarification_are_warning() {
         assert_eq!(tone_of(Step::Clarification), Tone::Warning);
@@ -605,15 +617,24 @@ mod tests {
         assert_eq!(tone_of(Step::Blocked), Tone::Warning);
         assert_eq!(tone_of(Step::Touched), Tone::Warning);
         assert_eq!(tone_of(Step::Stubbed), Tone::Warning);
+        assert_eq!(tone_of(Step::Undone), Tone::Warning);
+    }
+
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:52c8fcfb81d0809dabbc339c6d67003eaeda7ee9b608d54ab4e462c3e0f255ed
+    #[test]
+    fn undone_is_warning() {
+        assert_eq!(tone_of(Step::Undone), Tone::Warning);
     }
 
     // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:e62a94e69d89b6cf00197a96f8e054019c8bc20c03f01ea04442e78b3bdfb462
-    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:07b07eb2cf0d9aa48b2a89377b137937e6ad3957985930ee5f63866c2123ad73
+    // @lfy def/cli/style.lfy:toneOf#toneOf:toneOf:842e69696e0cc80aa29d2a1bbb38fc9ab229947c878b47e0b68164f98f30aa46
     #[test]
     fn the_steps_under_way_are_active() {
         assert_eq!(tone_of(Step::Compiling), Tone::Active);
         assert_eq!(tone_of(Step::Requesting), Tone::Active);
         assert_eq!(tone_of(Step::Resuming), Tone::Active);
+        assert_eq!(tone_of(Step::Relocated), Tone::Active);
+        assert_eq!(tone_of(Step::Started), Tone::Active);
         assert_eq!(tone_of(Step::Rewording), Tone::Active);
         assert_eq!(tone_of(Step::Building), Tone::Active);
         assert_eq!(tone_of(Step::Checking), Tone::Active);
@@ -643,11 +664,12 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:f7a6ac7720627542ea682c531652973a124ab72f22c3acd82dc2b7e51a5c1c9c
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:0a6fb0b98d96c571c260c0b45ce74caddc67862d52b2583081a1d20ab48d2e3b
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:7ba0eaadbcbd83b254658d5dbf35be911598a84c800f9ded6e518379216a9919
     #[test]
     fn accepted_reviewed_and_global_reviewed_are_a_check() {
         assert_eq!(glyph_of(Step::Accepted), "✓");
         assert_eq!(glyph_of(Step::Reviewed), "✓");
+        assert_eq!(glyph_of(Step::Merged), "✓");
         assert_eq!(glyph_of(Step::GlobalReviewed), "✓");
     }
 
@@ -660,9 +682,10 @@ mod tests {
     }
 
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:e121e7b63e58ebedb21c162928a8e56a1198652788186652f3df7180185086ed
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:88a5022f3d4116425f888971694d61de37210463a81c64a6265086c23d42fff7
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:834c8102d686988039c29321e6138ce3e53b43e1e1a5934976ad2a1c4118d139
     #[test]
     fn building_compiling_verifying_and_global_verifying_are_a_triangle() {
+        assert_eq!(glyph_of(Step::Started), "▸");
         assert_eq!(glyph_of(Step::Building), "▸");
         assert_eq!(glyph_of(Step::Compiling), "▸");
         assert_eq!(glyph_of(Step::Verifying), "▸");
@@ -696,27 +719,35 @@ mod tests {
         assert_eq!(glyph_of(Step::Finished), "◆");
     }
 
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:5d5e91793783d5aa4b3a0af7d611725c8b8e47fd6797c45a5b89455aec977b32
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ca3ce6724ba3d007f694a95afc4fd6b3ff0231cbf0e7c8ca8e2719a371aa5876
     #[test]
     fn requesting_resuming_rewording_and_checking_are_a_dot() {
         assert_eq!(glyph_of(Step::Requesting), "·");
         assert_eq!(glyph_of(Step::Resuming), "·");
+        assert_eq!(glyph_of(Step::Relocated), "·");
         assert_eq!(glyph_of(Step::Rewording), "·");
         assert_eq!(glyph_of(Step::Checking), "·");
     }
 
-    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:ecdc132c3de43b58429bad1f3c93335f8eb0cb4180e4b0e475d549df4b6d3320
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:4ced2f05657b9ffbadefd96026dd4b97acc62dcdda17539bbdf89cd9fa3ca17c
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:2b68ddec02b3857f759454908b6536c3e8b3fc9eab54f2517660b9a24fa7d40e
     // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:d3da3373fd7152e3807d83a5aec0e352db8e8b2c54d6d0623fc515eaeaf937da
     #[test]
     fn retrying_blocked_and_clarification_have_a_glyph_of_their_own() {
         assert_eq!(glyph_of(Step::Retrying), "↻");
+        assert_eq!(glyph_of(Step::Undone), "↻");
         assert_eq!(glyph_of(Step::Blocked), "■");
         assert_eq!(glyph_of(Step::Clarification), "?");
         // One character, so every step column is one wide.
         for step in STEPS {
             assert_eq!(width(glyph_of(step)), 1, "{}", step.name());
         }
+    }
+
+    // @lfy def/cli/style.lfy:glyphOf#glyphOf:glyphOf:5b058e1324cc149ae766c3ef3d88290215451e6e6dedc5ca7a3aae1fb22b1b3f
+    #[test]
+    fn undone_is_a_loop() {
+        assert_eq!(glyph_of(Step::Undone), "↻");
     }
 
     // @lfy def/cli/style.lfy:severityTone#severityTone:severityTone:b887b8bbc3bf0d2b35204bb8d40567ee15b8359515d842f0b6aefce7c1514016

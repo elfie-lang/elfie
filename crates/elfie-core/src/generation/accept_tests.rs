@@ -31,7 +31,7 @@ fn one_unit(program: &Program) -> (Plan, Request, usize) {
 
 /// The request for one unit, with nothing handed over of what came before.
 fn request_for(program: &Program, plan: &Plan, index: usize) -> Request {
-    request(program, plan, index, &[], None, false, false, &[])
+    request(program, plan, index, &[], None, false, &[], &[])
 }
 
 /// What `accept` gives when what the files held before the run is not known, so no
@@ -963,7 +963,11 @@ fn b_then_a(stubbed: bool) -> LaterUnit {
         );
     let program = fixture.program();
     assert_bound(&program.workspace);
-    let maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    let mut maps = current_maps(&program, &plan_of(&program, &[], &[], &[]));
+    // `a` was accepted against another interface of `b`, so `a` is in `b`'s reach.
+    for map in maps.iter_mut().filter(|map| map.source == "def/a.lfy") {
+        map.dependencies.values_mut().for_each(String::clear);
+    }
     let plan = plan_of(&program, &maps, &[], &[]);
     let (a, _) = unit_of(&program.workspace, &plan, "def/a.lfy");
     let (b, _) = unit_of(&program.workspace, &plan, "def/b.lfy");
@@ -1147,9 +1151,9 @@ fn a_fix_over_the_cap_of_one_region_is_rejected() {
     }
 }
 
-// @lfy def/generation/main.lfy:accept#accept:accept:c4844218cae8141bc5f75b574dda0786f3d9d5667031c5526804a28b17e16097
+// @lfy def/generation/main.lfy:accept#accept:accept:912b53b5130dde6fac2bf9728a2f8b434fd8beaf27ecf603cd0947f959aea6ed
 #[test]
-fn an_edit_in_the_code_of_an_earlier_unit_is_rejected() {
+fn an_edit_in_the_code_of_a_unit_that_does_not_depend_on_the_run_is_rejected() {
     let fixture = Fixture::with_rust_target();
     fixture
         .write(
@@ -1183,9 +1187,13 @@ fn an_edit_in_the_code_of_an_earlier_unit_is_rejected() {
         &touches,
     );
     assert!(!verdict.accepted);
-    // @lfy def/generation/main.lfy:accept#accept:accept:53c90dd1d996650fcb1634a0be592968e6c75780aa224f1f9d8b2a2c55d7bf8d
+    // @lfy def/generation/main.lfy:accept#accept:accept:081354ab25d7caa23751b7750efc59d1d5c9ca9fc6b2197450de047cfee648f8
     assert_eq!(verdict.problems.len(), 1, "{:?}", verdict.problems);
-    for named in ["src/c.rs:3", " c,", "only the code of a later unit is edited"] {
+    for named in [
+        "src/c.rs:3",
+        " c,",
+        "only the code of a unit in its reach, one that depends on it, is edited",
+    ] {
         assert!(verdict.problems[0].contains(named), "{named}: {:?}", verdict.problems);
     }
     assert!(verdict.foreign_edits.is_empty());

@@ -25,7 +25,8 @@
 //! reads the source maps a workspace recorded and [`record`] writes those of one accepted
 //! unit; [`reviews_of`] reads the verdicts one unit's criteria and tests were last given
 //! and [`record_reviews`] writes them, so that a criterion whose code has not changed since
-//! it was found satisfied is carried rather than reviewed again.
+//! it was found satisfied is carried rather than reviewed again. [`relocate`] gives the code
+//! of an entity whose declaration moved to another file to that file's unit.
 //! Nothing here shells out.
 
 use std::collections::{BTreeMap, HashSet};
@@ -34,6 +35,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub mod data; // @lfy def/generation/data.lfy:Plan
+pub mod previous; // @lfy def/generation/previous.lfy:previousOf
 
 pub use data::*;
 
@@ -69,6 +71,7 @@ mod interface;
 mod mapped;
 mod outcome;
 mod plan;
+mod relocate;
 mod request;
 mod review;
 
@@ -77,9 +80,10 @@ pub use compile_data::{
     map_file, record, record_reviews, rederive, review_file, reviews_of, source_maps_of,
 };
 pub use interface::interface_of;
-pub use mapped::{changes, regions_of, rename, reworded};
+pub use mapped::{changes, previous_of, regions_of, rename, reworded};
 pub use outcome::outcome_of;
 pub use plan::plan;
+pub use relocate::relocate;
 pub use request::{guidance_for, request};
 pub use review::{global_review, review, review_of};
 
@@ -1887,6 +1891,8 @@ mod marker_tests;
 mod outcome_tests;
 #[cfg(test)]
 mod plan_tests;
+#[cfg(test)]
+mod relocate_tests;
 #[cfg(test)]
 mod request_tests;
 #[cfg(test)]

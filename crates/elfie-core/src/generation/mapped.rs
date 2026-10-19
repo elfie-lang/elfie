@@ -40,16 +40,15 @@ const DETAIL_LIMIT: usize = 80;
 /// What differs for each entity of a unit between its file as last accepted and as it is
 /// now.
 ///
-/// `previous` is the text of the unit's file when its outputs were last accepted, and
-/// `None` when they never were, which makes every entity of the unit an addition. The file
-/// as it was is bound through [`change`](crate::workspace::change) and its entities are
-/// compared with the unit's by name — the identifier, or the owner's identifier, a dot, and
-/// a member's name — so a reformatted or reordered file whose entities read the same gives
-/// no change at all.
-// Decision: a change is found by binding the previous text through the loader and comparing
-// entities, never by diffing lines.
+/// `previous` is the unit's source at its last accepted generation, or its hash-matched
+/// source, as recovered for the unit, and `None` when neither is known, which makes every
+/// entity of the unit an addition. The file as it was is read from the program of
+/// `previous`, already lowered, and its entities are compared with the unit's by name — the
+/// identifier, or the owner's identifier, a dot, and a member's name — so a reformatted or
+/// reordered file whose entities read the same gives no change at all.
+// Decision: a change is found by comparing entities, never by diffing lines.
 // @lfy def/generation/main.lfy:changes
-pub fn changes(program: &Program, unit: &Unit, previous: Option<&str>) -> Vec<Change> {
+pub fn changes(program: &Program, unit: &Unit, previous: Option<&Previous>) -> Vec<Change> {
     let workspace = &program.workspace;
     let model = &workspace.model;
     let path = workspace.files[unit.file].path.clone();
@@ -71,20 +70,17 @@ pub fn changes(program: &Program, unit: &Unit, previous: Option<&str>) -> Vec<Ch
             })
             .collect();
     };
-    // The file as it was is bound through the loader and lowered, so that its entities and
-    // their requirement ids are read the same way as the unit's own.
-    // @lfy def/generation/main.lfy:changes#changes:changes:6fd357814bc465ff2deac47548fc8b644c75b3489eab95e456e7d68a0da79754
-    let before = crate::interpret::lower(crate::workspace::change(
-        workspace,
-        &path,
-        Some(previous),
-    ));
+    // The file as it was is the one the program of `previous` declares, lowered once when it
+    // was recovered, so its entities are read from that program's model and nothing is
+    // lowered or bound here.
+    // @lfy def/generation/main.lfy:changes#changes:changes:2c1d93c21febc2f19ccf11a3653269f8b49c306e0c8cbf783655ab561be4a92f
+    let before = &previous.program;
     // What the file declared then, built for the unit's target, read exactly as what it
     // declares now was read above, so that neither side is a unit's contents.
     // @lfy def/generation/main.lfy:changes#changes:changes:718b0ba1ae484d5d40adbb3d2dabcfed7ec6b7a0c976dd9193d6c8b00e479f4f
     let was = entity_table(
         &before.workspace.model,
-        &declared_entities(&before, &target, &path),
+        &declared_entities(before, &target, &path),
     );
     let lowered = &program.files[unit.lowered];
     let lowered_before = before
@@ -610,33 +606,45 @@ fn child_nodes(model: &Model, node: NodeRef) -> Vec<NodeRef> {
 // reworded, rename
 // ---------------------------------------------------------------------------------------
 
+/// A unit's previous source as [`changes`], [`reworded`], and [`request`] take it: `text`,
+/// the unit's file as it was, as written, with the workspace lowered once with the file read
+/// as `text` and every other file as it is, and whether it is only the hash-matched source.
+// Decision: the callers that recover a previous source hold its text; the one lowering it
+// needs is done here, once, so the functions that read it lower and bind nothing.
+// @lfy def/generation/main.lfy:changes
+pub fn previous_of(workspace: &Workspace, unit: &Unit, text: &str, hash_matched: bool) -> Previous {
+    let path = &workspace.files[unit.file].path;
+    Previous {
+        text: text.to_string(),
+        program: crate::interpret::lower(crate::workspace::change(workspace, path, Some(text))),
+        hash_matched,
+    }
+}
+
 /// The local criteria and tests of a unit whose id changed since its outputs were accepted
 /// only because their text did, each paired with the id it replaces and what that one said.
 ///
-/// `previous` is the text of the unit's file when its outputs were last accepted, as
-/// written. One [`Rewording`] comes of each pair of a removed and an added id that a change
+/// `previous` is the unit's source at its last accepted generation, as recovered for the
+/// unit. One [`Rewording`] comes of each pair of a removed and an added id that a change
 /// of [`changes`] calls reworded, in the order of those changes, so the two never differ
 /// about what was reworded; a pair whose added id is the id of no local criterion or test of
 /// the unit — one of an entity that moved to another unit, say — gives none. The text is
-/// what the removed one said, read off the lowering of the file as it was, exactly as a
-/// [`RemovedRequirement`] takes its own. Nothing is written.
+/// what the removed one said, read off the unit's file in the program of `previous`, exactly
+/// as a [`RemovedRequirement`] takes its own. Nothing is written, lowered, or bound.
 // Decision: the definition passes the workspace; the ids of a unit's local criteria and
 // tests are the lowered program's, which a plan here does not own, so the program stands in
 // for the workspace as it does for [`changes`].
 // @lfy def/generation/main.lfy:reworded#reworded:reworded:af54e4c28fb74d4c2fa75b4d1a8399d931aa52c592d5f16bd59ab25cc730a812
-// @lfy def/generation/main.lfy:reworded#reworded:reworded:de07280ad3ad9fe61fb4b298176271eb0020a12f42c53f6eaf8d5073a1cf2bc7
-pub fn reworded(program: &Program, unit: &Unit, previous: &str) -> Vec<Rewording> {
+// @lfy def/generation/main.lfy:reworded#reworded:reworded:ddbdcd5e429486d18ddb68f37de72b7e4f0a6da2b4f0a61f901c41b98bb3774e
+pub fn reworded(program: &Program, unit: &Unit, previous: &Previous) -> Vec<Rewording> {
     let workspace = &program.workspace;
     let model = &workspace.model;
     let path = workspace.files[unit.file].path.clone();
     let target = workspace.targets[unit.target].identifier.clone();
-    // The file as it was, bound and lowered the one time: its entities are compared with the
-    // unit's, and what each of its criteria and tests said is read off the same lowering.
-    let before = crate::interpret::lower(crate::workspace::change(
-        workspace,
-        &path,
-        Some(previous),
-    ));
+    // The file as it was, lowered the one time it was recovered: its entities are compared
+    // with the unit's, and what each of its criteria and tests said is read off the same
+    // lowering.
+    let before = &previous.program;
     let Some(index) = before
         .workspace
         .files
@@ -646,7 +654,7 @@ pub fn reworded(program: &Program, unit: &Unit, previous: &str) -> Vec<Rewording
         return Vec::new();
     };
     let lowered_before = &before.files[index];
-    // @lfy def/generation/main.lfy:reworded#reworded:reworded:ab9d9179b73829cca9561b30789c1b03552c81e265ab5a4d78144f07c0548724
+    // @lfy def/generation/main.lfy:reworded#reworded:reworded:2f1cf2b33aaff46609462adfbaa4694777c741613a70a5ec0912b0a967cb69da
     let said: BTreeMap<String, String> = local_requirements(lowered_before)
         .iter()
         .map(|requirement| match requirement {
@@ -657,7 +665,7 @@ pub fn reworded(program: &Program, unit: &Unit, previous: &str) -> Vec<Rewording
     let now = entity_table(model, &declared_entities(program, &target, &path));
     let was = entity_table(
         &before.workspace.model,
-        &declared_entities(&before, &target, &path),
+        &declared_entities(before, &target, &path),
     );
     let lowered = &program.files[unit.lowered];
     let local: Vec<String> = unit

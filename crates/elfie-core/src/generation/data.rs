@@ -25,7 +25,7 @@ use serde_json::{Map, Value, json};
 
 use crate::interpret::{LoweredCriterion, LoweredNode, LoweredTest, Program};
 use crate::model::{Command, Criterion, EntityId, Knowledge, Problem};
-use crate::workspace::NativeDependency;
+use crate::workspace::{NativeDependency, Workspace};
 
 /// Why a unit needs generating.
 // @lfy def/generation/data.lfy:Reason
@@ -313,7 +313,7 @@ fn usize_field(object: &Map<String, Value>, name: &str) -> Option<usize> {
 /// The work the compiler does as one piece: one source file for one target, with any
 /// entities moved into it from other files.
 // @lfy def/generation/data.lfy:Unit
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Unit {
     /// What it is built for, as an index into `Workspace::targets`.
     pub target: usize, // @lfy def/generation/data.lfy:Unit.target
@@ -341,6 +341,10 @@ pub struct Unit {
     pub outputs: Vec<SourceMap>, // @lfy def/generation/data.lfy:Unit.outputs
     /// Why it is planned; `None` when it is up to date.
     pub reason: Option<Reason>, // @lfy def/generation/data.lfy:Unit.reason
+    /// The [`Unit::stem`] of each planned unit it starts after, in [`Plan::units`] order:
+    /// each of [`Unit::dependencies`] that is planned and either has no [`Unit::outputs`] or
+    /// has an interface whose hash differs from what the unit's outputs record for it.
+    pub waits_for: Vec<String>, // @lfy def/generation/data.lfy:Unit.waitsFor
 }
 
 impl Unit {
@@ -572,16 +576,14 @@ pub const FIX_UNIT_LINES: usize = 40;
 // Decision: the fix cap is two numbers kept here, once, so they can be tuned from
 // measurements without touching what reads them; a reach carries them so a request and the
 // agent server state the same cap.
-// Decision: a unit may edit every later unit of its target, not only those that depend on
-// it, because a unit can break a later unit's code through a shared output or a test as well
-// as through an interface, and plan order alone keeps every foreign edit ahead of the unit
-// it touches. A reach read from `Plan::units` alone never depends on which units are planned.
 // @lfy def/generation/data.lfy:Reach
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Reach {
-    /// Every unit of the same target that has outputs and comes later in [`Plan::units`], in
-    /// [`Plan::units`] order, as indices into it; their outputs and regions are those of their
-    /// [`Unit::outputs`].
+    /// Empty when every unit of the same target that depends on the unit directly and has
+    /// outputs records the hash of the unit's interface as it is now; otherwise every unit of
+    /// the same target that has outputs and depends on the unit, directly or through other
+    /// units, in [`Plan::units`] order, as indices into it; their outputs and regions are
+    /// those of their [`Unit::outputs`].
     pub units: Vec<usize>, // @lfy def/generation/data.lfy:Reach.units
     /// The most lines a fix may change in one region.
     pub fix_lines: usize, // @lfy def/generation/data.lfy:Reach.fixLines
@@ -601,18 +603,56 @@ impl Reach {
         }
     }
 
-    /// The reach of the unit at `index` of `plan`: every unit of its target that has outputs
-    /// and comes later in [`Plan::units`].
+    /// The reach of the unit at `index` of `plan`, `workspace` being the workspace the plan
+    /// was made from: none when every direct dependent with outputs records the unit's
+    /// interface as it is now, and otherwise every unit of its target that has outputs and
+    /// depends on it, directly or through other units.
+    ///
+    /// It reads the plan's units, their outputs, and the definitions alone, so what is
+    /// planned changes nothing of it.
     // @lfy def/generation/data.lfy:Reach.units
-    pub fn of(plan: &Plan, index: usize) -> Reach {
-        let target = plan.units[index].target;
+    // @lfy def/generation/data.lfy:Reach#Reach:Reach:9fa35d3e58bd1c6985f920bf4d94049cd12b7b69531ce2e5a0b17cef22dd18e1
+    pub fn of(workspace: &Workspace, plan: &Plan, index: usize) -> Reach {
+        let unit = &plan.units[index];
+        let target = unit.target;
+        let same = |other: &Unit| other.target == target && !other.outputs.is_empty();
+        // @lfy def/generation/data.lfy:Reach#Reach:Reach:0bb557a5ed670b6e434a85b29b6693859d060770f3fea536fc9604d46fd1402a
+        let path = &workspace.files[unit.file].path;
+        let signature = super::interface_signature(workspace, unit);
+        let current = plan
+            .units
+            .iter()
+            .filter(|other| same(other) && other.dependencies.contains(&index))
+            .all(|other| {
+                other
+                    .outputs
+                    .iter()
+                    .all(|map| map.dependencies.get(path) == Some(&signature))
+            });
+        if current {
+            return Reach::new(Vec::new());
+        }
+        // @lfy def/generation/data.lfy:Reach.units
+        let mut depends = vec![false; plan.units.len()];
+        depends[index] = true;
+        // A unit comes after its dependencies in `Plan::units`, but a pass repeated until
+        // nothing changes does not rely on that order.
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for (at, other) in plan.units.iter().enumerate() {
+                if !depends[at] && other.dependencies.iter().any(|&dependency| depends[dependency]) {
+                    depends[at] = true;
+                    changed = true;
+                }
+            }
+        }
         Reach::new(
             plan.units
                 .iter()
                 .enumerate()
-                .skip(index + 1)
-                .filter(|(_, unit)| unit.target == target && !unit.outputs.is_empty())
-                .map(|(later, _)| later)
+                .filter(|&(at, other)| at != index && depends[at] && same(other))
+                .map(|(at, _)| at)
                 .collect(),
         )
     }
@@ -673,6 +713,74 @@ pub struct Rewording {
     pub text: String, // @lfy def/generation/data.lfy:Rewording.text
 }
 
+/// The source of a unit at its last accepted generation, or its hash-matched source,
+/// recovered once and lowered once.
+// @lfy def/generation/data.lfy:Previous
+#[derive(Debug, Clone, PartialEq)]
+pub struct Previous {
+    /// The unit's file as it was, as written and never lowered.
+    pub text: String, // @lfy def/generation/data.lfy:Previous.text
+    /// The program lowered with the unit's file read as [`Previous::text`] and every other
+    /// file as it is.
+    pub program: Program, // @lfy def/generation/data.lfy:Previous.program
+    /// Whether it is only the unit's hash-matched source, as [`SourceMap`] defines one,
+    /// because neither the unit's file as loaded nor any revision of it is its source at its
+    /// last accepted generation.
+    pub hash_matched: bool, // @lfy def/generation/data.lfy:Previous.hashMatched
+}
+
+/// The code of one entity moved from the outputs of the unit of the file that declared it to
+/// the unit of the file that declares it now, by rewriting the markers that name it.
+// @lfy def/generation/data.lfy:Relocation
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Relocation {
+    /// The identifier of the target whose outputs hold the markers.
+    pub target: String, // @lfy def/generation/data.lfy:Relocation.target
+    /// The name the markers spell: the identifier, or the owner's identifier, a dot, and a
+    /// member's name.
+    pub entity: String, // @lfy def/generation/data.lfy:Relocation.entity
+    /// The file the markers named, relative to the workspace root; it no longer declares the
+    /// entity.
+    pub origin: String, // @lfy def/generation/data.lfy:Relocation.origin
+    /// The file the markers name now, relative to the workspace root: the one project file
+    /// that declares the entity.
+    pub into: String, // @lfy def/generation/data.lfy:Relocation.into
+    /// How many markers were rewritten.
+    pub markers: usize, // @lfy def/generation/data.lfy:Relocation.markers
+}
+
+/// The review records one unit's review record file is to hold.
+// @lfy def/generation/data.lfy:UnitReviews
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct UnitReviews {
+    /// The identifier of the unit's target.
+    pub target: String, // @lfy def/generation/data.lfy:UnitReviews.target
+    /// The [`Unit::stem`] of the unit.
+    pub stem: String, // @lfy def/generation/data.lfy:UnitReviews.stem
+    /// Its records, sorted by [`ReviewRecord::id`].
+    pub records: Vec<ReviewRecord>, // @lfy def/generation/data.lfy:UnitReviews.records
+}
+
+/// What relocating the code of entities that moved to another file gives, for the caller to
+/// write.
+// @lfy def/generation/data.lfy:Relocated
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Relocated {
+    /// One per entity, file it left, and target, in `Workspace::targets` order, then in
+    /// `Workspace::files` order of [`Relocation::into`], then in the order its first marker
+    /// appears in the outputs, taken in path order.
+    pub relocations: Vec<Relocation>, // @lfy def/generation/data.lfy:Relocated.relocations
+    /// Each output file holding a rewritten marker, with its text once its markers are
+    /// rewritten, in path order.
+    pub outputs: Vec<Output>, // @lfy def/generation/data.lfy:Relocated.outputs
+    /// Every source map read, with the maps of each unit a relocation moved code out of or
+    /// into replaced by its maps as they read once [`Relocated::outputs`] are written.
+    pub source_maps: Vec<SourceMap>, // @lfy def/generation/data.lfy:Relocated.sourceMaps
+    /// The review records of each unit a relocation moved review records out of or into, as
+    /// they are to be recorded, in [`Plan::units`] order.
+    pub reviews: Vec<UnitReviews>, // @lfy def/generation/data.lfy:Relocated.reviews
+}
+
 /// One criterion or one test, as a request carries it: what the definition writes as
 /// `LoweredCriterion | LoweredTest`. Each carries its own id.
 // @lfy def/generation/data.lfy:Request.globals
@@ -731,6 +839,10 @@ pub struct Request {
     pub foreign_edits: Vec<ForeignEdit>, // @lfy def/generation/data.lfy:Request.foreignEdits
     /// The later units whose outputs the run may edit, and the fix cap.
     pub reach: Reach, // @lfy def/generation/data.lfy:Request.reach
+    /// Every relocation of this compile whose [`Relocation::into`] or
+    /// [`Relocation::origin`] is the unit's file, for the unit's target, in the order they
+    /// were made.
+    pub relocated: Vec<Relocation>, // @lfy def/generation/data.lfy:Request.relocated
     /// One interface per dependency of the unit, in dependency order, each once.
     pub interfaces: Vec<Interface>, // @lfy def/generation/data.lfy:Request.interfaces
     /// The criteria of the target's declaration, in the guidance order, with template
@@ -1235,7 +1347,8 @@ pub struct ReviewReport {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Plan {
     /// Every unit of every target, each after its dependencies; the planned units are
-    /// compiled one at a time in this order.
+    /// compiled in this order, each starting once each unit of its [`Unit::waits_for`] has
+    /// merged into its change set, been skipped, or stopped.
     pub units: Vec<Unit>, // @lfy def/generation/data.lfy:Plan.units
     /// Every move that resolved a cycle among files, in plan order of the origin unit, then
     /// in file order of the first of the entities moved.

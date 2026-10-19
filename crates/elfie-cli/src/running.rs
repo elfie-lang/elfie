@@ -1,11 +1,10 @@
 // @lfy def/cli/main.lfy:main
 //! What one compile holds while it runs: the plan and the source maps, the change set of each
-//! target, the outputs a unit owns in its directory, the source a unit's last accepted
-//! generation came from, the request made for each unit, accepting and recording what a unit
-//! earned, and the gate a unit's outputs pass before they are accepted.
+//! target, the outputs a unit owns in its directory, a unit's previous source, the request
+//! made for each unit, accepting and recording what a unit earned, and the gate a unit's
+//! outputs pass before they are accepted.
 
 use super::*;
-use crate::copies::is_own;
 use crate::processes::{
     Agent, Ran, Running, complain_logged, line_for, locations_of, run_target_command, within, word_of_operation,
 };
@@ -48,10 +47,10 @@ pub(crate) fn outputs_of(
 /// Every file of a target's output directory in a directory, recursively skipping every
 /// directory named target, .git, or node_modules, as it reads there, by its path relative to
 /// the directory, in path order. A file that does not read as text is left out.
-// @lfy def/cli/main.lfy:main#main:main:868619066ec30b207dd51ea0ca22774e291fcf2bfb0b448ee749c225324e5fe9
+// @lfy def/cli/main.lfy:main#main:main:7d2892039e629efc80e06fa9613480a7affbe990c13c5aeb53877f888c21b969
 pub(crate) fn files_in(target: &Target, directory: &Path) -> Vec<Output> {
     let mut paths = Vec::new();
-    // @lfy def/cli/main.lfy:main#main:main:868619066ec30b207dd51ea0ca22774e291fcf2bfb0b448ee749c225324e5fe9
+    // @lfy def/cli/main.lfy:main#main:main:7d2892039e629efc80e06fa9613480a7affbe990c13c5aeb53877f888c21b969
     walk_all(&directory.join(&target.output_directory), &mut paths);
     paths.sort();
     paths
@@ -156,127 +155,6 @@ pub(crate) fn region_named(marker: &Marker) -> String {
     }
 }
 
-/// One revision of a unit's file recovered from git, and whether it is only the unit's
-/// hash-matched source rather than the source its outputs were accepted from.
-// @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
-pub(crate) struct Previous {
-    /// The revision as git holds it, never lowered.
-    // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-    pub(crate) text: String,
-    /// Whether its lowered text hashes to the map but its criterion and test ids do not.
-    // @lfy def/cli/main.lfy:main#main:main:83b85032f8cc7c8aef44ec14a0271ad64c1bafc4a130b693740a019f27be094d
-    pub(crate) hash_matched: bool,
-}
-
-/// The source at the last accepted generation, recovered from git when a revision of the
-/// file both lowers to the hash the unit's source map holds and has the criterion and test
-/// ids that map was recorded for; otherwise the unit's hash-matched source, the most recent
-/// revision that lowers to that hash alone, marked as such.
-///
-/// What is given back is that revision as git holds it, never lowered: `request` lowers the
-/// previous text it is handed the way `changes` binds one, so handing it lowered code would
-/// lower it twice and strip the criteria from what the compiler reads. The map holds the hash
-/// of the lowered text, so the revision the outputs were generated from is the one whose
-/// lowered text hashes to it, and a revision that differs only in a comment is the same
-/// revision.
-///
-/// A revision that lowers to the hash but whose ids hash to something else is not what the
-/// outputs were accepted from: a rewording leaves the lowered code untouched and changes every
-/// id it touched, so only the ids say which revision the outputs answered for.
-// @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
-// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-// @lfy def/cli/main.lfy:main#main:main:f84461b876d5880346ff361b357e737563b84ff7463a37600f754210b77dc91f
-pub(crate) fn previous_source(workspace: &Workspace, unit: &Unit) -> Option<Previous> {
-    let map = unit.outputs.first()?;
-    let file = workspace.files[unit.file].path.clone();
-    let log = Process::new("git")
-        // Every revision of the file, most recent first, however old the accepted one is.
-        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
-        .args(["log", "--format=%H", "--", &file])
-        .current_dir(&workspace.root)
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if !log.status.success() {
-        return None;
-    }
-    // The most recent revision that lowers to the map's hash and no more, kept in case none
-    // of them has the ids the map was recorded for.
-    // @lfy def/cli/main.lfy:main#main:main:f84461b876d5880346ff361b357e737563b84ff7463a37600f754210b77dc91f
-    let mut matched: Option<String> = None;
-    for revision in String::from_utf8_lossy(&log.stdout).lines() {
-        let show = Process::new("git")
-            .args(["show", &format!("{revision}:{file}")])
-            .current_dir(&workspace.root)
-            .stderr(Stdio::null())
-            .output()
-            .ok()?;
-        if !show.status.success() {
-            continue;
-        }
-        let text = String::from_utf8_lossy(&show.stdout).into_owned();
-        // The revision is recognized by the hash of its text lowered the way `changes` binds
-        // a previous text, since that is what the map holds.
-        // @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
-        let Some((lowered, requirements)) = lowered_of(workspace, &file, &text) else { continue };
-        if generation::source_hash(&lowered) != map.hash {
-            continue;
-        }
-        // What the request is given for the unit is that source as git holds it, never
-        // lowered.
-        // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-        if requirements == map.requirements {
-            return Some(Previous { text, hash_matched: false });
-        }
-        // The lowered code is the map's and the ids are not: this revision only reworded what
-        // the outputs answer for, so it is the hash-matched source and not the source at the
-        // last accepted generation.
-        // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-        if matched.is_none() {
-            matched = Some(text);
-        }
-    }
-    // @lfy def/cli/main.lfy:main#main:main:f84461b876d5880346ff361b357e737563b84ff7463a37600f754210b77dc91f
-    matched.map(|text| Previous { text, hash_matched: true })
-}
-
-/// One file read as something other than what is on disk, bound through the loader and
-/// lowered: [`elfie_core::interpret::LoweredFile::text`] of it, the way `changes` binds a
-/// previous text, and the SHA-256 of its local criterion and test ids as a source map
-/// records them.
-// Decision: the ids are read off the lowered file rather than off a plan made for that
-// revision, since planning every revision of every unit to recover one text would cost more
-// than the recovery is worth; a unit whose entities a plan moves is then not recognized and
-// falls back to its hash-matched source, which the criteria already provide for.
-// @lfy def/cli/main.lfy:main#main:main:c01ce1f2a8e5cd3e6ca0d0a2be31e2356dcb22b0e029c02e817117316275641c
-// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-pub(crate) fn lowered_of(workspace: &Workspace, path: &str, text: &str) -> Option<(String, String)> {
-    // @lfy def/cli/main.lfy:main
-    let before = lower(workspace::change(workspace, path, Some(text)));
-    let index = before.workspace.files.iter().position(|file| file.path == path)?;
-    let file = &before.files[index];
-    let mut ids: Vec<String> = Vec::new();
-    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-    for node in file.root.nodes() {
-        declared_ids(node, &mut ids);
-    }
-    ids.extend(file.criteria.iter().map(|criterion| criterion.id.clone()));
-    ids.extend(file.tests.iter().map(|test| test.id.clone()));
-    ids.sort();
-    // @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-    Some((file.text.clone(), generation::source_hash(&ids.join("\n"))))
-}
-
-/// The ids of the criteria and tests of one lowered node and of every node under it.
-// @lfy def/cli/main.lfy:main#main:main:df75e3de39b96735b913f4c3713135b546bfbcaac44bc8c3f0fb86c0e391fcc6
-pub(crate) fn declared_ids(node: &LoweredNode, out: &mut Vec<String>) {
-    out.extend(node.criteria.iter().map(|criterion| criterion.id.clone()));
-    out.extend(node.tests.iter().map(|test| test.id.clone()));
-    for child in node.nodes() {
-        declared_ids(child, out);
-    }
-}
-
 /// What the last review of one unit found: the reviews of its last run of the verifier, and
 /// the hashes and carried verdicts of the review request that run was made with. The review
 /// records of the unit are written from these when its source maps are recorded.
@@ -292,7 +170,7 @@ pub(crate) struct Reviewed {
 }
 
 /// How a unit that stopped without being accepted stopped.
-// @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
+// @lfy def/cli/main.lfy:main#main:main:6e192fbbaa3d541cc1fa9490c15245bc628f83977d91727e7004d801f77b9104
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stop {
     /// Rejected after its retries.
@@ -307,6 +185,9 @@ pub(crate) enum Stop {
     /// The compiler command failed a second time.
     // @lfy def/cli/main.lfy:main#main:main:3ac90f9999308a6d63417d712d756867c10bc89fc52537afa640a0e82a6f5ba2
     Failed,
+    /// Its merge was undone twice in a row.
+    // @lfy def/cli/main.lfy:main#main:main:ee6f110a6e8a80fe7f058125db6f1cd190ee42098edb6f0deaed19ccf0a70a19
+    Undone,
 }
 
 /// What one compile is doing: the plan and the inputs it was made from, the source maps as
@@ -375,15 +256,38 @@ pub(crate) struct Run {
     pub(crate) blocked: usize,
     pub(crate) failed: usize,
     pub(crate) code: ExitCode,
-    /// The files of each unit's output directory as they were before its first run in the
-    /// compile, by its place in the plan, so that a unit that stops puts them back.
-    // @lfy def/cli/main.lfy:main#main:main:2a92e13e1e56255b4cfa65e553c091ce8af723b6f9bb3156ecf05d84e8637a96
-    pub(crate) snapshots: BTreeMap<usize, crate::schedule::Snapshot>,
+    /// How many units may run at once, across every target: what --jobs gives, or 4.
+    // @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+    pub(crate) jobs: usize,
+    /// The compile's relocation, or verify's, in scope of --target: its relocations, which
+    /// every request is given, and the review records it moved, by unit.
+    // @lfy def/cli/main.lfy:main#main:main:2b2ecf83e7e057bba8be8cefb6ab9f0de30c74dfba2269df5b9fb4915457dec3
+    // @lfy def/cli/main.lfy:main#main:main:e51fb9eb0e95db88123897a941b44ce09dcb60390faac4e1c4cc0afab6a7c22b
+    pub(crate) relocation: Relocated,
+    /// The target and source file of each unit every map of whose outputs the compile's
+    /// relocation made, the unit having no map of its own before it.
+    // @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+    pub(crate) relocated_only: BTreeSet<(String, String)>,
+    /// The previous source of each unit, by its place in the plan, recovered once in the
+    /// compile and the same however many times the unit runs; `None` for a unit that has none.
+    // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+    pub(crate) previous: BTreeMap<usize, Option<Previous>>,
+    /// The foreign edits a unit's run in its copy is given, by its place in the plan: those a
+    /// unit its copy holds the merge of made.
+    // @lfy def/cli/main.lfy:main#main:main:5b241bf72a28eb83044e40272acd76f441efff41a88bd21769255cca804fdc4a
+    pub(crate) edits: BTreeMap<usize, Vec<ForeignEdit>>,
+    /// Where the units of each change set stand while they run at once.
+    // @lfy def/cli/main.lfy:main#main:main:8cf4943ef6637dd81797621b8abc048edcc7781a4f19546fbe99863339043826
+    pub(crate) schedule: crate::schedule::Schedule,
+    /// Whether this run works one unit in its copy, apart from the compile that started it,
+    /// so that nothing of a change set is touched by it.
+    // @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+    pub(crate) worker: bool,
     /// The program with a directory other than the root as its workspace's root, made once
     /// for that directory, so that what is recorded for a unit worked in a copy is written
     /// there.
-    // @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
-    relocated: Option<(PathBuf, Program)>,
+    // @lfy def/cli/main.lfy:main#main:main:5a9f0a1a607bedde3d9614508a9e4477732de6ab40aa00c924024f8a13bded91
+    moved: Option<(PathBuf, Program)>,
 }
 
 impl Run {
@@ -426,9 +330,110 @@ impl Run {
             blocked: 0,
             failed: 0,
             code: ExitCode::Success,
-            snapshots: BTreeMap::new(),
-            relocated: None,
+            // @lfy def/cli/main.lfy:main#main:main:1fd9be2beb849bc4a65969dbedc075ab348b763ef108d6fbc41f4001bc8a86b9
+            jobs: invocation.option(crate::commands::JOBS).and_then(crate::commands::jobs_of).unwrap_or(DEFAULT_JOBS),
+            relocation: Relocated::default(),
+            relocated_only: BTreeSet::new(),
+            previous: BTreeMap::new(),
+            edits: BTreeMap::new(),
+            schedule: crate::schedule::Schedule::default(),
+            worker: false,
+            moved: None,
         }
+    }
+
+    /// A run of its own for one unit worked in its copy, apart from this compile: the same
+    /// plan, program, and options, printing through the same reporter and stopped with the
+    /// same process groups, given the unit's previous source and the foreign edits its run is
+    /// given, and holding no change set, so that nothing it does reaches one but through what
+    /// it gives back.
+    // @lfy def/cli/main.lfy:main#main:main:649dfaca80ede5a5de3cfecd48f1de664e250e9bc65773266822f3f63ae34c71
+    // @lfy def/cli/main.lfy:main#main:main:91514d592807a6eae69b04199835ae037c731478013def307e41bb393d1f98c3
+    pub(crate) fn fork(&self, unit: usize, edits: Vec<ForeignEdit>) -> Run {
+        let mut previous = BTreeMap::new();
+        if let Some(found) = self.previous.get(&unit) {
+            previous.insert(unit, found.clone());
+        }
+        Run {
+            program: self.program.clone(),
+            plan: self.plan.clone(),
+            planning: self.planning.clone(),
+            maps: self.maps.clone(),
+            reporter: self.reporter.clone(),
+            agent: self.agent.clone(),
+            running: self.running.clone(),
+            json: self.json,
+            style: self.style,
+            continuing: self.continuing,
+            compiler: self.compiler.clone(),
+            verifier: self.verifier.clone(),
+            no_verify: self.no_verify,
+            accept_only: self.accept_only,
+            full: self.full,
+            target: self.target.clone(),
+            sets: BTreeMap::new(),
+            states: BTreeMap::new(),
+            reviewed: BTreeMap::new(),
+            stopped: BTreeSet::new(),
+            skipped: BTreeSet::new(),
+            halted: false,
+            gate_failed: false,
+            rejected: 0,
+            blocked: 0,
+            failed: 0,
+            code: ExitCode::Success,
+            jobs: self.jobs,
+            relocation: self.relocation.clone(),
+            relocated_only: self.relocated_only.clone(),
+            previous,
+            edits: [(unit, edits)].into(),
+            schedule: crate::schedule::Schedule::default(),
+            worker: true,
+            moved: None,
+        }
+    }
+
+    /// A unit's previous source: `previousOf` of the program the plan was made from, the
+    /// unit, and its outputs, recovered once in the compile and kept, so that the rewording,
+    /// every request, `reworded`, and the checks of the steps without the compiler are given
+    /// the same one. A unit with no outputs, or every map of whose outputs the compile's
+    /// relocation made for a unit with no map of its own, has none, and nothing is recovered
+    /// for it.
+    // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+    // @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+    pub(crate) fn recover(&mut self, unit: usize) {
+        if self.previous.contains_key(&unit) {
+            return;
+        }
+        let found = self.recovered(unit);
+        self.previous.insert(unit, found);
+    }
+
+    /// The previous source of a unit, as [`Run::recover`] keeps it, or recovered now when it
+    /// was never kept.
+    // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+    pub(crate) fn previous_source(&self, unit: usize) -> Option<Previous> {
+        match self.previous.get(&unit) {
+            Some(found) => found.clone(),
+            None => self.recovered(unit),
+        }
+    }
+
+    /// `previousOf` called for a unit, or nothing for a unit that has no previous source.
+    // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+    // @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+    fn recovered(&self, unit: usize) -> Option<Previous> {
+        let planned = &self.plan.units[unit];
+        // @lfy def/cli/main.lfy:main#main:main:56dfba76b54a5c6836f292e001f259f857a7245ccec2e5b571ddfb7f62347513
+        if planned.outputs.is_empty() {
+            return None;
+        }
+        let key = (self.target_of_unit(unit).identifier.clone(), self.workspace().files[planned.file].path.clone());
+        if self.relocated_only.contains(&key) {
+            return None;
+        }
+        // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+        generation::previous::previous_of(&self.program, planned, &planned.outputs)
     }
 
     /// The workspace the plan was made from.
@@ -471,38 +476,37 @@ impl Run {
     pub(crate) fn replan(&mut self, program: Program, plan: Plan) {
         self.program = program;
         self.plan = plan;
-        self.relocated = None;
+        self.moved = None;
     }
 
     /// The program with a directory as its workspace's root: the program itself for the
-    /// root, and for a change set's copy the same program with the copy as its root, so that
-    /// `record`, `rederive`, `recordReviews`, and `reviewsOf` read and write there and never
+    /// root, and for a copy the same program with the copy as its root, so that `record`,
+    /// `rederive`, `recordReviews`, `reviewsOf`, and `relocate` read and write there and never
     /// in the root.
-    // @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
+    // @lfy def/cli/main.lfy:main#main:main:5a9f0a1a607bedde3d9614508a9e4477732de6ab40aa00c924024f8a13bded91
     pub(crate) fn program_at(&mut self, directory: &Path) -> &Program {
         if directory == self.program.workspace.root {
             return &self.program;
         }
-        if self.relocated.as_ref().is_none_or(|(at, _)| at != directory) {
+        if self.moved.as_ref().is_none_or(|(at, _)| at != directory) {
             let mut moved = self.program.clone();
-            // @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
+            // @lfy def/cli/main.lfy:main#main:main:5a9f0a1a607bedde3d9614508a9e4477732de6ab40aa00c924024f8a13bded91
             moved.workspace.root = directory.to_path_buf();
-            self.relocated = Some((directory.to_path_buf(), moved));
+            self.moved = Some((directory.to_path_buf(), moved));
         }
-        &self.relocated.as_ref().expect("relocated just now").1
+        &self.moved.as_ref().expect("moved just now").1
     }
 
     /// The change set a unit is worked in, when the compile works one for its target.
-    // @lfy def/cli/main.lfy:main#main:main:a9e2e9cc50ca956b7eac47a753474b23cfa890fab1725feb5ff5078999bbc30d
+    // @lfy def/cli/main.lfy:main#main:main:52dc0204d72665f32b60eef1095ce6a73d89469226840fd8606ff7d622cc4745
     pub(crate) fn set_of(&self, unit: usize) -> Option<&ChangeSet> {
         self.sets.get(&self.target_of_unit(unit).identifier)
     }
 
-    /// The directory a unit is worked in: its change set's copy when the compile works one
+    /// A unit's target's working directory: its change set's copy when the compile works one
     /// for its target, and the root otherwise.
     // @lfy def/cli/main.lfy:main#main:main:966ee6d2b294a438d616849466eda454045e72dc5098c02c6025b33a7e34c829
-    // @lfy def/cli/main.lfy:main#main:main:a9e2e9cc50ca956b7eac47a753474b23cfa890fab1725feb5ff5078999bbc30d
-    pub(crate) fn directory_of(&self, unit: usize) -> PathBuf {
+    pub(crate) fn working_directory(&self, unit: usize) -> PathBuf {
         match self.set_of(unit) {
             Some(set) => PathBuf::from(&set.directory),
             None => self.root(),
@@ -575,9 +579,14 @@ impl Run {
     /// planned.
     // @lfy def/cli/main.lfy:main#main:main:4fb67ab23f1c2255a1177088bce0458b4c7fc72eee0b9f60cc2c47cdc0e85480
     pub(crate) fn count_done(&mut self) {
+        // A unit worked in its copy holds no change set, so what it would count is not what
+        // the compile counts.
+        if self.worker {
+            return;
+        }
         let planned = self.planned_units();
-        self.reporter.total = planned.len();
-        self.reporter.done = planned.iter().filter(|&&unit| self.state_of(unit).is_done()).count();
+        let done = planned.iter().filter(|&&unit| self.state_of(unit).is_done()).count();
+        self.reporter.set_counts(done, planned.len());
     }
 
     /// The directory a unit's requests, questions, and reasons are written to:
@@ -624,18 +633,17 @@ impl Run {
         (!answer.is_empty()).then_some(answer)
     }
 
-    /// The request of one unit, with its existing outputs read from its directory, the source
-    /// its outputs were generated from where git still holds it, the foreign edits given, and
-    /// the answer to a question asked before appended.
+    /// The request of one unit, with its existing outputs read from its directory, its
+    /// previous source, the foreign edits given, the relocations of the compile, and the
+    /// answer to a question asked before appended.
     ///
     /// `hosted` is whether the request is for a compiler run in a hosted session of this
     /// command's agent server: true for the request handed to a compiler command, false for
-    /// the one written out for a compiler run by hand. The second value is whether the
-    /// previous text is the unit's source at its last accepted generation, not only its
-    /// hash-matched source.
+    /// the one written out for a compiler run by hand. The second value is whether the unit's
+    /// previous source is defined and is not only its hash-matched source.
     // @lfy def/cli/main.lfy:main#main:main:3794ecd87cdab206cb18cf520d802e324546a2124e9c3ab4f934dc88f93dbb58
-    // @lfy def/cli/main.lfy:main#main:main:f210a94b1b3335dbbbe49bccc300d317f4cdb0a7e7281664426db68726bc71f6
     // @lfy def/cli/main.lfy:main#main:main:c3dec788ff5d654d7dbac2d0021b2e65e093abd3a174484ae34c58ff953c779a
+    // @lfy def/cli/main.lfy:main#main:main:2b2ecf83e7e057bba8be8cefb6ab9f0de30c74dfba2269df5b9fb4915457dec3
     pub(crate) fn request_of(
         &self,
         unit: usize,
@@ -646,23 +654,21 @@ impl Run {
         // The files of the output directory whose text carries a marker for the unit.
         // @lfy def/cli/main.lfy:main#main:main:c3dec788ff5d654d7dbac2d0021b2e65e093abd3a174484ae34c58ff953c779a
         let (existing, _) = outputs_of(self.workspace(), &self.plan, unit, directory);
-        // The previous text is that source as git holds it, never lowered, and the request is
-        // told when it is only the hash-matched source.
-        // @lfy def/cli/main.lfy:main#main:main:1f3c991d456ca136f454724f3f7fd0dfcb94081ad9e4e7f5f238375155b93e8f
-        // @lfy def/cli/main.lfy:main#main:main:f84461b876d5880346ff361b357e737563b84ff7463a37600f754210b77dc91f
-        // @lfy def/cli/main.lfy:main#main:main:83b85032f8cc7c8aef44ec14a0271ad64c1bafc4a130b693740a019f27be094d
-        let previous = previous_source(self.workspace(), &self.plan.units[unit]);
-        let hash_matched = previous.as_ref().is_some_and(|found| found.hash_matched);
-        let accepted_source = previous.as_ref().is_some_and(|found| !found.hash_matched);
+        // The unit's previous source as previous, the same every time the unit is requested,
+        // and the relocations of the compile as relocations.
+        // @lfy def/cli/main.lfy:main#main:main:2b2ecf83e7e057bba8be8cefb6ab9f0de30c74dfba2269df5b9fb4915457dec3
+        // @lfy def/cli/main.lfy:main#main:main:021113949b86da06e8b9d60a92d6451edc22619f4e586d3549313c4be3c71d4f
+        let was = self.previous_source(unit);
+        let accepted_source = was.as_ref().is_some_and(|found| !found.hash_matched);
         let mut request = generation::request(
             &self.program,
             &self.plan,
             unit,
             &existing,
-            previous.as_ref().map(|found| found.text.as_str()),
+            was.as_ref(),
             hosted,
-            hash_matched,
             foreign_edits,
+            &self.relocation.relocations,
         );
         // The person answers by editing the definitions, or by writing the answer below
         // the question, which the next compile of the unit appends to its instructions.
@@ -719,31 +725,31 @@ impl Run {
     /// The markers of a unit's reworded criteria and tests rewritten to the ids they have now,
     /// in the outputs in the unit's directory, before a request is made for the unit.
     ///
-    /// Nothing is rewritten for a unit whose source at its last accepted generation git no
-    /// longer holds, since nothing then says which id replaces which. One rewording progress
-    /// line counts its reworded criteria and tests and the outputs written.
-    // @lfy def/cli/main.lfy:main#main:main:7b0497097e610d4da1457726876ccfb45f7a41d3d5170bf29a1986426750c122
-    // @lfy def/cli/main.lfy:main#main:main:561bd7cbbedaf15b591306a1bda08fd34f7da689d466b406d196bcf906444f7d
+    /// Nothing is rewritten for a unit with no previous source, or whose previous source is
+    /// only its hash-matched source, since nothing then says which id replaces which. One
+    /// rewording progress line counts its reworded criteria and tests and the outputs written.
+    // @lfy def/cli/main.lfy:main#main:main:5addc4adee4b879e13c461f3ad0fe117798288430fd32f3f1e0360099beffc41
+    // @lfy def/cli/main.lfy:main#main:main:5731809a4610bdcc66b727d15eee1aa0e72029842df8f2e0414f6d054e2ea8c0
     // @lfy def/cli/main.lfy:main#main:main:fa18c20576f142bd6c6ed82dce02b8ba5a122973c56fb0aae68b0c40a74c201c
     pub(crate) fn reword_outputs(&mut self, unit: usize, directory: &Path) {
         let planned = self.plan.units[unit].clone();
-        // Only the source at the unit's last accepted generation says which id replaces
-        // which; its hash-matched source answered for other ids altogether.
-        // @lfy def/cli/main.lfy:main#main:main:7b0497097e610d4da1457726876ccfb45f7a41d3d5170bf29a1986426750c122
-        let Some(previous) = previous_source(self.workspace(), &planned).filter(|found| !found.hash_matched) else {
+        // Only a previous source that is not only the hash-matched one says which id
+        // replaces which; the hash-matched source answered for other ids altogether.
+        // @lfy def/cli/main.lfy:main#main:main:5addc4adee4b879e13c461f3ad0fe117798288430fd32f3f1e0360099beffc41
+        let Some(was) = self.previous_source(unit).filter(|found| !found.hash_matched) else {
             return;
         };
-        // @lfy def/cli/main.lfy:main#main:main:7b0497097e610d4da1457726876ccfb45f7a41d3d5170bf29a1986426750c122
-        let rewordings = generation::reworded(&self.program, &planned, &previous.text);
+        // @lfy def/cli/main.lfy:main#main:main:5addc4adee4b879e13c461f3ad0fe117798288430fd32f3f1e0360099beffc41
+        let rewordings = generation::reworded(&self.program, &planned, &was);
         if rewordings.is_empty() {
             return;
         }
         // The id each marker names now, by the id it names on disk.
-        // @lfy def/cli/main.lfy:main#main:main:7b0497097e610d4da1457726876ccfb45f7a41d3d5170bf29a1986426750c122
+        // @lfy def/cli/main.lfy:main#main:main:5addc4adee4b879e13c461f3ad0fe117798288430fd32f3f1e0360099beffc41
         let ids: BTreeMap<String, String> =
             rewordings.iter().map(|rewording| (rewording.replaces.clone(), rewording.id.clone())).collect();
         let (outputs, _) = outputs_of(self.workspace(), &self.plan, unit, directory);
-        // @lfy def/cli/main.lfy:main#main:main:7b0497097e610d4da1457726876ccfb45f7a41d3d5170bf29a1986426750c122
+        // @lfy def/cli/main.lfy:main#main:main:5addc4adee4b879e13c461f3ad0fe117798288430fd32f3f1e0360099beffc41
         let renamed = generation::rename(self.workspace(), &self.plan, unit, &outputs, &ids);
         let mut written = 0;
         for output in &renamed {
@@ -752,7 +758,7 @@ impl Run {
             if let Some(parent) = path.parent() {
                 let _ = fs::create_dir_all(parent);
             }
-            // @lfy def/cli/main.lfy:main#main:main:7b0497097e610d4da1457726876ccfb45f7a41d3d5170bf29a1986426750c122
+            // @lfy def/cli/main.lfy:main#main:main:5addc4adee4b879e13c461f3ad0fe117798288430fd32f3f1e0360099beffc41
             match fs::write(&path, &output.text) {
                 Ok(()) => written += 1,
                 Err(error) => {
@@ -851,8 +857,8 @@ impl Run {
     ///
     /// Recording one unit leaves every other map file byte for byte as it was, a co-owner's
     /// aside.
-    // @lfy def/cli/main.lfy:main#main:main:6b0a3b7ef1ed03adae1066e2bb21b9ada933d5808f1039dce913c2635f24308d
-    // @lfy def/cli/main.lfy:main#main:main:a9a35de62ed7e8af9e763d1d17f62b520074b0ff62f6d127c8a757f06b3d2654
+    // @lfy def/cli/main.lfy:main#main:main:581f8ca189aaf93dbb2a251ac39e808b7454c0cc223e94b9a5369e0dafdff965
+    // @lfy def/cli/main.lfy:main#main:main:1a380544042dc2a265daa89f48fba57d42b2227401fa8e393f68af08ae06fc21
     // @lfy def/cli/main.lfy:main#main:main:73b5383aed1ca86a8561196285ac24e93f2aa3b1cf5665ccb3c44c99c8bcfb1f
     // @lfy def/cli/main.lfy:main#main:main:903564ed1cc08c957bb20abfdd0ab90ad696be6427d003cd21a97daf964f1b09
     pub(crate) fn record_maps(&mut self, unit: usize, maps: &[SourceMap], directory: &Path, reviewed: bool) {
@@ -865,7 +871,7 @@ impl Run {
         shared.extend(recorded.iter().cloned());
         let planned = self.plan.units[unit].clone();
         let program = self.program_at(directory);
-        // @lfy def/cli/main.lfy:main#main:main:03ebb08ee08aa754ab5815f422cc2fe42b9ea564d9fdff00c0b846cf684eea98
+        // @lfy def/cli/main.lfy:main#main:main:5a9f0a1a607bedde3d9614508a9e4477732de6ab40aa00c924024f8a13bded91
         let written = generation::record(&program.workspace, &planned, maps);
         let path = generation::map_file(&program.workspace, &planned).display().to_string();
         if !written {
@@ -1088,8 +1094,9 @@ impl Run {
                 // @lfy def/cli/main.lfy:main#main:main:20d39c165928d43ffa93da6970f91339f7c50e254aa218ea87fb80072d87f066
                 _ => problem_with_lines(&failure, &lines_in_outputs(&ran, &target, &ran_in, directory)),
             };
+            // The building line saying which command failed is printed by the caller, with
+            // what follows it, in one turn; it is the problem's first line.
             // @lfy def/cli/main.lfy:main#main:main:4502368c3b4408a12c9ea2de6677c21637ddd009b1433f9ca2537f0d00e249e0
-            self.reporter.report(Step::Building, Some(&stem), &failure);
             return Err(problem);
         }
         // @lfy def/cli/main.lfy:main#main:main:25b8417f9f55800eec5857dab9bbcf5fbbed7096f0f48ce932ccb4e0ea51ac39
@@ -1120,19 +1127,32 @@ impl Run {
         line_for(target, Operation::Build).is_some() && line_for(target, Operation::Test).is_some()
     }
 
+    /// A failed unit gate printed: one building line saying which command failed and its exit
+    /// code, then, when the gate stood in for nothing, the unit rejected with its problem, or
+    /// otherwise the problem alone, all in one turn.
+    // @lfy def/cli/main.lfy:main#main:main:4502368c3b4408a12c9ea2de6677c21637ddd009b1433f9ca2537f0d00e249e0
+    // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+    pub(crate) fn report_gate(&mut self, unit: usize, problem: &str, rejected: bool) {
+        let stem = self.stem(unit);
+        let _turn = self.reporter.hold();
+        // @lfy def/cli/main.lfy:main#main:main:4502368c3b4408a12c9ea2de6677c21637ddd009b1433f9ca2537f0d00e249e0
+        self.reporter.report(Step::Building, Some(&stem), problem.lines().next().unwrap_or_default());
+        let problems = vec![problem.to_string()];
+        if rejected {
+            self.report_rejection(unit, &problems);
+        } else {
+            self.reporter.problems(&problems);
+        }
+    }
+
     /// The problems of a rejected verdict: one rejected line for the unit, then its problems
     /// indented below it.
     // @lfy def/cli/main.lfy:main#main:main:c863a527b6e120083837fbd590e228d380afa98faa81f3564fd62d4a4bad94b4
     pub(crate) fn report_rejection(&mut self, unit: usize, problems: &[String]) {
         let stem = self.stem(unit);
         // @lfy def/cli/main.lfy:main#main:main:c863a527b6e120083837fbd590e228d380afa98faa81f3564fd62d4a4bad94b4
-        self.reporter.report(Step::Rejected, Some(&stem), &problems.join("\n"));
-        self.reporter.problems(problems);
-    }
-
-    /// Whether a file of a change set is its own, as [`is_own`] says for the unit's target.
-    pub(crate) fn is_own_file(&self, unit: usize, path: &str) -> bool {
-        is_own(path, self.target_of_unit(unit))
+        // @lfy def/cli/main.lfy:main#main:main:a7d36c6314ecefbcbce7f5f0d72190c18e20d5d6358618dd7d1063060f1ae77f
+        self.reporter.report_problems(Step::Rejected, Some(&stem), &problems.join("\n"), problems);
     }
 }
 

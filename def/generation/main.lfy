@@ -366,6 +366,7 @@ fn request(
   previous?: Previous,
   hosted: boolean = false,
   foreignEdits: ForeignEdit[] = [],
+  relocations: Relocation[] = [],
 ): `Everything the compiler is handed to produce the outputs of one unit` => Request {
   @acceptanceCriteria
     .add({ behavior = `[[Request.unit]] is [[unit]]` })
@@ -425,7 +426,10 @@ fn request(
       behavior = `[[Request.foreignEdits]] is each of [[foreignEdits]] whose [[ForeignEdit.owner]] is [[Unit.stem]] of [[unit]] and whose [[ForeignEdit.path]] [[Path.startsWith]] [[Target.outputDirectory]] of the unit's target, in the order of [[foreignEdits]]`,
     })
     .add({
-      behavior = `[[Request.reach]] is read from [[Plan.units]] of [[plan]] and their [[Unit.outputs]], and never from their [[Unit.reason]]`,
+      behavior = `[[Request.reach]] is read from [[Plan.units]] of [[plan]], their [[Unit.outputs]], and the hash of [[interfaceOf]] [[unit]], and never from their [[Unit.reason]]`,
+    })
+    .add({
+      behavior = `[[Request.relocated]] is each of [[relocations]] whose [[Relocation.target]] is [[Target.identifier]] of the unit's target and whose [[Relocation.into]] or [[Relocation.origin]] is the [[File.path]] of [[unit]], in the order of [[relocations]]`,
     });
 
   // Knowledge
@@ -652,6 +656,20 @@ fn request(
       situation = `Entities moved out of [[unit]]`,
       behavior = `The unit's section says that the unit's outputs make each of them available under the name and path it would have had`,
     })
+    .add({
+      situation = `A relocation of [[Request.relocated]] has the [[File.path]] of [[unit]] as its [[Relocation.into]]`,
+      behavior = [
+        `The unit's section says which entities were relocated into the unit and the file each came from, its [[Relocation.origin]]`,
+        `The unit's section says that their code is already in the unit's outputs, under markers that now name the unit's file, and is kept as it is, changed only where what the unit asks differs from what it does`,
+      ],
+    })
+    .add({
+      situation = `A relocation of [[Request.relocated]] has the [[File.path]] of [[unit]] as its [[Relocation.origin]]`,
+      behavior = [
+        `The unit's section says which entities were relocated out of the unit and the file each went to, its [[Relocation.into]]`,
+        `The unit's section says that their code is the code of the unit of that file now, and is neither written again nor removed by the unit`,
+      ],
+    })
     // Decision: a requirements unit is never told its code is unchanged. Its lowered code is the
     // same, but a fn's criteria are what its code must do, so a changed criterion can ask for
     // behavior no code has yet.
@@ -688,7 +706,7 @@ fn request(
     .add({
       situation = `[[Request.existing]] is not empty`,
       behavior = [
-        `The existing outputs part says that only what the difference between [[Request.previous]] and [[Request.source]], the criteria and tests marked new, reworded, or removed, the foreign edits, and a split the target's guidance requires, require changes`,
+        `The existing outputs part says that only what the difference between [[Request.previous]] and [[Request.source]], the criteria and tests marked new, reworded, or removed, the foreign edits, and a split the target's guidance requires, require changes, and that the code of an entity relocated into the unit is kept`,
         `The existing outputs part says that names and structure are kept, except that a module the target's guidance says to split gains submodule files and has its code moved into them; that split is the one change of structure allowed, and it keeps every name other units use`,
         `The existing outputs part says that markers of unchanged items are kept`,
       ],
@@ -815,6 +833,35 @@ fn request(
       ],
       expect = Request@like(
         `A reach whose units are a alone, fixLines 10 and fixUnitLines 40; a reach part listing a with src/a.rs; a stubs part giving todo!("elfie stub: \{{unit}}: \{{reason}}") as written and the caps of 10 and 40 lines`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `Two units of target rust with output directory src, b before a, a using b, each with outputs, src/b.rs and src/a.rs, and a's outputs recording for b the interface hash b has now`,
+        ),
+        Unit@like(`b`),
+        [Output@like(`src/b.rs`)],
+      ],
+      expect = Request@like(`An empty reach, and a reach part saying the run edits the outputs of no other unit`),
+    },
+    {
+      input = [
+        Plan@like(
+          `Two units of target rust, a.lfy and b.lfy, with output src/b.rs holding b's code under markers that name def/b.lfy`,
+        ),
+        Unit@like(`b`),
+        [Output@like(`src/b.rs`)],
+        undefined,
+        false,
+        [],
+        [
+          Relocation@like(`Of the entity f, for rust, from def/a.lfy into def/b.lfy, three markers`),
+          Relocation@like(`Of the entity g, for another target, from def/a.lfy into def/b.lfy`),
+        ],
+      ],
+      expect = Request@like(
+        `relocated holding the relocation of f alone; a section for b saying f was relocated into it from def/a.lfy and its code is kept as it is`,
       ),
     },
     {
@@ -1983,6 +2030,135 @@ fn rename(unit: Unit, outputs: Output[], ids: Object<string>): `The output files
       expect = [
         Output@like(`src/a.rs, with lines 3 and 8 reading // @lfy def/a.lfy:f#f:f:9c0d and every other line as it was`),
       ],
+    },
+  );
+}
+
+// Relocation
+
+/// plan: the plan of the workspace, made from the source maps recorded where the code is read
+/// directory: the directory the outputs, map files, and review record files are read from; [[Workspace.root]] of [[Plan.workspace]] when left out
+fn relocate(plan: Plan, directory?: string): `The markers, source maps, and review records of every entity whose code the outputs hold under the name of a file that no longer declares it, rewritten to name the one file that does` => Relocated {
+  // Markers
+  @acceptanceCriteria
+    .add({
+      behavior = `The outputs read are, for each of [[Workspace.targets]] of [[Plan.workspace]] of [[plan]], every file of [[Files.list]] of its [[Target.outputDirectory]] under [[directory]], recursively, skipping every directory named target, .git, or node_modules, as [[Files.read]] reads it there, with their markers read as [[accept]] reads a [[Marker]]`,
+    })
+    .add({
+      behavior = `A marker is orphaned when it names an entity, its [[Marker.file]] is the [[File.path]] of a file of the workspace that has no [[File.package]], and that file declares no entity built for the target of the output it is in whose identifier is [[Marker.entity]], or, for a name with a dot, the owner's identifier`,
+    })
+    .add({
+      behavior = `The candidates of an orphaned marker are the other files of the workspace with no [[File.package]] that declare an entity built for the same target whose identifier is [[Marker.entity]], or, for a name with a dot, that declare an entity built for the same target with the owner's identifier holding a member with that name`,
+    })
+    .add({
+      situation = `Some marker of the same target's outputs that names the same [[Marker.file]] and [[Marker.entity]] carries an id`,
+      behavior = `Only the candidates remain whose entity has one of those ids among its local criteria and tests, so an entity is relocated only to one that still answers for what its code answered for`,
+    })
+    .add({
+      behavior = `The candidates are decided once for all the orphaned markers of one target with the same [[Marker.file]] and [[Marker.entity]], so they are rewritten to the same file or none of them is`,
+    })
+    .add({
+      situation = `Exactly one candidate of an orphaned marker remains`,
+      behavior = `The marker's line has the path after @lfy and a space replaced by the [[File.path]] of that candidate, and every other character of the line, the id included, and every other line of its output, is kept`,
+    })
+    .add({
+      situation = `No candidate of an orphaned marker remains, or more than one`,
+      behavior = `The marker is left as it is`,
+    })
+    .add({
+      behavior = `[[Relocated.relocations]] holds one [[Relocation]] for each target, [[Marker.file]], and [[Marker.entity]] whose orphaned markers were rewritten, with [[Relocation.into]] the file they name now and [[Relocation.markers]] how many were rewritten`,
+    })
+    .add({
+      behavior = `[[Relocated.outputs]] holds each output file that holds a rewritten marker, with its text once every marker in it is rewritten`,
+    });
+
+  // Source maps
+  @acceptanceCriteria
+    .add({
+      behavior = `The source maps read are those of the map files under [[directory]], read as [[sourceMapsOf]] reads them`,
+    })
+    .add({
+      behavior = `The files as relocated are the output files under [[directory]], each of [[Relocated.outputs]] read as its text there and every other file as it is`,
+    })
+    .add({
+      behavior = `[[Relocated.sourceMaps]] holds, as read, every source map read of a unit that no relocation moved code out of or into and none of whose maps names one of [[Relocated.outputs]] as its [[SourceMap.output]]`,
+    })
+    .add({
+      situation = `A relocation moved code out of a unit, or into a unit of which a map was read, or a map read of a unit names one of [[Relocated.outputs]]`,
+      behavior = `That unit's maps in [[Relocated.sourceMaps]] are those [[rederive]] would give for it and its maps as read if the files as relocated were the files under [[directory]]`,
+    })
+    .add({
+      situation = [`A relocation moved code out of a unit`, `No file as relocated holds a marker of the unit's own`],
+      behavior = `That unit has no maps in [[Relocated.sourceMaps]]`,
+    })
+    .add({
+      situation = `A relocation moved code into a unit of which no map was read`,
+      behavior = [
+        `That unit's maps in [[Relocated.sourceMaps]] are one for each file as relocated that holds a marker of its own, as [[SourceMap]] defines one, in path order, with [[SourceMap.target]], [[SourceMap.output]], [[SourceMap.source]], and [[SourceMap.markers]] as [[rederive]] would derive them from the files as relocated`,
+        `[[SourceMap.hash]], [[SourceMap.requirements]], [[SourceMap.signature]], [[SourceMap.dependencies]], and [[SourceMap.generated]] of each are those of the first map read of the unit of [[Relocation.origin]] of the first relocation into it`,
+        `[[SourceMap.text]] of each is empty`,
+      ],
+    })
+    .add({
+      situation = `A relocation moved code into a unit`,
+      behavior = `[[SourceMap.answered]] of each of that unit's maps in [[Relocated.sourceMaps]] holds the ids its maps as read answered, if any, and every id a marker rewritten into it carries, sorted, each once`,
+    });
+
+  // Review records
+  @acceptanceCriteria
+    .add({
+      behavior = `A unit's records are read from its review record file under [[directory]] as [[reviewsOf]] reads them, but keeping every record whatever its id`,
+    })
+    .add({
+      behavior = `A record moves when it is a record of a unit a relocation moved code out of, and its id is the id of a local criterion or test, of the unit the code moved into, that belongs to a relocated entity or to a member of one`,
+    })
+    .add({
+      behavior = [
+        `[[Relocated.reviews]] holds one [[UnitReviews]] for each unit a record moved out of or into`,
+        `The unit a record moved out of holds its other records`,
+        `The unit a record moved into holds its own records and the records moved into it, sorted by id, its own record kept where both have the same id`,
+        `A moved record keeps its [[ReviewRecord.id]], [[ReviewRecord.status]], and [[ReviewRecord.hash]]`,
+      ],
+    });
+
+  @acceptanceCriteria
+    .add({
+      situation = `No marker is orphaned, or none is rewritten`,
+      behavior = `[[Relocated.relocations]], [[Relocated.outputs]], and [[Relocated.reviews]] are empty, and [[Relocated.sourceMaps]] holds the maps read`,
+    })
+    .add({ behavior = `Nothing is written` })
+    .add({ behavior = `No compiler, verifier, command of the target, or git is run` });
+
+  @test(
+    {
+      input = [
+        Plan@like(
+          `One target rust with output directory src; def/a.lfy declares A, and def/b.lfy declares f, which a.lfy declared before; src/a.rs holds a.lfy:A on line 1, a.lfy:f on line 5, and a.lfy:f#f:f:9c0d on line 9; a's map file records src/a.rs, b has no map file; a's review record file holds a satisfied record for f:f:9c0d and one for A:A:1f2e`,
+        ),
+      ],
+      expect = Relocated@like(
+        `One relocation of f, for rust, from def/a.lfy into def/b.lfy, two markers; src/a.rs with lines 5 and 9 naming def/b.lfy and every other character kept; a's map and b's map for src/a.rs, each with all three markers, A naming def/a.lfy and the two of f naming def/b.lfy; b's map with the hash, requirements, signature, dependencies, and generated time of a's map, the answered ids of a's map, and an empty text; a's records holding A:A:1f2e alone and b's holding f:f:9c0d`,
+      ),
+    },
+    {
+      input = [
+        Plan@like(
+          `One target rust; def/a.lfy no longer declares f; def/b.lfy and def/c.lfy each declare a fn f, and only c's has the criterion f:f:9c0d; src/a.rs holds a.lfy:f and a.lfy:f#f:f:9c0d`,
+        ),
+      ],
+      expect = Relocated@like(`One relocation of f from def/a.lfy into def/c.lfy, two markers`),
+    },
+    {
+      input = [
+        Plan@like(
+          `One target rust; def/a.lfy no longer declares f; def/b.lfy and def/c.lfy each declare a fn f with no criterion; src/a.rs holds a.lfy:f`,
+        ),
+      ],
+      expect = Relocated@like(`No relocation, no output, no reviews, and the maps as read`),
+    },
+    {
+      input = [Plan@like(`One target rust whose every marker names an entity its file declares`)],
+      expect = Relocated@like(`No relocation, no output, no reviews, and the maps as read`),
     },
   );
 }
